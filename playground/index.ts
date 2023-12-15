@@ -1,3 +1,3 @@
-import { test } from "../src";
+import { getRegion } from "../src";
 
-console.log(test());
+console.log(getRegion(1_000_001));

@@ -1,4 +1,4 @@
-# packageName
+# @storyblok/region-helper
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
@@ -13,26 +13,26 @@ Install package:
 
 ```sh
 # npm
-npm install packageName
+npm install @storyblok/region-helper
 
 # yarn
-yarn add packageName
+yarn add @storyblok/region-helper
 
 # pnpm
-pnpm install packageName
+pnpm install @storyblok/region-helper
 
 # bun
-bun install packageName
+bun install @storyblok/region-helper
 ```
 
 Import:
 
 ```js
 // ESM
-import {} from "packageName";
+import {} from "@storyblok/region-helper";
 
 // CommonJS
-const {} = require("packageName");
+const {} = require("@storyblok/region-helper");
 ```
 
 ## Development
@@ -51,11 +51,11 @@ Published under [MIT License](./LICENSE).
 
 <!-- Badges -->
 
-[npm-version-src]: https://img.shields.io/npm/v/packageName?style=flat&colorA=18181B&colorB=F0DB4F
-[npm-version-href]: https://npmjs.com/package/packageName
-[npm-downloads-src]: https://img.shields.io/npm/dm/packageName?style=flat&colorA=18181B&colorB=F0DB4F
-[npm-downloads-href]: https://npmjs.com/package/packageName
-[codecov-src]: https://img.shields.io/codecov/c/gh/unjs/packageName/main?style=flat&colorA=18181B&colorB=F0DB4F
-[codecov-href]: https://codecov.io/gh/unjs/packageName
-[bundle-src]: https://img.shields.io/bundlephobia/minzip/packageName?style=flat&colorA=18181B&colorB=F0DB4F
-[bundle-href]: https://bundlephobia.com/result?p=packageName
+[npm-version-src]: https://img.shields.io/npm/v/@storyblok/region-helper?style=flat&colorA=18181B&colorB=F0DB4F
+[npm-version-href]: https://npmjs.com/package/@storyblok/region-helper
+[npm-downloads-src]: https://img.shields.io/npm/dm/@storyblok/region-helper?style=flat&colorA=18181B&colorB=F0DB4F
+[npm-downloads-href]: https://npmjs.com/package/@storyblok/region-helper
+[codecov-src]: https://img.shields.io/codecov/c/gh/unjs/@storyblok/region-helper/main?style=flat&colorA=18181B&colorB=F0DB4F
+[codecov-href]: https://codecov.io/gh/unjs/@storyblok/region-helper
+[bundle-src]: https://img.shields.io/bundlephobia/minzip/@storyblok/region-helper?style=flat&colorA=18181B&colorB=F0DB4F
+[bundle-href]: https://bundlephobia.com/result?p=@storyblok/region-helper

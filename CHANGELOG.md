@@ -1,5 +1,11 @@
 # @storyblok/region-helper
 
+## 0.1.0
+
+### Minor Changes
+
+- 84a757f: Add full URL and add new validation function
+
 ## 0.0.1
 
 ### Patch Changes

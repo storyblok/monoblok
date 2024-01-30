@@ -1,10 +1,10 @@
 export type Region = "eu" | "us" | "cn" | "ap" | "ca";
 
-export const EU_API_URL = "api.storyblok.com";
-export const US_API_URL = "api-us.storyblok.com";
-export const CN_API_URL = "app.storyblokchina.cn";
-export const AP_API_URL = "api-ap.storyblok.com";
-export const CA_API_URL = "api-ca.storyblok.com";
+export const EU_API_URL = "https://api.storyblok.com";
+export const US_API_URL = "https://api-us.storyblok.com";
+export const CN_API_URL = "https://app.storyblokchina.cn";
+export const AP_API_URL = "https://api-ap.storyblok.com";
+export const CA_API_URL = "https://api-ca.storyblok.com";
 
 export function getRegion(spaceId: number) {
   if (spaceId >= 1_000_000 && spaceId < 2_000_000) {
@@ -36,4 +36,14 @@ export function getRegionUrl(region: Region) {
       return EU_API_URL;
     }
   }
+}
+
+export function isRegion(data: unknown): data is Region {
+  return (
+    data === "eu" ||
+    data === "us" ||
+    data === "cn" ||
+    data === "ca" ||
+    data === "ap"
+  );
 }

@@ -7,6 +7,7 @@ import {
   US_API_URL,
   getRegion,
   getRegionUrl,
+  isRegion,
 } from "../src";
 
 describe("getRegion", () => {
@@ -47,5 +48,29 @@ describe("getRegionUrl", () => {
 
   it("should return `ap url` region", () => {
     expect(getRegionUrl("ap")).toBe(AP_API_URL);
+  });
+});
+
+describe("isRegion", () => {
+  it('can be "eu"', () => {
+    expect(isRegion("eu")).toEqual(true);
+  });
+  it('can be "us"', () => {
+    expect(isRegion("us")).toEqual(true);
+  });
+  it('can be "ca"', () => {
+    expect(isRegion("ca")).toEqual(true);
+  });
+  it('can be "cn"', () => {
+    expect(isRegion("cn")).toEqual(true);
+  });
+  it('can be "ap"', () => {
+    expect(isRegion("ap")).toEqual(true);
+  });
+  it("cannot be anything else", () => {
+    expect(isRegion("de")).toEqual(false);
+    expect(isRegion("abc")).toEqual(false);
+    expect(isRegion(1)).toEqual(false);
+    expect(isRegion([])).toEqual(false);
   });
 });

@@ -43,6 +43,10 @@ const {} = require("@storyblok/region-helper");
 - Install dependencies using `pnpm install`
 - Run interactive tests using `pnpm dev`
 
+## Release
+
+Check how to release this package [here](https://www.notion.so/storyblok/Recordings-d8838dc8a76f49e6b393db654a580bfa?pvs=4#6b34969027a24ddf86c85780c123efd5)
+
 ## License
 
 Made with 💛

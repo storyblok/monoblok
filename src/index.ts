@@ -6,6 +6,8 @@ export const CN_API_URL = "https://app.storyblokchina.cn";
 export const AP_API_URL = "https://api-ap.storyblok.com";
 export const CA_API_URL = "https://api-ca.storyblok.com";
 
+export const ALL_REGIONS: Region[] = ["eu", "us", "cn", "ap", "ca"];
+
 export function getRegion(spaceId: number) {
   if (spaceId >= 1_000_000 && spaceId < 2_000_000) {
     return "us";
@@ -39,11 +41,5 @@ export function getRegionUrl(region: Region) {
 }
 
 export function isRegion(data: unknown): data is Region {
-  return (
-    data === "eu" ||
-    data === "us" ||
-    data === "cn" ||
-    data === "ca" ||
-    data === "ap"
-  );
+  return ALL_REGIONS.includes(data as Region);
 }

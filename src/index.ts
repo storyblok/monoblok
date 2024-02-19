@@ -1,45 +1,45 @@
-export type Region = "eu" | "us" | "cn" | "ap" | "ca";
+export type Region = 'eu' | 'us' | 'cn' | 'ap' | 'ca'
 
-export const EU_API_URL = "https://api.storyblok.com";
-export const US_API_URL = "https://api-us.storyblok.com";
-export const CN_API_URL = "https://app.storyblokchina.cn";
-export const AP_API_URL = "https://api-ap.storyblok.com";
-export const CA_API_URL = "https://api-ca.storyblok.com";
+export const EU_API_URL = 'https://api.storyblok.com'
+export const US_API_URL = 'https://api-us.storyblok.com'
+export const CN_API_URL = 'https://app.storyblokchina.cn'
+export const AP_API_URL = 'https://api-ap.storyblok.com'
+export const CA_API_URL = 'https://api-ca.storyblok.com'
 
-export const ALL_REGIONS: Region[] = ["eu", "us", "cn", "ap", "ca"];
+export const ALL_REGIONS: Region[] = ['eu', 'us', 'cn', 'ap', 'ca']
 
 export function getRegion(spaceId: number) {
   if (spaceId >= 1_000_000 && spaceId < 2_000_000) {
-    return "us";
+    return 'us'
   } else if (spaceId >= 2_000_000 && spaceId < 3_000_000) {
-    return "ca";
+    return 'ca'
   } else if (spaceId >= 3_000_000 && spaceId < 4_000_000) {
-    return "ap";
+    return 'ap'
   } else {
-    return "eu";
+    return 'eu'
   }
 }
 
 export function getRegionUrl(region: Region) {
   switch (region) {
-    case "us": {
-      return US_API_URL;
+    case 'us': {
+      return US_API_URL
     }
-    case "cn": {
-      return CN_API_URL;
+    case 'cn': {
+      return CN_API_URL
     }
-    case "ap": {
-      return AP_API_URL;
+    case 'ap': {
+      return AP_API_URL
     }
-    case "ca": {
-      return CA_API_URL;
+    case 'ca': {
+      return CA_API_URL
     }
     default: {
-      return EU_API_URL;
+      return EU_API_URL
     }
   }
 }
 
 export function isRegion(data: unknown): data is Region {
-  return ALL_REGIONS.includes(data as Region);
+  return ALL_REGIONS.includes(data as Region)
 }

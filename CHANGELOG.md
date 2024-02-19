@@ -1,5 +1,11 @@
 # @storyblok/region-helper
 
+## 0.2.0
+
+### Minor Changes
+
+- 1b6b0cf: feat: export `ALL_REGIONS`
+
 ## 0.1.0
 
 ### Minor Changes

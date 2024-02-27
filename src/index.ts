@@ -1,23 +1,29 @@
 export type Region = 'eu' | 'us' | 'cn' | 'ap' | 'ca'
 
+export type RegionRanges = Record<Region, [number, number]>
+
 export const EU_API_URL = 'https://api.storyblok.com'
 export const US_API_URL = 'https://api-us.storyblok.com'
 export const CN_API_URL = 'https://app.storyblokchina.cn'
 export const AP_API_URL = 'https://api-ap.storyblok.com'
 export const CA_API_URL = 'https://api-ca.storyblok.com'
 
-export const ALL_REGIONS: Region[] = ['eu', 'us', 'cn', 'ap', 'ca']
+export const ALL_REGION_RANGES: RegionRanges = {
+  eu: [0, 1_000_000],
+  cn: [0, 1_000_000], // CN and EU uses the same range
+  us: [1_000_000, 2_000_000],
+  ca: [2_000_000, 3_000_000],
+  ap: [3_000_000, 4_000_000],
+}
+
+export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]
 
 export function getRegion(spaceId: number) {
-  if (spaceId >= 1_000_000 && spaceId < 2_000_000) {
-    return 'us'
-  } else if (spaceId >= 2_000_000 && spaceId < 3_000_000) {
-    return 'ca'
-  } else if (spaceId >= 3_000_000 && spaceId < 4_000_000) {
-    return 'ap'
-  } else {
-    return 'eu'
-  }
+  const region = Object.entries(ALL_REGION_RANGES).find(
+    ([, range]) => spaceId >= range[0] && spaceId < range[1],
+  )
+
+  return region ? (region[0] as Region) : 'eu'
 }
 
 export function getRegionUrl(region: Region) {

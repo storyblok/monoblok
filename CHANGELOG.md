@@ -1,5 +1,17 @@
 # @storyblok/region-helper
 
+## 1.0.0
+
+### Major Changes
+
+- 09c2b66: feat: add logic to switch between http and https. Rename to more explicit variable names.
+
+### Minor Changes
+
+- d9f1892: feat: `getRegionName` and `region code` exported
+- 8fdf2f5: feat: export ranges from all the regions
+- 734fdb3: feat: export the `isSpaceIdWithinRange` method that validates whether a given spaceId is valid or not
+
 ## 0.2.0
 
 ### Minor Changes

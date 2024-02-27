@@ -10,17 +10,17 @@ import {
   CN_CODE,
   AP_CODE,
   CA_CODE,
-  EU_API_URL,
-  US_API_URL,
-  CN_API_URL,
-  AP_API_URL,
-  CA_API_URL,
   getRegion,
-  getRegionUrl,
   isRegion,
   getRegionName,
   Region,
   isSpaceIdWithinRange,
+  EU_API_DOMAIN,
+  getRegionBaseUrl,
+  US_API_DOMAIN,
+  CN_API_DOMAIN,
+  CA_API_DOMAIN,
+  AP_API_DOMAIN,
 } from '../src'
 
 describe('getRegion', () => {
@@ -45,25 +45,72 @@ describe('getRegion', () => {
   })
 })
 
-describe('getRegionUrl', () => {
+describe('getRegionBaseUrl https', () => {
+  const httpsProtocol = 'https'
   it('should return `eu url` region', () => {
-    expect(getRegionUrl(EU_CODE)).toBe(EU_API_URL)
+    expect(getRegionBaseUrl(EU_CODE)).toBe(
+      `${httpsProtocol}://${EU_API_DOMAIN}`,
+    )
+    expect(getRegionBaseUrl(EU_CODE, 'https')).toBe(
+      `${httpsProtocol}://${EU_API_DOMAIN}`,
+    )
   })
 
   it('should return `us url` region', () => {
-    expect(getRegionUrl(US_CODE)).toBe(US_API_URL)
+    expect(getRegionBaseUrl(US_CODE)).toBe(
+      `${httpsProtocol}://${US_API_DOMAIN}`,
+    )
   })
 
   it('should return `cn url` region', () => {
-    expect(getRegionUrl(CN_CODE)).toBe(CN_API_URL)
+    expect(getRegionBaseUrl(CN_CODE)).toBe(
+      `${httpsProtocol}://${CN_API_DOMAIN}`,
+    )
   })
 
   it('should return `ca url` region', () => {
-    expect(getRegionUrl(CA_CODE)).toBe(CA_API_URL)
+    expect(getRegionBaseUrl(CA_CODE)).toBe(
+      `${httpsProtocol}://${CA_API_DOMAIN}`,
+    )
   })
 
   it('should return `ap url` region', () => {
-    expect(getRegionUrl(AP_CODE)).toBe(AP_API_URL)
+    expect(getRegionBaseUrl(AP_CODE)).toBe(
+      `${httpsProtocol}://${AP_API_DOMAIN}`,
+    )
+  })
+})
+
+describe('getRegionBaseUrl http', () => {
+  const httpProtocol = 'http'
+  it('should return `eu url` region', () => {
+    expect(getRegionBaseUrl(EU_CODE, httpProtocol)).toBe(
+      `${httpProtocol}://${EU_API_DOMAIN}`,
+    )
+  })
+
+  it('should return `us url` region', () => {
+    expect(getRegionBaseUrl(US_CODE, httpProtocol)).toBe(
+      `${httpProtocol}://${US_API_DOMAIN}`,
+    )
+  })
+
+  it('should return `cn url` region', () => {
+    expect(getRegionBaseUrl(CN_CODE, httpProtocol)).toBe(
+      `${httpProtocol}://${CN_API_DOMAIN}`,
+    )
+  })
+
+  it('should return `ca url` region', () => {
+    expect(getRegionBaseUrl(CA_CODE, httpProtocol)).toBe(
+      `${httpProtocol}://${CA_API_DOMAIN}`,
+    )
+  })
+
+  it('should return `ap url` region', () => {
+    expect(getRegionBaseUrl(AP_CODE, httpProtocol)).toBe(
+      `${httpProtocol}://${AP_API_DOMAIN}`,
+    )
   })
 })
 

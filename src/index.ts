@@ -1,12 +1,12 @@
 export type Region = 'eu' | 'us' | 'cn' | 'ap' | 'ca'
-
+type Protocol = 'http' | 'https'
 export type RegionRanges = Record<Region, [number, number]>
 
-export const EU_API_URL = 'https://api.storyblok.com'
-export const US_API_URL = 'https://api-us.storyblok.com'
-export const CN_API_URL = 'https://app.storyblokchina.cn'
-export const AP_API_URL = 'https://api-ap.storyblok.com'
-export const CA_API_URL = 'https://api-ca.storyblok.com'
+export const EU_API_DOMAIN = 'api.storyblok.com'
+export const US_API_DOMAIN = 'api-us.storyblok.com'
+export const CN_API_DOMAIN = 'app.storyblokchina.cn'
+export const AP_API_DOMAIN = 'api-ap.storyblok.com'
+export const CA_API_DOMAIN = 'api-ca.storyblok.com'
 
 export const EU_CODE = 'eu'
 export const US_CODE = 'us'
@@ -58,24 +58,8 @@ export function getRegion(spaceId: number) {
   return region ? (region[0] as Region) : undefined
 }
 
-export function getRegionUrl(region: Region) {
-  switch (region) {
-    case US_CODE: {
-      return US_API_URL
-    }
-    case CN_CODE: {
-      return CN_API_URL
-    }
-    case AP_CODE: {
-      return AP_API_URL
-    }
-    case CA_CODE: {
-      return CA_API_URL
-    }
-    default: {
-      return EU_API_URL
-    }
-  }
+export function getRegionBaseUrl(region: Region, protocol: Protocol = 'https') {
+  return `${protocol}://${getRegionDomain(region)}`
 }
 
 export function isRegion(data: unknown): data is Region {
@@ -90,4 +74,24 @@ export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
   const spaceIdAsNumber = Number(spaceId)
 
   return spaceIdAsNumber >= 0 && getRegion(spaceIdAsNumber) !== undefined
+}
+
+function getRegionDomain(region: Region): string {
+  switch (region) {
+    case US_CODE: {
+      return US_API_DOMAIN
+    }
+    case CN_CODE: {
+      return CN_API_DOMAIN
+    }
+    case AP_CODE: {
+      return AP_API_DOMAIN
+    }
+    case CA_CODE: {
+      return CA_API_DOMAIN
+    }
+    default: {
+      return EU_API_DOMAIN
+    }
+  }
 }

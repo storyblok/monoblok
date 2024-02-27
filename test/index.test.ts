@@ -1,31 +1,43 @@
 import { expect, it, describe } from 'vitest'
 import {
-  AP_API_URL,
-  CA_API_URL,
-  CN_API_URL,
+  EU_NAME,
+  US_NAME,
+  CN_NAME,
+  AP_NAME,
+  CA_NAME,
+  EU_CODE,
+  US_CODE,
+  CN_CODE,
+  AP_CODE,
+  CA_CODE,
   EU_API_URL,
   US_API_URL,
+  CN_API_URL,
+  AP_API_URL,
+  CA_API_URL,
   getRegion,
   getRegionUrl,
   isRegion,
+  getRegionName,
+  Region,
   isSpaceIdWithinRange,
 } from '../src'
 
 describe('getRegion', () => {
   it('should return `eu` region', () => {
-    expect(getRegion(1)).toBe('eu')
+    expect(getRegion(1)).toBe(EU_CODE)
   })
 
   it('should return `us` region', () => {
-    expect(getRegion(1_000_000)).toBe('us')
+    expect(getRegion(1_000_000)).toBe(US_CODE)
   })
 
   it('should return `ca` region', () => {
-    expect(getRegion(2_000_000)).toBe('ca')
+    expect(getRegion(2_000_000)).toBe(CA_CODE)
   })
 
   it('should return `ap` region', () => {
-    expect(getRegion(3_000_000)).toBe('ap')
+    expect(getRegion(3_000_000)).toBe(AP_CODE)
   })
 
   it('should return `undefined`', () => {
@@ -35,47 +47,68 @@ describe('getRegion', () => {
 
 describe('getRegionUrl', () => {
   it('should return `eu url` region', () => {
-    expect(getRegionUrl('eu')).toBe(EU_API_URL)
+    expect(getRegionUrl(EU_CODE)).toBe(EU_API_URL)
   })
 
   it('should return `us url` region', () => {
-    expect(getRegionUrl('us')).toBe(US_API_URL)
+    expect(getRegionUrl(US_CODE)).toBe(US_API_URL)
   })
 
   it('should return `cn url` region', () => {
-    expect(getRegionUrl('cn')).toBe(CN_API_URL)
+    expect(getRegionUrl(CN_CODE)).toBe(CN_API_URL)
   })
 
   it('should return `ca url` region', () => {
-    expect(getRegionUrl('ca')).toBe(CA_API_URL)
+    expect(getRegionUrl(CA_CODE)).toBe(CA_API_URL)
   })
 
   it('should return `ap url` region', () => {
-    expect(getRegionUrl('ap')).toBe(AP_API_URL)
+    expect(getRegionUrl(AP_CODE)).toBe(AP_API_URL)
   })
 })
 
 describe('isRegion', () => {
   it('can be "eu"', () => {
-    expect(isRegion('eu')).toEqual(true)
+    expect(isRegion(EU_CODE)).toEqual(true)
   })
   it('can be "us"', () => {
-    expect(isRegion('us')).toEqual(true)
+    expect(isRegion(US_CODE)).toEqual(true)
   })
   it('can be "ca"', () => {
-    expect(isRegion('ca')).toEqual(true)
+    expect(isRegion(CA_CODE)).toEqual(true)
   })
   it('can be "cn"', () => {
-    expect(isRegion('cn')).toEqual(true)
+    expect(isRegion(CN_CODE)).toEqual(true)
   })
   it('can be "ap"', () => {
-    expect(isRegion('ap')).toEqual(true)
+    expect(isRegion(AP_CODE)).toEqual(true)
   })
   it('cannot be anything else', () => {
     expect(isRegion('de')).toEqual(false)
     expect(isRegion('abc')).toEqual(false)
     expect(isRegion(1)).toEqual(false)
     expect(isRegion([])).toEqual(false)
+  })
+})
+
+describe('getRegionName', () => {
+  it('should return "Europe"', () => {
+    expect(getRegionName(EU_CODE)).toBe(EU_NAME)
+  })
+  it('should return "United States"', () => {
+    expect(getRegionName(US_CODE)).toBe(US_NAME)
+  })
+  it('should return "China"', () => {
+    expect(getRegionName(CN_CODE)).toBe(CN_NAME)
+  })
+  it('should return "Australia"', () => {
+    expect(getRegionName(AP_CODE)).toBe(AP_NAME)
+  })
+  it('should return "Canada"', () => {
+    expect(getRegionName(CA_CODE)).toBe(CA_NAME)
+  })
+  it('should return "Europe" for unknown region', () => {
+    expect(getRegionName('de' as Region)).toBe(EU_NAME)
   })
 })
 

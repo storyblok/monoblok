@@ -8,12 +8,44 @@ export const CN_API_URL = 'https://app.storyblokchina.cn'
 export const AP_API_URL = 'https://api-ap.storyblok.com'
 export const CA_API_URL = 'https://api-ca.storyblok.com'
 
+export const EU_CODE = 'eu'
+export const US_CODE = 'us'
+export const CN_CODE = 'cn'
+export const AP_CODE = 'ap'
+export const CA_CODE = 'ca'
+
+export const EU_NAME = 'Europe'
+export const US_NAME = 'United States'
+export const CN_NAME = 'China'
+export const AP_NAME = 'Australia'
+export const CA_NAME = 'Canada'
+
+export function getRegionName(region: Region) {
+  switch (region) {
+    case US_CODE: {
+      return US_NAME
+    }
+    case CN_CODE: {
+      return CN_NAME
+    }
+    case AP_CODE: {
+      return AP_NAME
+    }
+    case CA_CODE: {
+      return CA_NAME
+    }
+    default: {
+      return EU_NAME
+    }
+  }
+}
+
 export const ALL_REGION_RANGES: RegionRanges = {
-  eu: [0, 1_000_000],
-  cn: [0, 1_000_000], // CN and EU uses the same range
-  us: [1_000_000, 2_000_000],
-  ca: [2_000_000, 3_000_000],
-  ap: [3_000_000, 4_000_000],
+  [EU_CODE]: [0, 1_000_000],
+  [CN_CODE]: [0, 1_000_000], // CN and EU uses the same range
+  [US_CODE]: [1_000_000, 2_000_000],
+  [CA_CODE]: [2_000_000, 3_000_000],
+  [AP_CODE]: [3_000_000, 4_000_000],
 }
 
 export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]
@@ -28,16 +60,16 @@ export function getRegion(spaceId: number) {
 
 export function getRegionUrl(region: Region) {
   switch (region) {
-    case 'us': {
+    case US_CODE: {
       return US_API_URL
     }
-    case 'cn': {
+    case CN_CODE: {
       return CN_API_URL
     }
-    case 'ap': {
+    case AP_CODE: {
       return AP_API_URL
     }
-    case 'ca': {
+    case CA_CODE: {
       return CA_API_URL
     }
     default: {

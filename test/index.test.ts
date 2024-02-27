@@ -8,12 +8,12 @@ import {
   getRegion,
   getRegionUrl,
   isRegion,
+  isSpaceIdWithinRange,
 } from '../src'
 
 describe('getRegion', () => {
   it('should return `eu` region', () => {
     expect(getRegion(1)).toBe('eu')
-    expect(getRegion(6_000_000)).toBe('eu')
   })
 
   it('should return `us` region', () => {
@@ -26,6 +26,10 @@ describe('getRegion', () => {
 
   it('should return `ap` region', () => {
     expect(getRegion(3_000_000)).toBe('ap')
+  })
+
+  it('should return `undefined`', () => {
+    expect(getRegion(6_000_000)).toBe(undefined)
   })
 })
 
@@ -72,5 +76,25 @@ describe('isRegion', () => {
     expect(isRegion('abc')).toEqual(false)
     expect(isRegion(1)).toEqual(false)
     expect(isRegion([])).toEqual(false)
+  })
+})
+
+describe('isSpaceIdWithinRange', () => {
+  it('should be valid', () => {
+    expect(isSpaceIdWithinRange(1_000_000)).toEqual(true)
+  })
+  it('cannot be negative', () => {
+    expect(isSpaceIdWithinRange(-1)).toEqual(false)
+  })
+  it('should not surpass the max range', () => {
+    expect(isSpaceIdWithinRange(4_000_000)).toEqual(false)
+  })
+  it('cannot be anything else', () => {
+    expect(isSpaceIdWithinRange('de')).toEqual(false)
+    expect(isSpaceIdWithinRange('abc')).toEqual(false)
+    expect(isSpaceIdWithinRange([])).toEqual(false)
+    expect(isSpaceIdWithinRange({})).toEqual(false)
+    expect(isSpaceIdWithinRange(Symbol)).toEqual(false)
+    expect(isSpaceIdWithinRange(true)).toEqual(false)
   })
 })

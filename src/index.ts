@@ -23,7 +23,7 @@ export function getRegion(spaceId: number) {
     ([, range]) => spaceId >= range[0] && spaceId < range[1],
   )
 
-  return region ? (region[0] as Region) : 'eu'
+  return region ? (region[0] as Region) : undefined
 }
 
 export function getRegionUrl(region: Region) {
@@ -48,4 +48,14 @@ export function getRegionUrl(region: Region) {
 
 export function isRegion(data: unknown): data is Region {
   return ALL_REGIONS.includes(data as Region)
+}
+
+export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
+  if (!Number.isInteger(spaceId)) {
+    return false
+  }
+
+  const spaceIdAsNumber = Number(spaceId)
+
+  return spaceIdAsNumber >= 0 && getRegion(spaceIdAsNumber) !== undefined
 }

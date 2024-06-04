@@ -8,6 +8,12 @@ export const CN_API_DOMAIN = 'app.storyblokchina.cn'
 export const AP_API_DOMAIN = 'api-ap.storyblok.com'
 export const CA_API_DOMAIN = 'api-ca.storyblok.com'
 
+export const EU_MANAGEMENT_API_DOMAIN = 'mapi.storyblok.com'
+export const US_MANAGEMENT_API_DOMAIN = 'api-us.storyblok.com'
+export const CN_MANAGEMENT_API_DOMAIN = 'app.storyblokchina.cn'
+export const AP_MANAGEMENT_API_DOMAIN = 'api-ap.storyblok.com'
+export const CA_MANAGEMENT_API_DOMAIN = 'api-ca.storyblok.com'
+
 export const EU_CODE = 'eu'
 export const US_CODE = 'us'
 export const CN_CODE = 'cn'
@@ -20,24 +26,44 @@ export const CN_NAME = 'China'
 export const AP_NAME = 'Australia'
 export const CA_NAME = 'Canada'
 
-export function getRegionName(region: Region) {
-  switch (region) {
-    case US_CODE: {
-      return US_NAME
-    }
-    case CN_CODE: {
-      return CN_NAME
-    }
-    case AP_CODE: {
-      return AP_NAME
-    }
-    case CA_CODE: {
-      return CA_NAME
-    }
-    default: {
-      return EU_NAME
-    }
+export type RegionalData = {
+  [code in Region]: {
+    name: string
+    apiDomain: string
+    managementApiDomain: string
   }
+}
+
+export const REGIONAL_DATA: RegionalData = {
+  [EU_CODE]: {
+    name: EU_NAME,
+    apiDomain: EU_API_DOMAIN,
+    managementApiDomain: EU_MANAGEMENT_API_DOMAIN,
+  },
+  [US_CODE]: {
+    name: US_NAME,
+    apiDomain: US_API_DOMAIN,
+    managementApiDomain: US_MANAGEMENT_API_DOMAIN,
+  },
+  [CN_CODE]: {
+    name: CN_NAME,
+    apiDomain: CN_API_DOMAIN,
+    managementApiDomain: CN_MANAGEMENT_API_DOMAIN,
+  },
+  [AP_CODE]: {
+    name: AP_NAME,
+    apiDomain: AP_API_DOMAIN,
+    managementApiDomain: AP_MANAGEMENT_API_DOMAIN,
+  },
+  [CA_CODE]: {
+    name: CA_NAME,
+    apiDomain: CA_API_DOMAIN,
+    managementApiDomain: CA_MANAGEMENT_API_DOMAIN,
+  },
+}
+
+export function getRegionName(region: Region) {
+  return REGIONAL_DATA[region]?.name || EU_NAME
 }
 
 export const ALL_REGION_RANGES: RegionRanges = {
@@ -62,6 +88,13 @@ export function getRegionBaseUrl(region: Region, protocol: Protocol = 'https') {
   return `${protocol}://${getRegionDomain(region)}`
 }
 
+export function getManagementBaseUrl(
+  region: Region,
+  protocol: Protocol = 'https',
+) {
+  return `${protocol}://${getManagementDomain(region)}`
+}
+
 export function isRegion(data: unknown): data is Region {
   return ALL_REGIONS.includes(data as Region)
 }
@@ -77,21 +110,9 @@ export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
 }
 
 function getRegionDomain(region: Region): string {
-  switch (region) {
-    case US_CODE: {
-      return US_API_DOMAIN
-    }
-    case CN_CODE: {
-      return CN_API_DOMAIN
-    }
-    case AP_CODE: {
-      return AP_API_DOMAIN
-    }
-    case CA_CODE: {
-      return CA_API_DOMAIN
-    }
-    default: {
-      return EU_API_DOMAIN
-    }
-  }
+  return REGIONAL_DATA[region]?.apiDomain || EU_API_DOMAIN
+}
+
+function getManagementDomain(region: Region): string {
+  return REGIONAL_DATA[region]?.managementApiDomain || EU_MANAGEMENT_API_DOMAIN
 }

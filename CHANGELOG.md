@@ -1,5 +1,11 @@
 # @storyblok/region-helper
 
+## 1.1.0
+
+### Minor Changes
+
+- 392e67f: feat: add `getManagementBaseUrl()`
+
 ## 1.0.0
 
 ### Major Changes

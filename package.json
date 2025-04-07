@@ -30,16 +30,16 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1",
-    "@types/node": "^20.10.3",
-    "@vitest/coverage-v8": "^1.0.1",
-    "eslint": "^8.55.0",
+    "@changesets/cli": "^2.28.1",
+    "@types/node": "^20.17.30",
+    "@vitest/coverage-v8": "^1.6.1",
+    "eslint": "^8.57.1",
     "eslint-config-unjs": "^0.2.1",
-    "jiti": "^1.21.0",
-    "prettier": "^3.1.0",
-    "typescript": "^5.3.2",
+    "jiti": "^1.21.7",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
     "unbuild": "^2.0.0",
-    "vitest": "^1.0.1"
+    "vitest": "^1.6.1"
   },
-  "packageManager": "pnpm@8.11.0"
+  "packageManager": "pnpm@9.9.0"
 }

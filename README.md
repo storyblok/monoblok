@@ -5,7 +5,7 @@
 [![bundle][bundle-src]][bundle-href]
 [![Codecov][codecov-src]][codecov-href]
 
-This is my package description.
+A helper package to handle Storyblok APIs in different regions.
 
 ## Usage
 
@@ -29,10 +29,10 @@ Import:
 
 ```js
 // ESM
-import {} from "@storyblok/region-helper";
+import {} from '@storyblok/region-helper'
 
 // CommonJS
-const {} = require("@storyblok/region-helper");
+const {} = require('@storyblok/region-helper')
 ```
 
 ## Development
@@ -45,7 +45,15 @@ const {} = require("@storyblok/region-helper");
 
 ## Release
 
-Check how to release this package [here](https://www.notion.so/storyblok/Recordings-d8838dc8a76f49e6b393db654a580bfa?pvs=4#6b34969027a24ddf86c85780c123efd5)
+1. In the root of the repository, run `npx changeset`
+2. Stage the new created Changeset file and push it
+3. Open a PR from `feat/branch` to `main`
+4. Review and merge the PR
+5. A `bump pull request` is going to be created automatically created by the `versioning.yml` action.
+6. Open the automatically generated PR (`chore: release`) review it and merge.
+7. After it gets merged, another `action` is going to run, the `publishing.yml` action, which is responsible for publishing the new version to the NPM, to create a new `tag`, and also to create a Github release.
+
+> Note: If the Github checks don’t run for the second PR (step 6), you may close and reopen it. For the video version check the [internal docs](https://www.notion.so/storyblok/Recordings-d8838dc8a76f49e6b393db654a580bfa?pvs=4#6b34969027a24ddf86c85780c123efd5).
 
 ## License
 

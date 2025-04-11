@@ -24,26 +24,3 @@ updates:
     commit-message:
       prefix: 'chore(deps)'
       include: 'scope'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    labels:
-      - 'automerge'
-
-  - package-ecosystem: 'npm'
-    directory: '/'
-    schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '07:00'
-      timezone: 'UTC'
-    allow:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    reviewers:
-      - 'storyblok/plugins'
-    labels:
-      - 'major-update'
-    commit-message:
-      prefix: 'chore(major)'
-      include: 'scope'

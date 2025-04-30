@@ -74,14 +74,93 @@ export const ALL_REGION_RANGES: RegionRanges = {
   [AP_CODE]: [3_000_000, 4_000_000],
 }
 
+export const REGION_BIT_IDENTIFIERS: Record<number, Region> = {
+  0b0_0000: EU_CODE, // BYOC spaces uses same code as Europe
+  0b0_0001: EU_CODE,
+  0b0_0010: US_CODE,
+  0b0_0011: CA_CODE,
+  0b0_0100: AP_CODE,
+  0b0_0101: CN_CODE,
+} as const
+
 export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]
 
-export function getRegion(spaceId: number) {
-  const region = Object.entries(ALL_REGION_RANGES).find(
-    ([, range]) => spaceId >= range[0] && spaceId < range[1],
-  )
+/**
+ * handles the spaceId for the new space_ids
+ * @method isSpaceIdOver49Bits
+ * @param {Number} spaceId
+ * @returns {Boolean}
+ * @description
+ * * Checks if the spaceId is a BigInt spaceId
+ * * The spaceId is a max 53-bit number that is divided into two parts:
+ * 1. The first 5 bits represent the region (e.g., EU, US, CN, AP, CA).
+ * 2. The remaining 48 bits represent the space ID.
+ * For the new space_ids we are stating with 49 bits and the max bits is 53.
+ * @example
+ * ```ts
+ * isSpaceIdOver49Bits(12345678901234567890) // true
+ * isSpaceIdOver49Bits(1234567890) // false
+ * ```
+ */
+const isSpaceIdOver49Bits = (spaceId: number): boolean => {
+  return spaceId >= Math.pow(2, 48)
+}
 
-  return region ? (region[0] as Region) : undefined
+/**
+ * return the region based on the first 5 bits of the space id
+ * @method getRegionByBitInterval
+ * @param {Number} spaceId
+ * @returns {Region | undefined}
+ * @description
+ * Get the region based on first 5 bits of the space id
+ * @example
+ * ```ts
+ * getRegionByBitInterval(282994740194929) // 'eu'
+ * getRegionByBitInterval(564469716905585) // 'us'
+ * getRegionByBitInterval(12345678901234567890) // 'cn'
+ * getRegionByBitInterval(1127419670326897) // 'ap'
+ * getRegionByBitInterval(845944693616241) // 'ca'
+ * ```
+ */
+function getRegionByBitInterval(spaceId: number): Region | undefined {
+  const regionBits = (BigInt(spaceId) >> 48n) & 0b1_1111n
+  return REGION_BIT_IDENTIFIERS[Number(regionBits)]
+}
+
+/**
+ * return the region codes based on the space id
+ * @method getRegion
+ * @param {Number} spaceId
+ * @returns {Region | undefined}
+ * @description
+ * Get the region based on the space id range
+ * @example
+ * ```ts
+ * getRegion(12345678901234567890) // 'eu'
+ * getRegion(1234567890) // 'us'
+ * getRegion(12345678901234567890) // 'cn'
+ * getRegion(1234567890) // 'ap'
+ * getRegion(12345678901234567890) // 'ca'
+ * ```
+ */
+export function getRegion(spaceId: number): Region | undefined {
+  if (
+    spaceId < 0 ||
+    !Number.isInteger(spaceId) ||
+    Boolean(BigInt(spaceId) & ~((1n << 53n) - 1n))
+  ) {
+    return undefined
+  }
+
+  if (!isSpaceIdOver49Bits(spaceId)) {
+    return ALL_REGIONS.find(
+      (region) =>
+        spaceId >= ALL_REGION_RANGES[region][0] &&
+        spaceId < ALL_REGION_RANGES[region][1],
+    )
+  }
+
+  return getRegionByBitInterval(spaceId)
 }
 
 export function getRegionBaseUrl(region: Region, protocol: Protocol = 'https') {

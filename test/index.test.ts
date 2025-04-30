@@ -1,3 +1,5 @@
+/* eslint-disable unicorn/numeric-separators-style */
+
 import { expect, it, describe } from 'vitest'
 import {
   EU_NAME,
@@ -23,6 +25,15 @@ import {
   AP_API_DOMAIN,
 } from '../src'
 
+const bigIntSpaceIds = {
+  byoc: 1519763484273,
+  eu: 282994740194929,
+  us: 564469716905585,
+  ca: 845944693616241,
+  cn: 1408894647037553,
+  ap: 1127419670326897,
+}
+
 describe('getRegion', () => {
   it('should return `eu` region', () => {
     expect(getRegion(1)).toBe(EU_CODE)
@@ -42,6 +53,42 @@ describe('getRegion', () => {
 
   it('should return `undefined`', () => {
     expect(getRegion(6_000_000)).toBe(undefined)
+  })
+
+  it('should return `eu` region when pass 53 bit id', () => {
+    expect(getRegion(bigIntSpaceIds.eu)).toBe(EU_CODE)
+  })
+
+  it('should return `ca` region when pass 53 bit id', () => {
+    expect(getRegion(bigIntSpaceIds.ca)).toBe(CA_CODE)
+  })
+
+  it('should return `us` region when pass 53 bit id', () => {
+    expect(getRegion(bigIntSpaceIds.us)).toBe(US_CODE)
+  })
+
+  it('should return `ap` region when pass 53 bit id', () => {
+    expect(getRegion(bigIntSpaceIds.ap)).toBe(AP_CODE)
+  })
+
+  it('should return `cn` region when pass 53 bit id', () => {
+    expect(getRegion(bigIntSpaceIds.cn)).toBe(CN_CODE)
+  })
+
+  it('should return `eu` when pass 0 space id', () => {
+    expect(getRegion(0)).toBe(EU_CODE)
+  })
+
+  it('should return undefined when pass negative space id', () => {
+    expect(getRegion(-1)).toBe(undefined)
+  })
+
+  it('should return undefined when pass floating numbers as space id', () => {
+    expect(getRegion(1.5)).toBe(undefined)
+  })
+
+  it('should return undefined when pass floating numbers as space id', () => {
+    expect(getRegion(1e35)).toBe(undefined)
   })
 })
 

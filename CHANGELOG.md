@@ -1,5 +1,11 @@
 # @storyblok/region-helper
 
+## 1.2.0
+
+### Minor Changes
+
+- 71e62e6: feat: This update introduced new functions to handle region management based on the first bits of the space id, using space id with a range of 49 to 53 bits.
+
 ## 1.1.0
 
 ### Minor Changes

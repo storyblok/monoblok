@@ -12,8 +12,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0
       storyblok-js-client:
-        specifier: 6.10.12
-        version: 6.10.12
+        specifier: 6.11.0
+        version: 6.11.0
     devDependencies:
       '@commitlint/cli':
         specifier: ^19.7.1
@@ -2995,8 +2995,8 @@ packages:
   std-env@3.9.0:
     resolution: {integrity: sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==}
 
-  storyblok-js-client@6.10.12:
-    resolution: {integrity: sha512-f5wNGnlMyBoo/9UqTY0uGXk3q8q+iaQ+Xl53/mUGvvi4ULvSEDsBJpubKjikdYSbKdOxPCOHwOo13ZDb2IbX/g==}
+  storyblok-js-client@6.11.0:
+    resolution: {integrity: sha512-2uhd/VA51AB88XoqQ+rw9JqkWNoPl2ydg+J49w+2KBqqFvV2EtUhrS2umnabU8sD7HftFsMg0n69EWhkeDyM/A==}
 
   stream-combiner@0.0.4:
     resolution: {integrity: sha512-rT00SPnTVyRsaSz5zgSPma/aHSOic5U1prhYdRy5HS2kTZviFpmDgzilbtsJsxiroqACmayynDN/9VzIbX5DOw==}
@@ -6680,7 +6680,7 @@ snapshots:
 
   std-env@3.9.0: {}
 
-  storyblok-js-client@6.10.12: {}
+  storyblok-js-client@6.11.0: {}
 
   stream-combiner@0.0.4:
     dependencies:

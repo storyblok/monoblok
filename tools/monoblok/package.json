@@ -1,0 +1,27 @@
+{
+  "name": "monoblok-cli",
+  "version": "0.1.0",
+  "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
+  "main": "dist/index.js",
+  "bin": {
+    "monoblok": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "execa": "^5.1.1",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.5"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8.2.6",
+    "@types/node": "^20.8.9",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

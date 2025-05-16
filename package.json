@@ -1,0 +1,14 @@
+{
+  "name": "monoblok",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Official monorepo for Storyblok open source packages",
+  "scripts": {
+    "build:tools": "cd tools/monoblok && pnpm install && pnpm build",
+    "monoblok": "node tools/monoblok/dist/index.js"
+  },
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ]
+}

@@ -62,9 +62,15 @@ export function pullCommand(program: Command): void {
               }
             );
           } catch (error) {
+            // If the pull has a conflict, we need to resolve it manually
+            if ((error as Error).message.includes('CONFLICT')) {
+              console.error(chalk.red(`  Failed to pull subtree: ${(error as Error).message}`));
+              console.error(chalk.red(`  Please resolve the conflict manually and try again.`));
+              process.exit(1);
+            }
+            
             console.error(chalk.red(`  Failed to pull subtree: ${(error as Error).message}`));
-            console.log(chalk.yellow(`  Try using the --force flag or rebuild the subtree.`));
-            continue;
+            process.exit(1);
           }
         }
         

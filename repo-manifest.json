@@ -40,5 +40,11 @@
     "repo": "storyblok/storyblok-svelte",
     "branch": "main",
     "path": "packages/svelte"
+  },
+  "@storyblok/richtext": {
+    "remote": "storyblok-richtext",
+    "repo": "storyblok/richtext",
+    "branch": "main",
+    "path": "packages/richtext"
   }
 }

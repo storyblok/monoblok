@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import * as utils from '../utils';
+import fs from 'node:fs';
 
 export function addCommand(program: Command): void {
   program
@@ -45,6 +46,12 @@ export function addCommand(program: Command): void {
             await utils.runWithSpinner(
               `Adding subtree for ${name}`,
               async () => {
+                // Check if the directory already exists
+                if (fs.existsSync(entry.path)) {
+                  console.log(chalk.yellow(`  Directory ${entry.path} already exists, skipping...`));
+                  return;
+                }
+
                 await utils.execGit([
                   'subtree',
                   'add',

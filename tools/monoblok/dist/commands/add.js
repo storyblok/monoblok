@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addCommand = addCommand;
 const chalk_1 = __importDefault(require("chalk"));
 const utils = __importStar(require("../utils"));
+const node_fs_1 = __importDefault(require("node:fs"));
 function addCommand(program) {
     program
         .command('add')
@@ -71,6 +72,11 @@ function addCommand(program) {
                 // Add the subtree
                 try {
                     await utils.runWithSpinner(`Adding subtree for ${name}`, async () => {
+                        // Check if the directory already exists
+                        if (node_fs_1.default.existsSync(entry.path)) {
+                            console.log(chalk_1.default.yellow(`  Directory ${entry.path} already exists, skipping...`));
+                            return;
+                        }
                         await utils.execGit([
                             'subtree',
                             'add',

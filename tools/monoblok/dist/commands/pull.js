@@ -85,9 +85,14 @@ function pullCommand(program) {
                     });
                 }
                 catch (error) {
+                    // If the pull has a conflict, we need to resolve it manually
+                    if (error.message.includes('CONFLICT')) {
+                        console.error(chalk_1.default.red(`  Failed to pull subtree: ${error.message}`));
+                        console.error(chalk_1.default.red(`  Please resolve the conflict manually and try again.`));
+                        process.exit(1);
+                    }
                     console.error(chalk_1.default.red(`  Failed to pull subtree: ${error.message}`));
-                    console.log(chalk_1.default.yellow(`  Try using the --force flag or rebuild the subtree.`));
-                    continue;
+                    process.exit(1);
                 }
             }
             console.log(chalk_1.default.green('\nAll subtrees have been updated successfully!'));

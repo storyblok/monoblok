@@ -1,5 +1,5 @@
 {
-  "name": "vanilla",
+  "name": "@storyblok/playground-client-vanilla",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,5 +15,8 @@
   },
   "dependencies": {
     "storyblok-js-client": "workspace:*"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

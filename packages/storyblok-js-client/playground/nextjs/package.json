@@ -1,5 +1,5 @@
 {
-  "name": "next13-live-editing",
+  "name": "@storyblok/playground-client-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -17,5 +17,8 @@
     "react-dom": "^18.3.1",
     "storyblok-js-client": "file:..",
     "swr": "^2.2.5"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

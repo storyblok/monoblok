@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/nuxt-playground",
+  "name": "@storyblok/playground-nuxt",
   "private": true,
   "scripts": {
     "build": "nuxt build",
@@ -14,5 +14,8 @@
     "@nuxt/devtools": "^1.5.2",
     "@types/node": "^20",
     "nuxt": "^3.13.2"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

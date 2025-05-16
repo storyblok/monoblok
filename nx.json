@@ -7,10 +7,13 @@
       "cache": true
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["build"]
     },
     "lint": {
       "cache": true
     }
+  },
+  "tui": {
+    "enabled": false
   }
 }

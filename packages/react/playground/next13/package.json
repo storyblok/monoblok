@@ -1,5 +1,5 @@
 {
-  "name": "next",
+  "name": "@storyblok/playground-react-next13",
   "type": "module",
   "version": "0.1.0",
   "private": true,
@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@storyblok/react": "workspace:^"
+    "@storyblok/react": "workspace:*"
   },
   "dependenciesMeta": {
     "@storyblok/react": {
@@ -24,5 +24,8 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "typescript": "^5.6.3"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

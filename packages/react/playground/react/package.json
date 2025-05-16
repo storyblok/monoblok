@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/react-playground",
+  "name": "@storyblok/playground-react-vite",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@storyblok/react": "workspace:^",
+    "@storyblok/react": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router": "^7.6.0"
@@ -17,5 +17,8 @@
     "@types/react": "^19.1.4",
     "@vitejs/plugin-basic-ssl": "^2.0.0",
     "vite": "^6.3.5"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

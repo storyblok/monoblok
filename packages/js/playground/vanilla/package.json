@@ -1,14 +1,17 @@
 {
-  "name": "js-vanilla",
+  "name": "@storyblok/playground-js-vanilla",
   "version": "0.0.1",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
   "devDependencies": {
-    "@storyblok/js": "workspace:^",
+    "@storyblok/js": "workspace:*",
     "@vitejs/plugin-basic-ssl": "^1.1.0",
     "vite": "^6.0.1",
     "vite-plugin-qrcode": "^0.2.3"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

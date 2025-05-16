@@ -1,5 +1,5 @@
 {
-  "name": "react-next13-live-editing",
+  "name": "@storyblok/playground-react-next13-app-router",
   "type": "module",
   "version": "0.1.0",
   "private": true,
@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@storyblok/react": "workspace:^"
+    "@storyblok/react": "workspace:*"
   },
   "devDependencies": {
     "eslint": "8.57.0",
@@ -19,5 +19,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "swr": "^2.2.5"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

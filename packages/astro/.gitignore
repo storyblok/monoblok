@@ -1,0 +1,12 @@
+.DS_Store
+node_modules
+dist
+coverage
+cypress/screenshots/
+cypress/videos
+cypress/downloads
+# Local Netlify folder
+.netlify
+.vercel
+.env
+.astro

@@ -1,0 +1,105 @@
+{
+  "name": "@storyblok/vue",
+  "type": "module",
+  "version": "8.1.9",
+  "packageManager": "pnpm@10.2.0",
+  "description": "SDK to integrate Storyblok into your project using Vue.",
+  "author": "Storyblok",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/storyblok-vue"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/storyblok-vue/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/storyblok-vue.mjs",
+      "require": "./dist/storyblok-vue.js"
+    }
+  },
+  "main": "./dist/storyblok-vue.js",
+  "module": "./dist/storyblok-vue.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "playground": "pnpm run --filter ./playground/vue dev",
+    "test": "pnpm run test:unit:ci && pnpm run test:e2e",
+    "test:unit": "vitest",
+    "test:unit:ci": "vitest run",
+    "test:unit:ui": "vitest --ui",
+    "test:e2e": "pnpm run cy:components",
+    "build": "vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "cy:run": "cypress run",
+    "cy:open": "cypress open",
+    "cy:components": "cypress run-ct",
+    "prepublishOnly": "pnpm build",
+    "check-licenses": "node scripts/license-checker.mjs"
+  },
+  "peerDependencies": {
+    "vue": ">=3.4"
+  },
+  "dependencies": {
+    "@storyblok/js": "3.4.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@storyblok/eslint-config": "^0.3.0",
+    "@types/node": "^22.13.1",
+    "@typescript-eslint/parser": "^8.23.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "cypress": "^13.17.0",
+    "eslint": "^9.19.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "kolorist": "^1.8.0",
+    "license-checker": "^25.0.1",
+    "pathe": "^2.0.2",
+    "simple-git-hooks": "^2.11.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-plugin-banner": "^0.8.0",
+    "vite-plugin-dts": "^4.5.0",
+    "vitest": "^3.0.5",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cypress"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
+    "rules": {
+      "body-max-line-length": [
+        2,
+        "always",
+        200
+      ]
+    }
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint",
+    "pre-push": "pnpm commitlint --last --verbose"
+  }
+}

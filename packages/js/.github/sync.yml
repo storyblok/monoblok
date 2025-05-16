@@ -1,0 +1,71 @@
+storyblok/storyblok-nuxt:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: Nuxt 3
+        package: nuxt
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml
+
+storyblok/storyblok-vue:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: Vue 3
+        package: vue
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml
+
+storyblok/storyblok-react:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: React
+        package: react
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml
+
+storyblok/storyblok-svelte:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: Svelte
+        package: svelte
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml
+
+storyblok/storyblok-astro:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: Astro
+        package: astro
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml
+
+storyblok/storyblok-js:
+  - source: .github/sb-templates/issue.bug.yml
+    dest: .github/ISSUE_TEMPLATE/issue.bug.yml
+    template:
+      tech:
+        name: ''
+        package: ''
+  - source: .github/sb-templates/issue.fr.yml
+    dest: .github/ISSUE_TEMPLATE/issue.fr.yml
+  - source: .github/sb-templates/config.yml
+    dest: .github/ISSUE_TEMPLATE/config.yml

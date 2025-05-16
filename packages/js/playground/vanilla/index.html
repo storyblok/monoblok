@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JS App</title>
+  </head>
+  <body>
+    <div>Hello</div>
+    <button class="fake-visual-editor" onclick="window.location.href = '/?_storyblok_tk[timestamp]=1675712641'">
+      Fake being inside Visual Editor
+    </button>
+    <button class="with-bridge" onclick="initWithBridge()">storyblokInit With Bridge</button>
+    <button class="without-bridge" onclick="initWithoutBridge()">storyblokInit Without Bridge</button>
+    <button class="load-bridge" onclick="loadStoryblokBridgeScript()">only load Storyblok Bridge script</button>
+    <button class="init-custom-rich-text" onclick="initCustomRichText()">
+      storyblokInit With Custom RichTextResolver
+    </button>
+    <button class="render-rich-text" onclick="renderRichText()">renderRichText</button>
+    <button class="render-rich-text-options" onclick="renderRichTextWithOptions()">renderRichTextWithOptions</button>
+    <button class="render-new-rich-text" onclick="newRichTextResolver()">newRichTextRenderer</button>
+    <h3>Rich Text Renderer</h3>
+    <div id="rich-text-container"></div>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,98 @@
+{
+  "name": "@storyblok/js",
+  "type": "module",
+  "version": "3.2.2",
+  "private": false,
+  "packageManager": "pnpm@10.2.0",
+  "description": "SDK to integrate Storyblok into your project using JavaScript.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/storyblok-js"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/storyblok-js/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/storyblok-js.mjs",
+      "require": "./dist/storyblok-js.js"
+    }
+  },
+  "main": "./dist/storyblok-js.js",
+  "module": "./dist/storyblok-js.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "pnpm run test:unit:ci && pnpm run test:e2e",
+    "test:unit": "vitest",
+    "test:unit:ci": "vitest run",
+    "test:unit:ui": "vitest --ui",
+    "test:e2e": "start-server-and-test cy:playground http://localhost:5173/ cy:run",
+    "test:e2e-watch": "start-server-and-test cy:playground http://localhost:5173/ cy:open",
+    "cy:playground": "pnpm --filter='./playground/vanilla' dev",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "cy:run": "cypress run",
+    "cy:open": "cypress open",
+    "check-licenses": "node scripts/license-checker.mjs"
+  },
+  "dependencies": {
+    "@storyblok/richtext": "3.2.0",
+    "storyblok-js-client": "6.10.12"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "@storyblok/eslint-config": "^0.3.0",
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^22.13.1",
+    "@vitest/ui": "3.1.3",
+    "cypress": "^13.17.0",
+    "eslint": "^9.19.0",
+    "eslint-plugin-cypress": "^4.1.0",
+    "jsdom": "^26.0.0",
+    "kolorist": "^1.8.0",
+    "license-checker": "^25.0.1",
+    "pathe": "^2.0.2",
+    "simple-git-hooks": "^2.11.1",
+    "start-server-and-test": "^2.0.10",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-plugin-banner": "^0.8.0",
+    "vite-plugin-dts": "^4.5.0",
+    "vite-plugin-qrcode": "^0.2.4",
+    "vitest": "^3.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cypress"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
+    "rules": {
+      "body-max-line-length": [
+        2,
+        "always",
+        200
+      ]
+    }
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint",
+    "pre-push": "pnpm commitlint --last --verbose"
+  }
+}

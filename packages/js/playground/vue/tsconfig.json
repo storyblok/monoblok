@@ -1,0 +1,12 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "strict": false
+  },
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Vue",
+  "include": ["./*.vue", "./**/*.ts"],
+  "exclude": ["node_modules/*"]
+}

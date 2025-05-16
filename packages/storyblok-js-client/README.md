@@ -1,0 +1,804 @@
+<div align="center">
+    <a  href="https://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client"  align="center">
+        <img  src="https://a.storyblok.com/f/88751/1776x360/4d075611c6/sb-js-sdk.png"  alt="Storyblok Logo">
+    </a>
+    <h1 align="center">Universal JavaScript Client for Storyblok's API</h1>
+    <p align="center">This client is a thin wrapper for the <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client" target="_blank">Storyblok</a> API's to use in Node.js and the browser.</p>
+</div>
+
+<p align="center">
+  <a href="https://npmjs.com/package/storyblok-js-client">
+    <img src="https://img.shields.io/npm/v/storyblok-js-client/latest.svg?style=flat-square&color=09b3af" alt="Storyblok JS Client" />
+  </a>
+  <a href="https://npmjs.com/package/storyblok-js-client" rel="nofollow">
+    <img src="https://img.shields.io/npm/dt/storyblok-js-client.svg?style=appveyor&color=09b3af" alt="npm">
+  </a>
+  <a href="https://discord.gg/jKrbAMz">
+   <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=09b3af">
+   </a>
+  <a href="https://twitter.com/intent/follow?screen_name=storyblok">
+    <img src="https://img.shields.io/badge/Follow-%40storyblok-09b3af?style=appveyor&logo=twitter" alt="Follow @Storyblok" />
+  </a><br/>
+  <a href="https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client">
+    <img src="https://img.shields.io/badge/Try%20Storyblok-Free-09b3af?style=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAHqADAAQAAAABAAAAHgAAAADpiRU/AAACRElEQVRIDWNgGGmAEd3D3Js3LPrP8D8WXZwSPiMjw6qvPoHhyGYwIXNAbGpbCjbzP0MYuj0YFqMroBV/wCxmIeSju64eDNzMBJUxvP/9i2Hnq5cM1devMnz984eQsQwETeRhYWHgIcJiXqC6VHlFBjUeXgav40cIWkz1oLYXFmGwFBImaDFBHyObcOzdW4aSq5eRhRiE2dgYlpuYoYSKJi8vw3GgWnyAJIs/AuPu4scPGObd/fqVQZ+PHy7+6udPOBsXgySLDfn5GRYYmaKYJcXBgWLpsx8/GPa8foWiBhuHJIsl2DkYQqWksZkDFgP5PObcKYYff//iVAOTIDlx/QPqRMb/YSYBaWlOToZIaVkGZmAZSQiQ5OPtwHwacuo4iplMQEu6tXUZMhSUGDiYmBjylFQYvv/7x9B04xqKOnQOyT5GN+Df//8M59ASXKyMHLoyDD5JPtbj42OYrm+EYgg70JfuYuIoYmLs7AwMjIzA+uY/zjAnyWJpDk6GOFnCvrn86SOwmsNtKciVFAc1ileBHFDC67lzG10Yg0+SjzF0ownsf/OaofvOLYaDQJoQIGix94ljv1gIZI8Pv38zPvj2lQWYf3HGKbpDCFp85v07NnRN1OBTPY6JdRSGxcCw2k6sZuLVMZ5AV4s1TozPnGGFKbz+/PE7IJsHmC//MDMyhXBw8e6FyRFLv3Z0/IKuFqvFyIqAzd1PwBzJw8jAGPfVx38JshwlbIygxmYY43/GQmpais0ODDHuzevLMARHBcgIAQAbOJHZW0/EyQAAAABJRU5ErkJggg==" alt="Follow @Storyblok" />
+  </a>
+</p>
+
+## Kickstart a new project
+
+Are you eager to dive into coding? **[Follow these steps to kickstart a new project with Storyblok and a JavaScript frontend framework](https://www.storyblok.com/technologies?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js)**, and get started in just a few minutes!
+
+## Installation
+
+```sh
+npm install storyblok-js-client # yarn add storyblok-js-client
+```
+
+#### Compatibility
+
+| Version to install                                                                                                              | Support                                              |
+| ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Latest `storyblok-js-client`                                                                                                    | Modern browsers + Node 18+                           |
+| Latest `storyblok-js-client` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
+| [Version 4](https://github.com/storyblok/storyblok-js-client/tree/v4.5.8) `storyblok-js-client@4`                               | Internet Explorer support                            |
+
+## How to use it
+
+### Using the Content Delivery API
+
+```javascript
+// 1. Import the Storyblok client
+import StoryblokClient from "storyblok-js-client";
+
+// 2. Initialize the client with the preview token
+// from your space dashboard at https://app.storyblok.com
+const Storyblok = new StoryblokClient({
+  accessToken: <YOUR_SPACE_ACCESS_TOKEN>,
+});
+```
+
+### Using the Management API
+
+```javascript
+// 1. Import the Storyblok client
+import StoryblokClient from "storyblok-js-client";
+const spaceId = <YOUR_SPACE_ID>;
+
+// 2. Initialize the client with the oauth token
+// from the my account area at https://app.storyblok.com
+const Storyblok = new StoryblokClient({
+  oauthToken: <YOUR_OAUTH_TOKEN>,
+});
+
+Storyblok.post(`spaces/${spaceId}/stories`, {
+  story: { name: "xy", slug: "xy" },
+});
+Storyblok.put(`spaces/${spaceId}/stories/1`, {
+  story: { name: "xy", slug: "xy" },
+});
+Storyblok.delete(`spaces/${spaceId}/stories/1`);
+```
+
+### Using the RichTextResolver separately
+
+You can import and use the `RichTextResolver` directly:
+
+```js
+import RichTextResolver from 'storyblok-js-client/richTextResolver'
+
+const resolver = new RichTextResolver()
+
+const html = resolver.render(data)
+```
+
+## NEW BRANCHES AND VERSIONS
+
+The old master branch containing version `4.x.y` has been moved to the `v4` branch.
+We’ve renamed the `master` branch to `main` and now it contains version >= 5.0.0.
+If you wish to continue using the non Typescript version with `axios`, please use version `4`. You can install it by running `npm install https://github.com/storyblok/storyblok-js-client.git#4.x.x`.
+
+### BREAKING CHANGES - FROM VERSION 6
+
+Error handling from fetch has changed. Exceptions will be thrown as an object with the following structure:
+
+```javascript
+{
+  message: string
+  status: number
+  response: ISbResponse
+}
+```
+
+You don't need to parse the error from the client's side.
+
+### BREAKING CHANGES - FROM VERSION 5
+
+#### Added TypeScript - Version 5
+
+We added TypeScript to our codebase, improving our code quality and assuring the correct implementation from the client's side. This change will probably break your code, because your Storyblok client's current implementation is possibly sending the wrong types to the source.
+If you use an IDE to code, you'll be able to hover the problematic cause and see what is being expected from the type. Yet, you can keep using our version without TypeScript.
+
+#### Axios removal - Version 5
+
+We removed our dependency on axios in Version `5`. If you want to continue using our SDK with axios, please use version `4`.
+The proxy feature was also removed in this version.
+
+#### Fetch (use polyfill if needed) - Version 5
+
+Version 5 is using native `fetch` API, supported by modern browsers and Node >= 18. If you are using an environment with no `fetch` API support, you can use a polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) at the very beginning of your app entry point:
+
+```js
+import 'isomorphic-fetch'
+require('isomorphic-fetch') // in CJS environments
+```
+
+## Documentation
+
+#### Assets structure compatibility
+
+We added retro-compatibility when using `resolve_assets: 1` parameter under V2. Now, if you are using our V2 client, you should receive the assets structure just the same as V1.
+
+### Class `Storyblok`
+
+**Parameters**
+
+- `config` Object
+  - (`accessToken` String, optional - The preview token you can find in your space dashboard at https://app.storyblok.com. This is mandatory only if you are using the CDN API.)
+  - (`oauthToken` String, optional - The personal access token you can find in your account at https://app.storyblok.com/#/me/account?tab=token. This is mandatory only if you are using the Management API.)
+  - (`cache` Object, optional)
+    - (`type` String, optional - `none` or `memory`)
+  - (`responseInterceptor` Function, optional - You can pass a function and return the result. For security reasons, Storyblok client will deal only with the response interceptor.)
+  - (`region` String, optional)
+  - (`https` Boolean, optional)
+  - (`rateLimit` Integer, optional, defaults to 3 for management api and 5 for cdn api)
+  - (`timeout` Integer, optional)
+  - (`maxRetries` Integer, optional, defaults to 5)
+  - (`richTextSchema` Object, optional - your custom schema for RichTextRenderer)
+  - (`resolveNestedRelations` Boolean, optional - By default is true)
+- (`endpoint` String, optional)
+
+### Activating request cache
+
+The Storyblok client comes with a caching mechanism.
+When initializing the Storyblok client you can define a cache provider for caching the requests in memory.
+
+The default behavior of the cache is `clear: 'manual'`, that is, if you need to clear the cache, you need to call `Storyblok.flushCache()` or activate the automatic clear with `clear: 'auto'`, as in the example below.
+
+To only clear the cache automatically when requests to the draft version happens you can set the config to `clear: 'onpreview'`.
+
+```javascript
+let Storyblok = new StoryblokClient({
+  accessToken: <YOUR_SPACE_ACCESS_TOKEN>,
+  cache: {
+    clear: "auto",
+    type: "memory",
+  },
+});
+```
+
+### Passing response interceptor
+
+The Storyblok client lets you pass a function that serves as a response interceptor to it.
+Usage:
+
+```javascript
+let Storyblok = new StoryblokClient({
+  accessToken: <YOUR_SPACE_ACCESS_TOKEN>,
+  cache: {
+    clear: "auto",
+    type: "memory",
+  },
+  responseInterceptor: (response) => {
+    // one can handle status codes and more with the response
+    if (response.status === 200) {
+      // handle your status here
+    }
+    // ALWAYS return the response
+    return response;
+  },
+});
+```
+
+### Removing response interceptor
+
+One can remove the reponseInterceptor at any time, by calling the function `ejectInterceptor` as shown below:
+
+```javascript
+Storyblok.ejectInterceptor()
+```
+
+### Error handling
+
+Exceptions will be thrown as an object with the following structure:
+
+```javascript
+{
+  message: Error // an Error object with the error message
+  status: number
+  response: ISbResponse
+}
+```
+
+where,
+
+```typescript
+interface ISbResponse {
+  data: any
+  status: number
+  statusText: string
+  headers: any
+  config: any
+  request: any
+}
+```
+
+One should catch the exception and handle it accordingly.
+
+### Resolve relations using the Storyblok Bridge
+
+With this parameter, you can resolve relations with live updates in the Storyblok JavaScript Bridge input event. It is possible to resolve content entries that are two levels deep, such as `resolve_relations=page.author,page.products`. Resolved relations can be found in the root of the API response, in the property `rels`. You can learn more about `resolve_relations` in [this tutorial](https://www.storyblok.com/tp/using-relationship-resolving-to-include-other-content-entries)
+
+> It is important to note that when using the `storyblok-js-client` and other framework-specific SDKs, you don’t need to look for the `rels` array after resolving relations. The resolved relations are injected into the properties and, hence, are directly accessible through the properties. For example, you can access the authors array directly with `page.author` once it is resolved.
+
+```javascript
+window.storyblok.resolveRelations(
+  storyObject,
+  relationsToResolve,
+  callbackWhenResolved
+)
+```
+
+**Example**
+
+```javascript
+window.storyblok.on('input', (event) => {
+  window.storyblok.addComments(event.story.content, event.story.id)
+  window.storyblok.resolveRelations(
+    event.story,
+    ['post.author', 'post.categories'],
+    () => {}
+  )
+})
+```
+
+### Custom Fetch parameter
+
+You can now pass an aditional paramater to the following calls: `get`, `getAll`, `post`, `put`, `delete`, `getStory` and `getStories`. This parameter is optional and it is the same as the Fetch API [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request) parameter.
+**_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+const data = {
+  story: {
+    name: 'xy',
+    slug: 'xy',
+  },
+}
+
+Storyblok.get(
+  'cdn/stories/home',
+  {
+    version: 'draft',
+  },
+  {
+    mode: 'cors',
+    cache: 'no-cache',
+    body: JSON.stringify(data),
+  }
+)
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.error(error)
+  })
+```
+
+### Method `Storyblok#get`
+
+With this method you can get single or multiple items. The multiple items are paginated and you will receive 25 items per page by default. If you want to get all items at once use the `getAll` method.
+
+**Parameters**
+
+- `[return]` Promise, Object `response`
+- `slug` String, _required_. Path (can be `cdn/stories`, `cdn/tags`, `cdn/datasources`, `cdn/links`)
+- `params` Object, _optional_. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/content-delivery/v2?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.get('cdn/stories/home', {
+  version: 'draft',
+})
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#getAll`
+
+With this method you can get all items at once.
+
+**Parameters**
+
+- `[return]` Promise, Array of entities
+- `slug` String, _required_. Path (can be `cdn/stories`, `cdn/tags`, `cdn/datasources`, `cdn/links`)
+- `params` Object, _required_. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/content-delivery/v2?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `entity` String, _optional_. Storyblok entity like stories, links or datasource. It's optional.
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.getAll('cdn/stories', {
+  version: 'draft',
+})
+  .then((stories) => {
+    console.log(stories) // an array
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#post` (only management api)
+
+**Parameters**
+
+- `[return]` Promise, Object `response`
+- `slug` String, _required_. Path (can be `cdn/stories`, `cdn/tags`, `cdn/datasources`, `cdn/links`)
+- `params` Object, _required_. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/content-delivery/v2?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.post('spaces/<YOUR_SPACE_ID>/stories', {
+  story: { name: 'xy', slug: 'xy' },
+})
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#put` (only management api)
+
+**Parameters**
+
+- `[return]` Promise, Object `response`
+- `slug` String, _required_. Path (can be `cdn/stories`, `cdn/tags`, `cdn/datasources`, `cdn/links`)
+- `params` Object, _required_. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/content-delivery/v2?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.put('spaces/<YOUR_SPACE_ID>/stories/1', {
+  story: { name: 'xy', slug: 'xy' },
+})
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#delete` (only management api)
+
+**Parameters**
+
+- `[return]` Promise, Object `response`
+- `slug` String, _required_. Path (can be `cdn/stories`, `cdn/tags`, `cdn/datasources`, `cdn/links`)
+- `params` Object, _required_. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/content-delivery/v2?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.delete('spaces/<YOUR_SPACE_ID>/stories/1')
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#flushCache`
+
+**Parameters**
+
+- `[return]` Promise, Object returns the Storyblok client
+
+**Example**
+
+```javascript
+Storyblok.flushCache()
+```
+
+#### Method `Storyblok#setComponentResolver`
+
+**Parameters**
+
+- `callback` Function, Render function to render components of the richtext field
+
+Option 1: Use a switch case definition to render different components:
+
+```javascript
+Storyblok.setComponentResolver((component, blok) => {
+  switch (component) {
+    case 'my-custom-component':
+      return `<div class="my-component-class">${blok.text}</div>`
+      break
+    case 'my-header':
+      return `<h1 class="my-class">${blok.title}</h1>`
+      break
+    default:
+      return 'Resolver not defined'
+  }
+  switch (component) {
+    case 'my-custom-component':
+      return `<div class="my-component-class">${blok.text}</div>`
+      break
+    case 'my-header':
+      return `<h1 class="my-class">${blok.title}</h1>`
+      break
+    default:
+      return 'Resolver not defined'
+  }
+})
+```
+
+Option 2: Dynamically render a component (Example in Vue.js, which will only work with runtime template rendering enabled):
+
+```javascript
+Storyblok.setComponentResolver((component, blok) => {
+  return `<component :blok='${JSON.stringify(blok)}' is="${component}"></component>`
+})
+```
+
+#### Method `Storyblok#richTextResolver.render`
+
+**Parameters**
+
+- `[return]` String, Rendered html of a richtext field
+- `data` Richtext object, An object with a `content` (an array of nodes) field.
+- `options` (optional) Options to control render behavior.
+
+**Example**
+
+```javascript
+Storyblok.richTextResolver.render(blok.richtext)
+```
+
+**Optimizing images**
+
+You can instruct the richtext resolver to optimize images using [Storyblok Image Service](https://www.storyblok.com/docs/image-service)
+passing the option `optimizeImages: true`.
+
+**Example**
+
+```javascript
+Storyblok.richTextResolver.render(blok.richtext, { optimizeImages: true })
+```
+
+Also, it is possible to customize this option passing an object.
+All properties are optional and will be applied to each image in the field.
+
+**Example**
+
+```js
+const options = {
+  optimizeImages: {
+    class: 'w-full my-8 border-b border-black',
+    width: 640, // image width
+    height: 360, // image height
+    loading: 'lazy', // 'lazy' | 'eager'
+    filters: {
+      blur: 0, // 0 to 100
+      brightness: 0, // -100 to 100
+      fill: 'transparent', // Or any hexadecimal value like FFCC99
+      format: 'webp', // 'webp' | 'jpeg' | 'png'
+      grayscale: false,
+      quality: 95, // 0 to 100
+      rotate: 0, // 0 | 90 | 180 | 270
+    },
+    // srcset accepts an array with image widths.
+    // Example: [720, 1024, 1533]
+    // will render srcset="//../m/720x0 720w", "//../m/1024x0 1024w", "//../m/1533x0 1280w"
+    // Also accept an array to pass width and height.
+    // Example: [[720,500], 1024, [1500, 1000]]
+    // will render srcset="//../m/720x500 720w", "//../m/1024x0 1024w", "//../m/1500x1000 1280w"
+    srcset: [720, 1024, 1533],
+    sizes: ['(max-width: 767px) 100vw', '(max-width: 1024px) 768px', '1500px'],
+  },
+  optimizeImages: {
+    class: 'w-full my-8 border-b border-black',
+    width: 640, // image width
+    height: 360, // image height
+    loading: 'lazy', // 'lazy' | 'eager'
+    filters: {
+      blur: 0, // 0 to 100
+      brightness: 0, // -100 to 100
+      fill: 'transparent', // Or any hexadecimal value like FFCC99
+      format: 'webp', // 'webp' | 'jpeg' | 'png'
+      grayscale: false,
+      quality: 95, // 0 to 100
+      rotate: 0, // 0 | 90 | 180 | 270
+    },
+    // srcset accepts an array with image widths.
+    // Example: [720, 1024, 1533]
+    // will render srcset="//../m/720x0 720w", "//../m/1024x0 1024w", "//../m/1533x0 1280w"
+    // Also accept an array to pass width and height.
+    // Example: [[720,500], 1024, [1500, 1000]]
+    // will render srcset="//../m/720x500 720w", "//../m/1024x0 1024w", "//../m/1500x1000 1280w"
+    srcset: [720, 1024, 1533],
+    sizes: ['(max-width: 767px) 100vw', '(max-width: 1024px) 768px', '1500px'],
+  },
+}
+
+Storyblok.richTextResolver.render(blok.richtext, options)
+```
+
+## Code examples
+
+### Define a custom cache for fine-grained control caching
+
+Sometimes you want a custom cache implemention, for instance, when you want to host it on Redis for a distributed cache.
+
+In such cases, you can use the `custom` cache and redefine the methods:
+
+```js
+new StoryblokClient({
+  accessToken: <YOUR_SPACE_ACCESS_TOKEN>,
+  cache: {
+    clear: "manual",
+    type: "custom",
+    custom: {
+      get () {
+        // example: get here cache from Redis
+        return Promise.resolve(0);
+      },
+      getAll () {
+        return Promise.resolve(0);
+      },
+      set () {
+        return Promise.resolve(0);
+      },
+      flush () {
+        return Promise.resolve(0);
+      },
+    }
+  }
+}
+```
+
+### Filter by content type values and path
+
+```javascript
+import StoryblokClient from 'storyblok-js-client'
+
+let client = new StoryblokClient({
+  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+})
+
+// Filter by boolean value in content type
+client
+  .get('cdn/stories', {
+    version: 'draft',
+    filter_query: {
+      is_featured: {
+        in: true,
+      },
+    },
+  })
+  .then((res) => {
+    console.log(res.data.stories)
+  })
+
+// Get all news and author contents
+client
+  .get('cdn/stories', {
+    version: 'draft',
+    filter_query: {
+      component: {
+        in: 'news,author',
+      },
+    },
+  })
+  .then((res) => {
+    console.log(res.data.stories)
+  })
+
+// Get all content from the news folder
+client
+  .get('cdn/stories', {
+    version: 'draft',
+    starts_with: 'news/',
+  })
+  .then((res) => {
+    console.log(res.data.stories)
+  })
+```
+
+### Download all content from Storyblok
+
+Following a code example using the storyblok-js-client to back up all content on your local filesystem inside a 'backup' folder.
+
+```javascript
+import StoryblokClient from 'storyblok-js-client'
+import fs from 'fs'
+
+let client = new StoryblokClient({
+  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+})
+
+let lastPage = 1
+let getStories = (page) => {
+  client
+    .get('cdn/stories', {
+      version: 'draft',
+      per_page: 25,
+      page: page,
+    })
+    .then((res) => {
+      let stories = res.data.stories
+      stories.forEach((story) => {
+        fs.writeFile(
+          './backup/' + story.id + '.json',
+          JSON.stringify(story),
+          (err) => {
+            if (err) throw err
+
+            console.log(story.full_slug + ' backed up')
+          }
+        )
+      })
+
+      let total = res.total
+      lastPage = Math.ceil(res.total / res.perPage)
+
+      if (page <= lastPage) {
+        page++
+        getStories(page)
+      }
+    })
+}
+
+getStories(1)
+```
+
+### How to define a custom schema for the RichTextRenderer
+
+To define how to add some classes to specific html attributes rendered by the rich text renderer, you need your own schema definition. With this new schema, you can pass it as the `richTextSchema` option when instantiate the `StoryblokClient` class. You **must** follow the [default schema](https://github.com/storyblok/storyblok-js-client/blob/main/src/schema.ts) to do this.
+
+Below, you can check an example:
+
+```javascript
+import StoryblokClient from 'storyblok-js-client'
+
+// the default schema copied and updated
+import MySchema from './my-schema'
+
+let client = new StoryblokClient({
+  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+  richTextSchema: MySchema,
+})
+
+client.richTextResolver.render(data)
+```
+
+If you just want to change the way a specific tag is rendered you can import the default schema and extend it. Following an example that will render headlines with classes:
+
+Instead of `<p>Normal headline</p><h3><span class="margin-bottom-fdsafdsada">Styled headline</span></h3>` it will render `<p>Normal headline</p><h3 class="margin-bottom-fdsafdsada">Styled headline</h3>`.
+
+```javascript
+import RichTextResolver from 'storyblok-js-client/richTextResolver'
+import MySchema from 'storyblok-js-client/schema'
+
+MySchema.nodes.heading = function (node) {
+  let attrs = {}
+
+  if (
+    node.content &&
+    node.content.length === 1 &&
+    node.content[0].marks &&
+    node.content[0].marks.length === 1 &&
+    node.content[0].marks[0].type === 'styled'
+  ) {
+    attrs = node.content[0].marks[0].attrs
+    delete node.content[0].marks
+  }
+
+  return {
+    tag: [
+      {
+        tag: `h${node.attrs.level}`,
+        attrs: attrs,
+      },
+    ],
+  }
+}
+
+let rteResolver = new RichTextResolver(MySchema)
+let rendered = rteResolver.render({
+  content: [
+    {
+      content: [
+        {
+          text: 'Normal headline',
+          type: 'text',
+        },
+      ],
+      type: 'paragraph',
+    },
+    {
+      attrs: {
+        level: 3,
+      },
+      content: [
+        {
+          marks: [
+            {
+              attrs: {
+                class: 'margin-bottom-fdsafdsada',
+              },
+              type: 'styled',
+            },
+          ],
+          text: 'Styled headline',
+          type: 'text',
+        },
+      ],
+      type: 'heading',
+    },
+  ],
+  type: 'doc',
+})
+
+console.log(rendered)
+```
+
+### Handling access token overwrite
+
+You can overwrite an access token, and prevent errors from the function call by adding a `.catch()` method for each access token as shown below.
+
+```javascript
+const public = 'token1'
+const preview = 'token2'
+```
+
+You can pass the tokens as follows:
+
+```javascript
+client.getStories({token: 'preview'...}).then(previewResponse => ... ).catch()
+client.getStories({token: 'public'...}).then(publicResponse => ... ).catch()
+```
+
+## Further Resources
+
+- [Quick Start](https://www.storyblok.com/technologies?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client)
+- [API Documentation](https://www.storyblok.com/docs/api?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client)
+- [Developer Tutorials](https://www.storyblok.com/tutorials?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client)
+- [Developer Guides](https://www.storyblok.com/docs/guide/introduction?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client)
+- [FAQs](https://www.storyblok.com/faqs?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client)
+
+## Support
+
+- Bugs or Feature Requests? [Submit an issue](../../../issues/new);
+
+- Do you have questions about Storyblok or you need help? [Join our Discord Community](https://discord.gg/jKrbAMz).
+
+## Contributing
+
+Please see our [contributing guidelines](https://github.com/storyblok/.github/blob/master/contributing.md) and our [code of conduct](https://www.storyblok.com/trust-center#code-of-conduct?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+This project use [semantic-release](https://semantic-release.gitbook.io/semantic-release/) for generate new versions by using commit messages and we use the Angular Convention to naming the commits. Check [this question](https://semantic-release.gitbook.io/semantic-release/support/faq#how-can-i-change-the-type-of-commits-that-trigger-a-release) about it in semantic-release FAQ.

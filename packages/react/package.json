@@ -1,0 +1,134 @@
+{
+  "name": "@storyblok/react",
+  "type": "module",
+  "version": "4.6.1",
+  "private": false,
+  "packageManager": "pnpm@10.10.0",
+  "description": "SDK to integrate Storyblok into your project using React.",
+  "author": "Storyblok",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/storyblok-react"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/storyblok-react/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./rsc": {
+      "types": "./dist/rsc/index.d.ts",
+      "import": "./dist/rsc.mjs",
+      "require": "./dist/rsc.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "test": "pnpm run test:unit:ci && pnpm run test:e2e",
+    "test:unit": "vitest",
+    "test:unit:ci": "vitest run",
+    "test:unit:ui": "vitest --ui",
+    "test:e2e": "start-server-and-test playground:next13-app-router http://localhost:3000/ cy:run",
+    "test:e2e-watch": "start-server-and-test playground:next13-app-router http-get://localhost:3000/ cy:open",
+    "cy:run": "cypress run",
+    "cy:open": "cypress open",
+    "test:comp": "cypress run-ct",
+    "playground": "pnpm run --filter ./playground/react dev",
+    "playground:next": "pnpm run --filter ./playground/next15 dev",
+    "playground:next13": "pnpm run --filter ./playground/next13 dev",
+    "playground:next13-app-router": "pnpm run --filter ./playground/next13-app-router dev",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepublishOnly": "pnpm build",
+    "check-licenses": "node scripts/license-checker.mjs"
+  },
+  "peerDependencies": {
+    "next": "^13 || ^14 || ^15",
+    "react": "^17 || ^18 || ^19",
+    "react-dom": "^17 || ^18 || ^19"
+  },
+  "dependencies": {
+    "@storyblok/js": "3.4.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@cypress/react": "^9.0.1",
+    "@cypress/vite-dev-server": "^6.0.3",
+    "@storyblok/eslint-config": "^0.3.0",
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^20.17.47",
+    "@types/react": "19.1.4",
+    "@vitejs/plugin-react": "^4.4.1",
+    "babel-jest": "^29.7.0",
+    "cypress": "^14.3.3",
+    "eslint": "^9.26.0",
+    "eslint-plugin-cypress": "^4.3.0",
+    "eslint-plugin-jest": "^28.11.0",
+    "license-checker": "^25.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "rollup-plugin-preserve-directives": "^0.4.0",
+    "simple-git-hooks": "^2.13.0",
+    "start-server-and-test": "^2.0.11",
+    "typescript": "5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.3",
+    "vitest": "^3.1.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cypress",
+      "simple-git-hooks"
+    ]
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
+    "rules": {
+      "body-max-line-length": [
+        2,
+        "always",
+        200
+      ]
+    }
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint",
+    "pre-push": "pnpm commitlint --last --verbose"
+  }
+}

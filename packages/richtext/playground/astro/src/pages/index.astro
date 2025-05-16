@@ -1,0 +1,18 @@
+---
+import Welcome from '../components/Welcome.astro';
+import Layout from '../layouts/Layout.astro';
+import { useStoryblokApi } from "@storyblok/astro";
+import { richTextResolver } from "@storyblok/richtext";
+
+const storyblokApi = useStoryblokApi();
+const { data } = await storyblokApi.get("cdn/stories/home", {
+  version: "draft",
+});
+
+const renderedRichText = richTextResolver().render(data.story.content.richtext);
+
+---
+
+<Layout>
+	<div set:html={renderedRichText} />
+</Layout>

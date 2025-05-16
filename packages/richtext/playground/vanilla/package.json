@@ -1,0 +1,20 @@
+{
+  "name": "vanilla",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@storyblok/richtext": "workspace:^",
+    "storyblok-js-client": "^6.10.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-qrcode": "^0.2.3"
+  }
+}

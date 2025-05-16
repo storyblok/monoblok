@@ -1,0 +1,15 @@
+{
+  "name": "astro",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@storyblok/astro": "^6.1.0",
+    "astro": "^5.5.3"
+  }
+}

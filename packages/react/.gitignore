@@ -6,3 +6,8 @@ cypress/screenshots/
 cypress/videos
 cypress/downloads
 .next
+
+
+
+.nx/cache
+.nx/workspace-data

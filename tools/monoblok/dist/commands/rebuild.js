@@ -107,6 +107,7 @@ function rebuildCommand(program) {
                     await utils.execGit(['rm', '-rf', remoteDir]);
                     // Commit the removal
                     await utils.execGit(['commit', '-m', `Remove ${name} for rebuild`]);
+                    await fs_1.default.promises.rm(remoteDir, { recursive: true, force: true });
                 });
             }
             // Add the remote if it doesn't exist

@@ -2,6 +2,7 @@
   "name": "monoblok-cli",
   "version": "0.1.0",
   "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
+  "packageManager": "pnpm@10.10.0",
   "main": "dist/index.js",
   "bin": {
     "monoblok": "dist/index.js"

@@ -1,5 +1,5 @@
 {
-  "name": "astro",
+  "name": "@storyblok/richtext-playground-astro",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -9,7 +9,10 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@storyblok/astro": "^6.1.0",
+    "@storyblok/astro": "workspace:*",
     "astro": "^5.5.3"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

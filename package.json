@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.10.0",
   "scripts": {
     "build:tools": "cd tools/monoblok && pnpm install && pnpm build",
-    "monoblok": "node tools/monoblok/dist/index.js",
+    "monoblok": "node tools/monoblok/dist/index.mjs",
     "check:versions": "pnpm monoblok check-versions",
     "fix:versions": "pnpm monoblok check-versions --fix"
   },

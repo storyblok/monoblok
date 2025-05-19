@@ -3,21 +3,24 @@
   "version": "0.1.0",
   "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
   "packageManager": "pnpm@10.10.0",
-  "main": "dist/index.js",
+  "type": "module",
+  "main": "dist/index.mjs",
   "bin": {
-    "monoblok": "dist/index.js"
+    "monoblok": "dist/index.mjs"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "unbuild --stub",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "postinstall": "pnpm run build"
   },
   "dependencies": {
+    "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "execa": "^5.1.1",
-    "chalk": "^4.1.2",
+    "inquirer": "^8.2.5",
     "ora": "^5.4.1",
-    "inquirer": "^8.2.5"
+    "unbuild": "^3.5.0"
   },
   "devDependencies": {
     "@types/inquirer": "^8.2.6",

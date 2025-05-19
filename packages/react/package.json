@@ -50,7 +50,6 @@
     "playground:next13-app-router": "pnpm run --filter ./playground/next13-app-router dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepublishOnly": "pnpm build",
     "check-licenses": "node scripts/license-checker.mjs"
   },
   "peerDependencies": {

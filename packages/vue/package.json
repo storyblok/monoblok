@@ -40,7 +40,6 @@
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "cy:components": "cypress run --component",
-    "prepublishOnly": "pnpm build",
     "check-licenses": "node scripts/license-checker.mjs"
   },
   "peerDependencies": {

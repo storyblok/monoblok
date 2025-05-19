@@ -21,6 +21,8 @@
   "release": {
     "version": {
       "preserveLocalDependencyProtocols": true,
+      "currentVersionResolver": "registry",
+
       "versionActionsOptions": {
         "skipLockFileUpdate": true
       }

@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/richtext-playground-astro",
+  "name": "@storyblok/playground-richtext-astro",
   "type": "module",
   "version": "0.0.1",
   "scripts": {

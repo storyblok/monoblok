@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/richtext-playground-vanilla",
+  "name": "@storyblok/playground-richtext-vanilla",
   "type": "module",
   "version": "0.0.0",
   "private": true,

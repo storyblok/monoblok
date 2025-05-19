@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/richtext-playground-vue",
+  "name": "@storyblok/playground-richtext-vue",
   "type": "module",
   "version": "0.0.0",
   "private": true,

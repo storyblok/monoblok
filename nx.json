@@ -1,5 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultProject": "main",
+  "parallel": 5,
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],
@@ -15,5 +17,25 @@
   },
   "tui": {
     "enabled": false
+  },
+  "release": {
+    "version": {
+      "preserveLocalDependencyProtocols": true
+    },
+    "groups": {
+      "js": {
+        "projectsRelationship": "fixed",
+        "projects": [
+          "astro",
+          "js",
+          "nuxt",
+          "react",
+          "richtext",
+          "storyblok-js-client",
+          "svelte",
+          "vue"
+        ]
+      }
+    }
   }
 }

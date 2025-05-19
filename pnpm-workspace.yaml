@@ -5,3 +5,4 @@ packages:
   - tools/*
 onlyBuiltDependencies:
   - cypress
+  - esbuild

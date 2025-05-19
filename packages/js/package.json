@@ -43,7 +43,7 @@
     "check-licenses": "node scripts/license-checker.mjs"
   },
   "dependencies": {
-    "@storyblok/richtext": "3.2.0",
+    "@storyblok/richtext": "workspace:*",
     "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {

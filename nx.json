@@ -22,7 +22,7 @@
     "version": {
       "preserveLocalDependencyProtocols": true,
       "currentVersionResolver": "registry",
-
+      "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
         "skipLockFileUpdate": true
       }

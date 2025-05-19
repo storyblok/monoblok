@@ -34,7 +34,8 @@ jobs:
       
       - name: Generate preview packages
         run: |
-          PR_VERSION=0.0.0-pr${{ github.event.pull_request.number }}-${{github.sha}}
+          SHORT_SHA=$(git rev-parse --short ${{github.sha}})
+          PR_VERSION=0.0.0-pr${{ github.event.pull_request.number }}-$SHORT_SHA
           echo "Setting version to $PR_VERSION"
           pnpm exec nx release version \
             --specifier="$PR_VERSION" \

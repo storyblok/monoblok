@@ -14,10 +14,10 @@
   "devDependencies": {
     "@nx/js": "^21.0.3",
     "nx": "21.0.3",
-    "typescript": "^5.7.2"
+    "typescript": "5.8.3"
   },
   "resolutions": {
-    "cypress": "14.3.3"
+    "cypress": "^14.3.3"
   },
   "dependencies": {
     "cypress": "^14.3.3"

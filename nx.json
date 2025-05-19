@@ -20,7 +20,10 @@
   },
   "release": {
     "version": {
-      "preserveLocalDependencyProtocols": true
+      "preserveLocalDependencyProtocols": true,
+      "versionActionsOptions": {
+        "skipLockFileUpdate": true
+      }
     },
     "groups": {
       "js": {

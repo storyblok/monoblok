@@ -43,6 +43,13 @@ jobs:
             --git-tag=false \
             --git-push=false \
             --stage-changes=false
+      
+      - name: Create .npmrc file for GitHub Packages
+        run: |
+          cat > .npmrc << EOF
+          @storyblok:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
+          EOF
           
       - name: Release preview packages
         run: |

@@ -232,7 +232,7 @@ importers:
         specifier: workspace:*
         version: link:../richtext
       storyblok-js-client:
-        specifier: workspace:*
+        specifier: workspace:@storyblok/storyblok-js-client@*
         version: link:../storyblok-js-client
     devDependencies:
       '@commitlint/cli':
@@ -753,7 +753,7 @@ importers:
         specifier: workspace:*
         version: link:../..
       storyblok-js-client:
-        specifier: workspace:*
+        specifier: workspace:@storyblok/storyblok-js-client@*
         version: link:../../../storyblok-js-client
     devDependencies:
       typescript:
@@ -897,7 +897,7 @@ importers:
   packages/storyblok-js-client/playground/vanilla:
     dependencies:
       storyblok-js-client:
-        specifier: workspace:*
+        specifier: workspace:@storyblok/storyblok-js-client@*
         version: link:../..
     devDependencies:
       pathe:

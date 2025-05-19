@@ -44,7 +44,7 @@
   },
   "dependencies": {
     "@storyblok/richtext": "workspace:*",
-    "storyblok-js-client": "workspace:*"
+    "storyblok-js-client": "workspace:@storyblok/storyblok-js-client@*"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
@@ -94,5 +94,10 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm lint",
     "pre-push": "pnpm commitlint --last --verbose"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@storyblok/playground-*"
+    ]
   }
 }

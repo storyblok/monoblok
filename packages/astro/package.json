@@ -163,5 +163,10 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@storyblok/playground-*"
+    ]
   }
 }

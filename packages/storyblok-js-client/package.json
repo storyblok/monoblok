@@ -1,5 +1,5 @@
 {
-  "name": "storyblok-js-client",
+  "name": "@storyblok/storyblok-js-client",
   "version": "6.11.0",
   "packageManager": "pnpm@10.10.0",
   "description": "Universal JavaScript SDK for Storyblok's API",
@@ -114,5 +114,10 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm lint",
     "pre-push": "pnpm commitlint --last --verbose"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@storyblok/playground-*"
+    ]
   }
 }

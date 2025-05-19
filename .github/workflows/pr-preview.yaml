@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -33,19 +33,20 @@ jobs:
       - name: Build
         run: pnpm nx run-many --target=build --parallel=5 --exclude="@storyblok/playground-*"
       
-      - name: Version packages
+      - name: Generate PR version
+        id: pr-version
         run: |
           SHORT_SHA=$(git rev-parse --short ${{github.sha}})
-          PR_VERSION=0.0.0-pr${{ github.event.pull_request.number }}-$SHORT_SHA
-          echo "Setting version to $PR_VERSION"
+          echo "version=0.0.0-pr${{ github.event.pull_request.number }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+      
+      - name: Version packages
+        run: |
           pnpm exec nx release version \
-            --specifier="$PR_VERSION" \
+            --specifier="${{ steps.pr-version.outputs.version }}" \
             --git-commit=false \
             --git-tag=false \
             --git-push=false \
             --stage-changes=false
-
-        
       
       - name: Create .npmrc file for GitHub Packages
         run: |
@@ -53,22 +54,29 @@ jobs:
           @storyblok:registry=https://npm.pkg.github.com
           //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
           EOF
-          
+      
       - name: Release preview packages
         run: |
           pnpm exec nx release publish
       
-      - name: Get published package versions
-        id: get-versions
+      - name: Get package list
+        id: packages
+        run: |
+          echo "list<<EOF" >> $GITHUB_OUTPUT
+          pnpm exec nx show projects --type=lib --projects="@storyblok/*" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Generate package versions
+        id: versions
         run: |
           echo "versions<<EOF" >> $GITHUB_OUTPUT
           while IFS= read -r pkg; do
-            if [ -f "$pkg/package.json" ]; then
-              name=$(jq -r .name "$pkg/package.json")
-              version=$(jq -r .version "$pkg/package.json")
-              echo "- \`$name@$version\`" >> $GITHUB_OUTPUT
+            pkg_path="packages/${pkg#@storyblok/}"
+            if [ -f "$pkg_path/package.json" ]; then
+              version=$(jq -r .version "$pkg_path/package.json")
+              echo "- \`$pkg@$version\`" >> $GITHUB_OUTPUT
             fi
-          done < <(pnpm exec nx show projects --type=lib --projects="@storyblok/*")
+          done < <(echo "${{ steps.packages.outputs.list }}")
           echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Comment PR
@@ -79,7 +87,7 @@ jobs:
             
             The following packages have been published to GitHub Packages:
             
-            ${{ steps.get-versions.outputs.versions }}
+            ${{ steps.versions.outputs.versions }}
             
             To install these packages, add the following to your `.npmrc`:
             ```

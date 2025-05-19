@@ -20,7 +20,7 @@ export const useStoryblok = (
 
   const isBridgeEnable
     = typeof window !== 'undefined'
-    && typeof window.storyblokRegisterEvent !== 'undefined';
+      && typeof window.storyblokRegisterEvent !== 'undefined';
 
   const storyblokApiInstance = getStoryblokApi();
 

@@ -97,7 +97,8 @@
   },
   "nx": {
     "implicitDependencies": [
-      "!@storyblok/playground-*"
+      "!@storyblok/playground-*",
+      "@storyblok/storyblok-js-client"
     ]
   }
 }

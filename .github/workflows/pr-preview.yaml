@@ -62,14 +62,13 @@ jobs:
         id: get-versions
         run: |
           echo "versions<<EOF" >> $GITHUB_OUTPUT
-          packages=$(nx show projects --type=lib --projects="@storyblok/*")
-          for pkg in $packages; do
+          while IFS= read -r pkg; do
             if [ -f "$pkg/package.json" ]; then
               name=$(jq -r .name "$pkg/package.json")
               version=$(jq -r .version "$pkg/package.json")
               echo "- \`$name@$version\`" >> $GITHUB_OUTPUT
             fi
-          done
+          done < <(pnpm exec nx show projects --type=lib --projects="@storyblok/*")
           echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Comment PR
@@ -82,6 +81,15 @@ jobs:
             
             ${{ steps.get-versions.outputs.versions }}
             
+            To install these packages, add the following to your `.npmrc`:
+            ```
+            @storyblok:registry=https://npm.pkg.github.com
+            //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+            ```
+            
+            Then install using:
+            ```
+            npm install @storyblok/package-name@version
             ```
           comment-tag: preview-packages
           mode: upsert

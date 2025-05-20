@@ -22,6 +22,7 @@
   "release": {
     "version": {
       "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
         "skipLockFileUpdate": true
       }

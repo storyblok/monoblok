@@ -28,4 +28,4 @@ jobs:
         run: pnpm install
       
       - name: Check
-        run: pnpm nx run-many --target=build,lint --parallel=5 --exclude="@storyblok/playground-*"
+        run: pnpm nx run-many --target=build,lint,test --parallel=5 --exclude="@storyblok/playground-*"

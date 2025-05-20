@@ -30,7 +30,7 @@ jobs:
         run: pnpm install
       
       - name: Check
-        run: pnpm nx run-many --target=build,lint,test --parallel=5 --exclude="@storyblok/playground-*"
+        run: pnpm nx run-many --target=build,lint,test --parallel=3 --exclude="@storyblok/playground-*"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}

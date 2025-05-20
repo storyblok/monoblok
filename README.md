@@ -6,14 +6,16 @@ A monorepo that consolidates all open source projects from the Storyblok organiz
 
 This monorepo contains all official Storyblok SDKs and integrations:
 
-- `@storyblok/js` - Core JavaScript SDK
+- `@storyblok/js` - Core JavaScript SDK for Storyblok
 - `@storyblok/react` - React SDK and components
 - `@storyblok/vue` - Vue.js SDK and components
 - `@storyblok/svelte` - Svelte SDK and components
 - `@storyblok/nuxt` - Nuxt.js integration
 - `@storyblok/astro` - Astro integration
 - `@storyblok/richtext` - Rich text renderer
-- `@storyblok/storyblok-js-client` - Legacy JavaScript client
+- `@storyblok/storyblok-js-client` - Storyblok API client (formerly `storyblok-js-client`)
+
+> **Note**: The `storyblok-js-client` package has been renamed to `@storyblok/storyblok-js-client` and is now part of our scoped packages.
 
 ## 🎯 Purpose
 

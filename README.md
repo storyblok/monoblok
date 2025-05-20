@@ -2,7 +2,20 @@
 
 A monorepo that consolidates all open source projects from the Storyblok organization. This project aims to centralize the development, maintenance, and contribution to Storyblok's ecosystem of SDKs and tools.
 
-## Purpose
+## 📦 Available Packages
+
+This monorepo contains all official Storyblok SDKs and integrations:
+
+- `@storyblok/js` - Core JavaScript SDK
+- `@storyblok/react` - React SDK and components
+- `@storyblok/vue` - Vue.js SDK and components
+- `@storyblok/svelte` - Svelte SDK and components
+- `@storyblok/nuxt` - Nuxt.js integration
+- `@storyblok/astro` - Astro integration
+- `@storyblok/richtext` - Rich text renderer
+- `@storyblok/storyblok-js-client` - Legacy JavaScript client
+
+## 🎯 Purpose
 
 This monorepo represents a transition from a polyrepo ecosystem to a monorepo approach for Storyblok's open source projects. The benefits include:
 
@@ -14,9 +27,7 @@ This monorepo represents a transition from a polyrepo ecosystem to a monorepo ap
 
 The subtree tooling exists specifically to facilitate the migration from individual repositories to this unified structure, while maintaining the history and ability to sync with the original repositories during the transition period.
 
-## Setup
-
-This monorepo uses pnpm workspaces and Git subtrees to manage the SDKs from their original repositories.
+## 🛠 Development
 
 ### Prerequisites
 
@@ -24,7 +35,7 @@ This monorepo uses pnpm workspaces and Git subtrees to manage the SDKs from thei
 - Node.js
 - pnpm
 
-### Installation
+### Setup
 
 1. Clone this repository
 2. Install dependencies:
@@ -39,7 +50,26 @@ pnpm install
 pnpm build:tools
 ```
 
-## Usage
+### Development Commands
+
+```bash
+# Build all packages
+pnpm nx run-many --target=build --all
+
+# Build a specific package
+pnpm nx build @storyblok/react
+
+# Run tests
+pnpm nx run-many --target=test --all
+
+# Run linting
+pnpm nx run-many --target=lint --all
+
+# Run type checking
+pnpm nx run-many --target=type-check --all
+```
+
+## 🔧 Monoblok CLI
 
 The monorepo comes with a CLI tool to manage subtrees during the migration process:
 
@@ -63,7 +93,7 @@ pnpm monoblok rebuild storyblok-js
 pnpm monoblok --help
 ```
 
-## Manifest File
+## 📄 Manifest File
 
 The `repo-manifest.json` file defines all Storyblok open source projects to be included in the monorepo:
 
@@ -73,9 +103,23 @@ The `repo-manifest.json` file defines all Storyblok open source projects to be i
     "repo": "storyblok/storyblok-js-client",
     "branch": "main",
     "path": "packages/storyblok-js-client"
-  },
+  }
   // ...
 }
 ```
 
-To add a new Storyblok project, add it to the manifest and run `pnpm monoblok add <package-name>`. 
+To add a new Storyblok project, add it to the manifest and run `pnpm monoblok add <package-name>`.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Storyblok Documentation](https://www.storyblok.com/docs)
+- [Storyblok Website](https://www.storyblok.com)
+- [Storyblok Status](https://status.storyblok.com)

@@ -79,6 +79,7 @@
   "nx": {
     "implicitDependencies": [
       "!@storyblok/playground-*",
+      "!@storyblok/richtext",
       "@storyblok/storyblok-js-client"
     ]
   }

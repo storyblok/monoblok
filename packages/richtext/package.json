@@ -100,7 +100,6 @@
   },
   "nx": {
     "implicitDependencies": [
-      "!@storyblok/vue",
       "!@storyblok/playground-*"
     ]
   }

@@ -63,8 +63,6 @@
   "devDependencies": {
     "@babel/core": "^7.27.1",
     "@babel/preset-env": "^7.27.2",
-    "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
     "@cypress/react": "^9.0.1",
     "@cypress/vite-dev-server": "^6.0.3",
     "@storyblok/eslint-config": "^0.3.0",
@@ -81,7 +79,6 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rollup-plugin-preserve-directives": "^0.4.0",
-    "simple-git-hooks": "^2.13.0",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
@@ -90,8 +87,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "cypress",
-      "simple-git-hooks"
+      "cypress"
     ]
   },
   "babel": {
@@ -106,18 +102,6 @@
       ]
     ]
   },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ],
-    "rules": {
-      "body-max-line-length": [
-        2,
-        "always",
-        200
-      ]
-    }
-  },
   "release": {
     "branches": [
       "main"
@@ -125,10 +109,6 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint",
-    "pre-push": "pnpm commitlint --last --verbose"
   },
   "nx": {
     "implicitDependencies": [

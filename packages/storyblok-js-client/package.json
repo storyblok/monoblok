@@ -62,12 +62,9 @@
     "playground:next": "pnpm run --filter ./playground/nextjs dev",
     "dev:umd": "npx serve ./",
     "coverage": "vitest run --coverage",
-    "prepare": "pnpm simple-git-hooks",
     "check-licenses": "node scripts/license-checker.mjs"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
     "@storyblok/eslint-config": "^0.3.0",
     "@tsconfig/recommended": "^1.0.8",
     "@vitest/coverage-v8": "^3.0.5",
@@ -75,7 +72,6 @@
     "eslint": "^9.26.0",
     "kolorist": "^1.8.0",
     "license-checker": "^25.0.1",
-    "simple-git-hooks": "^2.13.0",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-banner": "^0.8.0",
@@ -97,22 +93,6 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ],
-    "rules": {
-      "body-max-line-length": [
-        2,
-        "always",
-        200
-      ]
-    }
-  },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint",
-    "pre-push": "pnpm commitlint --last --verbose"
   },
   "nx": {
     "implicitDependencies": [

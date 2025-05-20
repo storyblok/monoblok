@@ -47,8 +47,6 @@
     "storyblok-js-client": "workspace:@storyblok/storyblok-js-client@*"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.8.1",
-    "@commitlint/config-conventional": "^19.8.1",
     "@storyblok/eslint-config": "^0.3.0",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.15.1",
@@ -60,7 +58,6 @@
     "kolorist": "^1.8.0",
     "license-checker": "^25.0.1",
     "pathe": "^2.0.3",
-    "simple-git-hooks": "^2.13.0",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
@@ -74,26 +71,10 @@
       "cypress"
     ]
   },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ],
-    "rules": {
-      "body-max-line-length": [
-        2,
-        "always",
-        200
-      ]
-    }
-  },
   "release": {
     "branches": [
       "main"
     ]
-  },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint",
-    "pre-push": "pnpm commitlint --last --verbose"
   },
   "nx": {
     "implicitDependencies": [

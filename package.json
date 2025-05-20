@@ -4,16 +4,23 @@
   "version": "0.1.0",
   "description": "Official monorepo for Storyblok open source packages",
   "packageManager": "pnpm@10.10.0",
+  "type": "module",
   "scripts": {
-    "monoblok": "node tools/monoblok/dist/index.mjs"
+    "monoblok": "node tools/monoblok/dist/index.mjs",
+    "prepare": "husky"
   },
   "workspaces": [
     "packages/*",
     "tools/*"
   ],
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@nx/js": "^21.0.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
     "nx": "21.0.3",
+    "prettier": "^3.5.3",
     "typescript": "5.8.3"
   },
   "resolutions": {

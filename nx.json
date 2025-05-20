@@ -22,26 +22,8 @@
   "release": {
     "version": {
       "conventionalCommits": true,
-      "preserveLocalDependencyProtocols": true,
-      "currentVersionResolver": "registry",
-      "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
         "skipLockFileUpdate": true
-      }
-    },
-    "groups": {
-      "js": {
-        "projectsRelationship": "fixed",
-        "projects": [
-          "astro",
-          "js",
-          "nuxt",
-          "react",
-          "richtext",
-          "storyblok-js-client",
-          "svelte",
-          "vue"
-        ]
       }
     }
   }

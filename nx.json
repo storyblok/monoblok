@@ -12,6 +12,7 @@
       "dependsOn": ["build"]
     },
     "lint": {
+      "dependsOn": ["^build"],
       "cache": true
     }
   },
@@ -20,26 +21,10 @@
   },
   "release": {
     "version": {
-      "preserveLocalDependencyProtocols": true,
-      "currentVersionResolver": "registry",
-
+      "conventionalCommits": true,
+      "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
         "skipLockFileUpdate": true
-      }
-    },
-    "groups": {
-      "js": {
-        "projectsRelationship": "fixed",
-        "projects": [
-          "astro",
-          "js",
-          "nuxt",
-          "react",
-          "richtext",
-          "storyblok-js-client",
-          "svelte",
-          "vue"
-        ]
       }
     }
   }

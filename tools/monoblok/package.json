@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.10.0",
   "type": "module",
   "main": "dist/index.mjs",
+  "private": true,
   "bin": {
     "monoblok": "dist/index.mjs"
   },

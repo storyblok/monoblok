@@ -15,6 +15,16 @@ export interface RepoManifest {
   [packageName: string]: ManifestEntry;
 }
 
+
+
+export interface Package {
+  name: string;
+  path: string;
+  version: string;
+  dependencies: unknown
+  devDependencies: unknown
+}
+
 // Get root directory of the monorepo
 export function getMonorepoRoot(): string {
   return process.cwd();
@@ -112,3 +122,17 @@ export function validateFilteredManifest(
     }
   }
 } 
+
+export async function getPackageList(): Promise<Package[]> {
+  const { stdout } = await execa('pnpm', ['recursive', 'ls', '--json']);
+  return JSON.parse(stdout);
+}
+
+export async function getPackagePath(packageName: string): Promise<string> {
+  const packageList = await getPackageList();
+  const pkg = packageList.find((pkg: any) => pkg.name === packageName);
+  if (!pkg) {
+    throw new Error(`Package ${packageName} not found`);
+  }
+  return pkg.path;
+}

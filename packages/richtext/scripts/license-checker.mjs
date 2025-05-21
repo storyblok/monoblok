@@ -32,6 +32,7 @@ licenseChecker.init(
     production: true,
     json: true,
     exclude: EXCLUDED_LICENSES.join(','),
+    allow: 'MIT',
   },
   (err, packages) => {
     if (err) {

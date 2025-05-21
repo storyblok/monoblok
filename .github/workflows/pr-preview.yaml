@@ -31,7 +31,7 @@ jobs:
         run: pnpm install
       
       - name: Build
-        run: pnpm nx run-many --target=build --parallel=5 --exclude="@storyblok/playground-*"
+        run: pnpm nx run-many --target=build --parallel=5 -p="tag:npm:public"
       
       - name: Generate PR version
         id: pr-version

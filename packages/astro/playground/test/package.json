@@ -1,5 +1,6 @@
 {
   "name": "@storyblok/playground-astro-test",
+  "private": true,
   "version": "0.0.0",
   "scripts": {
     "dev": "astro dev",

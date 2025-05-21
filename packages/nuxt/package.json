@@ -38,8 +38,7 @@
     "pretest:e2e-static": "nuxi generate playground",
     "test:e2e-static": "start-server-and-test dev:preview http://localhost:3000 cy:run",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "check-licenses": "node scripts/license-checker.mjs"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@storyblok/vue": "workspace:*"
@@ -60,7 +59,6 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-vue": "^9.32.0",
-    "license-checker": "^25.0.1",
     "nuxt": "^3.15.4",
     "prettier": "^3.4.2",
     "start-server-and-test": "^2.0.11"

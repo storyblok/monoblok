@@ -49,8 +49,7 @@
     "playground:next13": "pnpm run --filter ./playground/next13 dev",
     "playground:next13-app-router": "pnpm run --filter ./playground/next13-app-router dev",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "check-licenses": "node scripts/license-checker.mjs"
+    "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
     "next": "^13 || ^14 || ^15",
@@ -75,7 +74,6 @@
     "eslint": "^9.26.0",
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-jest": "^28.11.0",
-    "license-checker": "^25.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rollup-plugin-preserve-directives": "^0.4.0",

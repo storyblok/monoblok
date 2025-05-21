@@ -51,8 +51,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "check-licenses": "node scripts/license-checker.mjs"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
@@ -73,7 +72,6 @@
     "eslint": "^9.26.0",
     "eslint-plugin-svelte": "^3.3.3",
     "jsdom": "^26.0.0",
-    "license-checker": "^25.0.1",
     "pathe": "^2.0.3",
     "publint": "^0.3.9",
     "start-server-and-test": "^2.0.11",

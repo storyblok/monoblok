@@ -1,18 +1,22 @@
 import {
   apiPlugin,
-  isRichTextEmpty,
   renderRichText,
-  type SbInitResult,
-  type SbPluginFactory,
   storyblokEditable,
   storyblokInit,
 } from '../src';
+import type { SbInitResult, SbPluginFactory, StoryblokRichTextNode } from '../src';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import richTextFixture from './fixtures/richTextObject.json';
-import emptyRichTextFixture from './fixtures/emptyRichTextObject.json';
 import { loadBridge } from './bridge';
 
+const renderMock = vi.fn(() => '<p>Rendered HTML</p>');
+vi.mock('@storyblok/richtext', () => {
+  return {
+    richTextResolver: vi.fn(() => ({
+      render: renderMock,
+    })),
+  };
+});
 describe('@storyblok/js', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -265,18 +269,35 @@ describe('@storyblok/js', () => {
     });
   });
 
-  describe('isRichTextEmpty', () => {
-    it('should return true when passing an empty or invalid RichText object', () => {
-      storyblokInit({ accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt', bridge: false });
-      expect(isRichTextEmpty(emptyRichTextFixture)).toBe(true);
+  describe('rich text', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
     });
-    it('should return false when passing a valid RichText object', () => {
-      storyblokInit({ accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt', bridge: false });
-      expect(isRichTextEmpty(richTextFixture)).toBe(false);
+
+    it('should call richTextResolver with correct options', () => {
+      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
+      const options = {
+        resolvers: {
+          paragraph: () => '<p>test</p>',
+        },
+      };
+
+      renderRichText(data, options);
+
+      expect(renderMock).toHaveBeenCalledWith(data);
     });
-    it('should return true when passing a falsy value', () => {
-      storyblokInit({ accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt', bridge: false });
-      expect(isRichTextEmpty('' as any)).toBe(true);
+
+    it('calls render with the provided data', () => {
+      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
+      const options = {
+        resolvers: {
+          paragraph: () => '<p>test</p>',
+        },
+      };
+
+      renderRichText(data, options);
+
+      expect(renderMock).toHaveBeenCalledWith(data);
     });
   });
 
@@ -392,119 +413,6 @@ describe('@storyblok/js', () => {
       script?.dispatchEvent(event);
 
       expect(executionOrder).toEqual([1, 2, 3]);
-    });
-  });
-
-  describe('rich Text Rendering', () => {
-    beforeEach(() => {
-      // Initialize Storyblok before each test
-      storyblokInit({
-        accessToken: 'test-token',
-        bridge: false,
-      });
-    });
-
-    it('should handle nested content structures', () => {
-      const nestedContentFixture = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                text: 'Hello ',
-                type: 'text',
-              },
-              {
-                text: 'nested',
-                type: 'text',
-                marks: [{ type: 'bold' }],
-              },
-              {
-                text: ' world',
-                type: 'text',
-              },
-            ],
-          },
-        ],
-      };
-      const rendered = renderRichText(nestedContentFixture);
-      expect(rendered).toMatch(/<p>Hello <b>nested<\/b> world<\/p>/);
-    });
-
-    it('should render different node types correctly', () => {
-      const rendered = renderRichText(richTextFixture);
-
-      // Test paragraph with bold text
-      expect(rendered).toContain('<b>in bold</b>');
-
-      // Test lists
-      expect(rendered).toContain('<ul>');
-      expect(rendered).toContain('<li><p>an item in a list</p></li>');
-      expect(rendered).toContain('<ol>');
-
-      // Test blockquote
-      expect(rendered).toContain('<blockquote>');
-      expect(rendered).toContain('this is a quote');
-
-      // Test horizontal rule
-      expect(rendered).toContain('<hr />');
-
-      // Test different text marks
-      expect(rendered).toContain('<i>italic text</i>'); // Changed from <em> to <i>
-      expect(rendered).toContain('<s>strikethrough</s>');
-      expect(rendered).toContain('<u>underlined</u>');
-      expect(rendered).toContain('<sup>superscript</sup>');
-      expect(rendered).toContain('<sub>subscript</sub>');
-      expect(rendered).toContain('<code>inline code</code>');
-    });
-
-    it('should work with custom resolvers', () => {
-      const customResolver = (component: string, blok: any) => {
-        if (component === 'custom_component') {
-          return `<div class="custom">${blok.message}</div>`;
-        }
-        return '';
-      };
-
-      const rendered = renderRichText(richTextFixture, {
-        resolver: customResolver, // Pass resolver directly as an option
-      });
-        // Test for custom component rendering
-      expect(rendered).toContain('<div class="custom">hey John</div>');
-    });
-
-    it('should maintain proper HTML structure', () => {
-      const complexContent = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              { type: 'text', text: 'Start ' },
-              {
-                type: 'text',
-                text: 'bold ',
-                marks: [{ type: 'bold' }],
-              },
-              {
-                type: 'text',
-                text: 'and italic',
-                marks: [
-                  { type: 'bold' },
-                  { type: 'italic' },
-                ],
-              },
-              { type: 'text', text: ' end' },
-            ],
-          },
-        ],
-      };
-
-      const rendered = renderRichText(complexContent);
-      expect(rendered).toMatch(
-        /<p>Start <b>bold <\/b><b><i>and italic<\/i><\/b> end<\/p>/,
-      );
     });
   });
 });

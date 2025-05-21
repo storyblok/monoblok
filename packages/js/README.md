@@ -218,57 +218,44 @@ sbBridge.on(['input', 'published', 'change'], (event) => {
 
 ### Rendering Rich Text
 
-You can easily render rich text by using the `renderRichText` function that comes with `@storyblok/js`:
+You can easily render rich text by using the `renderRichText` method. This function is a wrapper of the `render` method of the [`@storyblok/richtext` package](https://github.com/storyblok/richtext).
 
-```js
-import { renderRichText } from '@storyblok/js';
+```ts
+import { apiPlugin, storyblokInit, renderRichText } from '@storyblok/js';
 
-const renderedRichText = renderRichText(blok.richtext);
+const { storyblokApi } = storyblokInit({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  use: [apiPlugin],
+});
+
+const { data } = await storyblokApi!.get('cdn/stories/richtext');
+
+const html = renderRichText(data.story.content.body);
 ```
 
-You can set a **custom Schema and component resolver globally** at init time by using the `richText` init option:
+#### Overwrite resolvers
 
-```js
-import { RichTextSchema, storyblokInit } from '@storyblok/js';
-import cloneDeep from 'clone-deep';
+You can overwrite the default resolvers by passing a custom `resolvers` object to the `renderRichText` function.
 
-const mySchema = cloneDeep(RichTextSchema); // you can make a copy of the default RichTextSchema
-// ... and edit the nodes and marks, or add your own.
-// Check the base RichTextSchema source here https://github.com/storyblok/storyblok-js-client/blob/master/source/schema.js
+```ts
+import { apiPlugin, storyblokInit, renderRichText } from '@storyblok/js';
 
-storyblokInit({
-  accessToken: '<your-token>',
-  richText: {
-    schema: mySchema,
-    resolver: (component, blok) => {
-      switch (component) {
-        case 'my-custom-component':
-          return `<div class="my-component-class">${blok.text}</div>`;
-        default:
-          return 'Resolver not defined';
-      }
+const { storyblokApi } = storyblokInit({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  use: [apiPlugin],
+});
+const { data } = await storyblokApi!.get('cdn/stories/richtext');
+
+const html = renderRichText(data.story.content.body, {
+  resolvers: {
+    [MarkTypes.LINK]: (node) => {
+      return `<button href="${node.attrs?.href}" target="${node.attrs?.target}">${node.content[0].text}</button>`;
     },
   },
 });
 ```
 
-You can also set a **custom Schema and component resolver only once** by passing the options as the second parameter to `renderRichText` function:
-
-```js
-import { renderRichText } from '@storyblok/js';
-
-renderRichText(blok.richTextField, {
-  schema: mySchema,
-  resolver: (component, blok) => {
-    switch (component) {
-      case 'my-custom-component':
-        return `<div class="my-component-class">${blok.text}</div>`;
-      default:
-        return `Component ${component} not found`;
-    }
-  },
-});
-```
+For more options available, like optimizing images, please refer to the [@storyblok/richtext documentation](https://github.com/storyblok/richtext?tab=readme-ov-file#optimize-images).
 
 ## The Storyblok JavaScript SDK Ecosystem
 

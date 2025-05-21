@@ -1,19 +1,15 @@
+import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
+import { richTextResolver } from '@storyblok/richtext';
 import { loadBridge } from './bridge';
 import type {
   ISbEventPayload,
-  ISbRichtext,
   ISbStoryData,
   SbInitResult,
-  SbRichTextOptions,
   SbSDKOptions,
   StoryblokBridgeConfigV2,
   StoryblokBridgeV2,
   StoryblokComponentType,
 } from './types';
-
-import { RichtextResolver } from 'storyblok-js-client';
-
-let richTextResolver: RichtextResolver;
 
 let bridgeLatest = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
 
@@ -66,28 +62,12 @@ export const useStoryblokBridge = <
   });
 };
 
-// Don't mind the any type here, this will be replaced with the new richtext resolver
-const setComponentResolver = (resolver: any, resolveFn: any) => {
-  resolver.addNode('blok', (node: any) => {
-    let html = '';
-
-    node.attrs.body.forEach((blok: any) => {
-      html += resolveFn(blok.component, blok);
-    });
-
-    return {
-      html,
-    };
-  });
-};
-
 export const storyblokInit = (pluginOptions: SbSDKOptions = {}) => {
   const {
     bridge,
     accessToken,
     use = [],
     apiOptions = {},
-    richText = {},
     bridgeUrl,
   } = pluginOptions;
 
@@ -115,47 +95,20 @@ export const storyblokInit = (pluginOptions: SbSDKOptions = {}) => {
     loadBridge(bridgeLatest);
   }
 
-  // Rich Text resolver
-  // TODO: replace with @storyblok/richtext package on v4.x
-  richTextResolver = new RichtextResolver(richText.schema);
-  if (richText.resolver) {
-    setComponentResolver(richTextResolver, richText.resolver);
-  }
-
   return result;
 };
 
-export const isRichTextEmpty = (data?: ISbRichtext) => {
-  return !data || !data?.content?.some(node => node.content || node.type === 'blok' || node.type === 'horizontal_rule');
-};
-
-export const renderRichText = (
-  data?: ISbRichtext,
-  options?: SbRichTextOptions,
-  resolverInstance?: RichtextResolver,
-): string | undefined => {
-  let localResolver = resolverInstance || richTextResolver;
-  if (!localResolver) {
-    console.error(
-      'Please initialize the Storyblok SDK before calling the renderRichText function',
-    );
-    return undefined;
-  }
-
-  if (isRichTextEmpty(data)) {
-    return '';
-  }
-
-  if (options) {
-    // TODO: replace with @storyblok/richtext package on v4.x
-    localResolver = new RichtextResolver(options.schema);
-    if (options.resolver) {
-      setComponentResolver(localResolver, options.resolver);
-    }
-  }
-  // NOTE: This will warn the user about deprecation of legacy Richtext when https://github.com/storyblok/storyblok-js-client/pull/845 is merged
-  // WE supress the warning on SDK level to avoid spamming the console since user would not need to do anything about it
-  return localResolver.render(data, {}, false);
+/**
+ * Render Rich Text
+ * @param data - The rich text data to render
+ * @param options - The options for the rich text
+ * @returns The rendered rich text
+ */
+export function renderRichText<T = string>(
+  data: StoryblokRichTextNode<T>,
+  options?: StoryblokRichTextOptions<T>,
+): T | undefined {
+  return richTextResolver(options).render(data);
 };
 
 export const loadStoryblokBridge = () => loadBridge(bridgeLatest);
@@ -182,8 +135,3 @@ export {
   type StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/richtext';
-
-export {
-  RichtextResolver as RichTextResolver,
-  RichtextSchema as RichTextSchema,
-} from 'storyblok-js-client';

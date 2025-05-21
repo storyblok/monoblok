@@ -26,16 +26,12 @@ export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
 export interface SbBlokData extends ISbComponentType<string> {
   [index: string]: SbBlokKeyDataTypes;
 }
-export interface SbRichTextOptions {
-  schema?: ISbConfig['richTextSchema'];
-  resolver?: ISbConfig['componentResolver'];
-}
+
 export interface SbSDKOptions {
   bridge?: boolean;
   accessToken?: string;
   use?: any[];
   apiOptions?: ISbConfig;
-  richText?: SbRichTextOptions;
   bridgeUrl?: string;
 }
 
@@ -92,10 +88,8 @@ export type {
   ISbDimensions,
   ISbError,
   ISbManagmentApiResult, // previously StoryblokManagmentApiResult
-  ISbNode,
   ISbResponse,
   ISbResult, // previously StoryblokResult
-  ISbRichtext, // previously Richtext
   ISbSchema,
   ISbStories, // previously Stories
   ISbStoriesParams, // previously StoriesParams

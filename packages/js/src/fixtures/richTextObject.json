@@ -23,10 +23,25 @@
       ]
     },
     {
-      "type": "custom_link",
-      "attrs": {
-        "href": "https://storyblok.com"
-      }
+      "type": "paragraph",
+      "content": [
+        {
+          "text": "hola@alvarosaburido.dev",
+          "type": "text",
+          "marks": [
+            {
+              "type": "link",
+              "attrs": {
+                "href": "hola@alvarosaburido.dev",
+                "uuid": null,
+                "anchor": null,
+                "target": null,
+                "linktype": "email"
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "type": "blok",

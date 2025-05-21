@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import * as utils from '../utils';
+import * as utils from '../../utils';
 
 export function pullCommand(program: Command): void {
   program

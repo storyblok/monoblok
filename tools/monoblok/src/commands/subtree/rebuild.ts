@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
-import * as utils from '../utils';
+import * as utils from '../../utils';
 
 export function rebuildCommand(program: Command): void {
   program

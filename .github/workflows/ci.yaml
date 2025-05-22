@@ -26,7 +26,7 @@ jobs:
           cache: 'pnpm'
       
       - name: Cache monorepo
-        uses: ../actions/cache-monorepo
+        uses: ./.github/actions/cache-monorepo
 
       - name: Install dependencies
         run: pnpm install

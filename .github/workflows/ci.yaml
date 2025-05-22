@@ -13,6 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache monorepo
+        uses: ./.github/actions/cache-monorepo
       
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -24,9 +27,7 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-      
-      - name: Cache monorepo
-        uses: ./.github/actions/cache-monorepo
+    
 
       - name: Install dependencies
         run: pnpm install

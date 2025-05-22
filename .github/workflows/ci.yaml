@@ -25,7 +25,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       
-      
+      - name: Cache monorepo
+        uses: ../actions/cache-monorepo
+
       - name: Install dependencies
         run: pnpm install
       

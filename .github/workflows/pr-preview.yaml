@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Cache monorepo
+        uses: ../actions/cache-monorepo
+      
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:

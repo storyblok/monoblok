@@ -1,6 +1,7 @@
 {
   "name": "@storyblok/playground-astro-ssr",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",

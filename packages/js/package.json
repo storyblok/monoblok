@@ -39,8 +39,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "cy:run": "cypress run",
-    "cy:open": "cypress open",
-    "check-licenses": "node scripts/license-checker.mjs"
+    "cy:open": "cypress open"
   },
   "dependencies": {
     "@storyblok/richtext": "workspace:*",
@@ -56,7 +55,6 @@
     "eslint-plugin-cypress": "^4.3.0",
     "jsdom": "^26.0.0",
     "kolorist": "^1.8.0",
-    "license-checker": "^25.0.1",
     "pathe": "^2.0.3",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",

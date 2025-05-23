@@ -79,9 +79,6 @@ importers:
       eslint-plugin-cypress:
         specifier: ^4.3.0
         version: 4.3.0(eslint@9.26.0(jiti@2.4.2))
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       prettier:
         specifier: ^3.4.2
         version: 3.5.3
@@ -262,9 +259,6 @@ importers:
       kolorist:
         specifier: ^1.8.0
         version: 1.8.0
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -380,9 +374,6 @@ importers:
       eslint-plugin-vue:
         specifier: ^9.32.0
         version: 9.33.0(eslint@9.26.0(jiti@2.4.2))
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       nuxt:
         specifier: ^3.15.4
         version: 3.17.3(@parcel/watcher@2.5.1)(@types/node@22.15.18)(db0@0.3.2)(eslint@9.26.0(jiti@2.4.2))(ioredis@5.6.1)(lightningcss@1.30.1)(magicast@0.3.5)(optionator@0.9.4)(rollup@4.40.2)(terser@5.39.2)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0))(vue-tsc@2.2.10(typescript@5.8.3))(yaml@2.8.0)
@@ -456,9 +447,6 @@ importers:
       eslint-plugin-jest:
         specifier: ^28.11.0
         version: 28.11.0(@typescript-eslint/eslint-plugin@8.32.1(@typescript-eslint/parser@8.32.1(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3))(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3)
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       react:
         specifier: ^19.1.0
         version: 19.1.0
@@ -622,9 +610,6 @@ importers:
       kolorist:
         specifier: ^1.8.0
         version: 1.8.0
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       lint-staged:
         specifier: ^15.4.3
         version: 15.5.2
@@ -787,9 +772,6 @@ importers:
       kolorist:
         specifier: ^1.8.0
         version: 1.8.0
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -925,9 +907,6 @@ importers:
       jsdom:
         specifier: ^26.0.0
         version: 26.1.0
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -1023,9 +1002,6 @@ importers:
       kolorist:
         specifier: ^1.8.0
         version: 1.8.0
-      license-checker:
-        specifier: ^25.0.1
-        version: 25.0.1
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -1084,6 +1060,9 @@ importers:
 
   tools/monoblok:
     dependencies:
+      '@types/license-checker':
+        specifier: ^25.0.6
+        version: 25.0.6
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -1096,6 +1075,9 @@ importers:
       inquirer:
         specifier: ^8.2.5
         version: 8.2.6
+      license-checker:
+        specifier: ^25.0.1
+        version: 25.0.1
       ora:
         specifier: ^5.4.1
         version: 5.4.1
@@ -4339,6 +4321,9 @@ packages:
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+
+  '@types/license-checker@25.0.6':
+    resolution: {integrity: sha512-ju/75+YPkNE5vX1iPer+qtI1eI/LqJVYZgOsmSHI1iiEM1bQL5Gh1lEvyjR9T7ZXVE1FwJa2doWJEEmPNwbZkw==}
 
   '@types/lodash.mergewith@4.6.9':
     resolution: {integrity: sha512-fgkoCAOF47K7sxrQ7Mlud2TH023itugZs2bUg8h/KzT+BnZNrR2jAOmaokbLunHNnobXVWOezAeNn/lZqwxkcw==}
@@ -15681,6 +15666,8 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
+
+  '@types/license-checker@25.0.6': {}
 
   '@types/lodash.mergewith@4.6.9':
     dependencies:

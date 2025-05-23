@@ -61,8 +61,7 @@
     "playground:svelte": "pnpm run --filter ./playground/svelte dev",
     "playground:next": "pnpm run --filter ./playground/nextjs dev",
     "dev:umd": "npx serve ./",
-    "coverage": "vitest run --coverage",
-    "check-licenses": "node scripts/license-checker.mjs"
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@storyblok/eslint-config": "^0.3.0",
@@ -71,7 +70,6 @@
     "@vitest/ui": "3.1.3",
     "eslint": "^9.26.0",
     "kolorist": "^1.8.0",
-    "license-checker": "^25.0.1",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-banner": "^0.8.0",

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import * as utils from '../utils';
+import * as utils from '../../utils';
 import fs from 'node:fs';
 
 export function addCommand(program: Command): void {

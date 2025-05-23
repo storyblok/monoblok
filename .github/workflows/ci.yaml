@@ -13,7 +13,7 @@ env:
 jobs:
   build:
     environment: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-8vcpu-arm 
     steps:
       - uses: actions/checkout@v4
 

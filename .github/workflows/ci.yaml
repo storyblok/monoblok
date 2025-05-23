@@ -8,6 +8,7 @@ on:
 
 env:
   HUSKY: 0
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
 
 jobs:
   build:
@@ -16,23 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache monorepo
-        uses: ./.github/actions/cache-monorepo
-      
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-    
-
-      - name: Install dependencies
-        run: pnpm install
+      - uses: ./.github/actions/setup-node
       
       - name: Check
         run: pnpm nx run-many --target=build,lint,test --parallel=3 -p="tag:npm:public"

@@ -6,6 +6,7 @@ on:
 
 env:
   HUSKY: 0
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
 
 jobs:
   preview:

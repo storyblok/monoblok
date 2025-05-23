@@ -5,6 +5,9 @@ on:
     tags:
       - v*.*.*
 
+env:
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
+
 jobs:
   test:
     name: Publish

@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:all": "nx run-many -p='tag:npm:public' -t=test",
+    "build:all": "nx run-many -p='tag:npm:public' -t=build"
   },
   "workspaces": [
     "packages/*",

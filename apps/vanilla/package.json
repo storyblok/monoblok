@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "storyblok-js-client": "workspace:@storyblok/storyblok-js-client@*",
-    "@storyblok/content-client": "workspace:@storyblok/content-client@*"
+    "@storyblok/content-client": "workspace:*"
   },
   "nx": {
     "projectType": "application"

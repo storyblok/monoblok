@@ -26,6 +26,12 @@
       "versionActionsOptions": {
         "skipLockFileUpdate": true
       }
+    },
+    "changelog": {
+      "workspaceChangelog": {
+        "createRelease": "github",
+        "file": false
+      }
     }
   }
 }

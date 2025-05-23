@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - v*.*.*
+      - v*.*.*-*
 
 env:
   NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
@@ -24,6 +25,9 @@ jobs:
           filter: tree:0
 
       - uses: ./.github/actions/setup-node
+
+        name: Build publishable packages
+      - run: pnpm nx run-many -p="tag:npm:public" -t=build
 
       - name: Print Environment Info
         run: pnpm nx report

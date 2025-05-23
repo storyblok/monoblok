@@ -3,7 +3,7 @@ description: Setup node
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/cache-monorepo
+    - uses: ./.github/actions/cache-monorepo.yaml
 
     - name: Install pnpm
       uses: pnpm/action-setup@v2

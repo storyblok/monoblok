@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Cache monorepo
-        uses: ./.github/actions/cache-monorepo
+        uses: ./.github/actions/cache-monorepo.yaml
       
       - name: Install pnpm
         uses: pnpm/action-setup@v2

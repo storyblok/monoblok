@@ -26,6 +26,9 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
+        name: Build publishable packages
+      - run: pnpm nx run-many -p="tag:npm:public" -t=build
+
       - name: Print Environment Info
         run: pnpm nx report
         shell: bash

@@ -41,4 +41,4 @@ jobs:
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
 
       - name: Check Licenses
-        run: nx exec -p="tag:npm:public" -- pnpm -w monoblok license check \$NX_PROJECT_NAME
+        run: pnpm nx exec -p="tag:npm:public" -- pnpm -w monoblok license check \$NX_PROJECT_NAME

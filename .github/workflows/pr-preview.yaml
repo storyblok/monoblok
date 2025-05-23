@@ -30,8 +30,6 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@storyblok'
       
       - name: Install dependencies
         run: pnpm install

@@ -97,7 +97,7 @@ pnpm monoblok --help
 
 ## 📄 Manifest File
 
-The `repo-manifest.json` file defines all Storyblok open source projects to be included in the monorepo:
+The `repo-manifest.json` file defines all Storyblok open source projects to be migrated to the monorepo:
 
 ```json
 {
@@ -109,6 +109,8 @@ The `repo-manifest.json` file defines all Storyblok open source projects to be i
   // ...
 }
 ```
+
+To migrate a Storyblok project, add it to the manifest and run `pnpm monoblok add <package-name>`.
 
 ## Releasing
 
@@ -126,17 +128,11 @@ pnpm nx release --skip-publish
 pnpm nx release 1.2.3 --skip-publish
 ```
 
-2. Push the commit and tags to the repository:
+The versioning step will automatically push the commit and tags to the repository alongwith generating the github release with the changelog.
 
-```bash
-git push && git push --tags
-```
-
-Once the commit and tags are pushed, the publish workflow will automatically run and complete the release process, publishing the packages as needed.
+2. Once the commit and tags are pushed, the publish workflow will be triggered and complete the release process, publishing the packages as needed.
 
 **Note:** Releasing is only permitted for repository users with permissions to push version tags. If you do not have the required permissions, please contact a repository maintainer.
-
-To add a new Storyblok project, add it to the manifest and run `pnpm monoblok add <package-name>`.
 
 ## 🤝 Contributing
 

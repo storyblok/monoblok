@@ -55,11 +55,19 @@ pnpm build:tools
 ### Development Commands
 
 ```bash
+# Build individual packages
+
 # Build all packages
 pnpm nx run-many --target=build --all
 
 # Build a specific package
 pnpm nx build @storyblok/react
+
+# Or
+pnpm nx run @storyblok/react:build 
+
+# Run all publishable packages
+pnpm nx run-many -p="tag:npm:public" -t=build
 
 # Run tests
 pnpm nx run-many --target=test --all
@@ -69,6 +77,9 @@ pnpm nx run-many --target=lint --all
 
 # Run type checking
 pnpm nx run-many --target=type-check --all
+
+# Run a package playground
+pnpm nx run @storyblok/js:playground
 ```
 
 ## 🔧 Monoblok CLI

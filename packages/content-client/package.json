@@ -1,0 +1,26 @@
+{
+  "name": "@storyblok/content-client",
+  "version": "0.0.0",
+  "description": "Storyblok Content Client",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "unbuild"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "^0.3.0",
+    "typescript": "^5.4.2",
+    "unbuild": "^3.5.0"
+  }
+}

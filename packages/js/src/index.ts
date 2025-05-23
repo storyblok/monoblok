@@ -13,6 +13,8 @@ import type {
 
 let bridgeLatest = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
 
+// Such wow
+
 export interface StoryblokBridgeEvent {
   action: string;
   storyId: number;

@@ -110,6 +110,32 @@ The `repo-manifest.json` file defines all Storyblok open source projects to be i
 }
 ```
 
+## Releasing
+
+Releases are managed using the Nx release workflow. Version numbers can be determined automatically based on conventional commits, or you can specify a version explicitly when running the release command.
+
+To create a release:
+
+1. Run the Nx release command with the `--skip-publish` flag to prepare the release and generate the necessary version commit and tags. By default, the version will be determined from your commit messages (conventional commits).
+
+```bash
+# Automatic versioning (conventional commits)
+pnpm nx release --skip-publish
+
+# Explicit versioning
+pnpm nx release 1.2.3 --skip-publish
+```
+
+2. Push the commit and tags to the repository:
+
+```bash
+git push && git push --tags
+```
+
+Once the commit and tags are pushed, the publish workflow will automatically run and complete the release process, publishing the packages as needed.
+
+**Note:** Releasing is only permitted for repository users with permissions to push version tags. If you do not have the required permissions, please contact a repository maintainer.
+
 To add a new Storyblok project, add it to the manifest and run `pnpm monoblok add <package-name>`.
 
 ## 🤝 Contributing

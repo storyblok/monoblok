@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/nuxt",
   "type": "module",
-  "version": "6.2.4",
+  "version": "7.0.1",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok Nuxt module",
   "repository": {

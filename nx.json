@@ -20,6 +20,20 @@
     "enabled": false
   },
   "release": {
+    "projectsRelationship": "independent",
+    "groups": {
+      "core-js": {
+        "projects": ["storyblok-js-client", "js", "richtext"],
+        "projectsRelationship": "fixed"
+      },
+      "js": {
+        "projects": ["react", "vue", "astro", "svelte", "nuxt"],
+        "projectsRelationship": "independent",
+        "version": {
+          "currentVersionResolver": "git-tag"
+        }
+      }
+    },
     "version": {
       "conventionalCommits": true,
       "fallbackCurrentVersionResolver": "disk",

@@ -17,7 +17,7 @@
     "vite-plugin-qrcode": "^0.2.3"
   },
   "dependencies": {
-    "storyblok-js-client": "workspace:@storyblok/storyblok-js-client@*"
+    "storyblok-js-client": "workspace:@storyblok/js-client@*"
   },
   "nx": {
     "projectType": "application"

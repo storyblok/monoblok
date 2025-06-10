@@ -13,9 +13,9 @@ This monorepo contains all official Storyblok SDKs and integrations:
 - `@storyblok/nuxt` - Nuxt.js integration
 - `@storyblok/astro` - Astro integration
 - `@storyblok/richtext` - Rich text renderer
-- `@storyblok/storyblok-js-client` - Storyblok API client (formerly `storyblok-js-client`)
+- `@storyblok/js-client` - Storyblok API client (formerly `storyblok-js-client`)
 
-> **Note**: The `storyblok-js-client` package has been renamed to `@storyblok/storyblok-js-client` and is now part of our scoped packages.
+> **Note**: The `storyblok-js-client` package has been renamed to `@storyblok/js-client` and is now part of our scoped packages.
 
 ## 🎯 Purpose
 

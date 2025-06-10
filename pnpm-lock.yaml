@@ -229,8 +229,8 @@ importers:
         specifier: workspace:*
         version: link:../richtext
       storyblok-js-client:
-        specifier: workspace:@storyblok/storyblok-js-client@*
-        version: link:../storyblok-js-client
+        specifier: workspace:@storyblok/js-client@*
+        version: link:../js-client
     devDependencies:
       '@storyblok/eslint-config':
         specifier: ^0.3.0
@@ -283,6 +283,119 @@ importers:
       vitest:
         specifier: ^3.1.3
         version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.18)(@vitest/ui@3.1.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0)
+
+  packages/js-client:
+    devDependencies:
+      '@storyblok/eslint-config':
+        specifier: ^0.3.0
+        version: 0.3.0(@typescript-eslint/utils@8.32.1(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3))(@vue/compiler-sfc@3.5.14)(astro-eslint-parser@1.2.2)(eslint-plugin-astro@1.3.1(eslint@9.26.0(jiti@2.4.2)))(eslint-plugin-react-refresh@0.4.20(eslint@9.26.0(jiti@2.4.2)))(eslint-plugin-svelte@3.7.0(eslint@9.26.0(jiti@2.4.2))(svelte@5.30.1)(ts-node@10.9.2(@swc/core@1.11.24(@swc/helpers@0.5.17))(@types/node@22.15.18)(typescript@5.8.3)))(eslint@9.26.0(jiti@2.4.2))(prettier-plugin-astro@0.13.0)(svelte@5.30.1)(typescript@5.8.3)(vitest@3.1.3)
+      '@tsconfig/recommended':
+        specifier: ^1.0.8
+        version: 1.0.8
+      '@vitest/coverage-v8':
+        specifier: ^3.0.5
+        version: 3.1.3(vitest@3.1.3)
+      '@vitest/ui':
+        specifier: 3.1.3
+        version: 3.1.3(vitest@3.1.3)
+      eslint:
+        specifier: ^9.26.0
+        version: 9.26.0(jiti@2.4.2)
+      kolorist:
+        specifier: ^1.8.0
+        version: 1.8.0
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0)
+      vite-plugin-banner:
+        specifier: ^0.8.0
+        version: 0.8.1
+      vite-plugin-dts:
+        specifier: ^4.5.3
+        version: 4.5.3(@types/node@22.15.18)(rollup@4.40.2)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0))
+      vitest:
+        specifier: ^3.1.3
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.18)(@vitest/ui@3.1.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0)
+
+  packages/js-client/playground/nextjs:
+    devDependencies:
+      '@types/react':
+        specifier: 18.2.47
+        version: 18.2.47
+      eslint:
+        specifier: 8.55.0
+        version: 8.55.0
+      eslint-config-next:
+        specifier: 14.0.4
+        version: 14.0.4(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint@8.55.0)(typescript@5.8.3)
+      next:
+        specifier: ^13.5.7
+        version: 13.5.11(@babel/core@7.27.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+      storyblok-js-client:
+        specifier: file:..
+        version: playground@file:packages/js-client/playground
+      swr:
+        specifier: ^2.2.5
+        version: 2.3.3(react@18.3.1)
+
+  packages/js-client/playground/svelte:
+    dependencies:
+      storyblok-js-client:
+        specifier: file:..
+        version: playground@file:packages/js-client/playground
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^3.1.2
+        version: 3.1.2(svelte@4.2.19)(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
+      '@tsconfig/svelte':
+        specifier: ^5.0.4
+        version: 5.0.4
+      pathe:
+        specifier: ^1.1.2
+        version: 1.1.2
+      svelte:
+        specifier: ^4.2.19
+        version: 4.2.19
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2)
+      vite-plugin-qrcode:
+        specifier: ^0.2.3
+        version: 0.2.4(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
+
+  packages/js-client/playground/vanilla:
+    dependencies:
+      storyblok-js-client:
+        specifier: workspace:@storyblok/js-client@*
+        version: link:../..
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.4
+        version: 4.1.7(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
+      pathe:
+        specifier: ^1.1.2
+        version: 1.1.2
+      tailwindcss:
+        specifier: ^4.1.4
+        version: 4.1.7
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2)
+      vite-plugin-qrcode:
+        specifier: ^0.2.3
+        version: 0.2.4(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
 
   packages/js/playground/vanilla:
     devDependencies:
@@ -711,8 +824,8 @@ importers:
         specifier: workspace:*
         version: link:../..
       storyblok-js-client:
-        specifier: workspace:@storyblok/storyblok-js-client@*
-        version: link:../../../storyblok-js-client
+        specifier: workspace:@storyblok/js-client@*
+        version: link:../../../js-client
     devDependencies:
       typescript:
         specifier: ^5.6.3
@@ -751,119 +864,6 @@ importers:
       vue-tsc:
         specifier: ^2.1.8
         version: 2.2.10(typescript@5.8.3)
-
-  packages/storyblok-js-client:
-    devDependencies:
-      '@storyblok/eslint-config':
-        specifier: ^0.3.0
-        version: 0.3.0(@typescript-eslint/utils@8.32.1(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3))(@vue/compiler-sfc@3.5.14)(astro-eslint-parser@1.2.2)(eslint-plugin-astro@1.3.1(eslint@9.26.0(jiti@2.4.2)))(eslint-plugin-react-refresh@0.4.20(eslint@9.26.0(jiti@2.4.2)))(eslint-plugin-svelte@3.7.0(eslint@9.26.0(jiti@2.4.2))(svelte@5.30.1)(ts-node@10.9.2(@swc/core@1.11.24(@swc/helpers@0.5.17))(@types/node@22.15.18)(typescript@5.8.3)))(eslint@9.26.0(jiti@2.4.2))(prettier-plugin-astro@0.13.0)(svelte@5.30.1)(typescript@5.8.3)(vitest@3.1.3)
-      '@tsconfig/recommended':
-        specifier: ^1.0.8
-        version: 1.0.8
-      '@vitest/coverage-v8':
-        specifier: ^3.0.5
-        version: 3.1.3(vitest@3.1.3)
-      '@vitest/ui':
-        specifier: 3.1.3
-        version: 3.1.3(vitest@3.1.3)
-      eslint:
-        specifier: ^9.26.0
-        version: 9.26.0(jiti@2.4.2)
-      kolorist:
-        specifier: ^1.8.0
-        version: 1.8.0
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-      vite:
-        specifier: ^6.3.5
-        version: 6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0)
-      vite-plugin-banner:
-        specifier: ^0.8.0
-        version: 0.8.1
-      vite-plugin-dts:
-        specifier: ^4.5.3
-        version: 4.5.3(@types/node@22.15.18)(rollup@4.40.2)(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.18)(jiti@2.4.2)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0))
-      vitest:
-        specifier: ^3.1.3
-        version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.18)(@vitest/ui@3.1.3)(jiti@2.4.2)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.39.2)(yaml@2.8.0)
-
-  packages/storyblok-js-client/playground/nextjs:
-    devDependencies:
-      '@types/react':
-        specifier: 18.2.47
-        version: 18.2.47
-      eslint:
-        specifier: 8.55.0
-        version: 8.55.0
-      eslint-config-next:
-        specifier: 14.0.4
-        version: 14.0.4(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint@8.55.0)(typescript@5.8.3)
-      next:
-        specifier: ^13.5.7
-        version: 13.5.11(@babel/core@7.27.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      storyblok-js-client:
-        specifier: file:..
-        version: playground@file:packages/storyblok-js-client/playground
-      swr:
-        specifier: ^2.2.5
-        version: 2.3.3(react@18.3.1)
-
-  packages/storyblok-js-client/playground/svelte:
-    dependencies:
-      storyblok-js-client:
-        specifier: file:..
-        version: playground@file:packages/storyblok-js-client/playground
-    devDependencies:
-      '@sveltejs/vite-plugin-svelte':
-        specifier: ^3.1.2
-        version: 3.1.2(svelte@4.2.19)(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
-      '@tsconfig/svelte':
-        specifier: ^5.0.4
-        version: 5.0.4
-      pathe:
-        specifier: ^1.1.2
-        version: 1.1.2
-      svelte:
-        specifier: ^4.2.19
-        version: 4.2.19
-      vite:
-        specifier: ^5.4.11
-        version: 5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2)
-      vite-plugin-qrcode:
-        specifier: ^0.2.3
-        version: 0.2.4(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
-
-  packages/storyblok-js-client/playground/vanilla:
-    dependencies:
-      storyblok-js-client:
-        specifier: workspace:@storyblok/storyblok-js-client@*
-        version: link:../..
-    devDependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.1.4
-        version: 4.1.7(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
-      pathe:
-        specifier: ^1.1.2
-        version: 1.1.2
-      tailwindcss:
-        specifier: ^4.1.4
-        version: 4.1.7
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.3
-      vite:
-        specifier: ^5.4.11
-        version: 5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2)
-      vite-plugin-qrcode:
-        specifier: ^0.2.3
-        version: 0.2.4(vite@5.4.19(@types/node@22.15.18)(lightningcss@1.30.1)(terser@5.39.2))
 
   packages/svelte:
     dependencies:
@@ -3994,6 +3994,9 @@ packages:
       next: ^13 || ^14 || ^15
       react: ^17 || ^18 || ^19
       react-dom: ^17 || ^18 || ^19
+    peerDependenciesMeta:
+      next:
+        optional: true
 
   '@stylistic/eslint-plugin@2.13.0':
     resolution: {integrity: sha512-RnO1SaiCFHn666wNz2QfZEFxvmiNRqhzaMXHXxXXKt+MEP7aajlPxUSMIQpKAaJfverpovEYqjBOXDq6dDcaOQ==}
@@ -9493,8 +9496,8 @@ packages:
   pkg-types@2.1.0:
     resolution: {integrity: sha512-wmJwA+8ihJixSoHKxZJRBQG1oY8Yr9pGLzRmSsNms0iNWyHHAlZCa7mmKiFR10YPZuz/2k169JiS/inOjBCZ2A==}
 
-  playground@file:packages/storyblok-js-client/playground:
-    resolution: {directory: packages/storyblok-js-client/playground, type: directory}
+  playground@file:packages/js-client/playground:
+    resolution: {directory: packages/js-client/playground, type: directory}
 
   pluralize@8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
@@ -15325,9 +15328,10 @@ snapshots:
   '@storyblok/react@file:packages/react(next@13.5.11(@babel/core@7.27.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@storyblok/js': link:packages/js
-      next: 13.5.11(@babel/core@7.27.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    optionalDependencies:
+      next: 13.5.11(@babel/core@7.27.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   '@stylistic/eslint-plugin@2.13.0(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3)':
     dependencies:
@@ -18428,7 +18432,7 @@ snapshots:
       eslint: 8.55.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint-plugin-import@2.31.0(eslint@8.55.0))(eslint@8.55.0)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint-plugin-import@2.31.0(eslint@8.55.0))(eslint@8.55.0))(eslint@8.55.0)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.55.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.55.0)
       eslint-plugin-react: 7.37.5(eslint@8.55.0)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.55.0)
@@ -18502,7 +18506,7 @@ snapshots:
       tinyglobby: 0.2.13
       unrs-resolver: 1.7.2
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint-plugin-import@2.31.0(eslint@8.55.0))(eslint@8.55.0))(eslint@8.55.0)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.55.0)
       eslint-plugin-import-x: 4.11.1(eslint@8.55.0)(typescript@5.8.3)
     transitivePeerDependencies:
       - supports-color
@@ -18703,7 +18707,7 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import-x@4.11.1(eslint@8.55.0)(typescript@5.8.3))(eslint-plugin-import@2.31.0(eslint@8.55.0))(eslint@8.55.0))(eslint@8.55.0):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.55.0)(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.55.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -22693,7 +22697,7 @@ snapshots:
       exsolve: 1.0.5
       pathe: 2.0.3
 
-  playground@file:packages/storyblok-js-client/playground: {}
+  playground@file:packages/js-client/playground: {}
 
   pluralize@8.0.0: {}
 

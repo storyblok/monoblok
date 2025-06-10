@@ -7,11 +7,11 @@
 </div>
 
 <p align="center">
-  <a href="https://npmjs.com/package/@storyblok/storyblok-js-client">
-    <img src="https://img.shields.io/npm/v/@storyblok/storyblok-js-client/latest.svg?style=flat-square&color=09b3af" alt="Storyblok JS Client" />
+  <a href="https://npmjs.com/package/@storyblok/js-client">
+    <img src="https://img.shields.io/npm/v/@storyblok/js-client/latest.svg?style=flat-square&color=09b3af" alt="Storyblok JS Client" />
   </a>
-  <a href="https://npmjs.com/package/@storyblok/storyblok-js-client" rel="nofollow">
-    <img src="https://img.shields.io/npm/dt/@storyblok/storyblok-js-client.svg?style=appveyor&color=09b3af" alt="npm">
+  <a href="https://npmjs.com/package/@storyblok/js-client" rel="nofollow">
+    <img src="https://img.shields.io/npm/dt/@storyblok/js-client.svg?style=appveyor&color=09b3af" alt="npm">
   </a>
   <a href="https://discord.gg/jKrbAMz">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=09b3af">
@@ -31,18 +31,18 @@ Are you eager to dive into coding? **[Follow these steps to kickstart a new proj
 ## Installation
 
 ```sh
-npm install @storyblok/storyblok-js-client # yarn add @storyblok/storyblok-js-client
+npm install @storyblok/js-client # yarn add @storyblok/js-client
 ```
 
 > **Note**: This package was formerly published as `storyblok-js-client`. The package has been renamed and scoped under `@storyblok` for better organization and consistency with other Storyblok packages.
 
 #### Compatibility
 
-| Version to install                                                                                                                         | Support                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| Latest `@storyblok/storyblok-js-client`                                                                                                    | Modern browsers + Node 18+                           |
-| Latest `@storyblok/storyblok-js-client` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
-| [Version 4](https://github.com/storyblok/storyblok-js-client/tree/v4.5.8) `storyblok-js-client@4`                                          | Internet Explorer support                            |
+| Version to install                                                                                                               | Support                                              |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Latest `@storyblok/js-client`                                                                                                    | Modern browsers + Node 18+                           |
+| Latest `@storyblok/js-client` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
+| [Version 4](https://github.com/storyblok/storyblok-js-client/tree/v4.5.8) `storyblok-js-client@4`                                | Internet Explorer support                            |
 
 ## How to use it
 

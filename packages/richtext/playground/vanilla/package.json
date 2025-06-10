@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@storyblok/richtext": "workspace:*",
-    "storyblok-js-client": "workspace:@storyblok/storyblok-js-client@*"
+    "storyblok-js-client": "workspace:@storyblok/js-client@*"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

@@ -2,8 +2,10 @@ name: Publish
 
 on:
   push:
-    tags:
-      - '*'
+    tags: 
+      - "*"
+      - "**"
+      - '@storyblok/*@**'
 
 jobs:
   test:

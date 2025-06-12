@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`@storyblok/js > legacy Rich Text Resolver > should return the rendered HTML when passing a valid RichText object 1`] = `"<p></p><p>Hola<b>in bold</b></p><p></p><p>paragraph after empty line</p><p></p><ul><li><p>an item in a list</p></li><li><p>another item</p></li></ul><p></p><ol><li><p>item in another list</p></li><li><p>another item</p></li></ol><p></p><blockquote><p>this is a quote</p></blockquote><p></p><hr /><p></p><p>some words after an &lt;hr&gt;</p><p></p><p><i>italic text</i></p><p></p><p><s>strikethrough</s></p><p></p><p><u>underlined</u></p><p></p><p><sup>superscript</sup></p><p></p><p><sub>subscript</sub></p><p></p><p><code>inline code</code> </p>"`;

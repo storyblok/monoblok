@@ -4,6 +4,7 @@ const callbacks: Array<() => void> = [];
 export const loadBridge = (src: string) => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
+      reject(new Error('Cannot load Storyblok bridge: window is undefined (server-side environment)'));
       return;
     }
 
@@ -21,6 +22,7 @@ export const loadBridge = (src: string) => {
     };
 
     if (document.getElementById('storyblok-javascript-bridge')) {
+      resolve(undefined);
       return;
     }
 

@@ -25,21 +25,32 @@ describe('@storyblok/js', () => {
   describe('api', () => {
     it('is not loaded by default', () => {
       const result = storyblokInit({
-        accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt',
+        accessToken: 'TEST_TOKEN',
       });
 
       expect(result).toEqual({});
     });
 
     it('is loaded correctly when using the apiPlugin', async () => {
+      // Mock fetch to return a successful response
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          stories: [
+            { id: 1, name: 'Story 1' },
+            { id: 2, name: 'Story 2' },
+            { id: 3, name: 'Story 3' },
+          ],
+        })));
+
       const { storyblokApi } = storyblokInit({
-        accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt',
+        accessToken: 'TEST_TOKEN',
         use: [apiPlugin],
       });
 
       const result = await storyblokApi!.getAll('cdn/stories', { version: 'draft' });
 
       expect(result.length).toBeGreaterThan(0);
+      expect(fetchSpy).toHaveBeenCalled();
     });
 
     it('logs an error if no access token is provided', () => {
@@ -252,8 +263,21 @@ describe('@storyblok/js', () => {
 
   describe('editable', () => {
     it('gets data-blok-c and data-blok-uid', async () => {
+      // Mock fetch to return a story response
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          story: {
+            id: 123456,
+            uid: 'test-uid-123',
+            content: {
+              component: 'page',
+              body: [],
+            },
+          },
+        })));
+
       const { storyblokApi } = storyblokInit({
-        accessToken: 'wANpEQEsMYGOwLxwXQ76Ggtt',
+        accessToken: 'TEST_TOKEN',
         use: [apiPlugin],
       });
 
@@ -266,6 +290,7 @@ describe('@storyblok/js', () => {
 
       expect(editableResult['data-blok-c']).toBeDefined();
       expect(editableResult['data-blok-uid']).toBeDefined();
+      expect(fetchSpy).toHaveBeenCalled();
     });
   });
 
@@ -413,6 +438,35 @@ describe('@storyblok/js', () => {
       script?.dispatchEvent(event);
 
       expect(executionOrder).toEqual([1, 2, 3]);
+    });
+
+    it('should reject promise when window is undefined', async () => {
+      // Mock window being undefined (server-side)
+      const originalWindow = globalThis.window;
+      delete (globalThis as any).window;
+
+      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
+        .rejects
+        .toThrow('Cannot load Storyblok bridge: window is undefined (server-side environment)');
+
+      // Restore window
+      globalThis.window = originalWindow;
+    });
+
+    it('should resolve promise when bridge script already exists', async () => {
+      // Add existing bridge script to DOM
+      const existingScript = document.createElement('script');
+      existingScript.id = 'storyblok-javascript-bridge';
+      existingScript.src = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
+      document.head.appendChild(existingScript);
+
+      // Should resolve immediately since script already exists
+      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
+        .resolves
+        .toBe(undefined);
+
+      // Clean up
+      existingScript.remove();
     });
   });
 });

@@ -6,7 +6,7 @@ on:
     tags:
       - v*.*.*
       - v*.*.*-*
-      - \@storyblok/*\@*
+      - '@storyblok/**@*'
 
 env:
   NX_REJECT_UNKNOWN_LOCAL_CACHE: 0

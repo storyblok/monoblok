@@ -1,6 +1,6 @@
 import { optimizeImage } from './images-optimization';
 import { BlockTypes, LinkTypes, MarkTypes, TextTypes } from './types';
-import type { MarkNode, StoryblokRichTextNode, StoryblokRichTextNodeResolver, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
+import type { MarkNode, StoryblokRichTextContext, StoryblokRichTextNode, StoryblokRichTextNodeResolver, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
 import { attrsToString, attrsToStyle, cleanObject, escapeHtml, SELF_CLOSING_TAGS } from './utils';
 
 /**
@@ -45,18 +45,6 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     keyedResolvers = false,
   } = options;
   const isExternalRenderFn = renderFn !== defaultRenderFn;
-
-  const createRenderContext = () => {
-    const contextRenderFn = (tag: string, attrs: Record<string, any> = {}, children?: T): T => {
-      if (keyedResolvers && tag) {
-        const currentCount = keyCounters.get(tag) || 0;
-        keyCounters.set(tag, currentCount + 1);
-        attrs.key = `${tag}-${currentCount}`;
-      }
-      return renderFn(tag, attrs, children);
-    };
-    return { render: contextRenderFn };
-  };
 
   const nodeResolver = (tag: string): StoryblokRichTextNodeResolver<T> =>
     (node: StoryblokRichTextNode<T>, context): T => {
@@ -268,7 +256,8 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     return context.render('th', cleanObject(attributes), node.children) as T;
   };
 
-  const mergedResolvers = new Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>([
+  // Create the original resolvers map with default implementations
+  const originalResolvers = new Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>([
     [BlockTypes.DOCUMENT, nodeResolver('')],
     [BlockTypes.HEADING, headingResolver],
     [BlockTypes.PARAGRAPH, nodeResolver('p')],
@@ -299,8 +288,30 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     [BlockTypes.TABLE_ROW, tableRowResolver],
     [BlockTypes.TABLE_CELL, tableCellResolver],
     [BlockTypes.TABLE_HEADER, tableHeaderResolver],
+  ]);
+
+  // Create the merged resolvers map that includes user overrides
+  const mergedResolvers = new Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>([
+    ...originalResolvers,
     ...(Object.entries(resolvers).map(([type, resolver]) => [type as StoryblokRichTextNodeTypes, resolver])) as unknown as Array<[StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>]>,
   ]);
+
+  const createRenderContext = () => {
+    const contextRenderFn = (tag: string, attrs: Record<string, any> = {}, children?: T): T => {
+      if (keyedResolvers && tag) {
+        const currentCount = keyCounters.get(tag) || 0;
+        keyCounters.set(tag, currentCount + 1);
+        attrs.key = `${tag}-${currentCount}`;
+      }
+      return renderFn(tag, attrs, children);
+    };
+    const context: StoryblokRichTextContext<T> = {
+      render: contextRenderFn,
+      originalResolvers,
+      mergedResolvers,
+    };
+    return context;
+  };
 
   function renderNode(node: StoryblokRichTextNode<T>): T {
     const resolver = mergedResolvers.get(node.type);

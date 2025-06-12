@@ -1,6 +1,5 @@
 import './style.css';
-import { MarkTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
-import StoryblokClient from 'storyblok-js-client';
+import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
 
 /* const test = {
   type: 'doc',
@@ -30,7 +29,7 @@ import StoryblokClient from 'storyblok-js-client';
     },
   ],
 }; */
-/* const doc: StoryblokRichTextDocumentNode = {
+const doc: StoryblokRichTextDocumentNode = {
   type: 'doc',
   content: [
     {
@@ -398,7 +397,7 @@ import StoryblokClient from 'storyblok-js-client';
       },
     },
   ],
-}; */
+};
 
 /* const tableDoc: StoryblokRichTextDocumentNode = {
   type: 'doc',
@@ -664,20 +663,20 @@ import StoryblokClient from 'storyblok-js-client';
 
 // Storyblok
 
-const client = new StoryblokClient({
+/* const client = new StoryblokClient({
   accessToken: import.meta.env.VITE_STORYBLOK_TOKEN,
-});
+}); */
 
-const story = await client.get('cdn/stories/home', {
+/* const story = await client.get('cdn/stories/home', {
   version: 'draft',
 });
 
-const docFromStory = story.data.story.content.richtext;
+const docFromStory = story.data.story.content.richtext; */
 
 const options: StoryblokRichTextOptions<string> = {
   resolvers: {
-    [MarkTypes.LINK]: (node: StoryblokRichTextNode<string>) => {
-      return `<button href="${node.attrs?.href}" target="${node.attrs?.target}">${node.children}</button>`;
+    [BlockTypes.HEADING]: (node: StoryblokRichTextNode<string>, ctx) => {
+      return ctx.originalResolvers.get(BlockTypes.HEADING)?.(node, ctx) || '';
     },
   },
   optimizeImages: {
@@ -696,7 +695,7 @@ const options: StoryblokRichTextOptions<string> = {
   },
 };
 
-const html = richTextResolver(options).render(docFromStory);
+const html = richTextResolver(options).render(doc);
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="this-div-is-on-purpose">

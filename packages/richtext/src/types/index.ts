@@ -109,6 +109,14 @@ export interface StoryblokRichTextContext<T = string> {
    * @param children - Optional children content
    */
   render: (tag: string, attrs?: Record<string, any>, children?: T) => T;
+  /**
+   * Original resolvers map
+   */
+  originalResolvers: Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>;
+  /**
+   * Merged resolvers map
+   */
+  mergedResolvers: Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>;
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/richtext",
   "type": "module",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok RichText Resolver",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",

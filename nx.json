@@ -24,14 +24,11 @@
     "groups": {
       "core-js": {
         "projects": ["storyblok-js-client", "js", "richtext"],
-        "projectsRelationship": "fixed"
+        "projectsRelationship": "independent"
       },
-      "js": {
+      "sdk": {
         "projects": ["react", "vue", "astro", "svelte", "nuxt"],
-        "projectsRelationship": "independent",
-        "version": {
-          "currentVersionResolver": "git-tag"
-        }
+        "projectsRelationship": "independent"
       }
     },
     "version": {

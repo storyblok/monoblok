@@ -23,7 +23,7 @@
     "projectsRelationship": "independent",
     "groups": {
       "core-js": {
-        "projects": ["storyblok-js-client", "js", "richtext"],
+        "projects": ["js-client", "js", "richtext"],
         "projectsRelationship": "independent"
       },
       "sdk": {

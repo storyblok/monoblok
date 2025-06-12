@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/js",
   "type": "module",
-  "version": "4.0.3-rc1.8",
+  "version": "4.0.3-rc1.9",
   "private": false,
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using JavaScript.",

@@ -3,7 +3,7 @@
     "remote": "storyblok-js-client",
     "repo": "storyblok/storyblok-js-client",
     "branch": "main",
-    "path": "packages/storyblok-js-client"
+    "path": "packages/js-client"
   },
   "@storyblok/js": {
     "remote": "storyblok-js",

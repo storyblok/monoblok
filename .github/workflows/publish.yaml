@@ -22,7 +22,7 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
-      - run: pnpm config set //registry.npmjs.org/:_authToken ${secrets.NPM_TOKEN}
+      - run: pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
 
         name: Build publishable packages
       - run: pnpm nx run-many -p="tag:npm:public" -t=build

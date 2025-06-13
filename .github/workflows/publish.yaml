@@ -2,7 +2,6 @@ name: Publish
 
 on:
   workflow_dispatch:
-    
 
 jobs:
   test:
@@ -24,13 +23,23 @@ jobs:
 
       - run: pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
 
-        name: Build publishable packages
-      - run: pnpm nx run-many -p="tag:npm:public" -t=build
+      - name: Build publishable packages
+        run: pnpm nx run-many -p="tag:npm:public" -t=build
 
       - name: Print Environment Info
         run: pnpm nx report
         shell: bash
 
+      - name: Determine npm tag
+        id: npm-tag
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish packages
-        run: pnpm nx release publish
+        run: pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }} -d
         shell: bash

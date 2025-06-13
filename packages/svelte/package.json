@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/svelte",
   "type": "module",
-  "version": "5.0.3",
+  "version": "5.0.4-rc.0",
   "private": false,
   "packageManager": "pnpm@9.15.9",
   "description": "SDK to integrate Storyblok into your project using Svelte.",

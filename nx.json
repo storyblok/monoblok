@@ -39,7 +39,7 @@
       }
     },
     "changelog": {
-      "automaticFromRef": true,
+      "automaticFromRef": false,
       "projectChangelogs": {
         "createRelease": "github",
         "file": false

@@ -1,11 +1,8 @@
 name: Publish
 
 on:
-  push:
-    tags: 
-      - "*"
-      - "**"
-      - '@storyblok/*@**'
+  workflow_dispatch:
+    
 
 jobs:
   test:

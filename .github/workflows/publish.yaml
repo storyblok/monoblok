@@ -41,5 +41,5 @@ jobs:
           fi
 
       - name: Publish packages
-        run: pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }} -d
+        run: pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }}
         shell: bash

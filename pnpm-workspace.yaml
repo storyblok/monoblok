@@ -3,6 +3,7 @@ packages:
   - packages/*/playground
   - packages/*/playground/*
   - tools/*
+  - apps/*
 onlyBuiltDependencies:
   - cypress
   - esbuild

@@ -33,7 +33,7 @@ jobs:
         shell: bash
 
       - name: Publish packages
-        run: pnpm nx release publish -d
+        run: pnpm nx release publish
         shell: bash
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

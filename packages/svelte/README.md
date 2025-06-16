@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/jKrbAMz"><img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff"></a>
+  <a href="https://storyblok.com/join-discord"><img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff"></a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
     <img src="https://img.shields.io/badge/Follow-%40storyblok-8d60ff?style=appveyor&logo=twitter" alt="Follow @Storyblok" />
   </a>
@@ -34,11 +34,11 @@ Are you looking for a hands-on, step-by-step tutorial? The **[SvelteKit Ultimate
 
 ## Compatibility
 
-| Version to install                                                                                                                      | Support                                              |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Latest (from v3) `@storyblok/svelte`                                                                                                    | Modern browsers + Node 18+ (Compatible with Svelte 5)|
-| Latest (from v3) `@storyblok/svelte` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
-| [Version 2](https://github.com/storyblok/@storyblok/svelte/tree/v2.5.0) `@storyblok/svelte@2`                                           | Internet Explorer support                            |
+| Version to install                                                                                                                      | Support                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Latest (from v3) `@storyblok/svelte`                                                                                                    | Modern browsers + Node 18+ (Compatible with Svelte 5) |
+| Latest (from v3) `@storyblok/svelte` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support  |
+| [Version 2](https://github.com/storyblok/@storyblok/svelte/tree/v2.5.0) `@storyblok/svelte@2`                                           | Internet Explorer support                             |
 
 ### Upgrading to Svelte 5
 
@@ -380,7 +380,7 @@ Another option might also be using npm / yarn workspaces.
 ## Support
 
 - Bugs or Feature Requests? [Submit an issue](/../../issues/new).
-- Do you have questions about Storyblok or do you need help? [Join our Discord Community](https://discord.gg/jKrbAMz).
+- Do you have questions about Storyblok or do you need help? [Join our Discord Community](https://storyblok.com/join-discord).
 
 ## Contributing
 

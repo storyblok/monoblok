@@ -16,7 +16,7 @@
   </p>
 
 <p align="center">
-  <a href="https://discord.gg/jKrbAMz">
+  <a href="https://storyblok.com/join-discord">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
    </a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
@@ -415,7 +415,7 @@ Our heartfelt thanks go to [Virtual Identity](https://www.virtual-identity.com/)
 
 - Bugs or Feature Requests? [Submit an issue](/../../issues/new);
 - Do you have questions about this SDK? Or would you like to join the growing community of `@storyblok/astro` users? [Join the Astro Discord Community](https://discord.com/channels/830184174198718474/1002802280267001858)
-- Do you have questions about Storyblok or do you need help? [Join the Storyblok Discord Community](https://discord.gg/jKrbAMz).
+- Do you have questions about Storyblok or do you need help? [Join the Storyblok Discord Community](https://storyblok.com/join-discord).
 
 ## Contributing
 

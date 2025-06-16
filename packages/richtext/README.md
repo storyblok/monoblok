@@ -16,7 +16,7 @@
   <a href="https://npmjs.com/package/@storyblok/richtext" rel="nofollow">
     <img src="https://img.shields.io/npm/dt/@storyblok/richtext.svg?style=appveyor&color=8d60ff" alt="npm">
   </a>
-  <a href="https://discord.gg/jKrbAMz">
+  <a href="https://storyblok.com/join-discord">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
    </a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
@@ -53,7 +53,7 @@ For help, discussion about best practices, or any other conversation that would 
 
 For community support, chatting with other users, please visit:
 
-- [Discuss Storyblok on Discord](https://discord.gg/jKrbAMz)
+- [Discuss Storyblok on Discord](https://storyblok.com/join-discord)
 
 ## Support
 
@@ -68,7 +68,7 @@ We understand that you might not be able to share your company's project code. P
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://discord.gg/jKrbAMz) channel.
+If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 
 ## License

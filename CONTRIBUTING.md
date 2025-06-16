@@ -116,4 +116,4 @@ The preview version format is: `0.0.0-pr{PR_NUMBER}-{COMMIT_SHA}`
 If you have any questions about contributing, please:
 1. Check the [Storyblok Documentation](https://www.storyblok.com/docs)
 2. Open an issue in this repository
-3. Join our [Discord community](https://discord.gg/jKrbAMz) 
+3. Join our [Discord community](https://storyblok.com/join-discord) 

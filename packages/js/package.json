@@ -6,12 +6,14 @@
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
   "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/storyblok-js"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/js"
   },
   "bugs": {
-    "url": "https://github.com/storyblok/storyblok-js/issues"
+    "url": "https://github.com/storyblok/monoblok/issues"
   },
   "exports": {
     ".": {

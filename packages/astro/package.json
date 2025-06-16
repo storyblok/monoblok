@@ -7,12 +7,14 @@
   "description": "Official Astro integration for the Storyblok Headless CMS",
   "author": "Storyblok",
   "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/astro#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/storyblok-astro"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/astro"
   },
   "bugs": {
-    "url": "https://github.com/storyblok/storyblok-astro/issues"
+    "url": "https://github.com/storyblok/monoblok/issues"
   },
   "keywords": [
     "astro",

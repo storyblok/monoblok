@@ -4,12 +4,14 @@
   "version": "7.0.2",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok Nuxt module",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/storyblok/storyblok-nuxt.git"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/nuxt"
   },
   "bugs": {
-    "url": "https://github.com/storyblok/storyblok-nuxt/issues"
+    "url": "https://github.com/storyblok/monoblok/issues"
   },
   "exports": {
     ".": {

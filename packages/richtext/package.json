@@ -6,10 +6,14 @@
   "description": "Storyblok RichText Resolver",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
   "license": "MIT",
-  "homepage": "https://github.com/storyblok/richtext#readme",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/richtext#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/storyblok/richtext.git"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/richtext"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
   },
   "keywords": [
     "storyblok",

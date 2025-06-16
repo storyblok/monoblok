@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     name: Publish
-    runs-on: ubuntu-8vcpu-arm 
+    runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read

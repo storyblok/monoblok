@@ -13,7 +13,7 @@
   <a href="https://npmjs.com/package/@storyblok/js-client" rel="nofollow">
     <img src="https://img.shields.io/npm/dt/@storyblok/js-client.svg?style=appveyor&color=8d60ff" alt="npm">
   </a>
-  <a href="https://discord.gg/jKrbAMz">
+  <a href="https://storyblok.com/join-discord">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
    </a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
@@ -573,7 +573,7 @@ client.getStories({token: 'public'...}).then(publicResponse => ... ).catch()
 
 - Bugs or Feature Requests? [Submit an issue](../../../issues/new);
 
-- Do you have questions about Storyblok or you need help? [Join our Discord Community](https://discord.gg/jKrbAMz).
+- Do you have questions about Storyblok or you need help? [Join our Discord Community](https://storyblok.com/join-discord).
 
 ## Contributing
 

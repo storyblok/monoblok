@@ -16,7 +16,7 @@
   </p>
 
 <p align="center">
-  <a href="https://discord.gg/jKrbAMz">
+  <a href="https://storyblok.com/join-discord">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
    </a>
   <a href="https://twitter.com/intent/follow?screen_name=storyblok">
@@ -440,7 +440,7 @@ Use this one-line function to cover the most common use case: updating the story
 ## Support
 
 - Bugs or Feature Requests? [Submit an issue](/../../issues/new);
-- Do you have questions about Storyblok or you need help? [Join our Discord Community](https://discord.gg/jKrbAMz).
+- Do you have questions about Storyblok or you need help? [Join our Discord Community](https://storyblok.com/join-discord).
 
 ## Contributing
 

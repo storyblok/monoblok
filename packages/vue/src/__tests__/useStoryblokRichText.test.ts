@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { h } from 'vue';
-import { useStoryblokRichTextEnhanced } from '../composables/useStoryblokRichTextEnhanced';
+import { useStoryblokRichText } from '../composables/useStoryblokRichText';
 import type { StoryblokRichTextNode } from '@storyblok/js';
 import { BlockTypes } from '@storyblok/js';
 
-describe('useStoryblokRichTextEnhanced', () => {
+describe('useStoryblokRichText', () => {
   it('should render rich text without crashing', () => {
-    const { render } = useStoryblokRichTextEnhanced();
+    const { render } = useStoryblokRichText();
 
     const doc: StoryblokRichTextNode = {
       type: 'doc',
@@ -28,7 +28,7 @@ describe('useStoryblokRichTextEnhanced', () => {
   });
 
   it('should handle ordered lists with embedded components without resolveComponent errors', () => {
-    const { render } = useStoryblokRichTextEnhanced();
+    const { render } = useStoryblokRichText();
 
     const doc: StoryblokRichTextNode = {
       type: 'doc',
@@ -76,7 +76,7 @@ describe('useStoryblokRichTextEnhanced', () => {
   });
 
   it('should handle empty component gracefully', () => {
-    const { render } = useStoryblokRichTextEnhanced();
+    const { render } = useStoryblokRichText();
 
     const doc: StoryblokRichTextNode = {
       type: 'doc',
@@ -97,7 +97,7 @@ describe('useStoryblokRichTextEnhanced', () => {
   it('should merge custom resolvers properly', () => {
     const customResolver = () => h('div', { class: 'custom-paragraph' }, 'Custom content');
 
-    const { render } = useStoryblokRichTextEnhanced({
+    const { render } = useStoryblokRichText({
       resolvers: {
         [BlockTypes.PARAGRAPH]: customResolver,
       },

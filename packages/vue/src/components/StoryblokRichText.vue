@@ -4,7 +4,7 @@ import type {
   StoryblokRichTextNode,
   StoryblokRichTextResolvers,
 } from '@storyblok/js';
-import { useStoryblokRichText } from '../composables/useStoryblokRichText';
+import { useStoryblokRichTextEnhanced } from '../composables/useStoryblokRichTextEnhanced';
 import type { StoryblokRichTextProps } from '../types';
 
 const props = defineProps<StoryblokRichTextProps>();
@@ -13,7 +13,7 @@ const renderedDoc = ref();
 const root = () => renderedDoc.value;
 
 watch([() => props.doc, () => props.resolvers], ([doc, resolvers]) => {
-  const { render } = useStoryblokRichText({
+  const { render } = useStoryblokRichTextEnhanced({
     resolvers: (resolvers as StoryblokRichTextResolvers<VNode>) ?? {},
   });
   renderedDoc.value = render(doc as StoryblokRichTextNode<VNode>);

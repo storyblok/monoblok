@@ -12,6 +12,7 @@ env:
 
 jobs:
   preview:
+    if: false # Disable workflow until package scoping is resolved
     runs-on: ubuntu-latest
     permissions:
       contents: read

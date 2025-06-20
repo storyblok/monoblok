@@ -23,7 +23,7 @@
     "projectsRelationship": "independent",
     "groups": {
       "core-js": {
-        "projects": ["js-client", "js", "richtext"],
+        "projects": ["js-client", "js", "richtext", "storyblok"],
         "projectsRelationship": "independent"
       },
       "sdk": {

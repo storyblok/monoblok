@@ -1,0 +1,115 @@
+name: 📚 Documentation Issue
+description: Report an issue with documentation, examples, or guides
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve our documentation! 
+        
+        **💡 For documentation suggestions and general discussions about docs, consider using [GitHub Discussions](https://github.com/storyblok/monoblok/discussions).** This issue template is best for specific documentation bugs or errors.
+        
+        Please provide details about the documentation issue you've found.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation is this issue related to?
+      options:
+        - "Package README"
+        - "API Documentation" 
+        - "Code Examples"
+        - "Migration Guide"
+        - "Getting Started Guide"
+        - "Integration Guide"
+        - "TypeScript Definitions"
+        - "Playground/Demo"
+        - "Contributing Guide"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which Storyblok package is this documentation related to?
+      options:
+        - "@storyblok/js (Core JavaScript SDK)"
+        - "@storyblok/js-client (Client SDK)" 
+        - "@storyblok/richtext (Rich Text Renderer)"
+        - "@storyblok/react (React Integration)"
+        - "@storyblok/vue (Vue Integration)"
+        - "@storyblok/nuxt (Nuxt Module)"
+        - "@storyblok/svelte (Svelte Integration)"
+        - "@storyblok/astro (Astro Integration)"
+        - "Multiple packages"
+        - "Repository-wide documentation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - "Missing documentation"
+        - "Incorrect information"
+        - "Outdated information"
+        - "Unclear/confusing explanation"
+        - "Broken example/code"
+        - "Typo/grammar error"
+        - "Missing example"
+        - "Broken link"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is this documentation located? (URL, file path, or section name)
+      placeholder: "e.g., packages/react/README.md, https://github.com/storyblok/monoblok/..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue in detail
+      placeholder: "The documentation states... but it should..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: Current Content
+      description: If applicable, copy the current documentation content that needs to be fixed
+      render: markdown
+      placeholder: "Current documentation content..."
+
+  - type: textarea
+    id: suggested-content
+    attributes:
+      label: Suggested Improvement
+      description: How do you think this should be documented instead?
+      render: markdown
+      placeholder: "Suggested documentation content..."
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional context that would help improve the documentation
+      placeholder: |
+        - What were you trying to accomplish?
+        - What was confusing?
+        - What would have helped you understand better?
+
+ 

@@ -8,5 +8,9 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'json', 'html'],
     },
+    env: {
+      NO_COLOR: '1',
+      FORCE_COLOR: '0',
+    },
   },
 });

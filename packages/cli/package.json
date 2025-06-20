@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
-    "@storyblok/js": "^4.0.0",
+    "@storyblok/js": "workspace:*",
     "@topcli/spinner": "^2.1.2",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
@@ -47,7 +47,7 @@
     "ohash": "^2.0.11",
     "pathe": "^2.0.3",
     "read-package-up": "^11.0.0",
-    "storyblok-js-client": "^6.10.12"
+    "storyblok-js-client": "workspace:@storyblok/js-client@*"
   },
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",

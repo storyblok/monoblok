@@ -95,13 +95,14 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Please provide information about your environment
-      placeholder: |
-        - OS: [e.g., macOS 13.0, Windows 11, Ubuntu 22.04]
-        - Browser: [e.g., Chrome 118, Firefox 119, Safari 16]
-        - Node.js version: [e.g., 18.17.0]
-        - Framework version: [e.g., React 18.2.0, Vue 3.3.0, Nuxt 3.8.0]
-        - Build tool: [e.g., Vite 4.5.0, Webpack 5.88.0]
+      description: |
+        Please run the following command in your project directory and paste the output:
+        
+        ```
+        npx envinfo --system --npmPackages '{react,vue,svelte,astro,next,nuxt,@storyblok/*,storyblok}' --binaries --browsers
+        ```
+      render: shell
+      placeholder: Paste the output of the envinfo command here...
     validations:
       required: true
 

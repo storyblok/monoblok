@@ -1,0 +1,337 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Vitest Tests",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run"],
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug login",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["login"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug login by token",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["login", "--token", "1234567890"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug logout",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["logout"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug user",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["user"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Pull languages",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["languages", "pull", "--space", "295018"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Test",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["test"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Pull components",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "pull", "--space", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push components",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push components --separate-files",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "295017", "--sf"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push components from non-existing space",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "non-existing"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push component component-tags",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "component-tags", "--space", "295018", "--from", "295017", "--sf", "--verbose"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug circular dependencies",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "component-component-whitelist", "--space", "295018", "--from", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push component non-existing",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "non-existing", "--space", "295018", "--from", "295017"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push component filtered by pattern",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "295017", "--filter", "component-inside-*"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push component with suffix",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "295017", "--suffix", "prod"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push component with suffix and separate files",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["components", "push", "--space", "295018", "--from", "295017", "--suffix", "prod", "--separate-files"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations generate",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "generate", "--space", "295017"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations run",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "run", "--space", "295017"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations run component-name",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "run", "simple_component", "--space", "295017"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations run filter",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "run", "--space", "295017", "--filter", "component-inside-*"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations run query",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "run", "--space", "295017", "--query", "[highlighted][is]=true"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations run starts-with",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "run", "--space", "295017", "--starts-with", "migrations/"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Migrations generate non-existing component",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["migrations", "generate", "non-existing", "--space", "295017"],
+
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--filter", "component-inside-*"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types strict",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--strict"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types from separate files",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--separate-files"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types with suffix",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--suffix", "prod"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types with custom fields parser",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--custom-fields-parser", "./custom-fields-parser.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Generate types with compiler options",
+      "program": "${workspaceFolder}/dist/index.mjs",
+      "args": ["types", "generate", "--space", "295017", "--compiler-options", "./compiler-options.ts"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    }
+  ]
+}

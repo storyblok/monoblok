@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/storyblok/monoblok/discussions
+    about: Ask questions, request features, and discuss ideas with the community - preferred for most topics!
+  - name: 🚀 Feature Requests & Ideas
+    url: https://github.com/storyblok/monoblok/discussions/categories/ideas
+    about: Share feature requests and enhancement ideas in our Ideas discussion category
+  - name: ❓ Questions & Help
+    url: https://github.com/storyblok/monoblok/discussions/categories/q-a
+    about: Get help with implementation questions and usage in our Q&A discussion category
+  - name: 🌟 Storyblok Official Support
+    url: https://www.storyblok.com/support
+    about: Get official support from the Storyblok team for account and service-related issues
+  - name: 💬 Community Discord
+    url: https://www.storyblok.com/join-discord
+    about: Join the Storyblok community on Discord for real-time discussions and help
+  - name: 📖 Storyblok Documentation
+    url: https://www.storyblok.com/docs
+    about: Browse the official Storyblok documentation and guides 

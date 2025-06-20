@@ -31,15 +31,6 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: version
-    attributes:
-      label: Package Version
-      description: What version of the package are you using?
-      placeholder: "e.g., 5.0.0"
-    validations:
-      required: true
-
   - type: textarea
     id: bug-description
     attributes:

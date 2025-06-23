@@ -5,7 +5,7 @@ import App from './App.vue';
 import { router } from './router';
 import Feature from './components/Feature.vue';
 import Grid from './components/Grid.vue';
-import IframeEmbed from './components/IframeEmbed.vue';
+import EmojiRandomizer from './components/EmojiRandomizer.vue';
 import Page from './components/Page.vue';
 import Teaser from './components/Teaser.vue';
 
@@ -23,7 +23,7 @@ app.component('Page', Page);
 app.component('Teaser', Teaser); // Comment to check fallback behavior
 app.component('Grid', Grid);
 app.component('Feature', Feature);
-app.component('IframeEmbed', IframeEmbed);
+app.component('EmojiRandomizer', EmojiRandomizer);
 
 app.use(router);
 

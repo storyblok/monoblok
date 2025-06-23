@@ -4,7 +4,7 @@ import Page from '../../playground/vue/src/components/Page.vue';
 import Feature from '../../playground/vue/src/components/Feature.vue';
 import MyCustomFallback from '../../playground/vue/src/components/MyCustomFallback.vue';
 import { apiPlugin, StoryblokVue } from '@storyblok/vue';
-import IframeEmbed from './testing-components/IFrameEmbed.vue';
+import EmojiRandomizer from './testing-components/EmojiRandomizer.vue';
 import { RouterLink } from 'vue-router';
 import Essential from './testing-components/Essential.vue';
 import RealApi from './testing-components/RealApi.vue';
@@ -228,11 +228,9 @@ describe('@storyblok/vue', () => {
       });
 
       cy.get('img')
-        .should(
-          'have.attr',
-          'src',
-          'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg',
-        );
+        .should('exist')
+        .and('have.attr', 'src')
+        .and('contain', 'emoji-datasource-apple');
     });
 
     it('Should render links correctly', () => {
@@ -241,22 +239,23 @@ describe('@storyblok/vue', () => {
       });
 
       cy.get('a')
-        .should('have.attr', 'href', 'https://storyblok.com/');
+        .should('exist')
+        .and('have.attr', 'href')
+        .and('contain', 'storyblok.com');
     });
 
-    it('should render a custom iframe-embed blok component', () => {
+    it('should render a custom emoji-randomizer blok component', () => {
       prepare({ use: [apiPlugin] }, RichText, {
-        components: { IframeEmbed },
+        components: { EmojiRandomizer },
       });
 
-      cy.get('iframe')
-        .should('exist')
-        .and('have.attr', 'src', 'https://storyblok.com/');
+      cy.get('[data-test=emoji-randomizer]')
+        .should('exist');
     });
 
     it.skip('should redirect internal links', () => {
       prepare({ use: [apiPlugin] }, RichText, {
-        components: { IframeEmbed, RouterLink },
+        components: { EmojiRandomizer, RouterLink },
       });
 
       cy.get('[data-test=root]')

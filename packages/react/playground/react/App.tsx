@@ -7,8 +7,8 @@ function App() {
   return (
     <BrowserRouter>
       <div>
-        <nav>
-          <ul>
+        <nav className=" py-8 container mx-auto mb-8">
+          <ul className="flex gap-4">
             <li>
               <Link to="/react">Home</Link>
             </li>
@@ -17,12 +17,13 @@ function App() {
             </li>
           </ul>
         </nav>
-
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="react" element={<Home />} />
-          <Route path="react/test-richtext" element={<RichtextPage />} />
-        </Routes>
+        <div className="prose mx-auto">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="react" element={<Home />} />
+            <Route path="react/test-richtext" element={<RichtextPage />} />
+          </Routes>
+        </div>
       </div>
     </BrowserRouter>
   );

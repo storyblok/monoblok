@@ -1,4 +1,5 @@
 import StoryblokProvider from '@/components/StoryblokProvider';
+import './globals.css';
 
 export const metadata = {
   title: 'Create Next App',

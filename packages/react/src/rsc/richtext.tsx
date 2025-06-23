@@ -11,7 +11,7 @@ export function componentResolver(node: StoryblokRichTextNode<React.ReactElement
   const body = node?.attrs?.body;
   return React.createElement(StoryblokServerComponent, {
     blok: Array.isArray(body) && body.length > 0 ? body[0] : undefined,
-    key: node.attrs?.id || Math.random().toString(36).substring(2, 15),
+    key: node.attrs?.id || `fallback-key-${JSON.stringify(node.attrs)}`,
   });
 }
 

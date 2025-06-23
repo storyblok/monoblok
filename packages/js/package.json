@@ -81,8 +81,5 @@
       "!@storyblok/playground-*",
       "storyblok-js-client"
     ]
-  },
-  "bundleDependencies": [
-    "storyblok-js-client"
-  ]
+  }
 }

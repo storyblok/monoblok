@@ -1,7 +1,7 @@
 import EmojiRandomizer from '@/app/components/EmojiRandomizer';
-import Grid from '@/components/Grid';
-import Page from '@/components/Page';
-import Teaser from '@/components/Teaser';
+import Grid from '@/app/components/Grid';
+import Page from '@/app/components/Page';
+import Teaser from '@/app/components/Teaser';
 import { apiPlugin, storyblokInit } from '@storyblok/react/rsc';
 
 export const getStoryblokApi = storyblokInit({

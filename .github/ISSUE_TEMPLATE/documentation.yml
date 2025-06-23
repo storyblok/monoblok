@@ -39,7 +39,7 @@ body:
       options:
         - "storyblok (CLI)"
         - "@storyblok/js (Core JavaScript SDK)"
-        - "@storyblok/js-client (Client SDK)" 
+        - "storyblok-js-client (Client SDK)" 
         - "@storyblok/richtext (Rich Text Renderer)"
         - "@storyblok/react (React Integration)"
         - "@storyblok/vue (Vue Integration)"

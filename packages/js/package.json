@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@storyblok/richtext": "workspace:*",
-    "storyblok-js-client": "workspace:@storyblok/js-client@*"
+    "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {
     "@storyblok/eslint-config": "^0.3.0",
@@ -79,7 +79,10 @@
   "nx": {
     "implicitDependencies": [
       "!@storyblok/playground-*",
-      "@storyblok/js-client"
+      "storyblok-js-client"
     ]
-  }
+  },
+  "bundleDependencies": [
+    "storyblok-js-client"
+  ]
 }

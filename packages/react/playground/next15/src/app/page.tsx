@@ -2,8 +2,7 @@ import type {
   ISbStoriesParams,
   StoryblokClient,
 } from '@storyblok/react/rsc';
-import { StoryblokStory,
-} from '@storyblok/react/rsc';
+import { MarkTypes, StoryblokLiveEditing, StoryblokRichText, StoryblokServerComponent } from '@storyblok/react/rsc';
 import { getStoryblokApi } from '@/lib/storyblok';
 import Link from 'next/link';
 
@@ -30,7 +29,8 @@ export default async function Home() {
 
         {data.story && (
           <div>
-            <StoryblokStory story={data.story} />
+            <StoryblokServerComponent blok={data.story.content} />
+            <StoryblokLiveEditing story={data.story} />
           </div>
         )}
       </div>

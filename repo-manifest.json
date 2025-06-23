@@ -46,5 +46,11 @@
     "repo": "storyblok/richtext",
     "branch": "main",
     "path": "packages/richtext"
+  },
+  "@storyblok/cli": {
+    "remote": "storyblok-cli",
+    "repo": "storyblok/storyblok-cli",
+    "branch": "main",
+    "path": "packages/cli"
   }
 }

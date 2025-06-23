@@ -1,0 +1,69 @@
+{
+  "name": "storyblok",
+  "type": "module",
+  "version": "4.0.0",
+  "packageManager": "pnpm@10.10.0",
+  "description": "Storyblok CLI",
+  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/storyblok-cli.git"
+  },
+  "keywords": [
+    "storyblok",
+    "cli",
+    "node",
+    "javascript"
+  ],
+  "main": "./dist/index.mjs",
+  "bin": {
+    "storyblok": "./dist/index.mjs"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "typecheck": "tsc --noEmit",
+    "release": "release-it",
+    "dev": "pnpm run build && node dist/index.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.5.1",
+    "@storyblok/js": "workspace:*",
+    "@topcli/spinner": "^2.1.2",
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "dotenv": "^16.5.0",
+    "json-schema-to-typescript": "^15.0.4",
+    "minimatch": "^10.0.3",
+    "ohash": "^2.0.11",
+    "pathe": "^2.0.3",
+    "read-package-up": "^11.0.0",
+    "storyblok-js-client": "workspace:@storyblok/js-client@*"
+  },
+  "devDependencies": {
+    "@release-it/conventional-changelog": "10.0.0",
+    "@storyblok/eslint-config": "^0.3.0",
+    "@types/inquirer": "^9.0.8",
+    "@types/node": "^22.15.18",
+    "@vitest/coverage-v8": "^3.1.3",
+    "@vitest/ui": "^3.1.3",
+    "eslint": "^9.26.0",
+    "memfs": "^4.17.1",
+    "msw": "^2.8.2",
+    "release-it": "^18.1.2",
+    "typescript": "5.8.3",
+    "unbuild": "^3.5.0",
+    "uuid": "^11.1.0",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.3"
+  }
+}

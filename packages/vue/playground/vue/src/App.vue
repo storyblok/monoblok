@@ -13,7 +13,20 @@ watch([route], () => setBodyClass(route.name?.toString() ?? ''));
 <template>
   <Suspense>
     <template #default>
-      <RouterView />
+      <div class="prose mx-auto">
+        <nav>
+          <ul class="flex gap-4 list-none">
+            <li>
+              <RouterLink to="/">Home</RouterLink>
+            </li>
+            <li>
+              <RouterLink to="/vue/test-richtext">Richtext</RouterLink>
+            </li>
+          </ul>
+        </nav>
+        <RouterView />
+      </div>
+     
     </template>
 
     <template #fallback>

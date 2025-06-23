@@ -8,6 +8,8 @@ export const useStoryblokRichTextResolver = useStoryblokRichText;
 
 export { default as StoryblokRichText } from '../storyblok-rich-text';
 export * from './common';
+export { liveEditUpdateAction } from './live-edit-update-action';
+export { default as StoryblokLiveEditing } from './live-editing';
 export { default as StoryblokStory } from './story';
 export {
   BlockTypes,

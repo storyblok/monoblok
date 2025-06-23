@@ -227,9 +227,25 @@ export async function fetchData() {
 
 ## Next.js using App Router
 
-The components in the `app` directory are by default React Server Side Components, which limits the reactivity. You can enable Storyblok Visual Editor's live editing with React Server Components by rendering them inside a wrapper (`StoryblokPovider`) on the client. The SDK allows you to take full advantage of the Live Editing, but the use of Server Side Components is partial, which will be still better than the older Next.js approach performance-wise. The next section explains about how to use complete server side approach.
+The components in the `app` directory are by default React Server Side Components, which limits the reactivity. You can enable Storyblok Visual Editor's live editing with React Server Components by using the `StoryblokLiveEditing` component, which automatically handles bridge loading and registration. The SDK allows you to take full advantage of the Live Editing while maintaining the performance benefits of Server Components.
 
 > The SDK has a special module for RSC. Always import `@storyblok/react/rsc` while using Server Components.
+
+### Live Editing Bridge Loading
+
+**When do you need `StoryblokLiveEditing`?**
+
+- ✅ **Pure Server-Side Rendering**: When using only `StoryblokServerComponent` (RSC-only apps)
+- ❌ **Client-Side Components**: When using `StoryblokComponent` or other client components that already load the bridge
+- ❌ **Hybrid Apps**: When you already have client components that load the bridge elsewhere
+
+**Why is this needed for RSC-only apps?**
+
+In React Server Components environments where components are purely server-rendered, the Storyblok bridge script isn't automatically loaded on the client. The `StoryblokLiveEditing` component detects when running in the Visual Editor and loads the bridge script for you.
+
+**How to know if you need it?**
+
+If live editing doesn't work in your RSC app, add `StoryblokLiveEditing`. If it's already working (because you have client components), you don't need it.
 
 ### 1. Initialize
 
@@ -291,7 +307,7 @@ The `getStoryblokApi` function can now be used inside your Story components to f
 
 ```js
 import { StoryblokClient, ISbStoriesParams } from '@storyblok/react';
-import { StoryblokStory } from '@storyblok/react/rsc';
+import { StoryblokServerComponent, StoryblokLiveEditing } from '@storyblok/react/rsc';
 import { getStoryblokApi } from '@/lib/storyblok'; // Remember to import from the local file
 
 export default async function Home() {
@@ -299,7 +315,8 @@ export default async function Home() {
 
   return (
     <div>
-      <StoryblokStory story={data.story} />
+      <StoryblokServerComponent blok={data.story.content} />
+      <StoryblokLiveEditing story={data.story} />
     </div>
   );
 }
@@ -312,10 +329,36 @@ export async function fetchData() {
 }
 ```
 
-`StoryblokStory` keeps the state for thet story behind the scenes and uses `StoryblokComponent` to render the route components dynamically, using the list of components loaded during the initialization inside the `storyblokInit` function. You can use the `StoryblokComponent` inside the components to render the nested components dynamically. You can also pass bridge options to `StoryblokStory` using the prop `bridgeOptions`.
+**Live Editing in RSC Environments:**
+
+For **pure React Server Components** apps (no client-side components), you need two separate components:
+
+- `StoryblokServerComponent`: Renders the Storyblok content components on the server
+- `StoryblokLiveEditing`: Loads the bridge script and handles live editing (only needed for RSC-only apps)
 
 ```jsx
 const bridgeOptions = { resolveRelations: ['article.author'] }
+
+<StoryblokLiveEditing story={data.story} bridgeOptions={bridgeOptions} />
+```
+
+**If you have client-side components in your app**, the bridge is likely already loaded, so you can skip `StoryblokLiveEditing`:
+
+```jsx
+// RSC-only app (bridge needed)
+<StoryblokServerComponent blok={data.story.content} />
+<StoryblokLiveEditing story={data.story} />
+
+// Hybrid app with client components (bridge already loaded)
+<StoryblokServerComponent blok={data.story.content} />
+```
+
+**Alternative: Using StoryblokStory (All-in-One)**
+
+If you prefer a single component that handles both rendering and live editing:
+
+```jsx
+import { StoryblokStory } from '@storyblok/react/rsc';
 
 <StoryblokStory story={data.story} bridgeOptions={bridgeOptions} />
 ```

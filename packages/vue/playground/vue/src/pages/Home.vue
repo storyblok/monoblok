@@ -20,7 +20,6 @@ onMounted(() => {
   }
   useStoryblokBridge(story.value.id, evStory => (story.value = evStory));
 });
-
 </script>
 
 <template>

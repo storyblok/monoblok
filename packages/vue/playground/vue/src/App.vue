@@ -26,7 +26,6 @@ watch([route], () => setBodyClass(route.name?.toString() ?? ''));
         </nav>
         <RouterView />
       </div>
-     
     </template>
 
     <template #fallback>

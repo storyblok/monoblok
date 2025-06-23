@@ -7,13 +7,11 @@ const useIsClient = () => {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    
     setIsClient(true);
   }, []);
 
   return isClient;
 };
-
 
 interface EmojiRandomizerProps {
   blok: SbBlokData & {
@@ -25,7 +23,6 @@ interface EmojiRandomizerProps {
  * A component that displays a label and a random emoji that changes on click
  */
 const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
-
   // List of fun emojis to randomly choose from
   const emojis = ['😊', '🎉', '🚀', '✨', '🌈', '🎨', '🎸', '🎮', '🍕', '🌺'];
 

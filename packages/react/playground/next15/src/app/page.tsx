@@ -2,7 +2,7 @@ import type {
   ISbStoriesParams,
   StoryblokClient,
 } from '@storyblok/react/rsc';
-import { MarkTypes, StoryblokLiveEditing, StoryblokRichText, StoryblokServerComponent } from '@storyblok/react/rsc';
+import { StoryblokLiveEditing, StoryblokServerComponent } from '@storyblok/react/rsc';
 import { getStoryblokApi } from '@/lib/storyblok';
 import Link from 'next/link';
 

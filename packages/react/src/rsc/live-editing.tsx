@@ -6,6 +6,12 @@ import { liveEditUpdateAction } from './live-edit-update-action';
 import { isBridgeLoaded, isVisualEditor } from '../utils';
 
 const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions?: StoryblokBridgeConfigV2 }) => {
+  const inVisualEditor = isVisualEditor();
+
+  if (!inVisualEditor) {
+    return null;
+  }
+
   const storyId = story?.id ?? 0;
   useEffect(() => {
     (async () => {

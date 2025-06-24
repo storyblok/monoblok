@@ -1,3 +1,5 @@
+# Storyblok JavaScript Client
+
 <div align="center">
     <a  href="https://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client"  align="center">
         <img  src="https://a.storyblok.com/f/88751/1776x360/4d075611c6/sb-js-sdk.png"  alt="Storyblok Logo">
@@ -7,11 +9,11 @@
 </div>
 
 <p align="center">
-  <a href="https://npmjs.com/package/@storyblok/js-client">
-    <img src="https://img.shields.io/npm/v/@storyblok/js-client/latest.svg?style=flat-square&color=8d60ff" alt="Storyblok JS Client" />
+  <a href="https://npmjs.com/package/storyblok-js-client">
+    <img src="https://img.shields.io/npm/v/storyblok-js-client/latest.svg?style=flat-square&color=8d60ff" alt="Storyblok JS Client" />
   </a>
-  <a href="https://npmjs.com/package/@storyblok/js-client" rel="nofollow">
-    <img src="https://img.shields.io/npm/dt/@storyblok/js-client.svg?style=appveyor&color=8d60ff" alt="npm">
+  <a href="https://npmjs.com/package/storyblok-js-client" rel="nofollow">
+    <img src="https://img.shields.io/npm/dt/storyblok-js-client.svg?style=appveyor&color=8d60ff" alt="npm">
   </a>
   <a href="https://storyblok.com/join-discord">
    <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
@@ -31,18 +33,18 @@ Are you eager to dive into coding? **[Follow these steps to kickstart a new proj
 ## Installation
 
 ```sh
-npm install @storyblok/js-client # yarn add @storyblok/js-client
+npm install storyblok-js-client # yarn add storyblok-js-client
 ```
 
-> **Note**: This package was formerly published as `storyblok-js-client`. The package has been renamed and scoped under `@storyblok` for better organization and consistency with other Storyblok packages.
+
 
 #### Compatibility
 
-| Version to install                                                                                                               | Support                                              |
-| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Latest `@storyblok/js-client`                                                                                                    | Modern browsers + Node 18+                           |
-| Latest `@storyblok/js-client` <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
-| [Version 4](https://github.com/storyblok/storyblok-js-client/tree/v4.5.8) `storyblok-js-client@4`                                | Internet Explorer support                            |
+| Version to install                                                                                                            | Support                                              |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Latest storyblok-js-client                                                                                                    | Modern browsers + Node 18+                           |
+| Latest storyblok-js-client <br> + Fetch polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) | Browsers and Node versions with no Fetch API support |
+| [Version 4](https://github.com/storyblok/storyblok-js-client/tree/v4.5.8) storyblok-js-client@4                               | Internet Explorer support                            |
 
 ## How to use it
 
@@ -228,7 +230,7 @@ One should catch the exception and handle it accordingly.
 
 With this parameter, you can resolve relations with live updates in the Storyblok JavaScript Bridge input event. It is possible to resolve content entries that are two levels deep, such as `resolve_relations=page.author,page.products`. Resolved relations can be found in the root of the API response, in the property `rels`. You can learn more about `resolve_relations` in [this tutorial](https://www.storyblok.com/tp/using-relationship-resolving-to-include-other-content-entries)
 
-> It is important to note that when using the `storyblok-js-client` and other framework-specific SDKs, you don't need to look for the `rels` array after resolving relations. The resolved relations are injected into the properties and, hence, are directly accessible through the properties. For example, you can access the authors array directly with `page.author` once it is resolved.
+> It is important to note that when using the storyblok-js-client and other framework-specific SDKs, you don't need to look for the `rels` array after resolving relations. The resolved relations are injected into the properties and, hence, are directly accessible through the properties. For example, you can access the authors array directly with `page.author` once it is resolved.
 
 ```javascript
 window.storyblok.resolveRelations(

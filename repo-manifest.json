@@ -5,48 +5,6 @@
     "branch": "main",
     "path": "packages/js-client"
   },
-  "@storyblok/js": {
-    "remote": "storyblok-js",
-    "repo": "storyblok/storyblok-js",
-    "branch": "main",
-    "path": "packages/js"
-  },
-  "@storyblok/react": {
-    "remote": "storyblok-react",
-    "repo": "storyblok/storyblok-react",
-    "branch": "main",
-    "path": "packages/react"
-  },
-  "@storyblok/vue": {
-    "remote": "storyblok-vue",
-    "repo": "storyblok/storyblok-vue",
-    "branch": "main",
-    "path": "packages/vue"
-  },
-  "@storyblok/nuxt": {
-    "remote": "storyblok-nuxt",
-    "repo": "storyblok/storyblok-nuxt",
-    "branch": "main",
-    "path": "packages/nuxt"
-  },
-  "@storyblok/astro": {
-    "remote": "storyblok-astro",
-    "repo": "storyblok/storyblok-astro",
-    "branch": "main",
-    "path": "packages/astro"
-  },
-  "@storyblok/svelte": {
-    "remote": "storyblok-svelte",
-    "repo": "storyblok/storyblok-svelte",
-    "branch": "main",
-    "path": "packages/svelte"
-  },
-  "@storyblok/richtext": {
-    "remote": "storyblok-richtext",
-    "repo": "storyblok/richtext",
-    "branch": "main",
-    "path": "packages/richtext"
-  },
   "@storyblok/cli": {
     "remote": "storyblok-cli",
     "repo": "storyblok/storyblok-cli",

@@ -153,7 +153,7 @@ class Storyblok {
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
     this.stringifiedStoriesCache = {} as Record<string, string>;
-    this.version = config.version || StoryblokContentVersion.DRAFT;
+    this.version = config.version || StoryblokContentVersion.PUBLISHED; // the default version is published as per API documentation
     this.inlineAssets = config.inlineAssets || false;
 
     this.client = new SbFetch({
@@ -232,7 +232,12 @@ class Storyblok {
       params = {} as ISbStoriesParams;
     }
     const url = `/${slug}`;
-    params.version = params.version || this.version;
+
+    // Only add version parameter for CDN URLs
+    if (isCDNUrl(url)) {
+      params.version = params.version || this.version;
+    }
+
     const query = this.factoryParamOptions(url, params);
 
     return this.cacheResponse(url, query, undefined, fetchOptions);

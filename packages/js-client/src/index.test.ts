@@ -66,7 +66,7 @@ describe('storyblokClient', () => {
       expect(client.resolveCounter).toBe(0);
       expect(client.resolveNestedRelations).toBeTruthy();
       expect(client.stringifiedStoriesCache).toEqual({});
-      expect(client.version).toBe('draft');
+      expect(client.version).toBe('published');
     });
 
     it('should set an accessToken', () => {
@@ -74,7 +74,7 @@ describe('storyblokClient', () => {
     });
 
     it('should set a version', () => {
-      expect(client.version).toBe('draft');
+      expect(client.version).toBe('published');
     });
 
     it('should set an endpoint', () => {
@@ -241,6 +241,32 @@ describe('storyblokClient', () => {
         .toMatchObject({
           status: 404,
         });
+    });
+
+    it('should only add version parameter for CDN URLs', async () => {
+      const mockCacheResponse = vi.fn().mockResolvedValue({ data: {} });
+      client.cacheResponse = mockCacheResponse;
+
+      // Test CDN URL - should add version parameter
+      await client.get('cdn/stories');
+      expect(mockCacheResponse).toHaveBeenCalledWith(
+        '/cdn/stories',
+        expect.objectContaining({ version: 'published' }),
+        undefined,
+        undefined,
+      );
+
+      // Reset mock
+      mockCacheResponse.mockClear();
+
+      // Test Management API URL - should NOT add version parameter
+      await client.get('spaces/123/stories/456');
+      expect(mockCacheResponse).toHaveBeenCalledWith(
+        '/spaces/123/stories/456',
+        expect.not.objectContaining({ version: expect.anything() }),
+        undefined,
+        undefined,
+      );
     });
 
     it('should fetch and return a complex story object correctly', async () => {

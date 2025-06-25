@@ -52,6 +52,7 @@ typesCommand
       });
 
       await generateStoryblokTypes({
+        ...options,
         path,
       });
 

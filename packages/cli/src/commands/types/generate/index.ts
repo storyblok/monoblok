@@ -52,14 +52,19 @@ typesCommand
       });
 
       await generateStoryblokTypes({
-        filename: options.filename,
-        path: options.path,
+        path,
       });
 
-      const typedefString = await generateTypes(spaceData, options);
+      const typedefString = await generateTypes(spaceData, {
+        ...options,
+        path,
+      });
 
       if (typedefString) {
-        await saveTypesToFile(space, typedefString, options);
+        await saveTypesToFile(space, typedefString, {
+          ...options,
+          path,
+        });
       }
 
       spinner.succeed();

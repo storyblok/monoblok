@@ -15,7 +15,7 @@ export const STORYBLOK_AGENT = 'SB-Agent';
 export const STORYBLOK_JS_CLIENT_AGENT = {
   defaultAgentName: 'SB-JS-CLIENT',
   defaultAgentVersion: 'SB-Agent-Version',
-  packageVersion: '6.0.0',
+  packageVersion: '7.0.0',
 };
 
 export const StoryblokContentVersion = {

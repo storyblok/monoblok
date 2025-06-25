@@ -41,12 +41,19 @@ export const useAsyncStoryblok = async (
         error.value = null; // Reset error on successful fetch
       }
     }
-    catch (err: any) {
+    catch (err: unknown) {
       // Handle API errors with status/response properties
-      error.value = {
-        status: err.status || err.response?.status,
-        response: err.message || err.response?.statusText,
-      };
+      if (typeof err === 'object' && err !== null && 'status' in err && 'response' in err) {
+        error.value = {
+          status: (err as { status?: number; response?: { status?: number; statusText?: string } }).status || (err as { response?: { status?: number } }).response?.status,
+          response: (err as { message?: string; response?: { statusText?: string } }).message || (err as { response?: { statusText?: string } }).response?.statusText,
+        };
+      } else {
+        error.value = {
+          status: undefined,
+          response: 'An unknown error occurred',
+        };
+      }
     }
   }
 

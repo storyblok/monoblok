@@ -48,7 +48,8 @@ export const useAsyncStoryblok = async (
           status: (err as { status?: number; response?: { status?: number; statusText?: string } }).status || (err as { response?: { status?: number } }).response?.status,
           response: (err as { message?: string; response?: { statusText?: string } }).message || (err as { response?: { statusText?: string } }).response?.statusText,
         };
-      } else {
+      }
+      else {
         error.value = {
           status: undefined,
           response: 'An unknown error occurred',

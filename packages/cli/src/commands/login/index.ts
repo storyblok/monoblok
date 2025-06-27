@@ -102,13 +102,25 @@ export const loginCommand = program
               return value.length > 0;
             },
           });
-          spinner.start(`Logging in with token`);
-          const { user } = await loginWithToken(userToken, region);
-          spinner.succeed();
-          updateSession(user.email, userToken, region);
-          await persistCredentials(region);
 
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[region]} (${region})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          let userRegion = region;
+          if (!userRegion) {
+            userRegion = await select({
+              message: 'Please select the region you would like to work in:',
+              choices: Object.values(regions).map((region: RegionCode) => ({
+                name: regionNames[region],
+                value: region,
+              })),
+              default: regions.EU,
+            });
+          }
+          spinner.start(`Logging in with token`);
+          const { user } = await loginWithToken(userToken, userRegion);
+          spinner.succeed();
+          updateSession(user.email, userToken, userRegion);
+          await persistCredentials(userRegion);
+
+          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
         }
 
         else {

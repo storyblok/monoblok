@@ -1,25 +1,30 @@
 {
   "name": "@storyblok/management-client",
+  "type": "module",
   "version": "0.0.0",
   "private": true,
   "description": "Storyblok Management API Client",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./package.json": "./package.json"
   },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsdown",
-    "dev": "tsdown --watch"
+    "dev": "tsdown --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "eslint": "^9.26.0",
     "tsdown": "latest"
   }

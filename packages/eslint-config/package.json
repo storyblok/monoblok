@@ -32,13 +32,10 @@
   ],
   "scripts": {
     "dev": "npx @eslint/config-inspector --config eslint.config.ts",
-    "lint": "eslint . --flag unstable_ts_config",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "preview": "eslint-flat-config-viewer",
-    "release": "release-it",
-    "build": "tsup --format esm,cjs --clean --dts",
-    "stub": "tsup --format esm",
-    "watch": "tsup --format esm,cjs --watch"
+    "build": "tsdown",
+    "watch": "tsdown --watch"
   },
   "peerDependencies": {
     "eslint": ">=8.40.0"
@@ -48,11 +45,7 @@
     "eslint-plugin-format": "^0.1.2"
   },
   "devDependencies": {
-    "@release-it/conventional-changelog": "^8.0.2",
-    "eslint": "npm:eslint-ts-patch@9.8.0-1",
-    "eslint-flat-config-viewer": "^0.1.20",
-    "eslint-ts-patch": "9.8.0-1",
-    "release-it": "^17.6.0",
-    "tsup": "^8.2.4"
+    "eslint": "9.26.0",
+    "tsdown": "^0.12.9"
   }
 }

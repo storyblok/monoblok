@@ -1,0 +1,22 @@
+{
+  "name": "@storyblok/vanilla",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@storyblok/management-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "pathe": "^2.0.3",
+    "tailwindcss": "^4.1.11",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0",
+    "vite-plugin-qrcode": "^0.3.0"
+  }
+}

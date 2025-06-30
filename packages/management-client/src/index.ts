@@ -17,8 +17,18 @@ export interface StoryblokManagementClient {
   init: (clientOptions: StoryblokManagementClientOptions) => void;
 }
 
-export const createManagementClient = () => {
-  let instance: StoryblokManagementClient | null = null;
+// Singleton instance for managementClient function
+let singletonInstance: StoryblokManagementClient | null = null;
+
+/**
+ * Creates a new management client instance every time it's called
+ * @param clientOptions - Configuration options for the client
+ * @returns A new StoryblokManagementClient instance
+ */
+export const createManagementClient = (clientOptions: StoryblokManagementClientOptions): StoryblokManagementClient => {
+  if (!clientOptions?.token) {
+    throw new Error('Management API Client requires an access token for initialization');
+  }
 
   const state: StoryblokManagementClientState = {
     token: null,
@@ -35,21 +45,33 @@ export const createManagementClient = () => {
     };
 
     state.headers = new Headers(baseHeaders);
-    instance = {
-      uuid: `management-client-${Math.random().toString(36).substring(2, 15)}`,
-      init,
-    };
-
-    return instance;
   };
 
-  return (clientOptions?: StoryblokManagementClientOptions): StoryblokManagementClient => {
-    if (!instance) {
-      if (!clientOptions?.token) {
-        throw new Error('Management API Client requires an access token for initialization');
-      }
-      instance = init(clientOptions);
+  // Always create a new instance
+  const instance: StoryblokManagementClient = {
+    uuid: `management-client-${Math.random().toString(36).substring(2, 15)}`,
+    init,
+  };
+
+  // Initialize the instance immediately
+  init(clientOptions);
+
+  return instance;
+};
+
+/**
+ * Returns a singleton management client instance
+ * Creates the instance on first call, returns the same instance on subsequent calls
+ * @param clientOptions - Configuration options for the client (only used on first call)
+ * @returns The singleton StoryblokManagementClient instance
+ */
+export const managementClient = (clientOptions?: StoryblokManagementClientOptions): StoryblokManagementClient => {
+  if (!singletonInstance) {
+    if (!clientOptions?.token) {
+      throw new Error('Management API Client requires an access token for initialization on first call');
     }
-    return instance;
-  };
+    singletonInstance = createManagementClient(clientOptions);
+  }
+
+  return singletonInstance;
 };

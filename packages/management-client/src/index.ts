@@ -35,8 +35,8 @@ export const createManagementClient = (clientOptions: StoryblokManagementClientO
     };
 
     const res = await fetch(`${state.url}/${path}`, {
-      headers: requestData.headers as HeadersInit,
       ...fetchOptions,
+      headers: requestData.headers as HeadersInit,
     });
 
     let data;

@@ -1,0 +1,33 @@
+name: Publish Any Commit
+on:
+  push:
+    tags:
+      - '!**'
+    branches:
+      - '**'
+
+env:
+  PNPM_CACHE_FOLDER: .pnpm-store
+  HUSKY: 0 # Bypass husky commit hook for CI
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-node
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build
+        run: pnpm nx run-many --target=build --parallel=5 -p="tag:npm:public"   
+      - run: pnpx pkg-pr-new publish ./packages/astro ./packages/cli  ./packages/js ./packages/js-client ./packages/nuxt ./packages/react ./packages/richtext ./packages/storyblok-js-client ./packages/svelte ./packages/vue --compact --pnpm

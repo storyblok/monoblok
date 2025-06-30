@@ -28,7 +28,14 @@ const tokenWarning = missingTokens.length > 0
 
 const getSpace = async () => {
   try {
-    const response = await client.request('spaces/295017')
+    const response = await client.request('spaces/295017', {
+      method: 'PUT',
+      body: JSON.stringify({
+        space: {
+          name: 'Test Space'
+        }
+      })
+    })
     console.log(response)
   } catch (error) {
     console.error(error)

@@ -48,7 +48,7 @@
     "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.15.18",
     "@vitest/ui": "^3.1.3",

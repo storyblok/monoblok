@@ -1,21 +1,5 @@
-import type { RegionCode } from './utils/region';
-import { regions } from './utils/region';
-
-export interface StoryblokManagementClientOptions {
-  token: string;
-  region?: RegionCode;
-}
-
-export interface StoryblokManagementClientState {
-  token: string | null;
-  headers: Headers;
-  region?: RegionCode;
-}
-
-export interface StoryblokManagementClient {
-  uuid: string;
-  init: (clientOptions: StoryblokManagementClientOptions) => void;
-}
+import type { FetchOptions, GetResponse, StoryblokManagementClient, StoryblokManagementClientOptions, StoryblokManagementClientState } from './types';
+import { getManagementApiUrl } from './utils/region';
 
 // Singleton instance for managementClient function
 let singletonInstance: StoryblokManagementClient | null = null;
@@ -32,25 +16,69 @@ export const createManagementClient = (clientOptions: StoryblokManagementClientO
 
   const state: StoryblokManagementClientState = {
     token: null,
-    headers: new Headers(),
-    region: regions.EU,
+    headers: {},
+    url: getManagementApiUrl(clientOptions.region || 'eu'),
+    region: clientOptions.region || 'eu',
+  };
+
+  const request = async <T>(path: string, fetchOptions?: FetchOptions): Promise<GetResponse<T>> => {
+    const { headers, method, body } = fetchOptions || {};
+
+    const requestData = {
+      path,
+      method: method || 'GET',
+      headers: {
+        ...state.headers,
+        ...headers,
+      },
+      body,
+    };
+
+    const res = await fetch(`${state.url}/${path}`, {
+      headers: requestData.headers as HeadersInit,
+      ...fetchOptions,
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    }
+    catch {
+      throw new Error('Non-JSON response');
+    }
+
+    if (res.ok) {
+      if (clientOptions?.verbose) {
+        // eslint-disable-next-line no-console
+        console.log(`✅ ${path}`);
+      }
+      return {
+        data,
+        attempt: 1,
+      };
+    }
+    else {
+      throw new Error('Request failed');
+    }
   };
 
   const init = (clientOptions: StoryblokManagementClientOptions) => {
     state.token = clientOptions.token;
     state.region = clientOptions.region;
+    state.verbose = clientOptions.verbose || false;
     const baseHeaders = {
       'Content-Type': 'application/json',
       'Authorization': clientOptions.token,
     };
 
-    state.headers = new Headers(baseHeaders);
+    state.headers = baseHeaders;
   };
 
   // Always create a new instance
   const instance: StoryblokManagementClient = {
     uuid: `management-client-${Math.random().toString(36).substring(2, 15)}`,
     init,
+    request,
   };
 
   // Initialize the instance immediately

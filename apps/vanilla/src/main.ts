@@ -1,4 +1,4 @@
-import { createManagementClient, managementClient } from '@storyblok/management-client'
+import {  managementClient } from '@storyblok/management-client'
 import './style.css'
 
 const client = managementClient({
@@ -26,17 +26,28 @@ const tokenWarning = missingTokens.length > 0
     </div>`
   : ''
 
+const getSpace = async () => {
+  try {
+    const response = await client.request('spaces/295017')
+    console.log(response)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+
 // Create UI with buttons for different API calls
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="max-w-3xl mx-auto p-8">
-    <h1 class="text-3xl font-bold text-center text-purple-500 mb-8">Storyblok Client Playground</h1>
+    <h1 class="text-3xl font-bold text-center text-purple-500 mb-8">Storyblok Playground</h1>
     ${tokenWarning}
     <div class="flex gap-4 justify-center mb-8">
-      <button id="get-story" class="!bg-purple-500 hover:!bg-purple-600 text-white font-semibold py-3 px-6 rounded">Get Story</button>
-      <button id="get-all-links" class="!bg-purple-500 hover:!bg-purple-600 text-white font-semibold py-3 px-6 rounded">Get All Links</button>
+      <button id="get-space" class="!bg-purple-500 hover:!bg-purple-600 text-white font-semibold py-3 px-6 rounded">Get Space</button>
     </div>
     <div id="result" class="bg-gray-100 dark:bg-gray-800 rounded-lg overflow-auto max-h-[500px]">
       <p class="p-4">Results will appear here...</p>
     </div>
   </div>
 `
+
+document.querySelector<HTMLButtonElement>('#get-space')!.addEventListener('click', getSpace)

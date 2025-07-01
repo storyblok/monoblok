@@ -1,3 +1,5 @@
+import { validateSpaceId } from './utils'
+
 export type Region = 'eu' | 'us' | 'cn' | 'ap' | 'ca'
 type Protocol = 'http' | 'https'
 export type RegionRanges = Record<Region, [number, number]>
@@ -130,37 +132,37 @@ function getRegionByBitInterval(spaceId: number): Region | undefined {
 /**
  * return the region codes based on the space id
  * @method getRegion
- * @param {Number} spaceId
+ * @param {Number | string} spaceId
  * @returns {Region | undefined}
  * @description
- * Get the region based on the space id range
+ * Get the region based on the space id range. Accepts both numbers and numeric strings.
  * @example
  * ```ts
  * getRegion(12345678901234567890) // 'eu'
- * getRegion(1234567890) // 'us'
- * getRegion(12345678901234567890) // 'cn'
- * getRegion(1234567890) // 'ap'
- * getRegion(12345678901234567890) // 'ca'
+ * getRegion("1234567890") // 'us'
+ * getRegion("12345678901234567890") // 'cn'
+ * getRegion("asfdasd") // undefined
  * ```
  */
-export function getRegion(spaceId: number): Region | undefined {
+export function getRegion(spaceId: number | string): Region | undefined {
+  const validatedSpaceId = validateSpaceId(spaceId)
+
   if (
-    spaceId < 0 ||
-    !Number.isInteger(spaceId) ||
-    Boolean(BigInt(spaceId) & ~((1n << 53n) - 1n))
+    validatedSpaceId === undefined ||
+    Boolean(BigInt(validatedSpaceId) & ~((1n << 53n) - 1n))
   ) {
     return undefined
   }
 
-  if (!isSpaceIdOver49Bits(spaceId)) {
+  if (!isSpaceIdOver49Bits(validatedSpaceId)) {
     return ALL_REGIONS.find(
       (region) =>
-        spaceId >= ALL_REGION_RANGES[region][0] &&
-        spaceId < ALL_REGION_RANGES[region][1],
+        validatedSpaceId >= ALL_REGION_RANGES[region][0] &&
+        validatedSpaceId < ALL_REGION_RANGES[region][1],
     )
   }
 
-  return getRegionByBitInterval(spaceId)
+  return getRegionByBitInterval(validatedSpaceId)
 }
 
 export function getRegionBaseUrl(region: Region, protocol: Protocol = 'https') {
@@ -179,13 +181,13 @@ export function isRegion(data: unknown): data is Region {
 }
 
 export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
-  if (!Number.isInteger(spaceId)) {
+  const validatedSpaceId = validateSpaceId(spaceId)
+
+  if (validatedSpaceId === undefined) {
     return false
   }
 
-  const spaceIdAsNumber = Number(spaceId)
-
-  return spaceIdAsNumber >= 0 && getRegion(spaceIdAsNumber) !== undefined
+  return validatedSpaceId >= 0 && getRegion(validatedSpaceId) !== undefined
 }
 
 function getRegionDomain(region: Region): string {
@@ -195,3 +197,6 @@ function getRegionDomain(region: Region): string {
 function getManagementDomain(region: Region): string {
   return REGIONAL_DATA[region]?.managementApiDomain || EU_MANAGEMENT_API_DOMAIN
 }
+
+// Re-export utils for external use
+export { validateSpaceId } from './utils'

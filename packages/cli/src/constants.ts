@@ -3,10 +3,11 @@ export const commands = {
   LOGOUT: 'logout',
   SIGNUP: 'signup',
   USER: 'user',
-  COMPONENTS: 'Components',
+  COMPONENTS: 'components',
   LANGUAGES: 'languages',
-  MIGRATIONS: 'Migrations',
-  TYPES: 'Types',
+  MIGRATIONS: 'migrations',
+  TYPES: 'types',
+  CREATE: 'create',
 } as const;
 
 export const colorPalette = {
@@ -19,6 +20,7 @@ export const colorPalette = {
   LANGUAGES: '#f5c003',
   MIGRATIONS: '#8CE2FF',
   TYPES: '#3178C6',
+  CREATE: '#ffb3ba',
   GROUPS: '#4ade80',
   TAGS: '#fbbf24',
   PRESETS: '#a855f7',

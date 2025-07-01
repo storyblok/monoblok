@@ -82,7 +82,7 @@ export const REGION_BIT_IDENTIFIERS: Record<number, Region> = {
   0b0_0010: US_CODE,
   0b0_0011: CA_CODE,
   0b0_0100: AP_CODE,
-  0b0_0101: CN_CODE,
+  0b0_0110: CN_CODE,
 } as const
 
 export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]

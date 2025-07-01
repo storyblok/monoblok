@@ -2,9 +2,9 @@ name: Publish Any Commit
 on:
   push:
     tags:
-      - '!**'
+      - "!**"
     branches:
-      - '**'
+      - "**"
 
 env:
   PNPM_CACHE_FOLDER: .pnpm-store
@@ -24,10 +24,12 @@ jobs:
         node-version: [20]
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: ./.github/actions/setup-node
       - name: Install dependencies
         run: pnpm install
       - name: Build
-        run: pnpm nx run-many --target=build --parallel=5 -p="tag:npm:public"   
-      - run: pnpx pkg-pr-new publish ./packages/astro ./packages/cli  ./packages/js ./packages/js-client ./packages/nuxt ./packages/react ./packages/richtext ./packages/storyblok-js-client ./packages/svelte ./packages/vue --compact --pnpm
+        run: pnpm nx run-many --target=build --parallel=5 -p="tag:npm:public"
+      - run: |
+          PATHS=$(pnpm list --recursive --depth=0 --json | jq -r '.[] | select(.private == false) | .path' | tr '\n' ' ')
+          pnpx pkg-pr-new publish $PATHS --compact --pnpm

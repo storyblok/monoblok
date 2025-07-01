@@ -1,5 +1,15 @@
 # @storyblok/region-helper
 
+## 1.3.0
+
+### Minor Changes
+
+- 39a0f38: feat: allow spaceIds to be passed as string if a valid number
+
+### Patch Changes
+
+- 7663a22: fix: fixes CN region to correctly use 00110 as the 5-bit prefix in spaceId values.
+
 ## 1.2.0
 
 ### Minor Changes

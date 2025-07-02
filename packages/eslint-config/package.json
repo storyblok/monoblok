@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/storyblok/eslint-config.git"
+    "url": "git+https://github.com/storyblok/monoblok.git"
   },
   "keywords": [
     "eslint",

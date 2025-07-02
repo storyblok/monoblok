@@ -1,7 +1,10 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-
+import { saveToFile } from '../../utils/filesystem';
+import { appDomains, type RegionCode } from '../../constants';
+import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
+import open from 'open';
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -21,12 +24,23 @@ export const generateProject = async (
     // Check if directory already exists
     try {
       await fs.access(projectPath);
-      throw new Error(`Directory ${projectName} already exists`);
+      // If we reach this point, the directory already exists
+      // Create a mock ENOTEMPTY error to use with our filesystem error system
+      const existsError: NodeJS.ErrnoException = new Error(`Directory ${projectName} already exists`) as NodeJS.ErrnoException;
+      existsError.code = 'ENOTEMPTY';
+      existsError.path = projectPath;
+      throw new FileSystemError('directory_not_empty', 'mkdir', existsError, `Directory ${projectName} already exists`);
     }
     catch (error) {
-      // Directory doesn't exist, which is what we want
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        throw error;
+      const fsError = error as NodeJS.ErrnoException;
+
+      // Directory doesn't exist (ENOENT), which is what we want
+      if (fsError.code === 'ENOENT') {
+        // Continue with project creation
+      }
+      else {
+        // Handle other filesystem errors using the error handler
+        handleFileSystemError('read', fsError);
       }
     }
 
@@ -52,6 +66,70 @@ export const generateProject = async (
     });
   }
   catch (error) {
-    throw new Error(`Failed to generate project ${projectName}: ${(error as Error).message}`);
+    handleFileSystemError('read', error as NodeJS.ErrnoException);
+  }
+};
+
+/**
+ * Creates a .env file in the project directory with Storyblok configuration
+ * @param projectPath - The absolute path to the project directory
+ * @param accessToken - The Storyblok access token to include in the .env file
+ * @param additionalVars - Optional additional environment variables to include
+ * @returns Promise<void>
+ */
+export const createEnvFile = async (
+  projectPath: string,
+  accessToken: string,
+  additionalVars?: Record<string, string>,
+): Promise<void> => {
+  try {
+    const envPath = path.join(projectPath, '.env');
+
+    // Build the .env content
+    let envContent = `# Storyblok Configuration
+STORYBLOK_DELIVERY_API_TOKEN=${accessToken}
+`;
+
+    // Add any additional environment variables
+    if (additionalVars && Object.keys(additionalVars).length > 0) {
+      envContent += '\n# Additional Configuration\n';
+      for (const [key, value] of Object.entries(additionalVars)) {
+        envContent += `${key}=${value}\n`;
+      }
+    }
+
+    // Use the filesystem utility to save the file
+    await saveToFile(envPath, envContent);
+  }
+  catch (error) {
+    throw new Error(`Failed to create .env file: ${(error as Error).message}`);
+  }
+};
+
+/**
+ * Generates the Storyblok app URL for a specific space based on region
+ * @param spaceId - The ID of the Storyblok space
+ * @param region - The region code (eu, us, cn, ca, ap)
+ * @returns The complete URL to the space dashboard
+ */
+export const generateSpaceUrl = (spaceId: number, region: RegionCode): string => {
+  const domain = appDomains[region];
+  return `https://${domain}/#/me/spaces/${spaceId}/dashboard`;
+};
+
+/**
+ * Opens the Storyblok space dashboard in the user's default browser
+ * @param spaceId - The ID of the Storyblok space
+ * @param region - The region code (eu, us, cn, ca, ap)
+ * @returns Promise<void>
+ */
+export const openSpaceInBrowser = async (spaceId: number, region: RegionCode): Promise<void> => {
+  try {
+    const spaceUrl = generateSpaceUrl(spaceId, region);
+
+    await open(spaceUrl);
+  }
+  catch (error) {
+    throw new Error(`Failed to open space in browser: ${(error as Error).message}`);
   }
 };

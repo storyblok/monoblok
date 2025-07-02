@@ -1,13 +1,16 @@
-import { handleError, konsola, requireAuthentication } from '../../utils';
+import { handleError, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands } from '../../constants';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { blueprints } from './constants';
 import { session } from '../../session';
 import { input, select } from '@inquirer/prompts';
-import { generateProject } from './actions';
+import { createEnvFile, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
+import { createSpace } from '../spaces';
+import { Spinner } from '@topcli/spinner';
+import { mapiClient } from '../../api';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -30,6 +33,13 @@ export const createCommand = program
     if (!requireAuthentication(state, verbose)) {
       return;
     }
+
+    const { password, region } = state;
+
+    mapiClient({
+      token: password,
+      region,
+    });
 
     try {
       // Validate blueprint if provided via flag
@@ -70,7 +80,7 @@ export const createCommand = program
             // Basic validation for valid paths
             const projectName = path.basename(value);
             if (!/^[\w-]+$/.test(projectName)) {
-              return 'Project name (last folder) can only contain letters, numbers, hyphens, and underscores';
+              return 'Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores';
             }
             return true;
           },
@@ -89,19 +99,64 @@ export const createCommand = program
       await generateProject(technologyBlueprint!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
+      // Create a space for the project
+      const spinnerSpace = new Spinner({
+        verbose: !isVitest,
+      });
+
+      let createdSpace;
+      try {
+        spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+        createdSpace = await createSpace({
+          name: toHumanReadable(projectName),
+          domain: blueprints[technologyBlueprint.toLocaleUpperCase() as keyof typeof blueprints].location,
+        });
+        spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+      }
+      catch (error) {
+        spinnerSpace.failed();
+        konsola.br();
+        handleError(error as Error, verbose);
+        return;
+      }
+
+      // Create .env file with the Storyblok token
+      if (createdSpace?.first_token) {
+        try {
+          await createEnvFile(resolvedPath, createdSpace.first_token);
+          konsola.ok(`Created .env file with Storyblok access token`, true);
+        }
+        catch (error) {
+          konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+          konsola.info(`You can manually add this token to your .env file: ${createdSpace.first_token}`);
+        }
+      }
+
+      // Open the space in the browser
+      if (createdSpace?.id) {
+        try {
+          await openSpaceInBrowser(createdSpace.id, region);
+          konsola.info(`Opened space in your browser`);
+        }
+        catch (error) {
+          konsola.warn(`Failed to open browser: ${(error as Error).message}`);
+          const spaceUrl = generateSpaceUrl(createdSpace.id, region);
+          konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
+        }
+      }
+
       // Show next steps
       konsola.br();
       konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyBlueprint)} project is ready 🎉 !`);
+      if (createdSpace?.first_token) {
+        konsola.ok(`Storyblok space created, preview url and .env configured automatically`);
+      }
       konsola.br();
       konsola.info(`Next steps:
   cd ${finalProjectPath}
   npm install
   npm run dev
-
-📖 Don't forget to:
-  1. Add your Storyblok access token to .env
-  2. Configure the Visual Editor URL in Storyblok
-  3. Start building amazing content experiences!`);
+`);
     }
     catch (error) {
       konsola.br();

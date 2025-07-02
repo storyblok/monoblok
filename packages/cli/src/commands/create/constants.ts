@@ -1,5 +1,6 @@
 export interface CreateOptions {
   blueprint?: string;
+  skipSpace?: boolean;
 }
 
 export const blueprints = {

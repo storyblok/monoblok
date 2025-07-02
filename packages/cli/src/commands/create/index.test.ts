@@ -436,4 +436,92 @@ describe('createCommand', () => {
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', '/absolute/path');
     });
   });
+
+  describe('skip space functionality', () => {
+    it('should skip space creation when --skip-space flag is provided', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
+
+      // Verify project generation still happens
+      expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Project my-project created successfully'),
+        true,
+      );
+
+      // Verify space creation is skipped
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(openSpaceInBrowser).not.toHaveBeenCalled();
+
+      // Verify success message still shows
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Your react project is ready 🎉 !'),
+      );
+    });
+
+    it('should skip space creation when --skip-space flag is provided with interactive mode', async () => {
+      vi.mocked(select).mockResolvedValue('vue');
+      vi.mocked(input).mockResolvedValue('./my-vue-project');
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+
+      await createCommand.parseAsync(['node', 'test', '--skip-space']);
+
+      // Verify interactive prompts still work
+      expect(select).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'Please select the technology you would like to use:',
+      }));
+      expect(input).toHaveBeenCalledWith(expect.objectContaining({
+        message: 'What is the path for your project?',
+      }));
+
+      // Verify project generation happens
+      expect(generateProject).toHaveBeenCalled();
+
+      // Verify space-related operations are skipped
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(openSpaceInBrowser).not.toHaveBeenCalled();
+    });
+
+    it('should still show appropriate messages when skipping space creation', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
+
+      // Should show project creation success
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Project my-project created successfully'),
+        true,
+      );
+
+      // Should show final success message
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Your react project is ready 🎉 !'),
+      );
+
+      // Should show next steps
+      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+
+      // Should NOT show space-related success messages
+      expect(konsola.ok).not.toHaveBeenCalledWith('Created .env file with Storyblok access token', true);
+      expect(konsola.info).not.toHaveBeenCalledWith('Opened space in your browser');
+    });
+
+    it('should handle project generation failure even when skipping space creation', async () => {
+      const generateError = new Error('Failed to generate project');
+      vi.mocked(generateProject).mockRejectedValue(generateError);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
+
+      // Should still handle the error properly
+      expect(handleError).toHaveBeenCalledWith(generateError, undefined);
+
+      // Should not attempt space operations
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(openSpaceInBrowser).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -20,6 +20,7 @@ export const createCommand = program
   .alias('c')
   .description(`Scaffold a new project using Storyblok`)
   .option('-b, --blueprint <blueprint>', 'technology starter blueprint')
+  .option('--skip-space', 'skip space creation')
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(` ${commands.CREATE} `, colorPalette.CREATE);
     // Global options
@@ -105,19 +106,21 @@ export const createCommand = program
       });
 
       let createdSpace;
-      try {
-        spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
-        createdSpace = await createSpace({
-          name: toHumanReadable(projectName),
-          domain: blueprints[technologyBlueprint.toLocaleUpperCase() as keyof typeof blueprints].location,
-        });
-        spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
-      }
-      catch (error) {
-        spinnerSpace.failed();
-        konsola.br();
-        handleError(error as Error, verbose);
-        return;
+      if (!options.skipSpace) {
+        try {
+          spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+          createdSpace = await createSpace({
+            name: toHumanReadable(projectName),
+            domain: blueprints[technologyBlueprint.toLocaleUpperCase() as keyof typeof blueprints].location,
+          });
+          spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+        }
+        catch (error) {
+          spinnerSpace.failed();
+          konsola.br();
+          handleError(error as Error, verbose);
+          return;
+        }
       }
 
       // Create .env file with the Storyblok token

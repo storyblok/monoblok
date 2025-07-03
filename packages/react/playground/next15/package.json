@@ -11,7 +11,7 @@
   "dependencies": {
     "@storyblok/react": "workspace:*",
     "@tailwindcss/typography": "^0.5.16",
-    "next": "15.3.2",
+    "next": "15.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

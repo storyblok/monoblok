@@ -202,4 +202,4 @@ npm install
 npm run dev
 ```
 
-4. **Open your Storyblok space** (if not opened automatically) and start creating content! 
+4. **Open your Storyblok space** (if not opened automatically) and start creating content!

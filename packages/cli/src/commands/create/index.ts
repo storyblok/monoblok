@@ -111,7 +111,7 @@ export const createCommand = program
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
           createdSpace = await createSpace({
             name: toHumanReadable(projectName),
-            domain: blueprints[technologyBlueprint.toLocaleUpperCase() as keyof typeof blueprints].location,
+            domain: blueprints[technologyBlueprint.toUpperCase() as keyof typeof blueprints].location,
           });
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
         }

@@ -45,6 +45,7 @@
     "json-schema-to-typescript": "^15.0.4",
     "minimatch": "^10.0.3",
     "ohash": "^2.0.11",
+    "open": "^10.1.2",
     "pathe": "^2.0.3",
     "read-package-up": "^11.0.0",
     "storyblok-js-client": "workspace:*"

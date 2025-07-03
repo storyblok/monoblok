@@ -33,6 +33,7 @@ npm install storyblok@4.0.0-beta.<version>
 | [`types generate`](./commands/types/generate/README.md) | ✅ | Replaces previous generate-typescript-typedefs |
 | [`signup`](./commands/signup/README.md) | ✅ | Opens the Storyblok signup page in your browser |
 | `sync` | ⚠️ | Pending new API endpoint implementation for improved performance and reliability (Check below for more details) |
+| [`create`](./commands/create/README.md) | ✅ | Scaffold a new project using Storyblok |
 | `datasources pull` | 📝 | |
 | `datasources push` | 📝 | |
 | `datasources delete` | 📝 | Will replace delete-datasources |

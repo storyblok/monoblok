@@ -8,4 +8,4 @@ The `datasources` module provides tools to manage Storyblok datasources and thei
 - `push` (planned): Upload datasources and their entries to your Storyblok space.
 - `delete` (planned): Remove datasources from your Storyblok space.
 
-> See each subcommand for detailed usage, options, and examples. 
+> See each subcommand for detailed usage, options, and examples.

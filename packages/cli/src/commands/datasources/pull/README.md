@@ -138,4 +138,4 @@ Where:
 - The space ID is required
 - The command will create the necessary directories if they don't exist
 - When using `--separate-files` or single datasource, each datasource is saved in its own file
-- All files include the datasource entries resolved automatically 
+- All files include the datasource entries resolved automatically

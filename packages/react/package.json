@@ -71,7 +71,7 @@
     "@babel/preset-env": "^7.27.2",
     "@cypress/react": "^9.0.1",
     "@cypress/vite-dev-server": "^6.0.3",
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.15.18",
     "@types/react": "19.1.4",

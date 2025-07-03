@@ -54,7 +54,7 @@
     "@nuxt/schema": "^3.15.4",
     "@nuxt/test-utils": "^3.15.4",
     "@nuxtjs/eslint-config-typescript": "^12.1.0",
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^22.15.18",
     "cypress": "^14.3.3",
     "eslint": "^9.26.0",

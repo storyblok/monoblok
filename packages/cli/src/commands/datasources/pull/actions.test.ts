@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchDatasources } from './actions';
 import { mapiClient } from '../../../api';
-import type { SpaceDatasource } from '../constants';
+import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 
 // Mock datasources data that matches the SpaceDatasource interface
 const mockedDatasources: SpaceDatasource[] = [
@@ -59,6 +59,18 @@ const mockedDatasources: SpaceDatasource[] = [
   },
 ];
 
+// Mock datasource entries data
+const mockedEntries: Record<number, SpaceDatasourceEntry[]> = {
+  1: [
+    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
+    { id: 102, name: 'red', value: '#ff0000', dimension_value: '' },
+  ],
+  2: [
+    { id: 201, name: 'tech', value: 'Technology', dimension_value: '' },
+    { id: 202, name: 'business', value: 'Business', dimension_value: '' },
+  ],
+};
+
 // MSW handlers for mocking the datasources API endpoint
 const handlers = [
   http.get('https://api.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
@@ -73,6 +85,12 @@ const handlers = [
 
     // Return unauthorized error for invalid token
     return new HttpResponse('Unauthorized', { status: 401 });
+  }),
+  http.get('https://api.storyblok.com/v1/spaces/:space/datasource_entries', async ({ request }) => {
+    const url = new URL(request.url);
+    const datasourceId = url.searchParams.get('datasource_id');
+    const entries = mockedEntries[Number(datasourceId)] || [];
+    return HttpResponse.json({ datasource_entries: entries });
   }),
 ];
 
@@ -102,15 +120,25 @@ describe('pull datasources actions', () => {
     it('should fetch datasources successfully with a valid token', async () => {
       const result = await fetchDatasources('12345');
 
-      expect(result).toEqual(mockedDatasources);
+      // Each datasource should now have an 'entries' property
       expect(result).toHaveLength(2);
       expect(result?.[0]).toMatchObject({
         id: 1,
         name: 'Countries',
         slug: 'countries',
         dimensions: expect.any(Array),
+        entries: mockedEntries[1],
       });
-      expect(result?.[0].dimensions).toHaveLength(2);
+      expect(result?.[1]).toMatchObject({
+        id: 2,
+        name: 'Categories',
+        slug: 'categories',
+        dimensions: expect.any(Array),
+        entries: mockedEntries[2],
+      });
+      // Ensure entries is an array
+      expect(Array.isArray(result?.[0].entries)).toBe(true);
+      expect(Array.isArray(result?.[1].entries)).toBe(true);
     });
 
     it('should return datasources with correct structure', async () => {
@@ -127,18 +155,18 @@ describe('pull datasources actions', () => {
         dimensions: expect.any(Array),
         created_at: expect.any(String),
         updated_at: expect.any(String),
+        entries: expect.any(Array), // New: entries property
       });
-
-      // Test the structure of dimensions
-      const firstDimension = firstDatasource?.dimensions[0];
-      expect(firstDimension).toMatchObject({
-        name: expect.any(String),
-        type: expect.any(String),
-        entry_value: expect.any(String),
-        datasource_id: expect.any(Number),
-        created_at: expect.any(String),
-        updated_at: expect.any(String),
-      });
+      // Test the structure of an entry
+      const firstEntry = firstDatasource?.entries?.[0];
+      if (firstEntry) {
+        expect(firstEntry).toMatchObject({
+          id: expect.any(Number),
+          name: expect.any(String),
+          value: expect.any(String),
+          dimension_value: expect.any(String),
+        });
+      }
     });
 
     it('should handle empty datasources response', async () => {

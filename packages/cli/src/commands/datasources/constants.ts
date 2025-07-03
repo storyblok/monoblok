@@ -7,6 +7,13 @@ export interface SpaceDatasourceDimension {
   updated_at: string;
 }
 
+export interface SpaceDatasourceEntry {
+  id: number;
+  name: string;
+  value: string;
+  dimension_value: string;
+}
+
 export interface SpaceDatasource {
   id: number;
   name: string;
@@ -14,4 +21,8 @@ export interface SpaceDatasource {
   dimensions: SpaceDatasourceDimension[];
   created_at: string;
   updated_at: string;
+  /**
+   * Optionally include entries when resolving datasources with their entries
+   */
+  entries?: SpaceDatasourceEntry[];
 }

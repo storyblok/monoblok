@@ -8,7 +8,7 @@ import { datasourcesCommand } from '../command';
 /* import type { PullDatasourcesOptions } from './constants'; */
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
 import chalk from 'chalk';
-import { fetchDatasources } from './actions';
+import { fetchDatasource, fetchDatasources } from './actions';
 
 const program = getProgram();
 
@@ -53,7 +53,13 @@ datasourcesCommand
     try {
       spinnerDatasources.start(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
 
-      const datasources = await fetchDatasources(space);
+      let datasources;
+      if (datasourceName) {
+        datasources = await fetchDatasource(space, datasourceName);
+      }
+      else {
+        datasources = await fetchDatasources(space);
+      }
 
       spinnerDatasources.succeed(`${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Completed in ${spinnerDatasources.elapsedTime.toFixed(2)}ms`);
       console.log(datasources);

@@ -1,3 +1,4 @@
+'use server';
 import type { ISbStoryData } from '@storyblok/js';
 
 export async function liveEditUpdateAction({ story, pathToRevalidate }: { story: ISbStoryData; pathToRevalidate: string }) {

@@ -343,6 +343,28 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
-    }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Pull datasources",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "pull", "--space", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Pull one datasource",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "pull", "colors", "--space", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
   ],
 }

@@ -1,6 +1,9 @@
-import { handleAPIError } from '../../../utils';
+import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { mapiClient } from '../../../api';
+import { join, resolve } from 'node:path';
+import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
+import type { SaveDatasourcesOptions } from './constants';
 
 /**
  * Fetches entries for a given datasource id in a space.
@@ -60,5 +63,37 @@ export const fetchDatasource = async (space: string, datasourceName: string): Pr
   }
   catch (error) {
     handleAPIError('pull_datasources', error as Error, `Failed to fetch datasource ${datasourceName}`);
+  }
+};
+
+// Filesystem actions
+
+export const saveDatasourcesToFiles = async (
+  space: string,
+  datasources: SpaceDatasource[],
+  options: SaveDatasourcesOptions,
+) => {
+  const { filename = 'datasources', suffix, path, separateFiles } = options;
+  // Ensure we always include the datasources/space folder structure regardless of custom path
+  const resolvedPath = path
+    ? resolve(process.cwd(), path, 'datasources', space)
+    : resolvePath(path, `datasources/${space}`);
+
+  try {
+    if (separateFiles) {
+      // Save in separate files without nested structure
+      for (const datasource of datasources) {
+        const datasourceFilePath = join(resolvedPath, suffix ? `${datasource.name}.${suffix}.json` : `${datasource.name}.json`);
+        await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
+      }
+      return;
+    }
+
+    // Default to saving consolidated files
+    const datasourcesFilePath = join(resolvedPath, suffix ? `${filename}.${suffix}.json` : `${filename}.json`);
+    await saveToFile(datasourcesFilePath, JSON.stringify(datasources, null, 2));
+  }
+  catch (error) {
+    handleFileSystemError('write', error as Error);
   }
 };

@@ -1,9 +1,10 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchDatasources } from './actions';
+import { fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
+import { vol } from 'memfs';
 
 // Mock datasources data that matches the SpaceDatasource interface
 const mockedDatasources: SpaceDatasource[] = [
@@ -246,6 +247,94 @@ describe('pull datasources actions', () => {
       await fetchDatasources('54321');
 
       expect(requestUrl).toBe('https://api.storyblok.com/v1/spaces/54321/datasources');
+    });
+  });
+
+  describe('saveDatasourcesToFiles', () => {
+    beforeEach(() => {
+      vol.reset();
+    });
+
+    it('should save datasources to a single consolidated file', async () => {
+      vol.fromJSON({
+        '/mock/path/': null,
+      });
+      const datasources = [
+        {
+          id: 1,
+          name: 'colors',
+          slug: 'colors',
+          dimensions: [],
+          created_at: '2024-10-15T07:57:12.655Z',
+          updated_at: '2024-10-15T07:57:12.655Z',
+          entries: [
+            { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
+          ],
+        },
+        {
+          id: 2,
+          name: 'numbers',
+          slug: 'numbers',
+          dimensions: [],
+          created_at: '2025-04-09T08:56:07.819Z',
+          updated_at: '2025-04-09T08:56:07.819Z',
+          entries: [
+            { id: 201, name: 'one', value: '1', dimension_value: '' },
+          ],
+        },
+      ];
+      await saveDatasourcesToFiles('12345', datasources, {
+        path: '/mock/path/',
+        filename: 'datasources',
+        verbose: false,
+      });
+      const files = vol.readdirSync('/mock/path/datasources/12345');
+      expect(files).toEqual(['datasources.json']);
+      const fileContent = vol.readFileSync('/mock/path/datasources/12345/datasources.json').toString();
+      const parsed = JSON.parse(fileContent);
+      expect(parsed).toHaveLength(2);
+      expect(parsed[0]).toHaveProperty('entries');
+    });
+
+    it('should save datasources to separate files', async () => {
+      vol.fromJSON({
+        '/mock/path2/': null,
+      });
+      const datasources = [
+        {
+          id: 1,
+          name: 'colors',
+          slug: 'colors',
+          dimensions: [],
+          created_at: '2024-10-15T07:57:12.655Z',
+          updated_at: '2024-10-15T07:57:12.655Z',
+          entries: [
+            { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
+          ],
+        },
+        {
+          id: 2,
+          name: 'numbers',
+          slug: 'numbers',
+          dimensions: [],
+          created_at: '2025-04-09T08:56:07.819Z',
+          updated_at: '2025-04-09T08:56:07.819Z',
+          entries: [
+            { id: 201, name: 'one', value: '1', dimension_value: '' },
+          ],
+        },
+      ];
+      await saveDatasourcesToFiles('12345', datasources, {
+        path: '/mock/path2/',
+        separateFiles: true,
+        verbose: false,
+      });
+      const files = vol.readdirSync('/mock/path2/datasources/12345');
+      expect(files.sort()).toEqual(['colors.json', 'numbers.json']);
+      const colorsContent = vol.readFileSync('/mock/path2/datasources/12345/colors.json').toString();
+      const parsedColors = JSON.parse(colorsContent);
+      expect(parsedColors).toHaveProperty('entries');
+      expect(parsedColors.entries[0].name).toBe('blue');
     });
   });
 });

@@ -5,7 +5,7 @@ Download datasources and their entries from your Storyblok space.
 ## Basic Usage
 
 ```sh
-monoblok datasources pull --space <SPACE_ID>
+storyblok datasources pull --space <SPACE_ID>
 ```
 
 This will download all datasources and their entries to a consolidated file:
@@ -22,7 +22,7 @@ This will download all datasources and their entries to a consolidated file:
 ## Pull a Single Datasource
 
 ```sh
-monoblok datasources pull <DATASOURCE_NAME> --space <SPACE_ID>
+storyblok datasources pull <DATASOURCE_NAME> --space <SPACE_ID>
 ```
 
 This will download a single datasource and its entries to:
@@ -47,7 +47,7 @@ This will download a single datasource and its entries to:
 
 ### Pull all datasources with default settings
 ```sh
-monoblok datasources pull --space 12345
+storyblok datasources pull --space 12345
 ```
 Generates:
 ```
@@ -59,7 +59,7 @@ Generates:
 
 ### Pull datasources with a custom file name
 ```sh
-monoblok datasources pull --space 12345 --filename my-datasources
+storyblok datasources pull --space 12345 --filename my-datasources
 ```
 Generates:
 ```
@@ -71,7 +71,7 @@ Generates:
 
 ### Pull datasources with custom suffix
 ```sh
-monoblok datasources pull --space 12345 --suffix dev
+storyblok datasources pull --space 12345 --suffix dev
 ```
 Generates:
 ```
@@ -83,7 +83,7 @@ Generates:
 
 ### Pull datasources to separate files
 ```sh
-monoblok datasources pull --space 12345 --separate-files
+storyblok datasources pull --space 12345 --separate-files
 ```
 Generates:
 ```
@@ -96,7 +96,7 @@ Generates:
 
 ### Pull datasources to a custom path
 ```sh
-monoblok datasources pull --space 12345 --path ./backup
+storyblok datasources pull --space 12345 --path ./backup
 ```
 Generates:
 ```

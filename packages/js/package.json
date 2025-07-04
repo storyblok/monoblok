@@ -44,6 +44,7 @@
     "cy:open": "cypress open"
   },
   "dependencies": {
+    "@storyblok/bridge": "workspace:*",
     "@storyblok/richtext": "workspace:*",
     "storyblok-js-client": "workspace:*"
   },
@@ -79,6 +80,7 @@
   "nx": {
     "implicitDependencies": [
       "!@storyblok/playground-*",
+      "@storyblok/bridge",
       "storyblok-js-client"
     ]
   }

@@ -1,0 +1,59 @@
+{
+  "name": "@storyblok/bridge",
+  "type": "module",
+  "version": "1.0.0",
+  "private": false,
+  "packageManager": "pnpm@10.2.0",
+  "description": "TypeScript definitions for the official Storyblok Visual Editor Bridge (CDN script). Provides enhanced type safety and IntelliSense support for the bridge loaded from https://app.storyblok.com/f/storyblok-v2-latest.js",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/bridge#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/bridge"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "storyblok-js-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@types/node": "^22.15.18",
+    "eslint": "^9.26.0",
+    "typescript": "5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.3"
+  },
+  "keywords": [
+    "storyblok",
+    "bridge",
+    "visual-editor",
+    "typescript",
+    "types",
+    "definitions",
+    "cdn",
+    "companion"
+  ]
+}

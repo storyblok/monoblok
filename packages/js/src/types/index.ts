@@ -4,6 +4,7 @@ import type {
   ISbStoryData,
 } from 'storyblok-js-client';
 import type StoryblokJSClient from 'storyblok-js-client';
+import type { StoryblokBridgeConfigV2, StoryblokBridgeV2 } from '@storyblok/bridge';
 
 export type StoryblokClient = StoryblokJSClient;
 
@@ -51,31 +52,11 @@ export interface ISbEventPayload<S extends ISbComponentType<string> = any> {
   reload?: boolean;
 }
 
-// TODO: temporary till the right bridge types are updated on storyblok-js-client
-export interface StoryblokBridgeConfigV2 {
-  resolveRelations?: string | string[];
-  customParent?: string;
-  preventClicks?: boolean;
-  language?: string;
-  resolveLinks?: 'url' | 'story' | '0' | '1' | 'link';
-}
-
-export interface StoryblokBridgeV2 {
-  pingEditor: (event: any) => void;
-  isInEditor: () => boolean;
-  enterEditmode: () => void;
-  on: (
-    event:
-      | 'customEvent'
-      | 'published'
-      | 'input'
-      | 'change'
-      | 'unpublished'
-      | 'enterEditmode'
-      | string[],
-    callback: (payload?: ISbEventPayload) => void
-  ) => void;
-}
+// Re-export bridge types from @storyblok/bridge
+export type {
+  StoryblokBridgeConfigV2,
+  StoryblokBridgeV2,
+} from '@storyblok/bridge';
 
 export type {
   ArrayFn,

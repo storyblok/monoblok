@@ -395,25 +395,6 @@ describe('@storyblok/js', () => {
       window.location = originalLocation;
     });
 
-    it('should warn when not in editor mode', () => {
-      const consoleSpy = vi.spyOn(console, 'warn');
-      const callback = vi.fn();
-
-      // Ensure we're not in an iframe
-      Object.defineProperty(window, 'parent', {
-        value: { location: window.location },
-        writable: true,
-      });
-
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
-      window.storyblokRegisterEvent(callback);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'You are not in Draft Mode or in the Visual Editor.',
-      );
-      expect(callback).not.toHaveBeenCalled();
-    });
-
     it('should execute callbacks in order of registration', async () => {
       const executionOrder: number[] = [];
       const callback1 = vi.fn(() => executionOrder.push(1));

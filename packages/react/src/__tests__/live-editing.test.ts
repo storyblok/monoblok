@@ -1,61 +1,112 @@
-import { describe, expect, it, vi } from 'vitest';
-import StoryblokLiveEditing from '../rsc/live-editing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import React from 'react';
 import type { ISbStoryData } from '@storyblok/js';
 
-// Mock dependencies
+// Import after mocks
+import StoryblokLiveEditing from '../rsc/live-editing';
+import { isBridgeLoaded, isVisualEditor } from '../utils';
+import { loadStoryblokBridge } from '@storyblok/js';
+
+// Mock dependencies - need to define functions inline to avoid hoisting issues
 vi.mock('../rsc/live-edit-update-action', () => ({
   liveEditUpdateAction: vi.fn(),
 }));
 
 vi.mock('@storyblok/js', () => ({
   registerStoryblokBridge: vi.fn(),
+  loadStoryblokBridge: vi.fn(() => Promise.resolve()),
 }));
 
-// Mock window for testing
-const originalWindow = globalThis.window;
-beforeEach(() => {
-  // Reset the window mock
-  vi.stubGlobal('window', {
-    storyblokRegisterEvent: undefined,
-    location: {
-      search: '',
-      pathname: '/',
-    },
-  });
-});
-
-afterEach(() => {
-  // Restore original window
-  vi.stubGlobal('window', originalWindow);
-});
+vi.mock('../utils', () => ({
+  isVisualEditor: vi.fn(() => false),
+  isBridgeLoaded: vi.fn(() => false),
+}));
 
 describe('storyblokLiveEditing', () => {
-  it('should return null when not in visual editor', () => {
-    const component = StoryblokLiveEditing({
-      story: { uuid: '123', id: 456 } as ISbStoryData,
-      bridgeOptions: {},
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isVisualEditor).mockReturnValue(false);
+    vi.mocked(isBridgeLoaded).mockReturnValue(false);
+
+    // Mock window
+    vi.stubGlobal('window', {
+      storyblokRegisterEvent: undefined,
+      location: {
+        search: '',
+        pathname: '/',
+      },
+      self: {},
+      top: {},
     });
-    expect(component).toBeNull();
   });
 
-  it('should pass story id to useEffect dependencies', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('should return null when not in visual editor', () => {
+    vi.mocked(isVisualEditor).mockReturnValue(false);
+
+    const { container } = render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { uuid: '123', id: 456 } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+
+    expect(container.firstChild).toBeNull();
+    expect(loadStoryblokBridge).not.toHaveBeenCalled();
+  });
+
+  it('should load bridge and register when in visual editor', async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(false);
+
     const story = { id: 789, uuid: 'test-uuid' } as ISbStoryData;
 
-    // This test is minimal because we can't easily test React hooks in unit tests
-    // Instead, we just verify the component doesn't throw errors with valid props
-    const renderFn = () => {
-      StoryblokLiveEditing({ story, bridgeOptions: { resolveRelations: ['test.relation'] } });
-    };
+    const { container } = render(
+      React.createElement(StoryblokLiveEditing, {
+        story,
+        bridgeOptions: { resolveRelations: ['test.relation'] },
+      }),
+    );
 
-    expect(renderFn).not.toThrow();
+    // Component should return null but load bridge
+    expect(container.firstChild).toBeNull();
+
+    // Wait for async bridge loading
+    await vi.waitFor(() => {
+      expect(loadStoryblokBridge).toHaveBeenCalled();
+    });
   });
 
   it('should handle null story gracefully', () => {
-    // @ts-expect-error - Testing invalid input
-    const renderFn = () => StoryblokLiveEditing({ story: null, bridgeOptions: {} });
+    vi.mocked(isVisualEditor).mockReturnValue(false);
 
-    // Should not throw an error with null story
-    expect(renderFn).not.toThrow();
-    expect(renderFn()).toBeNull();
+    const { container } = render(
+      React.createElement(StoryblokLiveEditing, {
+        // @ts-expect-error - Testing invalid input
+        story: null,
+        bridgeOptions: {},
+      }),
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('should not load bridge when already loaded', () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+
+    render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { id: 123, uuid: 'test' } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+
+    // Since bridge is already loaded, we should not call loadStoryblokBridge
+    expect(loadStoryblokBridge).not.toHaveBeenCalled();
   });
 });

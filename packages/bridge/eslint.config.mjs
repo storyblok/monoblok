@@ -6,4 +6,4 @@ export default storyblokLintConfig({
     'ts/no-unsafe-function-type': 'off',
     'jsonc/sort-keys': 'off',
   },
-}); 
+});

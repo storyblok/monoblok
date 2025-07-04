@@ -7,6 +7,7 @@ export const commands = {
   LANGUAGES: 'languages',
   MIGRATIONS: 'Migrations',
   TYPES: 'Types',
+  DATASOURCES: 'Datasources',
 } as const;
 
 export const colorPalette = {
@@ -22,6 +23,7 @@ export const colorPalette = {
   GROUPS: '#4ade80',
   TAGS: '#fbbf24',
   PRESETS: '#a855f7',
+  DATASOURCES: '#4ade80',
 } as const;
 
 export interface ReadonlyArray<T> {

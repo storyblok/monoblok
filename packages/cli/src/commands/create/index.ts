@@ -45,6 +45,10 @@ export const createCommand = program
       verbose: !isVitest,
     });
 
+    const spinnerSpace = new Spinner({
+      verbose: !isVitest,
+    });
+
     try {
       spinnerBlueprints.start('Fetching starter blueprints...');
       const blueprints = await fetchBlueprintRepositories();
@@ -114,11 +118,6 @@ export const createCommand = program
       await generateProject(technologyBlueprint!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
-      // Create a space for the project
-      const spinnerSpace = new Spinner({
-        verbose: !isVitest,
-      });
-
       let createdSpace;
       if (!options.skipSpace) {
         try {
@@ -180,6 +179,8 @@ export const createCommand = program
 `);
     }
     catch (error) {
+      spinnerSpace.failed();
+      spinnerBlueprints.failed();
       konsola.br();
       handleError(error as Error, verbose);
     }

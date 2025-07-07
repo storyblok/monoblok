@@ -93,19 +93,21 @@ describe('graph Integration Tests', () => {
             name: 'shared-tag',
             object_type: 'component' as const,
           }]]),
-          presets: new Map([['shared-preset', {
-            id: 800,
-            name: 'shared-preset',
-            preset: { title: 'Test Preset' },
-            component_id: 700, // Different component ID in target
-            space_id: 2,
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            image: '',
-            color: '',
-            icon: '',
-            description: '',
-          }]]),
+          presets: new Map([
+            ['shared-component:shared-preset', { // Use hierarchical key: component.name:preset.name (parent:child)
+              id: 800,
+              name: 'shared-preset',
+              preset: { title: 'Test Preset' },
+              component_id: 700, // Different component ID in target
+              space_id: 2,
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            }],
+          ]),
         },
       };
 
@@ -117,11 +119,11 @@ describe('graph Integration Tests', () => {
       expect(graph.nodes.has('tag:100')).toBe(true);
       expect(graph.nodes.has('group:shared-group-uuid')).toBe(true);
       expect(graph.nodes.has('component:shared-component')).toBe(true);
-      expect(graph.nodes.has('preset:shared-preset')).toBe(true);
+      expect(graph.nodes.has('preset:400')).toBe(true);
 
       // Check dependencies are correctly established
       const componentNode = graph.nodes.get('component:shared-component')!;
-      const presetNode = graph.nodes.get('preset:shared-preset')!;
+      const presetNode = graph.nodes.get('preset:400')!;
       const tagNode = graph.nodes.get('tag:100')!;
       const groupNode = graph.nodes.get('group:shared-group-uuid')!;
 
@@ -274,7 +276,7 @@ describe('graph Integration Tests', () => {
       };
 
       const graph = buildDependencyGraph({ spaceState });
-      const results = await processAllResources(graph, 'test-space', 5, true);
+      const results = await processAllResources(graph, 'test-space', 5);
 
       // All resources should be processed successfully
       expect(results.successful).toHaveLength(4);
@@ -379,7 +381,7 @@ describe('graph Integration Tests', () => {
       };
 
       const graph = buildDependencyGraph({ spaceState });
-      await processAllResources(graph, 'test-space', 5, true);
+      await processAllResources(graph, 'test-space', 5);
 
       // Verify that schema references were resolved
       const complexComponentCall = (upsertComponent as any).mock.calls.find(
@@ -394,6 +396,260 @@ describe('graph Integration Tests', () => {
 
       // Group whitelist should remain as UUID (UUIDs don't change)
       expect(schemaContent.component_group_whitelist).toEqual(['schema-group-uuid']);
+    });
+  });
+
+  describe('preset Uniqueness Issues', () => {
+    it('should correctly handle presets with the same name but different IDs', () => {
+      // Presets are nested resources under components - they can have the same name across different components
+      // but are unique by ID globally, and by name within each component context
+      const spaceState: SpaceDataState = {
+        local: {
+          components: [{
+            id: 1,
+            name: 'test-component',
+            display_name: 'Test Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }],
+          groups: [],
+          internalTags: [],
+          presets: [
+            {
+              id: 100,
+              name: 'shared-preset-name', // Same name
+              preset: { title: 'Preset Version 1' },
+              component_id: 1,
+              space_id: 1,
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+            {
+              id: 200,
+              name: 'shared-preset-name', // Same name, different ID
+              preset: { title: 'Preset Version 2' },
+              component_id: 1,
+              space_id: 1,
+              created_at: '2023-01-02T00:00:00.000Z',
+              updated_at: '2023-01-02T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+          ],
+        },
+        target: {
+          components: new Map([['test-component', {
+            id: 10,
+            name: 'test-component',
+            display_name: 'Test Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }]]),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Should have 1 component + 2 presets = 3 nodes
+      expect(graph.nodes.size).toBe(3);
+      expect(graph.nodes.has('component:test-component')).toBe(true);
+      expect(graph.nodes.has('preset:100')).toBe(true);
+      expect(graph.nodes.has('preset:200')).toBe(true);
+
+      const presetNode1 = graph.nodes.get('preset:100')!;
+      const presetNode2 = graph.nodes.get('preset:200')!;
+
+      // Both presets should have their correct IDs and data
+      expect(presetNode1.sourceData.id).toBe(100);
+      expect(presetNode1.sourceData.preset.title).toBe('Preset Version 1');
+      expect(presetNode2.sourceData.id).toBe(200);
+      expect(presetNode2.sourceData.preset.title).toBe('Preset Version 2');
+
+      // Both presets can have the same display name - this is now allowed
+      expect(presetNode1.name).toBe('shared-preset-name');
+      expect(presetNode2.name).toBe('shared-preset-name');
+    });
+
+    it('should create separate nodes for presets with duplicate names', () => {
+      // Edge case: Multiple presets with the same name within the same component
+      // While presets should be uniquely named within a component, this tests graceful handling of invalid data
+      const spaceState: SpaceDataState = {
+        local: {
+          components: [{
+            id: 1,
+            name: 'test-component',
+            display_name: 'Test Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }],
+          groups: [],
+          internalTags: [],
+          presets: [
+            {
+              id: 100,
+              name: 'duplicate-name',
+              preset: { title: 'First Preset' },
+              component_id: 1,
+              space_id: 1,
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+            {
+              id: 200,
+              name: 'duplicate-name',
+              preset: { title: 'Second Preset' },
+              component_id: 1,
+              space_id: 1,
+              created_at: '2023-01-02T00:00:00.000Z',
+              updated_at: '2023-01-02T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+          ],
+        },
+        target: {
+          components: new Map([['test-component', {
+            id: 10,
+            name: 'test-component',
+            display_name: 'Test Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }]]),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Should have 1 component + 2 presets = 3 nodes
+      expect(graph.nodes.size).toBe(3);
+      expect(graph.nodes.has('component:test-component')).toBe(true);
+      expect(graph.nodes.has('preset:100')).toBe(true);
+      expect(graph.nodes.has('preset:200')).toBe(true);
+
+      const presetNode1 = graph.nodes.get('preset:100')!;
+      const presetNode2 = graph.nodes.get('preset:200')!;
+
+      // Both presets should have their correct IDs and data
+      expect(presetNode1.sourceData.id).toBe(100);
+      expect(presetNode1.sourceData.preset.title).toBe('First Preset');
+      expect(presetNode2.sourceData.id).toBe(200);
+      expect(presetNode2.sourceData.preset.title).toBe('Second Preset');
+
+      // Both presets can have the same display name - this is now allowed
+      expect(presetNode1.name).toBe('duplicate-name');
+      expect(presetNode2.name).toBe('duplicate-name');
+    });
+
+    it('should skip presets when their components are missing to prevent key inconsistencies', () => {
+      // This test demonstrates data integrity: presets are nested resources that must have valid parent components
+      // When a preset references a missing component, it's skipped to maintain the hierarchical relationship
+      const spaceState: SpaceDataState = {
+        local: {
+          components: [{
+            id: 1,
+            name: 'existing-component',
+            display_name: 'Existing Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }],
+          groups: [],
+          internalTags: [],
+          presets: [
+            {
+              id: 100,
+              name: 'valid-preset',
+              preset: { title: 'Valid Preset' },
+              component_id: 1, // This component exists
+              space_id: 1,
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+            {
+              id: 200,
+              name: 'orphaned-preset',
+              preset: { title: 'Orphaned Preset' },
+              component_id: 999, // This component does NOT exist
+              space_id: 1,
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              image: '',
+              color: '',
+              icon: '',
+              description: '',
+            },
+          ],
+        },
+        target: {
+          components: new Map([['existing-component', {
+            id: 10,
+            name: 'existing-component',
+            display_name: 'Existing Component',
+            created_at: '2023-01-01T00:00:00.000Z',
+            updated_at: '2023-01-01T00:00:00.000Z',
+            schema: {},
+            color: null,
+            internal_tags_list: [],
+            internal_tag_ids: [],
+          }]]),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Should have 1 component + 1 valid preset = 2 nodes
+      // The orphaned preset should be skipped with a warning
+      expect(graph.nodes.size).toBe(2);
+      expect(graph.nodes.has('component:existing-component')).toBe(true);
+      expect(graph.nodes.has('preset:100')).toBe(true); // Valid preset included
+      expect(graph.nodes.has('preset:200')).toBe(false); // Orphaned preset skipped
+
+      const validPresetNode = graph.nodes.get('preset:100')!;
+      expect(validPresetNode.sourceData.name).toBe('valid-preset');
     });
   });
 

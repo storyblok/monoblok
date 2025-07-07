@@ -1,52 +1,56 @@
 import { storyblokInit as sbInit } from '@storyblok/js';
 
 import type {
-  SbReactComponentsMap,
   SbReactSDKOptions,
   StoryblokClient,
 } from '@/types';
 
+import {
+  getComponent,
+  getCustomFallbackComponent,
+  getEnableFallbackComponent,
+  getStoryblokApiInstance,
+  setComponents,
+  setCustomFallbackComponent,
+  setEnableFallbackComponent,
+  setStoryblokApiInstance,
+} from '../shared/state';
+
 export * from '../types';
 
-let storyblokApiInstance: StoryblokClient = null;
-let componentsMap: SbReactComponentsMap = {};
-let enableFallbackComponent: boolean = false;
-let customFallbackComponent: React.ElementType = null;
-
 export const useStoryblokApi = (): StoryblokClient => {
-  if (!storyblokApiInstance) {
+  const instance = getStoryblokApiInstance();
+  if (!instance) {
     console.error(
       'You can\'t use getStoryblokApi if you\'re not loading apiPlugin.',
     );
   }
 
-  return storyblokApiInstance;
+  return instance;
 };
 
-export const setComponents = (newComponentsMap: SbReactComponentsMap) => {
-  componentsMap = newComponentsMap;
-  return componentsMap;
-};
+export { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, setComponents };
 
-export const getComponent = (componentKey: string) => {
-  if (!componentsMap[componentKey]) {
-    console.error(`Component ${componentKey} doesn't exist.`);
-    return false;
+export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => StoryblokClient) => {
+  const existingInstance = getStoryblokApiInstance();
+  if (existingInstance) {
+    return () => existingInstance;
   }
 
-  return componentsMap[componentKey];
-};
-
-export const getEnableFallbackComponent = () => enableFallbackComponent;
-export const getCustomFallbackComponent = () => customFallbackComponent;
-
-export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}) => {
   const { storyblokApi } = sbInit(pluginOptions);
-  storyblokApiInstance = storyblokApi;
+  setStoryblokApiInstance(storyblokApi);
 
-  componentsMap = pluginOptions.components;
-  enableFallbackComponent = pluginOptions.enableFallbackComponent;
-  customFallbackComponent = pluginOptions.customFallbackComponent;
+  if (pluginOptions.components) {
+    setComponents(pluginOptions.components);
+  }
+  if (pluginOptions.enableFallbackComponent !== undefined) {
+    setEnableFallbackComponent(pluginOptions.enableFallbackComponent);
+  }
+  if (pluginOptions.customFallbackComponent) {
+    setCustomFallbackComponent(pluginOptions.customFallbackComponent);
+  }
+
+  return () => storyblokApi;
 };
 
 export { useStoryblokApi as getStoryblokApi };

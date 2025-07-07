@@ -1,10 +1,10 @@
 import React from 'react';
-import StoryblokServerComponent from '../server/server-component';
+import StoryblokServerComponent from './server-component';
 import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/js';
 import { BlockTypes, richTextResolver } from '@storyblok/js';
 
 /**
- * RSC-specific component resolver that uses shared StoryblokServerComponent
+ * Shared component resolver for server contexts
  */
 export function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement {
   const body = node?.attrs?.body;
@@ -24,7 +24,7 @@ export function useStoryblokServerRichText(
       key: Math.random().toString(36).substring(2, 15),
     }, text),
     resolvers: {
-      [BlockTypes.COMPONENT]: componentResolver, // ✅ Uses shared component resolver
+      [BlockTypes.COMPONENT]: componentResolver,
       ...options.resolvers,
     },
 

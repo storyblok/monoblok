@@ -1,72 +1,57 @@
 import { storyblokInit as sbInit } from '@storyblok/js';
 import type {
-  ISbStoryData,
-  SbReactComponentsMap,
   SbReactSDKOptions,
   StoryblokClient,
 } from '@/types';
 
-let storyblokApiInstance: StoryblokClient = null;
-const componentsMap: Map<string, React.ElementType> = new Map<string, React.ElementType>();
-let enableFallbackComponent: boolean = false;
-let customFallbackComponent: React.ElementType = null;
-
-declare global {
-  // eslint-disable-next-line no-var, vars-on-top
-  var storyCache: Map<string, ISbStoryData>;
-}
-
-globalThis.storyCache = !globalThis.storyCache ? new Map<string, ISbStoryData>() : globalThis.storyCache;
+import {
+  getComponent,
+  getCustomFallbackComponent,
+  getEnableFallbackComponent,
+  getStoryblokApiInstance,
+  setComponents,
+  setCustomFallbackComponent,
+  setEnableFallbackComponent,
+  setStoryblokApiInstance,
+} from '../shared/state';
 
 export const useStoryblokApi = (): StoryblokClient => {
-  if (!storyblokApiInstance) {
+  const instance = getStoryblokApiInstance();
+  if (!instance) {
     console.error(
       'You can\'t use getStoryblokApi if you\'re not loading apiPlugin.',
     );
   }
 
-  return storyblokApiInstance;
+  return instance;
 };
 
-export const setComponents = (newComponentsMap: SbReactComponentsMap) => {
-  Object.entries(newComponentsMap).forEach(([key, value]) => {
-    componentsMap.set(key, value);
-  });
-  return componentsMap;
-};
-
-export const getComponent = (componentKey: string): React.ElementType | false => {
-  if (!componentsMap.has(componentKey)) {
-    console.error(`Component ${componentKey} doesn't exist.`);
-    return false;
-  }
-
-  return componentsMap.get(componentKey);
-};
-
-export const getEnableFallbackComponent = () => enableFallbackComponent;
-export const getCustomFallbackComponent = () => customFallbackComponent;
+export { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, setComponents };
 
 export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => StoryblokClient) => {
-  if (storyblokApiInstance) {
-    return () => storyblokApiInstance;
+  const existingInstance = getStoryblokApiInstance();
+  if (existingInstance) {
+    return () => existingInstance;
   }
 
   const { storyblokApi } = sbInit(pluginOptions);
-  storyblokApiInstance = storyblokApi;
+  setStoryblokApiInstance(storyblokApi);
 
   if (pluginOptions.components) {
     setComponents(pluginOptions.components);
   }
-  enableFallbackComponent = pluginOptions.enableFallbackComponent;
-  customFallbackComponent = pluginOptions.customFallbackComponent;
+  if (pluginOptions.enableFallbackComponent !== undefined) {
+    setEnableFallbackComponent(pluginOptions.enableFallbackComponent);
+  }
+  if (pluginOptions.customFallbackComponent) {
+    setCustomFallbackComponent(pluginOptions.customFallbackComponent);
+  }
 
   return () => storyblokApi;
 };
 
 export * from '../types';
 export { useStoryblokApi as getStoryblokApi };
-export { default as StoryblokServerComponent } from './server-component';
 
 export {
   apiPlugin,

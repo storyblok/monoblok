@@ -1,7 +1,6 @@
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { handleError, isVitest, konsola } from '../../../utils';
 import { getProgram } from '../../../program';
-import { session } from '../../../session';
 import { Spinner } from '@topcli/spinner';
 import { readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
@@ -27,17 +26,6 @@ typesCommand
 
     // Command options
     const { space, path } = typesCommand.opts();
-
-    const { state, initializeSession } = session();
-    await initializeSession();
-
-    if (!requireAuthentication(state, verbose)) {
-      return;
-    }
-    if (!space) {
-      handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      return;
-    }
 
     const spinner = new Spinner({
       verbose: !isVitest,

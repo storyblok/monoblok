@@ -22,7 +22,7 @@ export const generateProject = async (
 ): Promise<void> => {
   try {
     const projectPath = path.join(targetPath, projectName);
-    const templateRepo = `storyblok/blueprint-starter-${blueprint}`;
+    const templateRepo = `storyblok/blueprint-core-${blueprint}`;
 
     // Check if directory already exists
     try {
@@ -160,7 +160,7 @@ export const extractPortFromTopics = (topics: string[]): string => {
  * @returns Formatted blueprint object
  */
 export const repositoryToBlueprint = (repo: any): DynamicBlueprint => {
-  const technology = repo.name.replace('blueprint-starter-', '');
+  const technology = repo.name.replace('blueprint-core-', '');
   const port = extractPortFromTopics(repo.topics || []);
 
   return {
@@ -179,7 +179,7 @@ export const fetchBlueprintRepositories = async () => {
 
     // Search for repositories matching the blueprint pattern
     const { data } = await octokit.rest.search.repos({
-      q: 'org:storyblok blueprint-starter-',
+      q: 'org:storyblok blueprint-core-',
       sort: 'updated',
       order: 'desc',
       per_page: 100,
@@ -187,7 +187,7 @@ export const fetchBlueprintRepositories = async () => {
 
     // Filter and convert repositories to blueprints
     const blueprints = data.items
-      .filter(repo => repo.name.startsWith('blueprint-starter-'))
+      .filter(repo => repo.name.startsWith('blueprint-core-'))
       .map(repositoryToBlueprint)
       .sort((a, b) => a.name.localeCompare(b.name));
 

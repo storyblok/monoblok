@@ -65,7 +65,7 @@ describe('create actions', () => {
       expect(mockedFsAccess).toHaveBeenCalledWith('/test/path/my-project');
       expect(mockedSpawn).toHaveBeenCalledWith(
         'npx',
-        ['degit', 'storyblok/blueprint-starter-react', '/test/path/my-project'],
+        ['degit', 'storyblok/blueprint-core-react', '/test/path/my-project'],
         {
           stdio: 'inherit',
           shell: true,
@@ -313,9 +313,9 @@ describe('repositoryToBlueprint', () => {
   it('should convert a repo object to a DynamicBlueprint', () => {
     // Mock repo object with expected fields
     const repo = {
-      name: 'blueprint-starter-vue',
+      name: 'blueprint-core-vue',
       topics: ['port-5173'],
-      clone_url: 'https://github.com/storyblok/blueprint-starter-vue.git',
+      clone_url: 'https://github.com/storyblok/blueprint-core-vue.git',
       description: 'A Vue starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
@@ -323,7 +323,7 @@ describe('repositoryToBlueprint', () => {
     expect(blueprint).toEqual({
       name: 'Vue',
       value: 'vue',
-      template: 'https://github.com/storyblok/blueprint-starter-vue.git',
+      template: 'https://github.com/storyblok/blueprint-core-vue.git',
       location: 'https://localhost:5173/',
       description: 'A Vue starter',
       updated_at: '2024-01-01T00:00:00Z',
@@ -332,9 +332,9 @@ describe('repositoryToBlueprint', () => {
 
   it('should fallback to default port if no port topic', () => {
     const repo = {
-      name: 'blueprint-starter-react',
+      name: 'blueprint-core-react',
       topics: [],
-      clone_url: 'https://github.com/storyblok/blueprint-starter-react.git',
+      clone_url: 'https://github.com/storyblok/blueprint-core-react.git',
       description: 'A React starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
@@ -348,16 +348,16 @@ describe('fetchBlueprintRepositories', () => {
     // Mock Octokit and its response
     const mockRepos = [
       {
-        name: 'blueprint-starter-vue',
+        name: 'blueprint-core-vue',
         topics: ['port-5173'],
-        clone_url: 'https://github.com/storyblok/blueprint-starter-vue.git',
+        clone_url: 'https://github.com/storyblok/blueprint-core-vue.git',
         description: 'A Vue starter',
         updated_at: '2024-01-01T00:00:00Z',
       },
       {
-        name: 'blueprint-starter-react',
+        name: 'blueprint-core-react',
         topics: ['port-3000'],
-        clone_url: 'https://github.com/storyblok/blueprint-starter-react.git',
+        clone_url: 'https://github.com/storyblok/blueprint-core-react.git',
         description: 'A React starter',
         updated_at: '2024-01-02T00:00:00Z',
       },
@@ -387,13 +387,13 @@ describe('fetchBlueprintRepositories', () => {
     // Verify GitHub API was called correctly
     expect(mockedCreateOctokit).toHaveBeenCalled();
     expect(mockOctokit.rest.search.repos).toHaveBeenCalledWith({
-      q: 'org:storyblok blueprint-starter-',
+      q: 'org:storyblok blueprint-core-',
       sort: 'updated',
       order: 'desc',
       per_page: 100,
     });
 
-    // Only blueprint-starter-* repos should be mapped and sorted alphabetically
+    // Only blueprint-core-* repos should be mapped and sorted alphabetically
     expect(blueprints).toHaveLength(2);
     expect(blueprints?.[0]?.name).toBe('React'); // Sorted alphabetically
     expect(blueprints?.[1]?.name).toBe('Vue');
@@ -402,7 +402,7 @@ describe('fetchBlueprintRepositories', () => {
     expect(blueprints?.[0]).toEqual({
       name: 'React',
       value: 'react',
-      template: 'https://github.com/storyblok/blueprint-starter-react.git',
+      template: 'https://github.com/storyblok/blueprint-core-react.git',
       location: 'https://localhost:3000/',
       description: 'A React starter',
       updated_at: '2024-01-02T00:00:00Z',

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToBlueprint } from './actions';
 import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
@@ -16,11 +16,25 @@ vi.mock('node:fs/promises', () => ({
 }));
 vi.mock('open');
 vi.mock('../../utils/filesystem');
+// Mock github module for fetchBlueprintRepositories tests
+vi.mock('../../github', () => ({
+  createOctokit: vi.fn(),
+}));
+// Mock utils module for error handling
+vi.mock('../../utils', () => ({
+  handleAPIError: vi.fn(),
+}));
 
 const mockedSpawn = vi.mocked(spawn);
 const mockedOpen = open as MockedFunction<typeof open>;
 const mockedSaveToFile = filesystem.saveToFile as MockedFunction<typeof filesystem.saveToFile>;
 const mockedFsAccess = vi.mocked(fs.access);
+
+// Import the mocked modules
+const { createOctokit } = await import('../../github');
+const { handleAPIError } = await import('../../utils');
+const mockedCreateOctokit = vi.mocked(createOctokit);
+const mockedHandleAPIError = vi.mocked(handleAPIError);
 
 describe('create actions', () => {
   beforeEach(() => {
@@ -266,5 +280,149 @@ describe('create actions', () => {
 
       expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblokchina.cn/#/me/spaces/98765/dashboard');
     });
+  });
+});
+
+describe('extractPortFromTopics', () => {
+  it('should extract a valid port from topics', () => {
+    // This topic array contains a valid port topic
+    const topics = ['foo', 'bar', 'port-8080', 'baz'];
+    expect(extractPortFromTopics(topics)).toBe('8080');
+  });
+
+  it('should return default port if no port topic is found', () => {
+    // No port topic present, should fallback to 3000
+    const topics = ['foo', 'bar', 'baz'];
+    expect(extractPortFromTopics(topics)).toBe('3000');
+  });
+
+  it('should return default port if port is invalid', () => {
+    // Port topic is not a valid number
+    const topics = ['port-abc', 'foo'];
+    expect(extractPortFromTopics(topics)).toBe('3000');
+  });
+
+  it('should return default port if port is out of range', () => {
+    // Port is too high
+    const topics = ['port-70000'];
+    expect(extractPortFromTopics(topics)).toBe('3000');
+  });
+});
+
+describe('repositoryToBlueprint', () => {
+  it('should convert a repo object to a DynamicBlueprint', () => {
+    // Mock repo object with expected fields
+    const repo = {
+      name: 'blueprint-starter-vue',
+      topics: ['port-5173'],
+      clone_url: 'https://github.com/storyblok/blueprint-starter-vue.git',
+      description: 'A Vue starter',
+      updated_at: '2024-01-01T00:00:00Z',
+    };
+    const blueprint = repositoryToBlueprint(repo);
+    expect(blueprint).toEqual({
+      name: 'Vue',
+      value: 'vue',
+      template: 'https://github.com/storyblok/blueprint-starter-vue.git',
+      location: 'https://localhost:5173/',
+      description: 'A Vue starter',
+      updated_at: '2024-01-01T00:00:00Z',
+    });
+  });
+
+  it('should fallback to default port if no port topic', () => {
+    const repo = {
+      name: 'blueprint-starter-react',
+      topics: [],
+      clone_url: 'https://github.com/storyblok/blueprint-starter-react.git',
+      description: 'A React starter',
+      updated_at: '2024-01-01T00:00:00Z',
+    };
+    const blueprint = repositoryToBlueprint(repo);
+    expect(blueprint.location).toBe('https://localhost:3000/');
+  });
+});
+
+describe('fetchBlueprintRepositories', () => {
+  it('should fetch and map repositories to blueprints', async () => {
+    // Mock Octokit and its response
+    const mockRepos = [
+      {
+        name: 'blueprint-starter-vue',
+        topics: ['port-5173'],
+        clone_url: 'https://github.com/storyblok/blueprint-starter-vue.git',
+        description: 'A Vue starter',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+      {
+        name: 'blueprint-starter-react',
+        topics: ['port-3000'],
+        clone_url: 'https://github.com/storyblok/blueprint-starter-react.git',
+        description: 'A React starter',
+        updated_at: '2024-01-02T00:00:00Z',
+      },
+      // Should be filtered out - not a blueprint
+      {
+        name: 'not-a-blueprint',
+        topics: [],
+        clone_url: '',
+        description: '',
+        updated_at: '',
+      },
+    ];
+
+    const mockOctokit = {
+      rest: {
+        search: {
+          repos: vi.fn().mockResolvedValue({ data: { items: mockRepos } }),
+        },
+      },
+    };
+
+    // Mock createOctokit to return our mockOctokit
+    mockedCreateOctokit.mockReturnValue(mockOctokit as any);
+
+    const blueprints = await fetchBlueprintRepositories();
+
+    // Verify GitHub API was called correctly
+    expect(mockedCreateOctokit).toHaveBeenCalled();
+    expect(mockOctokit.rest.search.repos).toHaveBeenCalledWith({
+      q: 'org:storyblok blueprint-starter-',
+      sort: 'updated',
+      order: 'desc',
+      per_page: 100,
+    });
+
+    // Only blueprint-starter-* repos should be mapped and sorted alphabetically
+    expect(blueprints).toHaveLength(2);
+    expect(blueprints?.[0]?.name).toBe('React'); // Sorted alphabetically
+    expect(blueprints?.[1]?.name).toBe('Vue');
+
+    // Verify blueprint structure
+    expect(blueprints?.[0]).toEqual({
+      name: 'React',
+      value: 'react',
+      template: 'https://github.com/storyblok/blueprint-starter-react.git',
+      location: 'https://localhost:3000/',
+      description: 'A React starter',
+      updated_at: '2024-01-02T00:00:00Z',
+    });
+  });
+
+  it('should handle errors and call handleAPIError', async () => {
+    // Mock createOctokit to throw an error
+    const octokitError = new Error('GitHub API error');
+    mockedCreateOctokit.mockImplementation(() => {
+      throw octokitError;
+    });
+
+    await fetchBlueprintRepositories();
+
+    // Verify error handling was called
+    expect(mockedHandleAPIError).toHaveBeenCalledWith(
+      'fetch_blueprints',
+      octokitError,
+      'Failed to fetch blueprints from GitHub',
+    );
   });
 });

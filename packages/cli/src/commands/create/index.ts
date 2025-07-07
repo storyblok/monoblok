@@ -2,10 +2,9 @@ import { handleError, isVitest, konsola, requireAuthentication, toHumanReadable 
 import { colorPalette, commands } from '../../constants';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
-import { blueprints } from './constants';
 import { session } from '../../session';
 import { input, select } from '@inquirer/prompts';
-import { createEnvFile, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
 import { createSpace } from '../spaces';
@@ -42,11 +41,26 @@ export const createCommand = program
       region,
     });
 
+    const spinnerBlueprints = new Spinner({
+      verbose: !isVitest,
+    });
+
     try {
+      spinnerBlueprints.start('Fetching starter blueprints...');
+      const blueprints = await fetchBlueprintRepositories();
+      spinnerBlueprints.succeed('Starter blueprints fetched successfully');
+
+      if (!blueprints) {
+        spinnerBlueprints.failed();
+        konsola.warn('No starter blueprints found. Please contact support@storyblok.com');
+        konsola.br();
+        return;
+      }
+
       // Validate blueprint if provided via flag
       let technologyBlueprint = blueprint;
       if (blueprint) {
-        const validBlueprints = Object.values(blueprints);
+        const validBlueprints = blueprints;
         const isValidBlueprint = validBlueprints.find(bp => bp.value === blueprint);
         if (!isValidBlueprint) {
           const validOptions = validBlueprints.map(bp => bp.value).join(', ');
@@ -61,7 +75,7 @@ export const createCommand = program
       if (!technologyBlueprint) {
         technologyBlueprint = await select({
           message: 'Please select the technology you would like to use:',
-          choices: Object.values(blueprints).map(blueprint => ({
+          choices: blueprints.map(blueprint => ({
             name: blueprint.name,
             value: blueprint.value,
           })),
@@ -109,9 +123,13 @@ export const createCommand = program
       if (!options.skipSpace) {
         try {
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+          // Find the selected blueprint from the dynamic blueprints array
+          const selectedBlueprint = blueprints.find(bp => bp.value === technologyBlueprint);
+          const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
+
           createdSpace = await createSpace({
             name: toHumanReadable(projectName),
-            domain: blueprints[technologyBlueprint.toUpperCase() as keyof typeof blueprints].location,
+            domain: blueprintDomain,
           });
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
         }

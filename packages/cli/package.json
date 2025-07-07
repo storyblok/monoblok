@@ -44,6 +44,7 @@
     "dotenv": "^16.5.0",
     "json-schema-to-typescript": "^15.0.4",
     "minimatch": "^10.0.3",
+    "octokit": "^5.0.3",
     "ohash": "^2.0.11",
     "open": "^10.1.2",
     "pathe": "^2.0.3",

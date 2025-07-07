@@ -23,6 +23,7 @@ export const API_ACTIONS = {
   pull_story: 'Failed to pull story',
   update_story: 'Failed to update story',
   create_space: 'Failed to create space',
+  fetch_blueprints: 'Failed to fetch blueprints from GitHub',
 } as const;
 
 export const API_ERRORS = {

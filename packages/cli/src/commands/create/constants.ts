@@ -47,3 +47,15 @@ export const blueprints = {
     location: 'https://localhost:8080/',
   },
 } as const;
+
+/**
+ * Interface for dynamic blueprints
+ */
+export interface DynamicBlueprint {
+  name: string;
+  value: string;
+  template: string;
+  location: string;
+  description?: string | null;
+  updated_at?: string;
+}

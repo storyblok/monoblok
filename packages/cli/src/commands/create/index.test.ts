@@ -6,7 +6,7 @@ import { input, select } from '@inquirer/prompts';
 import { createSpace } from '../spaces';
 import type { Space } from '../spaces/actions';
 import { mapiClient } from '../../api';
-import { createEnvFile, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import { blueprints } from './constants';
 
 // Mock all dependencies
@@ -15,6 +15,7 @@ vi.mock('./actions', () => ({
   createEnvFile: vi.fn(),
   generateSpaceUrl: vi.fn(),
   openSpaceInBrowser: vi.fn(),
+  fetchBlueprintRepositories: vi.fn(),
 }));
 
 vi.mock('../spaces', () => ({
@@ -126,6 +127,10 @@ describe('createCommand', () => {
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', './my-project', '--blueprint', 'react']);
 
@@ -149,6 +154,10 @@ describe('createCommand', () => {
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', '--blueprint', 'invalid-blueprint']);
 
@@ -172,6 +181,10 @@ describe('createCommand', () => {
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test']);
 
@@ -187,15 +200,17 @@ describe('createCommand', () => {
       vi.mocked(select).mockResolvedValue('vue');
       vi.mocked(input).mockResolvedValue('./my-vue-project');
 
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test']);
 
@@ -215,15 +230,16 @@ describe('createCommand', () => {
         return './valid-project';
       });
 
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test']);
 
@@ -238,12 +254,14 @@ describe('createCommand', () => {
 
   describe('project generation', () => {
     it('should generate project successfully and create all resources', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
@@ -281,6 +299,10 @@ describe('createCommand', () => {
     it('should handle project generation failure', async () => {
       const generateError = new Error('Failed to generate project');
       vi.mocked(generateProject).mockRejectedValue(generateError);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
@@ -290,7 +312,12 @@ describe('createCommand', () => {
     it('should handle space creation failure', async () => {
       const spaceError = new Error('Failed to create space');
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      // Use createMockSpace for consistency, even if not used in this test
       vi.mocked(createSpace).mockRejectedValue(spaceError);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
@@ -299,16 +326,18 @@ describe('createCommand', () => {
     });
 
     it('should handle .env file creation failure gracefully', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       const envError = new Error('Permission denied');
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockRejectedValue(envError);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
@@ -321,13 +350,15 @@ describe('createCommand', () => {
     });
 
     it('should handle browser opening failure gracefully', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       const browserError = new Error('Failed to open browser');
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockRejectedValue(browserError);
@@ -347,6 +378,10 @@ describe('createCommand', () => {
     it('should exit early if user is not authenticated', async () => {
       const { requireAuthentication } = await import('../../utils');
       vi.mocked(requireAuthentication).mockReturnValue(false);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
@@ -355,15 +390,16 @@ describe('createCommand', () => {
     });
 
     it('should initialize API client with correct credentials', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
@@ -382,15 +418,20 @@ describe('createCommand', () => {
       ['nuxt', 'NUXT'],
       ['next', 'NEXT'],
     ])('should handle %s blueprint correctly', async (blueprint, blueprintKey) => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Svelte', value: 'svelte', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Nuxt', value: 'nuxt', template: '', location: 'https://localhost:3000/', description: '', updated_at: '' },
+        { name: 'Next', value: 'next', template: '', location: 'https://localhost:3000/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', blueprint]);
 
@@ -404,15 +445,17 @@ describe('createCommand', () => {
 
   describe('path handling', () => {
     it('should resolve relative paths correctly', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', './projects/my-project', '--blueprint', 'react']);
 
@@ -421,15 +464,17 @@ describe('createCommand', () => {
     });
 
     it('should handle absolute paths correctly', async () => {
-      const mockSpace = {
-        id: 12345,
-        first_token: 'space-token-123',
-      };
+      // Use createMockSpace to ensure the mock matches the Space type
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', '/absolute/path/my-project', '--blueprint', 'react']);
 
@@ -440,6 +485,10 @@ describe('createCommand', () => {
   describe('skip space functionality', () => {
     it('should skip space creation when --skip-space flag is provided', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
 
@@ -465,6 +514,10 @@ describe('createCommand', () => {
       vi.mocked(select).mockResolvedValue('vue');
       vi.mocked(input).mockResolvedValue('./my-vue-project');
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', '--skip-space']);
 
@@ -487,6 +540,10 @@ describe('createCommand', () => {
 
     it('should still show appropriate messages when skipping space creation', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
 
@@ -512,6 +569,10 @@ describe('createCommand', () => {
     it('should handle project generation failure even when skipping space creation', async () => {
       const generateError = new Error('Failed to generate project');
       vi.mocked(generateProject).mockRejectedValue(generateError);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react', '--skip-space']);
 

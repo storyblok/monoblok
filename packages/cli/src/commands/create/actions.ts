@@ -5,6 +5,9 @@ import { saveToFile } from '../../utils/filesystem';
 import { appDomains, type RegionCode } from '../../constants';
 import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
 import open from 'open';
+import { createOctokit } from '../../github';
+import { handleAPIError } from '../../utils';
+import type { DynamicBlueprint } from './constants';
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -131,5 +134,67 @@ export const openSpaceInBrowser = async (spaceId: number, region: RegionCode): P
   }
   catch (error) {
     throw new Error(`Failed to open space in browser: ${(error as Error).message}`);
+  }
+};
+
+/**
+ * Extracts port from repository topics
+ * @param topics - Array of repository topics
+ * @returns Port number as string, defaults to '3000' if not found
+ */
+export const extractPortFromTopics = (topics: string[]): string => {
+  const portTopic = topics.find(topic => topic.startsWith('port-'));
+  if (portTopic) {
+    const port = portTopic.replace('port-', '');
+    // Validate that it's a valid port number
+    if (/^\d+$/.test(port) && Number.parseInt(port) > 0 && Number.parseInt(port) <= 65535) {
+      return port;
+    }
+  }
+  return '3000'; // Default fallback port
+};
+
+/**
+ * Converts a GitHub repository to the format expected by the CLI
+ * @param repo - GitHub repository data
+ * @returns Formatted blueprint object
+ */
+export const repositoryToBlueprint = (repo: any): DynamicBlueprint => {
+  const technology = repo.name.replace('blueprint-starter-', '');
+  const port = extractPortFromTopics(repo.topics || []);
+
+  return {
+    name: technology.charAt(0).toUpperCase() + technology.slice(1),
+    value: technology,
+    template: repo.clone_url,
+    location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
+    description: repo.description,
+    updated_at: repo.updated_at,
+  };
+};
+
+export const fetchBlueprintRepositories = async () => {
+  try {
+    const octokit = createOctokit();
+
+    // Search for repositories matching the blueprint pattern
+    const { data } = await octokit.rest.search.repos({
+      q: 'org:storyblok blueprint-starter-',
+      sort: 'updated',
+      order: 'desc',
+      per_page: 100,
+    });
+
+    // Filter and convert repositories to blueprints
+    const blueprints = data.items
+      .filter(repo => repo.name.startsWith('blueprint-starter-'))
+      .map(repositoryToBlueprint)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return blueprints;
+  }
+  catch (error) {
+    // Fallback to hardcoded blueprints if GitHub search fails
+    handleAPIError('fetch_blueprints', error as Error, 'Failed to fetch blueprints from GitHub');
   }
 };

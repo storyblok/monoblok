@@ -57,9 +57,24 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
   });
 
   // Create nodes for all presets with colocated target data
+  // Since presets are nested resources under components, create a component map for efficient lookups
+  const componentMap = new Map(spaceState.local.components.map(c => [c.id, c]));
+
   spaceState.local.presets.forEach((preset) => {
-    const nodeId = `preset:${preset.name}`;
-    const targetPreset = spaceState.target.presets.get(preset.name);
+    const nodeId = `preset:${preset.id}`;
+
+    // Find the parent component for this nested preset resource
+    const sourceComponent = componentMap.get(preset.component_id);
+    if (!sourceComponent) {
+      // Skip presets whose parent components are not available in local data
+      console.warn(`Warning: Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`);
+      return;
+    }
+
+    // Use hierarchical key: component.name:preset.name (parent:child)
+    const compositeKey = `${sourceComponent.name}:${preset.name}`;
+    const targetPreset = spaceState.target.presets.get(compositeKey);
+
     const targetData = targetPreset
       ? {
           resource: targetPreset,
@@ -102,7 +117,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
       // Find the preset by ID and create dependency
       const preset = spaceState.local.presets.find(p => p.id === component.preset_id);
       if (preset) {
-        const presetId = `preset:${preset.name}`;
+        const presetId = `preset:${preset.id}`;
         addDependency(componentId, presetId);
       }
     }
@@ -132,7 +147,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
 
   // Add preset dependencies on components
   spaceState.local.presets.forEach((preset) => {
-    const presetId = `preset:${preset.name}`;
+    const presetId = `preset:${preset.id}`;
 
     // Find the component this preset belongs to
     const component = spaceState.local.components.find(c => c.id === preset.component_id);
@@ -615,7 +630,7 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
       // Find the preset by ID and resolve to target preset ID
       const preset = this.findPresetById(this.sourceData.preset_id, graph);
       if (preset) {
-        const presetNodeId = `preset:${preset.name}`;
+        const presetNodeId = `preset:${preset.id}`;
         const presetNode = graph.nodes.get(presetNodeId);
 
         if (presetNode?.targetData) {
@@ -724,7 +739,7 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
   constructor(preset: SpaceComponentPreset, targetData?: TargetResourceInfo<SpaceComponentPreset>) {
     this.sourceData = preset;
     this.targetData = targetData;
-    this.id = `preset:${preset.name}`;
+    this.id = `preset:${preset.id}`;
     this.name = preset.name;
   }
 

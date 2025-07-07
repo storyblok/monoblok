@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
 import preserveDirectives from 'rollup-plugin-preserve-directives';
 import dts from 'vite-plugin-dts';

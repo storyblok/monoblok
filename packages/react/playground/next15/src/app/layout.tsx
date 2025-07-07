@@ -1,4 +1,3 @@
-import StoryblokProvider from '@/app/components/StoryblokProvider';
 import './globals.css';
 
 export const metadata = {
@@ -11,10 +10,8 @@ interface RootLayoutType {
 
 export default function RootLayout({ children }: RootLayoutType) {
   return (
-    <StoryblokProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
-    </StoryblokProvider>
+    <html lang="en">
+      <body>{children}</body>
+    </html>
   );
 }

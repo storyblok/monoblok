@@ -16,7 +16,7 @@ const componentFound: boolean
 // Fallback component logic
 const VueSDKOptions: SbVueSDKOptions | undefined = inject('VueSDKOptions');
 
-const componentName = ref(props.blok.component);
+const componentName = ref(props.blok.component?.replace(/_/g, '-'));
 if (!componentFound && VueSDKOptions) {
   if (!VueSDKOptions.enableFallbackComponent) {
     console.error(

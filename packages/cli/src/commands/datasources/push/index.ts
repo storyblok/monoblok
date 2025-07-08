@@ -36,7 +36,7 @@ datasourcesCommand
       return;
     }
 
-    konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(options.from)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
+    konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(options.from || space)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
 
     const { password, region } = state;

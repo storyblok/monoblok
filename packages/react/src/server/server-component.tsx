@@ -3,7 +3,7 @@ import {
   getComponent,
   getCustomFallbackComponent,
   getEnableFallbackComponent,
-} from '../shared/state';
+} from '../core/state';
 import type { SbBlokData } from '@/types';
 
 interface SbServerComponentProps extends Omit<Record<string, unknown>, 'blok'> {

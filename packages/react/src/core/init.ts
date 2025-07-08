@@ -14,22 +14,8 @@ import {
   setCustomFallbackComponent,
   setEnableFallbackComponent,
   setStoryblokApiInstance,
-} from '../shared/state';
-
-export * from '../types';
-
-export const useStoryblokApi = (): StoryblokClient => {
-  const instance = getStoryblokApiInstance();
-  if (!instance) {
-    console.error(
-      'You can\'t use getStoryblokApi if you\'re not loading apiPlugin.',
-    );
-  }
-
-  return instance;
-};
-
-export { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, setComponents };
+} from './state';
+import { useStoryblokApi } from './use-storyblok-api';
 
 export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => StoryblokClient) => {
   const existingInstance = getStoryblokApiInstance();
@@ -53,25 +39,5 @@ export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => Sto
   return () => storyblokApi;
 };
 
+export { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, setComponents };
 export { useStoryblokApi as getStoryblokApi };
-
-export { default as StoryblokComponent } from './storyblok-component';
-
-export {
-  apiPlugin,
-  BlockTypes,
-  loadStoryblokBridge,
-  MarkTypes,
-  registerStoryblokBridge,
-  renderRichText,
-  richTextResolver,
-  storyblokEditable,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeResolver,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  type StoryblokRichTextResolvers,
-  TextTypes,
-  useStoryblokBridge,
-} from '@storyblok/js';

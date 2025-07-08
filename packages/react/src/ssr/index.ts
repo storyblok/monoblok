@@ -1,5 +1,5 @@
 // SSR-compatible components (static-safe, no server actions)
-export * from '../common';
+export * from '../core';
 export { useStoryblokServerRichText } from '../server/richtext';
 export { default as StoryblokServerComponent } from '../server/server-component';
 export { default as StoryblokServerStory } from '../server/server-story';

@@ -1,0 +1,94 @@
+import { readdir } from 'node:fs/promises';
+import type { SpaceDatasource, SpaceDatasourcesData } from '../constants';
+import type { ReadDatasourcesOptions } from './constants';
+import { readJsonFile, resolvePath } from '../../../utils/filesystem';
+import chalk from 'chalk';
+import { FileSystemError, handleFileSystemError } from '../../../utils';
+import { join } from 'node:path';
+
+export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
+  const { from, path, separateFiles = false, suffix, space } = options;
+  const resolvedPath = resolvePath(path, `datasources/${from}`);
+
+  // Check if directory exists first
+  try {
+    await readdir(resolvedPath);
+  }
+  catch (error) {
+    const message = `No local datasources found for space ${chalk.bold(from)}. To push datasources, you need to pull them first:
+
+1. Pull the datasources from your source space:
+   ${chalk.cyan(`storyblok datasources pull --space ${from}`)}
+
+2. Then try pushing again:
+   ${chalk.cyan(`storyblok datasources push --space ${space} --from ${from}`)}`;
+
+    throw new FileSystemError(
+      'file_not_found',
+      'read',
+      error as Error,
+      message,
+    );
+  }
+
+  if (separateFiles) {
+    return await readSeparateFiles(resolvedPath, suffix);
+  }
+
+  // TODO: Implement consolidated files reading
+  return await readConsolidatedFiles(resolvedPath, suffix);
+};
+
+async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
+  const files = await readdir(resolvedPath);
+  const datasources: SpaceDatasource[] = [];
+
+  const filteredFiles = files.filter((file) => {
+    if (suffix) {
+      return file.endsWith(`.${suffix}.json`);
+    }
+    else {
+      // Regex to match files with a pattern like .<suffix>.json
+      return !/\.\w+\.json$/.test(file);
+    }
+  });
+
+  for (const file of filteredFiles) {
+    const filePath = join(resolvedPath, file);
+
+    if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
+      // Skip consolidated files - any file matching datasources.json or datasources.*.json pattern
+      if (file === 'datasources.json' || /^datasources\.\w+\.json$/.test(file)) {
+        continue;
+      }
+      const result = await readJsonFile<SpaceDatasource>(filePath);
+      if (result.error) {
+        handleFileSystemError('read', result.error);
+        continue;
+      }
+      datasources.push(...result.data);
+    }
+  }
+
+  return {
+    datasources,
+  };
+}
+
+async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
+  const datasourcesPath = join(resolvedPath, suffix ? `datasources.${suffix}.json` : 'datasources.json');
+  const datasourcesResult = await readJsonFile<SpaceDatasource>(datasourcesPath);
+
+  if (datasourcesResult.error || !datasourcesResult.data.length) {
+    throw new FileSystemError(
+      'file_not_found',
+      'read',
+      datasourcesResult.error || new Error('Datasources file is empty'),
+      `No datasources found in ${datasourcesPath}. Please make sure you have pulled the datasources first.`,
+    );
+  }
+
+  return {
+    datasources: datasourcesResult.data,
+  };
+}

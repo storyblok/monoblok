@@ -6,6 +6,8 @@ import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
+import type { SpaceDatasourcesDataState } from '../constants';
+import { readDatasourcesFiles } from './actions';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -20,7 +22,7 @@ datasourcesCommand
     konsola.title(` ${commands.DATASOURCES} `, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
     // Global options
     const verbose = program.opts().verbose;
-    const { space /* path */ } = datasourcesCommand.opts();
+    const { space, path } = datasourcesCommand.opts();
 
     // Check if the user is logged in
     const { state, initializeSession } = session();
@@ -47,13 +49,15 @@ datasourcesCommand
     });
 
     try {
-      /* const spaceState: SpaceDataState = {
+      const spaceState: SpaceDatasourcesDataState = {
         local: await readDatasourcesFiles({
           ...options,
           path,
           space,
         }),
-      }; */
+      };
+
+      console.log(spaceState.local.datasources);
     }
     catch (error) {
       handleError(error as Error, verbose);

@@ -26,3 +26,14 @@ export interface SpaceDatasource {
    */
   entries?: SpaceDatasourceEntry[];
 }
+
+export interface SpaceDatasourcesData {
+  datasources: SpaceDatasource[];
+}
+
+export interface SpaceDatasourcesDataState {
+  local: SpaceDatasourcesData;
+  target: {
+    datasources: Map<string, SpaceDatasource>;
+  };
+}

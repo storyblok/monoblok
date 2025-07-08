@@ -366,5 +366,27 @@
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push datasources",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "push", "--space", "295018", "--from", "295017", "--verbose"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Push datasources --separate-files",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "push", "--space", "295018", "--from", "295017", "--sf"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    }
   ],
 }

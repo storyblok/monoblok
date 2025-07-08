@@ -2,9 +2,8 @@ import { FileSystemError, handleAPIError, handleFileSystemError } from '../../..
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
-import { readdir, readFile } from 'node:fs/promises';
-import { resolvePath } from '../../../utils/filesystem';
-import type { FileReaderResult } from '../../../types';
+import { readdir } from 'node:fs/promises';
+import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 
@@ -206,20 +205,6 @@ export const upsertComponentInternalTag = async (
     return await pushComponentInternalTag(space, tag);
   }
 };
-
-async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
-  try {
-    const content = (await readFile(filePath)).toString();
-    if (!content) {
-      return { data: [] };
-    }
-    const parsed = JSON.parse(content);
-    return { data: Array.isArray(parsed) ? parsed : [parsed] };
-  }
-  catch (error) {
-    return { data: [], error: error as Error };
-  }
-}
 
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<SpaceComponentsData> => {

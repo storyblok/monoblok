@@ -4,7 +4,7 @@ import type {
   SpaceComponentGroup,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
-  SpaceDataState,
+  SpaceComponentsDataState,
 } from '../../constants';
 
 // =============================================================================
@@ -84,5 +84,5 @@ export interface PushConfig {
 
 /** Graph building context with source and target data */
 export interface GraphBuildingContext {
-  spaceState: SpaceDataState;
+  spaceState: SpaceComponentsDataState;
 }

@@ -47,7 +47,13 @@ datasourcesCommand
     });
 
     try {
-      console.log('pushing datasources');
+      /* const spaceState: SpaceDataState = {
+        local: await readDatasourcesFiles({
+          ...options,
+          path,
+          space,
+        }),
+      }; */
     }
     catch (error) {
       handleError(error as Error, verbose);

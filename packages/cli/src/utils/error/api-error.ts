@@ -23,6 +23,8 @@ export const API_ACTIONS = {
   pull_story: 'Failed to pull story',
   update_story: 'Failed to update story',
   pull_datasources: 'Failed to pull datasources',
+  push_datasource: 'Failed to push datasource',
+  update_datasource: 'Failed to update datasource',
 } as const;
 
 export const API_ERRORS = {

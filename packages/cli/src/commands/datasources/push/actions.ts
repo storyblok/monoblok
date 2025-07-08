@@ -3,8 +3,52 @@ import type { SpaceDatasource, SpaceDatasourcesData } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
-import { FileSystemError, handleFileSystemError } from '../../../utils';
+import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
 import { join } from 'node:path';
+import { mapiClient } from '../../../api';
+
+export const pushDatasource = async (space: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+  try {
+    const client = mapiClient();
+
+    const { data } = await client.post<{
+      datasource: SpaceDatasource;
+    }>(`spaces/${space}/datasources`, {
+      body: JSON.stringify(datasource),
+    });
+
+    return data.datasource;
+  }
+  catch (error) {
+    handleAPIError('push_datasource', error as Error, `Failed to push datasource ${datasource.name}`);
+  }
+};
+
+export const updateDatasource = async (space: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+  try {
+    const client = mapiClient();
+
+    const { data } = await client.put<{
+      datasource: SpaceDatasource;
+    }>(`spaces/${space}/datasources/${datasourceId}`, {
+      body: JSON.stringify(datasource),
+    });
+
+    return data.datasource;
+  }
+  catch (error) {
+    handleAPIError('update_datasource', error as Error, `Failed to update datasource ${datasource.name}`);
+  }
+};
+
+export const upsertDatasource = async (space: string, datasource: SpaceDatasource, existingId?: number): Promise<SpaceDatasource | undefined> => {
+  if (existingId) {
+    return await updateDatasource(space, existingId, datasource);
+  }
+  else {
+    return await pushDatasource(space, datasource);
+  }
+};
 
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
   const { from, path, separateFiles = false, suffix, space } = options;

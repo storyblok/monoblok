@@ -22,6 +22,7 @@ export const API_ACTIONS = {
   pull_stories: 'Failed to pull stories',
   pull_story: 'Failed to pull story',
   update_story: 'Failed to update story',
+  pull_datasources: 'Failed to pull datasources',
   create_space: 'Failed to create space',
   fetch_blueprints: 'Failed to fetch blueprints from GitHub',
 } as const;

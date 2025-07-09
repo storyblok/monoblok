@@ -48,15 +48,15 @@ export interface SpaceComponentInternalTag {
   object_type?: 'asset' | 'component';
 }
 
-export interface SpaceData {
+export interface SpaceComponentsData {
   components: SpaceComponent[];
   groups: SpaceComponentGroup[];
   presets: SpaceComponentPreset[];
   internalTags: SpaceComponentInternalTag[];
 }
 
-export interface SpaceDataState {
-  local: SpaceData;
+export interface SpaceComponentsDataState {
+  local: SpaceComponentsData;
   target: {
     components: Map<string, SpaceComponent>;
     tags: Map<string, SpaceComponentInternalTag>;

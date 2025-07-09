@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildDependencyGraph, determineProcessingOrder, validateGraph } from '../dependency-graph';
 import { processAllResources } from '../resource-processor';
-import type { SpaceDataState } from '../../../constants';
+import type { SpaceComponentsDataState } from '../../../constants';
 
 // Mock the API functions
 vi.mock('../../actions', () => ({
@@ -28,7 +28,7 @@ describe('graph Integration Tests', () => {
   describe('source/Target Reconciliation', () => {
     it('should correctly reconcile resources with different IDs between source and target spaces', () => {
       // Scenario: Source space has resources with IDs 100-400, target space has same resources with IDs 500-800
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 300,
@@ -142,7 +142,7 @@ describe('graph Integration Tests', () => {
     });
 
     it('should handle hierarchical group dependencies correctly', () => {
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [],
           groups: [
@@ -227,7 +227,7 @@ describe('graph Integration Tests', () => {
         description: '',
       });
 
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 100,
@@ -325,7 +325,7 @@ describe('graph Integration Tests', () => {
           internal_tag_ids: [],
         });
 
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [
             {
@@ -403,7 +403,7 @@ describe('graph Integration Tests', () => {
     it('should correctly handle presets with the same name but different IDs', () => {
       // Presets are nested resources under components - they can have the same name across different components
       // but are unique by ID globally, and by name within each component context
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 1,
@@ -490,7 +490,7 @@ describe('graph Integration Tests', () => {
     it('should create separate nodes for presets with duplicate names', () => {
       // Edge case: Multiple presets with the same name within the same component
       // While presets should be uniquely named within a component, this tests graceful handling of invalid data
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 1,
@@ -577,7 +577,7 @@ describe('graph Integration Tests', () => {
     it('should skip presets when their components are missing to prevent key inconsistencies', () => {
       // This test demonstrates data integrity: presets are nested resources that must have valid parent components
       // When a preset references a missing component, it's skipped to maintain the hierarchical relationship
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 1,
@@ -655,7 +655,7 @@ describe('graph Integration Tests', () => {
 
   describe('error Handling', () => {
     it('should handle missing dependencies gracefully', () => {
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [{
             id: 1,
@@ -689,7 +689,7 @@ describe('graph Integration Tests', () => {
     });
 
     it('should detect circular dependencies', () => {
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: {
           components: [
             {

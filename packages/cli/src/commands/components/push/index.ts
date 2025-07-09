@@ -11,7 +11,7 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceDataState } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsDataState } from '../constants';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -66,7 +66,7 @@ componentsCommand
     });
 
     try {
-      const spaceState: SpaceDataState = {
+      const spaceState: SpaceComponentsDataState = {
         local: await readComponentsFiles({
           ...options,
           path,

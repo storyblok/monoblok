@@ -1,5 +1,5 @@
 import { compile, type JSONSchema } from 'json-schema-to-typescript';
-import type { SpaceComponent, SpaceData } from '../../../commands/components/constants';
+import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase, toPascalCase } from '../../../utils';
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
@@ -154,7 +154,7 @@ export const getComponentType = (
 const getComponentPropertiesTypeAnnotations = async (
   component: SpaceComponent,
   options: GenerateTypesOptions,
-  spaceData: SpaceData,
+  spaceData: SpaceComponentsData,
   customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<JSONSchema['properties']> => {
   return Object.entries<Record<string, any>>(component.schema).reduce(async (accPromise, [key, value]) => {
@@ -272,7 +272,7 @@ async function loadCompilerOptions(path: string) {
 }
 
 export const generateTypes = async (
-  spaceData: SpaceData,
+  spaceData: SpaceComponentsData,
   options: GenerateTypesOptions = {
     strict: false,
   },

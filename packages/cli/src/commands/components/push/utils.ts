@@ -1,4 +1,4 @@
-import type { SpaceData } from '../constants';
+import type { SpaceComponentsData } from '../constants';
 import { minimatch } from 'minimatch';
 import { collectWhitelistDependencies } from './graph-operations/dependency-graph';
 
@@ -6,10 +6,10 @@ import { collectWhitelistDependencies } from './graph-operations/dependency-grap
  * Collects all dependencies (groups, tags, and components) for a set of components
  */
 function collectAllDependencies(
-  components: SpaceData['components'],
-  allComponents: SpaceData['components'],
-  allGroups: SpaceData['groups'],
-  allTags: SpaceData['internalTags'],
+  components: SpaceComponentsData['components'],
+  allComponents: SpaceComponentsData['components'],
+  allGroups: SpaceComponentsData['groups'],
+  allTags: SpaceComponentsData['internalTags'],
 ) {
   const requiredComponents = new Set<string>();
   const requiredGroupUuids = new Set<string>();
@@ -96,7 +96,7 @@ function collectAllDependencies(
 /**
  * Filters space data to only include a specific component and its dependencies
  */
-export function filterSpaceDataByComponent(spaceData: SpaceData, componentName: string): SpaceData {
+export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, componentName: string): SpaceComponentsData {
   // Find the target component
   const targetComponent = spaceData.components.find(component => component.name === componentName);
   if (!targetComponent) {
@@ -133,7 +133,7 @@ export function filterSpaceDataByComponent(spaceData: SpaceData, componentName: 
 /**
  * Filters space data to only include components matching a glob pattern and their dependencies
  */
-export function filterSpaceDataByPattern(spaceData: SpaceData, pattern: string): SpaceData {
+export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern: string): SpaceComponentsData {
   // Filter components by pattern
   const matchingComponents = spaceData.components.filter(component =>
     minimatch(component.name, pattern),

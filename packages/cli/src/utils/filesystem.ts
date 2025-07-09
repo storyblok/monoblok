@@ -1,6 +1,7 @@
 import { join, parse, resolve } from 'node:path';
 import { mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
+import type { FileReaderResult } from '../types';
 
 export interface FileOptions {
   mode?: number;
@@ -64,3 +65,17 @@ export const getComponentNameFromFilename = (filename: string): string => {
   // Remove the .js extension
   return filename.replace(/\.js$/, '');
 };
+
+export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
+  try {
+    const content = (await readFile(filePath)).toString();
+    if (!content) {
+      return { data: [] };
+    }
+    const parsed = JSON.parse(content);
+    return { data: Array.isArray(parsed) ? parsed : [parsed] };
+  }
+  catch (error) {
+    return { data: [], error: error as Error };
+  }
+}

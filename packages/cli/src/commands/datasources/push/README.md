@@ -225,7 +225,7 @@ storyblok datasources push --space 12345 --filter "color"
 ```bash
 # If you pulled with separate files, push with the same flag
 storyblok datasources push --space 12345 --separate-files
-``` 
+```
 
 ## ⚠️ Known Caveats
 

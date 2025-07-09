@@ -10,7 +10,7 @@ export const loadBridge = (src: string) => {
 
     // Way to make sure all event handlers are called after loading
     window.storyblokRegisterEvent = (cb: () => void) => {
-      if (window.location === window.parent.location) {
+      if (!window.location.search.includes('_storyblok')) {
         console.warn('You are not in Draft Mode or in the Visual Editor.');
         return;
       }

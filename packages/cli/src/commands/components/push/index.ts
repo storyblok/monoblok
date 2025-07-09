@@ -103,7 +103,14 @@ componentsCommand
 
       if (presets) {
         (presets as SpaceComponentPreset[]).forEach((preset) => {
-          spaceState.target.presets.set(preset.name, preset);
+          // Find the parent component for this nested preset resource
+          const targetComponent = (components as SpaceComponent[])?.find(c => c.id === preset.component_id);
+          if (targetComponent) {
+            // Store presets using hierarchical key: component.name:preset.name (parent:child)
+            // This reflects the nested resource relationship where presets are scoped to components
+            const compositeKey = `${targetComponent.name}:${preset.name}`;
+            spaceState.target.presets.set(compositeKey, preset);
+          }
         });
       }
 

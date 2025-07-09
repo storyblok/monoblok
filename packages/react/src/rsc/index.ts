@@ -1,4 +1,5 @@
 export * from './common';
+export { default as StoryblokLiveEditing } from './live-editing';
 export { useStoryblokServerRichText } from './richtext';
 export { default as StoryblokServerRichText } from './server-storyblok-richtext-component';
 export { default as StoryblokStory } from './story';

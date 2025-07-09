@@ -7,7 +7,10 @@
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint": "nx run-many --target=lint",
+    "lint:fix": "nx run-many --target=lint --fix",
+    "lint:affected": "nx affected:lint"
   },
   "workspaces": [
     "packages/*",

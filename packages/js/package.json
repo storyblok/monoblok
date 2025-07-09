@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/js",
   "type": "module",
-  "version": "4.1.1",
+  "version": "4.1.2",
   "private": false,
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
@@ -48,7 +48,7 @@
     "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.15.18",
     "@vitest/ui": "^3.1.3",

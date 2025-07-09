@@ -227,6 +227,20 @@ export function createTestSpaceDataState(
     presets?: SpaceComponentPreset[];
   } = {},
 ): SpaceDataState {
+  const targetComponents = targetData.components || [];
+  const targetPresets = targetData.presets || [];
+
+  // Create preset map with hierarchical keys reflecting nested resource structure
+  // Presets are scoped to components: component.name:preset.name (parent:child)
+  const presetMap = new Map<string, SpaceComponentPreset>();
+  targetPresets.forEach((preset) => {
+    const targetComponent = targetComponents.find(c => c.id === preset.component_id);
+    if (targetComponent) {
+      const compositeKey = `${targetComponent.name}:${preset.name}`;
+      presetMap.set(compositeKey, preset);
+    }
+  });
+
   return {
     local: {
       components: localData.components || [],
@@ -238,7 +252,7 @@ export function createTestSpaceDataState(
       components: new Map((targetData.components || []).map(c => [c.name, c])),
       groups: new Map((targetData.groups || []).map(g => [g.name, g])),
       tags: new Map((targetData.tags || []).map(t => [t.name, t])),
-      presets: new Map((targetData.presets || []).map(p => [p.name, p])),
+      presets: presetMap,
     },
   };
 }

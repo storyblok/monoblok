@@ -10,5 +10,11 @@
     "repo": "storyblok/storyblok-cli",
     "branch": "main",
     "path": "packages/cli"
+  },
+  "@storyblok/eslint-config": {
+    "remote": "storyblok-eslint-config",
+    "repo": "storyblok/eslint-config",
+    "branch": "main",
+    "path": "packages/eslint-config"
   }
 }

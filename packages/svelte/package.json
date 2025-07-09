@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/svelte",
   "type": "module",
-  "version": "5.1.1",
+  "version": "5.1.2",
   "private": false,
   "packageManager": "pnpm@9.15.9",
   "description": "SDK to integrate Storyblok into your project using Svelte.",
@@ -65,7 +65,7 @@
     "@cypress/svelte": "^3.0.0",
     "@eslint/compat": "^1.2.7",
     "@rollup/plugin-typescript": "^12.1.2",
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@sveltejs/adapter-auto": "^5.0.0",
     "@sveltejs/kit": "^2.20.2",
     "@sveltejs/package": "^2.3.10",

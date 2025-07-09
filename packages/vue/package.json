@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/vue",
   "type": "module",
-  "version": "9.1.1",
+  "version": "9.1.2",
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using Vue.",
   "author": "Storyblok",
@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
-    "@storyblok/eslint-config": "^0.3.0",
+    "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^22.15.18",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",

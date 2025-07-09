@@ -14,6 +14,10 @@
     "lint": {
       "dependsOn": ["^build"],
       "cache": true
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   },
   "tui": {
@@ -23,7 +27,13 @@
     "projectsRelationship": "independent",
     "groups": {
       "core-js": {
-        "projects": ["storyblok-js-client", "js", "richtext", "storyblok"],
+        "projects": [
+          "storyblok-js-client",
+          "js",
+          "richtext",
+          "storyblok",
+          "eslint-config"
+        ],
         "projectsRelationship": "independent"
       },
       "sdk": {

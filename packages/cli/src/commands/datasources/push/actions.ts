@@ -156,7 +156,6 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
     return await readSeparateFiles(resolvedPath, suffix);
   }
 
-  // TODO: Implement consolidated files reading
   return await readConsolidatedFiles(resolvedPath, suffix);
 };
 

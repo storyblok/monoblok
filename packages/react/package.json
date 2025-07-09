@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/react",
   "type": "module",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "private": false,
   "packageManager": "pnpm@10.10.0",
   "description": "SDK to integrate Storyblok into your project using React.",

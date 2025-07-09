@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises';
-import type { SpaceDatasource, SpaceDatasourcesData } from '../constants';
+import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
@@ -47,6 +47,83 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
   }
   else {
     return await pushDatasource(space, datasource);
+  }
+};
+
+/**
+ * Creates a new datasource entry in the specified space.
+ * @param space - The space ID
+ * @param datasourceId - The datasource ID to add the entry to
+ * @param entry - The datasource entry to create
+ * @returns The created datasource entry
+ */
+export const pushDatasourceEntry = async (space: string, datasourceId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<SpaceDatasourceEntry | undefined> => {
+  try {
+    const client = mapiClient();
+
+    const { data } = await client.post<{
+      datasource_entry: SpaceDatasourceEntry;
+    }>(`spaces/${space}/datasource_entries`, {
+      body: JSON.stringify({
+        datasource_entry: {
+          ...entry,
+          datasource_id: datasourceId,
+        },
+      }),
+    });
+
+    return data.datasource_entry;
+  }
+  catch (error) {
+    handleAPIError('push_datasource', error as Error, `Failed to push datasource entry ${entry.name}`);
+  }
+};
+
+/**
+ * Updates an existing datasource entry in the specified space.
+ * @param space - The space ID
+ * @param entryId - The ID of the entry to update
+ * @param entry - The updated datasource entry data
+ * @returns it does not return anything
+ */
+export const updateDatasourceEntry = async (space: string, entryId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<void> => {
+  try {
+    const client = mapiClient();
+
+    await client.put<{
+      datasource_entry: SpaceDatasourceEntry;
+    }>(`spaces/${space}/datasource_entries/${entryId}`, {
+      body: JSON.stringify({
+        datasource_entry: entry,
+      }),
+    });
+    // The API does not return the updated entry, returns a 204 No Content
+  }
+  catch (error) {
+    handleAPIError('update_datasource', error as Error, `Failed to update datasource entry ${entry.name}`);
+  }
+};
+
+/**
+ * Creates or updates a datasource entry based on whether it already exists.
+ * @param space - The space ID
+ * @param datasourceId - The datasource ID (only needed for creation)
+ * @param entry - The datasource entry to upsert
+ * @param existingId - The existing entry ID if updating
+ * @returns The created or updated datasource entry
+ */
+export const upsertDatasourceEntry = async (
+  space: string,
+  datasourceId: number,
+  entry: Omit<SpaceDatasourceEntry, 'id'>,
+  existingId?: number,
+): Promise<SpaceDatasourceEntry | undefined> => {
+  if (existingId) {
+    await updateDatasourceEntry(space, existingId, entry);
+    return undefined;
+  }
+  else {
+    return await pushDatasourceEntry(space, datasourceId, entry);
   }
 };
 

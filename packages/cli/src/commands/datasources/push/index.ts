@@ -7,7 +7,7 @@ import { session } from '../../../session';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
-import { readDatasourcesFiles, upsertDatasource } from './actions';
+import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
 import { Spinner } from '@topcli/spinner';
 
@@ -55,10 +55,6 @@ datasourcesCommand
     mapiClient({
       token: password,
       region,
-    });
-
-    const spinner = new Spinner({
-      verbose: !isVitest,
     });
 
     try {
@@ -109,8 +105,13 @@ datasourcesCommand
         failed: [] as Array<{ name: string; error: unknown }>,
       };
 
-      spinner.start(`Pushing ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
       for (const datasource of spaceState.local.datasources) {
+        const spinner = new Spinner({
+          verbose: !isVitest,
+        });
+
+        spinner.start(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
+
         // Check if datasource already exists in target space by name
         const existingDatasource = spaceState.target.datasources.get(datasource.name);
         const existingId = existingDatasource?.id;
@@ -122,11 +123,40 @@ datasourcesCommand
         if (result) {
           results.successful.push(datasource.name);
 
-          spinner.succeed(`${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
+          // Handle entries if they exist
+          if (entries && entries.length > 0) {
+            for (const entry of entries) {
+              const existingEntryId = existingDatasource?.entries?.find(e => e.name === entry.name)?.id;
+              try {
+                // For now, we'll create new entries since we don't have existing entry tracking
+                // TODO: Implement entry matching logic to determine if entry exists
+                const { id, ...entryData } = entry; // Remove id from entry data
+                await upsertDatasourceEntry(space, result.id, entryData, existingEntryId);
+              }
+              catch (entryError) {
+                results.failed.push({ name: datasource.name, error: entryError });
+                spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
+              }
+            }
+          }
+
+          spinner.succeed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
         }
         else {
           results.failed.push({ name: datasource.name, error: result });
-          spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
+          spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
+        }
+      }
+
+      if (results.failed.length > 0) {
+        if (!verbose) {
+          konsola.br();
+          konsola.info('For more information about the error, run the command with the `--verbose` flag');
+        }
+        else {
+          results.failed.forEach((failed) => {
+            handleError(failed.error as Error, verbose);
+          });
         }
       }
     }

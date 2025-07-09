@@ -12,6 +12,7 @@ export interface SpaceDatasourceEntry {
   name: string;
   value: string;
   dimension_value: string;
+  datasource_id: number;
 }
 
 export interface SpaceDatasource {

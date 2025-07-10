@@ -1,20 +1,19 @@
 <script setup>
 const route = useRoute();
 
-console.log({route});
 
 const { story, error } = await useAsyncStoryblok(route.path, {
   api: {
     version: 'draft',
     language: 'en',
     resolve_relations: ['popular-articles.articles'],
-  }
+  },
 });
 
 if (error.value) {
   throw createError({
     statusCode: error.value.statusCode,
-    statusMessage: error.value.statusMessage
+    statusMessage: error.value.statusMessage,
   });
 }
 </script>

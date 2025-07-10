@@ -14,15 +14,13 @@ const { story, error } = await useAsyncStoryblok('vue', {
   },
 });
 
-console.log({story});
 
 if (error.value) {
   throw createError({
     statusCode: error.value.statusCode,
-    statusMessage: error.value.statusMessage
+    statusMessage: error.value.statusMessage,
   });
 }
-
 </script>
 
 <template>

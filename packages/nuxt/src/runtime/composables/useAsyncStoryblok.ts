@@ -1,6 +1,6 @@
 import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import type { ISbStoriesParams, ISbStoryData, StoryblokBridgeConfigV2 } from '@storyblok/vue';
-import { onMounted, useAsyncData, useState } from '#imports';
+import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
+import { computed, useAsyncData, watch } from '#imports';
 import type { AsyncDataOptions } from 'nuxt/app';
 
 export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
@@ -15,23 +15,23 @@ export const useAsyncStoryblok = async (
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${JSON.stringify(api)}${url}`;
-  const story = useState<ISbStoryData>(`${uniqueKey}-state`);
 
-  onMounted(() => {
-    if (story.value && story.value.id) {
-      useStoryblokBridge(
-        story.value.id,
-        evStory => (story.value = evStory),
-        bridge,
-      );
-    }
-  });
+  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest);
 
-  if (!story.value) {
-    const { data } = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest);
-    if (data) {
-      story.value = data.value?.data.story;
-    }
+  if (import.meta.client) {
+    watch(result.data, (newData) => {
+      if (newData?.data.story && newData.data.story.id) {
+        useStoryblokBridge(newData.data.story.id, (evStory) => {
+          newData.data.story = evStory;
+        }, bridge);
+      }
+    }, {
+      immediate: true,
+    });
   }
-  return story;
+
+  return {
+    ...result,
+    story: computed(() => result.data.value?.data.story),
+  };
 };

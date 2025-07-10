@@ -5,8 +5,7 @@
 // // Checking custom Flush method
 // storyblokApi.flushCache();
 
-const story = await useAsyncStoryblok('vue', {
-  lazy: true,
+const { story } = await useAsyncStoryblok('vue', {
   api: {
     version: 'draft',
     language: 'en',
@@ -15,20 +14,8 @@ const story = await useAsyncStoryblok('vue', {
   bridge: {
     resolveRelations: 'popular-articles.articles',
   },
-
 });
 
-/* const penguin = await useStoryblok('vue', {
-  version: 'draft',
-  language: 'en',
-  resolve_relations: 'popular-articles.articles',
-});
-
-const awiwi = ref<SbBlokData>({}); */
-
-renderRichText(story.value.content.richText);
-
-/* const richText = computed(() => renderRichText(story.value.content.richText)); */
 </script>
 
 <template>

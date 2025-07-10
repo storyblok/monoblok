@@ -75,7 +75,6 @@ const stableStringify = (obj: Record<string, any>): string => {
  * </template>
  * ```
  *
-
  */
 export const useAsyncStoryblok = async (
   url: string,

@@ -14,7 +14,6 @@ const { story, error } = await useAsyncStoryblok('vue', {
   },
 });
 
-
 if (error.value) {
   throw createError({
     statusCode: error.value.statusCode,

@@ -1,7 +1,6 @@
 <script setup>
 const route = useRoute();
 
-
 const { story, error } = await useAsyncStoryblok(route.path, {
   api: {
     version: 'draft',

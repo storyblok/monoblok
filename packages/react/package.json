@@ -22,8 +22,13 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./ssr": {
+      "types": "./dist/ssr.d.ts",
+      "import": "./dist/ssr.mjs",
+      "require": "./dist/ssr.js"
+    },
     "./rsc": {
-      "types": "./dist/rsc/index.d.ts",
+      "types": "./dist/rsc.d.ts",
       "import": "./dist/rsc.mjs",
       "require": "./dist/rsc.js"
     }

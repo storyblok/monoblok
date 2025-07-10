@@ -1,4 +1,4 @@
-import { getStoryblokApi, StoryblokComponent, storyblokInit } from '../../common';
+import { getStoryblokApi, StoryblokComponent, storyblokInit } from '../../core';
 import type { SbReactComponentsMap } from '../../types';
 import type { SbBlokData } from '@storyblok/js';
 import { apiPlugin, registerStoryblokBridge } from '@storyblok/js';

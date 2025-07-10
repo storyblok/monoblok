@@ -2,7 +2,6 @@
 
 import { type ISbStoryData, loadStoryblokBridge, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
 import { startTransition, useEffect } from 'react';
-import { liveEditUpdateAction } from './live-edit-update-action';
 import { isBridgeLoaded, isVisualEditor } from '../utils';
 
 const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions?: StoryblokBridgeConfigV2 }) => {
@@ -22,13 +21,25 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
         await loadStoryblokBridge();
       }
 
-      const handleInput = (story: ISbStoryData) => {
+      const handleInput = async (story: ISbStoryData) => {
         if (!story) {
           return;
         }
-        startTransition(() => {
-          liveEditUpdateAction({ story, pathToRevalidate: window.location.pathname });
-        });
+
+        try {
+          const { liveEditUpdateAction } = await import('./live-edit-update-action');
+
+          startTransition(() => {
+            liveEditUpdateAction({ story, pathToRevalidate: window.location.pathname });
+          });
+        }
+        catch (error) {
+          // Fallback: just cache the story if server action is not available
+          console.warn('Server action not available, caching story locally:', error);
+          if (story.uuid) {
+            globalThis.storyCache?.set(story.uuid, story);
+          }
+        }
       };
 
       registerStoryblokBridge(storyId, newStory => handleInput(newStory), bridgeOptions);

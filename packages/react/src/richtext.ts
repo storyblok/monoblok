@@ -1,5 +1,5 @@
 import React from 'react';
-import StoryblokComponent from './common/storyblok-component';
+import StoryblokComponent from './core/storyblok-component';
 import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/js';
 import { BlockTypes, richTextResolver } from '@storyblok/js';
 

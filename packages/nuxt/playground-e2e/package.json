@@ -1,8 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "demo": "nuxt dev",
-    "demo-ssl": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
+    "dev": "nuxt dev",
+    "dev:https": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "start": "nuxt preview"
@@ -10,6 +10,6 @@
   "devDependencies": {
     "@nuxt/devtools": "^1.5.2",
     "@storyblok/nuxt": "workspace:*",
-    "nuxt": "^3.13.2"
+    "nuxt": "^3.17.6"
   }
 }

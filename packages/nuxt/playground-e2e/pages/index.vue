@@ -3,17 +3,30 @@
 // // Checking custom Flush method
 // storyblokApi.flushCache();
 
-const story = await useAsyncStoryblok('vue', {
-  version: 'draft',
-  language: 'en',
-  resolve_relations: 'popular-articles.articles',
+const { story, error } = await useAsyncStoryblok('vue', {
+  api: {
+    version: 'draft',
+    language: 'en',
+    resolve_relations: 'popular-articles.articles',
+  },
+  bridge: {
+    resolveRelations: 'popular-articles.articles',
+  },
 });
-const richText = computed(() => renderRichText(story.value.content.richText));
+
+console.log({story});
+
+if (error.value) {
+  throw createError({
+    statusCode: error.value.statusCode,
+    statusMessage: error.value.statusMessage
+  });
+}
+
 </script>
 
 <template>
   <div>
-    <div v-html="richText"></div>
     <StoryblokComponent v-if="story" :blok="story.content" />
   </div>
 </template>

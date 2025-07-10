@@ -6,16 +6,23 @@
 // storyblokApi.flushCache();
 
 const story = await useAsyncStoryblok('vue', {
-  version: 'draft',
-  language: 'en',
-  resolve_relations: 'popular-articles.articles',
+  lazy: true,
+  api: {
+    version: 'draft',
+    language: 'en',
+    resolve_relations: 'popular-articles.articles',
+  },
+  bridge: {
+    resolveRelations: 'popular-articles.articles',
+  },
+
 });
 
 /* const penguin = await useStoryblok('vue', {
   version: 'draft',
   language: 'en',
   resolve_relations: 'popular-articles.articles',
-});ß
+});
 
 const awiwi = ref<SbBlokData>({}); */
 

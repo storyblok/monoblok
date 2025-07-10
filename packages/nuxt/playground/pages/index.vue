@@ -5,7 +5,7 @@
 // // Checking custom Flush method
 // storyblokApi.flushCache();
 
-const { story, error } = await useAsyncStoryblok('vuse', {
+const { story, error } = await useAsyncStoryblok('vue', {
   api: {
     version: 'draft',
     language: 'en',

@@ -2,7 +2,7 @@ import { colorPalette, commands } from '../../../constants';
 import { handleError, isVitest, konsola } from '../../../utils';
 import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
-import { readComponentsFiles } from '../../components/push/actions';
+import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
@@ -44,7 +44,13 @@ typesCommand
         path,
       });
 
-      const typedefString = await generateTypes(spaceData, {
+      // Add empty datasources array to match expected type for generateTypes
+      const spaceDataWithDatasources: ComponentsData & { datasources: [] } = {
+        ...spaceData,
+        datasources: [],
+      };
+
+      const typedefString = await generateTypes(spaceDataWithDatasources, {
         ...options,
         path,
       });

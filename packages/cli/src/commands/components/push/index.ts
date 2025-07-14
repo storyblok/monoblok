@@ -4,7 +4,7 @@ import { colorPalette, commands } from '../../../constants';
 import { getProgram } from '../../../program';
 import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
-import { readComponentsFiles } from './actions';
+import { readComponentsFiles, readDatasourcesWithFallback } from './actions';
 import { componentsCommand } from '../command';
 import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
@@ -12,7 +12,7 @@ import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import { fetchDatasources } from '../../datasources/pull/actions';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsDataState } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 import type { SpaceDatasource } from '../../datasources/constants';
 
 const program = getProgram(); // Get the shared singleton instance
@@ -68,13 +68,26 @@ componentsCommand
     });
 
     try {
+      // Read components data
+      const componentsData = await readComponentsFiles({
+        ...options,
+        path,
+        space,
+      });
+
+      // Read datasources separately
+      const localDatasources = options.from
+        ? await readDatasourcesWithFallback(options.from, path, options.suffix)
+        : [];
+
+      // Combine into the expected structure
+      const localData: SpaceComponentsData = {
+        ...componentsData,
+        datasources: localDatasources,
+      };
+
       const spaceState: SpaceComponentsDataState = {
-        local: await readComponentsFiles({
-          ...options,
-          path,
-          space,
-          includeDatasources: true,
-        }),
+        local: localData,
         target: {
           components: new Map(),
           groups: new Map(),

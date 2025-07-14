@@ -1,5 +1,5 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import type { SpaceDatasource } from '../../datasources/constants';
 import { readDatasourcesFiles } from '../../datasources/push/actions';
@@ -8,6 +8,14 @@ import { readdir } from 'node:fs/promises';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
+
+// Define a type for components data without datasources
+export interface ComponentsData {
+  components: SpaceComponent[];
+  groups: SpaceComponentGroup[];
+  presets: SpaceComponentPreset[];
+  internalTags: SpaceComponentInternalTag[];
+}
 
 // Component actions
 export const pushComponent = async (space: string, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
@@ -211,7 +219,7 @@ export const upsertComponentInternalTag = async (
 /**
  * Helper function to read datasources with error handling
  */
-async function readDatasourcesWithFallback(
+export async function readDatasourcesWithFallback(
   from: string,
   path: string | undefined,
   suffix: string | undefined,
@@ -236,8 +244,8 @@ async function readDatasourcesWithFallback(
 }
 
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<SpaceComponentsData> => {
-  const { from, path, separateFiles = false, suffix, space, includeDatasources = false } = options;
+  options: ReadComponentsOptions): Promise<ComponentsData> => {
+  const { from, path, separateFiles = false, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
@@ -251,7 +259,7 @@ export const readComponentsFiles = async (
    ${chalk.cyan(`storyblok components pull --space ${from}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok components push --space ${space} --from ${from}`)}`;
+   ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
 
     throw new FileSystemError(
       'file_not_found',
@@ -262,13 +270,13 @@ export const readComponentsFiles = async (
   }
 
   if (separateFiles) {
-    return await readSeparateFiles(resolvedPath, suffix, from, path, includeDatasources);
+    return await readSeparateFiles(resolvedPath, suffix);
   }
 
-  return await readConsolidatedFiles(resolvedPath, suffix, from, path, includeDatasources);
+  return await readConsolidatedFiles(resolvedPath, suffix);
 };
 
-async function readSeparateFiles(resolvedPath: string, suffix?: string, from?: string, path?: string, includeDatasources?: boolean): Promise<SpaceComponentsData> {
+async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
@@ -325,21 +333,15 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string, from?: s
     }
   }
 
-  // Read datasources if requested
-  const datasources = includeDatasources && from
-    ? await readDatasourcesWithFallback(from, path, suffix)
-    : [];
-
   return {
     components,
     groups,
     presets,
     internalTags,
-    datasources,
   };
 }
 
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string, from?: string, path?: string, includeDatasources?: boolean): Promise<SpaceComponentsData> {
+async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   // Read required components file
   const componentsPath = join(resolvedPath, suffix ? `components.${suffix}.json` : 'components.json');
   const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);
@@ -360,16 +362,10 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string, from
     readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `tags.${suffix}.json` : 'tags.json')),
   ]);
 
-  // Read datasources if requested
-  const datasources = includeDatasources && from
-    ? await readDatasourcesWithFallback(from, path, suffix)
-    : [];
-
   return {
     components: componentsResult.data,
     groups: groupsResult.data,
     presets: presetsResult.data,
     internalTags: tagsResult.data,
-    datasources,
   };
 }

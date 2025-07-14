@@ -11,7 +11,9 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
+import { fetchDatasources } from '../../datasources/pull/actions';
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsDataState } from '../constants';
+import type { SpaceDatasource } from '../../datasources/constants';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -71,12 +73,14 @@ componentsCommand
           ...options,
           path,
           space,
+          includeDatasources: true,
         }),
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -86,8 +90,9 @@ componentsCommand
         fetchComponentGroups(space),
         fetchComponentPresets(space),
         fetchComponentInternalTags(space),
+        fetchDatasources(space),
       ];
-      const [components, groups, presets, internalTags] = await Promise.all(promises);
+      const [components, groups, presets, internalTags, datasources] = await Promise.all(promises);
 
       if (components) {
         (components as SpaceComponent[]).forEach((component) => {
@@ -117,6 +122,12 @@ componentsCommand
       if (internalTags) {
         (internalTags as SpaceComponentInternalTag[]).forEach((tag) => {
           spaceState.target.tags.set(tag.name, tag);
+        });
+      }
+
+      if (datasources) {
+        (datasources as SpaceDatasource[]).forEach((datasource) => {
+          spaceState.target.datasources.set(datasource.name, datasource);
         });
       }
 

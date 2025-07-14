@@ -35,14 +35,14 @@ This will upload a single component and its dependencies from:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to push components to | - |
-| `-f, --from <from>` | Source space ID to read components from | Target space ID |
-| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | - |
-| `--sf, --separate-files` | Read from separate files instead of consolidated files | `false` |
-| `--su, --suffix <suffix>` | Suffix to add to the files names | - |
-| `-p, --path <path>` | Custom path to read the files from | `.storyblok/components` |
+| Option                    | Description                                                                                                    | Default                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                           | -                       |
+| `-f, --from <from>`       | Source space ID to read components from                                                                        | Target space ID         |
+| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | -                       |
+| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                         | `false`                 |
+| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                               | -                       |
+| `-p, --path <path>`       | Custom path to read the files from                                                                             | `.storyblok/components` |
 
 ## Examples
 

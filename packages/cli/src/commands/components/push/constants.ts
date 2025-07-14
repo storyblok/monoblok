@@ -35,4 +35,10 @@ export interface ReadComponentsOptions extends PushComponentsOptions {
    * Target space
    */
   space?: string;
+  /**
+   * Whether to also read datasources from their filesystem location.
+   * This is needed when components reference datasources in their schemas.
+   * @default false
+   */
+  includeDatasources?: boolean;
 }

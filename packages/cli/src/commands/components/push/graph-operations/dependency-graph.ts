@@ -4,8 +4,10 @@ import type {
   SpaceComponentInternalTag,
   SpaceComponentPreset,
 } from '../../constants';
+import type { SpaceDatasource } from '../../../datasources/constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
+import { upsertDatasource } from '../../../datasources/push/actions';
 
 // =============================================================================
 // GRAPH BUILDING
@@ -55,6 +57,16 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const node = new ComponentNode(nodeId, component, targetComponent);
     graph.nodes.set(nodeId, node);
   });
+
+  // Create nodes for all datasources with colocated target data
+  if (spaceState.local.datasources) {
+    spaceState.local.datasources.forEach((datasource) => {
+      const nodeId = `datasource:${datasource.name}`;
+      const targetDatasource = spaceState.target.datasources?.get(datasource.name);
+      const node = new DatasourceNode(nodeId, datasource, targetDatasource);
+      graph.nodes.set(nodeId, node);
+    });
+  }
 
   // Create nodes for all presets with colocated target data
   // Since presets are nested resources under components, create a component map for efficient lookups
@@ -142,6 +154,19 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
         const dependencyId = `component:${componentName}`;
         addDependency(componentId, dependencyId);
       });
+
+      // Add dependencies on datasources (from schema fields with internal source)
+      dependencies.datasourceNames.forEach((datasourceName) => {
+        const datasourceId = `datasource:${datasourceName}`;
+        // Check if the datasource exists in the local workspace before adding dependency
+        const datasourceExists = spaceState.local.datasources?.some(ds => ds.name === datasourceName);
+        if (datasourceExists) {
+          addDependency(componentId, datasourceId);
+        }
+        else {
+          console.warn(`Warning: Component '${component.name}' references datasource '${datasourceName}' which is not available in the local workspace. The datasource dependency will be ignored.`);
+        }
+      });
     }
   });
 
@@ -172,6 +197,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
   const groupUuids = new Set<string>();
   const tagIds = new Set<number>();
   const componentNames = new Set<string>();
+  const datasourceNames = new Set<string>();
 
   function traverseField(field: Record<string, any>) {
     if (field.type === 'bloks') {
@@ -188,6 +214,15 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
       // Collect component dependencies
       if (field.component_whitelist && Array.isArray(field.component_whitelist)) {
         field.component_whitelist.forEach((name: string) => componentNames.add(name));
+      }
+    }
+
+    // Collect datasource dependencies from option/options fields with internal source
+    if ((field.type === 'option' || field.type === 'options') && field.source === 'internal') {
+      // For option/options fields with internal source, the datasource name is typically
+      // specified in the datasource_slug field or can be inferred from other properties
+      if (field.datasource_slug && typeof field.datasource_slug === 'string') {
+        datasourceNames.add(field.datasource_slug);
       }
     }
 
@@ -213,7 +248,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
     }
   });
 
-  return { groupUuids, tagIds, componentNames };
+  return { groupUuids, tagIds, componentNames, datasourceNames };
 }
 
 // =============================================================================
@@ -695,6 +730,18 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
         // Component whitelist doesn't need ID resolution as it uses names
       }
 
+      // Resolve datasource references in option/options fields with internal source
+      if ((resolvedField.type === 'option' || resolvedField.type === 'options') && resolvedField.source === 'internal') {
+        if (resolvedField.datasource_slug && typeof resolvedField.datasource_slug === 'string') {
+          const datasourceNodeId = `datasource:${resolvedField.datasource_slug}`;
+          const datasourceNode = graph.nodes.get(datasourceNodeId) as DatasourceNode;
+          if (datasourceNode?.targetData) {
+            // Update the datasource_slug to the target datasource slug
+            resolvedField.datasource_slug = datasourceNode.targetData.resource.slug;
+          }
+        }
+      }
+
       // Recursively resolve nested fields
       Object.keys(resolvedField).forEach((key) => {
         if (typeof resolvedField[key] === 'object' && resolvedField[key] !== null) {
@@ -782,5 +829,31 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
       resource: result,
       id: result.id,
     };
+  }
+}
+
+export class DatasourceNode extends GraphNode<SpaceDatasource> {
+  constructor(id: string, data: SpaceDatasource, targetDatasource?: SpaceDatasource) {
+    super(id, 'datasource', data.name, data, targetDatasource);
+  }
+
+  resolveReferences(_graph: DependencyGraph): void {
+    // Datasources don't have references to resolve
+  }
+
+  async upsert(space: string): Promise<SpaceDatasource> {
+    const existingDatasource = this.targetData?.resource as SpaceDatasource | undefined;
+    const existingId = existingDatasource?.id;
+
+    // For components push, we only create the datasource stub without entries.
+    // Pushing entries is handled by the datasources push command.
+    const { entries, ...datasourceDefinition } = this.sourceData;
+
+    const result = await upsertDatasource(space, datasourceDefinition, existingId);
+    if (!result) {
+      throw new Error(`Failed to upsert datasource ${this.name}`);
+    }
+
+    return result;
   }
 }

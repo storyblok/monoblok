@@ -1,6 +1,8 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import type { ReadComponentsOptions } from './constants';
+import type { SpaceDatasource } from '../../datasources/constants';
+import { readDatasourcesFiles } from '../../datasources/push/actions';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
@@ -206,9 +208,36 @@ export const upsertComponentInternalTag = async (
   }
 };
 
+/**
+ * Helper function to read datasources with error handling
+ */
+async function readDatasourcesWithFallback(
+  from: string,
+  path: string | undefined,
+  suffix: string | undefined,
+): Promise<SpaceDatasource[]> {
+  try {
+    const datasourcesData = await readDatasourcesFiles({
+      from,
+      path,
+      space: from,
+      separateFiles: false, // Use consolidated by default
+      suffix,
+      verbose: false,
+    });
+    return datasourcesData.datasources;
+  }
+  catch (error) {
+    // If datasources can't be read, continue with empty array
+    // This allows components push to work even if no datasources are available
+    console.warn(`Warning: Could not read datasources for space ${from}. Components referencing datasources may not work properly.`, error);
+    return [];
+  }
+}
+
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<SpaceComponentsData> => {
-  const { from, path, separateFiles = false, suffix, space } = options;
+  const { from, path, separateFiles = false, suffix, space, includeDatasources = false } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
@@ -233,13 +262,13 @@ export const readComponentsFiles = async (
   }
 
   if (separateFiles) {
-    return await readSeparateFiles(resolvedPath, suffix);
+    return await readSeparateFiles(resolvedPath, suffix, from, path, includeDatasources);
   }
 
-  return await readConsolidatedFiles(resolvedPath, suffix);
+  return await readConsolidatedFiles(resolvedPath, suffix, from, path, includeDatasources);
 };
 
-async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceComponentsData> {
+async function readSeparateFiles(resolvedPath: string, suffix?: string, from?: string, path?: string, includeDatasources?: boolean): Promise<SpaceComponentsData> {
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
@@ -296,15 +325,21 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
     }
   }
 
+  // Read datasources if requested
+  const datasources = includeDatasources && from
+    ? await readDatasourcesWithFallback(from, path, suffix)
+    : [];
+
   return {
     components,
     groups,
     presets,
     internalTags,
+    datasources,
   };
 }
 
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceComponentsData> {
+async function readConsolidatedFiles(resolvedPath: string, suffix?: string, from?: string, path?: string, includeDatasources?: boolean): Promise<SpaceComponentsData> {
   // Read required components file
   const componentsPath = join(resolvedPath, suffix ? `components.${suffix}.json` : 'components.json');
   const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);
@@ -325,10 +360,16 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Pro
     readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `tags.${suffix}.json` : 'tags.json')),
   ]);
 
+  // Read datasources if requested
+  const datasources = includeDatasources && from
+    ? await readDatasourcesWithFallback(from, path, suffix)
+    : [];
+
   return {
     components: componentsResult.data,
     groups: groupsResult.data,
     presets: presetsResult.data,
     internalTags: tagsResult.data,
+    datasources,
   };
 }

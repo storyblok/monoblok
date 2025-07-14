@@ -1,3 +1,5 @@
+import type { SpaceDatasource } from '../datasources/constants';
+
 export interface SpaceComponent {
   name: string;
   display_name: string;
@@ -53,6 +55,7 @@ export interface SpaceComponentsData {
   groups: SpaceComponentGroup[];
   presets: SpaceComponentPreset[];
   internalTags: SpaceComponentInternalTag[];
+  datasources: SpaceDatasource[];
 }
 
 export interface SpaceComponentsDataState {
@@ -62,5 +65,6 @@ export interface SpaceComponentsDataState {
     tags: Map<string, SpaceComponentInternalTag>;
     groups: Map<string, SpaceComponentGroup>;
     presets: Map<string, SpaceComponentPreset>;
+    datasources: Map<string, SpaceDatasource>;
   };
 }

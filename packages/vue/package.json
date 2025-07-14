@@ -54,7 +54,7 @@
     "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^22.15.18",
     "@typescript-eslint/parser": "^8.23.0",
-    "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue": "^5.2.4",
     "cypress": "^14.3.3",
     "eslint": "^9.26.0",
     "eslint-plugin-vue": "^9.32.0",

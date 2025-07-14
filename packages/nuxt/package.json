@@ -28,7 +28,7 @@
   "scripts": {
     "prepack": "nuxt-module-build build",
     "build": "nuxt-module-build prepare && nuxt-module-build build",
-    "dev": "nuxi dev playground-e2e",
+    "dev": "nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:preview": "nuxi preview playground",
     "prepare:playground": "nuxi prepare playground",
@@ -62,7 +62,7 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-vue": "^9.32.0",
-    "nuxt": "^3.15.4",
+    "nuxt": "^3.17.7",
     "prettier": "^3.4.2",
     "start-server-and-test": "^2.0.11"
   },

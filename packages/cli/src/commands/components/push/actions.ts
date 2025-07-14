@@ -1,10 +1,9 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceData } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
-import { readdir, readFile } from 'node:fs/promises';
-import { resolvePath } from '../../../utils/filesystem';
-import type { FileReaderResult } from '../../../types';
+import { readdir } from 'node:fs/promises';
+import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 
@@ -207,22 +206,8 @@ export const upsertComponentInternalTag = async (
   }
 };
 
-async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
-  try {
-    const content = (await readFile(filePath)).toString();
-    if (!content) {
-      return { data: [] };
-    }
-    const parsed = JSON.parse(content);
-    return { data: Array.isArray(parsed) ? parsed : [parsed] };
-  }
-  catch (error) {
-    return { data: [], error: error as Error };
-  }
-}
-
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<SpaceData> => {
+  options: ReadComponentsOptions): Promise<SpaceComponentsData> => {
   const { from, path, separateFiles = false, suffix, space } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
@@ -254,7 +239,7 @@ export const readComponentsFiles = async (
   return await readConsolidatedFiles(resolvedPath, suffix);
 };
 
-async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceData> {
+async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceComponentsData> {
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
@@ -319,7 +304,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   };
 }
 
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceData> {
+async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceComponentsData> {
   // Read required components file
   const componentsPath = join(resolvedPath, suffix ? `components.${suffix}.json` : 'components.json');
   const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);

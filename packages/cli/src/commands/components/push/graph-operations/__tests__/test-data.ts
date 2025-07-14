@@ -3,7 +3,7 @@ import type {
   SpaceComponentGroup,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
-  SpaceDataState,
+  SpaceComponentsDataState,
 } from '../../../constants';
 
 // =============================================================================
@@ -226,7 +226,7 @@ export function createTestSpaceDataState(
     tags?: SpaceComponentInternalTag[];
     presets?: SpaceComponentPreset[];
   } = {},
-): SpaceDataState {
+): SpaceComponentsDataState {
   const targetComponents = targetData.components || [];
   const targetPresets = targetData.presets || [];
 

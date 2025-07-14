@@ -12,6 +12,7 @@ export interface SpaceDatasourceEntry {
   name: string;
   value: string;
   dimension_value: string;
+  datasource_id: number;
 }
 
 export interface SpaceDatasource {
@@ -25,4 +26,15 @@ export interface SpaceDatasource {
    * Optionally include entries when resolving datasources with their entries
    */
   entries?: SpaceDatasourceEntry[];
+}
+
+export interface SpaceDatasourcesData {
+  datasources: SpaceDatasource[];
+}
+
+export interface SpaceDatasourcesDataState {
+  local: SpaceDatasourcesData;
+  target: {
+    datasources: Map<string, SpaceDatasource>;
+  };
 }

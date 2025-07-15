@@ -59,16 +59,14 @@ datasourcesCommand
       if (options.id) {
         // Delete by id
         await deleteDatasource(space, options.id);
-        spinner.succeed(
-          `Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully.`,
-        );
+        spinner.succeed();
+        konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully from space ${space}.`);
       }
       else {
         // Delete by name
         await deleteDatasourceByName(space, name);
-        spinner.succeed(
-          `Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully.`,
-        );
+        spinner.succeed();
+        konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
       }
     }
     catch (error) {

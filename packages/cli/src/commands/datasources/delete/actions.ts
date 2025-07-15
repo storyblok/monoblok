@@ -37,6 +37,6 @@ export async function deleteDatasourceByName(space: string, name: string): Promi
   }
   catch (error) {
     // 'update_datasource' is the closest allowed action for datasource deletion in API_ACTIONS
-    handleAPIError('update_datasource', error as Error, `Failed to delete datasource '${name}'.`);
+    handleAPIError('update_datasource', error as Error, `Datasource with name '${name}' not found in space ${space}.`);
   }
 }

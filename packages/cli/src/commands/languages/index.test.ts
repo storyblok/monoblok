@@ -4,6 +4,7 @@ import { session } from '../../session';
 import { CommandError, konsola } from '../../utils';
 import { fetchLanguages, saveLanguagesToFile } from './actions';
 import { colorPalette } from '../../constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./actions', () => ({
   fetchLanguages: vi.fn(),

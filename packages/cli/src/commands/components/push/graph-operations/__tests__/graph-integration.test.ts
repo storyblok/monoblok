@@ -183,6 +183,7 @@ describe('graph Integration Tests', () => {
           ]),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -731,6 +732,7 @@ describe('graph Integration Tests', () => {
           groups: [],
           internalTags: [],
           presets: [],
+          datasources: [],
         },
         target: {
           components: new Map(),
@@ -779,7 +781,7 @@ describe('graph Integration Tests', () => {
       expect(dependencies.datasourceNames.size).toBe(2);
     });
 
-    it('should build dependency graph with datasources', () => {
+    it('should build dependency graph with datasources from component references', () => {
       const mockSpaceState: SpaceComponentsDataState = {
         local: {
           components: [
@@ -802,17 +804,7 @@ describe('graph Integration Tests', () => {
           groups: [],
           presets: [],
           internalTags: [],
-          datasources: [
-            {
-              id: 1,
-              name: 'categories',
-              slug: 'categories',
-              dimensions: [],
-              entries: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
+          datasources: [], // No local datasources - stubs created from component references
         },
         target: {
           components: new Map(),
@@ -835,7 +827,7 @@ describe('graph Integration Tests', () => {
       expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
     });
 
-    it('should handle missing datasource dependencies gracefully', () => {
+    it('should create stub datasources for referenced datasources', () => {
       const mockSpaceState: SpaceComponentsDataState = {
         local: {
           components: [
@@ -847,7 +839,7 @@ describe('graph Integration Tests', () => {
                 category: {
                   type: 'option',
                   source: 'internal',
-                  datasource_slug: 'missing_datasource',
+                  datasource_slug: 'referenced_datasource',
                 },
               },
               created_at: new Date().toISOString(),
@@ -858,7 +850,7 @@ describe('graph Integration Tests', () => {
           groups: [],
           presets: [],
           internalTags: [],
-          datasources: [], // No datasources available
+          datasources: [], // No datasources in local workspace
         },
         target: {
           components: new Map(),
@@ -869,22 +861,21 @@ describe('graph Integration Tests', () => {
         },
       };
 
-      // Capture console.warn output to verify warning is logged
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const graph = buildDependencyGraph({ spaceState: mockSpaceState });
 
       expect(graph.nodes.has('component:ProductCard')).toBe(true);
-      expect(graph.nodes.has('datasource:missing_datasource')).toBe(false);
+      expect(graph.nodes.has('datasource:referenced_datasource')).toBe(true);
 
       const component = graph.nodes.get('component:ProductCard');
-      expect(component?.dependencies.has('datasource:missing_datasource')).toBe(false);
+      const datasource = graph.nodes.get('datasource:referenced_datasource');
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Warning: Component \'ProductCard\' references datasource \'missing_datasource\' which is not available in the local workspace. The datasource dependency will be ignored.',
-      );
+      expect(component?.dependencies.has('datasource:referenced_datasource')).toBe(true);
+      expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
 
-      consoleSpy.mockRestore();
+      // Verify the stub datasource has correct structure
+      expect(datasource?.sourceData.name).toBe('referenced_datasource');
+      expect(datasource?.sourceData.slug).toBe('referenced_datasource');
+      expect(datasource?.sourceData.entries).toEqual([]);
     });
 
     it('should resolve datasource references in component schemas', () => {

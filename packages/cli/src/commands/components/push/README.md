@@ -161,3 +161,4 @@ Where:
   - Component presets
   - Component tags
   - Component whitelists
+  - Datasources (excluding datasource entries)

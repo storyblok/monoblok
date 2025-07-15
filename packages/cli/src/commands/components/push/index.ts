@@ -4,7 +4,7 @@ import { colorPalette, commands } from '../../../constants';
 import { getProgram } from '../../../program';
 import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
-import { readComponentsFiles, readDatasourcesWithFallback } from './actions';
+import { readComponentsFiles } from './actions';
 import { componentsCommand } from '../command';
 import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
@@ -75,15 +75,11 @@ componentsCommand
         space,
       });
 
-      // Read datasources separately
-      const localDatasources = options.from
-        ? await readDatasourcesWithFallback(options.from, path, options.suffix)
-        : [];
-
-      // Combine into the expected structure
+      // Combine into the expected structure with empty datasources array
+      // Datasources will be stubbed based on detected dependencies
       const localData: SpaceComponentsData = {
         ...componentsData,
-        datasources: localDatasources,
+        datasources: [],
       };
 
       const spaceState: SpaceComponentsDataState = {

@@ -1,8 +1,6 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import type { ReadComponentsOptions } from './constants';
-import type { SpaceDatasource } from '../../datasources/constants';
-import { readDatasourcesFiles } from '../../datasources/push/actions';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
@@ -215,33 +213,6 @@ export const upsertComponentInternalTag = async (
     return await pushComponentInternalTag(space, tag);
   }
 };
-
-/**
- * Helper function to read datasources with error handling
- */
-export async function readDatasourcesWithFallback(
-  from: string,
-  path: string | undefined,
-  suffix: string | undefined,
-): Promise<SpaceDatasource[]> {
-  try {
-    const datasourcesData = await readDatasourcesFiles({
-      from,
-      path,
-      space: from,
-      separateFiles: false, // Use consolidated by default
-      suffix,
-      verbose: false,
-    });
-    return datasourcesData.datasources;
-  }
-  catch (error) {
-    // If datasources can't be read, continue with empty array
-    // This allows components push to work even if no datasources are available
-    console.warn(`Warning: Could not read datasources for space ${from}. Components referencing datasources may not work properly.`, error);
-    return [];
-  }
-}
 
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<ComponentsData> => {

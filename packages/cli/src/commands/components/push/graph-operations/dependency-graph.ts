@@ -10,6 +10,25 @@ import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upse
 import { upsertDatasource } from '../../../datasources/push/actions';
 
 // =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Creates a minimal stub datasource with only required fields.
+ */
+function createStubDatasource(name: string): SpaceDatasource {
+  return {
+    id: 0, // Will be set by API
+    name,
+    slug: name,
+    dimensions: [],
+    entries: [], // Empty entries for stub
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// =============================================================================
 // GRAPH BUILDING
 // =============================================================================
 
@@ -34,6 +53,28 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     }
   }
 
+  // Collect all datasource names referenced by components
+  const referencedDatasources = new Set<string>();
+  spaceState.local.components.forEach((component) => {
+    if (component.schema) {
+      const dependencies = collectWhitelistDependencies(component.schema);
+      dependencies.datasourceNames.forEach((datasourceName) => {
+        referencedDatasources.add(datasourceName);
+      });
+    }
+  });
+
+  // Create stub datasource nodes for all referenced datasources
+  referencedDatasources.forEach((datasourceName) => {
+    const nodeId = `datasource:${datasourceName}`;
+    const targetDatasource = spaceState.target.datasources?.get(datasourceName);
+
+    // Create minimal stub datasource
+    const stubDatasource = createStubDatasource(datasourceName);
+    const node = new DatasourceNode(nodeId, stubDatasource, targetDatasource);
+    graph.nodes.set(nodeId, node);
+  });
+
   // Create nodes for all tags with colocated target data
   spaceState.local.internalTags.forEach((tag) => {
     const nodeId = `tag:${tag.id}`;
@@ -57,16 +98,6 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const node = new ComponentNode(nodeId, component, targetComponent);
     graph.nodes.set(nodeId, node);
   });
-
-  // Create nodes for all datasources with colocated target data
-  if (spaceState.local.datasources) {
-    spaceState.local.datasources.forEach((datasource) => {
-      const nodeId = `datasource:${datasource.name}`;
-      const targetDatasource = spaceState.target.datasources?.get(datasource.name);
-      const node = new DatasourceNode(nodeId, datasource, targetDatasource);
-      graph.nodes.set(nodeId, node);
-    });
-  }
 
   // Create nodes for all presets with colocated target data
   // Since presets are nested resources under components, create a component map for efficient lookups
@@ -158,14 +189,8 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
       // Add dependencies on datasources (from schema fields with internal source)
       dependencies.datasourceNames.forEach((datasourceName) => {
         const datasourceId = `datasource:${datasourceName}`;
-        // Check if the datasource exists in the local workspace before adding dependency
-        const datasourceExists = spaceState.local.datasources?.some(ds => ds.name === datasourceName);
-        if (datasourceExists) {
-          addDependency(componentId, datasourceId);
-        }
-        else {
-          console.warn(`Warning: Component '${component.name}' references datasource '${datasourceName}' which is not available in the local workspace. The datasource dependency will be ignored.`);
-        }
+        // Always add dependency since we create stubs for all referenced datasources
+        addDependency(componentId, datasourceId);
       });
     }
   });

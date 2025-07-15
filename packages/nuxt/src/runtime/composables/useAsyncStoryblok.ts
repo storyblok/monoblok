@@ -1,7 +1,7 @@
 import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
 import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
-import { computed, useAsyncData, watch } from '#imports';
-import type { AsyncDataOptions } from 'nuxt/app';
+import { computed, type ComputedRef, useAsyncData, watch } from '#imports';
+import type { AsyncData, AsyncDataOptions, NuxtError } from 'nuxt/app';
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -12,6 +12,10 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
   api: ISbStoriesParams;
   /** Storyblok Bridge configuration for live preview */
   bridge: StoryblokBridgeConfigV2;
+}
+
+export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
+  story: ComputedRef<ISbResult['data']['story']>;
 }
 
 /**
@@ -79,7 +83,7 @@ const stableStringify = (obj: Record<string, any>): string => {
 export const useAsyncStoryblok = async (
   url: string,
   options: UseAsyncStoryblokOptions,
-) => {
+): Promise<UseAsyncStoryblokResult> => {
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
@@ -101,5 +105,5 @@ export const useAsyncStoryblok = async (
   return {
     ...result,
     story: computed(() => result.data.value?.data.story),
-  };
+  } as UseAsyncStoryblokResult;
 };

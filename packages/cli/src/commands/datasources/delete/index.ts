@@ -1,5 +1,5 @@
 import { datasourcesCommand } from '../command';
-import { deleteDatasourceByNameOrId } from './actions';
+import { deleteDatasource, deleteDatasourceByName } from './actions';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { colorPalette, commands } from '../../../constants';
@@ -55,10 +55,21 @@ datasourcesCommand
 
     try {
       spinner.start(`Deleting datasource...`);
-      await deleteDatasourceByNameOrId(space, name, options.id);
-      spinner.succeed(
-        `Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id ? options.id : name)} deleted successfully.`,
-      );
+      // Use id if provided, otherwise use name
+      if (options.id) {
+        // Delete by id
+        await deleteDatasource(space, options.id);
+        spinner.succeed(
+          `Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully.`,
+        );
+      }
+      else {
+        // Delete by name
+        await deleteDatasourceByName(space, name);
+        spinner.succeed(
+          `Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully.`,
+        );
+      }
     }
     catch (error) {
       spinner.failed(

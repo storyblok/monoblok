@@ -1,22 +1,6 @@
 import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
-import { computed, type ComputedRef, useAsyncData, watch } from '#imports';
-import type { AsyncData, AsyncDataOptions, NuxtError } from 'nuxt/app';
-
-/**
- * Options for the useAsyncStoryblok composable.
- * Extends Nuxt's AsyncDataOptions with Storyblok-specific configuration.
- */
-export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
-  /** Storyblok API parameters for fetching stories */
-  api: ISbStoriesParams;
-  /** Storyblok Bridge configuration for live preview */
-  bridge: StoryblokBridgeConfigV2;
-}
-
-export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
-  story: ComputedRef<ISbResult['data']['story']>;
-}
+import { computed, useAsyncData, watch } from '#imports';
+import type { UseAsyncStoryblokOptions, UseAsyncStoryblokResult } from '../../types';
 
 /**
  * Creates a stable string representation of an object by sorting its keys.

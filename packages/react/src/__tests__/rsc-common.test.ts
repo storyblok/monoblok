@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiPlugin } from '@storyblok/js';
 import type { SbReactSDKOptions } from '../types';
-import { apiPlugin, getComponent, getCustomFallbackComponent, getEnableFallbackComponent, getStoryblokApi, setComponents, storyblokInit } from '../rsc/common';
+import { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, getStoryblokApi, setComponents, storyblokInit } from '../core/init';
 
 describe('storyblokInit', () => {
   let pluginOptions: SbReactSDKOptions;

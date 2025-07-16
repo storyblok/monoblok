@@ -5,27 +5,29 @@
 // // Checking custom Flush method
 // storyblokApi.flushCache();
 
-const story = await useAsyncStoryblok('vue', {
-  version: 'draft',
-  language: 'en',
-  resolve_relations: 'popular-articles.articles',
+const { story, error } = await useAsyncStoryblok('vue', {
+  api: {
+    version: 'draft',
+    language: 'en',
+    resolve_relations: 'popular-articles.articles',
+  },
+  bridge: {
+    resolveRelations: 'popular-articles.articles',
+  },
 });
 
-/* const penguin = await useStoryblok('vue', {
-  version: 'draft',
-  language: 'en',
-  resolve_relations: 'popular-articles.articles',
-});ß
+if (error.value) {
+  throw createError({
+    statusCode: error.value.statusCode,
+    statusMessage: error.value.statusMessage
+  });
+}
 
-const awiwi = ref<SbBlokData>({}); */
-
-renderRichText(story.value.content.richText);
-
-/* const richText = computed(() => renderRichText(story.value.content.richText)); */
 </script>
 
 <template>
   <div>
-    <StoryblokComponent v-if="story" :blok="story.content" />
+    <StoryblokComponent v-if="story && !error" :blok="story.content" />
+    <div v-else-if="error">Error: {{ error.message }}</div>
   </div>
 </template>

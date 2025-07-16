@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/eslint-config",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packageManager": "pnpm@9.9.0",
   "description": "Opinionated ESLint configuration for Storyblok ecosystem",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",

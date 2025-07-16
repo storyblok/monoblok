@@ -25,6 +25,32 @@ export const capitalize = (str: string) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
+/**
+ * Converts kebab-case, snake_case, or camelCase strings to human-readable title case
+ * @param str - The string to convert (e.g., "my-blog-website", "my_blog_website", "myBlogWebsite")
+ * @returns A human-readable string (e.g., "My Blog Website")
+ *
+ * @example
+ * toHumanReadable("my-blog-website") // "My Blog Website"
+ * toHumanReadable("my_react_app") // "My React App"
+ * toHumanReadable("myVueProject") // "My Vue Project"
+ * toHumanReadable("simple") // "Simple"
+ */
+export const toHumanReadable = (str: string): string => {
+  return str
+    // Replace kebab-case and snake_case with spaces
+    .replace(/[-_]/g, ' ')
+    // Insert space before uppercase letters (for camelCase)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    // Split into words and capitalize each word
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+    // Clean up any extra spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export function maskToken(token: string): string {
   // Show only the first 4 characters and replace the rest with asterisks
   if (token.length <= 4) {

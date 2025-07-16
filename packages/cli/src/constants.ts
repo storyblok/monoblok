@@ -3,11 +3,12 @@ export const commands = {
   LOGOUT: 'logout',
   SIGNUP: 'signup',
   USER: 'user',
-  COMPONENTS: 'Components',
+  COMPONENTS: 'components',
   LANGUAGES: 'languages',
   MIGRATIONS: 'Migrations',
   TYPES: 'Types',
   DATASOURCES: 'Datasources',
+  CREATE: 'create',
 } as const;
 
 export const colorPalette = {
@@ -20,6 +21,7 @@ export const colorPalette = {
   LANGUAGES: '#f5c003',
   MIGRATIONS: '#8CE2FF',
   TYPES: '#3178C6',
+  CREATE: '#ffb3ba',
   GROUPS: '#4ade80',
   TAGS: '#fbbf24',
   PRESETS: '#a855f7',
@@ -54,6 +56,14 @@ export const managementApiRegions: Record<RegionCode, string> = {
   cn: 'mapi.storyblokchina.cn',
   ca: 'mapi-ca.storyblok.com',
   ap: 'mapi-ap.storyblok.com',
+} as const;
+
+export const appDomains: Record<RegionCode, string> = {
+  eu: 'app.storyblok.com',
+  us: 'app-us.storyblok.com',
+  cn: 'app.storyblokchina.cn',
+  ca: 'app-ca.storyblok.com',
+  ap: 'app-ap.storyblok.com',
 } as const;
 
 export const regionNames: Record<RegionCode, string> = {

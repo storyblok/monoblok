@@ -1,7 +1,7 @@
 {
   "name": "storyblok",
   "type": "module",
-  "version": "4.0.5",
+  "version": "4.1.0",
   "packageManager": "pnpm@10.10.0",
   "description": "Storyblok CLI",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
@@ -44,7 +44,9 @@
     "dotenv": "^16.5.0",
     "json-schema-to-typescript": "^15.0.4",
     "minimatch": "^10.0.3",
+    "octokit": "^5.0.3",
     "ohash": "^2.0.11",
+    "open": "^10.1.2",
     "pathe": "^2.0.3",
     "read-package-up": "^11.0.0",
     "storyblok-js-client": "workspace:*"

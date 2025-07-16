@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { ISbStoryData, StoryblokBridgeConfigV2 } from '@/types';
-import { StoryblokServerComponent } from './common';
+import StoryblokServerComponent from '../server/server-component';
 import StoryblokLiveEditing from './live-editing';
 
 interface StoryblokStoryProps extends Omit<Record<string, unknown>, 'story' | 'bridgeOptions'> {

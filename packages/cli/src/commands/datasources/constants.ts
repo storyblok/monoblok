@@ -16,7 +16,7 @@ export interface SpaceDatasourceEntry {
 }
 
 export interface SpaceDatasource {
-  id: string;
+  id: number;
   name: string;
   slug: string;
   dimensions: SpaceDatasourceDimension[];

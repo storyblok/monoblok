@@ -12,6 +12,7 @@ import './commands/languages';
 import './commands/migrations';
 import './commands/types';
 import './commands/datasources';
+import './commands/create';
 import pkg from '../package.json';
 
 import { colorPalette } from './constants';

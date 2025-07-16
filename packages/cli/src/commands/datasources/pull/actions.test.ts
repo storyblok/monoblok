@@ -63,12 +63,12 @@ const mockedDatasources: SpaceDatasource[] = [
 // Mock datasource entries data
 const mockedEntries: Record<number, SpaceDatasourceEntry[]> = {
   1: [
-    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
-    { id: 102, name: 'red', value: '#ff0000', dimension_value: '' },
+    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+    { id: 102, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
   ],
   2: [
-    { id: 201, name: 'tech', value: 'Technology', dimension_value: '' },
-    { id: 202, name: 'business', value: 'Business', dimension_value: '' },
+    { id: 201, name: 'tech', value: 'Technology', dimension_value: '', datasource_id: 2 },
+    { id: 202, name: 'business', value: 'Business', dimension_value: '', datasource_id: 2 },
   ],
 };
 

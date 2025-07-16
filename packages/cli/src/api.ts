@@ -31,6 +31,7 @@ export interface MapiClient {
   get: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   post: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   put: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
+  delete: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   dispose: () => void;
   getRequestCount: () => number;
 }
@@ -198,11 +199,16 @@ const createMapiClient = (options: ManagementApiClientOptions): MapiClient => {
     return request(path, { ...fetchOptions, method: 'PUT' });
   };
 
+  const _delete = async (path: string, fetchOptions?: FetchOptions) => {
+    return request(path, { ...fetchOptions, method: 'DELETE' });
+  };
+
   instance = {
     uuid: state.uuid,
     get,
     post,
     put,
+    delete: _delete,
     dispose: () => {
       instance = null;
     },

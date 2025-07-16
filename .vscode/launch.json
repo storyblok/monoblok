@@ -387,6 +387,28 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Delete datasource by name",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "delete", "colors", "--space", "295018"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Delete datasource by id",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["datasources", "delete", "--id", "68808844260282", "--space", "295018"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
     }
   ],
 }

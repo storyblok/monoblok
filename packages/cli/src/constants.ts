@@ -5,8 +5,8 @@ export const commands = {
   USER: 'user',
   COMPONENTS: 'components',
   LANGUAGES: 'languages',
-  MIGRATIONS: 'migrations',
-  TYPES: 'types',
+  MIGRATIONS: 'Migrations',
+  TYPES: 'Types',
   DATASOURCES: 'Datasources',
   CREATE: 'create',
 } as const;

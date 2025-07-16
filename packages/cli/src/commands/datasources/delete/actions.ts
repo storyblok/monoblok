@@ -10,7 +10,7 @@ export async function deleteDatasource(space: string, id: string): Promise<void>
   try {
     const client = mapiClient();
     // Call the Storyblok Management API to delete the datasource by id
-    await client.get(`spaces/${space}/datasources/${id}`, { method: 'DELETE' });
+    await client.delete(`spaces/${space}/datasources/${id}`);
   }
   catch (error) {
     handleAPIError('delete_datasource', error as Error, `Datasource with id '${id}' not found in space ${space}.`);

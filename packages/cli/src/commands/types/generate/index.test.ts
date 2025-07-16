@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { konsola } from '../../../utils';
 import { generateStoryblokTypes, generateTypes } from './actions';
@@ -91,6 +92,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -111,7 +113,7 @@ describe('types generate', () => {
       });
 
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-
+        path: undefined,
       });
 
       expect(konsola.ok).toHaveBeenCalledWith(`Successfully generated types for space ${chalk.hex(colorPalette.PRIMARY)('12345')}`, true);
@@ -135,6 +137,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -153,6 +156,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the strict option set to true
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         strict: true,
+        path: undefined,
       });
     });
 
@@ -174,6 +178,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -192,6 +197,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the typePrefix option set to 'Custom'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         typePrefix: 'Custom',
+        path: undefined,
       });
     });
 
@@ -213,6 +219,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -231,6 +238,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the suffix option set to 'Component'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         suffix: 'Component',
+        path: undefined,
       });
     });
 
@@ -252,6 +260,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -270,6 +279,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the separateFiles option set to true
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         separateFiles: true,
+        path: undefined,
       });
     });
 
@@ -291,6 +301,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -309,6 +320,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the customFieldsParser option set to '/path/to/parser.ts'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         customFieldsParser: '/path/to/parser.ts',
+        path: undefined,
       });
     });
 
@@ -330,6 +342,7 @@ describe('types generate', () => {
         groups: [],
         presets: [],
         internalTags: [],
+        datasources: [],
       };
 
       session().state = {
@@ -348,6 +361,7 @@ describe('types generate', () => {
       // Verify that generateTypes was called with the compilerOptions option set to '/path/to/options.json'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
         compilerOptions: '/path/to/options.json',
+        path: undefined,
       });
     });
   });

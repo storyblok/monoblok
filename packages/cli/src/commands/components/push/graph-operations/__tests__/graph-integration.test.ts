@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildDependencyGraph, determineProcessingOrder, validateGraph } from '../dependency-graph';
+import { buildDependencyGraph, collectWhitelistDependencies, determineProcessingOrder, validateGraph } from '../dependency-graph';
 import { processAllResources } from '../resource-processor';
 import type { SpaceComponentsDataState } from '../../../constants';
 
@@ -67,6 +67,7 @@ describe('graph Integration Tests', () => {
             icon: '',
             description: '',
           }],
+          datasources: [],
         },
         target: {
           components: new Map([['shared-component', {
@@ -108,6 +109,7 @@ describe('graph Integration Tests', () => {
               description: '',
             }],
           ]),
+          datasources: new Map(),
         },
       };
 
@@ -170,6 +172,7 @@ describe('graph Integration Tests', () => {
           ],
           internalTags: [],
           presets: [],
+          datasources: [],
         },
         target: {
           components: new Map(),
@@ -180,6 +183,7 @@ describe('graph Integration Tests', () => {
           ]),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -728,12 +732,14 @@ describe('graph Integration Tests', () => {
           groups: [],
           internalTags: [],
           presets: [],
+          datasources: [],
         },
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -745,6 +751,199 @@ describe('graph Integration Tests', () => {
       // Processing order should handle the circular dependency
       const processingOrder = determineProcessingOrder(graph);
       expect(processingOrder.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('datasource Dependencies', () => {
+    it('should detect datasource dependencies in component schemas', () => {
+      const schema = {
+        option_field: {
+          type: 'option',
+          source: 'internal',
+          datasource_slug: 'colors',
+        },
+        options_field: {
+          type: 'options',
+          source: 'internal',
+          datasource_slug: 'categories',
+        },
+        external_option: {
+          type: 'option',
+          source: 'external',
+          url: 'https://api.example.com/data',
+        },
+      };
+
+      const dependencies = collectWhitelistDependencies(schema);
+
+      expect(dependencies.datasourceNames.has('colors')).toBe(true);
+      expect(dependencies.datasourceNames.has('categories')).toBe(true);
+      expect(dependencies.datasourceNames.size).toBe(2);
+    });
+
+    it('should build dependency graph with datasources from component references', () => {
+      const mockSpaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'ProductCard',
+              display_name: 'Product Card',
+              schema: {
+                category: {
+                  type: 'option',
+                  source: 'internal',
+                  datasource_slug: 'categories',
+                },
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              space_id: 123,
+            },
+          ],
+          groups: [],
+          presets: [],
+          internalTags: [],
+          datasources: [], // No local datasources - stubs created from component references
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
+
+      expect(graph.nodes.has('component:ProductCard')).toBe(true);
+      expect(graph.nodes.has('datasource:categories')).toBe(true);
+
+      const component = graph.nodes.get('component:ProductCard');
+      const datasource = graph.nodes.get('datasource:categories');
+
+      expect(component?.dependencies.has('datasource:categories')).toBe(true);
+      expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
+    });
+
+    it('should create stub datasources for referenced datasources', () => {
+      const mockSpaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'ProductCard',
+              display_name: 'Product Card',
+              schema: {
+                category: {
+                  type: 'option',
+                  source: 'internal',
+                  datasource_slug: 'referenced_datasource',
+                },
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              space_id: 123,
+            },
+          ],
+          groups: [],
+          presets: [],
+          internalTags: [],
+          datasources: [], // No datasources in local workspace
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
+
+      expect(graph.nodes.has('component:ProductCard')).toBe(true);
+      expect(graph.nodes.has('datasource:referenced_datasource')).toBe(true);
+
+      const component = graph.nodes.get('component:ProductCard');
+      const datasource = graph.nodes.get('datasource:referenced_datasource');
+
+      expect(component?.dependencies.has('datasource:referenced_datasource')).toBe(true);
+      expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
+
+      // Verify the stub datasource has correct structure
+      expect(datasource?.sourceData.name).toBe('referenced_datasource');
+      expect(datasource?.sourceData.slug).toBe('referenced_datasource');
+      expect(datasource?.sourceData.entries).toEqual([]);
+    });
+
+    it('should resolve datasource references in component schemas', () => {
+      const mockTargetDatasource = {
+        id: 42,
+        name: 'categories',
+        slug: 'target_categories',
+        dimensions: [],
+        entries: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const mockSpaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'ProductCard',
+              display_name: 'Product Card',
+              schema: {
+                category: {
+                  type: 'option',
+                  source: 'internal',
+                  datasource_slug: 'categories',
+                },
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              space_id: 123,
+            },
+          ],
+          groups: [],
+          presets: [],
+          internalTags: [],
+          datasources: [
+            {
+              id: 1,
+              name: 'categories',
+              slug: 'categories',
+              dimensions: [],
+              entries: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ],
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map([['categories', mockTargetDatasource]]),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
+
+      // Simulate that the datasource was successfully upserted
+      const datasourceNode = graph.nodes.get('datasource:categories');
+      datasourceNode?.updateTargetData(mockTargetDatasource);
+
+      const componentNode = graph.nodes.get('component:ProductCard') as ComponentNode;
+      componentNode.resolveReferences(graph);
+
+      // Check that the schema reference was resolved to the target datasource
+      const resolvedSchema = componentNode.sourceData.schema;
+      expect(resolvedSchema.category.datasource_slug).toBe('target_categories');
     });
   });
 });

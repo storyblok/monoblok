@@ -94,7 +94,7 @@ datasourcesCommand
           }
         }
         spinner.start(`Deleting datasource...`);
-        await deleteDatasource(space, datasource.id);
+        await deleteDatasource(space, datasource.id.toString());
         spinner.succeed();
         konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
       }

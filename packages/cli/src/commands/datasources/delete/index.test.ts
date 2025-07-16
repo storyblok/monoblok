@@ -1,15 +1,20 @@
 import { session } from '../../../session';
 import { konsola } from '../../../utils';
-import { deleteDatasource, deleteDatasourceByName } from './actions';
+import { deleteDatasource } from './actions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../index';
 import { datasourcesCommand } from '../command';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
+import { fetchDatasource } from '../pull/actions';
+import { confirm } from '@inquirer/prompts';
 
 vi.mock('./actions', () => ({
   deleteDatasource: vi.fn(),
-  deleteDatasourceByName: vi.fn(),
+}));
+
+vi.mock('../pull/actions', () => ({
+  fetchDatasource: vi.fn(),
 }));
 
 vi.mock('../../../creds', () => ({
@@ -17,6 +22,10 @@ vi.mock('../../../creds', () => ({
   addCredentials: vi.fn(),
   removeCredentials: vi.fn(),
   removeAllCredentials: vi.fn(),
+}));
+
+vi.mock('@inquirer/prompts', () => ({
+  confirm: vi.fn(),
 }));
 
 // Mocking the session module
@@ -73,10 +82,18 @@ describe('datasources delete command', () => {
       password: 'valid-token',
       region: 'eu',
     };
-
-    vi.mocked(deleteDatasourceByName).mockResolvedValue(undefined);
+    vi.mocked(fetchDatasource).mockResolvedValue({
+      id: '45678',
+      name: 'Countries',
+      slug: 'countries',
+      created_at: '2021-01-01',
+      updated_at: '2021-01-01',
+      dimensions: [],
+    });
+    vi.mocked(confirm).mockResolvedValue(true);
+    vi.mocked(deleteDatasource).mockResolvedValue(undefined);
     await datasourcesCommand.parseAsync(['node', 'test', 'delete', 'Countries', '--space', '12345']);
-    expect(deleteDatasourceByName).toHaveBeenCalledWith('12345', 'Countries');
+    expect(deleteDatasource).toHaveBeenCalledWith('12345', '45678');
     expect(konsola.ok).toHaveBeenCalledWith(`Datasource ${chalk.hex(colorPalette.DATASOURCES)('Countries')} deleted successfully from space 12345.`);
   });
 

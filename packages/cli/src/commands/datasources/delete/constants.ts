@@ -9,4 +9,8 @@ export interface DeleteDatasourceOptions {
    * The datasource id to delete by, if provided. If not set, the command will delete by name.
    */
   id?: string;
+  /**
+   * If true, skip confirmation prompt (for CI or automation)
+   */
+  force?: boolean;
 }

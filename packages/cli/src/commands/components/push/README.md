@@ -2,8 +2,22 @@
 
 The `components push` command allows you to upload components and their dependencies to your Storyblok space.
 
-> [!WARNING]
-> This command requires you have previously used the `components pull` command to download those components. If you used any flags during the pull (like `--suffix` or `--separate-files`), you must apply them with the same values when pushing to ensure files are found correctly.
+This command will automatically handle the following:
+- Upload components
+- Upload component groups
+- Upload component presets
+- Upload component tags
+- Upload component whitelists
+- Upload datasources (excluding datasource entries)
+
+> [!NOTE]
+> To completly update datasources and their entries, please pull the datasources first from the origin space and push them to the target space. Check the [datasources pull](../datasources/pull/README.md) and [datasources push](../datasources/push/README.md) commands for more information.
+
+## Prerequisites
+
+- You must have previously used the `components pull` command to download those components.
+- If you have components with fields that depend on datasources, you must pull the datasources first from the origin space and push them to the target space using the `datasources pull` and `datasources push` commands. .
+- If you used any flags during the pull (like `--suffix` or `--separate-files`), you must apply them with the same values when pushing to ensure files are found correctly.
 
 ## Basic Usage
 
@@ -35,14 +49,14 @@ This will upload a single component and its dependencies from:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to push components to | - |
-| `-f, --from <from>` | Source space ID to read components from | Target space ID |
-| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | - |
-| `--sf, --separate-files` | Read from separate files instead of consolidated files | `false` |
-| `--su, --suffix <suffix>` | Suffix to add to the files names | - |
-| `-p, --path <path>` | Custom path to read the files from | `.storyblok/components` |
+| Option                    | Description                                                                                                    | Default                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                           | -                       |
+| `-f, --from <from>`       | Source space ID to read components from                                                                        | Target space ID         |
+| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | -                       |
+| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                         | `false`                 |
+| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                               | -                       |
+| `-p, --path <path>`       | Custom path to read the files from                                                                             | `.storyblok/components` |
 
 ## Examples
 
@@ -161,3 +175,4 @@ Where:
   - Component presets
   - Component tags
   - Component whitelists
+  - Datasources (excluding datasource entries)

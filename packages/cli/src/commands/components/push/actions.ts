@@ -1,12 +1,19 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceData } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
-import { readdir, readFile } from 'node:fs/promises';
-import { resolvePath } from '../../../utils/filesystem';
-import type { FileReaderResult } from '../../../types';
+import { readdir } from 'node:fs/promises';
+import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
+
+// Define a type for components data without datasources
+export interface ComponentsData {
+  components: SpaceComponent[];
+  groups: SpaceComponentGroup[];
+  presets: SpaceComponentPreset[];
+  internalTags: SpaceComponentInternalTag[];
+}
 
 // Component actions
 export const pushComponent = async (space: string, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
@@ -207,23 +214,9 @@ export const upsertComponentInternalTag = async (
   }
 };
 
-async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
-  try {
-    const content = (await readFile(filePath)).toString();
-    if (!content) {
-      return { data: [] };
-    }
-    const parsed = JSON.parse(content);
-    return { data: Array.isArray(parsed) ? parsed : [parsed] };
-  }
-  catch (error) {
-    return { data: [], error: error as Error };
-  }
-}
-
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<SpaceData> => {
-  const { from, path, separateFiles = false, suffix, space } = options;
+  options: ReadComponentsOptions): Promise<ComponentsData> => {
+  const { from, path, separateFiles = false, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
@@ -237,7 +230,7 @@ export const readComponentsFiles = async (
    ${chalk.cyan(`storyblok components pull --space ${from}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok components push --space ${space} --from ${from}`)}`;
+   ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
 
     throw new FileSystemError(
       'file_not_found',
@@ -254,7 +247,7 @@ export const readComponentsFiles = async (
   return await readConsolidatedFiles(resolvedPath, suffix);
 };
 
-async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceData> {
+async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
@@ -319,7 +312,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   };
 }
 
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceData> {
+async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   // Read required components file
   const componentsPath = join(resolvedPath, suffix ? `components.${suffix}.json` : 'components.json');
   const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);

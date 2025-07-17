@@ -53,7 +53,7 @@ For space IDs up to 32 bits, regions are determined by number ranges:
 
 ```js
 // Example with legacy space ID
-const spaceId = 1500000
+const spaceId = 1_500_000
 const region = getRegion(spaceId) // Returns 'us'
 ```
 
@@ -69,7 +69,7 @@ For space IDs of 49-53 bits, the region is encoded in the first 5 bits:
 
 ```js
 // Example with new space ID format
-const spaceId = 282994740194929n
+const spaceId = 282_994_740_194_929n
 const region = getRegion(spaceId) // Returns 'eu'
 ```
 

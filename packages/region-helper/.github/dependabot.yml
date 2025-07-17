@@ -1,0 +1,26 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '07:00'
+      timezone: 'UTC'
+    reviewers:
+      - 'storyblok/plugins'
+    groups:
+      # Group 1: Development Tools
+      development-tools:
+        patterns:
+          - '*'
+        # Ensure these are treated as development dependencies
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+    commit-message:
+      prefix: 'chore(deps)'
+      include: 'scope'

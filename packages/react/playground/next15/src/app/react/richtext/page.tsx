@@ -7,8 +7,8 @@ export default async function RichtextPage() {
 
   if (!data.story?.content) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-lg text-gray-600 dark:text-gray-400">
+      <div className="animate-pulse text-lg text-gray-600 dark:text-gray-400">
+          <div className="min-h-screen flex items-center justify-center">
           Loading content...
         </div>
       </div>
@@ -33,5 +33,5 @@ export async function fetchData() {
   const sbParams: ISbStoriesParams = { version: 'draft' };
 
   const storyblokApi: StoryblokClient = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/react/test-richtext`, sbParams);
+  return storyblokApi.get(`cdn/stories/react/richtext`, sbParams);
 }

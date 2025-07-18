@@ -10,11 +10,6 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
-  "devDependencies": {
-    "@nuxt/devtools": "^1.5.2",
-    "@types/node": "^20",
-    "nuxt": "^3.13.2"
-  },
   "nx": {
     "projectType": "application"
   }

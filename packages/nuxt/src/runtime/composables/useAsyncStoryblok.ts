@@ -1,7 +1,33 @@
-import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import { computed, useAsyncData, watch } from '#imports';
-import type { UseAsyncStoryblokOptions, UseAsyncStoryblokResult } from '../../types';
+import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import { computed, type ComputedRef, type Ref, useAsyncData, watch } from '#imports';
+import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
+import type { DedupeOption } from 'nuxt/app/defaults';
 
+/**
+ * Options for the useAsyncStoryblok composable.
+ * Extends Nuxt's AsyncDataOptions with Storyblok-specific configuration.
+ */
+export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
+  /** Storyblok API parameters for fetching stories */
+  api: ISbStoriesParams;
+  /** Storyblok Bridge configuration for live preview */
+  bridge: StoryblokBridgeConfigV2;
+}
+
+interface AsyncDataExecuteOptions {
+  dedupe?: DedupeOption;
+  cause?: 'initial' | 'refresh:hook' | 'refresh:manual' | 'watch';
+}
+
+export interface UseAsyncStoryblokResult {
+  story: ComputedRef<ISbResult['data']['story']>;
+  data: AsyncData<ISbResult, NuxtError<unknown>>;
+  pending: Ref<boolean>;
+  error: Ref<NuxtError<unknown> | null>; // <-- allow null
+  refresh: (opts?: AsyncDataExecuteOptions) => Promise<void>;
+  execute: (opts?: AsyncDataExecuteOptions) => Promise<void>;
+  clear: () => void;
+}
 /**
  * Creates a stable string representation of an object by sorting its keys.
  * This ensures consistent caching keys for useAsyncData regardless of property order.
@@ -72,7 +98,7 @@ export const useAsyncStoryblok = async (
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
 
-  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest);
+  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
 
   if (import.meta.client) {
     watch(result.data, (newData) => {
@@ -87,7 +113,12 @@ export const useAsyncStoryblok = async (
   }
 
   return {
-    ...result,
+    data: result,
+    pending: result.pending,
+    error: result.error,
+    refresh: result.refresh,
+    execute: result.execute,
+    clear: result.clear,
     story: computed(() => result.data.value?.data.story),
-  } as UseAsyncStoryblokResult;
+  };
 };

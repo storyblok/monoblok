@@ -21,7 +21,7 @@ interface AsyncDataExecuteOptions {
 
 export interface UseAsyncStoryblokResult {
   story: ComputedRef<ISbResult['data']['story']>;
-  data: AsyncData<ISbResult, NuxtError<unknown>>;
+  data: Ref<ISbResult>;
   pending: Ref<boolean>;
   error: Ref<NuxtError<unknown> | null>; // <-- allow null
   refresh: (opts?: AsyncDataExecuteOptions) => Promise<void>;
@@ -113,7 +113,7 @@ export const useAsyncStoryblok = async (
   }
 
   return {
-    data: result,
+    data: result.data,
     pending: result.pending,
     error: result.error,
     refresh: result.refresh,

@@ -1,7 +1,7 @@
-import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
-import { computed, useAsyncData, watch } from '#imports';
-import type { AsyncDataOptions } from 'nuxt/app';
+import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import { computed, type ComputedRef, watch } from 'vue';
+import { useAsyncData } from '#app';
+import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -14,6 +14,9 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
   bridge: StoryblokBridgeConfigV2;
 }
 
+export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
+  story: ComputedRef<ISbResult['data']['story']>;
+}
 /**
  * Creates a stable string representation of an object by sorting its keys.
  * This ensures consistent caching keys for useAsyncData regardless of property order.
@@ -76,15 +79,15 @@ const stableStringify = (obj: Record<string, any>): string => {
  * ```
  *
  */
-export const useAsyncStoryblok = async (
+export async function useAsyncStoryblok(
   url: string,
   options: UseAsyncStoryblokOptions,
-) => {
+): Promise<UseAsyncStoryblokResult> {
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
 
-  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest);
+  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
 
   if (import.meta.client) {
     watch(result.data, (newData) => {

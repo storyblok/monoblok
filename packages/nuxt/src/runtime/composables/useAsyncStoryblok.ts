@@ -1,5 +1,6 @@
 import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import { computed, type ComputedRef, type Ref, useAsyncData, watch } from '#imports';
+import { computed, type ComputedRef, type Ref, watch } from 'vue';
+import { useAsyncData } from '#app';
 import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
 import type { DedupeOption } from 'nuxt/app/defaults';
 
@@ -90,10 +91,10 @@ const stableStringify = (obj: Record<string, any>): string => {
  * ```
  *
  */
-export const useAsyncStoryblok = async (
+export async function useAsyncStoryblok(
   url: string,
   options: UseAsyncStoryblokOptions,
-): Promise<UseAsyncStoryblokResult> => {
+): Promise<UseAsyncStoryblokResult> {
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;

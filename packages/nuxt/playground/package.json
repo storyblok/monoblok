@@ -7,8 +7,7 @@
     "dev:https": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
     "demo-ssl": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "preview": "nuxt preview"
   },
   "nx": {
     "projectType": "application"

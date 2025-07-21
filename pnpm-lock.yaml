@@ -912,6 +912,9 @@ importers:
       release-it:
         specifier: ^18.1.2
         version: 18.1.2(@types/node@22.15.18)(typescript@5.8.3)
+      tsdown:
+        specifier: ^0.12.9
+        version: 0.12.9(@arethetypeswrong/core@0.18.2)(publint@0.3.12)(typescript@5.8.3)(vue-tsc@2.2.10(typescript@5.8.3))
       typescript:
         specifier: 5.8.3
         version: 5.8.3

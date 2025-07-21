@@ -75,6 +75,7 @@
     "pathe": "^2.0.3",
     "prettier": "^3.4.2",
     "release-it": "^18.1.2",
+    "tsdown": "^0.12.9",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-banner": "^0.8.0",

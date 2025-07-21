@@ -54,6 +54,72 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses unordered (bullet) lists', () => {
+    const md = '- Item 1\n- Item 2';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'bullet_list',
+          content: [
+            {
+              type: 'list_item',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'Item 1' }],
+                },
+              ],
+            },
+            {
+              type: 'list_item',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'Item 2' }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses ordered lists', () => {
+    const md = '1. First\n2. Second';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'ordered_list',
+          content: [
+            {
+              type: 'list_item',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'First' }],
+                },
+              ],
+            },
+            {
+              type: 'list_item',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'text', text: 'Second' }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

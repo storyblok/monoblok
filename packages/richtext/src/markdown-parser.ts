@@ -1,6 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import type { Heading, Root, RootContent, Text } from 'mdast';
+import type { Heading, List, Root, RootContent, Text } from 'mdast';
 import type { StoryblokRichTextDocumentNode } from './types';
 
 /**
@@ -59,6 +59,20 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       type: 'text',
       text,
       marks: [{ type: 'italic' }],
+    };
+  },
+  list: (node, children) => {
+    // node.ordered is true for ordered lists, false for bullet lists
+    const type = (node as List).ordered ? 'ordered_list' : 'bullet_list';
+    return {
+      type,
+      content: children,
+    };
+  },
+  listItem: (_node, children) => {
+    return {
+      type: 'list_item',
+      content: children,
     };
   },
 };

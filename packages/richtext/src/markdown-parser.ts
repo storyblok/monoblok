@@ -1,5 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
+import remarkGfm from 'remark-gfm';
 import type { Heading, List, Image as MdastImage, Root, RootContent, Text } from 'mdast';
 import type { StoryblokRichTextDocumentNode } from './types';
 
@@ -86,6 +87,29 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       },
     };
   },
+  table: (_node, children) => {
+    return {
+      type: 'table',
+      content: children,
+    };
+  },
+  tableRow: (_node, children) => {
+    return {
+      type: 'tableRow',
+      content: children,
+    };
+  },
+  tableCell: (_node, children) => {
+    return {
+      type: 'tableCell',
+      content: children,
+      attrs: {
+        colspan: 1,
+        rowspan: 1,
+        colwidth: null,
+      },
+    };
+  },
 };
 
 /**
@@ -98,8 +122,8 @@ export function markdownToStoryblokRichtext(
   markdown: string,
   options: MarkdownParserOptions = {},
 ): StoryblokRichTextDocumentNode {
-  // Parse markdown to MDAST (Markdown AST)
-  const tree = unified().use(remarkParse).parse(markdown) as Root;
+  // Parse markdown to MDAST (Markdown AST) with GFM support
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
   const resolvers = { ...defaultResolvers, ...options.resolvers };
 
   // Recursively convert MDAST nodes to Storyblok Richtext nodes using resolvers

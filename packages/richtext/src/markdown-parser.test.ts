@@ -143,6 +143,125 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses tables', () => {
+    const md = `| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| R1C1     | R1C2     | R1C3     |\n| R2C1     | R2C2     | R2C3     |\n| R3C1     | R3C2     | R3C3     |`;
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'Header 1' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'Header 2' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'Header 3' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R1C1' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R1C2' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R1C3' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R2C1' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R2C2' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R2C3' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R3C1' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R3C2' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    { type: 'text', text: 'R3C3' },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

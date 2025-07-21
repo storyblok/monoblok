@@ -59,7 +59,8 @@
     "release:dry": "release-it --dry-run"
   },
   "dependencies": {
-    "remark": "^15.0.1"
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

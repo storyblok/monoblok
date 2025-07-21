@@ -75,26 +75,6 @@ const region = getRegion(spaceId) // Returns 'eu'
 
 This ensures backward compatibility while supporting the [new extended space ID format](https://www.storyblok.com/mp/upcoming-update-to-the-id-format-of-spaces-and-entities).
 
-## Development
-
-- Clone this repository
-- Install latest LTS version of [Node.js](https://nodejs.org/en/)
-- Enable [Corepack](https://github.com/nodejs/corepack) using `corepack enable`
-- Install dependencies using `pnpm install`
-- Run interactive tests using `pnpm dev`
-
-## Release
-
-1. In the root of the repository, run `npx changeset`
-2. Stage the new created Changeset file and push it
-3. Open a PR from `feat/branch` to `main`
-4. Review and merge the PR
-5. A `bump pull request` is going to be created automatically created by the `versioning.yml` action.
-6. Open the automatically generated PR (`chore: release`) review it and merge.
-7. After it gets merged, another `action` is going to run, the `publishing.yml` action, which is responsible for publishing the new version to the NPM, to create a new `tag`, and also to create a Github release.
-
-> Note: If the Github checks don’t run for the second PR (step 6), you may close and reopen it. For the video version check the [internal docs](https://www.notion.so/storyblok/Recordings-d8838dc8a76f49e6b393db654a580bfa?pvs=4#6b34969027a24ddf86c85780c123efd5).
-
 ## License
 
 Made with 💛

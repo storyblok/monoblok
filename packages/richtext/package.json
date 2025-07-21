@@ -24,12 +24,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-richtext.es.js",
-      "require": "./dist/storyblok-richtext.umd.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.umd.js"
     }
   },
-  "main": "./dist/storyblok-richtext.es.js",
-  "module": "./dist/storyblok-richtext.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "*.d.ts",
@@ -40,7 +40,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
     "build:packages": "pnpm -r --filter='./packages/*' run build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -59,6 +60,7 @@
     "release:dry": "release-it --dry-run"
   },
   "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.2",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@storyblok/eslint-config": "workspace:*",
@@ -73,6 +75,7 @@
     "pathe": "^2.0.3",
     "prettier": "^3.4.2",
     "release-it": "^18.1.2",
+    "tsdown": "^0.12.9",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-banner": "^0.8.0",

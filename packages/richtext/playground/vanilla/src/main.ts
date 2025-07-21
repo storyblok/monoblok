@@ -2,7 +2,17 @@ import './style.css';
 import { BlockTypes, markdownToStoryblokRichtext, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
 
-const markdownToStoryblokDoc = markdownToStoryblokRichtext(test);
+const markdownToStoryblokDoc = markdownToStoryblokRichtext(test, {
+  resolvers: {
+    heading: (node, children) => {
+      return {
+        type: 'heading',
+        attrs: { level: node.depth, customId: 'custom-id' },
+        content: children,
+      };
+    },
+  },
+});
 
 // eslint-disable-next-line no-console
 console.log({ markdownToStoryblokDoc });

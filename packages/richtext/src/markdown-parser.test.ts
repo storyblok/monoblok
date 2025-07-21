@@ -54,6 +54,52 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('uses a custom heading resolver', () => {
+    const md = '# Custom Heading';
+    const result = markdownToStoryblokRichtext(md, {
+      resolvers: {
+        heading: (node, children) => ({
+          type: 'heading',
+          attrs: { level: 99, custom: true }, // Custom level and attribute
+          content: children,
+        }),
+      },
+    });
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 99, custom: true },
+          content: [{ type: 'text', text: 'Custom Heading' }],
+        },
+      ],
+    });
+  });
+
+  it('uses a custom paragraph resolver', () => {
+    const md = 'Paragraph with custom attr.';
+    const result = markdownToStoryblokRichtext(md, {
+      resolvers: {
+        paragraph: (node, children) => ({
+          type: 'paragraph',
+          attrs: { custom: 'yes' },
+          content: children,
+        }),
+      },
+    });
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { custom: 'yes' },
+          content: [{ type: 'text', text: 'Paragraph with custom attr.' }],
+        },
+      ],
+    });
+  });
+
   // Add more tests as new features are supported
 });
 

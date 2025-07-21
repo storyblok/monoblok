@@ -1,68 +1,98 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import type { Emphasis, Heading, Paragraph, Root, RootContent, Strong, Text } from 'mdast';
+import type { Heading, Root, RootContent, Text } from 'mdast';
 import type { StoryblokRichTextDocumentNode } from './types';
 
 /**
- * Converts Markdown string to Storyblok Richtext Document Node.
- * Currently supports headings, paragraphs, and basic marks (bold, italic).
+ * Type for a Markdown AST node resolver.
+ */
+export type MarkdownNodeResolver = (
+  node: RootContent,
+  children: StoryblokRichTextDocumentNode[] | undefined
+) => StoryblokRichTextDocumentNode | null;
+
+/**
+ * Options for the markdown parser, allowing custom resolvers.
+ */
+export interface MarkdownParserOptions {
+  resolvers?: Partial<Record<string, MarkdownNodeResolver>>;
+}
+
+/**
+ * Default resolvers for supported Markdown AST node types.
+ */
+const defaultResolvers: Record<string, MarkdownNodeResolver> = {
+  heading: (node, children) => {
+    const heading = node as Heading;
+    return {
+      type: 'heading',
+      attrs: { level: heading.depth },
+      content: children,
+    };
+  },
+  paragraph: (_node, children) => {
+    return {
+      type: 'paragraph',
+      content: children,
+    };
+  },
+  text: (node) => {
+    const textNode = node as Text;
+    return {
+      type: 'text',
+      text: textNode.value,
+    };
+  },
+  strong: (_node, children) => {
+    // Bold mark
+    const text = children?.map(c => c.text).join('') ?? '';
+    return {
+      type: 'text',
+      text,
+      marks: [{ type: 'bold' }],
+    };
+  },
+  emphasis: (_node, children) => {
+    // Italic mark
+    const text = children?.map(c => c.text).join('') ?? '';
+    return {
+      type: 'text',
+      text,
+      marks: [{ type: 'italic' }],
+    };
+  },
+};
+
+/**
+ * Converts Markdown string to Storyblok Richtext Document Node using resolvers.
  * @param markdown - The markdown string to convert
+ * @param options - Optional custom resolvers
  * @returns StoryblokRichTextDocumentNode
  */
-export function markdownToStoryblokRichtext(markdown: string): StoryblokRichTextDocumentNode {
+export function markdownToStoryblokRichtext(
+  markdown: string,
+  options: MarkdownParserOptions = {},
+): StoryblokRichTextDocumentNode {
   // Parse markdown to MDAST (Markdown AST)
   const tree = unified().use(remarkParse).parse(markdown) as Root;
+  const resolvers = { ...defaultResolvers, ...options.resolvers };
 
-  // Helper to recursively convert MDAST nodes to Storyblok Richtext nodes
+  // Recursively convert MDAST nodes to Storyblok Richtext nodes using resolvers
   function convertNode(node: RootContent): StoryblokRichTextDocumentNode | null {
-    switch (node.type) {
-      case 'heading': {
-        // Convert Markdown heading to Storyblok heading node
-        const heading = node as Heading;
-        return {
-          type: 'heading',
-          attrs: { level: heading.depth },
-          content: heading.children.map(convertNode).filter(Boolean) as StoryblokRichTextDocumentNode[],
-        };
-      }
-      case 'paragraph': {
-        // Convert Markdown paragraph to Storyblok paragraph node
-        const paragraph = node as Paragraph;
-        return {
-          type: 'paragraph',
-          content: paragraph.children.map(convertNode).filter(Boolean) as StoryblokRichTextDocumentNode[],
-        };
-      }
-      case 'text': {
-        // Convert Markdown text to Storyblok text node
-        const textNode = node as Text;
-        return {
-          type: 'text',
-          text: textNode.value,
-        };
-      }
-      case 'strong': {
-        // Convert Markdown bold to Storyblok bold mark
-        const strong = node as Strong;
-        return {
-          type: 'text',
-          text: strong.children.map(c => (c.type === 'text' ? (c as Text).value : '')).join(''),
-          marks: [{ type: 'bold' }],
-        };
-      }
-      case 'emphasis': {
-        // Convert Markdown italic to Storyblok italic mark
-        const em = node as Emphasis;
-        return {
-          type: 'text',
-          text: em.children.map(c => (c.type === 'text' ? (c as Text).value : '')).join(''),
-          marks: [{ type: 'italic' }],
-        };
-      }
-      default:
-        // Not yet supported node type
-        return null;
+    // Gather children first (if any)
+    let children: StoryblokRichTextDocumentNode[] | undefined;
+    if ('children' in node && Array.isArray((node as any).children)) {
+      children = ((node as any).children as RootContent[])
+        .map(convertNode)
+        .filter(Boolean) as StoryblokRichTextDocumentNode[];
     }
+    // Use resolver for this node type
+    const resolver = resolvers[node.type];
+    if (resolver) {
+      return resolver(node, children);
+    }
+    // Not yet supported node type
+    return null;
   }
 
   // Convert all top-level nodes
@@ -77,5 +107,4 @@ export function markdownToStoryblokRichtext(markdown: string): StoryblokRichText
   };
 }
 
-// Inline comments explain the conversion logic and why only certain nodes are supported initially.
-// Extend this utility as needed to support more markdown features and Storyblok node types.
+// Inline comments explain the resolver-based approach and how to extend it.

@@ -13,3 +13,5 @@ Another paragraph.
 1. Ordered list item 1
 2. Ordered list item 2
 3. Ordered list item 3
+
+![Alt text for image](https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg "Image Title")

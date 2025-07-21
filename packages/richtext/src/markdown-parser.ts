@@ -1,6 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import type { Heading, List, Root, RootContent, Text } from 'mdast';
+import type { Heading, List, Image as MdastImage, Root, RootContent, Text } from 'mdast';
 import type { StoryblokRichTextDocumentNode } from './types';
 
 /**
@@ -73,6 +73,17 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     return {
       type: 'list_item',
       content: children,
+    };
+  },
+  image: (node) => {
+    const image = node as MdastImage;
+    return {
+      type: 'image',
+      attrs: {
+        src: image.url,
+        alt: image.alt || '',
+        title: image.title || '',
+      },
     };
   },
 };

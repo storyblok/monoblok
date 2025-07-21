@@ -120,6 +120,29 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses images', () => {
+    const md = '![Alt text for image](https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg "Image Title")';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'image',
+              attrs: {
+                src: 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg',
+                alt: 'Alt text for image',
+                title: 'Image Title',
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

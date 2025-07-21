@@ -8,7 +8,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/storyblok-cli.git"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "branch": "main",
+    "directory": "packages/cli"
   },
   "keywords": [
     "storyblok",

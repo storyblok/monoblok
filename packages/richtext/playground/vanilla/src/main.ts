@@ -1,5 +1,11 @@
 import './style.css';
-import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import { BlockTypes, markdownToStoryblokRichtext, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import test from '/test.md?url&raw';
+
+const markdownToStoryblokDoc = markdownToStoryblokRichtext(test);
+
+// eslint-disable-next-line no-console
+console.log({ markdownToStoryblokDoc });
 
 /* const test = {
   type: 'doc',
@@ -29,7 +35,7 @@ import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type Storyblo
     },
   ],
 }; */
-const doc: StoryblokRichTextDocumentNode = {
+/* const doc: StoryblokRichTextDocumentNode = {
   type: 'doc',
   content: [
     {
@@ -397,7 +403,7 @@ const doc: StoryblokRichTextDocumentNode = {
       },
     },
   ],
-};
+}; */
 
 /* const tableDoc: StoryblokRichTextDocumentNode = {
   type: 'doc',
@@ -695,7 +701,7 @@ const options: StoryblokRichTextOptions<string> = {
   },
 };
 
-const html = richTextResolver(options).render(doc);
+const html = richTextResolver(options).render(markdownToStoryblokDoc);
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="this-div-is-on-purpose">

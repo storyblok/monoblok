@@ -282,7 +282,7 @@ export interface ISbContentMangmntAPI<
     name: string;
     slug: string;
     content?: Content;
-    default_root?: boolean;
+    default_root?: string;
     is_folder?: boolean;
     parent_id?: string;
     disble_fe_editor?: boolean;

@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ['./src/index.ts'],
   outDir: './dist',
   format: ['esm', 'umd'],
-  globalName: 'storyblokRichtext',
+  globalName: 'StoryblokRichtext',
   attw: true,
   sourcemap: true,
   clean: true,

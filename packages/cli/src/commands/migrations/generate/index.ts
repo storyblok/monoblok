@@ -18,7 +18,7 @@ migrationsCommand
   .description('Generate a migration file')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. {component-name}.<suffix>.js)')
   .action(async (componentName: string | undefined, options: MigrationsGenerateOptions) => {
-    konsola.title(` ${commands.MIGRATIONS} `, colorPalette.MIGRATIONS, componentName ? `Generating migration for component ${componentName}...` : 'Generating migrations...');
+    konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Generating migration for component ${componentName}...` : 'Generating migrations...');
     // Global options
     const verbose = program.opts().verbose;
 

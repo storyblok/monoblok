@@ -21,7 +21,7 @@ datasourcesCommand
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions) => {
-    konsola.title(` ${commands.DATASOURCES} `, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
+    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
     // Global options
     const verbose = program.opts().verbose;
     const { space, path } = datasourcesCommand.opts();

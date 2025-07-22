@@ -11,7 +11,7 @@ export const signupCommand = program
   .command(commands.SIGNUP)
   .description('Sign up for Storyblok')
   .action(async () => {
-    konsola.title(` ${commands.SIGNUP} `, colorPalette.SIGNUP);
+    konsola.title(`${commands.SIGNUP}`, colorPalette.SIGNUP);
     // Global options
     const verbose = program.opts().verbose;
 

@@ -21,7 +21,7 @@ export const createCommand = program
   .option('-b, --blueprint <blueprint>', 'technology starter blueprint')
   .option('--skip-space', 'skip space creation')
   .action(async (projectPath: string, options: CreateOptions) => {
-    konsola.title(` ${commands.CREATE} `, colorPalette.CREATE);
+    konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
     // Command options

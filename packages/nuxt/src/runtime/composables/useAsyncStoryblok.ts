@@ -1,7 +1,8 @@
 import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import { computed, type ComputedRef, watch } from 'vue';
+import { computed, type ComputedRef, type Ref, watch } from 'vue';
 import { useAsyncData } from '#app';
 import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
+import type { DedupeOption } from 'nuxt/app/defaults';
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -14,8 +15,19 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
   bridge: StoryblokBridgeConfigV2;
 }
 
-export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
+interface AsyncDataExecuteOptions {
+  dedupe?: DedupeOption;
+  cause?: 'initial' | 'refresh:hook' | 'refresh:manual' | 'watch';
+}
+
+export interface UseAsyncStoryblokResult {
   story: ComputedRef<ISbResult['data']['story']>;
+  data: Ref<ISbResult>;
+  pending: Ref<boolean>;
+  error: Ref<NuxtError<unknown> | null>; // <-- allow null
+  refresh: (opts?: AsyncDataExecuteOptions) => Promise<void>;
+  execute: (opts?: AsyncDataExecuteOptions) => Promise<void>;
+  clear: () => void;
 }
 /**
  * Creates a stable string representation of an object by sorting its keys.
@@ -102,7 +114,12 @@ export async function useAsyncStoryblok(
   }
 
   return {
-    ...result,
+    data: result.data,
+    pending: result.pending,
+    error: result.error,
+    refresh: result.refresh,
+    execute: result.execute,
+    clear: result.clear,
     story: computed(() => result.data.value?.data.story),
   };
 };

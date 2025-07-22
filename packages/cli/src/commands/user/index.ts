@@ -12,7 +12,7 @@ export const userCommand = program
   .command(commands.USER)
   .description('Get the current user')
   .action(async () => {
-    konsola.title(` ${commands.USER} `, colorPalette.USER);
+    konsola.title(`${commands.USER}`, colorPalette.USER);
     const { state, initializeSession } = session();
     await initializeSession();
 

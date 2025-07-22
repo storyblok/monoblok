@@ -26,7 +26,7 @@ componentsCommand
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
 
   .action(async (componentName: string | undefined, options: PushComponentsOptions) => {
-    konsola.title(` ${commands.COMPONENTS} `, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
+    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
     // Global options
     const verbose = program.opts().verbose;
     const { space, path } = componentsCommand.opts();

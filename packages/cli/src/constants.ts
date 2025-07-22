@@ -1,3 +1,4 @@
+// Please do not change the casing of the commands, it's used for the CLI commands definition
 export const commands = {
   LOGIN: 'login',
   LOGOUT: 'logout',
@@ -5,9 +6,9 @@ export const commands = {
   USER: 'user',
   COMPONENTS: 'components',
   LANGUAGES: 'languages',
-  MIGRATIONS: 'Migrations',
-  TYPES: 'Types',
-  DATASOURCES: 'Datasources',
+  MIGRATIONS: 'migrations',
+  TYPES: 'types',
+  DATASOURCES: 'datasources',
   CREATE: 'create',
 } as const;
 

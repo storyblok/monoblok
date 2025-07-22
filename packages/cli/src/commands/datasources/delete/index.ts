@@ -19,7 +19,7 @@ datasourcesCommand
   .option('--force', 'Skip confirmation prompt for deletion (useful for CI)')
   .action(async (name: string, options: DeleteDatasourceOptions) => {
     konsola.title(
-      ` ${commands.DATASOURCES} `,
+      `${commands.DATASOURCES}`,
       colorPalette.DATASOURCES,
       options.id
         ? `Deleting datasource with id ${options.id}...`

@@ -368,6 +368,31 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses horizontal rules (thematic breaks)', () => {
+    const md = 'Paragraph above.\n\n---\n\nParagraph below.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Paragraph above.' },
+          ],
+        },
+        {
+          type: 'horizontal_rule',
+        },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Paragraph below.' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

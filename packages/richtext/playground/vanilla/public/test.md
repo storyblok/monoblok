@@ -12,6 +12,8 @@ Here is some `inline code` in a sentence.
 
 Here is a [Storyblok link](https://www.storyblok.com/) in a sentence.
 
+---
+
 ```
 const foo = 'bar';
 console.log(foo);

@@ -157,6 +157,12 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       content: children,
     };
   },
+  thematicBreak: () => {
+    // Horizontal rule resolver: maps markdown thematic breaks to Storyblok horizontal_rule nodes
+    return {
+      type: 'horizontal_rule',
+    };
+  },
 };
 
 /**

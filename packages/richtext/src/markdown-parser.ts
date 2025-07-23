@@ -144,6 +144,19 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       ],
     };
   },
+  link: (node, children) => {
+    // Link resolver: maps markdown links to Storyblok link nodes
+    // Cast node to Mdast Link type for type safety
+    const linkNode = node as import('mdast').Link;
+    return {
+      type: 'link',
+      attrs: {
+        href: linkNode.url,
+        title: linkNode.title || null,
+      },
+      content: children,
+    };
+  },
 };
 
 /**

@@ -341,6 +341,33 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses links', () => {
+    const md = 'This is a [Storyblok link](https://www.storyblok.com/).';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'This is a ' },
+            {
+              type: 'link',
+              attrs: {
+                href: 'https://www.storyblok.com/',
+                title: null,
+              },
+              content: [
+                { type: 'text', text: 'Storyblok link' },
+              ],
+            },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

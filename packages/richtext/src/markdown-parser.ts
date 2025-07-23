@@ -172,6 +172,12 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       marks: [{ type: 'strike' }],
     };
   },
+  break: () => {
+    // Break resolver: maps markdown hard line breaks to Storyblok hard_break nodes
+    return {
+      type: 'hard_break',
+    };
+  },
 };
 
 /**

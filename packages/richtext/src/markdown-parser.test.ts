@@ -411,6 +411,24 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses hard line breaks (break)', () => {
+    const md = 'Line with a hard break here.  \nNext line after break.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Line with a hard break here.' },
+            { type: 'hard_break' },
+            { type: 'text', text: 'Next line after break.' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

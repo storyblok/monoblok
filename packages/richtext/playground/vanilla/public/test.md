@@ -14,6 +14,9 @@ Here is a [Storyblok link](https://www.storyblok.com/) in a sentence.
 
 Strikethrough example: ~~deleted text~~
 
+Line with a hard break here.  
+Next line after break.
+
 ---
 
 ```

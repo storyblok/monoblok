@@ -6,6 +6,8 @@ This is a paragraph with **bold** and *italic* text.
 
 Another paragraph.
 
+> This is a blockquote example.
+
 - Unordered list item 1
 - Unordered list item 2
 - Unordered list item 3

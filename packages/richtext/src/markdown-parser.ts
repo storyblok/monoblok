@@ -110,6 +110,13 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       },
     };
   },
+  blockquote: (_node, children) => {
+    // Blockquote resolver: maps markdown blockquotes to Storyblok blockquote nodes
+    return {
+      type: 'blockquote',
+      content: children,
+    };
+  },
 };
 
 /**

@@ -262,6 +262,50 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses blockquotes', () => {
+    const md = '> This is a blockquote.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'blockquote',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'This is a blockquote.' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses blockquotes with nested formatting', () => {
+    const md = '> A blockquote with **bold** text.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'blockquote',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'A blockquote with ' },
+                { type: 'text', text: 'bold', marks: [{ type: 'bold' }] },
+                { type: 'text', text: ' text.' },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

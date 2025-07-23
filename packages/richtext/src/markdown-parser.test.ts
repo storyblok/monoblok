@@ -393,6 +393,24 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses strikethrough (delete) marks', () => {
+    const md = 'This is ~~deleted text~~.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'This is ' },
+            { type: 'text', text: 'deleted text', marks: [{ type: 'strike' }] },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

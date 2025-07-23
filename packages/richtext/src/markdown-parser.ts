@@ -163,6 +163,15 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       type: 'horizontal_rule',
     };
   },
+  delete: (_node, children) => {
+    // Strikethrough resolver: maps markdown strikethrough to Storyblok text node with strike mark
+    const text = children?.map(c => c.text).join('') ?? '';
+    return {
+      type: 'text',
+      text,
+      marks: [{ type: 'strike' }],
+    };
+  },
 };
 
 /**

@@ -8,6 +8,13 @@ Another paragraph.
 
 > This is a blockquote example.
 
+Here is some `inline code` in a sentence.
+
+```
+const foo = 'bar';
+console.log(foo);
+```
+
 - Unordered list item 1
 - Unordered list item 2
 - Unordered list item 3
@@ -23,5 +30,3 @@ Another paragraph.
 | R1C1     | R1C2     | R1C3     |
 | **R2C1**     | *R2C2*     | R2C3     |
 | R3C1     | R3C2     | R3C3     |
-
-

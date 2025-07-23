@@ -306,6 +306,41 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
+  it('parses inline code', () => {
+    const md = 'This is `inline code`.';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'This is ' },
+            { type: 'text', text: 'inline code', marks: [{ type: 'code' }] },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses code blocks', () => {
+    const md = '```js\nconst foo = "bar";\nconsole.log(foo);\n```';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'code_block',
+          attrs: { language: 'js' },
+          content: [
+            { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);' },
+          ],
+        },
+      ],
+    });
+  });
+
   it('uses a custom heading resolver', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {

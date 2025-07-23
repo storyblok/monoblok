@@ -1,7 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
-import type { Heading, List, Image as MdastImage, Root, RootContent, Text } from 'mdast';
+import type { Code, Heading, InlineCode, List, Image as MdastImage, Root, RootContent, Text } from 'mdast';
 import type { StoryblokRichTextDocumentNode } from './types';
 
 /**
@@ -115,6 +115,33 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     return {
       type: 'blockquote',
       content: children,
+    };
+  },
+  inlineCode: (node) => {
+    // Inline code resolver: maps markdown inline code to Storyblok text node with code mark
+    // Cast node to Mdast InlineCode type for type safety
+    const inlineCodeNode = node as InlineCode;
+    return {
+      type: 'text',
+      text: inlineCodeNode.value,
+      marks: [{ type: 'code' }],
+    };
+  },
+  code: (node) => {
+    // Code block resolver: maps markdown code blocks to Storyblok code_block node
+    // Cast node to Mdast Code type for type safety
+    const codeNode = node as Code;
+    return {
+      type: 'code_block',
+      attrs: {
+        language: codeNode.lang || null,
+      },
+      content: [
+        {
+          type: 'text',
+          text: codeNode.value,
+        },
+      ],
     };
   },
 };

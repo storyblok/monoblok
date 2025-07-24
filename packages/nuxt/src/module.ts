@@ -9,17 +9,9 @@ import {
 import type { NuxtHookName } from '@nuxt/schema';
 import type { Nuxt } from 'nuxt/schema';
 
-export interface ModuleOptions {
-  accessToken: string;
-  enableSudoMode: boolean;
-  usePlugin: boolean; // legacy opt. for enableSudoMode
-  bridge: boolean; // storyblok bridge on/off
-  devtools: boolean; // enable nuxt/devtools integration
-  apiOptions: any; // storyblok-js-client options
-  componentsDir: string; // enable storyblok global directory for components
-}
+import type { AllModuleOptions, PublicModuleOptions } from './types';
 
-export default defineNuxtModule<ModuleOptions>({
+export default defineNuxtModule<AllModuleOptions>({
   meta: {
     name: '@storyblok/nuxt',
     configKey: 'storyblok',
@@ -32,8 +24,9 @@ export default defineNuxtModule<ModuleOptions>({
     devtools: false,
     componentsDir: '~/storyblok',
     apiOptions: {},
+    enableServerClient: false,
   },
-  setup(options: ModuleOptions, nuxt: Nuxt) {
+  setup(options: AllModuleOptions, nuxt: Nuxt) {
     const resolver = createResolver(import.meta.url);
 
     if (nuxt.options.vite.optimizeDeps) {
@@ -54,12 +47,21 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.build.transpile.push('@storyblok/nuxt');
     nuxt.options.build.transpile.push('@storyblok/vue');
 
-    // Add plugin
-    nuxt.options.runtimeConfig.public.storyblok = options;
+    if (options.enableServerClient) {
+      const { accessToken, ...publicOptions } = options;
+      nuxt.options.runtimeConfig.storyblok = { accessToken };
+      (nuxt.options.runtimeConfig.public.storyblok as unknown as PublicModuleOptions) = publicOptions;
+    }
+    else {
+      nuxt.options.runtimeConfig.public.storyblok = options;
+    }
+
     const enablePluginCondition = options.usePlugin === true && options.enableSudoMode === false;
     if (enablePluginCondition) {
       addPlugin(resolver.resolve('./runtime/plugin'));
     }
+
+    // nitroConfig.alias['#supabase/server'] = resolver.resolve('./runtime/server');
 
     // Add auto imports
     const names = [

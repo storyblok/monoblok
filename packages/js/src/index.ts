@@ -135,3 +135,5 @@ export {
   type StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/richtext';
+
+export { default as StoryblokClient } from 'storyblok-js-client';

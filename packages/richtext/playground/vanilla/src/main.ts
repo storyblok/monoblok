@@ -1,18 +1,18 @@
-import './style.css';
-import type { BlockTypes, markdownToStoryblokRichtext, MdastHeading, MdastRootContent, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import { BlockTypes, markdownToStoryblokRichtext, richTextResolver } from '@storyblok/richtext';
+import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
 
-const markdownToStoryblokDoc = markdownToStoryblokRichtext(test, {
+const markdownToStoryblokDoc = markdownToStoryblokRichtext(test, /*  {
   resolvers: {
-    heading: (node: MdastRootContent, children) => {
+    [MarkdownTokenTypes.PARAGRAPH]: (_token, children) => {
       return {
-        type: 'heading',
-        attrs: { level: (node as MdastHeading).depth, customId: 'custom-id' },
+        type: BlockTypes.HEADING,
+        attrs: { level: 1 },
         content: children,
       };
     },
   },
-});
+} */);
 
 // eslint-disable-next-line no-console
 console.log({ markdownToStoryblokDoc });

@@ -1,14 +1,35 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm';
-import type { Code, Heading, InlineCode, List, Image as MdastImage, Root, RootContent, Text } from 'mdast';
-import type { StoryblokRichTextDocumentNode } from './types';
+import MarkdownIt from 'markdown-it';
+import { BlockTypes, MarkTypes, type StoryblokRichTextDocumentNode, TextTypes } from './types';
 
 /**
- * Type for a Markdown AST node resolver.
+ * markdown-it Token interface definition
+ */
+export interface MarkdownToken {
+  type: string;
+  tag: string;
+  attrs: Array<[string, string]> | null;
+  map: [number, number] | null;
+  nesting: 1 | 0 | -1;
+  level: number;
+  children: MarkdownToken[] | null;
+  content: string;
+  markup: string;
+  info: string;
+  meta: any;
+  block: boolean;
+  hidden: boolean;
+  attrGet: (name: string) => string | null;
+  attrSet: (name: string, value: string) => void;
+  attrPush: (attrData: [string, string]) => void;
+  attrJoin: (name: string, value: string) => void;
+  attrIndex: (name: string) => number;
+}
+
+/**
+ * Type for a Markdown element resolver.
  */
 export type MarkdownNodeResolver = (
-  node: RootContent,
+  token: MarkdownToken,
   children: StoryblokRichTextDocumentNode[] | undefined
 ) => StoryblokRichTextDocumentNode | null;
 
@@ -20,210 +41,223 @@ export interface MarkdownParserOptions {
 }
 
 /**
- * Supported Markdown AST node types as constants for maintainability and type safety.
- * @see https://github.com/syntax-tree/mdast#nodes
+ * Supported Markdown token types as constants for maintainability and type safety.
+ * @see https://markdown-it.github.io/token-class.html
  */
-export const MarkdownAstNodeTypes = {
-  HEADING: 'heading',
-  PARAGRAPH: 'paragraph',
+export const MarkdownTokenTypes = {
+  HEADING: 'heading_open',
+  PARAGRAPH: 'paragraph_open',
   TEXT: 'text',
-  STRONG: 'strong',
-  EMPHASIS: 'emphasis',
-  LIST: 'list',
-  LISTITEM: 'listItem',
+  STRONG: 'strong_open',
+  EMP: 'em_open',
+  ORDERED_LIST: 'ordered_list_open',
+  BULLET_LIST: 'bullet_list_open',
+  LIST_ITEM: 'list_item_open',
   IMAGE: 'image',
-  TABLE: 'table',
-  TABLEROW: 'tableRow',
-  TABLECELL: 'tableCell',
-  BLOCKQUOTE: 'blockquote',
-  INLINECODE: 'inlineCode',
-  CODE: 'code',
-  LINK: 'link',
-  THEMATICBREAK: 'thematicBreak',
-  DELETE: 'delete',
-  BREAK: 'break',
+  BLOCKQUOTE: 'blockquote_open',
+  CODE_INLINE: 'code_inline',
+  CODE_BLOCK: 'code_block',
+  FENCE: 'fence',
+  LINK: 'link_open',
+  HR: 'hr',
+  DEL: 'del_open',
+  HARD_BREAK: 'hardbreak',
+  SOFT_BREAK: 'softbreak',
+  TABLE: 'table_open',
+  THEAD: 'thead_open',
+  TBODY: 'tbody_open',
+  TR: 'tr_open',
+  TH: 'th_open',
+  TD: 'td_open',
+  S: 's_open',
 } as const;
 
-// Only allow supported node type string literals
-export type MarkdownAstNodeType =
-  | 'heading'
-  | 'paragraph'
-  | 'text'
-  | 'strong'
-  | 'emphasis'
-  | 'list'
-  | 'listItem'
-  | 'image'
-  | 'table'
-  | 'tableRow'
-  | 'tableCell'
-  | 'blockquote'
-  | 'inlineCode'
-  | 'code'
-  | 'link'
-  | 'thematicBreak'
-  | 'delete'
-  | 'break';
+export type MarkdownTokenType = keyof typeof MarkdownTokenTypes;
 
 /**
- * Default resolvers for supported Markdown AST node types.
+ * Default resolvers for supported Markdown token types.
+ * These map markdown-it tokens to Storyblok RichText nodes.
  */
-const defaultResolvers: Record<MarkdownAstNodeType, MarkdownNodeResolver> = {
-  [MarkdownAstNodeTypes.HEADING]: (node, children) => {
-    const heading = node as Heading;
+const defaultResolvers: Record<string, MarkdownNodeResolver> = {
+  [MarkdownTokenTypes.HEADING]: (token, children) => {
+    // Heading level is in token.tag (e.g., 'h1', 'h2', ...)
+    const level = Number(token.tag.replace('h', ''));
     return {
-      type: 'heading',
-      attrs: { level: heading.depth },
+      type: BlockTypes.HEADING,
+      attrs: { level },
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.PARAGRAPH]: (_node, children) => {
+  [MarkdownTokenTypes.PARAGRAPH]: (_token, children) => {
     return {
-      type: 'paragraph',
+      type: BlockTypes.PARAGRAPH,
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.TEXT]: (node) => {
-    const textNode = node as Text;
+  [MarkdownTokenTypes.TEXT]: (token) => {
+    // Skip empty text nodes
+    if (!token.content || token.content.trim() === '') {
+      return null;
+    }
     return {
-      type: 'text',
-      text: textNode.value,
+      type: TextTypes.TEXT,
+      text: token.content,
     };
   },
-  [MarkdownAstNodeTypes.STRONG]: (_node, children) => {
-    // Bold mark
+  [MarkdownTokenTypes.STRONG]: (_token, children) => {
     const text = children?.map(c => c.text).join('') ?? '';
     return {
-      type: 'text',
+      type: TextTypes.TEXT,
       text,
-      marks: [{ type: 'bold' }],
+      marks: [{ type: MarkTypes.BOLD }],
     };
   },
-  [MarkdownAstNodeTypes.EMPHASIS]: (_node, children) => {
-    // Italic mark
+  [MarkdownTokenTypes.EMP]: (_token, children) => {
     const text = children?.map(c => c.text).join('') ?? '';
     return {
-      type: 'text',
+      type: TextTypes.TEXT,
       text,
-      marks: [{ type: 'italic' }],
+      marks: [{ type: MarkTypes.ITALIC }],
     };
   },
-  [MarkdownAstNodeTypes.LIST]: (node, children) => {
-    // node.ordered is true for ordered lists, false for bullet lists
-    const type = (node as List).ordered ? 'ordered_list' : 'bullet_list';
+  [MarkdownTokenTypes.ORDERED_LIST]: (_token, children) => {
     return {
-      type,
+      type: BlockTypes.OL_LIST,
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.LISTITEM]: (_node, children) => {
+  [MarkdownTokenTypes.BULLET_LIST]: (_token, children) => {
     return {
-      type: 'list_item',
+      type: BlockTypes.UL_LIST,
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.IMAGE]: (node) => {
-    const image = node as MdastImage;
+  [MarkdownTokenTypes.LIST_ITEM]: (_token, children) => {
     return {
-      type: 'image',
+      type: BlockTypes.LIST_ITEM,
+      content: children,
+    };
+  },
+  [MarkdownTokenTypes.IMAGE]: (token) => {
+    return {
+      type: BlockTypes.IMAGE,
       attrs: {
-        src: image.url,
-        alt: image.alt || '',
-        title: image.title || '',
+        src: token.attrGet('src'),
+        alt: token.content || token.attrGet('alt') || '',
+        title: token.attrGet('title') || '',
       },
     };
   },
-  [MarkdownAstNodeTypes.TABLE]: (_node, children) => {
+  [MarkdownTokenTypes.BLOCKQUOTE]: (_token, children) => {
     return {
-      type: 'table',
+      type: BlockTypes.QUOTE,
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.TABLEROW]: (_node, children) => {
+  [MarkdownTokenTypes.CODE_INLINE]: (token) => {
     return {
-      type: 'tableRow',
-      content: children,
+      type: MarkTypes.CODE,
+      text: token.content,
+      marks: [{ type: MarkTypes.CODE }],
     };
   },
-  [MarkdownAstNodeTypes.TABLECELL]: (_node, children) => {
+  [MarkdownTokenTypes.CODE_BLOCK]: (token) => {
     return {
-      type: 'tableCell',
-      content: children,
+      type: BlockTypes.CODE_BLOCK,
       attrs: {
-        colspan: 1,
-        rowspan: 1,
-        colwidth: null,
-      },
-    };
-  },
-  [MarkdownAstNodeTypes.BLOCKQUOTE]: (_node, children) => {
-    // Blockquote resolver: maps markdown blockquotes to Storyblok blockquote nodes
-    return {
-      type: 'blockquote',
-      content: children,
-    };
-  },
-  [MarkdownAstNodeTypes.INLINECODE]: (node) => {
-    // Inline code resolver: maps markdown inline code to Storyblok text node with code mark
-    // Cast node to Mdast InlineCode type for type safety
-    const inlineCodeNode = node as InlineCode;
-    return {
-      type: 'text',
-      text: inlineCodeNode.value,
-      marks: [{ type: 'code' }],
-    };
-  },
-  [MarkdownAstNodeTypes.CODE]: (node) => {
-    // Code block resolver: maps markdown code blocks to Storyblok code_block node
-    // Cast node to Mdast Code type for type safety
-    const codeNode = node as Code;
-    return {
-      type: 'code_block',
-      attrs: {
-        language: codeNode.lang || null,
+        language: null,
       },
       content: [
         {
           type: 'text',
-          text: codeNode.value,
+          text: token.content,
         },
       ],
     };
   },
-  [MarkdownAstNodeTypes.LINK]: (node, children) => {
-    // Link resolver: maps markdown links to Storyblok link nodes
-    // Cast node to Mdast Link type for type safety
-    const linkNode = node as import('mdast').Link;
+  [MarkdownTokenTypes.FENCE]: (token) => {
+    // The 'fence' token is emitted by markdown-it for triple backtick code blocks (```),
+    // which is the most common code block syntax in markdown. This ensures both indented
+    // and fenced code blocks are supported.
     return {
-      type: 'link',
+      type: BlockTypes.CODE_BLOCK,
       attrs: {
-        href: linkNode.url,
-        title: linkNode.title || null,
+        language: token.info || null, // language after ``` if present
+      },
+      content: [
+        {
+          type: 'text',
+          text: token.content,
+        },
+      ],
+    };
+  },
+  [MarkdownTokenTypes.LINK]: (token, children) => {
+    return {
+      type: MarkTypes.LINK,
+      attrs: {
+        href: token.attrGet('href'),
+        title: token.attrGet('title') || null,
       },
       content: children,
     };
   },
-  [MarkdownAstNodeTypes.THEMATICBREAK]: () => {
-    // Horizontal rule resolver: maps markdown thematic breaks to Storyblok horizontal_rule nodes
+  [MarkdownTokenTypes.HR]: () => {
     return {
-      type: 'horizontal_rule',
+      type: BlockTypes.HR,
     };
   },
-  [MarkdownAstNodeTypes.DELETE]: (_node, children) => {
-    // Strikethrough resolver: maps markdown strikethrough to Storyblok text node with strike mark
+  [MarkdownTokenTypes.DEL]: (_token, children) => {
     const text = children?.map(c => c.text).join('') ?? '';
     return {
-      type: 'text',
+      type: TextTypes.TEXT,
       text,
-      marks: [{ type: 'strike' }],
+      marks: [{ type: MarkTypes.STRIKE }],
     };
   },
-  [MarkdownAstNodeTypes.BREAK]: () => {
-    // Break resolver: maps markdown hard line breaks to Storyblok hard_break nodes
+  [MarkdownTokenTypes.HARD_BREAK]: () => {
     return {
-      type: 'hard_break',
+      type: BlockTypes.BR,
     };
   },
+  [MarkdownTokenTypes.SOFT_BREAK]: () => {
+    // Soft breaks are usually rendered as spaces in HTML, but you may want to handle them differently
+    return {
+      type: TextTypes.TEXT,
+      text: ' ',
+    };
+  },
+  // Table support (GFM tables are enabled by default in markdown-it)
+  [MarkdownTokenTypes.TABLE]: (_token, children) => ({ type: BlockTypes.TABLE, content: children }),
+  [MarkdownTokenTypes.THEAD]: () => null,
+  [MarkdownTokenTypes.TBODY]: () => null,
+  [MarkdownTokenTypes.TR]: (_token, children) => ({ type: BlockTypes.TABLE_ROW, content: children }),
+  [MarkdownTokenTypes.TH]: (_token, children) => ({
+    type: BlockTypes.TABLE_CELL,
+    attrs: { colspan: 1, rowspan: 1, colwidth: null },
+    content: [
+      {
+        type: BlockTypes.PARAGRAPH,
+        content: children || [],
+      },
+    ],
+  }),
+  [MarkdownTokenTypes.TD]: (_token, children) => ({
+    type: BlockTypes.TABLE_CELL,
+    attrs: { colspan: 1, rowspan: 1, colwidth: null },
+    content: [
+      {
+        type: BlockTypes.PARAGRAPH,
+        content: children || [],
+      },
+    ],
+  }),
+  // Strikethrough support (GFM strikethrough is enabled by default in markdown-it)
+  [MarkdownTokenTypes.S]: (_token, children) => ({
+    type: TextTypes.TEXT,
+    text: children?.map(c => c.text).join('') ?? '',
+    marks: [{ type: MarkTypes.STRIKE }],
+  }),
 };
 
 /**
@@ -236,34 +270,70 @@ export function markdownToStoryblokRichtext(
   markdown: string,
   options: MarkdownParserOptions = {},
 ): StoryblokRichTextDocumentNode {
-  // Parse markdown to MDAST (Markdown AST) with GFM support
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown) as Root;
+  // Parse markdown to tokens using markdown-it with GFM support and hard breaks
+  const md = new MarkdownIt({ html: false, linkify: true, typographer: true, breaks: true });
+  const tokens = md.parse(markdown, {});
   const resolvers = { ...defaultResolvers, ...options.resolvers };
 
-  // Recursively convert MDAST nodes to Storyblok Richtext nodes using resolvers
-  function convertNode(node: RootContent): StoryblokRichTextDocumentNode | null {
-    // Gather children first (if any)
-    let children: StoryblokRichTextDocumentNode[] | undefined;
-    if ('children' in node && Array.isArray((node as any).children)) {
-      children = ((node as any).children as RootContent[])
-        .map(convertNode)
-        .filter(Boolean) as StoryblokRichTextDocumentNode[];
-    }
-    // Only resolve supported node types
-    if (Object.values(MarkdownAstNodeTypes).includes(node.type as MarkdownAstNodeType)) {
-      const resolver = resolvers[node.type as MarkdownAstNodeType];
-      if (resolver) {
-        return resolver(node, children);
+  // Helper to walk tokens and build a tree
+  function walkTokens(tokens: MarkdownToken[], start = 0): [StoryblokRichTextDocumentNode[], number] {
+    const nodes: StoryblokRichTextDocumentNode[] = [];
+    let i = start;
+    while (i < tokens.length) {
+      const token = tokens[i];
+
+      // Handle inline tokens (which contain actual text and marks)
+      if (token.type === 'inline' && token.children) {
+        const [inlineNodes] = walkTokens(token.children, 0);
+        nodes.push(...inlineNodes);
+        i++;
+        continue;
+      }
+
+      if (token.nesting === 1) { // opening tag
+        const type = token.type;
+        const children: StoryblokRichTextDocumentNode[] = [];
+        i++;
+        while (i < tokens.length && !(tokens[i].type === type.replace('_open', '_close') && tokens[i].nesting === -1)) {
+          const [childNodes, consumed] = walkTokens(tokens, i);
+          children.push(...childNodes);
+          i += consumed;
+        }
+        const resolver = resolvers[type];
+        if (resolver) {
+          const node = resolver(token, children.length ? children : undefined);
+          if (node) {
+            nodes.push(node);
+          }
+          else {
+            // If resolver returns null, flatten children into parent
+            nodes.push(...children);
+          }
+        }
+        i++; // skip closing tag
+      }
+      else if (token.nesting === 0) { // self-closing or text
+        const resolver = resolvers[token.type];
+        if (resolver) {
+          const node = resolver(token, undefined);
+          if (node) {
+            nodes.push(node);
+          }
+        }
+        i++;
+      }
+      else if (token.nesting === -1) { // closing tag, return to parent
+        break;
+      }
+      else {
+        i++;
       }
     }
-    // Not yet supported node type
-    return null;
+    return [nodes, i - start];
   }
 
-  // Convert all top-level nodes
-  const content = tree.children
-    .map(convertNode)
-    .filter(Boolean) as StoryblokRichTextDocumentNode[];
+  // Convert all tokens to Storyblok nodes
+  const [content] = walkTokens(tokens);
 
   // Return as Storyblok document node
   return {
@@ -271,15 +341,3 @@ export function markdownToStoryblokRichtext(
     content,
   };
 }
-
-// Export the MDAST types for use in resolvers
-export {
-  type Code as MdastCode,
-  type Heading as MdastHeading,
-  type InlineCode as MdastInlineCode,
-  type List as MdastList,
-  type MdastImage,
-  type Root as MdastRoot,
-  type RootContent as MdastRootContent,
-  type Text as MdastText,
-};

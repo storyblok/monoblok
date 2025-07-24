@@ -144,7 +144,7 @@ describe('markdownToStoryblokRichtext', () => {
   });
 
   it('parses tables', () => {
-    const md = `| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| R1C1     | R1C2     | R1C3     |\n| R2C1     | R2C2     | R2C3     |\n| R3C1     | R3C2     | R3C3     |`;
+    const md = `| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| R1C1     | R1C2     | R1C3     |\n| **R2C1** | *R2C2*   | R2C3     |\n| R3C1     | R3C2     | R3C3     |`;
     const result = markdownToStoryblokRichtext(md);
     expect(result).toMatchObject({
       type: 'doc',
@@ -158,47 +158,30 @@ describe('markdownToStoryblokRichtext', () => {
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'Header 1' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Header 1' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'Header 2' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Header 2' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'Header 3' },
-                  ],
-                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
-                },
-              ],
-            },
-            {
-              type: 'tableRow',
-              content: [
-                {
-                  type: 'tableCell',
-                  content: [
-                    { type: 'text', text: 'R1C1' },
-                  ],
-                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
-                },
-                {
-                  type: 'tableCell',
-                  content: [
-                    { type: 'text', text: 'R1C2' },
-                  ],
-                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
-                },
-                {
-                  type: 'tableCell',
-                  content: [
-                    { type: 'text', text: 'R1C3' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'Header 3' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
@@ -210,21 +193,30 @@ describe('markdownToStoryblokRichtext', () => {
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R2C1' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R1C1' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R2C2' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R1C2' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R2C3' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R1C3' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
@@ -236,21 +228,77 @@ describe('markdownToStoryblokRichtext', () => {
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R3C1' },
+                    {
+                      type: 'paragraph',
+                      content: [
+                        {
+                          type: 'text',
+                          text: 'R2C1',
+                          marks: [{ type: 'bold' }],
+                        },
+                      ],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R3C2' },
+                    {
+                      type: 'paragraph',
+                      content: [
+                        {
+                          type: 'text',
+                          text: 'R2C2',
+                          marks: [{ type: 'italic' }],
+                        },
+                      ],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
                   type: 'tableCell',
                   content: [
-                    { type: 'text', text: 'R3C3' },
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R2C3' }],
+                    },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+              ],
+            },
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableCell',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R3C1' }],
+                    },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R3C2' }],
+                    },
+                  ],
+                  attrs: { colspan: 1, rowspan: 1, colwidth: null },
+                },
+                {
+                  type: 'tableCell',
+                  content: [
+                    {
+                      type: 'paragraph',
+                      content: [{ type: 'text', text: 'R3C3' }],
+                    },
                   ],
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
@@ -316,7 +364,7 @@ describe('markdownToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'This is ' },
-            { type: 'text', text: 'inline code', marks: [{ type: 'code' }] },
+            { type: 'code', text: 'inline code', marks: [{ type: 'code' }] },
             { type: 'text', text: '.' },
           ],
         },
@@ -334,7 +382,7 @@ describe('markdownToStoryblokRichtext', () => {
           type: 'code_block',
           attrs: { language: 'js' },
           content: [
-            { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);' },
+            { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);\n' },
           ],
         },
       ],
@@ -433,7 +481,7 @@ describe('markdownToStoryblokRichtext', () => {
     const md = '# Custom Heading';
     const result = markdownToStoryblokRichtext(md, {
       resolvers: {
-        heading: (node, children) => ({
+        heading_open: (node, children) => ({
           type: 'heading',
           attrs: { level: 99, custom: true }, // Custom level and attribute
           content: children,
@@ -456,7 +504,7 @@ describe('markdownToStoryblokRichtext', () => {
     const md = 'Paragraph with custom attr.';
     const result = markdownToStoryblokRichtext(md, {
       resolvers: {
-        paragraph: (node, children) => ({
+        paragraph_open: (node, children) => ({
           type: 'paragraph',
           attrs: { custom: 'yes' },
           content: children,

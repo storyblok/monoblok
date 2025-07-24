@@ -42,9 +42,12 @@
   },
   "dependencies": {
     "@antfu/eslint-config": "~3.6.0",
-    "eslint-plugin-format": "^0.1.2"
+    "eslint-plugin-format": "^0.1.2",
+    "markdown-it": "^14.1.0",
+    "markdown-it-github": "^0.5.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "eslint": "9.26.0",
     "tsdown": "^0.12.9"
   }

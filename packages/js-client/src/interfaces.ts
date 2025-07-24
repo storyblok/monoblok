@@ -106,7 +106,7 @@ export interface ISbStoryData<
   deleted_at?: string;
   default_full_slug?: string | null;
   default_root?: string;
-  disble_fe_editor?: boolean;
+  disable_fe_editor?: boolean;
   favourite_for_user_ids?: number[] | null;
   first_published_at?: string | null;
   full_slug: string;
@@ -282,10 +282,10 @@ export interface ISbContentMangmntAPI<
     name: string;
     slug: string;
     content?: Content;
-    default_root?: boolean;
+    default_root?: string;
     is_folder?: boolean;
     parent_id?: string;
-    disble_fe_editor?: boolean;
+    disable_fe_editor?: boolean;
     path?: string;
     is_startpage?: boolean;
     position?: number;

@@ -13,7 +13,7 @@ const program = getProgram();
 migrationsCommand.command('rollback [migrationFile]')
   .description('Rollback a migration')
   .action(async (migrationFile: string) => {
-    konsola.title(` ${commands.MIGRATIONS} `, colorPalette.MIGRATIONS, `Rolling back migration ${chalk.hex(colorPalette.MIGRATIONS)(migrationFile)}...`);
+    konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, `Rolling back migration ${chalk.hex(colorPalette.MIGRATIONS)(migrationFile)}...`);
 
     const verbose = program.opts().verbose;
 

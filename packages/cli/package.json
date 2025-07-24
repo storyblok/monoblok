@@ -1,14 +1,16 @@
 {
   "name": "storyblok",
   "type": "module",
-  "version": "4.2.0",
+  "version": "4.2.2",
   "packageManager": "pnpm@10.10.0",
   "description": "Storyblok CLI",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/storyblok-cli.git"
+    "url": "https://github.com/storyblok/monoblok.git",
+    "branch": "main",
+    "directory": "packages/cli"
   },
   "keywords": [
     "storyblok",

@@ -20,7 +20,7 @@ typesCommand
   .option('--custom-fields-parser <path>', 'Path to the parser file for Custom Field Types')
   .option('--compiler-options <options>', 'path to the compiler options from json-schema-to-typescript')
   .action(async (options: GenerateTypesOptions) => {
-    konsola.title(` ${commands.TYPES} `, colorPalette.TYPES, 'Generating types...');
+    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
     // Global options
     const verbose = program.opts().verbose;
 

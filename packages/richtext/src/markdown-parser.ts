@@ -20,10 +20,56 @@ export interface MarkdownParserOptions {
 }
 
 /**
+ * Supported Markdown AST node types as constants for maintainability and type safety.
+ * @see https://github.com/syntax-tree/mdast#nodes
+ */
+export const MarkdownAstNodeTypes = {
+  HEADING: 'heading',
+  PARAGRAPH: 'paragraph',
+  TEXT: 'text',
+  STRONG: 'strong',
+  EMPHASIS: 'emphasis',
+  LIST: 'list',
+  LISTITEM: 'listItem',
+  IMAGE: 'image',
+  TABLE: 'table',
+  TABLEROW: 'tableRow',
+  TABLECELL: 'tableCell',
+  BLOCKQUOTE: 'blockquote',
+  INLINECODE: 'inlineCode',
+  CODE: 'code',
+  LINK: 'link',
+  THEMATICBREAK: 'thematicBreak',
+  DELETE: 'delete',
+  BREAK: 'break',
+} as const;
+
+// Only allow supported node type string literals
+export type MarkdownAstNodeType =
+  | 'heading'
+  | 'paragraph'
+  | 'text'
+  | 'strong'
+  | 'emphasis'
+  | 'list'
+  | 'listItem'
+  | 'image'
+  | 'table'
+  | 'tableRow'
+  | 'tableCell'
+  | 'blockquote'
+  | 'inlineCode'
+  | 'code'
+  | 'link'
+  | 'thematicBreak'
+  | 'delete'
+  | 'break';
+
+/**
  * Default resolvers for supported Markdown AST node types.
  */
-const defaultResolvers: Record<string, MarkdownNodeResolver> = {
-  heading: (node, children) => {
+const defaultResolvers: Record<MarkdownAstNodeType, MarkdownNodeResolver> = {
+  [MarkdownAstNodeTypes.HEADING]: (node, children) => {
     const heading = node as Heading;
     return {
       type: 'heading',
@@ -31,20 +77,20 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       content: children,
     };
   },
-  paragraph: (_node, children) => {
+  [MarkdownAstNodeTypes.PARAGRAPH]: (_node, children) => {
     return {
       type: 'paragraph',
       content: children,
     };
   },
-  text: (node) => {
+  [MarkdownAstNodeTypes.TEXT]: (node) => {
     const textNode = node as Text;
     return {
       type: 'text',
       text: textNode.value,
     };
   },
-  strong: (_node, children) => {
+  [MarkdownAstNodeTypes.STRONG]: (_node, children) => {
     // Bold mark
     const text = children?.map(c => c.text).join('') ?? '';
     return {
@@ -53,7 +99,7 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       marks: [{ type: 'bold' }],
     };
   },
-  emphasis: (_node, children) => {
+  [MarkdownAstNodeTypes.EMPHASIS]: (_node, children) => {
     // Italic mark
     const text = children?.map(c => c.text).join('') ?? '';
     return {
@@ -62,7 +108,7 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       marks: [{ type: 'italic' }],
     };
   },
-  list: (node, children) => {
+  [MarkdownAstNodeTypes.LIST]: (node, children) => {
     // node.ordered is true for ordered lists, false for bullet lists
     const type = (node as List).ordered ? 'ordered_list' : 'bullet_list';
     return {
@@ -70,13 +116,13 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       content: children,
     };
   },
-  listItem: (_node, children) => {
+  [MarkdownAstNodeTypes.LISTITEM]: (_node, children) => {
     return {
       type: 'list_item',
       content: children,
     };
   },
-  image: (node) => {
+  [MarkdownAstNodeTypes.IMAGE]: (node) => {
     const image = node as MdastImage;
     return {
       type: 'image',
@@ -87,19 +133,19 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       },
     };
   },
-  table: (_node, children) => {
+  [MarkdownAstNodeTypes.TABLE]: (_node, children) => {
     return {
       type: 'table',
       content: children,
     };
   },
-  tableRow: (_node, children) => {
+  [MarkdownAstNodeTypes.TABLEROW]: (_node, children) => {
     return {
       type: 'tableRow',
       content: children,
     };
   },
-  tableCell: (_node, children) => {
+  [MarkdownAstNodeTypes.TABLECELL]: (_node, children) => {
     return {
       type: 'tableCell',
       content: children,
@@ -110,14 +156,14 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       },
     };
   },
-  blockquote: (_node, children) => {
+  [MarkdownAstNodeTypes.BLOCKQUOTE]: (_node, children) => {
     // Blockquote resolver: maps markdown blockquotes to Storyblok blockquote nodes
     return {
       type: 'blockquote',
       content: children,
     };
   },
-  inlineCode: (node) => {
+  [MarkdownAstNodeTypes.INLINECODE]: (node) => {
     // Inline code resolver: maps markdown inline code to Storyblok text node with code mark
     // Cast node to Mdast InlineCode type for type safety
     const inlineCodeNode = node as InlineCode;
@@ -127,7 +173,7 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       marks: [{ type: 'code' }],
     };
   },
-  code: (node) => {
+  [MarkdownAstNodeTypes.CODE]: (node) => {
     // Code block resolver: maps markdown code blocks to Storyblok code_block node
     // Cast node to Mdast Code type for type safety
     const codeNode = node as Code;
@@ -144,7 +190,7 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       ],
     };
   },
-  link: (node, children) => {
+  [MarkdownAstNodeTypes.LINK]: (node, children) => {
     // Link resolver: maps markdown links to Storyblok link nodes
     // Cast node to Mdast Link type for type safety
     const linkNode = node as import('mdast').Link;
@@ -157,13 +203,13 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       content: children,
     };
   },
-  thematicBreak: () => {
+  [MarkdownAstNodeTypes.THEMATICBREAK]: () => {
     // Horizontal rule resolver: maps markdown thematic breaks to Storyblok horizontal_rule nodes
     return {
       type: 'horizontal_rule',
     };
   },
-  delete: (_node, children) => {
+  [MarkdownAstNodeTypes.DELETE]: (_node, children) => {
     // Strikethrough resolver: maps markdown strikethrough to Storyblok text node with strike mark
     const text = children?.map(c => c.text).join('') ?? '';
     return {
@@ -172,7 +218,7 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
       marks: [{ type: 'strike' }],
     };
   },
-  break: () => {
+  [MarkdownAstNodeTypes.BREAK]: () => {
     // Break resolver: maps markdown hard line breaks to Storyblok hard_break nodes
     return {
       type: 'hard_break',
@@ -203,10 +249,12 @@ export function markdownToStoryblokRichtext(
         .map(convertNode)
         .filter(Boolean) as StoryblokRichTextDocumentNode[];
     }
-    // Use resolver for this node type
-    const resolver = resolvers[node.type];
-    if (resolver) {
-      return resolver(node, children);
+    // Only resolve supported node types
+    if (Object.values(MarkdownAstNodeTypes).includes(node.type as MarkdownAstNodeType)) {
+      const resolver = resolvers[node.type as MarkdownAstNodeType];
+      if (resolver) {
+        return resolver(node, children);
+      }
     }
     // Not yet supported node type
     return null;
@@ -224,4 +272,14 @@ export function markdownToStoryblokRichtext(
   };
 }
 
-// Inline comments explain the resolver-based approach and how to extend it.
+// Export the MDAST types for use in resolvers
+export {
+  type Code as MdastCode,
+  type Heading as MdastHeading,
+  type InlineCode as MdastInlineCode,
+  type List as MdastList,
+  type MdastImage,
+  type Root as MdastRoot,
+  type RootContent as MdastRootContent,
+  type Text as MdastText,
+};

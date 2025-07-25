@@ -11,7 +11,9 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceDataState } from '../constants';
+import { fetchDatasources } from '../../datasources/pull/actions';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
+import type { SpaceDatasource } from '../../datasources/constants';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -24,7 +26,7 @@ componentsCommand
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
 
   .action(async (componentName: string | undefined, options: PushComponentsOptions) => {
-    konsola.title(` ${commands.COMPONENTS} `, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
+    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
     // Global options
     const verbose = program.opts().verbose;
     const { space, path } = componentsCommand.opts();
@@ -66,17 +68,28 @@ componentsCommand
     });
 
     try {
-      const spaceState: SpaceDataState = {
-        local: await readComponentsFiles({
-          ...options,
-          path,
-          space,
-        }),
+      // Read components data
+      const componentsData = await readComponentsFiles({
+        ...options,
+        path,
+        space,
+      });
+
+      // Combine into the expected structure with empty datasources array
+      // Datasources will be stubbed based on detected dependencies
+      const localData: SpaceComponentsData = {
+        ...componentsData,
+        datasources: [],
+      };
+
+      const spaceState: SpaceComponentsDataState = {
+        local: localData,
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -86,8 +99,9 @@ componentsCommand
         fetchComponentGroups(space),
         fetchComponentPresets(space),
         fetchComponentInternalTags(space),
+        fetchDatasources(space),
       ];
-      const [components, groups, presets, internalTags] = await Promise.all(promises);
+      const [components, groups, presets, internalTags, datasources] = await Promise.all(promises);
 
       if (components) {
         (components as SpaceComponent[]).forEach((component) => {
@@ -103,13 +117,26 @@ componentsCommand
 
       if (presets) {
         (presets as SpaceComponentPreset[]).forEach((preset) => {
-          spaceState.target.presets.set(preset.name, preset);
+          // Find the parent component for this nested preset resource
+          const targetComponent = (components as SpaceComponent[])?.find(c => c.id === preset.component_id);
+          if (targetComponent) {
+            // Store presets using hierarchical key: component.name:preset.name (parent:child)
+            // This reflects the nested resource relationship where presets are scoped to components
+            const compositeKey = `${targetComponent.name}:${preset.name}`;
+            spaceState.target.presets.set(compositeKey, preset);
+          }
         });
       }
 
       if (internalTags) {
         (internalTags as SpaceComponentInternalTag[]).forEach((tag) => {
           spaceState.target.tags.set(tag.name, tag);
+        });
+      }
+
+      if (datasources) {
+        (datasources as SpaceDatasource[]).forEach((datasource) => {
+          spaceState.target.datasources.set(datasource.name, datasource);
         });
       }
 

@@ -1,4 +1,4 @@
-import type { SpaceDataState } from '../../constants';
+import type { SpaceComponentsDataState } from '../../constants';
 import type { GraphBuildingContext, PushResults } from './types';
 
 import { buildDependencyGraph, validateGraph } from './dependency-graph';
@@ -27,7 +27,7 @@ export type { PushResults } from './types';
  */
 export async function pushWithDependencyGraph(
   space: string,
-  spaceState: SpaceDataState,
+  spaceState: SpaceComponentsDataState,
   maxConcurrency: number = 5,
 ): Promise<PushResults> {
   // Build and validate the dependency graph with colocated target data

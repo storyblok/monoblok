@@ -1,5 +1,5 @@
 import { handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceData } from '../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import { join, resolve } from 'node:path';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import type { SaveComponentsOptions } from './constants';
@@ -85,7 +85,7 @@ export const fetchComponentInternalTags = async (space: string): Promise<SpaceCo
 
 export const saveComponentsToFiles = async (
   space: string,
-  spaceData: SpaceData,
+  spaceData: SpaceComponentsData,
   options: SaveComponentsOptions,
 ) => {
   const { components = [], groups = [], presets = [], internalTags = [] } = spaceData;

@@ -1,9 +1,8 @@
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { handleError, isVitest, konsola } from '../../../utils';
 import { getProgram } from '../../../program';
-import { session } from '../../../session';
 import { Spinner } from '@topcli/spinner';
-import { readComponentsFiles } from '../../components/push/actions';
+import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
@@ -21,23 +20,12 @@ typesCommand
   .option('--custom-fields-parser <path>', 'Path to the parser file for Custom Field Types')
   .option('--compiler-options <options>', 'path to the compiler options from json-schema-to-typescript')
   .action(async (options: GenerateTypesOptions) => {
-    konsola.title(` ${commands.TYPES} `, colorPalette.TYPES, 'Generating types...');
+    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
     // Global options
     const verbose = program.opts().verbose;
 
     // Command options
     const { space, path } = typesCommand.opts();
-
-    const { state, initializeSession } = session();
-    await initializeSession();
-
-    if (!requireAuthentication(state, verbose)) {
-      return;
-    }
-    if (!space) {
-      handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      return;
-    }
 
     const spinner = new Spinner({
       verbose: !isVitest,
@@ -56,7 +44,13 @@ typesCommand
         path,
       });
 
-      const typedefString = await generateTypes(spaceData, {
+      // Add empty datasources array to match expected type for generateTypes
+      const spaceDataWithDatasources: ComponentsData & { datasources: [] } = {
+        ...spaceData,
+        datasources: [],
+      };
+
+      const typedefString = await generateTypes(spaceDataWithDatasources, {
         ...options,
         path,
       });

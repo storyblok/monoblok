@@ -39,7 +39,7 @@ export const loginCommand = program
     token: string;
     region: RegionCode;
   }) => {
-    konsola.title(` ${commands.LOGIN} `, colorPalette.LOGIN);
+    konsola.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
     const verbose = program.opts().verbose;
     // Command options

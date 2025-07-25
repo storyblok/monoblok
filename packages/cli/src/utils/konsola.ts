@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { capitalize } from './format';
 
 export interface KonsolaFormatOptions {
   header?: boolean;
@@ -11,10 +12,10 @@ export function formatHeader(title: string) {
 export const konsola = {
   title: (message: string, color: string, subtitle?: string) => {
     if (subtitle) {
-      console.log(`${formatHeader(chalk.bgHex(color).bold(` ${message} `))} ${subtitle}`);
+      console.log(`${formatHeader(chalk.bgHex(color).bold(` ${capitalize(message)} `))} ${subtitle}`);
     }
     else {
-      console.log(formatHeader(chalk.bgHex(color).bold(` ${message} `)));
+      console.log(formatHeader(chalk.bgHex(color).bold(` ${capitalize(message)} `)));
     }
     console.log(''); // Add a line break
     console.log(''); // Add a line break

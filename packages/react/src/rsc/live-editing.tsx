@@ -1,34 +1,50 @@
 'use client';
 
-import { type ISbStoryData, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
+import { type ISbStoryData, loadStoryblokBridge, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
 import { startTransition, useEffect } from 'react';
-import { liveEditUpdateAction } from './live-edit-update-action';
+import { isBridgeLoaded, isVisualEditor } from '../utils';
 
-const isVisualEditor = (): boolean => {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  return typeof window.storyblokRegisterEvent !== 'undefined' && window.location.search.includes('_storyblok');
-};
+const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions?: StoryblokBridgeConfigV2 }) => {
+  const inVisualEditor = isVisualEditor();
 
-const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions: StoryblokBridgeConfigV2 }) => {
-  if (!isVisualEditor()) {
+  if (!inVisualEditor) {
     return null;
   }
 
-  const handleInput = (story: ISbStoryData) => {
-    if (!story) {
-      return;
-    }
-    startTransition(() => {
-      liveEditUpdateAction({ story, pathToRevalidate: window.location.pathname });
-    });
-  };
-
   const storyId = story?.id ?? 0;
   useEffect(() => {
-    registerStoryblokBridge(storyId, newStory => handleInput(newStory), bridgeOptions);
-  }, []);
+    (async () => {
+      // In RSC environments, Storyblok components are server-side rendered,
+      // so the bridge script is never automatically loaded on the client.
+      // We need to explicitly load it here for live editing to work.
+      if (!isBridgeLoaded()) {
+        await loadStoryblokBridge();
+      }
+
+      const handleInput = async (story: ISbStoryData) => {
+        if (!story) {
+          return;
+        }
+
+        try {
+          const { liveEditUpdateAction } = await import('./live-edit-update-action');
+
+          startTransition(() => {
+            liveEditUpdateAction({ story, pathToRevalidate: window.location.pathname });
+          });
+        }
+        catch (error) {
+          // Fallback: just cache the story if server action is not available
+          console.warn('Server action not available, caching story locally:', error);
+          if (story.uuid) {
+            globalThis.storyCache?.set(story.uuid, story);
+          }
+        }
+      };
+
+      registerStoryblokBridge(storyId, newStory => handleInput(newStory), bridgeOptions);
+    })();
+  }, [storyId, JSON.stringify(bridgeOptions)]);
 
   return null;
 };

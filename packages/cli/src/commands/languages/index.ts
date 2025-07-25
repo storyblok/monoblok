@@ -10,7 +10,7 @@ import { Spinner } from '@topcli/spinner';
 const program = getProgram(); // Get the shared singleton instance
 
 export const languagesCommand = program
-  .command('languages')
+  .command(commands.LANGUAGES)
   .alias('lang')
   .description(`Manage your space's languages`)
   .option('-s, --space <space>', 'space ID')
@@ -22,7 +22,7 @@ languagesCommand
   .option('-f, --filename <filename>', 'filename to save the file as <filename>.<suffix>.json')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. languages.<suffix>.json). By default, the space ID is used.')
   .action(async (options: PullLanguagesOptions) => {
-    konsola.title(` ${commands.LANGUAGES} `, colorPalette.LANGUAGES);
+    konsola.title(`${commands.LANGUAGES}`, colorPalette.LANGUAGES);
 
     // Global options
     const verbose = program.opts().verbose;

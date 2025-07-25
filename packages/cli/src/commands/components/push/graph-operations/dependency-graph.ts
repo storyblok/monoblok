@@ -4,8 +4,29 @@ import type {
   SpaceComponentInternalTag,
   SpaceComponentPreset,
 } from '../../constants';
+import type { SpaceDatasource } from '../../../datasources/constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
+import { upsertDatasource } from '../../../datasources/push/actions';
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Creates a minimal stub datasource with only required fields.
+ */
+function createStubDatasource(name: string): SpaceDatasource {
+  return {
+    id: 0, // Will be set by API
+    name,
+    slug: name,
+    dimensions: [],
+    entries: [], // Empty entries for stub
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
 
 // =============================================================================
 // GRAPH BUILDING
@@ -32,6 +53,28 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     }
   }
 
+  // Collect all datasource names referenced by components
+  const referencedDatasources = new Set<string>();
+  spaceState.local.components.forEach((component) => {
+    if (component.schema) {
+      const dependencies = collectWhitelistDependencies(component.schema);
+      dependencies.datasourceNames.forEach((datasourceName) => {
+        referencedDatasources.add(datasourceName);
+      });
+    }
+  });
+
+  // Create stub datasource nodes for all referenced datasources
+  referencedDatasources.forEach((datasourceName) => {
+    const nodeId = `datasource:${datasourceName}`;
+    const targetDatasource = spaceState.target.datasources?.get(datasourceName);
+
+    // Create minimal stub datasource
+    const stubDatasource = createStubDatasource(datasourceName);
+    const node = new DatasourceNode(nodeId, stubDatasource, targetDatasource);
+    graph.nodes.set(nodeId, node);
+  });
+
   // Create nodes for all tags with colocated target data
   spaceState.local.internalTags.forEach((tag) => {
     const nodeId = `tag:${tag.id}`;
@@ -57,9 +100,24 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
   });
 
   // Create nodes for all presets with colocated target data
+  // Since presets are nested resources under components, create a component map for efficient lookups
+  const componentMap = new Map(spaceState.local.components.map(c => [c.id, c]));
+
   spaceState.local.presets.forEach((preset) => {
-    const nodeId = `preset:${preset.name}`;
-    const targetPreset = spaceState.target.presets.get(preset.name);
+    const nodeId = `preset:${preset.id}`;
+
+    // Find the parent component for this nested preset resource
+    const sourceComponent = componentMap.get(preset.component_id);
+    if (!sourceComponent) {
+      // Skip presets whose parent components are not available in local data
+      console.warn(`Warning: Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`);
+      return;
+    }
+
+    // Use hierarchical key: component.name:preset.name (parent:child)
+    const compositeKey = `${sourceComponent.name}:${preset.name}`;
+    const targetPreset = spaceState.target.presets.get(compositeKey);
+
     const targetData = targetPreset
       ? {
           resource: targetPreset,
@@ -102,7 +160,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
       // Find the preset by ID and create dependency
       const preset = spaceState.local.presets.find(p => p.id === component.preset_id);
       if (preset) {
-        const presetId = `preset:${preset.name}`;
+        const presetId = `preset:${preset.id}`;
         addDependency(componentId, presetId);
       }
     }
@@ -127,12 +185,19 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
         const dependencyId = `component:${componentName}`;
         addDependency(componentId, dependencyId);
       });
+
+      // Add dependencies on datasources (from schema fields with internal source)
+      dependencies.datasourceNames.forEach((datasourceName) => {
+        const datasourceId = `datasource:${datasourceName}`;
+        // Always add dependency since we create stubs for all referenced datasources
+        addDependency(componentId, datasourceId);
+      });
     }
   });
 
   // Add preset dependencies on components
   spaceState.local.presets.forEach((preset) => {
-    const presetId = `preset:${preset.name}`;
+    const presetId = `preset:${preset.id}`;
 
     // Find the component this preset belongs to
     const component = spaceState.local.components.find(c => c.id === preset.component_id);
@@ -157,6 +222,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
   const groupUuids = new Set<string>();
   const tagIds = new Set<number>();
   const componentNames = new Set<string>();
+  const datasourceNames = new Set<string>();
 
   function traverseField(field: Record<string, any>) {
     if (field.type === 'bloks') {
@@ -173,6 +239,15 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
       // Collect component dependencies
       if (field.component_whitelist && Array.isArray(field.component_whitelist)) {
         field.component_whitelist.forEach((name: string) => componentNames.add(name));
+      }
+    }
+
+    // Collect datasource dependencies from option/options fields with internal source
+    if ((field.type === 'option' || field.type === 'options') && field.source === 'internal') {
+      // For option/options fields with internal source, the datasource name is typically
+      // specified in the datasource_slug field or can be inferred from other properties
+      if (field.datasource_slug && typeof field.datasource_slug === 'string') {
+        datasourceNames.add(field.datasource_slug);
       }
     }
 
@@ -198,7 +273,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
     }
   });
 
-  return { groupUuids, tagIds, componentNames };
+  return { groupUuids, tagIds, componentNames, datasourceNames };
 }
 
 // =============================================================================
@@ -615,7 +690,7 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
       // Find the preset by ID and resolve to target preset ID
       const preset = this.findPresetById(this.sourceData.preset_id, graph);
       if (preset) {
-        const presetNodeId = `preset:${preset.name}`;
+        const presetNodeId = `preset:${preset.id}`;
         const presetNode = graph.nodes.get(presetNodeId);
 
         if (presetNode?.targetData) {
@@ -680,6 +755,18 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
         // Component whitelist doesn't need ID resolution as it uses names
       }
 
+      // Resolve datasource references in option/options fields with internal source
+      if ((resolvedField.type === 'option' || resolvedField.type === 'options') && resolvedField.source === 'internal') {
+        if (resolvedField.datasource_slug && typeof resolvedField.datasource_slug === 'string') {
+          const datasourceNodeId = `datasource:${resolvedField.datasource_slug}`;
+          const datasourceNode = graph.nodes.get(datasourceNodeId) as DatasourceNode;
+          if (datasourceNode?.targetData) {
+            // Update the datasource_slug to the target datasource slug
+            resolvedField.datasource_slug = datasourceNode.targetData.resource.slug;
+          }
+        }
+      }
+
       // Recursively resolve nested fields
       Object.keys(resolvedField).forEach((key) => {
         if (typeof resolvedField[key] === 'object' && resolvedField[key] !== null) {
@@ -724,7 +811,7 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
   constructor(preset: SpaceComponentPreset, targetData?: TargetResourceInfo<SpaceComponentPreset>) {
     this.sourceData = preset;
     this.targetData = targetData;
-    this.id = `preset:${preset.name}`;
+    this.id = `preset:${preset.id}`;
     this.name = preset.name;
   }
 
@@ -767,5 +854,31 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
       resource: result,
       id: result.id,
     };
+  }
+}
+
+export class DatasourceNode extends GraphNode<SpaceDatasource> {
+  constructor(id: string, data: SpaceDatasource, targetDatasource?: SpaceDatasource) {
+    super(id, 'datasource', data.name, data, targetDatasource);
+  }
+
+  resolveReferences(_graph: DependencyGraph): void {
+    // Datasources don't have references to resolve
+  }
+
+  async upsert(space: string): Promise<SpaceDatasource> {
+    const existingDatasource = this.targetData?.resource as SpaceDatasource | undefined;
+    const existingId = existingDatasource?.id;
+
+    // For components push, we only create the datasource stub without entries.
+    // Pushing entries is handled by the datasources push command.
+    const { entries, ...datasourceDefinition } = this.sourceData;
+
+    const result = await upsertDatasource(space, datasourceDefinition, existingId);
+    if (!result) {
+      throw new Error(`Failed to upsert datasource ${this.name}`);
+    }
+
+    return result;
   }
 }

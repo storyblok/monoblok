@@ -31,6 +31,7 @@ export interface MapiClient {
   get: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   post: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   put: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
+  delete: <T>(path: string, fetchOptions?: FetchOptions) => Promise<GetResponse<T>>;
   dispose: () => void;
   getRequestCount: () => number;
 }
@@ -102,15 +103,21 @@ const createMapiClient = (options: ManagementApiClientOptions): MapiClient => {
       });
 
       let data;
-      try {
-        data = await res.json();
+      // Handle responses with no content (204, etc.)
+      if (res.status === 204 || res.headers.get('content-length') === '0') {
+        data = null;
       }
-      catch {
-        throw new FetchError('Non-JSON response', {
-          status: res.status,
-          statusText: res.statusText,
-          data: null,
-        });
+      else {
+        try {
+          data = await res.json();
+        }
+        catch {
+          throw new FetchError('Non-JSON response', {
+            status: res.status,
+            statusText: res.statusText,
+            data: null,
+          });
+        }
       }
 
       // Call response interceptor if provided
@@ -192,11 +199,16 @@ const createMapiClient = (options: ManagementApiClientOptions): MapiClient => {
     return request(path, { ...fetchOptions, method: 'PUT' });
   };
 
+  const _delete = async (path: string, fetchOptions?: FetchOptions) => {
+    return request(path, { ...fetchOptions, method: 'DELETE' });
+  };
+
   instance = {
     uuid: state.uuid,
     get,
     post,
     put,
+    delete: _delete,
     dispose: () => {
       instance = null;
     },

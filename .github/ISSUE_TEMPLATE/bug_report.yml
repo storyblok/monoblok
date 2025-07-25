@@ -19,6 +19,7 @@ body:
       description: Which Storyblok package is this bug related to?
       options:
         - "storyblok (CLI)"
+        - "@storyblok/region-helper"
         - "@storyblok/js (Core JavaScript SDK)"
         - "storyblok-js-client (Client SDK)"
         - "@storyblok/richtext (Rich Text Renderer)"

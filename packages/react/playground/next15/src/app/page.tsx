@@ -1,9 +1,5 @@
-import type {
-  ISbStoriesParams,
-  StoryblokClient,
-} from '@storyblok/react/rsc';
-import { StoryblokStory,
-} from '@storyblok/react/rsc';
+import { StoryblokStory } from '@storyblok/react/rsc';
+import type { ISbStoriesParams, StoryblokClient } from '@storyblok/react/rsc';
 import { getStoryblokApi } from '@/lib/storyblok';
 import Link from 'next/link';
 
@@ -30,6 +26,7 @@ export default async function Home() {
 
         {data.story && (
           <div>
+            {/* @ts-ignore - React 19 type compatibility issue */}
             <StoryblokStory story={data.story} />
           </div>
         )}
@@ -38,7 +35,7 @@ export default async function Home() {
   );
 }
 
-export async function fetchData() {
+async function fetchData() {
   const sbParams: ISbStoriesParams = { version: 'draft' };
 
   const storyblokApi: StoryblokClient = getStoryblokApi();

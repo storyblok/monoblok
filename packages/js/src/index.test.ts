@@ -374,8 +374,8 @@ describe('@storyblok/js', () => {
         ...originalLocation,
         href: 'http://localhost',
       };
-      Object.defineProperty(window, 'parent', {
-        value: { location: { href: 'http://different-origin.com' } },
+      Object.defineProperty(window, 'location', {
+        value: { search: '?_storyblok' },
         writable: true,
       });
 
@@ -400,8 +400,8 @@ describe('@storyblok/js', () => {
       const callback = vi.fn();
 
       // Ensure we're not in an iframe
-      Object.defineProperty(window, 'parent', {
-        value: { location: window.location },
+      Object.defineProperty(window, 'location', {
+        value: { search: '?test=123' },
         writable: true,
       });
 
@@ -421,8 +421,8 @@ describe('@storyblok/js', () => {
       const callback3 = vi.fn(() => executionOrder.push(3));
 
       // Mock being in an iframe
-      Object.defineProperty(window, 'parent', {
-        value: { location: { href: 'http://different-origin.com' } },
+      Object.defineProperty(window, 'location', {
+        value: { search: '?_storyblok' },
         writable: true,
       });
 

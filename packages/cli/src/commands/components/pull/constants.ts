@@ -1,7 +1,7 @@
 import type { CommandOptions } from '../../../types';
 
 /**
- * Interface representing the options for the `pull-components` command.
+ * Interface representing the options for the `components pull` command.
  */
 export interface PullComponentsOptions extends CommandOptions {
 

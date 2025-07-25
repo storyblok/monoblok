@@ -1,3 +1,4 @@
+import type { Region } from '@storyblok/region-helper';
 import { getRegion } from '@storyblok/region-helper';
 import type { Command } from 'commander';
 import { session } from '../session';
@@ -10,7 +11,7 @@ import { session } from '../session';
 export function getRegionFromSpaceId(spaceId: string): string | undefined {
   try {
     const region = getRegion(spaceId);
-    return region || undefined;
+    return region;
   }
   catch (error) {
     console.warn(`Failed to determine region from space ID: ${error}`);
@@ -21,10 +22,9 @@ export function getRegionFromSpaceId(spaceId: string): string | undefined {
 /**
  * Resolves the region for a given space ID
  * @param thisCommand - The command instance
- * @param _actionCommand - The action command instance
  * @returns void
  */
-export const resolveRegion = async (thisCommand: Command, _actionCommand: Command): Promise<void> => {
+export const resolveRegion = async (thisCommand: Command): Promise<void> => {
   // Pre-action hook to handle automatic region detection
   const options = thisCommand.opts();
   const spaceId = options.space;
@@ -37,7 +37,7 @@ export const resolveRegion = async (thisCommand: Command, _actionCommand: Comman
     const detectedRegion = getRegionFromSpaceId(spaceId);
 
     if (detectedRegion) {
-      state.region = detectedRegion as any;
+      state.region = detectedRegion as Region;
     }
   }
 };

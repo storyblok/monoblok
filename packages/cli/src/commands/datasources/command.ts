@@ -1,3 +1,4 @@
+import { resolveRegion } from '../../utils/region';
 import { commands } from '../../constants';
 import { getProgram } from '../../program';
 
@@ -9,4 +10,5 @@ export const datasourcesCommand = program
   .alias('ds')
   .description(`Manage your space's datasources`)
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/datasources');
+  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/datasources')
+  .hook('preAction', resolveRegion);

@@ -231,6 +231,9 @@ importers:
       '@storyblok/js':
         specifier: workspace:*
         version: link:../js
+      '@storyblok/region-helper':
+        specifier: workspace:*
+        version: link:../region-helper
       '@topcli/spinner':
         specifier: ^2.1.2
         version: 2.1.2

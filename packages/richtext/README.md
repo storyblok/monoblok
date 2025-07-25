@@ -30,12 +30,11 @@
 ## Features
 
 - **Framework-Agnostic Rendering**: Outputs raw HTML by default but can be configured to produce framework-specific elements, such as React components or Vue nodes.
-- **Custom Resolvers**: Allows developers to override default rendering behavior for specific elements like links, images, and embedded components. This enables integration with custom components or styling frameworks like Tailwind CSS. 
+- **Custom Resolvers**: Allows developers to override default rendering behavior for specific elements like links, images, and embedded components. This enables integration with custom components or styling frameworks like Tailwind CSS.
 Storyblok
-- **Image Optimization**: Supports image optimization options, including lazy loading, responsive sizing, and format conversion (e.g., to WebP), enhancing performance and user experience. 
+- **Image Optimization**: Supports image optimization options, including lazy loading, responsive sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
 Storyblok
-- **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and improved developer experience across different frameworks. 
-
+- **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and improved developer experience across different frameworks.
 
 ## Documentation
 
@@ -69,7 +68,6 @@ We understand that you might not be able to share your company's project code. P
 ### Feedback
 
 If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
-
 
 ## License
 

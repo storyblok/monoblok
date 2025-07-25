@@ -133,5 +133,6 @@ const rt = {
   ],
 };
 const html = render(rt);
+
 // eslint-disable-next-line no-console
 console.log(html);

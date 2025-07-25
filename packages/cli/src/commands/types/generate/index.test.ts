@@ -201,6 +201,47 @@ describe('types generate', () => {
       });
     });
 
+    it('should pass typeSuffix option to generateTypes when --type-suffix flag is used', async () => {
+      const mockResponse = [{
+        name: 'component-name',
+        display_name: 'Component Name',
+        created_at: '2021-08-09T12:00:00Z',
+        updated_at: '2021-08-09T12:00:00Z',
+        id: 12345,
+        schema: { type: 'object' },
+        color: null,
+        internal_tags_list: [],
+        internal_tag_ids: [],
+      }];
+
+      const mockSpaceData = {
+        components: mockResponse,
+        groups: [],
+        presets: [],
+        internalTags: [],
+        datasources: [],
+      };
+
+      session().state = {
+        isLoggedIn: true,
+        password: 'valid-token',
+        region: 'eu',
+      };
+
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      // Run the command with the --type-prefix flag
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--type-suffix', 'CustomTypeSuffix']);
+
+      // Verify that generateTypes was called with the typePrefix option set to 'Custom'
+      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
+        typeSuffix: 'CustomTypeSuffix',
+        path: undefined,
+      });
+    });
+
     it('should pass suffix option to generateTypes when --suffix flag is used', async () => {
       const mockResponse = [{
         name: 'component-name',

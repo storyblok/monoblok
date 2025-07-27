@@ -1,0 +1,88 @@
+get:
+  summary: Retrieve Multiple Assets
+  parameters:
+    - name: space_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: The ID of the Storyblok space.
+  responses:
+    '200':
+      description: List of assets
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              assets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    filename:
+                      type: string
+                    alt:
+                      type: string
+                    name:
+                      type: string
+                    copyright:
+                      type: string
+                    fieldtype:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    updated_at:
+                      type: string
+                      format: date-time
+post:
+  summary: Upload an Asset
+  parameters:
+    - name: space_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: The ID of the Storyblok space.
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              format: binary
+  responses:
+    '201':
+      description: Asset uploaded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              asset:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  filename:
+                    type: string
+                  alt:
+                    type: string
+                  name:
+                    type: string
+                  copyright:
+                    type: string
+                  fieldtype:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  updated_at:
+                    type: string
+                    format: date-time

@@ -4,20 +4,11 @@ info:
   version: 1.0.0
   description: API for managing Storyblok internal tags
 servers:
-  - url: https://mapi.storyblok.com
-    description: Base URL for spaces created in the EU
-  - url: https://api-us.storyblok.com
-    description: Base URL for spaces created in the US
-  - url: https://api-ca.storyblok.com
-    description: Base URL for spaces created in the Canada
-  - url: https://api-ap.storyblok.com
-    description: Base URL for spaces created in the Australia
-  - url: https://app.storyblok.cn
-    description: Base URL for spaces created in the China
+  $ref: ../../shared/servers.yaml
 security:
-  - BearerAuth: []
+  $ref: ../../shared/security.yaml
 paths:
-  /v1/spaces/{space_id}/tags:
+  /v1/spaces/{space_id}/internal_tags:
     get:
       operationId: getInternalTags
       summary: Retrieve Multiple Internal Tags
@@ -46,134 +37,6 @@ paths:
           description: Unauthorized
         '404':
           description: Space not found
-    post:
-      operationId: createInternalTag
-      summary: Create an Internal Tag
-      parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InternalTagCreateRequest'
-      responses:
-        '201':
-          description: Internal tag created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  internal_tag:
-                    $ref: '#/components/schemas/InternalTag'
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '404':
-          description: Space not found
-  /v1/spaces/{space_id}/tags/{tag_id}:
-    get:
-      operationId: getInternalTag
-      summary: Retrieve One Internal Tag
-      parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: tag_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the internal tag.
-      responses:
-        '200':
-          description: Internal tag details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  internal_tag:
-                    $ref: '#/components/schemas/InternalTag'
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '404':
-          description: Internal tag not found
-    put:
-      operationId: updateInternalTag
-      summary: Update an Internal Tag
-      parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: tag_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the internal tag.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InternalTagCreateRequest'
-      responses:
-        '200':
-          description: Internal tag updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  internal_tag:
-                    $ref: '#/components/schemas/InternalTag'
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '404':
-          description: Internal tag not found
-    delete:
-      operationId: deleteInternalTag
-      summary: Delete an Internal Tag
-      parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: tag_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the internal tag.
-      responses:
-        '204':
-          description: Internal tag deleted
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '404':
-          description: Internal tag not found
 components:
   securitySchemes:
     BearerAuth:
@@ -188,16 +51,9 @@ components:
           type: integer
         name:
           type: string
-        taggings_count:
-          type: integer
         created_at:
           type: string
           format: date-time
-    InternalTagCreateRequest:
-      type: object
-      properties:
-        internal_tag:
-          type: object
-          properties:
-            name:
-              type: string 
+        updated_at:
+          type: string
+          format: date-time

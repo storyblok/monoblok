@@ -167,10 +167,7 @@ paths:
           description: Asset not found
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Asset:
       type: object

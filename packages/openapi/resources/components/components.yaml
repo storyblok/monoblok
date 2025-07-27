@@ -1,0 +1,208 @@
+openapi: 3.1.1
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Component:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        display_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ComponentCreateRequest:
+      type: object
+      properties:
+        component:
+          type: object
+          properties:
+            name:
+              type: string
+            display_name:
+              type: string
+info:
+  title: Storyblok Components API
+  version: 1.0.0
+  description: API for managing Storyblok components
+paths:
+  /v1/spaces/{space_id}/components:
+    get:
+      operationId: getComponents
+      summary: Retrieve Multiple Components
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      responses:
+        '200':
+          description: List of components
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  components:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Component'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: createComponent
+      summary: Create a Component
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComponentCreateRequest'
+      responses:
+        '201':
+          description: Component created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component:
+                    $ref: '#/components/schemas/Component'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/components/{component_id}:
+    get:
+      operationId: getComponent
+      summary: Retrieve One Component
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: component_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the component.
+      responses:
+        '200':
+          description: Component details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component:
+                    $ref: '#/components/schemas/Component'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component not found
+    put:
+      operationId: updateComponent
+      summary: Update a Component
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: component_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the component.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComponentCreateRequest'
+      responses:
+        '200':
+          description: Component updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component:
+                    $ref: '#/components/schemas/Component'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component not found
+    delete:
+      operationId: deleteComponent
+      summary: Delete a Component
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: component_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the component.
+      responses:
+        '204':
+          description: Component deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component not found

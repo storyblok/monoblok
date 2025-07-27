@@ -1,0 +1,235 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Datasource Entries API
+  version: 1.0.0
+  description: API for managing Storyblok datasource entries
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+paths:
+  /v1/spaces/{space_id}/datasources/{datasource_id}/entries:
+    get:
+      operationId: getDatasourceEntries
+      summary: Retrieve Multiple Datasource Entries
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+      responses:
+        '200':
+          description: List of datasource entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource not found
+    post:
+      operationId: createDatasourceEntry
+      summary: Create a Datasource Entry
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryCreateRequest'
+      responses:
+        '201':
+          description: Datasource entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource not found
+  /v1/spaces/{space_id}/datasources/{datasource_id}/entries/{entry_id}:
+    get:
+      operationId: getDatasourceEntry
+      summary: Retrieve One Datasource Entry
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource entry.
+      responses:
+        '200':
+          description: Datasource entry details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    put:
+      operationId: updateDatasourceEntry
+      summary: Update a Datasource Entry
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryCreateRequest'
+      responses:
+        '200':
+          description: Datasource entry updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    delete:
+      operationId: deleteDatasourceEntry
+      summary: Delete a Datasource Entry
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource entry.
+      responses:
+        '204':
+          description: Datasource entry deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    DatasourceEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        value:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    DatasourceEntryCreateRequest:
+      type: object
+      properties:
+        datasource_entry:
+          type: object
+          properties:
+            name:
+              type: string
+            value:
+              type: string 

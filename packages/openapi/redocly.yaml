@@ -1,0 +1,22 @@
+# Redocly configuration for multiple API specifications
+apis:
+  stories:
+    root: resources/stories/stories.yaml
+  components:
+    root: resources/components/components.yaml
+  assets:
+    root: resources/assets/assets.yaml
+  datasources:
+    root: resources/datasources/datasources.yaml
+  datasource-entries:
+    root: resources/datasource_entries/datasource_entries.yaml
+  internal-tags:
+    root: resources/internal_tags/internal_tags.yaml
+  spaces:
+    root: resources/spaces/spaces.yaml
+
+# Linting rules
+rules:
+  info-license: off
+  operation-4xx-response: off
+  operation-operationId: off 

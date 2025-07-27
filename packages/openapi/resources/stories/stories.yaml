@@ -1,0 +1,220 @@
+openapi: 3.1.1
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Story:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        content:
+          type: object
+        published:
+          type: boolean
+    StoryCreateRequest:
+      type: object
+      properties:
+        story:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            content:
+              type: object
+    StoryUpdateRequest:
+      type: object
+      properties:
+        story:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            content:
+              type: object
+info:
+  title: Storyblok Stories API
+  version: 1.0.0
+  description: API for managing Storyblok stories
+paths:
+  /v1/spaces/{space_id}/stories:
+    get:
+      operationId: getStories
+      summary: Retrieve Multiple Stories
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      responses:
+        '200':
+          description: List of stories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: createStory
+      summary: Create a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryCreateRequest'
+      responses:
+        '201':
+          description: Story created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/stories/{story_id}:
+    get:
+      operationId: getStory
+      summary: Retrieve One Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+      responses:
+        '200':
+          description: Story details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+    put:
+      operationId: updateStory
+      summary: Update a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryUpdateRequest'
+      responses:
+        '200':
+          description: Story updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+    delete:
+      operationId: deleteStory
+      summary: Delete a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+      responses:
+        '204':
+          description: Story deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found

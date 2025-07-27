@@ -1,0 +1,110 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Spaces API
+  version: 1.0.0
+  description: API for managing Storyblok spaces
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+paths:
+  /v1/spaces/{space_id}:
+    get:
+      operationId: getSpace
+      summary: Retrieve One Space
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      responses:
+        '200':
+          description: Space details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    put:
+      operationId: updateSpace
+      summary: Update a Space
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpaceUpdateRequest'
+      responses:
+        '200':
+          description: Space updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Space:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        domain:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    SpaceUpdateRequest:
+      type: object
+      properties:
+        space:
+          type: object
+          properties:
+            name:
+              type: string
+            domain:
+              type: string 

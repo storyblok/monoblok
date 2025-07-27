@@ -1,65 +1,12 @@
 openapi: 3.1.1
-servers:
-  - url: https://mapi.storyblok.com
-    description: Base URL for spaces created in the EU
-  - url: https://api-us.storyblok.com
-    description: Base URL for spaces created in the US
-  - url: https://api-ca.storyblok.com
-    description: Base URL for spaces created in the Canada
-  - url: https://api-ap.storyblok.com
-    description: Base URL for spaces created in the Australia
-  - url: https://app.storyblok.cn
-    description: Base URL for spaces created in the China
-security:
-  - BearerAuth: []
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication
-  schemas:
-    Story:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        slug:
-          type: string
-        content:
-          type: object
-        published:
-          type: boolean
-    StoryCreateRequest:
-      type: object
-      properties:
-        story:
-          type: object
-          properties:
-            name:
-              type: string
-            slug:
-              type: string
-            content:
-              type: object
-    StoryUpdateRequest:
-      type: object
-      properties:
-        story:
-          type: object
-          properties:
-            name:
-              type: string
-            slug:
-              type: string
-            content:
-              type: object
 info:
   title: Storyblok Stories API
   version: 1.0.0
   description: API for managing Storyblok stories
+servers:
+  $ref: ../../shared/servers.yaml
+security:
+  $ref: ../../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/stories:
     get:
@@ -218,3 +165,47 @@ paths:
           description: Unauthorized
         '404':
           description: Story not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Story:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        content:
+          type: object
+        published:
+          type: boolean
+    StoryCreateRequest:
+      type: object
+      properties:
+        story:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            content:
+              type: object
+    StoryUpdateRequest:
+      type: object
+      properties:
+        story:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string
+            content:
+              type: object

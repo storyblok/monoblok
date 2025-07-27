@@ -1,53 +1,12 @@
 openapi: 3.1.1
-servers:
-  - url: https://mapi.storyblok.com
-    description: Base URL for spaces created in the EU
-  - url: https://api-us.storyblok.com
-    description: Base URL for spaces created in the US
-  - url: https://api-ca.storyblok.com
-    description: Base URL for spaces created in the Canada
-  - url: https://api-ap.storyblok.com
-    description: Base URL for spaces created in the Australia
-  - url: https://app.storyblok.cn
-    description: Base URL for spaces created in the China
-security:
-  - BearerAuth: []
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication
-  schemas:
-    Component:
-      type: object
-      properties:
-        id:
-          type: integer
-        name:
-          type: string
-        display_name:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    ComponentCreateRequest:
-      type: object
-      properties:
-        component:
-          type: object
-          properties:
-            name:
-              type: string
-            display_name:
-              type: string
 info:
   title: Storyblok Components API
   version: 1.0.0
   description: API for managing Storyblok components
+servers:
+  $ref: ../../shared/servers.yaml
+security:
+  $ref: ../../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/components:
     get:
@@ -206,3 +165,35 @@ paths:
           description: Unauthorized
         '404':
           description: Component not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Component:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        display_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ComponentCreateRequest:
+      type: object
+      properties:
+        component:
+          type: object
+          properties:
+            name:
+              type: string
+            display_name:
+              type: string

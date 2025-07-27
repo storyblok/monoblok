@@ -1,0 +1,7 @@
+space_id:
+  name: space_id
+  in: path
+  required: true
+  schema:
+    type: integer
+  description: The ID of the Storyblok space.

@@ -1,0 +1,26 @@
+# Authentication Examples for Storyblok Management API
+# Based on: https://www.storyblok.com/docs/api/management/getting-started/authentication
+
+# Example 1: Personal Access Token (no "Bearer" keyword)
+# curl -H "Authorization: YOUR_PERSONAL_ACCESS_TOKEN" https://mapi.storyblok.com/v1/spaces/123/stories
+
+# Example 2: OAuth Access Token (with "Bearer" keyword)
+# curl -H "Authorization: Bearer YOUR_OAUTH_ACCESS_TOKEN" https://mapi.storyblok.com/v1/spaces/123/stories
+
+# Example 3: JavaScript SDK with Personal Access Token
+# const StoryblokClient = require('storyblok-js-client')
+# const Storyblok = new StoryblokClient({
+#   oauthToken: 'YOUR_PERSONAL_ACCESS_TOKEN'
+# })
+
+# Example 4: JavaScript SDK with OAuth Access Token
+# const StoryblokClient = require('storyblok-js-client')
+# const Storyblok = new StoryblokClient({
+#   oauthToken: 'Bearer YOUR_OAUTH_ACCESS_TOKEN'
+# })
+
+# Security Notes:
+# - Personal Access Tokens grant broad access to your account
+# - Never expose tokens in frontend code or commit to version control
+# - Store tokens securely using environment variables
+# - If exposed, revoke immediately and generate new ones 

@@ -1,0 +1,15 @@
+# API Resources sidebar
+- page: stories/stories.yaml
+  group: Stories
+- page: components/components.yaml
+  group: Components
+- page: assets/assets.yaml
+  group: Assets
+- page: datasources/datasources.yaml
+  group: Data Sources
+- page: datasource_entries/datasource_entries.yaml
+  group: Data Source Entries
+- page: internal_tags/internal_tags.yaml
+  group: Internal Tags
+- page: spaces/spaces.yaml
+  group: Spaces 

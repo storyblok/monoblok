@@ -1,0 +1,26 @@
+{
+  "name": "openapi",
+  "version": "1.0.0",
+  "description": "Storyblok Management API OpenAPI specifications",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs:preview": "redocly preview",
+    "docs:validate": "npx @redocly/cli lint --config redocly.yaml",
+    "docs:validate:fix": "npx @redocly/cli lint --config redocly.yaml --fix",
+    "specs:validate": "npx @redocly/cli lint mapi.yaml resources/**/*.yaml"
+  },
+  "keywords": [
+    "openapi",
+    "storyblok",
+    "api",
+    "documentation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "dependencies": {
+    "@redocly/realm": "^0.123.1",
+    "js-yaml": "^4.1.0"
+  }
+}

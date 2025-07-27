@@ -1,0 +1,205 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Datasources API
+  version: 1.0.0
+  description: API for managing Storyblok datasources
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+paths:
+  /v1/spaces/{space_id}/datasources:
+    get:
+      operationId: getDatasources
+      summary: Retrieve Multiple Datasources
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      responses:
+        '200':
+          description: List of datasources
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Datasource'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: createDatasource
+      summary: Create a Datasource
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceCreateRequest'
+      responses:
+        '201':
+          description: Datasource created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource:
+                    $ref: '#/components/schemas/Datasource'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/datasources/{datasource_id}:
+    get:
+      operationId: getDatasource
+      summary: Retrieve One Datasource
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+      responses:
+        '200':
+          description: Datasource details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource:
+                    $ref: '#/components/schemas/Datasource'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource not found
+    put:
+      operationId: updateDatasource
+      summary: Update a Datasource
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceCreateRequest'
+      responses:
+        '200':
+          description: Datasource updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource:
+                    $ref: '#/components/schemas/Datasource'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource not found
+    delete:
+      operationId: deleteDatasource
+      summary: Delete a Datasource
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: datasource_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the datasource.
+      responses:
+        '204':
+          description: Datasource deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Datasource:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    DatasourceCreateRequest:
+      type: object
+      properties:
+        datasource:
+          type: object
+          properties:
+            name:
+              type: string
+            slug:
+              type: string 

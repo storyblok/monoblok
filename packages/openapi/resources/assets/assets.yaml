@@ -1,0 +1,232 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Assets API
+  version: 1.0.0
+  description: API for managing Storyblok assets
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in the Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in the Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in the China
+security:
+  - BearerAuth: []
+paths:
+  /v1/spaces/{space_id}/assets:
+    get:
+      operationId: getAssets
+      summary: Retrieve Multiple Assets
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      responses:
+        '200':
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: createAsset
+      summary: Create an Asset
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreateRequest'
+      responses:
+        '201':
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/assets/{asset_id}:
+    get:
+      operationId: getAsset
+      summary: Retrieve One Asset
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the asset.
+      responses:
+        '200':
+          description: Asset details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+    put:
+      operationId: updateAsset
+      summary: Update an Asset
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the asset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUpdateRequest'
+      responses:
+        '200':
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+    delete:
+      operationId: deleteAsset
+      summary: Delete an Asset
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the asset.
+      responses:
+        '204':
+          description: Asset deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
+  schemas:
+    Asset:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        alt:
+          type: string
+        name:
+          type: string
+        copyright:
+          type: string
+        fieldtype:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AssetCreateRequest:
+      type: object
+      properties:
+        asset:
+          type: object
+          properties:
+            filename:
+              type: string
+            alt:
+              type: string
+            name:
+              type: string
+            copyright:
+              type: string
+    AssetUpdateRequest:
+      type: object
+      properties:
+        asset:
+          type: object
+          properties:
+            filename:
+              type: string
+            alt:
+              type: string
+            name:
+              type: string
+            copyright:
+              type: string 

@@ -39,10 +39,7 @@ paths:
           description: Space not found
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
   schemas:
     InternalTag:
       type: object

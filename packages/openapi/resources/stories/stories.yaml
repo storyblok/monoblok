@@ -19,6 +19,140 @@ paths:
           schema:
             type: integer
           description: The ID of the Storyblok space.
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The management token for authentication
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [published, draft]
+          description: The version to retrieve (published or draft)
+        - name: cv
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Cache version for cache busting
+        - name: starts_with
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter stories that start with this slug
+        - name: by_uuids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of story UUIDs
+        - name: excluding_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of story IDs to exclude
+        - name: excluding_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of fields to exclude
+        - name: by_folders
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of folder IDs
+        - name: by_components
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of component names
+        - name: filter_query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter query string
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Sort field
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Number of stories per page
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Page number
+        - name: with_tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by tag
+        - name: is_startpage
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by startpage status
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for internationalization
+        - name: fallback_lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Fallback language code
+        - name: resolve_links
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [story, url, 0, 1]
+          description: How to resolve links
+        - name: resolve_relations
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of relation fields to resolve
+        - name: from_release
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Get stories from a specific release
+        - name: resolve_assets
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve assets (0 or 1)
+        - name: resolve_rich_text
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve rich text (0 or 1)
       responses:
         '200':
           description: List of stories
@@ -86,6 +220,74 @@ paths:
           schema:
             type: integer
           description: The ID of the story.
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The management token for authentication
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [published, draft]
+          description: The version to retrieve (published or draft)
+        - name: cv
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Cache version for cache busting
+        - name: excluding_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of fields to exclude
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for internationalization
+        - name: fallback_lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Fallback language code
+        - name: resolve_links
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [story, url, 0, 1]
+          description: How to resolve links
+        - name: resolve_relations
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of relation fields to resolve
+        - name: from_release
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Get story from a specific release
+        - name: resolve_assets
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve assets (0 or 1)
+        - name: resolve_rich_text
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve rich text (0 or 1)
       responses:
         '200':
           description: Story details
@@ -165,12 +367,385 @@ paths:
           description: Unauthorized
         '404':
           description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/duplicate:
+    post:
+      operationId: duplicateStory
+      summary: Duplicate a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story to duplicate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryDuplicateRequest'
+      responses:
+        '201':
+          description: Story duplicated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/publish:
+    post:
+      operationId: publishStory
+      summary: Publish a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story to publish.
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: The ID of the release to publish to.
+        - name: publish_unpublished_links
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Whether to publish unpublished links.
+      responses:
+        '200':
+          description: Story published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/unpublish:
+    post:
+      operationId: unpublishStory
+      summary: Unpublish a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story to unpublish.
+      responses:
+        '200':
+          description: Story unpublished
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/export:
+    get:
+      operationId: exportStory
+      summary: Export a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story to export.
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The version to export (published or draft).
+      responses:
+        '200':
+          description: Story exported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/import:
+    post:
+      operationId: importStory
+      summary: Import a Story
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryImportRequest'
+      responses:
+        '201':
+          description: Story imported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/stories/{story_id}/translate:
+    post:
+      operationId: translateStory
+      summary: Translate a Story by AI
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story to translate.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryTranslateRequest'
+      responses:
+        '200':
+          description: Story translated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/versions:
+    get:
+      operationId: getStoryVersions
+      summary: Get Story Versions
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+      responses:
+        '200':
+          description: Story versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StoryVersion'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/versions/{version_id}/restore:
+    post:
+      operationId: restoreStoryVersion
+      summary: Restore a Story Version
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+        - name: version_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the version to restore.
+      responses:
+        '200':
+          description: Story version restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story or version not found
+  /v1/spaces/{space_id}/stories/{story_id}/versions/compare:
+    get:
+      operationId: compareStoryVersions
+      summary: Compare Story Versions
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+        - name: from_version
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: The ID of the source version.
+        - name: to_version
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: The ID of the target version.
+      responses:
+        '200':
+          description: Version comparison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryVersionComparison'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/unpublished_dependencies:
+    get:
+      operationId: getUnpublishedDependencies
+      summary: Get Unpublished Dependencies
+      parameters:
+        - name: space_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the Storyblok space.
+        - name: story_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The ID of the story.
+      responses:
+        '200':
+          description: Unpublished dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Story:
       type: object
@@ -490,3 +1065,109 @@ components:
               type: string
             content:
               type: object
+    StoryDuplicateRequest:
+      type: object
+      description: Request body for duplicating a story
+      properties:
+        story:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Name for the duplicated story
+            slug:
+              type: string
+              description: Slug for the duplicated story
+            parent_id:
+              type: integer
+              description: Parent folder ID for the duplicated story
+    StoryImportRequest:
+      type: object
+      description: Request body for importing a story
+      properties:
+        story:
+          type: object
+          description: The story object to import
+          properties:
+            name:
+              type: string
+              description: Name of the story
+            slug:
+              type: string
+              description: Slug of the story
+            content:
+              type: object
+              description: Content of the story
+            parent_id:
+              type: integer
+              description: Parent folder ID
+        publish:
+          type: boolean
+          description: Whether to publish the imported story
+    StoryTranslateRequest:
+      type: object
+      description: Request body for AI translation
+      properties:
+        target_language:
+          type: string
+          description: Target language code for translation
+        fields:
+          type: array
+          description: Array of field names to translate
+          items:
+            type: string
+    StoryVersion:
+      type: object
+      description: A story version object
+      properties:
+        id:
+          type: integer
+          description: Version ID
+        name:
+          type: string
+          description: Version name
+        created_at:
+          type: string
+          format: date-time
+          description: Version creation date
+        created_by:
+          type: object
+          description: User who created the version
+          properties:
+            id:
+              type: integer
+              description: User ID
+            name:
+              type: string
+              description: User name
+        story:
+          $ref: '#/components/schemas/Story'
+    StoryVersionComparison:
+      type: object
+      description: Comparison between two story versions
+      properties:
+        from_version:
+          type: integer
+          description: Source version ID
+        to_version:
+          type: integer
+          description: Target version ID
+        changes:
+          type: object
+          description: Changes between versions
+          properties:
+            added:
+              type: array
+              description: Added fields
+              items:
+                type: string
+            removed:
+              type: array
+              description: Removed fields
+              items:
+                type: string
+            modified:
+              type: array
+              description: Modified fields
+              items:
+                type: string

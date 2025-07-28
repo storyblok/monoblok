@@ -19,55 +19,37 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
-        - name: token
+          description: Numeric ID of a space
+        - name: by_ids
           in: query
           required: false
           schema:
             type: string
-          description: The management token for authentication
-        - name: cv
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Cache version for cache busting
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Number of components per page
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Page number
-        - name: by_component_group
+          description: Filter by ids (comma separated)
+        - name: sort_by
           in: query
           required: false
           schema:
             type: string
-          description: Filter by component group UUID
-        - name: by_name
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter by component name
-        - name: by_root
+          description: Components can be sorted in an ascending or descending order by a specific property
+        - name: is_root
           in: query
           required: false
           schema:
             type: boolean
-          description: Filter by root components only
-        - name: by_nestable
+          description: Retrieve all the components based on is_root property of a component
+        - name: search
           in: query
           required: false
           schema:
-            type: boolean
-          description: Filter by nestable components only
+            type: string
+          description: Search by name or display_name
+        - name: in_group
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Find components that are present in a specific group with the UUID of the group
       responses:
         '200':
           description: List of components
@@ -95,13 +77,16 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Component'
+              type: object
+              properties:
+                component:
+                  $ref: '#/components/schemas/Component'
       responses:
         '201':
           description: Component created
@@ -129,25 +114,13 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: component_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the component.
-        - name: token
-          in: query
-          required: false
-          schema:
-            type: string
-          description: The management token for authentication
-        - name: cv
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Cache version for cache busting
+          description: Numeric id of a component
       responses:
         '200':
           description: Component details
@@ -173,19 +146,22 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: component_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the component.
+          description: The numeric id of the component
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Component'
+              type: object
+              properties:
+                component:
+                  $ref: '#/components/schemas/Component'
       responses:
         '200':
           description: Component updated
@@ -211,24 +187,31 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: component_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the component.
+          description: Numeric id of a component
       responses:
-        '204':
+        '200':
           description: Component deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component:
+                    $ref: '#/components/schemas/Component'
         '400':
           description: Bad request
         '401':
           description: Unauthorized
         '404':
           description: Component not found
-  /v1/spaces/{space_id}/components/versions:
-    description: Retrieve component versions
+  /v1/spaces/{space_id}/versions:
+    description: Retrieve component versions. This endpoint's response is paginated.
     get:
       operationId: getComponentVersions
       summary: Retrieve Component Versions
@@ -238,31 +221,34 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: page
           in: query
+          required: false
           schema:
             type: integer
             default: 1
+          description: Page number. Default: 1
         - name: per_page
           in: query
+          required: false
           schema:
             type: integer
             default: 25
             maximum: 100
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
+          description: Number of versions per page. Default: 25. Max: 100
         - name: model
           in: query
+          required: false
           schema: 
             type: string
+          description: Model name: components
         - name: model_id
           in: query
+          required: false
           schema: 
             type: string
+          description: Component ID
 
       responses:
         '200':
@@ -298,8 +284,8 @@ paths:
           description: Unauthorized
         '404':
           description: Component not found
-  /v1/spaces/{space_id}/components/{component_id}/versions/{version_id}:
-    description: Retrieve a specific version of a component by version ID.
+  /v1/spaces/{space_id}/components/{component_id}/component_versions/{version_id}:
+    description: Retrieve schema details of a component version.
     get:
       operationId: getComponentVersion
       summary: Retrieve a Single Component Version
@@ -309,19 +295,19 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: component_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the component.
+          description: ID of the component
         - name: version_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the version.
+          description: Version ID of the component
       responses:
         '200':
           description: Component version details
@@ -336,13 +322,14 @@ paths:
                       schema:
                         type: object
                         additionalProperties: true
-            
         '400':
           description: Bad request
         '401':
           description: Unauthorized
         '404':
           description: Component or version not found
+  /v1/spaces/{space_id}/versions/{version_id}:
+    description: Restore a component to a saved version.
     put:
       operationId: restoreComponentVersion
       summary: Restore a Component Version
@@ -352,13 +339,13 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: version_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the version to restore.
+          description: ID of the component version
       requestBody:
         required: true
         content:

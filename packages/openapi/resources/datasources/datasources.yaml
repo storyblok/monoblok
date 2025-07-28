@@ -13,12 +13,19 @@ paths:
       operationId: getDatasources
       summary: Retrieve Multiple Datasources
       parameters:
-        - name: space_id
-          in: path
-          required: true
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: search
+          in: query
+          required: false
           schema:
-            type: integer
-          description: The ID of the Storyblok space.
+            type: string
+          description: Search by name of datasources
+        - name: by_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by IDs of datasources (comma separated)
       responses:
         '200':
           description: List of datasources
@@ -41,12 +48,7 @@ paths:
       operationId: createDatasource
       summary: Create a Datasource
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -74,18 +76,13 @@ paths:
       operationId: getDatasource
       summary: Retrieve One Datasource
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the datasource.
+          description: Numeric id of a datasource
       responses:
         '200':
           description: Datasource details
@@ -106,24 +103,19 @@ paths:
       operationId: updateDatasource
       summary: Update a Datasource
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the datasource.
+          description: Numeric id of a datasource
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DatasourceCreateRequest'
+              $ref: '#/components/schemas/DatasourceUpdateRequest'
       responses:
         '200':
           description: Datasource updated
@@ -144,18 +136,13 @@ paths:
       operationId: deleteDatasource
       summary: Delete a Datasource
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the datasource.
+          description: Numeric id of a datasource
       responses:
         '204':
           description: Datasource deleted
@@ -174,17 +161,76 @@ components:
       properties:
         id:
           type: integer
+          description: The numeric ID of the datasource
         name:
           type: string
+          description: The complete name provided for a datasource
         slug:
           type: string
+          description: Slug of a datasource
+        dimensions:
+          type: array
+          description: An array listing the dimensions (e.g., per country, region, language, or other context) defined for the datasource
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: The numeric ID
+              name:
+                type: string
+                description: The complete name provided for the datasource
+              entry_value:
+                type: string
+                description: The value provided for the datasource dimension (e.g., a language code)
+              datasource_id:
+                type: integer
+                description: The numeric ID of the datasource that the dimension belongs to
+              created_at:
+                type: string
+                format: date-time
+                description: Creation date
+              updated_at:
+                type: string
+                format: date-time
+                description: Latest update date
         created_at:
           type: string
           format: date-time
+          description: Creation date
         updated_at:
           type: string
           format: date-time
+          description: Latest update date
     DatasourceCreateRequest:
+      type: object
+      properties:
+        datasource:
+          type: object
+          required:
+            - name
+            - slug
+          properties:
+            name:
+              type: string
+              description: The complete name provided for a datasource
+            slug:
+              type: string
+              description: Slug of a datasource
+            dimensions_attributes:
+              type: array
+              description: An array of dimension attributes for creating dimensions within the datasource
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: The complete name provided for the datasource dimension
+                  entry_value:
+                    type: string
+                    description: The value provided for the datasource dimension (e.g., a language code)
+                    
+    DatasourceUpdateRequest:
       type: object
       properties:
         datasource:
@@ -192,5 +238,19 @@ components:
           properties:
             name:
               type: string
+              description: The complete name provided for a datasource
             slug:
               type: string
+              description: Slug of a datasource
+            dimensions_attributes:
+              type: array
+              description: An array of dimension attributes for updating dimensions within the datasource
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: The complete name provided for the datasource dimension
+                  entry_value:
+                    type: string
+                    description: The value provided for the datasource dimension (e.g., a language code)

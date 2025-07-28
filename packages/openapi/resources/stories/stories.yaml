@@ -18,141 +18,183 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
-        - name: token
-          in: query
-          required: false
-          schema:
-            type: string
-          description: The management token for authentication
-        - name: version
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [published, draft]
-          description: The version to retrieve (published or draft)
-        - name: cv
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Cache version for cache busting
-        - name: starts_with
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter stories that start with this slug
-        - name: by_uuids
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of story UUIDs
-        - name: excluding_ids
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of story IDs to exclude
-        - name: excluding_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of fields to exclude
-        - name: by_folders
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of folder IDs
-        - name: by_components
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of component names
-        - name: filter_query
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Filter query string
-        - name: sort_by
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Sort field
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Number of stories per page
+          description: Numeric ID of a space
         - name: page
           in: query
           required: false
           schema:
             type: integer
-          description: Page number
+          description: Current page of stories
+        - name: contain_component
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filters by component in all levels of the content. Allows comma separated value for multiple components
+        - name: text_search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by a term using full text search
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as seperator. 
+        - name: pinned
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by pinned stories if '1'
+        - name: excluding_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Exclude specific stories by providing their IDs as a comma-separated string.
+        - name: by_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by ids (comma separated)
+        - name: by_uuids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string.
         - name: with_tag
           in: query
           required: false
           schema:
             type: string
-          description: Filter by tag
-        - name: is_startpage
+          description: Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
+        - name: folder_only
           in: query
           required: false
           schema:
             type: boolean
-          description: Filter by startpage status
-        - name: language
+          description: Filter by folders only
+        - name: story_only
           in: query
           required: false
           schema:
-            type: string
-          description: Language code for internationalization
-        - name: fallback_lang
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Fallback language code
-        - name: resolve_links
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [story, url, 0, 1]
-          description: How to resolve links
-        - name: resolve_relations
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Comma-separated list of relation fields to resolve
-        - name: from_release
+            type: boolean
+          description: Filter by stories only
+        - name: with_parent
           in: query
           required: false
           schema:
             type: integer
-          description: Get stories from a specific release
-        - name: resolve_assets
+          description: Filter by parent id
+        - name: starts_with
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter stories starting with a specific slug
+        - name: in_trash
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by items in the trash folder
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by search term
+        - name: filter_query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific attribute(s) of your content type. See Content Delivery API Documentation.
+        - name: in_release
           in: query
           required: false
           schema:
             type: integer
-          description: Resolve assets (0 or 1)
-        - name: resolve_rich_text
+          description: Filter items by the release id
+        - name: is_published
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: true for entries that are currently published; false for those that are currently not published or unpublished
+        - name: by_slugs
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve stories by comma-separated full_slug. It is possible to specify wildcards by using *.
+        - name: mine
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filters all the stories assigned to the current user whose token is being used
+        - name: excluding_slugs
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Exclude stories by specifying comma-separated values of full_slug. It is possible to specify wildcards by using *.
+        - name: in_workflow_stages
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve stories that are in a particular workflow stage by providing a comma-separated list of workflow stage IDs. Workflow stage IDs can be retrieved via the Management API.
+        - name: by_uuids_ordered
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string. The order of the stories in the response matches the order in which the UUIDs are listed.
+        - name: with_slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by exact slug. Make sure to use the full slug.
+        - name: with_summary
           in: query
           required: false
           schema:
             type: integer
-          description: Resolve rich text (0 or 1)
+          description: If added, returns content_summary object with relevant information.
+        - name: scheduled_at_gt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter stories that are scheduled after the provided date
+        - name: scheduled_at_lt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter stories that are scheduled before the provided date
+        - name: favourite
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by your favourites.
+        - name: reference_search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by references. Can be used for texts (partial search supported) and other references like assets. Example - stories with specific asset. For stories with a specific asset, complete URL of an asset is recommended for specific results. Names are also valid but will include the results found with content search as well.
       responses:
         '200':
           description: List of stories
@@ -213,19 +255,13 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Numeric ID of a space
         - name: story_id
           in: path
           required: true
           schema:
             type: integer
-          description: The ID of the story.
-        - name: token
-          in: query
-          required: false
-          schema:
-            type: string
-          description: The management token for authentication
+          description: Numeric id of story
         - name: version
           in: query
           required: false
@@ -276,6 +312,18 @@ paths:
           schema:
             type: integer
           description: Get story from a specific release
+        - name: resolve_assets
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve assets (0 or 1)
+        - name: resolve_rich_text
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Resolve rich text (0 or 1)
         - name: resolve_assets
           in: query
           required: false
@@ -708,8 +756,8 @@ paths:
           description: Unauthorized
         '404':
           description: Story not found
-  /v1/spaces/{space_id}/stories/{story_id}/unpublished_dependencies:
-    get:
+  /v1/spaces/{space_id}/stories/unpublished_dependencies:
+    post:
       operationId: getUnpublishedDependencies
       summary: Get Unpublished Dependencies
       parameters:
@@ -718,13 +766,24 @@ paths:
           required: true
           schema:
             type: integer
-          description: The ID of the Storyblok space.
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the story.
+          description: Numeric ID of a space
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - story_ids
+              properties:
+                story_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: List of story IDs
+                release_id:
+                  type: integer
+                  description: ID of a release. If this is passed, the endpoint looks for unpublished dependencies in this specific release.
       responses:
         '200':
           description: Unpublished dependencies
@@ -733,16 +792,16 @@ paths:
               schema:
                 type: object
                 properties:
-                  dependencies:
+                  unpublished_stories:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Story'
+                      $ref: '#/components/schemas/UnpublishedStory'
         '400':
           description: Bad request
         '401':
           description: Unauthorized
         '404':
-          description: Story not found
+          description: Space not found
 components:
   securitySchemes:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
@@ -751,12 +810,19 @@ components:
       $ref: ./story.yaml
     StoryCreateRequest:
       type: object
+      required:
+        - story
       properties:
         story:
-          $ref: "#/components/schemas/Story"
+          required: 
+            - name
+            - slug
+          allOf:
+            - $ref: "#/components/schemas/Story"
+            - type: object
         publish:
           type: integer
-          description: Should the story be published immediately (set 1 to publish) 
+          description: Should the story be published immediately (set 1 to publish)
         release_id:
           type: integer
           description: ID of the current release (can be requested with the from_release API parameter)
@@ -764,9 +830,8 @@ components:
       type: object
       properties:
         story:
-          type: object
-          story:
           $ref: "#/components/schemas/Story"
+          
         group_id:
           type: string
         force_update:
@@ -888,3 +953,39 @@ components:
               description: Modified fields
               items:
                 type: string
+    UnpublishedStory:
+      type: object
+      description: An unpublished story object
+      properties:
+        id:
+          type: integer
+          description: Numeric id of the story
+        name:
+          type: string
+          description: The complete name provided for the story
+        parent_id:
+          type: integer
+          description: ID of the parent folder
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest update date
+        published_at:
+          type: string
+          format: date-time
+          description: Latest publishing date
+        published:
+          type: boolean
+          description: true if a story is currently published, even if it has unpublished changes
+        slug:
+          type: string
+          description: The slug specific for the story
+        path:
+          type: string
+          description: Value of the real path defined in the story's entry configuration (usually, this value is only required for Storyblok's Visual Editor)
+        full_slug:
+          type: string
+          description: The full slug of the story, combining the parent folder(s) and the designated story slug
+        unpublished_changes:
+          type: boolean
+          description: Story has unpublished changes; saved but not published

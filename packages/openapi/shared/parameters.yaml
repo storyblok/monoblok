@@ -21,3 +21,11 @@ component_id:
   schema:
     type: integer
   description: Numeric id of a component
+
+component_group_id:
+  name: component_group_id
+  in: path
+  required: true
+  schema:
+    type: string
+  description: The component folder ID of the component

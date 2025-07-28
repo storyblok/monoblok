@@ -1,10 +1,8 @@
 {
-  "name": "openapi",
-  "version": "1.0.0",
+  "name": "@storyblok/openapi",
+  "version": "0.0.0",
   "description": "Storyblok Management API OpenAPI specifications",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "docs:preview": "redocly preview",
     "docs:validate": "npx @redocly/cli lint --config redocly.yaml",
     "docs:validate:fix": "npx @redocly/cli lint --config redocly.yaml --fix",

@@ -16,11 +16,12 @@ typesCommand
   .option('--sf, --separate-files', '')
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
+  .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
   .option('--suffix <suffix>', 'Components suffix')
   .option('--custom-fields-parser <path>', 'Path to the parser file for Custom Field Types')
   .option('--compiler-options <options>', 'path to the compiler options from json-schema-to-typescript')
   .action(async (options: GenerateTypesOptions) => {
-    konsola.title(` ${commands.TYPES} `, colorPalette.TYPES, 'Generating types...');
+    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
     // Global options
     const verbose = program.opts().verbose;
 

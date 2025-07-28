@@ -1,20 +1,8 @@
 {
-  "storyblok-js-client": {
-    "remote": "storyblok-js-client",
-    "repo": "storyblok/storyblok-js-client",
+  "@storyblok/region-helper": {
+    "remote": "storyblok-region-helper",
+    "repo": "storyblok/region-helper",
     "branch": "main",
-    "path": "packages/js-client"
-  },
-  "@storyblok/cli": {
-    "remote": "storyblok-cli",
-    "repo": "storyblok/storyblok-cli",
-    "branch": "main",
-    "path": "packages/cli"
-  },
-  "@storyblok/eslint-config": {
-    "remote": "storyblok-eslint-config",
-    "repo": "storyblok/eslint-config",
-    "branch": "main",
-    "path": "packages/eslint-config"
+    "path": "packages/region-helper"
   }
 }

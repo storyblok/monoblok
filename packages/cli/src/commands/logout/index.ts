@@ -10,7 +10,7 @@ export const logoutCommand = program
   .command(commands.LOGOUT)
   .description('Logout from the Storyblok CLI')
   .action(async () => {
-    konsola.title(` ${commands.LOGOUT} `, colorPalette.LOGOUT);
+    konsola.title(`${commands.LOGOUT}`, colorPalette.LOGOUT);
 
     const verbose = program.opts().verbose;
     try {

@@ -8,16 +8,9 @@ import {
 } from '@nuxt/kit';
 import type { NuxtHookName } from '@nuxt/schema';
 import type { Nuxt } from 'nuxt/schema';
+import type { ModuleOptions } from './types';
 
-export interface ModuleOptions {
-  accessToken: string;
-  enableSudoMode: boolean;
-  usePlugin: boolean; // legacy opt. for enableSudoMode
-  bridge: boolean; // storyblok bridge on/off
-  devtools: boolean; // enable nuxt/devtools integration
-  apiOptions: any; // storyblok-js-client options
-  componentsDir: string; // enable storyblok global directory for components
-}
+export * from './types';
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -53,6 +46,7 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.build.transpile.push(resolver.resolve('./runtime'));
     nuxt.options.build.transpile.push('@storyblok/nuxt');
     nuxt.options.build.transpile.push('@storyblok/vue');
+    addImportsDir(resolver.resolve('./runtime/composables'));
 
     // Add plugin
     nuxt.options.runtimeConfig.public.storyblok = options;
@@ -86,7 +80,6 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     nuxt.options.typescript.hoist.push('@storyblok/vue');
-    addImportsDir(resolver.resolve('./runtime/composables'));
 
     if (options.devtools) {
       nuxt.hook('devtools:customTabs' as NuxtHookName, (iframeTabs: Array<unknown>): void => {

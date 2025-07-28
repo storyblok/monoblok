@@ -22,7 +22,7 @@ migrationsCommand.command('run [componentName]')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
   .action(async (componentName: string | undefined, options: MigrationsRunOptions) => {
-    konsola.title(` ${commands.MIGRATIONS} `, colorPalette.MIGRATIONS, componentName ? `Running migrations for component ${componentName}...` : 'Running migrations...');
+    konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Running migrations for component ${componentName}...` : 'Running migrations...');
 
     // Global options
     const verbose = program.opts().verbose;

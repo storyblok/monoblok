@@ -292,6 +292,20 @@ describe('getComponentType', () => {
     expect(getComponentType('test_component', options)).toBe('TestComponent');
   });
 
+  it('should apply typeSuffix when provided', () => {
+    const options: GenerateTypesOptions = {
+      typeSuffix: 'CustomSuffixValue',
+    };
+    expect(getComponentType('test_component', options)).toBe('TestComponentCustomSuffixValue');
+  });
+
+  it('should handle empty typeSuffix', () => {
+    const options: GenerateTypesOptions = {
+      typeSuffix: '',
+    };
+    expect(getComponentType('test_component', options)).toBe('TestComponent');
+  });
+
   it('should handle component names with spaces', () => {
     const options: GenerateTypesOptions = {};
     expect(getComponentType('test component', options)).toBe('TestComponent');

@@ -21,7 +21,7 @@ const DEFAULT_TYPEDEFS_HEADER = [
   '// DO NOT MODIFY THIS FILE BY HAND.',
 ];
 
-const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string) => {
+const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
   // If a property type is one of the ones provided by Storyblok, return that type
   // Casting as string[] to avoid TS error on using Array.includes on different narrowed types
   if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
@@ -42,13 +42,13 @@ const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: s
     if (property.filter_content_type) {
       if (typeof property.filter_content_type === 'string') {
         return {
-          tsType: `(${getStoryType(property.filter_content_type, prefix)} | string )${property.type === 'options' ? '[]' : ''}`,
+          tsType: `(${getStoryType(property.filter_content_type, prefix, suffix)} | string )${property.type === 'options' ? '[]' : ''}`,
         };
       }
 
       return {
         tsType: `(${property.filter_content_type
-          .map(type2 => getStoryType(type2, prefix))
+          .map(type2 => getStoryType(type2, prefix, suffix))
           // In this case property.type can be `option` or `options`. In case of `options` the type should be an array
           .join(' | ')} | string )${property.type === 'options' ? '[]' : ''}`,
       };
@@ -115,8 +115,8 @@ const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: s
   }
 };
 
-export function getStoryType(property: string, prefix?: string) {
-  return `${STORY_TYPE}<${prefix ?? ''}${capitalize(toCamelCase(property))}>`;
+export function getStoryType(property: string, prefix?: string, suffix?: string) {
+  return `${STORY_TYPE}<${prefix ?? ''}${capitalize(toCamelCase(property))}${suffix ?? ''}>`;
 }
 
 /**
@@ -133,6 +133,7 @@ export const getComponentType = (
   options: GenerateTypesOptions,
 ): string => {
   const prefix = options.typePrefix ?? '';
+  const suffix = options.typeSuffix ?? '';
 
   // Sanitize the component name to handle special characters and emojis
   const sanitizedName = componentName
@@ -144,7 +145,7 @@ export const getComponentType = (
     .replace(/^_+|_+$/g, '');
 
   // Convert to PascalCase
-  const componentType = toPascalCase(toCamelCase(`${prefix}_${sanitizedName}`));
+  const componentType = toPascalCase(toCamelCase(`${prefix}_${sanitizedName}_${suffix}`));
 
   // If the component type starts with a number, prefix it with an underscore
   const isFirstCharacterNumber = !Number.isNaN(Number.parseInt(componentType.charAt(0)));
@@ -167,7 +168,7 @@ const getComponentPropertiesTypeAnnotations = async (
 
     const propertyType = value.type;
     const propertyTypeAnnotation: JSONSchema = {
-      [key]: getPropertyTypeAnnotation(value as ComponentPropertySchema, options.typePrefix),
+      [key]: getPropertyTypeAnnotation(value as ComponentPropertySchema, options.typePrefix, options.typeSuffix),
     };
 
     if (propertyType === 'custom' && customFieldsParser) {

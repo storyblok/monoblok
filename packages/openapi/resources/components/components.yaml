@@ -101,7 +101,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ComponentCreateRequest'
+              $ref: '#/components/schemas/Component'
       responses:
         '201':
           description: Component created
@@ -185,7 +185,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ComponentCreateRequest'
+              $ref: '#/components/schemas/Component'
       responses:
         '200':
           description: Component updated
@@ -227,8 +227,8 @@ paths:
           description: Unauthorized
         '404':
           description: Component not found
-  /v1/spaces/{space_id}/components/{component_id}/versions:
-    description: Manage component versions. Retrieve all versions of a component or restore previous versions.
+  /v1/spaces/{space_id}/components/versions:
+    description: Retrieve component versions
     get:
       operationId: getComponentVersions
       summary: Retrieve Component Versions
@@ -239,24 +239,59 @@ paths:
           schema:
             type: integer
           description: The ID of the Storyblok space.
-        - name: component_id
-          in: path
-          required: true
+        - name: page
+          in: query
           schema:
             type: integer
-          description: The ID of the component.
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: model
+          in: query
+          schema: 
+            type: string
+        - name: model_id
+          in: query
+          schema: 
+            type: string
+
       responses:
         '200':
           description: Component versions
           content:
             application/json:
-              schema:
+              schema: 
                 type: object
-                properties:
+                properties: 
                   versions:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ComponentVersion'
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        event:
+                          type: string
+                        created_at:
+                          type: string
+                        author_id:
+                          type: integer
+                        item_id:
+                          type: integer
+                        author:
+                          type: string
+                        is_draft:
+                          type: boolean
+                
         '400':
           description: Bad request
         '401':
@@ -295,17 +330,20 @@ paths:
               schema:
                 type: object
                 properties:
-                  component:
-                    $ref: '#/components/schemas/Component'
+                  component_version:
+                    type: object
+                    properties:
+                      schema:
+                        type: object
+                        additionalProperties: true
+            
         '400':
           description: Bad request
         '401':
           description: Unauthorized
         '404':
           description: Component or version not found
-  /v1/spaces/{space_id}/components/{component_id}/versions/{version_id}/restore:
-    description: Restore a component to a previous version. This will replace the current component configuration with the specified version.
-    post:
+    put:
       operationId: restoreComponentVersion
       summary: Restore a Component Version
       parameters:
@@ -315,18 +353,23 @@ paths:
           schema:
             type: integer
           description: The ID of the Storyblok space.
-        - name: component_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the component.
         - name: version_id
           in: path
           required: true
           schema:
             type: integer
           description: The ID of the version to restore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                model_id:
+                  type: string
       responses:
         '200':
           description: Component version restored
@@ -348,160 +391,7 @@ components:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Component:
-      type: object
-      description: A Storyblok component object representing a content type
-      properties:
-        id:
-          type: integer
-          description: Numeric ID of the component
-        name:
-          type: string
-          description: Technical name of the component
-        display_name:
-          type: string
-          description: Human-readable display name of the component
-        schema:
-          type: object
-          description: Component schema definition containing fields and their configurations
-          properties:
-            _uid:
-              type: object
-              description: Unique identifier field configuration
-            component:
-              type: object
-              description: Component type field configuration
-            [field_name]:
-              type: object
-              description: Dynamic field configurations based on field types
-        created_at:
-          type: string
-          format: date-time
-          description: Creation date
-        updated_at:
-          type: string
-          format: date-time
-          description: Last update date
-        real_name:
-          type: string
-          description: Real name of the component
-        component_group_uuid:
-          type: string
-          format: uuid
-          description: UUID of the component group
-        is_root:
-          type: boolean
-          description: Whether the component can be used as a root component
-        is_nestable:
-          type: boolean
-          description: Whether the component can be nested within other components
-        all_presets:
-          type: array
-          description: Array of all presets for this component
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                description: Preset ID
-              name:
-                type: string
-                description: Preset name
-              preset:
-                type: object
-                description: Preset configuration
-        presets:
-          type: array
-          description: Array of presets for this component
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                description: Preset ID
-              name:
-                type: string
-                description: Preset name
-              preset:
-                type: object
-                description: Preset configuration
-        image:
-          type: object
-          nullable: true
-          description: Component image/icon
-          properties:
-            id:
-              type: integer
-              description: Image ID
-            alt:
-              type: string
-              description: Image alt text
-            name:
-              type: string
-              description: Image name
-            focus:
-              type: string
-              description: Image focus point
-            title:
-              type: string
-              description: Image title
-            filename:
-              type: string
-              description: Image filename
-            copyright:
-              type: string
-              description: Image copyright
-            fieldtype:
-              type: string
-              description: Image field type
-        preview_tmpl:
-          type: string
-          nullable: true
-          description: Preview template for the component
-        is_sortable:
-          type: boolean
-          description: Whether the component is sortable
-        initial_status:
-          type: string
-          description: Initial status of the component
-        expandable:
-          type: boolean
-          description: Whether the component is expandable
-        color:
-          type: string
-          description: Component color
-        icon:
-          type: string
-          description: Component icon
-        strict:
-          type: boolean
-          description: Whether the component has strict validation
-        tabs:
-          type: array
-          description: Component tabs configuration
-          items:
-            type: object
-            properties:
-              name:
-                type: string
-                description: Tab name
-              label:
-                type: string
-                description: Tab label
-              hidden:
-                type: boolean
-                description: Whether the tab is hidden
-        can_edit:
-          type: boolean
-          description: Whether the component can be edited
-        default_root:
-          type: string
-          nullable: true
-          description: Default root component name
-        default_content:
-          type: object
-          nullable: true
-          description: Default content for the component
-    ComponentCreateRequest:
+      $ref: component.yaml
       type: object
       description: Request body for creating or updating a component
       properties:
@@ -611,28 +501,8 @@ components:
       type: object
       description: A component version object
       properties:
-        id:
-          type: integer
-          description: Version ID
-        name:
-          type: string
-          description: Version name
-        created_at:
-          type: string
-          format: date-time
-          description: Version creation date
-        created_by:
-          type: object
-          description: User who created the version
-          properties:
-            id:
-              type: integer
-              description: User ID
-            name:
-              type: string
-              description: User name
-        component:
-          $ref: '#/components/schemas/Component'
+        schema:
+          additionalProperties: true
     ComponentSchemaField:
       type: object
       description: A component schema field object
@@ -663,19 +533,20 @@ components:
           description: Default value for the field
         options:
           type: array
-          description: Field options for select/radio fields
+          description: Array of datasource entries [{name:"", value:""}]; Effects editor only if source=undefined. For field type option.
           items:
             type: object
             properties:
-              value:
+              _uid:
                 type: string
-                description: Option value
               name:
                 type: string
-                description: Option name
+              value:
+                type: string
+              
         source:
           type: string
-          description: Source for the field (e.g., for asset fields)
+          enum: [option, options, custom]
         folder_slug:
           type: string
           description: Folder slug for asset fields

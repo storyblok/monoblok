@@ -3,6 +3,8 @@
   group: Stories
 - page: components/components.yaml
   group: Components
+- page: component_folders/component_folders.yaml
+  group: Component Folders
 - page: assets/assets.yaml
   group: Assets
 - page: datasources/datasources.yaml

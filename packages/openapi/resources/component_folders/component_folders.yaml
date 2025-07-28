@@ -14,12 +14,19 @@ paths:
       operationId: getComponentFolders
       summary: Retrieve Multiple Component Folders
       parameters:
-        - name: space_id
-          in: path
-          required: true
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by group's name
+        - name: with_parent
+          in: query
+          required: false
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Filter by parent id
       responses:
         '200':
           description: List of component folders
@@ -42,12 +49,7 @@ paths:
       operationId: createComponentFolder
       summary: Create a Component Folder
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -79,18 +81,8 @@ paths:
       operationId: getComponentFolder
       summary: Retrieve a Single Component Folder
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: component_group_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The UUID of the component folder.
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       responses:
         '200':
           description: Component folder details
@@ -111,18 +103,8 @@ paths:
       operationId: updateComponentFolder
       summary: Update a Component Folder
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: component_group_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The UUID of the component folder.
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       requestBody:
         required: true
         content:
@@ -131,7 +113,7 @@ paths:
               type: object
               properties:
                 component_group:
-                  $ref: '#/components/schemas/ComponentFolderInput'
+                  $ref: '#/components/schemas/ComponentFolderUpdateInput'
       responses:
         '200':
           description: Component folder updated successfully
@@ -152,18 +134,8 @@ paths:
       operationId: deleteComponentFolder
       summary: Delete a Component Folder
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: component_group_id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The UUID of the component folder.
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       responses:
         '204':
           description: Component folder deleted successfully
@@ -192,7 +164,7 @@ components:
           description: The UUID of the component folder
         parent_id: 
           type: integer
-          description: The id of the component folder
+          description: ID of the parent folder
         parent_uuid:
           type: string
           format: uuid
@@ -205,7 +177,17 @@ components:
       properties:
         name:
           type: string
-          description: The name of the component folder
+          description: Name of the group
         parent_id:
           type: integer
-          description: The id of the parent folder
+          description: ID of the parent folder
+          
+    ComponentFolderUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the group
+        parent_id:
+          type: integer
+          description: ID of the parent folder

@@ -5,3 +5,11 @@ space_id:
   schema:
     type: integer
   description: The ID of the Storyblok space.
+
+story_id:
+  name: story_id
+  in: path
+  required: true
+  schema:
+    type: integer
+  description: The numeric id of story

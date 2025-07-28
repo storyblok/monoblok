@@ -13,3 +13,11 @@ story_id:
   schema:
     type: integer
   description: The numeric id of story
+
+component_id:
+  name: component_id
+  in: path
+  required: true
+  schema:
+    type: integer
+  description: Numeric id of a component

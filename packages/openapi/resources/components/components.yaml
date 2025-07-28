@@ -14,12 +14,7 @@ paths:
       operationId: getComponents
       summary: Retrieve Multiple Components
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: by_ids
           in: query
           required: false
@@ -72,12 +67,7 @@ paths:
       operationId: createComponent
       summary: Create a Component
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -109,18 +99,8 @@ paths:
       operationId: getComponent
       summary: Retrieve One Component
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: component_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric id of a component
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component details
@@ -141,18 +121,8 @@ paths:
       operationId: updateComponent
       summary: Update a Component
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: component_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of the component
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       requestBody:
         required: true
         content:
@@ -182,18 +152,8 @@ paths:
       operationId: deleteComponent
       summary: Delete a Component
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: component_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric id of a component
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component deleted
@@ -216,19 +176,14 @@ paths:
       operationId: getComponentVersions
       summary: Retrieve Component Versions
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: page
           in: query
           required: false
           schema:
             type: integer
             default: 1
-          description: Page number. Default: 1
+          description: Page number
         - name: per_page
           in: query
           required: false
@@ -236,13 +191,12 @@ paths:
             type: integer
             default: 25
             maximum: 100
-          description: Number of versions per page. Default: 25. Max: 100
+          description: Number of versions per page
         - name: model
           in: query
           required: false
           schema: 
             type: string
-          description: Model name: components
         - name: model_id
           in: query
           required: false
@@ -290,18 +244,8 @@ paths:
       operationId: getComponentVersion
       summary: Retrieve a Single Component Version
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: component_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the component
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
         - name: version_id
           in: path
           required: true
@@ -334,12 +278,7 @@ paths:
       operationId: restoreComponentVersion
       summary: Restore a Component Version
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: version_id
           in: path
           required: true

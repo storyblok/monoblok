@@ -13,12 +13,7 @@ paths:
       operationId: getStories
       summary: Retrieve Multiple Stories
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: page
           in: query
           required: false
@@ -217,12 +212,7 @@ paths:
       operationId: createStory
       summary: Create a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -250,18 +240,8 @@ paths:
       operationId: getStory
       summary: Retrieve One Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: false
@@ -356,18 +336,8 @@ paths:
       operationId: updateStory
       summary: Update a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the Storyblok space.
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The ID of the story.
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
       requestBody:
         required: true
         content:
@@ -394,18 +364,8 @@ paths:
       operationId: deleteStory
       summary: Delete a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
       responses:
         '200':
           description: Story deleted
@@ -427,18 +387,8 @@ paths:
       operationId: duplicateStory
       summary: Duplicate a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
       requestBody:
         required: true
         content:
@@ -466,18 +416,8 @@ paths:
       operationId: publishStory
       summary: Publish a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: lang
           in: query
           required: false
@@ -505,18 +445,8 @@ paths:
       operationId: unpublishStory
       summary: Unpublish a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: lang
           in: query
           required: false
@@ -544,18 +474,8 @@ paths:
       operationId: exportStory
       summary: Export a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: false
@@ -595,18 +515,8 @@ paths:
       operationId: importStory
       summary: Import a Story
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: false
@@ -664,18 +574,8 @@ paths:
       operationId: translateStory
       summary: Translate a Story by AI
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
       requestBody:
         required: true
         content:
@@ -720,12 +620,7 @@ paths:
       operationId: getStoryVersions
       summary: Get Story Versions (New)
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: by_story_id
           in: query
           required: false
@@ -838,18 +733,8 @@ paths:
       operationId: restoreStoryVersion
       summary: Restore a Story Version
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The space ID
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric ID of the story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: versions_v2
           in: query
           required: true
@@ -884,18 +769,8 @@ paths:
       summary: Compare a Story Version
       description: Compare the changes between two versions of a story in Storyblok. You need to provide the story `ID` and version `ID` in the request to retrieve the comparison results.
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
-        - name: story_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: The numeric id of story
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: true
@@ -921,12 +796,7 @@ paths:
       operationId: getUnpublishedDependencies
       summary: Get Unpublished Dependencies
       parameters:
-        - name: space_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: Numeric ID of a space
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -967,54 +837,11 @@ components:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Story:
-      $ref: ./story.yaml
+      $ref: ./schemas/story.yaml
     StoryCreateRequest:
-      type: object
-      required:
-        - story
-      properties:
-        story:
-          required: 
-            - name
-            - slug
-          allOf:
-            - $ref: "#/components/schemas/Story"
-            - type: object
-        publish:
-          type: integer
-          description: Should the story be published immediately (set 1 to publish)
-        release_id:
-          type: integer
-          description: ID of the current release (can be requested with the from_release API parameter)
+      $ref: ./schemas/story-create-request.yaml
     StoryUpdateRequest:
-      type: object
-      required:
-        - story
-      properties:
-        story:
-          allOf:
-            - $ref: "#/components/schemas/Story"
-            - type: object
-              required:
-                - name
-                - slug
-        group_id:
-          type: string
-          description: Group ID (UUID string), shared between stories defined as alternates
-        force_update:
-          type: string
-          enum: [0, 1]
-          default: 0
-          description: If this is 1, the request can overwrite a locked story. Note that a user currently editing the story (which is why it was locked) will encounter a content conflict model. Importantly, note that force_update does not work when editing is locked for the workflow stage that the story currently is in
-        release_id:
-          type: integer
-          description: Numeric ID of release (optional)
-        publish:
-          type: integer
-          description: Should the story be published immediately (set 1 to publish)
-        lang:
-          type: string
-          description: Language code to publish the story individually (must be enabled in the space settings)
+      $ref: ./schemas/story-update-request.yaml
     StoryDuplicateRequest:
       type: object
       description: Request body for duplicating a story
@@ -1066,31 +893,7 @@ components:
           items:
             type: string
     StoryVersion:
-      type: object
-      description: A story version object
-      properties:
-        id:
-          type: integer
-          description: Version ID
-        name:
-          type: string
-          description: Version name
-        created_at:
-          type: string
-          format: date-time
-          description: Version creation date
-        created_by:
-          type: object
-          description: User who created the version
-          properties:
-            id:
-              type: integer
-              description: User ID
-            name:
-              type: string
-              description: User name
-        story:
-          $ref: '#/components/schemas/Story'
+      $ref: ./schemas/story-version.yaml
     StoryVersionComparison:
       type: object
       description: Comparison between two story versions
@@ -1121,38 +924,4 @@ components:
               items:
                 type: string
     UnpublishedStory:
-      type: object
-      description: An unpublished story object
-      properties:
-        id:
-          type: integer
-          description: Numeric id of the story
-        name:
-          type: string
-          description: The complete name provided for the story
-        parent_id:
-          type: integer
-          description: ID of the parent folder
-        updated_at:
-          type: string
-          format: date-time
-          description: Latest update date
-        published_at:
-          type: string
-          format: date-time
-          description: Latest publishing date
-        published:
-          type: boolean
-          description: true if a story is currently published, even if it has unpublished changes
-        slug:
-          type: string
-          description: The slug specific for the story
-        path:
-          type: string
-          description: Value of the real path defined in the story's entry configuration (usually, this value is only required for Storyblok's Visual Editor)
-        full_slug:
-          type: string
-          description: The full slug of the story, combining the parent folder(s) and the designated story slug
-        unpublished_changes:
-          type: boolean
-          description: Story has unpublished changes; saved but not published
+      $ref: ./schemas/unpublished-story.yaml

@@ -20,6 +20,10 @@ apis:
     root: resources/internal_tags/internal_tags.yaml
     output: ./dist/internal_tags.yaml
     title: Internal Tags
+  spaces:
+    root: resources/spaces/spaces.yaml
+    output: ./dist/spaces.yaml
+    title: Spaces
 
 
 # Linting rules

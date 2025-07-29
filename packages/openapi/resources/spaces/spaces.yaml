@@ -1,0 +1,470 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Spaces API
+  version: 1.0.0
+  description: API for managing Storyblok spaces
+servers:
+  $ref: ../../shared/servers.yaml
+security:
+  $ref: ../../shared/security.yaml
+paths:
+  /v1/spaces/:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Spaces
+      description: Returns an array of space objects.
+      responses:
+        '200':
+          description: List of spaces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spaces:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    post:
+      operationId: create
+      summary: Create a Space
+      description: This endpoint creates a new space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - space
+              properties:
+                space:
+                  $ref: '#/components/schemas/SpaceCreateRequest'
+      responses:
+        '201':
+          description: Space created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  /v1/spaces/{space_id}:
+    get:
+      operationId: get
+      summary: Retrieve a Single Space
+      description: Returns a single space object by providing a specific numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      responses:
+        '200':
+          description: Space details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    put:
+      operationId: update
+      summary: Update a Space
+      description: Update a space using the numeric ID. You can only able to update the properties mentioned here.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - space
+              properties:
+                space:
+                  $ref: '#/components/schemas/SpaceUpdateRequest'
+      responses:
+        '200':
+          description: Space updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    delete:
+      operationId: delete
+      summary: Delete a Space
+      description: Delete a space by its numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      responses:
+        '200':
+          description: Space deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/duplicate:
+    post:
+      operationId: duplicate
+      summary: Duplicate a Space
+      description: Duplicate a space and all its content entries and components; Assets will not be duplicated and still will reference the original space.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dup_id
+                - space
+              properties:
+                dup_id:
+                  type: integer
+                  description: The numeric id of the original space
+                space:
+                  $ref: '#/components/schemas/SpaceCreateRequest'
+      responses:
+        '201':
+          description: Space duplicated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  space:
+                    $ref: '#/components/schemas/Space'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+components:
+  securitySchemes:
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    Space:
+      type: object
+      description: The Space Object
+      properties:
+        name:
+          type: string
+          description: Name of the Space
+        domain:
+          type: string
+          description: Domain for your default preview url
+        uniq_domain:
+          type: string
+          description: Unique Domain for the Storyblok Rendering Service
+        plan:
+          type: string
+          description: Space Plan
+        plan_level:
+          type: integer
+          description: Plan Level of Space
+        limits:
+          type: object
+          description: Limits of the space
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date
+        id:
+          type: integer
+          description: ID of the space
+        role:
+          type: string
+          description: Role of the collaborator, could be admin, editor or custom roles
+        owner_id:
+          type: integer
+          description: Numeric user id of the owner for that space
+        story_published_hook:
+          type: string
+          description: Published Webhook URL
+        environments:
+          type: array
+          description: Array of name, location (url) objects
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Environment name
+              location:
+                type: string
+                description: Environment URL
+        stories_count:
+          type: integer
+          description: Number of Stories in the Space
+        parent_id:
+          type: integer
+          description: Space id of a possible parent space
+        assets_count:
+          type: integer
+          description: Number of Assets in the Space
+        searchblok_id:
+          type: integer
+          description: Searchblok id, if available
+        duplicatable:
+          type: boolean
+          description: Is the space globally duplicatable by all users
+        request_count_today:
+          type: integer
+          description: Request Count of the day
+        exceeded_requests:
+          type: integer
+          description: Number of Exceeded Requests
+        billing_address:
+          type: object
+          description: Billing information used to generate your invoices for this space
+        routes:
+          type: array
+          description: Routes for the Storyblok Rendering Service
+          items:
+            type: string
+        trial:
+          type: boolean
+          description: Is the space in trial mode
+        default_root:
+          type: string
+          description: Component name which will be used as default content type for this folders entries
+        has_slack_webhook:
+          type: boolean
+          description: Does the space have a slack webhook
+        has_pending_tasks:
+          type: boolean
+          description: If the space has pending tasks like backup, deployment etc
+        ai_translation_disabled:
+          type: boolean
+          description: Legacy (no longer in use). Used to enable or disable AI translations.
+        first_token:
+          type: string
+          description: The oldest available preview token of the space
+        options:
+          type: object
+          description: Options for backup and language configurations
+        collaborator:
+          type: array
+          description: Array of Collaborators of the Space
+          items:
+            $ref: '#/components/schemas/Collaborator'
+        owner:
+          type: object
+          description: The user Object of the Owner
+    Collaborator:
+      type: object
+      description: The Collaborator Object
+      properties:
+        user:
+          type: object
+          description: The user object inside a collaborator object
+          properties:
+            id:
+              type: integer
+              description: The user ID
+            firstname:
+              type: string
+              description: First name of collaborator
+            lastname:
+              type: string
+              description: Last name of collaborator
+            alt_email:
+              type: string
+              description: Email of collaborator
+            avatar:
+              type: string
+              description: Avatar of collaborator usually an image
+            userid:
+              type: string
+              description: User ID of collaborator
+            friendly_name:
+              type: string
+              description: Friendly name of collaborator
+        role:
+          type: string
+          description: Role of the collaborator, could be admin, editor or custom roles
+        user_id:
+          type: integer
+          description: Numeric ID of the user
+        permissions:
+          type: array
+          description: Allow specific actions for collaborator in interface and add the permission as array of strings
+          items:
+            type: string
+            enum:
+              - read_stories
+              - save_stories
+              - publish_stories
+              - unpublish_stories
+              - publish_folders
+              - unpublish_folders
+              - deploy_stories
+              - delete_stories
+              - edit_image
+              - view_composer
+              - change_alternate_group
+              - move_story
+              - edit_story_slug
+              - view_content
+              - view_folders
+              - view_draft_json
+              - view_published_json
+              - manage_tags
+              - edit_datasources
+              - edit_datasource_keys
+              - access_commerce
+              - manage_block_library
+              - hide_asset_folders
+        allowed_paths:
+          type: array
+          description: Story ids the user should have access to (acts as whitelist). If no item is selected the user has rights to access all content items.
+          items:
+            type: integer
+        field_permissions:
+          type: array
+          description: Hide specific fields for this user with an array of strings with the schema
+          items:
+            type: string
+        id:
+          type: integer
+          description: Numeric id of collaborator
+        space_role_id:
+          type: integer
+          description: Numeric ID of the space role
+        space_role_ids:
+          type: array
+          description: Array of space role ids
+          items:
+            type: integer
+        space_id:
+          type: integer
+          description: Numeric id of the collaborator space 
+
+    SpaceCreateRequest:
+      type: object
+      description: Request body for creating a space
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the Space
+        domain:
+          type: string
+          description: Domain for your default preview url
+        story_published_hook:
+          type: string
+          description: Published Webhook URL
+        environments:
+          type: array
+          description: Array of name, location (url) objects
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Environment name
+              location:
+                type: string
+                description: Environment URL
+        searchblok_id:
+          type: integer
+          description: Searchblok id, if available
+        has_pending_tasks:
+          type: boolean
+          description: If the space has pending tasks like backup, deployment etc
+        ai_translation_disabled:
+          type: boolean
+          description: Legacy (no longer in use). Used to enable or disable AI translations. 
+
+    SpaceUpdateRequest:
+      type: object
+      description: Request body for updating a space
+      properties:
+        name:
+          type: string
+          description: Name of the Space
+        domain:
+          type: string
+          description: Domain for your default preview url
+        uniq_domain:
+          type: string
+          description: Unique Domain for the Storyblok Rendering Service
+        owner_id:
+          type: integer
+          description: Numeric user id of the owner for that space
+        story_published_hook:
+          type: string
+          description: Published Webhook URL
+        environments:
+          type: array
+          description: Array of name, location (url) objects
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Environment name
+              location:
+                type: string
+                description: Environment URL
+        parent_id:
+          type: integer
+          description: Space id of a possible parent space
+        searchblok_id:
+          type: integer
+          description: Searchblok id, if available
+        duplicatable:
+          type: boolean
+          description: Is the space globally duplicatable by all users
+        billing_address:
+          type: object
+          description: Billing information used to generate your invoices for this space
+        routes:
+          type: array
+          description: Routes for the Storyblok Rendering Service
+          items:
+            type: string
+        default_root:
+          type: string
+          description: Component name which will be used as default content type for this folders entries
+        has_pending_tasks:
+          type: boolean
+          description: If the space has pending tasks like backup, deployment etc
+        ai_translation_disabled:
+          type: boolean
+          description: Legacy (no longer in use). Used to enable or disable AI translations.
+        options:
+          type: object
+          description: Options for backup and language configurations 

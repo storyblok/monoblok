@@ -11,3 +11,5 @@
   group: Data Source Entries
 - page: internal_tags/internal_tags.yaml
   group: Internal Tags
+- page: spaces/spaces.yaml
+  group: Spaces

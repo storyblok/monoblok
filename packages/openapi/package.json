@@ -2,6 +2,7 @@
   "name": "@storyblok/openapi",
   "version": "0.0.0",
   "description": "Storyblok Management API OpenAPI specifications",
+  "private": true,
   "scripts": {
     "docs:preview": "redocly preview",
     "docs:validate": "npx @redocly/cli lint --config redocly.yaml",

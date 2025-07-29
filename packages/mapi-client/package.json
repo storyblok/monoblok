@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Storyblok MAPI Client",
   "main": "src/index.ts",
+  "private": false,
   "scripts": {
     "generate": "./build.sh",
     "build": "tsdown",

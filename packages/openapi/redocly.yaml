@@ -2,25 +2,25 @@
 apis:
   stories:
     root: resources/stories/stories.yaml
+    output: ./dist/stories.yaml
     title: Stories
   components:
     root: resources/components/components.yaml
-    title: Components
-  assets:
-    root: resources/assets/assets.yaml
-    title: Assets
+    output: ./dist/components.yaml
+    title: Components  
   datasources:
     root: resources/datasources/datasources.yaml
+    output: ./dist/datasources.yaml
     title: Data Sources
   datasource-entries:
     root: resources/datasource_entries/datasource_entries.yaml
+    output: ./dist/datasource_entries.yaml
     title: Data Source Entries
   internal-tags:
     root: resources/internal_tags/internal_tags.yaml
+    output: ./dist/internal_tags.yaml
     title: Internal Tags
-  spaces:
-    root: resources/spaces/spaces.yaml
-    title: Spaces
+
 
 # Linting rules
 rules:

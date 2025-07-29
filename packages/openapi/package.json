@@ -6,8 +6,10 @@
     "docs:preview": "redocly preview",
     "docs:validate": "npx @redocly/cli lint --config redocly.yaml",
     "docs:validate:fix": "npx @redocly/cli lint --config redocly.yaml --fix",
-    "specs:validate": "npx @redocly/cli lint mapi.yaml resources/**/*.yaml"
+    "specs:validate": "npx @redocly/cli lint mapi.yaml resources/**/*.yaml",
+    "build": "redocly bundle"
   },
+  "main": "dist",
   "keywords": [
     "openapi",
     "storyblok",

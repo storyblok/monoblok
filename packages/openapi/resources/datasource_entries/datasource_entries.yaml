@@ -13,12 +13,25 @@ paths:
       operationId: getDatasourceEntries
       summary: Retrieve Multiple Datasource Entries
       parameters:
-        - name: space_id
-          in: path
-          required: true
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: datasource_id
+          in: query
+          required: false
           schema:
             type: integer
-          description: The ID of the Storyblok space.
+          description: Provide the numeric id of a datasource
+        - name: datasource_slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provide the slug of a datasource
+        - name: dimension
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provide dimension id to receive the dimension_value filled
       responses:
         '200':
           description: List of datasource entries
@@ -37,6 +50,114 @@ paths:
           description: Unauthorized
         '404':
           description: Space not found
+    post:
+      operationId: createDatasourceEntry
+      summary: Create a Datasource Entry
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryCreateRequest'
+      responses:
+        '201':
+          description: Datasource entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/datasource_entries/{datasource_entry_id}:
+    get:
+      operationId: getDatasourceEntry
+      summary: Retrieve a Single Datasource Entry
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      responses:
+        '200':
+          description: Datasource entry details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    put:
+      operationId: updateDatasourceEntry
+      summary: Update a Datasource Entry
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryUpdateRequest'
+      responses:
+        '200':
+          description: Datasource entry updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    delete:
+      operationId: deleteDatasourceEntry
+      summary: Delete a Datasource Entry
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      responses:
+        '204':
+          description: Datasource entry deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
 components:
   securitySchemes:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
@@ -46,13 +167,52 @@ components:
       properties:
         id:
           type: integer
+          description: The numeric ID
         name:
           type: string
+          description: The key name of the datasource entry
         value:
           type: string
-        created_at:
+          description: Given value in the default dimension
+        dimension_value:
           type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
+          description: Given value in the requested dimension
+          
+    DatasourceEntryCreateRequest:
+      type: object
+      properties:
+        datasource_entry:
+          type: object
+          required:
+            - name
+            - value
+            - datasource_id
+          properties:
+            name:
+              type: string
+              description: The key name of the datasource entry
+            value:
+              type: string
+              description: Given value in the default dimension
+            datasource_id:
+              type: integer
+              description: The numeric ID of the datasource
+              
+    DatasourceEntryUpdateRequest:
+      type: object
+      properties:
+        datasource_entry:
+          type: object
+          properties:
+            name:
+              type: string
+              description: The key name of the datasource entry
+            value:
+              type: string
+              description: Given value in the default dimension
+            dimension_value:
+              type: string
+              description: Given value in the requested dimension
+        dimension_id:
+          type: integer
+          description: Numeric dimension id (optional, but required to set a dimension_value)

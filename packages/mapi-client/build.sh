@@ -18,23 +18,24 @@ export default {
   input: '$resource',
   output: 'src/generated/$RESOURCE_NAME',
   plugins: [
-    "@hey-api/schemas",
-    "@hey-api/client-fetch",
     {
       enums: 'javascript',
       name: '@hey-api/typescript',
     },
     {
-      asClass: false,
-      client: true,
-      name: '@hey-api/sdk',
+      name: '@hey-api/client-fetch',
     },
+    {
+      asClass: true,
+      instance: true,
+      name: '@hey-api/sdk',
+    }
   ],
 };
 EOF
 
   # Generate the client
-  npx @hey-api/openapi-ts -f temp-config.ts
+  openapi-ts -f temp-config.ts
   
   # Clean up
   rm temp-config.ts

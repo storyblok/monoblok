@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { fetchStories, fetchStoriesByComponent } from './actions';
 import { handleAPIError } from '../../utils/error';
 import type { Story } from './constants';
-import type { RegionCode } from '../../constants';
+import { mapiClient } from '../../api';
 
 // Mock dependencies
 vi.mock('../../utils/error', () => ({
@@ -106,7 +106,7 @@ const handlers = [
   http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
     const token = request.headers.get('Authorization');
 
-    if (token !== 'test-token') {
+    if (token !== 'valid-token') {
       return new HttpResponse(null, { status: 401 });
     }
 
@@ -123,7 +123,7 @@ const handlers = [
         if (filterQuery.component && filterQuery.component.in) {
           if (filterQuery.component.in.includes('article')) {
             // Return only the first story for article component
-            return HttpResponse.json({ stories: [mockStories[0]] });
+            return HttpResponse.json({ stories: [mockStories[0]], per_page: 100, total: 1 });
           }
         }
       }
@@ -137,7 +137,7 @@ const handlers = [
     if (searchParams.has('is_published')) {
       const isPublished = searchParams.get('is_published') === 'true';
       const filteredStories = mockStories.filter(story => story.published === isPublished);
-      return HttpResponse.json({ stories: filteredStories });
+      return HttpResponse.json({ stories: filteredStories, per_page: 100, total: filteredStories.length });
     }
 
     // Handle pagination
@@ -145,7 +145,7 @@ const handlers = [
       const page = Number.parseInt(searchParams.get('page') || '1', 10);
       if (page > 1) {
         // Simulate empty second page
-        return HttpResponse.json({ stories: [] });
+        return HttpResponse.json({ stories: [], per_page: 100, total: 2 });
       }
     }
 
@@ -154,12 +154,12 @@ const handlers = [
       const tag = searchParams.get('with_tag');
       if (tag === 'featured') {
         // Only return the first story for featured tag
-        return HttpResponse.json({ stories: [mockStories[0]] });
+        return HttpResponse.json({ stories: [mockStories[0]], per_page: 100, total: 1 });
       }
     }
 
     // Default response with all stories
-    return HttpResponse.json({ stories: mockStories });
+    return HttpResponse.json({ stories: mockStories, per_page: 100, total: mockStories.length });
   }),
 ];
 
@@ -167,6 +167,15 @@ const server = setupServer(...handlers);
 
 // Set up the MSW server
 beforeAll(() => server.listen());
+beforeEach(() => {
+  if (mapiClient().dispose) {
+    mapiClient().dispose();
+  }
+  mapiClient({
+    token: 'valid-token',
+    region: 'eu',
+  });
+});
 afterEach(() => {
   server.resetHandlers();
   vi.clearAllMocks();
@@ -175,17 +184,15 @@ afterAll(() => server.close());
 
 describe('stories/actions', () => {
   const mockSpace = '12345';
-  const mockToken = 'test-token';
-  const mockRegion = 'eu';
 
   describe('fetchStories', () => {
     it('should fetch stories without query parameters', async () => {
-      const result = await fetchStories(mockSpace, mockToken, mockRegion).catch(() => undefined);
+      const result = await fetchStories(mockSpace).catch(() => undefined);
       expect(result).toEqual(mockStories);
     });
 
     it('should fetch stories with query parameters', async () => {
-      const result = await fetchStories(mockSpace, mockToken, mockRegion, {
+      const result = await fetchStories(mockSpace, {
         with_tag: 'featured',
       }).catch(() => undefined);
 
@@ -195,7 +202,7 @@ describe('stories/actions', () => {
     });
 
     it('should handle pagination correctly', async () => {
-      const result = await fetchStories(mockSpace, mockToken, mockRegion, {
+      const result = await fetchStories(mockSpace, {
         page: 2,
       }).catch(() => undefined);
 
@@ -204,7 +211,7 @@ describe('stories/actions', () => {
     });
 
     it('should handle filtering by published status', async () => {
-      const result = await fetchStories(mockSpace, mockToken, mockRegion, {
+      const result = await fetchStories(mockSpace, {
         is_published: true,
       }).catch(() => undefined);
 
@@ -213,24 +220,38 @@ describe('stories/actions', () => {
     });
 
     it('should handle complex query parameters with objects', async () => {
-      const result = await fetchStories(mockSpace, mockToken, mockRegion, {
-        filter_query: {
+      const result = await fetchStories(mockSpace, {
+        filter_query: JSON.stringify({
           'component': { in: ['article', 'news'] },
           'content.category': { in: ['technology'] },
-        },
+        }),
       }).catch(() => undefined);
 
-      // Should return only the first story based on our handler
+      // Should return all stories since the filter query doesn't match our handler logic
       expect(result).toHaveLength(2);
       expect(result?.[0].id).toBe(1);
     });
 
     it('should handle unauthorized errors', async () => {
-      await fetchStories(mockSpace, 'invalid-token', mockRegion).catch(() => {
+      // Temporarily dispose and create a client with invalid token
+      mapiClient().dispose();
+      mapiClient({
+        token: 'invalid-token',
+        region: 'eu',
+      });
+
+      await fetchStories(mockSpace).catch(() => {
         expect(handleAPIError).toHaveBeenCalledWith(
           'pull_stories',
           expect.any(Error),
         );
+      });
+
+      // Restore valid client
+      mapiClient().dispose();
+      mapiClient({
+        token: 'valid-token',
+        region: 'eu',
       });
     });
 
@@ -242,7 +263,7 @@ describe('stories/actions', () => {
         }),
       );
 
-      await fetchStories(mockSpace, mockToken, mockRegion).catch(() => {
+      await fetchStories(mockSpace).catch(() => {
         expect(handleAPIError).toHaveBeenCalledWith(
           'pull_stories',
           expect.any(Error),
@@ -254,8 +275,6 @@ describe('stories/actions', () => {
   describe('fetchStoriesByComponent', () => {
     const mockSpaceOptions = {
       spaceId: '12345',
-      token: 'test-token',
-      region: 'eu' as RegionCode,
     };
 
     let requestUrl: string | undefined;
@@ -263,9 +282,9 @@ describe('stories/actions', () => {
     beforeEach(() => {
       requestUrl = undefined;
       server.use(
-        http.get('*/stories*', ({ request }) => {
+        http.get('https://api.storyblok.com/v1/spaces/*/stories*', ({ request }) => {
           requestUrl = new URL(request.url).search;
-          return HttpResponse.json({ stories: [] });
+          return HttpResponse.json({ stories: [], per_page: 100, total: 0 });
         }),
       );
     });
@@ -314,7 +333,7 @@ describe('stories/actions', () => {
 
     it('should handle error responses', async () => {
       server.use(
-        http.get('*/stories*', () => {
+        http.get('https://api.storyblok.com/v1/spaces/*/stories*', () => {
           return new HttpResponse(null, { status: 404, statusText: 'Not Found' });
         }),
       );

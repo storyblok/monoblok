@@ -1,26 +1,21 @@
-import { customFetch } from '../../utils/fetch';
-import { getStoryblokUrl } from '../../utils/api-routes';
-import type { RegionCode, SpaceOptions } from '../../constants';
+import type { SpaceOptions } from '../../constants';
 import type { StoriesFilterOptions, StoriesQueryParams, Story } from './constants';
 import { handleAPIError } from '../../utils/error';
 import { objectToStringParams } from '../../utils';
+import { mapiClient } from '../../api';
 
 /**
  * Fetches stories from Storyblok Management API with optional query parameters
  * @param space - The space ID
- * @param token - The authentication token
- * @param region - The region code
  * @param params - Optional query parameters for filtering stories
  * @returns Promise with an array of stories or undefined if error occurs
  */
 export const fetchStories = async (
   space: string,
-  token: string,
-  region: RegionCode,
   params?: StoriesQueryParams,
 ) => {
   try {
-    const url = getStoryblokUrl(region);
+    const client = mapiClient();
     const allStories: Story[] = [];
     let currentPage = 1;
     let hasMorePages = true;
@@ -40,22 +35,19 @@ export const fetchStories = async (
         ? `${regularParams ? `${regularParams}&` : ''}${filter_query}`
         : regularParams;
 
-      const endpoint = `${url}/spaces/${space}/stories${queryString ? `?${queryString}` : ''}`;
+      const endpoint = `spaces/${space}/stories${queryString ? `?${queryString}` : ''}`;
 
-      const response = await customFetch<{
+      const { data } = await client.get<{
         stories: Story[];
         per_page: number;
         total: number;
       }>(endpoint, {
-        headers: {
-          Authorization: token,
-        },
       });
 
-      allStories.push(...response.stories);
+      allStories.push(...data.stories);
 
       // Check if we have more pages to fetch
-      const totalPages = Math.ceil(response.total / response.perPage);
+      const totalPages = Math.ceil(data.total / data.per_page);
       hasMorePages = currentPage < totalPages;
       currentPage++;
     }
@@ -71,7 +63,7 @@ export async function fetchStoriesByComponent(
   spaceOptions: SpaceOptions,
   filterOptions?: StoriesFilterOptions,
 ): Promise<Story[] | undefined> {
-  const { spaceId, token, region } = spaceOptions;
+  const { spaceId } = spaceOptions;
   const { componentName = '', query, starts_with } = filterOptions || {};
 
   // Convert filterOptions to StoriesQueryParams
@@ -91,7 +83,7 @@ export async function fetchStoriesByComponent(
   }
 
   try {
-    const stories = await fetchStories(spaceId, token, region, params);
+    const stories = await fetchStories(spaceId, params);
     return stories ?? [];
   }
   catch (error) {
@@ -101,22 +93,17 @@ export async function fetchStoriesByComponent(
 
 export const fetchStory = async (
   space: string,
-  token: string,
-  region: RegionCode,
   storyId: string,
 ) => {
   try {
-    const url = getStoryblokUrl(region);
-    const endpoint = `${url}/spaces/${space}/stories/${storyId}`;
+    const client = mapiClient();
+    const endpoint = `spaces/${space}/stories/${storyId}`;
 
-    const response = await customFetch<{
+    const { data } = await client.get<{
       story: Story;
     }>(endpoint, {
-      headers: {
-        Authorization: token,
-      },
     });
-    return response.story;
+    return data.story;
   }
   catch (error) {
     handleAPIError('pull_story', error as Error);
@@ -126,8 +113,6 @@ export const fetchStory = async (
 /**
  * Updates a story in Storyblok with new content
  * @param space - The space ID
- * @param token - The authentication token
- * @param region - The region code
  * @param storyId - The ID of the story to update
  * @param payload - The payload containing story data and update options
  * @param payload.story - The story data to update
@@ -137,8 +122,6 @@ export const fetchStory = async (
  */
 export const updateStory = async (
   space: string,
-  token: string,
-  region: RegionCode,
   storyId: number,
   payload: {
     story: Partial<Story>;
@@ -147,21 +130,16 @@ export const updateStory = async (
   },
 ): Promise<Story | undefined> => {
   try {
-    const url = getStoryblokUrl(region);
-    const endpoint = `${url}/spaces/${space}/stories/${storyId}`;
+    const client = mapiClient();
+    const endpoint = `spaces/${space}/stories/${storyId}`;
 
-    const response = await customFetch<{
+    const { data } = await client.put<{
       story: Story;
     }>(endpoint, {
-      method: 'PUT',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(payload),
     });
 
-    return response.story;
+    return data.story;
   }
   catch (error) {
     handleAPIError('update_story', error as Error);

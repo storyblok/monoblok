@@ -37,7 +37,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as seperator. 
+          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as separator. 
         - name: pinned
           in: query
           required: false

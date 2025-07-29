@@ -1,0 +1,27 @@
+{
+  "name": "@storyblok/mapi-client",
+  "version": "0.0.0",
+  "description": "Storyblok MAPI Client",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "./build.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.80.1",
+    "@storyblok/openapi": "workspace:*",
+    "jiti": "^2.4.2"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/generated/**"
+        ]
+      }
+    }
+  }
+}

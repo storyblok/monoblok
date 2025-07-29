@@ -13,12 +13,20 @@ paths:
       operationId: getInternalTags
       summary: Retrieve Multiple Internal Tags
       parameters:
-        - name: space_id
-          in: path
-          required: true
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: search
+          in: query
+          required: false
           schema:
-            type: integer
-          description: The ID of the Storyblok space.
+            type: string
+          description: Filter by search term
+        - name: by_object_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asset, component]
+          description: Filter internal tags by object type. Possible values - `asset` or `component`
       responses:
         '200':
           description: List of internal tags
@@ -37,6 +45,87 @@ paths:
           description: Unauthorized
         '404':
           description: Space not found
+    post:
+      operationId: createInternalTag
+      summary: Create an Internal Tag
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalTagCreateRequest'
+      responses:
+        '201':
+          description: Internal tag created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  internal_tag:
+                    $ref: '#/components/schemas/InternalTag'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/internal_tags/{internal_tag_id}:
+    put:
+      operationId: updateInternalTag
+      summary: Update an Internal Tag
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: internal_tag_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of the internal tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalTagUpdateRequest'
+      responses:
+        '200':
+          description: Internal tag updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  internal_tag:
+                    $ref: '#/components/schemas/InternalTag'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Internal tag not found
+    delete:
+      operationId: deleteInternalTag
+      summary: Delete an Internal Tag
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: internal_tag_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of the internal tag
+      responses:
+        '204':
+          description: Internal tag deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Internal tag not found
 components:
   securitySchemes:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
@@ -44,13 +133,43 @@ components:
     InternalTag:
       type: object
       properties:
-        id:
-          type: integer
         name:
           type: string
-        created_at:
+          description: Name of the internal tag
+        id:
+          type: integer
+          description: Numeric ID of the internal tag
+        object_type:
           type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
+          enum: [asset, component]
+          description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`
+          
+    InternalTagCreateRequest:
+      type: object
+      properties:
+        internal_tag:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Name of the internal tag
+            object_type:
+              type: string
+              enum: [asset, component]
+              description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`
+              
+    InternalTagUpdateRequest:
+      type: object
+      properties:
+        internal_tag:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Name of the internal tag
+            object_type:
+              type: string
+              enum: [asset, component]
+              description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`

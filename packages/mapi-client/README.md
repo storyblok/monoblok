@@ -4,11 +4,11 @@ A comprehensive TypeScript SDK for the Storyblok Management API with automatic r
 
 ## Features
 
-- ** Type-Safe**: Generated from OpenAPI specifications with full TypeScript support
-- ** Rate Limiting**: Built-in concurrency control and 429 retry handling  
-- ** Region Resolution**: Automatic regional endpoint selection based on space ID
-- ** Retry Logic**: Intelligent retry with exponential backoff and `retry-after` header support
-- ** Multi-Resource**: Unified client for many MAPI resources (stories, datasources, components, etc.)
+- **Type-Safe**: Generated from OpenAPI specifications with full TypeScript support
+- **Rate Limiting**: Built-in concurrency control and 429 retry handling  
+- **Region Resolution**: Automatic regional endpoint selection based on space ID
+- **Retry Logic**: Intelligent retry with exponential backoff and `retry-after` header support
+- **Multi-Resource**: Unified client for many MAPI resources (stories, datasources, components, etc.)
 
 ## Installation
 
@@ -263,4 +263,5 @@ pnpm test
 This package is generated from OpenAPI specifications in `packages/openapi/`. To add new endpoints or modify existing ones, update the OpenAPI specs and regenerate the client.
 
 ## License
+
 MIT

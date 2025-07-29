@@ -17,7 +17,7 @@
     "documentation"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.10.0",
   "dependencies": {
     "@redocly/realm": "^0.123.1",

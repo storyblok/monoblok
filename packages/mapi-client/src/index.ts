@@ -5,7 +5,6 @@ import * as storiesSdk from './generated/stories/sdk.gen';
 import * as componentsSdk from './generated/components/sdk.gen';
 import * as datasourceEntriesSdk from './generated/datasource_entries/sdk.gen';
 import * as internalTagsSdk from './generated/internal_tags/sdk.gen';
-import * as mapiSdk from './generated/mapi/sdk.gen';
 
 export interface MapiClientConfig {
   baseUrl?: string;
@@ -51,7 +50,6 @@ export class MapiClient {
   public components: ResourceWrapper<typeof componentsSdk>;
   public datasourceEntries: ResourceWrapper<typeof datasourceEntriesSdk>;
   public internalTags: ResourceWrapper<typeof internalTagsSdk>;
-  public mapi: ResourceWrapper<typeof mapiSdk>;
 
   constructor(config: MapiClientConfig = {}) {
     const { baseUrl, headers = {} } = config;
@@ -75,7 +73,6 @@ export class MapiClient {
     this.components = createResourceWrapper(componentsSdk, this.client);
     this.datasourceEntries = createResourceWrapper(datasourceEntriesSdk, this.client);
     this.internalTags = createResourceWrapper(internalTagsSdk, this.client);
-    this.mapi = createResourceWrapper(mapiSdk, this.client);
   }
 
   // Method to update configuration at runtime

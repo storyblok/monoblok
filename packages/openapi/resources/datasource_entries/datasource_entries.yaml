@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces/{space_id}/datasource_entries:
     get:
-      operationId: getDatasourceEntries
+      operationId: list
       summary: Retrieve Multiple Datasource Entries
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -51,7 +51,7 @@ paths:
         '404':
           description: Space not found
     post:
-      operationId: createDatasourceEntry
+      operationId: create
       summary: Create a Datasource Entry
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -79,7 +79,7 @@ paths:
           description: Space not found
   /v1/spaces/{space_id}/datasource_entries/{datasource_entry_id}:
     get:
-      operationId: getDatasourceEntry
+      operationId: get
       summary: Retrieve a Single Datasource Entry
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -139,7 +139,7 @@ paths:
         '404':
           description: Datasource entry not found
     delete:
-      operationId: deleteDatasourceEntry
+      operationId: delete
       summary: Delete a Datasource Entry
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id

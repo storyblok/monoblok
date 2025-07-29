@@ -11,7 +11,7 @@ paths:
   /v1/spaces/{space_id}/components:
     description: A component is a standalone entity that is meaningful in its own right. While components (or bloks) can be nested in each other, semantically they remain equal. Each component is a small piece of your data structure which can be filled with content. One component can consist of as many field types as required. The components endpoint allows you to retrieve, add, update, or delete components.
     get:
-      operationId: getComponents
+      operationId: list
       summary: Retrieve Multiple Components
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -64,7 +64,7 @@ paths:
         '404':
           description: Space not found
     post:
-      operationId: createComponent
+      operationId: create
       summary: Create a Component
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -96,7 +96,7 @@ paths:
   /v1/spaces/{space_id}/components/{component_id}:
     description: Manage a specific component by its ID. Retrieve, update, or delete individual components and their configurations.
     get:
-      operationId: getComponent
+      operationId: get
       summary: Retrieve One Component
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -118,7 +118,7 @@ paths:
         '404':
           description: Component not found
     put:
-      operationId: updateComponent
+      operationId: update
       summary: Update a Component
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -173,7 +173,7 @@ paths:
   /v1/spaces/{space_id}/versions:
     description: Retrieve component versions. This endpoint's response is paginated.
     get:
-      operationId: getComponentVersions
+      operationId: versions
       summary: Retrieve Component Versions
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -241,7 +241,7 @@ paths:
   /v1/spaces/{space_id}/components/{component_id}/component_versions/{version_id}:
     description: Retrieve schema details of a component version.
     get:
-      operationId: getComponentVersion
+      operationId: version
       summary: Retrieve a Single Component Version
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -275,7 +275,7 @@ paths:
   /v1/spaces/{space_id}/versions/{version_id}:
     description: Restore a component to a saved version.
     put:
-      operationId: restoreComponentVersion
+      operationId: restoreVersion
       summary: Restore a Component Version
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id

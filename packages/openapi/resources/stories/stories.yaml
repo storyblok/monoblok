@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces/{space_id}/stories:
     get:
-      operationId: getStories
+      operationId: list
       summary: Retrieve Multiple Stories
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -209,7 +209,7 @@ paths:
         '404':
           description: Space not found
     post:
-      operationId: createStory
+      operationId: create
       summary: Create a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -237,7 +237,7 @@ paths:
           description: Space not found
   /v1/spaces/{space_id}/stories/{story_id}:
     get:
-      operationId: getStory
+      operationId: get
       summary: Retrieve One Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -287,7 +287,7 @@ paths:
         '404':
           description: Story not found
     delete:
-      operationId: deleteStory
+      operationId: delete
       summary: Delete a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -310,7 +310,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/duplicate:
     put:
-      operationId: duplicateStory
+      operationId: duplicate
       summary: Duplicate a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -339,7 +339,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/publish:
     get:
-      operationId: publishStory
+      operationId: publish
       summary: Publish a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -368,7 +368,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/unpublish:
     get:
-      operationId: unpublishStory
+      operationId: unpublish
       summary: Unpublish a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -397,7 +397,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/export.json:
     get:
-      operationId: exportStory
+      operationId: export
       summary: Export a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -438,7 +438,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/import.json:
     put:
-      operationId: importStory
+      operationId: import
       summary: Import a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -497,7 +497,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/ai_translate:
     put:
-      operationId: translateStory
+      operationId: translate
       summary: Translate a Story by AI
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -543,7 +543,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/story_versions:
     get:
-      operationId: getStoryVersions
+      operationId: versions
       summary: Get Story Versions (New)
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -656,7 +656,7 @@ paths:
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/restore_with:
     get:
-      operationId: restoreStoryVersion
+      operationId: restoreVersions
       summary: Restore a Story Version
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -691,7 +691,7 @@ paths:
           description: Story or version not found
   /v1/spaces/{space_id}/stories/{story_id}/compare:
     get:
-      operationId: compareStoryVersion
+      operationId: compareVersions
       summary: Compare a Story Version
       description: Compare the changes between two versions of a story in Storyblok. You need to provide the story `ID` and version `ID` in the request to retrieve the comparison results.
       parameters:

@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces/{space_id}/internal_tags:
     get:
-      operationId: getInternalTags
+      operationId: list
       summary: Retrieve Multiple Internal Tags
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -46,7 +46,7 @@ paths:
         '404':
           description: Space not found
     post:
-      operationId: createInternalTag
+      operationId: create
       summary: Create an Internal Tag
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -74,7 +74,7 @@ paths:
           description: Space not found
   /v1/spaces/{space_id}/internal_tags/{internal_tag_id}:
     put:
-      operationId: updateInternalTag
+      operationId: update
       summary: Update an Internal Tag
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -107,7 +107,7 @@ paths:
         '404':
           description: Internal tag not found
     delete:
-      operationId: deleteInternalTag
+      operationId: delete
       summary: Delete an Internal Tag
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id

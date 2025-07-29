@@ -11,7 +11,7 @@ paths:
   /v1/spaces/{space_id}/component_groups:
     description: A component folder can be used to group components together. Each component can have only one component folder. Component folders can be seen as block folders in the Storyblok App. This endpoint allows you to manage the component groups (folders). You can use it to retrieve, create, update, or delete the component folders.
     get:
-      operationId: getComponentFolders
+      operationId: list
       summary: Retrieve Multiple Component Folders
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -46,7 +46,7 @@ paths:
         '404':
           description: Space not found
     post:
-      operationId: createComponentFolder
+      operationId: create
       summary: Create a Component Folder
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -78,7 +78,7 @@ paths:
   /v1/spaces/{space_id}/component_groups/{component_group_id}:
     description: Operations for a specific component folder
     get:
-      operationId: getComponentFolder
+      operationId: get
       summary: Retrieve a Single Component Folder
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -100,7 +100,7 @@ paths:
         '404':
           description: Component folder not found
     put:
-      operationId: updateComponentFolder
+      operationId: update
       summary: Update a Component Folder
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
@@ -131,7 +131,7 @@ paths:
         '404':
           description: Component folder not found
     delete:
-      operationId: deleteComponentFolder
+      operationId: delete
       summary: Delete a Component Folder
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id

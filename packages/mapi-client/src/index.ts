@@ -1,91 +1,110 @@
-// Dynamic imports for all generated resource clients
-import { client as datasourcesClient } from './generated/datasources/client.gen';
-import * as datasourcesSdk from './generated/datasources/sdk.gen';
-import * as storiesSdk from './generated/stories/sdk.gen';
-import * as componentsSdk from './generated/components/sdk.gen';
-import * as datasourceEntriesSdk from './generated/datasource_entries/sdk.gen';
-import * as internalTagsSdk from './generated/internal_tags/sdk.gen';
+// Import generated SDKs with shared client support
+import { createClient } from './client';
+import { Sdk as DatasourcesSdk } from './generated/datasources/sdk.gen';
+import { Sdk as StoriesSdk } from './generated/stories/sdk.gen';
+import { Sdk as ComponentsSdk } from './generated/components/sdk.gen';
+import { Sdk as DatasourceEntriesSdk } from './generated/datasource_entries/sdk.gen';
+import { Sdk as InternalTagsSdk } from './generated/internal_tags/sdk.gen';
+import { Sdk as SpacesSdk } from './generated/spaces/sdk.gen';
+import type { Client } from './client/types';
+
+import { getManagementBaseUrl, type Region } from '@storyblok/region-helper';
+
+type PersonalAccessToken = {
+  accessToken: string;
+}
+
+type OAuthToken = {
+  oauthToken: string;
+}
 
 export interface MapiClientConfig {
-  baseUrl?: string;
+  token: PersonalAccessToken | OAuthToken;
+  region?: Region;
+  baseUrl?: string; // Override for custom endpoints
   headers?: Record<string, string>;
+  throwOnError?: boolean;
 }
-
-// Type-safe resource wrapper that preserves method signatures
-type ResourceWrapper<TSdk extends Record<string, any>> = {
-  [K in keyof TSdk as TSdk[K] extends (...args: any[]) => any ? K : never]: 
-    TSdk[K] extends (options: infer Options) => any
-      ? (options: Omit<Options, 'client'>) => ReturnType<TSdk[K]>
-      : TSdk[K];
-};
-
-// Helper function to create type-safe resource wrappers
-function createResourceWrapper<TSdk extends Record<string, any>>(
-  sdk: TSdk,
-  client: any
-): ResourceWrapper<TSdk> {
-  const wrapper = {} as ResourceWrapper<TSdk>;
-  
-  // Get all exported functions from the SDK
-  const sdkExports = Object.keys(sdk).filter(key => 
-    typeof sdk[key] === 'function'
-  );
-
-  // Create a wrapper for each method with proper typing
-  sdkExports.forEach(methodName => {
-    (wrapper as any)[methodName] = (options: any) => {
-      const sdkMethod = sdk[methodName];
-      return sdkMethod({ ...options, client });
-    };
-  });
-
-  return wrapper;
-}
-
 export class MapiClient {
-  private client: any;
+  private client: Client;
+  private config: MapiClientConfig;
   
-  public datasources: ResourceWrapper<typeof datasourcesSdk>;
-  public stories: ResourceWrapper<typeof storiesSdk>;
-  public components: ResourceWrapper<typeof componentsSdk>;
-  public datasourceEntries: ResourceWrapper<typeof datasourceEntriesSdk>;
-  public internalTags: ResourceWrapper<typeof internalTagsSdk>;
+  public datasources: DatasourcesSdk;
+  public stories: StoriesSdk;
+  public components: ComponentsSdk;
+  public datasourceEntries: DatasourceEntriesSdk;
+  public internalTags: InternalTagsSdk;
+  public spaces: SpacesSdk;
 
-  constructor(config: MapiClientConfig = {}) {
-    const { baseUrl, headers = {} } = config;
+  constructor(config: MapiClientConfig) {
+    this.config = config;
+    const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
     
-    // Use a single client instance for all resources
-    this.client = datasourcesClient;
+    // Determine the base URL
+    const finalBaseUrl = baseUrl || getManagementBaseUrl(region, 'https');
     
-    // Configure the client with custom baseUrl if provided
-    if (baseUrl) {
-      this.client.setConfig({ baseUrl });
+    // Create a single shared client instance for all resources
+    this.client = createClient({
+      baseUrl: finalBaseUrl,
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeader(token),
+        ...headers
+      },
+      throwOnError
+    });
+    
+    // Create resource SDKs using the shared client instance
+    this.datasources = new DatasourcesSdk({ client: this.client });
+    this.stories = new StoriesSdk({ client: this.client });
+    this.components = new ComponentsSdk({ client: this.client });
+    this.datasourceEntries = new DatasourceEntriesSdk({ client: this.client });
+    this.internalTags = new InternalTagsSdk({ client: this.client });
+    this.spaces = new SpacesSdk({ client: this.client });
+  }
+
+  private getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, string> {
+    return 'accessToken' in token ? {
+      'Authorization': token.accessToken
+    } : {
+      'Authorization': token.oauthToken
     }
-    
-    // Add custom headers
-    if (Object.keys(headers).length > 0) {
-      this.client.setConfig({ headers });
-    }
-    
-    // Create resource wrappers using the same client
-    this.datasources = createResourceWrapper(datasourcesSdk, this.client);
-    this.stories = createResourceWrapper(storiesSdk, this.client);
-    this.components = createResourceWrapper(componentsSdk, this.client);
-    this.datasourceEntries = createResourceWrapper(datasourceEntriesSdk, this.client);
-    this.internalTags = createResourceWrapper(internalTagsSdk, this.client);
   }
 
   // Method to update configuration at runtime
-  setConfig(config: Partial<MapiClientConfig>): void {
-    const { baseUrl, headers } = config;
+  setConfig(config: Partial<Omit<MapiClientConfig, 'token'>>): void {
+    const { region, baseUrl, headers } = config;
     
-    if (baseUrl) {
-      this.client.setConfig({ baseUrl });
+    let finalBaseUrl = baseUrl;
+    if (region && !baseUrl) {
+      finalBaseUrl = getManagementBaseUrl(region, "https");
+    }
+    
+    if (finalBaseUrl) {
+      this.client.setConfig({ baseUrl: finalBaseUrl });
     }
     
     if (headers) {
-      this.client.setConfig({ headers });
+      this.client.setConfig({ 
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.getAuthHeader(this.config.token),
+          ...headers
+        }
+      });
     }
+  }
+
+  // Method to update token
+  setToken(token: PersonalAccessToken | OAuthToken): void {
+    this.config.token = token;
+    this.client.setConfig({
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeader(token),
+        ...this.config.headers
+      }
+    });
   }
 }
 
@@ -95,5 +114,17 @@ export * as StoriesTypes from './generated/stories/types.gen';
 export * as ComponentsTypes from './generated/components/types.gen';
 export * as DatasourceEntriesTypes from './generated/datasource_entries/types.gen';
 export * as InternalTagsTypes from './generated/internal_tags/types.gen';
-export * as MapiTypes from './generated/mapi/types.gen';
+export * as SpacesTypes from './generated/spaces/types.gen';
+
+// Export the SDKs for advanced usage
+export { Sdk as DatasourcesSdk } from './generated/datasources/sdk.gen';
+export { Sdk as StoriesSdk } from './generated/stories/sdk.gen';
+export { Sdk as ComponentsSdk } from './generated/components/sdk.gen';
+export { Sdk as DatasourceEntriesSdk } from './generated/datasource_entries/sdk.gen';
+export { Sdk as InternalTagsSdk } from './generated/internal_tags/sdk.gen';
+export { Sdk as SpacesSdk } from './generated/spaces/sdk.gen';
+
+// Export client utilities
+export { createClient } from './client';
+export type { Client } from './client/types';
 

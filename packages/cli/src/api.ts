@@ -85,6 +85,7 @@ const createMapiClient = (options: ManagementApiClientOptions): MapiClient => {
 
       // Prepare request data for interceptor
       const requestData = {
+        url: `${state.url}/${path}`,
         path,
         method: fetchOptions?.method || 'GET',
         headers: {

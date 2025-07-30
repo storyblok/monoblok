@@ -11,6 +11,7 @@ import { handleMigrations, summarizeMigrationResults } from './operations';
 import type { Story, StoryContent } from '../../stories/constants';
 import chalk from 'chalk';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../stories/utils';
+import { mapiClient } from '../../../api';
 
 const program = getProgram();
 
@@ -44,6 +45,11 @@ migrationsCommand.command('run [componentName]')
     }
 
     const { password, region } = state;
+
+    mapiClient({
+      token: password,
+      region,
+    });
 
     try {
       const spinner = new Spinner({
@@ -84,8 +90,6 @@ migrationsCommand.command('run [componentName]')
       const stories = await fetchStoriesByComponent(
         {
           spaceId: space,
-          token: password,
-          region,
         },
         // Filter options
         {
@@ -102,7 +106,7 @@ migrationsCommand.command('run [componentName]')
 
       // Fetch full content for each story
       const storiesWithContent = await Promise.all(stories.map(async (story) => {
-        const fullStory = await fetchStory(space, password, region, story.id.toString());
+        const fullStory = await fetchStory(space, story.id.toString());
         return {
           ...story,
           content: fullStory?.content,
@@ -213,7 +217,7 @@ migrationsCommand.command('run [componentName]')
             }
 
             try {
-              const updatedStory = await updateStory(space, password, region, story.id, payload);
+              const updatedStory = await updateStory(space, story.id, payload);
 
               if (updatedStory) {
                 successCount++;

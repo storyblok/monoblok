@@ -82,6 +82,4 @@ export const DEFAULT_AGENT = {
 
 export interface SpaceOptions {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }

@@ -55,10 +55,14 @@ vi.mock('../../../session', () => {
   };
 });
 
-vi.mock('../../../commands/stories/actions', () => ({
+vi.mock('../../stories/actions', () => ({
   fetchStoriesByComponent: vi.fn(),
   fetchStory: vi.fn(),
   updateStory: vi.fn(),
+}));
+
+vi.mock('../../../api', () => ({
+  mapiClient: vi.fn(),
 }));
 
 vi.mock('./actions', () => ({
@@ -250,12 +254,10 @@ describe('migrations run command', () => {
     expect(fetchStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
-        token: 'valid-token',
-        region: 'eu',
       },
       {},
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', 'valid-token', 'eu', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     expect(handleMigrations).toHaveBeenCalledWith({
       migrationFiles: mockMigrationFiles,
       stories: mockStories,
@@ -270,8 +272,6 @@ describe('migrations run command', () => {
 
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -338,14 +338,12 @@ describe('migrations run command', () => {
     expect(fetchStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
-        token: 'valid-token',
-        region: 'eu',
       },
       {
         componentName: 'migration-component',
       },
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', 'valid-token', 'eu', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     expect(handleMigrations).toHaveBeenCalledWith({
       migrationFiles: mockMigrationFiles,
       stories: mockStories,
@@ -360,8 +358,6 @@ describe('migrations run command', () => {
 
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -421,12 +417,10 @@ describe('migrations run command', () => {
     expect(fetchStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
-        token: 'valid-token',
-        region: 'eu',
       },
       {},
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', 'valid-token', 'eu', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     expect(handleMigrations).toHaveBeenCalledWith({
       migrationFiles: mockMigrationFiles,
       stories: mockStories,
@@ -441,8 +435,6 @@ describe('migrations run command', () => {
 
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -542,12 +534,10 @@ describe('migrations run command', () => {
     expect(fetchStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
-        token: 'valid-token',
-        region: 'eu',
       },
       {},
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', 'valid-token', 'eu', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     expect(handleMigrations).toHaveBeenCalledWith({
       migrationFiles: mockMigrationFiles,
       stories: mockStories,
@@ -612,14 +602,12 @@ describe('migrations run command', () => {
     expect(fetchStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
-        token: 'valid-token',
-        region: 'eu',
       },
       {
         starts_with: '/en/blog/',
       },
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', 'valid-token', 'eu', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     expect(handleMigrations).toHaveBeenCalledWith({
       migrationFiles: mockMigrationFiles,
       stories: mockStories,
@@ -634,8 +622,6 @@ describe('migrations run command', () => {
 
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -800,8 +786,6 @@ describe('migrations run command', () => {
     // Verify that updateStory was called with publish=1 for all stories
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -816,8 +800,6 @@ describe('migrations run command', () => {
 
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473244,
       {
         story: {
@@ -983,8 +965,6 @@ describe('migrations run command', () => {
     // Verify that updateStory was called with publish=1 only for published stories
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
@@ -1000,14 +980,91 @@ describe('migrations run command', () => {
     // Verify that updateStory was called without publish=1 for unpublished stories
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473244,
       {
         story: {
           content: mockStories[1].content,
           id: 517473244,
           name: 'Draft Post',
+        },
+        force_update: '1',
+      },
+    );
+  });
+
+  it('should run migrations with query filter', async () => {
+    const mockMigrationFiles = [
+      {
+        name: 'migration-component.js',
+        content: 'export default function (block) {\n'
+          + '  block.unchanged = \'unchanged\';\n'
+          + '  return block;\n'
+          + '}\n',
+      },
+    ];
+
+    const mockMigrationResults = {
+      successful: [
+        {
+          storyId: 517473243,
+          name: 'Highlighted Post',
+          migrationName: 'migration-component.js',
+          content: mockSingleStory.content,
+        },
+      ],
+      failed: [],
+      skipped: [],
+    };
+
+    session().state = {
+      isLoggedIn: true,
+      password: 'valid-token',
+      region: 'eu',
+    };
+
+    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
+    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
+    vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
+    vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--query', '[highlighted][in]=true']);
+
+    expect(readMigrationFiles).toHaveBeenCalledWith({
+      space: '12345',
+      path: undefined,
+      filter: undefined,
+    });
+
+    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+      {
+        spaceId: '12345',
+      },
+      {
+        query: '[highlighted][in]=true',
+      },
+    );
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+    expect(handleMigrations).toHaveBeenCalledWith({
+      migrationFiles: mockMigrationFiles,
+      stories: mockStories,
+      space: '12345',
+      path: undefined,
+      componentName: undefined,
+      password: 'valid-token',
+      region: 'eu',
+    });
+
+    expect(summarizeMigrationResults).toHaveBeenCalledWith(mockMigrationResults);
+
+    expect(updateStory).toHaveBeenCalledWith(
+      '12345',
+      517473243,
+      {
+        story: {
+          content: mockSingleStory.content,
+          id: 517473243,
+          name: 'Highlighted Post',
         },
         force_update: '1',
       },
@@ -1110,14 +1167,191 @@ describe('migrations run command', () => {
     // Verify that updateStory was called without publish=1
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       517473243,
       {
         story: {
           content: mockSingleStory.content,
           id: 517473243,
           name: 'Published Post',
+        },
+        force_update: '1',
+      },
+    );
+  });
+
+  it('should only publish stories with unpublished changes when publish=published-with-changes', async () => {
+    const mockMigrationFiles = [
+      {
+        name: 'migration-component.js',
+        content: 'export default function (block) {\n'
+          + '  block.unchanged = \'unchanged\';\n'
+          + '  return block;\n'
+          + '}\n',
+      },
+    ];
+
+    const mockStories = [
+      {
+        id: 517473243,
+        name: 'Published Post With Changes',
+        uuid: 'uuid-1',
+        slug: 'published-post-with-changes',
+        full_slug: 'published-post-with-changes',
+        content: {
+          _uid: '4b16d1ea-4306-47c5-b901-9d67d5babf53',
+          component: 'page',
+          body: [
+            {
+              _uid: '216ba4ef-1298-4b7d-8ce0-7487e6db15cc',
+              component: 'migration-component',
+              unchanged: 'unchanged',
+            },
+          ],
+        },
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        first_published_at: '2023-01-01T00:00:00Z',
+        published: true,
+        unpublished_changes: true,
+        is_startpage: false,
+        is_folder: false,
+        pinned: false,
+        parent_id: null,
+        group_id: 'group-1',
+        parent: null,
+        path: null,
+        position: 0,
+        sort_by_date: null,
+        tag_list: [],
+        disable_fe_editor: false,
+        default_root: null,
+        preview_token: null,
+        meta_data: null,
+        release_id: null,
+        last_author: null,
+        last_author_id: null,
+        alternates: [],
+        translated_slugs: null,
+        translated_slugs_attributes: null,
+        localized_paths: null,
+        breadcrumbs: [],
+        scheduled_dates: null,
+        favourite_for_user_ids: [],
+        imported_at: null,
+        deleted_at: null,
+      },
+      {
+        id: 517473244,
+        name: 'Published Post Without Changes',
+        uuid: 'uuid-2',
+        slug: 'published-post-without-changes',
+        full_slug: 'published-post-without-changes',
+        content: {
+          _uid: '4b16d1ea-4306-47c5-b901-9d67d5babf54',
+          component: 'page',
+          body: [
+            {
+              _uid: '216ba4ef-1298-4b7d-8ce0-7487e6db15cd',
+              component: 'migration-component',
+              unchanged: 'unchanged',
+            },
+          ],
+        },
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+        published_at: '2023-01-01T00:00:00Z',
+        first_published_at: '2023-01-01T00:00:00Z',
+        published: true,
+        unpublished_changes: false,
+        is_startpage: false,
+        is_folder: false,
+        pinned: false,
+        parent_id: null,
+        group_id: 'group-1',
+        parent: null,
+        path: null,
+        position: 0,
+        sort_by_date: null,
+        tag_list: [],
+        disable_fe_editor: false,
+        default_root: null,
+        preview_token: null,
+        meta_data: null,
+        release_id: null,
+        last_author: null,
+        last_author_id: null,
+        alternates: [],
+        translated_slugs: null,
+        translated_slugs_attributes: null,
+        localized_paths: null,
+        breadcrumbs: [],
+        scheduled_dates: null,
+        favourite_for_user_ids: [],
+        imported_at: null,
+        deleted_at: null,
+      },
+    ] as Story[];
+
+    const mockSingleStory = mockStories[0];
+
+    const mockMigrationResults = {
+      successful: [
+        {
+          storyId: 517473243,
+          name: 'Published Post With Changes',
+          migrationName: 'migration-component.js',
+          content: mockSingleStory.content,
+        },
+        {
+          storyId: 517473244,
+          name: 'Published Post Without Changes',
+          migrationName: 'migration-component.js',
+          content: mockStories[1].content,
+        },
+      ],
+      failed: [],
+      skipped: [],
+    };
+
+    session().state = {
+      isLoggedIn: true,
+      password: 'valid-token',
+      region: 'eu',
+    };
+
+    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
+    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
+    vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
+    vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--publish', 'published-with-changes']);
+
+    // Verify that updateStory was called with publish=1 only for stories with unpublished changes
+    expect(updateStory).toHaveBeenCalledWith(
+      '12345',
+      517473243,
+      {
+        story: {
+          content: mockSingleStory.content,
+          id: 517473243,
+          name: 'Published Post With Changes',
+        },
+        force_update: '1',
+        publish: 1,
+      },
+    );
+
+    // Verify that updateStory was called without publish=1 for stories without unpublished changes
+    expect(updateStory).toHaveBeenCalledWith(
+      '12345',
+      517473244,
+      {
+        story: {
+          content: mockStories[1].content,
+          id: 517473244,
+          name: 'Published Post Without Changes',
         },
         force_update: '1',
       },

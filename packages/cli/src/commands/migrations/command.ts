@@ -1,3 +1,4 @@
+import { resolveRegion } from '../../utils/region';
 import { commands } from '../../constants';
 import { getProgram } from '../../program';
 
@@ -9,4 +10,5 @@ export const migrationsCommand = program
   .alias('mig')
   .description(`Manage your space's migrations`)
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/migrations');
+  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/migrations')
+  .hook('preAction', resolveRegion);

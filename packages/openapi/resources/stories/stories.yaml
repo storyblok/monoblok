@@ -20,6 +20,11 @@ paths:
           schema:
             type: integer
           description: Current page of stories
+        - name: per_page
+          in: query
+          schema: 
+            type: integer
+          description: The number of stories to return
         - name: contain_component
           in: query
           required: false
@@ -190,6 +195,42 @@ paths:
           schema:
             type: string
           description: Filter by references. Can be used for texts (partial search supported) and other references like assets. Example - stories with specific asset. For stories with a specific asset, complete URL of an asset is recommended for specific results. Names are also valid but will include the results found with content search as well.
+        - name: branch_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by branch ID
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for filtering stories
+        - name: release_scope_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release scope ID for filtering stories
+        - name: in_release_filter
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter stories in specific release
+        - name: with_alts
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include alternate stories
+        - name: with_translated_stories
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include translated stories
       responses:
         '200':
           description: List of stories
@@ -213,6 +254,42 @@ paths:
       summary: Create a Story
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for translated stories
+        - name: publish
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Publish the story after creation
+        - name: preset_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Preset ID to use for story content
+        - name: use_default_preset
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Use default preset for story content
+        - name: disable_fe_editor
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Disable frontend editor for this story
       requestBody:
         required: true
         content:
@@ -242,6 +319,18 @@ paths:
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
         - $ref: ../../shared/parameters.yaml#/story_id
+        - name: uuid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve story by UUID instead of ID
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Retrieve specific version of the story
       responses:
         '200':
           description: Story details
@@ -264,6 +353,30 @@ paths:
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
         - $ref: ../../shared/parameters.yaml#/story_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for translated stories
+        - name: force_update
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Force update even if story has been modified
+        - name: publish
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Publish the story after update
       requestBody:
         required: true
         content:
@@ -315,6 +428,24 @@ paths:
       parameters:
         - $ref: ../../shared/parameters.yaml#/space_id
         - $ref: ../../shared/parameters.yaml#/story_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: auto_create_folders
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Automatically create folders during duplication
+        - name: target_dimension
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Target dimension for duplication
       requestBody:
         required: true
         content:
@@ -350,6 +481,12 @@ paths:
           schema:
             type: string
           description: Accept a list of languages codes separated by a comma
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled publishing
       responses:
         '200':
           description: Story published
@@ -379,6 +516,12 @@ paths:
           schema:
             type: string
           description: Accept a list of languages codes separated by a comma
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled unpublishing
       responses:
         '200':
           description: Story unpublished
@@ -673,6 +816,12 @@ paths:
           schema:
             type: string
           description: The ID of the story version
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for version restoration
       responses:
         '200':
           description: Story version restored
@@ -783,41 +932,6 @@ components:
         same_path:
           type: boolean
           description: If set to true, the current story's path attribute will used for the duplicated story
-    StoryImportRequest:
-      type: object
-      description: Request body for importing a story
-      properties:
-        story:
-          type: object
-          description: The story object to import
-          properties:
-            name:
-              type: string
-              description: Name of the story
-            slug:
-              type: string
-              description: Slug of the story
-            content:
-              type: object
-              description: Content of the story
-            parent_id:
-              type: integer
-              description: Parent folder ID
-        publish:
-          type: boolean
-          description: Whether to publish the imported story
-    StoryTranslateRequest:
-      type: object
-      description: Request body for AI translation
-      properties:
-        target_language:
-          type: string
-          description: Target language code for translation
-        fields:
-          type: array
-          description: Array of field names to translate
-          items:
-            type: string
     StoryVersion:
       $ref: ./schemas/story-version.yaml
     StoryVersionComparison:

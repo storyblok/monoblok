@@ -1,15 +1,13 @@
 // Import generated SDKs with shared client support
 import { createClient } from './client';
-import { Sdk as DatasourcesSdk } from './generated/datasources/sdk.gen';
-import { Sdk as StoriesSdk } from './generated/stories/sdk.gen';
-import { Sdk as ComponentsSdk } from './generated/components/sdk.gen';
-import { Sdk as DatasourceEntriesSdk } from './generated/datasource_entries/sdk.gen';
-import { Sdk as InternalTagsSdk } from './generated/internal_tags/sdk.gen';
-import { Sdk as SpacesSdk } from './generated/spaces/sdk.gen';
 import type { Client } from './client/types';
 
 import { getManagementBaseUrl, type Region } from '@storyblok/region-helper';
 import { RateLimiter, type RateLimitConfig } from './client/rateLimiter';
+
+// Import the generated registry
+import { sdkRegistry, SdkRegistry, SdkRegistryInstance } from './sdk-registry.generated';
+
 
 type PersonalAccessToken = {
   accessToken: string;
@@ -19,27 +17,26 @@ type OAuthToken = {
   oauthToken: string;
 }
 
-export interface MapiClientConfig {
+export interface MapiClientConfig<ThrowOnError extends boolean = false> {
   token: PersonalAccessToken | OAuthToken;
   region?: Region;
   baseUrl?: string; // Override for custom endpoints
   headers?: Record<string, string>;
-  throwOnError?: boolean;
+  throwOnError?: ThrowOnError;
   rateLimiting?: RateLimitConfig;
 }
-export class MapiClient {
+
+export interface MapiClient<ThrowOnError extends boolean = false> extends SdkRegistryInstance {}
+
+export class MapiClient<ThrowOnError extends boolean = false> {
   private client: Client;
-  private config: MapiClientConfig;
+  private config: MapiClientConfig<ThrowOnError>;
   private rateLimiter: RateLimiter;
   
-  public datasources: DatasourcesSdk;
-  public stories: StoriesSdk;
-  public components: ComponentsSdk;
-  public datasourceEntries: DatasourceEntriesSdk;
-  public internalTags: InternalTagsSdk;
-  public spaces: SpacesSdk;
+  // Index signature for dynamic SDK properties
+  [key: string]: any;
 
-  constructor(config: MapiClientConfig) {
+  constructor(config: MapiClientConfig<ThrowOnError>) {
     this.config = config;
     const { token, region = "eu", baseUrl, headers = {}, throwOnError = false, rateLimiting } = config;
     
@@ -57,19 +54,17 @@ export class MapiClient {
         ...this.getAuthHeader(token),
         ...headers
       },
-      throwOnError
+      throwOnError: throwOnError ?? false
     });
     
     // Add rate limiting interceptor
     this.setupRateLimitingInterceptor();
-    
-    // Create resource SDKs using the shared client instance
-    this.datasources = new DatasourcesSdk({ client: this.client });
-    this.stories = new StoriesSdk({ client: this.client });
-    this.components = new ComponentsSdk({ client: this.client });
-    this.datasourceEntries = new DatasourceEntriesSdk({ client: this.client });
-    this.internalTags = new InternalTagsSdk({ client: this.client });
-    this.spaces = new SpacesSdk({ client: this.client });
+
+    // Create resource SDKs using the shared client instance and registry
+    for (const [name, SdkClass] of Object.entries(sdkRegistry)) {
+      // @ts-expect-error - this is a dynamic property
+      this[name as keyof SdkRegistry] = new (SdkClass as any)({ client: this.client, throwOnError: throwOnError ?? false });
+    }
   }
 
   private getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, string> {
@@ -88,7 +83,7 @@ export class MapiClient {
       
       options.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         return this.rateLimiter.execute(() => 
-          this.fetchWithRetry(originalFetch, input, init)
+          this.fetchWithRetry(originalFetch as typeof fetch, input, init)
         );
       };
       
@@ -171,24 +166,7 @@ export class MapiClient {
   }
 }
 
-// Export types from all resources (using namespace to avoid conflicts)
-export * as DatasourcesTypes from './generated/datasources/types.gen';
-export * as StoriesTypes from './generated/stories/types.gen';
-export * as ComponentsTypes from './generated/components/types.gen';
-export * as DatasourceEntriesTypes from './generated/datasource_entries/types.gen';
-export * as InternalTagsTypes from './generated/internal_tags/types.gen';
-export * as SpacesTypes from './generated/spaces/types.gen';
-
-// Export the SDKs for advanced usage
-export { Sdk as DatasourcesSdk } from './generated/datasources/sdk.gen';
-export { Sdk as StoriesSdk } from './generated/stories/sdk.gen';
-export { Sdk as ComponentsSdk } from './generated/components/sdk.gen';
-export { Sdk as DatasourceEntriesSdk } from './generated/datasource_entries/sdk.gen';
-export { Sdk as InternalTagsSdk } from './generated/internal_tags/sdk.gen';
-export { Sdk as SpacesSdk } from './generated/spaces/sdk.gen';
-
 // Export client utilities
 export { createClient } from './client';
 export type { Client } from './client/types';
 export type { RateLimitConfig } from './client/rateLimiter';
-

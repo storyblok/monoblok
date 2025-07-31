@@ -1,6 +1,8 @@
 
       type: object
       description: A Storyblok story object representing a content entry
+      required: 
+        -  id
       properties:
         id:
           type: integer

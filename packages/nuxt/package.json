@@ -32,7 +32,7 @@
     "dev:build": "nuxi build playground",
     "dev:preview": "nuxi preview playground",
     "prepare:playground": "nuxi prepare playground",
-    "dev:prepare": "nuxt-module-build build --stub && nuxi prepare playground",
+    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
     "test:e2e": "start-server-and-test dev http://localhost:3000 cy:run",

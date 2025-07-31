@@ -45,6 +45,24 @@ paths:
           schema:
             type: string
           description: Find components that are present in a specific group with the UUID of the group
+        - name: with_tags
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter components by tags
+        - name: by_metadata_app_slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter components by metadata app slug
+        - name: by_metadata_frame_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter components by metadata frame ID
       responses:
         '200':
           description: List of components
@@ -132,6 +150,9 @@ paths:
               properties:
                 component:
                   $ref: '#/components/schemas/Component'
+                update_content:
+                  type: boolean
+                  description: Update component name in stories when component name changes
       responses:
         '200':
           description: Component updated
@@ -170,6 +191,112 @@ paths:
           description: Unauthorized
         '404':
           description: Component not found
+  /v1/spaces/{space_id}/components/{component_id}/rename_attribute:
+    post:
+      operationId: renameAttribute
+      summary: Rename Component Attribute
+      description: Rename an attribute within a component's schema
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
+        - name: old_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Current name of the attribute
+        - name: new_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: New name for the attribute
+        - name: story_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Optional story ID to update the attribute in a specific story
+      responses:
+        '204':
+          description: Attribute renamed successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component not found
+  /v1/spaces/{space_id}/components/{component_id}/restore:
+    post:
+      operationId: restore
+      summary: Restore Component
+      description: Restore a component from its last version
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
+      responses:
+        '200':
+          description: Component restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component:
+                    $ref: '#/components/schemas/Component'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component not found
+  /v1/spaces/{space_id}/components/bulk_update:
+    post:
+      operationId: bulkMove
+      summary: Bulk Move Components
+      description: Update multiple components' group assignment
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+                - component
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: Array of component IDs to update
+                component:
+                  type: object
+                  required:
+                    - component_group_id
+                  properties:
+                    component_group_id:
+                      type: integer
+                      description: ID of the component group to assign components to
+      responses:
+        '200':
+          description: Components updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component group not found
   /v1/spaces/{space_id}/versions:
     description: Retrieve component versions. This endpoint's response is paginated.
     get:
@@ -197,12 +324,20 @@ paths:
           required: false
           schema: 
             type: string
+            enum: [components, stories]
+          description: Model type. Must be 'components' for component versions.
         - name: model_id
           in: query
           required: false
           schema: 
             type: string
-          description: Component ID
+          description: Component ID when model is 'components'
+        - name: versions_v2
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Use version 2 system for retrieving versions
 
       responses:
         '200':

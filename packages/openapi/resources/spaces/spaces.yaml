@@ -8,7 +8,7 @@ servers:
 security:
   $ref: ../../shared/security.yaml
 paths:
-  /v1/spaces/:
+  /v1/spaces:
     get:
       operationId: list
       summary: Retrieve Multiple Spaces
@@ -32,7 +32,7 @@ paths:
     post:
       operationId: create
       summary: Create a Space
-      description: This endpoint creates a new space.
+      description: This endpoint creates a new space. To duplicate an existing space, include the dup_id parameter in the request body.
       requestBody:
         required: true
         content:
@@ -44,6 +44,9 @@ paths:
               properties:
                 space:
                   $ref: '#/components/schemas/SpaceCreateRequest'
+                dup_id:
+                  type: integer
+                  description: The numeric id of the original space to duplicate. When provided, the new space will be a duplicate of the specified space.
       responses:
         '201':
           description: Space created
@@ -136,40 +139,6 @@ paths:
           description: Unauthorized
         '404':
           description: Space not found
-  /v1/spaces/duplicate:
-    post:
-      operationId: duplicate
-      summary: Duplicate a Space
-      description: Duplicate a space and all its content entries and components; Assets will not be duplicated and still will reference the original space.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - dup_id
-                - space
-              properties:
-                dup_id:
-                  type: integer
-                  description: The numeric id of the original space
-                space:
-                  $ref: '#/components/schemas/SpaceCreateRequest'
-      responses:
-        '201':
-          description: Space duplicated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  space:
-                    $ref: '#/components/schemas/Space'
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
 components:
   securitySchemes:
     $ref: ../../shared/security-schemes.yaml#/securitySchemes
@@ -177,6 +146,8 @@ components:
     Space:
       type: object
       description: The Space Object
+      required: 
+        -  id
       properties:
         name:
           type: string
@@ -203,6 +174,7 @@ components:
         id:
           type: integer
           description: ID of the space
+          readOnly: true
         role:
           type: string
           description: Role of the collaborator, could be admin, editor or custom roles

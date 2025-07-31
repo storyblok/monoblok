@@ -1,19 +1,14 @@
-import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import {
+  type ISbResult,
+  useStoryblokApi,
+  useStoryblokBridge,
+} from '@storyblok/vue';
 import { computed, type ComputedRef, type Ref, watch } from 'vue';
 import { useAsyncData } from '#app';
-import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
+import type { AsyncData, NuxtError } from '#app';
 import type { DedupeOption } from 'nuxt/app/defaults';
 
-/**
- * Options for the useAsyncStoryblok composable.
- * Extends Nuxt's AsyncDataOptions with Storyblok-specific configuration.
- */
-export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
-  /** Storyblok API parameters for fetching stories */
-  api: ISbStoriesParams;
-  /** Storyblok Bridge configuration for live preview */
-  bridge: StoryblokBridgeConfigV2;
-}
+import type { UseAsyncStoryblokOptions } from '../../types';
 
 interface AsyncDataExecuteOptions {
   dedupe?: DedupeOption;
@@ -45,10 +40,13 @@ export interface UseAsyncStoryblokResult {
  */
 const stableStringify = (obj: Record<string, any>): string => {
   const sortedKeys = Object.keys(obj).sort();
-  const sortedObj = sortedKeys.reduce((acc, key) => {
-    acc[key] = obj[key];
-    return acc;
-  }, {} as Record<string, any>);
+  const sortedObj = sortedKeys.reduce(
+    (acc, key) => {
+      acc[key] = obj[key];
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
   return JSON.stringify(sortedObj);
 };
 
@@ -99,18 +97,30 @@ export async function useAsyncStoryblok(
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
 
-  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
+  const result = (await useAsyncData(
+    uniqueKey,
+    () => storyblokApiInstance.get(`cdn/stories/${url}`, api),
+    rest,
+  )) as AsyncData<ISbResult, NuxtError<unknown>>;
 
   if (import.meta.client) {
-    watch(result.data, (newData) => {
-      if (newData?.data.story && newData.data.story.id) {
-        useStoryblokBridge(newData.data.story.id, (evStory) => {
-          newData.data.story = evStory;
-        }, bridge);
-      }
-    }, {
-      immediate: true,
-    });
+    watch(
+      result.data,
+      (newData) => {
+        if (newData?.data.story && newData.data.story.id) {
+          useStoryblokBridge(
+            newData.data.story.id,
+            (evStory) => {
+              newData.data.story = evStory;
+            },
+            bridge,
+          );
+        }
+      },
+      {
+        immediate: true,
+      },
+    );
   }
 
   return {
@@ -122,4 +132,4 @@ export async function useAsyncStoryblok(
     clear: result.clear,
     story: computed(() => result.data.value?.data.story),
   };
-};
+}

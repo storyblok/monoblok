@@ -5,7 +5,6 @@ const story = await useAsyncStoryblok(`vue/articles/${path.params.slug}`, {
     version: 'draft',
     language: 'en',
   },
-  bridge: {},
 });
 </script>
 

@@ -5,7 +5,10 @@ const { story, error } = await useAsyncStoryblok(route.path, {
   api: {
     version: 'draft',
     language: 'en',
-    resolve_relations: ['popular-articles.articles'],
+    resolve_relations: 'popular-articles.articles',
+  },
+  bridge: {
+    resolveRelations: 'popular-articles.articles',
   },
 });
 

@@ -2,16 +2,11 @@
 import { NuxtLink } from '#build/components';
 import { MarkTypes, type StoryblokRichTextNode } from '@storyblok/vue';
 
-const story = await useAsyncStoryblok(
-  'vue/test-richtext',
-  {
-    api: {
-      version: 'draft',
-    },
-    bridge: {},
+const story = await useAsyncStoryblok('vue/test-richtext', {
+  api: {
+    version: 'draft',
   },
-  // { resolveRelations: "Article.categories" }
-);
+});
 
 const resolvers = {
   [MarkTypes.LINK]: (node: StoryblokRichTextNode<VNode>) => {

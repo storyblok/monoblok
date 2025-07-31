@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 const route = useRoute();
 
 const { story, error } = await useAsyncStoryblok(route.path, {

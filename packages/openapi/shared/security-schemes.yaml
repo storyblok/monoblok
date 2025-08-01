@@ -1,0 +1,48 @@
+# Storyblok Management API Security Schemes
+# Based on: https://www.storyblok.com/docs/api/management/getting-started/authentication
+
+securitySchemes:
+  # Personal Access Token - obtained from Storyblok UI
+  # Used without "Bearer" keyword in Authorization header
+  PersonalAccessToken:
+    type: apiKey
+    in: header
+    name: Authorization
+    description: |
+      ## Personal Access Token Authentication
+      
+      A **Personal Access Token** is obtained from the Storyblok UI and grants access to all spaces associated with your account.
+      
+      **Key Characteristics:**
+      - Not tied to a single space - allows actions based on your permissions in all accessible spaces
+      - Used without "Bearer" keyword in the Authorization header
+      - Generated from Storyblok Account settings
+      - No expiration - valid until revoked
+      
+      **Usage:** `Authorization: YOUR_PERSONAL_ACCESS_TOKEN`
+      
+      📖 **[View detailed documentation →](/authentication/personal-access-token)**
+      
+      🔗 **Official Docs:** [Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/authentication)
+
+  # OAuth Access Token - obtained via OAuth2 flow
+  # Used with "Bearer" keyword in Authorization header
+  BearerAuth:
+    type: http
+    scheme: bearer
+    description: |
+      ## OAuth Access Token Authentication
+      
+      An **OAuth Access Token** is obtained via the OAuth2 authentication flow and is tied to a single space.
+      
+      **Key Characteristics:**
+      - Time-to-live (TTL) - tokens expire after a set period
+      - Single space access - tied to specific space permissions
+      - Used with "Bearer" keyword in the Authorization header
+      - Scoped permissions - granted during OAuth process
+      
+      **Usage:** `Authorization: Bearer YOUR_OAUTH_ACCESS_TOKEN`
+      
+      📖 **[View detailed documentation →](/authentication/oauth-access-token)**
+      
+      🔗 **Official Docs:** [OAuth2 Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/oauth2-authentication) 

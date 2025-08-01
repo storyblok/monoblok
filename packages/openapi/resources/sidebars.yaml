@@ -13,3 +13,5 @@
   group: Internal Tags
 - page: spaces/spaces.yaml
   group: Spaces
+- page: presets/presets.yaml
+  group: Presets

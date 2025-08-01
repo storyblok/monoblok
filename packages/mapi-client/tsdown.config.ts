@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: './src/index.ts',
+  entry: [
+    './src/index.ts',
+    './src/generated/**/types.gen.ts',
+  ],
   outDir: './dist',
   platform: "neutral",
   format: ['esm', "commonjs"],
@@ -9,15 +12,10 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   dts: true,
-  bundle: false,
+  unbundle: true,
   external: [
     // Externalize generated client duplicates to reduce bundle size
-    './generated/*/client/**',
-  ],
-  unbundle: true,
-  treeshake: true,
-  minify: {
-    mangle: true,
-    compress: true
-  }
+    "./src/generated/*/client/*",
+    "./src/generated/*/core/*"
+  ]
 });

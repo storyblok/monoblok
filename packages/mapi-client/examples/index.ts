@@ -6,7 +6,6 @@ const client = new MapiClient({
   },
 });
 
-
 (async () => {
   const {data} = await client.spaces.list()
 

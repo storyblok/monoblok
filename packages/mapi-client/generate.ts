@@ -44,6 +44,7 @@ async function main() {
            {
             enums: 'javascript',
             name: '@hey-api/typescript',
+            exportFromIndex: true
           },
           {
             name: '@hey-api/client-fetch',

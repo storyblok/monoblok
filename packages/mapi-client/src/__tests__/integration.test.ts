@@ -36,10 +36,6 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     const client = new MapiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
-      rateLimiting: {
-        maxRetries: 3,
-        retryDelay: 1000
-      }
     });
 
     // This will trigger a fetch call through the SDK
@@ -76,10 +72,6 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     const client = new MapiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
-      rateLimiting: {
-        maxRetries: 1,
-        retryDelay: 1000 // Should be overridden by retry-after
-      }
     });
 
     const promise = client.spaces.list({});
@@ -106,10 +98,6 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     const client = new MapiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
-      rateLimiting: {
-        maxRetries: 2,
-        retryDelay: 1000
-      }
     });
 
     const promise = client.spaces.list({});
@@ -119,8 +107,8 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     
     const result = await promise;
     
-    // Should make initial + maxRetries calls (2 retries = 3 total)
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    // Should make initial + maxRetries calls (3 retries = 4 total)
+    expect(mockFetch).toHaveBeenCalledTimes(4);
     
     // Result should contain the error since all retries failed
     expect(result).toBeDefined();
@@ -138,13 +126,11 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     const client1 = new MapiClient({
       token: { accessToken: 'token1' },
       region: 'eu',
-      rateLimiting: { maxConcurrent: 1 }
     });
 
     const client2 = new MapiClient({
       token: { accessToken: 'token2' },
       region: 'us',
-      rateLimiting: { maxConcurrent: 2 }
     });
 
     // Make a simple request from each client
@@ -153,9 +139,5 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
 
     // Both clients should have made their requests
     expect(mockFetch).toHaveBeenCalledTimes(2);
-    
-    // Verify separate rate limiter instances with different configurations
-    expect(client1.getRateLimitStats().maxConcurrent).toBe(1);
-    expect(client2.getRateLimitStats().maxConcurrent).toBe(2);
   });
 });

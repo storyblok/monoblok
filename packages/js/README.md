@@ -45,7 +45,7 @@ If you'd like to contribute, please refer to the [contributing guidelines](CONTR
 
 For help, discussion about best practices, or any other conversation that would benefit from being searchable:
 
-- [Discuss Storyblok on Github Discussions](https://github.com/storyblok/storyblok/discussions)
+- [Discuss Storyblok on Github Discussions](https://github.com/storyblok/monoblok/discussions)
 
 For community support, chatting with other users, please visit:
 
@@ -53,7 +53,7 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/storyblok-js/issues/new/choose).
+For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
 > [!IMPORTANT]
 > Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).

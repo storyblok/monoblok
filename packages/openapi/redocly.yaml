@@ -7,7 +7,11 @@ apis:
   components:
     root: resources/components/components.yaml
     output: ./dist/components.yaml
-    title: Components  
+    title: Components
+  components-folders:
+    root: resources/component_folders/component_folders.yaml
+    output: ./dist/component_folders.yaml
+    title: Component Folders
   datasources:
     root: resources/datasources/datasources.yaml
     output: ./dist/datasources.yaml
@@ -24,6 +28,10 @@ apis:
     root: resources/spaces/spaces.yaml
     output: ./dist/spaces.yaml
     title: Spaces
+  presets:
+    root: resources/presets/presets.yaml
+    output: ./dist/presets.yaml
+    title: Presets
 
 
 # Linting rules

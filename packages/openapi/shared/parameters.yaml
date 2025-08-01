@@ -29,3 +29,11 @@ component_group_id:
   schema:
     type: string
   description: The component folder ID of the component
+
+preset_id:
+  name: preset_id
+  in: path
+  required: true
+  schema:
+    type: integer
+  description: Numeric ID of your preset

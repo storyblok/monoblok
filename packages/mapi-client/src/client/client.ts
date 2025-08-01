@@ -85,7 +85,12 @@ export const createClient = (config: Config = {}): Client => {
     // fetch must be assigned here, otherwise it would throw the error:
     // TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation
     const _fetch = opts.fetch!;
-    let response = await _fetch(request);
+    
+    // Execute with retry logic by recreating the request for each attempt
+    let response = await executeWithRetry(_fetch, url, requestInit, {
+      maxRetries: 3,
+      retryDelay: 1000
+    });
 
     for (const fn of interceptors.response._fns) {
       if (fn) {
@@ -184,6 +189,43 @@ export const createClient = (config: Config = {}): Client => {
           ...result,
         };
   };
+
+  // Helper function to execute fetch with retry logic
+  async function executeWithRetry(
+    fetchFn: any,
+    url: string,
+    requestInit: ReqInit,
+    retryConfig: { maxRetries: number; retryDelay: number },
+    attempt: number = 0
+  ): Promise<Response> {
+    try {
+      const request = new Request(url, requestInit);
+      const response = await fetchFn(request);
+      
+      if (response.status === 429 && attempt < retryConfig.maxRetries) {
+        const retryAfter = response.headers.get('retry-after');
+        const delay = retryAfter ? parseInt(retryAfter) * 1000 : retryConfig.retryDelay;
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Use the original unconsumed request for retry
+        return executeWithRetry(fetchFn, url, requestInit, retryConfig, attempt + 1);
+      }
+      
+      return response;
+    } catch (error) {
+      // If it's a network error and we haven't exceeded retries, try again
+      if (attempt < retryConfig.maxRetries) {
+        const delay = retryConfig.retryDelay;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Use the original unconsumed request for retry
+        return executeWithRetry(fetchFn, url, requestInit, retryConfig, attempt + 1);
+      }
+      
+      throw error;
+    }
+  }
 
   return {
     buildUrl,

@@ -55,7 +55,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTagCreateRequest'
+              $ref: '#/components/schemas/InternalTag'
       responses:
         '201':
           description: Internal tag created
@@ -89,7 +89,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTagUpdateRequest'
+              $ref: '#/components/schemas/InternalTag'
+              required: 
       responses:
         '200':
           description: Internal tag updated
@@ -132,6 +133,10 @@ components:
   schemas:
     InternalTag:
       type: object
+      required: 
+        -  id
+        - name
+        - object_type
       properties:
         name:
           type: string
@@ -139,37 +144,8 @@ components:
         id:
           type: integer
           description: Numeric ID of the internal tag
+          readOnly: true
         object_type:
           type: string
           enum: [asset, component]
           description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`
-          
-    InternalTagCreateRequest:
-      type: object
-      properties:
-        internal_tag:
-          type: object
-          required:
-            - name
-          properties:
-            name:
-              type: string
-              description: Name of the internal tag
-            object_type:
-              type: string
-              enum: [asset, component]
-              description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`
-              
-    InternalTagUpdateRequest:
-      type: object
-      properties:
-        internal_tag:
-          type: object
-          properties:
-            name:
-              type: string
-              description: Name of the internal tag
-            object_type:
-              type: string
-              enum: [asset, component]
-              description: The object type of an internal tag (where does the internal tag belong to). Can be `asset` or `component`

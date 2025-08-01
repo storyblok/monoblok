@@ -11,6 +11,14 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./resources/*": {
+      "types": "./dist/generated/*/types.gen.d.mts"
     }
   },
   "scripts": {

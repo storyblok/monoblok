@@ -57,14 +57,11 @@ componentsCommand
 
     const { password, region } = state;
 
-    let requestCount = 0;
+    const requestCount = 0;
 
     mapiClient({
-      token: password,
+      token: { accessToken: password },
       region,
-      onRequest: (_request) => {
-        requestCount++;
-      },
     });
 
     try {

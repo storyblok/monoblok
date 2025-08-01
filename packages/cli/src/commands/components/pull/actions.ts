@@ -9,11 +9,10 @@ export const fetchComponents = async (space: string): Promise<SpaceComponent[] |
   try {
     const client = mapiClient();
 
-    const { data } = await client.get<{
-      components: SpaceComponent[];
-    }>(`spaces/${space}/components`, {
+    const { data } = await client.components.list({
+      path: { space_id: Number.parseInt(space, 10) },
     });
-    return data.components;
+    return data?.components as SpaceComponent[] | undefined;
   }
   catch (error) {
     handleAPIError('pull_components', error as Error);
@@ -24,11 +23,11 @@ export const fetchComponent = async (space: string, componentName: string): Prom
   try {
     const client = mapiClient();
 
-    const { data } = await client.get<{
-      components: SpaceComponent[];
-    }>(`spaces/${space}/components?search=${encodeURIComponent(componentName)}`, {
+    const { data } = await client.components.list({
+      path: { space_id: Number.parseInt(space, 10) },
+      query: { search: componentName },
     });
-    return data.components?.find(c => c.name === componentName);
+    return data?.components?.find(c => c.name === componentName) as SpaceComponent | undefined;
   }
   catch (error) {
     handleAPIError('pull_components', error as Error, `Failed to fetch component ${componentName}`);
@@ -40,25 +39,25 @@ export const fetchComponentGroups = async (space: string): Promise<SpaceComponen
   try {
     const client = mapiClient();
 
-    const { data } = await client.get<{
-      component_groups: SpaceComponentGroup[];
-    }>(`spaces/${space}/component_groups`);
-    return data.component_groups;
+    const { data } = await client.componentFolders.list({
+      path: { space_id: Number.parseInt(space, 10) },
+    });
+    return data?.component_groups as SpaceComponentGroup[] | undefined;
   }
   catch (error) {
     handleAPIError('pull_component_groups', error as Error);
   }
 };
 
-// Component preset actions
+// Component preset actions - TODO: Need to find correct SDK
 export const fetchComponentPresets = async (space: string): Promise<SpaceComponentPreset[] | undefined> => {
   try {
     const client = mapiClient();
 
-    const { data } = await client.get<{
-      presets: SpaceComponentPreset[];
-    }>(`spaces/${space}/presets`);
-    return data.presets;
+    const { data } = await client.presets.list({
+      path: { space_id: Number.parseInt(space, 10) },
+    });
+    return data?.presets as SpaceComponentPreset[] | undefined;
   }
   catch (error) {
     handleAPIError('pull_component_presets', error as Error);
@@ -70,11 +69,10 @@ export const fetchComponentInternalTags = async (space: string): Promise<SpaceCo
   try {
     const client = mapiClient();
 
-    const { data } = await client.get<{
-      internal_tags: SpaceComponentInternalTag[];
-    }>(`spaces/${space}/internal_tags`, {
+    const { data } = await client.internalTags.list({
+      path: { space_id: Number.parseInt(space, 10) },
     });
-    return data.internal_tags.filter(tag => tag.object_type === 'component');
+    return data?.internal_tags?.filter(tag => tag.object_type === 'component') as SpaceComponentInternalTag[] | undefined;
   }
   catch (error) {
     handleAPIError('pull_component_internal_tags', error as Error);

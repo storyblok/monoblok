@@ -56,7 +56,9 @@ export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown,
         throw new APIError('network_error', action, error, customMessage);
     }
   }
-  throw new APIError('generic', action, error as FetchError, customMessage);
+
+  console.error(error);
+  // throw new APIError('generic', action, error as FetchError, customMessage);
 }
 
 export class APIError extends Error {

@@ -48,7 +48,7 @@ datasourcesCommand
 
     const { password, region } = state;
     mapiClient({
-      token: password,
+      token: { accessToken: password },
       region,
     });
 

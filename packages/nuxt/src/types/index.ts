@@ -1,5 +1,9 @@
 import type { AsyncData, AsyncDataOptions, NuxtError } from 'nuxt/app';
-import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
+import type {
+  ISbResult,
+  ISbStoriesParams,
+  StoryblokBridgeConfigV2,
+} from '@storyblok/vue';
 import type { ComputedRef } from 'vue';
 
 /**
@@ -10,10 +14,11 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
   /** Storyblok API parameters for fetching stories */
   api: ISbStoriesParams;
   /** Storyblok Bridge configuration for live preview */
-  bridge: StoryblokBridgeConfigV2;
+  bridge?: StoryblokBridgeConfigV2;
 }
 
-export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
+export interface UseAsyncStoryblokResult
+  extends AsyncData<ISbResult, NuxtError<unknown>> {
   story: ComputedRef<ISbResult['data']['story']>;
 }
 

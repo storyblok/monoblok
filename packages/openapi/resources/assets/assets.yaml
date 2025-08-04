@@ -1,0 +1,512 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Assets API
+  version: 1.0.0
+  description: API for managing Storyblok assets
+servers:
+  - url: https://mapi.storyblok.com
+    description: Base URL for spaces created in the EU
+  - url: https://api-us.storyblok.com
+    description: Base URL for spaces created in the US
+  - url: https://api-ca.storyblok.com
+    description: Base URL for spaces created in Canada
+  - url: https://api-ap.storyblok.com
+    description: Base URL for spaces created in Australia
+  - url: https://app.storyblok.cn
+    description: Base URL for spaces created in China
+security:
+  $ref: ../../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/assets:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Assets
+      description: Returns an array of asset objects. This endpoint is paginated.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: in_folder
+          in: query
+          required: false
+          schema:
+            type: number
+          description: Provide the numeric id of a folder to filter the assets by a specific folder. Use value -1 to retrieve deleted assets.
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [created_at:asc, created_at:desc, updated_at:asc, updated_at:desc, short_filename:asc, short_filename:desc]
+          description: Sort assets by specific attribute and order
+        - name: is_private
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: If "1" it only displays private assets
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provide a search term to filter a specific file by the filename
+        - name: by_alt
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by the alt text of an asset
+        - name: by_copyright
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by the copyright of an asset
+        - name: by_title
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by the title of an asset
+        - name: with_tags
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
+      responses:
+        '200':
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: upload
+      summary: Upload Asset
+      description: Step 1 of the upload process. Get a signed response object for uploading assets. This is the first step in a three-step upload process.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - filename
+                - size
+                - validate_upload
+              properties:
+                filename:
+                  type: string
+                  description: The filename of the asset to upload
+                size:
+                  type: string
+                  description: The size of the asset (e.g., "400X500")
+                asset_folder_id:
+                  type: number
+                  description: Optional asset folder ID to place the asset in
+                validate_upload:
+                  type: number
+                  enum: [1]
+                  description: Must be set to 1 to validate the upload
+      responses:
+        '200':
+          description: Signed response object for upload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignedResponseObject'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/assets/{asset_id}:
+    get:
+      operationId: get
+      summary: Retrieve One Asset
+      description: Returns a single asset object by providing a specific numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/asset_id
+      responses:
+        '200':
+          description: Asset details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+    put:
+      operationId: update
+      summary: Update Asset
+      description: Update an asset using the numeric ID of the asset.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/asset_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  type: object
+                  description: A single asset object with updatable properties
+                  properties:
+                    asset_folder_id:
+                      type: number
+                      description: Id of the folder containing this asset
+                    alt:
+                      type: string
+                      description: Alt text for the asset (default language)
+                    copyright:
+                      type: string
+                      description: Copyright text for the asset (default language)
+                    title:
+                      type: string
+                      description: Title of the asset (default language)
+                    source:
+                      type: string
+                      description: Source text for the asset (default language)
+                    expire_at:
+                      type: string
+                      format: date-time
+                      description: Date when the asset should expire (Format yyyy-MM-dd'T'HH:mm:ssZ)
+                    focus:
+                      type: string
+                      description: The focus point of the image (Only for image assets)
+                    internal_tag_ids:
+                      type: array
+                      items:
+                        type: string
+                      description: List of ids of the tags assigned to the asset
+                    publish_at:
+                      type: string
+                      format: date-time
+                      description: Date when the asset should be made public (Format yyyy-MM-dd'T'HH:mm:ssZ)
+                    is_private:
+                      type: boolean
+                      description: Defines if the asset should be inaccessable to the public
+                    meta_data:
+                      type: object
+                      description: Includes custom metadata fields for an asset along with the default ones. It also contains the translations of the same if added in the format metafield__i18n__langcode. This field should be used for updating the metadata including the default ones (alt, title, source, copyright)
+      responses:
+        '200':
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+    delete:
+      operationId: delete
+      summary: Delete an Asset
+      description: Delete an asset by using its numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/asset_id
+      responses:
+        '200':
+          description: Asset deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset:
+                    $ref: '#/components/schemas/Asset'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+  /v1/spaces/{space_id}/assets/{signed_response_object_id}/finish_upload:
+    get:
+      operationId: finalize
+      summary: Finish Asset Upload
+      description: Step 3 of the upload process. Finalize the upload process after the file has been uploaded to S3. This is the final step in a three-step upload process.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: signed_response_object_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID from the signed response object
+      responses:
+        '200':
+          description: Upload finalized successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message indicating the upload was finalized
+                    example: "Asset uploaded successfully"
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset not found
+  /v1/spaces/{space_id}/assets/bulk_destroy:
+    post:
+      operationId: deleteMany
+      summary: Delete Multiple Assets
+      description: Delete multiple assets by using their numeric IDs.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: number
+                  description: Array of numeric asset IDs
+      responses:
+        '200':
+          description: Assets deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message indicating which assets were deleted
+                    example: "Asset(s) 20142579, 20142580 deleted successfully"
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/assets/bulk_update:
+    post:
+      operationId: bulkMove
+      summary: Bulk Moving of Assets
+      description: This endpoint allows moving multiple assets using their IDs to a specific folder.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+                - asset_folder_id
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: number
+                  description: Array of numeric asset IDs
+                asset_folder_id:
+                  type: number
+                  description: Id of the folder containing this asset
+      responses:
+        '200':
+          description: Assets moved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message indicating which assets were moved
+                    example: "Assets moved successfully"
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/assets/bulk_restore:
+    post:
+      operationId: bulkRestore
+      summary: Bulk Restoration of Deleted Assets
+      description: To bulk restoration of deleted assets, pass bulk_restore after assets in the endpoint. Inside of the array from the payload should contain the asset IDs that you want to restore.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: number
+                  description: Array of numeric asset IDs
+      responses:
+        '200':
+          description: Assets restored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message indicating which assets were restored
+                    example: "Assets restored successfully"
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+components:
+  securitySchemes:
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    Asset:
+      type: object
+      description: A single asset object
+      properties:
+        id:
+          type: number
+          description: The numeric ID
+        filename:
+          type: string
+          description: Full path of the asset, including the file name
+        space_id:
+          type: number
+          description: Space ID in which the asset is connected
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date (Format yyyy-MM-dd'T'HH:mm:ssZ)
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest update date (Format yyyy-MM-dd'T'HH:mm:ssZ)
+        file:
+          type: object
+          description: Represents a File object when uploading an asset. Returns null when retrieving asset details.
+        asset_folder_id:
+          type: number
+          description: Id of the folder containing this asset
+        deleted_at:
+          type: string
+          description: Deleted date (Format YYYY-mm-dd HH:MM)
+        short_filename:
+          type: string
+          description: The file name of the asset
+        content_type:
+          type: string
+          description: The MIME type of the asset
+        content_length:
+          type: number
+          description: The content length in bytes
+        alt:
+          type: string
+          description: Alt text for the asset (default language)
+        copyright:
+          type: string
+          description: Copyright text for the asset (default language)
+        title:
+          type: string
+          description: Title of the asset (default language)
+        source:
+          type: string
+          description: Source text for the asset (default language)
+        expire_at:
+          type: string
+          format: date-time
+          description: Date when the asset should expire (Format yyyy-MM-dd'T'HH:mm:ssZ)
+        focus:
+          type: string
+          description: The focus point of the image (Only for image assets)
+        internal_tag_ids:
+          type: array
+          items:
+            type: string
+          description: List of ids of the tags assigned to the asset
+        internal_tags_list:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: number
+                description: Id of the tag
+              name:
+                type: string
+                description: Name of the tag
+          description: List of objects containing the details of tags used for the asset
+        locked:
+          type: boolean
+          description: Defines if the asset is locked for any changes
+        publish_at:
+          type: string
+          format: date-time
+          description: Date when the asset should be made public (Format yyyy-MM-dd'T'HH:mm:ssZ)
+        is_private:
+          type: boolean
+          description: Defines if the asset should be inaccessable to the public
+        meta_data:
+          type: object
+          description: Includes custom metadata fields for an asset along with the default ones. It also contains the translations of the same if added in the format metafield__i18n__langcode. This field should be used for updating the metadata including the default ones (alt, title, source, copyright)
+    SignedResponseObject:
+      type: object
+      description: Signed response object returned from the upload request
+      properties:
+        id:
+          type: string
+          description: The ID of the signed response object
+        post_url:
+          type: string
+          description: The URL to post the file to
+        fields:
+          type: object
+          description: Form fields to include in the upload request
+          additionalProperties: true 

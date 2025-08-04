@@ -15,3 +15,5 @@
   group: Spaces
 - page: presets/presets.yaml
   group: Presets
+- page: assets/assets.yaml
+  group: Assets

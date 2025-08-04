@@ -37,3 +37,11 @@ preset_id:
   schema:
     type: integer
   description: Numeric ID of your preset
+
+asset_id:
+  name: asset_id
+  in: path
+  required: true
+  schema:
+    type: string
+  description: Numeric id of an asset

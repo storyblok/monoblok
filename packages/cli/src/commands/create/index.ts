@@ -39,6 +39,12 @@ export const createCommand = program
     mapiClient({
       token: password,
       region,
+      onRequest: (request) => {
+        console.log(request);
+      },
+      onResponse: (response) => {
+        console.log(response);
+      },
     });
 
     const spinnerBlueprints = new Spinner({
@@ -127,8 +133,11 @@ export const createCommand = program
           const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
 
           createdSpace = await createSpace({
-            name: toHumanReadable(projectName),
-            domain: blueprintDomain,
+            space: {
+              name: toHumanReadable(projectName),
+              domain: blueprintDomain,
+            },
+            in_org: false,
           });
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
         }

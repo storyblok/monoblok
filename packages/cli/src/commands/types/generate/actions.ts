@@ -225,6 +225,24 @@ const getComponentPropertiesTypeAnnotations = async (
               = componentsInGroupWhitelist.length > 0 ? `(${componentsInGroupWhitelist.join(' | ')})[]` : `never[]`;
           }
         }
+        else if (value.restrict_type === 'tags') {
+          // Components restricted by tags
+          if (Array.isArray(value.component_tag_whitelist) && value.component_tag_whitelist.length > 0) {
+            // Find components that have any of the whitelisted tag IDs
+            const componentsWithTags = spaceData.components.filter(
+              component =>
+                component.internal_tag_ids
+                && component.internal_tag_ids.some(tagId =>
+                  value.component_tag_whitelist.includes(Number(tagId)),
+                ),
+            );
+
+            propertyTypeAnnotation[key].tsType
+              = componentsWithTags.length > 0
+                ? `(${componentsWithTags.map(component => getComponentType(component.name, options)).join(' | ')})[]`
+                : `never[]`;
+          }
+        }
         else {
           // Components restricted by 1-by-1 list
           if (Array.isArray(value.component_whitelist) && value.component_whitelist.length > 0) {

@@ -1,9 +1,10 @@
-import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType } from './actions';
-import type { SpaceComponent, SpaceData } from '../../../commands/components/constants';
-import type { GenerateTypesOptions } from './constants';
-import { join, resolve } from 'node:path';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SpaceComponent, SpaceData } from '../../../commands/components/constants';
+import type { GenerateTypesOptions } from './constants';
+import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType } from './actions';
 
 // Import the mocked functions
 import { saveToFile } from '../../../utils/filesystem';
@@ -111,7 +112,8 @@ export interface StoryblokBloks {
   restrict_components?: boolean;
   component_whitelist?: string[];
   component_group_whitelist?: string[];
-  restrict_type?: 'groups' | 'components';
+  component_tag_whitelist?: number[];
+  restrict_type?: 'groups' | 'components' | 'tags';
 }
 
 export interface StoryblokCustom {
@@ -546,6 +548,82 @@ describe('component property type annotations', () => {
 
     // Verify that the result contains the expected property type
     expect(result).toContain('content?:');
+  });
+
+  it('should handle bloks property type with tag-based restrictions', async () => {
+    // Create components with different tag IDs
+    const buttonComponent: SpaceComponent = {
+      name: 'button',
+      display_name: 'Button',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {},
+      color: null,
+      internal_tags_list: [],
+      internal_tag_ids: ['1', '2'], // Has tags 1 and 2
+    };
+
+    const imageComponent: SpaceComponent = {
+      name: 'image',
+      display_name: 'Image',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 2,
+      schema: {},
+      color: null,
+      internal_tags_list: [],
+      internal_tag_ids: ['2', '3'], // Has tags 2 and 3
+    };
+
+    const textComponent: SpaceComponent = {
+      name: 'text',
+      display_name: 'Text',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 3,
+      schema: {},
+      color: null,
+      internal_tags_list: [],
+      internal_tag_ids: ['4'], // Has tag 4 only
+    };
+
+    // Create a component with bloks property type and tag-based restrictions
+    const componentWithTagBasedBloks: SpaceComponent = {
+      name: 'test_component',
+      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 4,
+      schema: {
+        content: {
+          type: 'bloks',
+          required: false,
+          restrict_components: true,
+          restrict_type: 'tags',
+          component_tag_whitelist: [1, 2], // Only allow components with tags 1 or 2
+        },
+      },
+      color: null,
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    // Create a space data with these components
+    const spaceData: SpaceData = {
+      components: [buttonComponent, imageComponent, textComponent, componentWithTagBasedBloks],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    // Generate types
+    const result = await generateTypes(spaceData, { strict: false });
+
+    // Verify that the result contains the expected union type for tag-based restrictions
+    // Should include Button and Image (both have tags 1 or 2), but not Text (only has tag 4)
+    expect(result).toContain('content?:');
+    expect(result).toContain('(Button | Image)[]');
   });
 
   it('should handle tabbed properties correctly', async () => {

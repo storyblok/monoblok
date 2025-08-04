@@ -1,5 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, saveToFile } from './filesystem';
+import { getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
 import { join, resolve } from 'node:path';
 
 // tell vitest to use fs mock from __mocks__ folder
@@ -168,6 +169,15 @@ describe('filesystem utils', async () => {
 
     it('should handle filenames with paths', () => {
       expect(getComponentNameFromFilename('/path/to/my_component.js')).toBe('/path/to/my_component');
+    });
+  });
+
+  describe('sanitizeFilename', () => {
+    it('should convert strings to URL-friendly slugs', () => {
+      expect(sanitizeFilename('Country / Currency')).toBe('country-currency');
+      expect(sanitizeFilename('path/to/file')).toBe('path-to-file');
+      expect(sanitizeFilename('My Component Name')).toBe('my-component-name');
+      expect(sanitizeFilename('Special@Characters!')).toBe('special-characters');
     });
   });
 });

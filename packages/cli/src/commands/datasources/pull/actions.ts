@@ -1,7 +1,7 @@
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { mapiClient } from '../../../api';
 import { join, resolve } from 'node:path';
-import { resolvePath, saveToFile } from '../../../utils/filesystem';
+import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
 
@@ -83,7 +83,8 @@ export const saveDatasourcesToFiles = async (
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const datasource of datasources) {
-        const datasourceFilePath = join(resolvedPath, suffix ? `${datasource.name}.${suffix}.json` : `${datasource.name}.json`);
+        const sanitizedName = sanitizeFilename(datasource.name);
+        const datasourceFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`);
         await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
       }
       return;

@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
+    "@sindresorhus/slugify": "^2.2.1",
     "@storyblok/js": "workspace:*",
     "@storyblok/region-helper": "workspace:*",
     "@topcli/spinner": "^2.1.2",

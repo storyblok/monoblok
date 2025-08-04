@@ -1,5 +1,6 @@
 import { join, parse, resolve } from 'node:path';
 import { mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import slugify from '@sindresorhus/slugify';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 
@@ -64,6 +65,15 @@ export const resolvePath = (path: string | undefined, folder: string) => {
 export const getComponentNameFromFilename = (filename: string): string => {
   // Remove the .js extension
   return filename.replace(/\.js$/, '');
+};
+
+/**
+ * Sanitizes a string to be safe for use as a filename by converting it to a slug
+ * @param filename - The filename to sanitize
+ * @returns A safe filename string
+ */
+export const sanitizeFilename = (filename: string): string => {
+  return slugify(filename);
 };
 
 export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {

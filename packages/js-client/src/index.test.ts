@@ -594,6 +594,53 @@ describe('storyblokClient', () => {
         { id: 2, name: 'Test Story 2' },
       ]);
     });
+
+    it('should use API response perPage for pagination calculation when per_page not provided', async () => {
+      // When per_page is not provided and API returns different perPage
+      const mockMakeRequestFixed = vi.fn()
+        .mockResolvedValueOnce({
+          data: { stories: Array.from({ length: 100 }, (_, i) => ({ id: i + 1, name: `Story ${i + 1}` })) },
+          total: 1000, // Total stories
+          perPage: 100, // API returns 100 per page (different from client default 25)
+          status: 200,
+        })
+
+        // getAll should calculate Math.ceil(1000/100) = 10 pages using firstRes.perPage
+        .mockResolvedValue({
+          data: { stories: Array.from({ length: 100 }, (_, i) => ({ id: i + 101, name: `Story ${i + 101}` })) },
+          total: 1000,
+          perPage: 100,
+          status: 200,
+        });
+
+      client.makeRequest = mockMakeRequestFixed;
+      await client.getAll('cdn/stories', { version: 'draft' });
+
+      // Should make 10 requests (1 + 9) using firstRes.perPage = 100
+      expect(mockMakeRequestFixed).toHaveBeenCalledTimes(10);
+    });
+
+    it('should fall back to client perPage when API does not return perPage', async () => {
+      // Test fallback behavior when API doesn't return perPage
+      const mockMakeRequestFallback = vi.fn()
+        .mockResolvedValueOnce({
+          data: { stories: Array.from({ length: 25 }, (_, i) => ({ id: i + 1, name: `Story ${i + 1}` })) },
+          total: 100, // Total stories
+          // perPage: undefined, // API doesn't return perPage
+          status: 200,
+        })
+        .mockResolvedValue({
+          data: { stories: Array.from({ length: 25 }, (_, i) => ({ id: i + 26, name: `Story ${i + 26}` })) },
+          total: 100,
+          status: 200,
+        });
+
+      client.makeRequest = mockMakeRequestFallback;
+      await client.getAll('cdn/stories', { version: 'draft' });
+
+      // Should fall back to client default perPage = 25: Math.ceil(100/25) = 4 requests
+      expect(mockMakeRequestFallback).toHaveBeenCalledTimes(4);
+    });
   });
 
   describe('post', () => {

@@ -32,6 +32,10 @@ apis:
     root: resources/presets/presets.yaml
     output: ./dist/presets.yaml
     title: Presets
+  assets:
+    root: resources/assets/assets.yaml
+    output: ./dist/assets.yaml
+    title: Assets
 
 
 # Linting rules

@@ -262,7 +262,7 @@ class Storyblok {
       firstPage,
       fetchOptions,
     );
-    const lastPage = firstRes.total ? Math.ceil(firstRes.total / perPage) : 1;
+    const lastPage = firstRes.total ? Math.ceil(firstRes.total / (firstRes.perPage || perPage)) : 1;
 
     const restRes: any = await asyncMap(
       range(firstPage, lastPage),

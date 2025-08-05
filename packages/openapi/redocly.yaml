@@ -1,4 +1,9 @@
-# Redocly configuration for multiple API specifications
+# Branding and customization
+logo:
+  link: https://www.storyblok.com
+  altText: Storyblok
+  image: https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg
+  srcSet: "https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg light, https://www.storyblok.com/_astro/logotype-white.0LhNMJ6k.svg dark"
 apis:
   stories:
     root: resources/stories/stories.yaml

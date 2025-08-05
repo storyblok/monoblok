@@ -1,9 +1,4 @@
-import type {
-  SpaceComponent,
-  SpaceComponentGroup,
-  SpaceComponentInternalTag,
-  SpaceComponentPreset,
-} from '../../constants';
+import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../../constants';
 import type { SpaceDatasource } from '../../../datasources/constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
@@ -596,8 +591,8 @@ class GraphNode<TSource extends NodeData> implements UnifiedNode<TSource> {
   }
 }
 
-export class TagNode extends GraphNode<SpaceComponentInternalTag> {
-  constructor(id: string, data: SpaceComponentInternalTag, targetTag?: SpaceComponentInternalTag) {
+export class TagNode extends GraphNode<InternalTag> {
+  constructor(id: string, data: InternalTag, targetTag?: InternalTag) {
     super(id, 'tag', data.name, data, targetTag);
   }
 

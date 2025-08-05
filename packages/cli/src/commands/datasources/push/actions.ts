@@ -11,13 +11,15 @@ export const pushDatasource = async (space: string, datasource: SpaceDatasource)
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      datasource: SpaceDatasource;
-    }>(`spaces/${space}/datasources`, {
-      body: JSON.stringify(datasource),
+    const { data } = await client.datasources.create({
+      throwOnError: true,
+      path: {
+        space_id: Number(space),
+      },
+      body: { datasource },
     });
 
-    return data.datasource;
+    return data.datasource as unknown as SpaceDatasource;
   }
   catch (error) {
     handleAPIError('push_datasource', error as Error, `Failed to push datasource ${datasource.name}`);
@@ -28,13 +30,16 @@ export const updateDatasource = async (space: string, datasourceId: number, data
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      datasource: SpaceDatasource;
-    }>(`spaces/${space}/datasources/${datasourceId}`, {
-      body: JSON.stringify(datasource),
+    const { data } = await client.datasources.update({
+      throwOnError: true,
+      path: {
+        space_id: Number(space),
+        datasource_id: datasourceId,
+      },
+      body: { datasource },
     });
 
-    return data.datasource;
+    return data.datasource as unknown as SpaceDatasource;
   }
   catch (error) {
     handleAPIError('update_datasource', error as Error, `Failed to update datasource ${datasource.name}`);
@@ -61,18 +66,20 @@ export const pushDatasourceEntry = async (space: string, datasourceId: number, e
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      datasource_entry: SpaceDatasourceEntry;
-    }>(`spaces/${space}/datasource_entries`, {
-      body: JSON.stringify({
+    const { data } = await client.datasourceEntries.create({
+      throwOnError: true,
+      path: {
+        space_id: Number(space),
+      },
+      body: {
         datasource_entry: {
           ...entry,
           datasource_id: datasourceId,
         },
-      }),
+      },
     });
 
-    return data.datasource_entry;
+    return data.datasource_entry as unknown as SpaceDatasourceEntry;
   }
   catch (error) {
     handleAPIError('push_datasource', error as Error, `Failed to push datasource entry ${entry.name}`);
@@ -90,12 +97,15 @@ export const updateDatasourceEntry = async (space: string, entryId: number, entr
   try {
     const client = mapiClient();
 
-    await client.put<{
-      datasource_entry: SpaceDatasourceEntry;
-    }>(`spaces/${space}/datasource_entries/${entryId}`, {
-      body: JSON.stringify({
+    await client.datasourceEntries.updateDatasourceEntry({
+      throwOnError: true,
+      path: {
+        space_id: Number(space),
+        datasource_entry_id: entryId,
+      },
+      body: {
         datasource_entry: entry,
-      }),
+      },
     });
     // The API does not return the updated entry, returns a 204 No Content
   }

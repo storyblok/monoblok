@@ -1,7 +1,7 @@
 {
   "name": "storyblok",
   "type": "module",
-  "version": "4.3.0",
+  "version": "4.3.1",
   "packageManager": "pnpm@10.10.0",
   "description": "Storyblok CLI",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
@@ -39,13 +39,13 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
-    "@sindresorhus/slugify": "^2.2.1",
     "@storyblok/js": "workspace:*",
     "@storyblok/region-helper": "workspace:*",
     "@topcli/spinner": "^2.1.2",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "dotenv": "^16.5.0",
+    "filenamify": "^6.0.0",
     "json-schema-to-typescript": "^15.0.4",
     "minimatch": "^10.0.3",
     "octokit": "^5.0.3",

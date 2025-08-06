@@ -1,0 +1,256 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Presets API
+  version: 1.0.0
+  description: API for managing Storyblok presets
+servers:
+  $ref: ../../shared/servers.yaml
+security:
+  $ref: ../../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/presets:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Presets
+      description: Returns an array of preset objects.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - name: component_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter presets by component ID
+      responses:
+        '200':
+          description: Successfully retrieved presets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  presets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Preset'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          $ref: ../../shared/responses.yaml#/NotFound
+    post:
+      operationId: create
+      summary: Create a Preset
+      description: This endpoint can be used to create new presets.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preset:
+                  $ref: '#/components/schemas/PresetCreate'
+      responses:
+        '201':
+          description: Successfully created preset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: '#/components/schemas/Preset'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          $ref: ../../shared/responses.yaml#/NotFound
+  /v1/spaces/{space_id}/presets/{preset_id}:
+    get:
+      operationId: get
+      summary: Retrieve a Single Preset
+      description: Returns a single preset object with a specific numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
+      responses:
+        '200':
+          description: Successfully retrieved preset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: '#/components/schemas/Preset'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          $ref: ../../shared/responses.yaml#/NotFound
+    put:
+      operationId: update
+      summary: Update a Preset
+      description: This endpoint can be used to update presets using the numeric ID.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                preset:
+                  $ref: '#/components/schemas/PresetUpdate'
+      responses:
+        '200':
+          description: Successfully updated preset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: '#/components/schemas/Preset'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          $ref: ../../shared/responses.yaml#/NotFound
+    delete:
+      operationId: delete
+      summary: Delete a Preset
+      description: Delete a preset by using its numeric id.
+      parameters:
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
+      responses:
+        '200':
+          description: Successfully deleted preset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: '#/components/schemas/Preset'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          $ref: ../../shared/responses.yaml#/NotFound
+components:
+  securitySchemes:
+    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    PresetCreate:
+      type: object
+      description: A Preset Object for creating new presets
+      required:
+        - name
+        - component_id
+      properties:
+        name:
+          type: string
+          description: Given name of your preset
+        preset:
+          type: object
+          description: Fields of the component filled with content
+          additionalProperties: true
+        component_id:
+          type: integer
+          description: The ID of the component the preset is for
+        image:
+          type: string
+          nullable: true
+          description: Screenshot or other preview image for your editor
+        color:
+          type: string
+          description: Color of the preset icon
+        icon:
+          type: string
+          description: Icon of the preset
+        description:
+          type: string
+          description: A description of the preset for the editors
+    PresetUpdate:
+      type: object
+      description: A Preset Object for updating existing presets
+      properties:
+        name:
+          type: string
+          description: Given name of your preset
+        preset:
+          type: object
+          description: Fields of the component filled with content
+          additionalProperties: true
+        component_id:
+          type: integer
+          description: The ID of the component the preset is for
+        image:
+          type: string
+          nullable: true
+          description: Screenshot or other preview image for your editors
+          default: null
+        color:
+          type: string
+          description: Color of the preset icon
+        icon:
+          type: string
+          description: Icon of the preset
+        description:
+          type: string
+          description: A description of the preset for the editors
+    Preset:
+      type: object
+      description: A Preset Object representing a content preset
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+          description: Numeric ID of your preset
+          readOnly: true
+        name:
+          type: string
+          description: Given name of your preset
+        preset:
+          type: object
+          description: Fields of the component filled with content
+          additionalProperties: true
+        component_id:
+          type: integer
+          description: The ID of the component the preset is for
+        space_id:
+          type: integer
+          description: Numeric ID of a space
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest update date
+        image:
+          type: string
+          description: Screenshot or other preview image for your editor
+        color:
+          type: string
+          description: Color of the preset icon
+        icon:
+          type: string
+          description: Icon of the preset
+        description:
+          type: string
+          description: A description of the preset for the editors 

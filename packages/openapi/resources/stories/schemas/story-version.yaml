@@ -1,0 +1,25 @@
+type: object
+description: A story version object
+properties:
+  id:
+    type: integer
+    description: Version ID
+  name:
+    type: string
+    description: Version name
+  created_at:
+    type: string
+    format: date-time
+    description: Version creation date
+  created_by:
+    type: object
+    description: User who created the version
+    properties:
+      id:
+        type: integer
+        description: User ID
+      name:
+        type: string
+        description: User name
+  story:
+    $ref: ./story.yaml 

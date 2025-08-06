@@ -1,0 +1,28 @@
+type: object
+required:
+  - story
+properties:
+  story:
+    allOf:
+      - $ref: ./story.yaml
+      - type: object
+        required:
+          - name
+          - slug
+  group_id:
+    type: string
+    description: Group ID (UUID string), shared between stories defined as alternates
+  force_update:
+    type: string
+    enum: [0, 1]
+    default: 0
+    description: If this is 1, the request can overwrite a locked story. Note that a user currently editing the story (which is why it was locked) will encounter a content conflict model. Importantly, note that force_update does not work when editing is locked for the workflow stage that the story currently is in
+  release_id:
+    type: integer
+    description: Numeric ID of release (optional)
+  publish:
+    type: integer
+    description: Should the story be published immediately (set 1 to publish)
+  lang:
+    type: string
+    description: Language code to publish the story individually (must be enabled in the space settings) 

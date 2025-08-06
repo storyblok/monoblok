@@ -1,0 +1,50 @@
+# Branding and customization
+logo:
+  link: https://www.storyblok.com
+  altText: Storyblok
+  image: https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg
+  srcSet: "https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg light, https://www.storyblok.com/_astro/logotype-white.0LhNMJ6k.svg dark"
+apis:
+  stories:
+    root: resources/stories/main.yaml
+    output: ./dist/stories.yaml
+    title: Stories
+  components:
+    root: resources/components/main.yaml
+    output: ./dist/components.yaml
+    title: Components
+  components-folders:
+    root: resources/component_folders/main.yaml
+    output: ./dist/component_folders.yaml
+    title: Component Folders
+  datasources:
+    root: resources/datasources/main.yaml
+    output: ./dist/datasources.yaml
+    title: Data Sources
+  datasource-entries:
+    root: resources/datasource_entries/main.yaml
+    output: ./dist/datasource_entries.yaml
+    title: Data Source Entries
+  internal-tags:
+    root: resources/internal_tags/main.yaml
+    output: ./dist/internal_tags.yaml
+    title: Internal Tags
+  spaces:
+    root: resources/spaces/main.yaml
+    output: ./dist/spaces.yaml
+    title: Spaces
+  presets:
+    root: resources/presets/main.yaml
+    output: ./dist/presets.yaml
+    title: Presets
+  assets:
+    root: resources/assets/main.yaml
+    output: ./dist/assets.yaml
+    title: Assets
+
+
+# Linting rules
+rules:
+  info-license: off
+  operation-4xx-response: off
+  operation-operationId: off 

@@ -174,10 +174,10 @@ describe('filesystem utils', async () => {
 
   describe('sanitizeFilename', () => {
     it('should convert strings to URL-friendly slugs', () => {
-      expect(sanitizeFilename('Country / Currency')).toBe('country-currency');
-      expect(sanitizeFilename('path/to/file')).toBe('path-to-file');
-      expect(sanitizeFilename('My Component Name')).toBe('my-component-name');
-      expect(sanitizeFilename('Special@Characters!')).toBe('special-characters');
+      expect(sanitizeFilename('Country / Currency')).toBe('Country _ Currency');
+      expect(sanitizeFilename('path/to/file')).toBe('path_to_file');
+      expect(sanitizeFilename('My Component Name')).toBe('My Component Name');
+      expect(sanitizeFilename('Special@Characters!')).toBe('Special@Characters!');
     });
   });
 });

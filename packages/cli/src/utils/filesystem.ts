@@ -1,8 +1,8 @@
 import { join, parse, resolve } from 'node:path';
 import { mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
-import slugify from '@sindresorhus/slugify';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
+import filenamify from 'filenamify';
 
 export interface FileOptions {
   mode?: number;
@@ -68,12 +68,15 @@ export const getComponentNameFromFilename = (filename: string): string => {
 };
 
 /**
- * Sanitizes a string to be safe for use as a filename by converting it to a slug
+ * Sanitizes a string to be safe for use as a filename by removing/replacing problematic characters
+ * https://github.com/parshap/node-sanitize-filename/blob/master/index.js
  * @param filename - The filename to sanitize
  * @returns A safe filename string
  */
 export const sanitizeFilename = (filename: string): string => {
-  return slugify(filename);
+  return filenamify(filename, {
+    replacement: '_',
+  });
 };
 
 export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {

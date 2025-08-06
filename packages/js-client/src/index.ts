@@ -64,7 +64,7 @@ const _VERSION = {
 type ObjectValues<T> = T[keyof T];
 type Version = ObjectValues<typeof _VERSION>;
 
-class Storyblok {
+export class Storyblok {
   private client: SbFetch;
   private maxRetries: number;
   private retriesDelay: number;

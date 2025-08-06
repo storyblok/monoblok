@@ -6,17 +6,16 @@ import type {
   SpaceComponentPreset,
   SpaceComponentsDataState,
 } from '../../constants';
-import type { SpaceDatasource } from '../../../datasources/constants';
 
 // =============================================================================
 // CORE TYPES
 // =============================================================================
 
 /** Types of nodes in our dependency graph */
-export type NodeType = 'component' | 'group' | 'tag' | 'preset' | 'datasource';
+export type NodeType = 'component' | 'group' | 'tag' | 'preset';
 
 /** Data that can be stored in a graph node */
-export type NodeData = SpaceComponent | SpaceComponentGroup | SpaceComponentInternalTag | SpaceComponentPreset | SpaceDatasource;
+export type NodeData = SpaceComponent | SpaceComponentGroup | SpaceComponentInternalTag | SpaceComponentPreset;
 
 /** Target resource information colocated with graph nodes */
 export interface TargetResourceInfo<T extends NodeData> {
@@ -57,7 +56,7 @@ export interface SchemaDependencies {
   groupUuids: Set<string>;
   tagIds: Set<number>;
   componentNames: Set<string>;
-  datasourceNames: Set<string>;
+  datasourceNames: Set<string>; // Note: Not processed by components push, kept for compatibility
 }
 
 // =============================================================================

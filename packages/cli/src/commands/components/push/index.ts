@@ -11,9 +11,7 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import { fetchDatasources } from '../../datasources/pull/actions';
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
-import type { SpaceDatasource } from '../../datasources/constants';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -75,8 +73,8 @@ componentsCommand
         space,
       });
 
-      // Combine into the expected structure with empty datasources array
-      // Datasources will be stubbed based on detected dependencies
+      // Combine into the expected structure
+      // Note: Datasources are not managed by the components push command
       const localData: SpaceComponentsData = {
         ...componentsData,
         datasources: [],
@@ -99,9 +97,8 @@ componentsCommand
         fetchComponentGroups(space),
         fetchComponentPresets(space),
         fetchComponentInternalTags(space),
-        fetchDatasources(space),
       ];
-      const [components, groups, presets, internalTags, datasources] = await Promise.all(promises);
+      const [components, groups, presets, internalTags] = await Promise.all(promises);
 
       if (components) {
         (components as SpaceComponent[]).forEach((component) => {
@@ -131,12 +128,6 @@ componentsCommand
       if (internalTags) {
         (internalTags as SpaceComponentInternalTag[]).forEach((tag) => {
           spaceState.target.tags.set(tag.name, tag);
-        });
-      }
-
-      if (datasources) {
-        (datasources as SpaceDatasource[]).forEach((datasource) => {
-          spaceState.target.datasources.set(datasource.name, datasource);
         });
       }
 
@@ -186,6 +177,29 @@ componentsCommand
         }
       }
       console.log(`${requestCount} requests made`);
+
+      // Check if components reference datasources and inform user
+      const referencedDatasources = new Set<string>();
+      spaceState.local.components.forEach((component) => {
+        if (component.schema) {
+          const fields = JSON.stringify(component.schema);
+          const datasourceMatches = fields.match(/"datasource_slug"\s*:\s*"([^"]+)"/g);
+          if (datasourceMatches) {
+            datasourceMatches.forEach((match) => {
+              const slug = match.match(/"([^"]+)"$/)?.[1];
+              if (slug) {
+                referencedDatasources.add(slug);
+              }
+            });
+          }
+        }
+      });
+
+      if (referencedDatasources.size > 0) {
+        konsola.br();
+        konsola.info(`Components reference datasources: ${chalk.yellow(Array.from(referencedDatasources).join(', '))}`);
+        konsola.info(`To manage datasources, use: ${chalk.cyan('storyblok datasources push')}`);
+      }
     }
     catch (error) {
       handleError(error as Error, verbose);

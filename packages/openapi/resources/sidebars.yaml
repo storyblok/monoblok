@@ -1,19 +1,19 @@
 # API Resources sidebar
-- page: stories/stories.yaml
+- page: stories/main.yaml
   group: Stories
-- page: components/components.yaml
+- page: components/main.yaml
   group: Components
-- page: component_folders/component_folders.yaml
+- page: component_folders/main.yaml
   group: Component Folders
-- page: datasources/datasources.yaml
+- page: datasources/main.yaml
   group: Data Sources
-- page: datasource_entries/datasource_entries.yaml
+- page: datasource_entries/main.yaml
   group: Data Source Entries
-- page: internal_tags/internal_tags.yaml
+- page: internal_tags/main.yaml
   group: Internal Tags
-- page: spaces/spaces.yaml
+- page: spaces/main.yaml
   group: Spaces
-- page: presets/presets.yaml
+- page: presets/main.yaml
   group: Presets
-- page: assets/assets.yaml
+- page: assets/main.yaml
   group: Assets

@@ -32,8 +32,6 @@ migrationsCommand.command('rollback [migrationFile]')
       return;
     }
 
-    const { password, region } = state;
-
     try {
       // Read the rollback data
       const rollbackData = await readRollbackFile({
@@ -46,7 +44,7 @@ migrationsCommand.command('rollback [migrationFile]')
       for (const story of rollbackData.stories) {
         const spinner = new Spinner({ verbose }).start(`Restoring story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}...`);
         try {
-          await updateStory(space, password, region, story.storyId, {
+          await updateStory(space, story.storyId, {
             story: {
               content: story.content,
               id: story.storyId,

@@ -105,6 +105,7 @@ export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, compo
       groups: [],
       internalTags: [],
       presets: [],
+      datasources: [],
     };
   }
 
@@ -127,6 +128,7 @@ export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, compo
     groups: filteredGroups,
     internalTags: filteredTags,
     presets: filteredPresets,
+    datasources: [],
   };
 }
 
@@ -145,6 +147,7 @@ export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern
       groups: [],
       internalTags: [],
       presets: [],
+      datasources: [],
     };
   }
 
@@ -167,5 +170,6 @@ export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern
     groups: filteredGroups,
     internalTags: filteredTags,
     presets: filteredPresets,
+    datasources: [],
   };
 }

@@ -41,6 +41,7 @@
     "build": "pnpm package",
     "preview": "vite preview",
     "package": "svelte-kit sync && svelte-package && publint",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

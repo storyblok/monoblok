@@ -43,6 +43,17 @@
         "default": "./dist/markdown-parser.cjs"
       },
       "umd": "./dist/markdown-parser.umd.js"
+    },
+    "./html-parser": {
+      "import": {
+        "types": "./dist/html-parser.d.ts",
+        "default": "./dist/html-parser.js"
+      },
+      "require": {
+        "types": "./dist/html-parser.d.cts",
+        "default": "./dist/html-parser.cjs"
+      },
+      "umd": "./dist/html-parser.umd.js"
     }
   },
   "main": "./dist/index.js",
@@ -50,7 +61,8 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "markdown-parser": ["./dist/markdown-parser.d.ts"]
+      "markdown-parser": ["./dist/markdown-parser.d.ts"],
+      "html-parser": ["./dist/html-parser.d.ts"]
     }
   },
   "files": [
@@ -79,7 +91,8 @@
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
-    "markdown-it-github": "^0.5.0"
+    "markdown-it-github": "^0.5.0",
+    "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",

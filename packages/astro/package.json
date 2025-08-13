@@ -55,6 +55,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc --project tsconfig.json",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "playground": "pnpm run --filter ./playground/ssg dev",
     "playground:ssr": "pnpm run --filter ./playground/ssr dev",
     "playground:test": "pnpm run --filter ./playground/test dev",

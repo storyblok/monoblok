@@ -35,6 +35,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "build": "tsdown",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "watch": "tsdown --watch"
   },
   "peerDependencies": {

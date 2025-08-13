@@ -44,6 +44,7 @@
     "build:watch": "tsdown --watch",
     "build:packages": "pnpm -r --filter='./packages/*' run build",
     "preview": "vite preview",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:packages": "pnpm -r --parallel --filter='./packages/*' run lint",

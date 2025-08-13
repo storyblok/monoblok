@@ -36,6 +36,8 @@ import type {
   ISbStoryParams,
 } from './interfaces';
 
+export * from './interfaces';
+
 let memory: Partial<IMemoryType> = {};
 
 const cacheVersions = {} as CachedVersions;

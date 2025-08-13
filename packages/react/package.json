@@ -42,6 +42,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

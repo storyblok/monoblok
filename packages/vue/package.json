@@ -37,6 +37,7 @@
     "test:unit:ui": "vitest --ui",
     "test:e2e": "pnpm run cy:components",
     "build": "vite build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "cy:run": "cypress run",

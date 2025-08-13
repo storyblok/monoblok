@@ -103,8 +103,6 @@ describe('migrations rollback command', () => {
     expect(updateStory).toHaveBeenCalledTimes(2);
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       1,
       {
         story: {
@@ -117,8 +115,6 @@ describe('migrations rollback command', () => {
     );
     expect(updateStory).toHaveBeenCalledWith(
       '12345',
-      'valid-token',
-      'eu',
       2,
       {
         story: {

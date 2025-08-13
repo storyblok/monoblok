@@ -41,6 +41,7 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

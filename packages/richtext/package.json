@@ -61,7 +61,8 @@
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
-    "markdown-it-github": "^0.5.0"
+    "markdown-it-github": "^0.5.0",
+    "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",

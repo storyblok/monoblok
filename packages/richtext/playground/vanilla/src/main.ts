@@ -1,6 +1,7 @@
-import { BlockTypes, markdownToStoryblokRichtext, richTextResolver } from '@storyblok/richtext';
+import { BlockTypes, htmlToStoryblokRichtext, markdownToStoryblokRichtext, richTextResolver } from '@storyblok/richtext';
 import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
+import testHTML from '/test.html?url&raw';
 
 const markdownToStoryblokDoc = markdownToStoryblokRichtext(test, /*  {
   resolvers: {
@@ -16,6 +17,11 @@ const markdownToStoryblokDoc = markdownToStoryblokRichtext(test, /*  {
 
 // eslint-disable-next-line no-console
 console.log({ markdownToStoryblokDoc });
+
+const htmlToStoryblokDoc = htmlToStoryblokRichtext(testHTML);
+
+// eslint-disable-next-line no-console
+console.log({ htmlToStoryblokDoc });
 
 /* const test = {
   type: 'doc',
@@ -711,10 +717,15 @@ const options: StoryblokRichTextOptions<string> = {
   },
 };
 
-const html = richTextResolver(options).render(markdownToStoryblokDoc);
+const htmlFromMarkdown = richTextResolver(options).render(markdownToStoryblokDoc);
+const htmlFromHtml = richTextResolver(options).render(htmlToStoryblokDoc);
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="this-div-is-on-purpose">
-  ${html}
+  ${htmlFromMarkdown}
+  <hr />
+  <hr />
+  <hr />
+  ${htmlFromHtml}
   </div>
 `;

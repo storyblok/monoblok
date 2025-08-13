@@ -1,25 +1,38 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
 import { useStoryblokApi } from "@storyblok/astro";
 import { richTextResolver } from "@storyblok/richtext";
 import { markdownToStoryblokRichtext } from "@storyblok/richtext/markdown-parser";
+import { htmlToStoryblokRichtext } from "@storyblok/richtext/html-parser";
 
 const storyblokApi = useStoryblokApi();
 const { data } = await storyblokApi.get("cdn/stories/home", {
   version: "draft",
 });
+const renderedRichTextStory = richTextResolver().render(data.story.content.richtext);
 
-import test from '/test.md?url&raw';
+import testMarkdown from '/test.md?url&raw';
 
-const markdownToStoryblokDoc = markdownToStoryblokRichtext(test);
-
+const markdownToStoryblokDoc = markdownToStoryblokRichtext(testMarkdown);
 console.log({ markdownToStoryblokDoc });
+const renderedRichTextMarkdown = richTextResolver().render(markdownToStoryblokDoc);
 
-const renderedRichText = richTextResolver().render(data.story.content.richtext);
+import testHTML from '/test.html?url&raw';
+
+const htmlToStoryblokDoc = htmlToStoryblokRichtext(testHTML);
+console.log({ markdownToStoryblokDoc });
+const renderedRichTextHTML = richTextResolver().render(htmlToStoryblokDoc);
 
 ---
 
 <Layout>
-	<div set:html={renderedRichText} />
+	<div set:html={renderedRichTextStory} />
+  <hr />
+  <hr />
+  <hr />
+  <div set:html={renderedRichTextMarkdown} />
+  <hr />
+  <hr />
+  <hr />
+  <div set:html={renderedRichTextHTML} />
 </Layout>

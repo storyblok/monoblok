@@ -15,6 +15,7 @@ export default [
     entry: {
       'index': './src/index.ts',
       'markdown-parser': './src/markdown-parser.ts',
+      'html-parser': './src/html-parser.ts',
     },
     format: 'esm',
   }),
@@ -36,6 +37,19 @@ export default [
     outputOptions: {
       globals: {
         'markdown-it': 'markdownit',
+      },
+    },
+  }),
+  defineConfig({
+    ...sharedConfig,
+    entry: {
+      'html-parser': './src/html-parser.ts',
+    },
+    format: ['cjs', 'umd'],
+    globalName: 'StoryblokRichtextHtmlParser',
+    outputOptions: {
+      globals: {
+        'node-html-parser': 'NodeHtmlParser',
       },
     },
   }),

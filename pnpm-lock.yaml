@@ -921,6 +921,9 @@ importers:
       markdown-it-github:
         specifier: ^0.5.0
         version: 0.5.0
+      node-html-parser:
+        specifier: ^7.0.1
+        version: 7.0.1
     devDependencies:
       '@arethetypeswrong/core':
         specifier: ^0.18.2
@@ -10539,6 +10542,9 @@ packages:
 
   node-html-parser@5.3.3:
     resolution: {integrity: sha512-ncg1033CaX9UexbyA7e1N0aAoAYRDiV8jkTvzEnfd1GDvzFdrsXLzR4p4ik8mwLgnaKP/jyUFWDy9q3jvRT2Jw==}
+
+  node-html-parser@7.0.1:
+    resolution: {integrity: sha512-KGtmPY2kS0thCWGK0VuPyOS+pBKhhe8gXztzA2ilAOhbUbxa9homF1bOyKvhGzMLXUoRds9IOmr/v5lr/lqNmA==}
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
@@ -25567,6 +25573,11 @@ snapshots:
   node-html-parser@5.3.3:
     dependencies:
       css-select: 4.3.0
+      he: 1.2.0
+
+  node-html-parser@7.0.1:
+    dependencies:
+      css-select: 5.1.0
       he: 1.2.0
 
   node-int64@0.4.0: {}

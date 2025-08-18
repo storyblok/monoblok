@@ -4,7 +4,6 @@ import { storyblokLogo } from '../dev-toolbar/toolbarApp';
 import { vitePluginStoryblokComponents } from '../vite-plugins/vite-plugin-storyblok-components';
 import { vitePluginStoryblokInit } from '../vite-plugins/vite-plugin-storyblok-init';
 import { vitePluginStoryblokOptions } from '../vite-plugins/vite-plugin-storyblok-options';
-import { initStoryblokBridge } from './helpers';
 
 export interface IntegrationOptions {
   /**
@@ -66,7 +65,24 @@ export default function storyblokIntegration(
     livePreview: false,
     ...options,
   };
-  const initBridge = initStoryblokBridge(resolvedOptions.bridge);
+
+  const bridgeConfig
+    = typeof resolvedOptions.bridge === 'object'
+      ? JSON.stringify(resolvedOptions.bridge)
+      : '';
+  const bridgeInitScript = `
+  import { loadStoryblokBridge } from "@storyblok/astro";
+  import { handleStoryblokMessage } from "@storyblok/astro";
+
+  loadStoryblokBridge().then(() => {
+    if (!window.__sbInstance) {
+      const { StoryblokBridge } = window;
+      window.__sbInstance = new StoryblokBridge(${bridgeConfig});
+      // console.log("[Storyblok] Bridge initialized once");
+    }
+    const storyblokInstance = window.__sbInstance;
+`;
+
   return {
     name: '@storyblok/astro',
     hooks: {
@@ -113,17 +129,13 @@ export default function storyblokIntegration(
         if (resolvedOptions.bridge && !resolvedOptions.livePreview) {
           injectScript(
             'page',
-            `import { loadStoryblokBridge } from "@storyblok/astro";
-              loadStoryblokBridge().then(() => {
-                const { StoryblokBridge, location } = window;
-                ${initBridge}
-                storyblokInstance.on(["published", "change"], (event) => {
-                  if (!event.slugChanged) {
-                    location.reload(true);
-                  } 
-                });
+            `${bridgeInitScript}
+              storyblokInstance.on(["published", "change"], (event) => {
+                if (!event.slugChanged) {
+                  location.reload(true);
+                }
               });
-              `,
+            });`,
           );
         }
 
@@ -131,13 +143,9 @@ export default function storyblokIntegration(
         if (resolvedOptions.livePreview) {
           injectScript(
             'page',
-            `import { loadStoryblokBridge, handleStoryblokMessage } from "@storyblok/astro";
-                loadStoryblokBridge().then(() => {
-                  const { StoryblokBridge, location } = window;
-                  ${initBridge}
-                  storyblokInstance.on(["published", "change", "input"], handleStoryblokMessage);
-                });
-              `,
+            `${bridgeInitScript}
+              storyblokInstance.on(["published", "change", "input"], handleStoryblokMessage);
+            });`,
           );
           addMiddleware({
             entrypoint: '@storyblok/astro/middleware.ts',

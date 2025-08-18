@@ -1,8 +1,4 @@
-import type {
-  ISbStoryData,
-  StoryblokBridgeConfigV2,
-  StoryblokClient,
-} from '../types';
+import type { ISbStoryData, StoryblokClient } from '../types';
 import type { AstroGlobal } from 'astro';
 
 export function useStoryblokApi(): StoryblokClient {
@@ -12,21 +8,15 @@ export function useStoryblokApi(): StoryblokClient {
   return globalThis.storyblokApiInstance;
 }
 
+/**
+ * Retrieves the current live Storyblok story during preview mode.
+ *
+ * @param Astro - The Astro global object provided in server-side rendering.
+ * @returns The live Storyblok story data if available, otherwise `null`.
+ */
 // TODO: should we pass the Astro object to this function or only the locals object?
-export async function getLiveStory(Astro: AstroGlobal) {
-  let story: ISbStoryData | null = null;
-  if (Astro && Astro.locals._storyblok_preview_data) {
-    story = Astro.locals._storyblok_preview_data;
-  }
-  return story;
-}
-
-export function initStoryblokBridge(
-  config: boolean | StoryblokBridgeConfigV2,
-): string {
-  if (typeof config === 'object') {
-    const bridgeConfig = JSON.stringify(config);
-    return `const storyblokInstance = new StoryblokBridge(${bridgeConfig});`;
-  }
-  return 'const storyblokInstance = new StoryblokBridge();';
+export async function getLiveStory(
+  Astro: Readonly<AstroGlobal>,
+): Promise<ISbStoryData | null> {
+  return Astro.locals?._storyblok_preview_data ?? null;
 }

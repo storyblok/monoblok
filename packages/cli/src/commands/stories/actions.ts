@@ -49,7 +49,10 @@ export const fetchStories = async (
 
       // Since per_page and total may not be available, check if we got fewer stories than requested
       // If we got fewer stories than per_page, we've reached the end
-      hasMorePages = data.stories.length === perPage;
+      hasMorePages = data.stories.length === perPage && data.stories.length > 0;
+      if (data.stories.length < perPage) {
+        break;
+      }
       currentPage++;
     }
 

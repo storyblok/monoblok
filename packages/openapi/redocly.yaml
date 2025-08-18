@@ -6,40 +6,40 @@ logo:
   srcSet: "https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg light, https://www.storyblok.com/_astro/logotype-white.0LhNMJ6k.svg dark"
 apis:
   stories:
-    root: resources/stories/main.yaml
-    output: ./dist/stories.yaml
+    root: resources/mapi/stories/main.yaml
+    output: ./dist/mapi/stories.yaml
     title: Stories
   components:
-    root: resources/components/main.yaml
-    output: ./dist/components.yaml
+    root: resources/mapi/components/main.yaml
+    output: ./dist/mapi/components.yaml
     title: Components
   components-folders:
-    root: resources/component_folders/main.yaml
-    output: ./dist/component_folders.yaml
+    root: resources/mapi/component_folders/main.yaml
+    output: ./dist/mapi/component_folders.yaml
     title: Component Folders
   datasources:
-    root: resources/datasources/main.yaml
-    output: ./dist/datasources.yaml
+    root: resources/mapi/datasources/main.yaml
+    output: ./dist/mapi/datasources.yaml
     title: Data Sources
   datasource-entries:
-    root: resources/datasource_entries/main.yaml
-    output: ./dist/datasource_entries.yaml
+    root: resources/mapi/datasource_entries/main.yaml
+    output: ./dist/mapi/datasource_entries.yaml
     title: Data Source Entries
   internal-tags:
-    root: resources/internal_tags/main.yaml
-    output: ./dist/internal_tags.yaml
+    root: resources/mapi/internal_tags/main.yaml
+    output: ./dist/mapi/internal_tags.yaml
     title: Internal Tags
   spaces:
-    root: resources/spaces/main.yaml
-    output: ./dist/spaces.yaml
+    root: resources/mapi/spaces/main.yaml
+    output: ./dist/mapi/spaces.yaml
     title: Spaces
   presets:
-    root: resources/presets/main.yaml
-    output: ./dist/presets.yaml
+    root: resources/mapi/presets/main.yaml
+    output: ./dist/mapi/presets.yaml
     title: Presets
   assets:
-    root: resources/assets/main.yaml
-    output: ./dist/assets.yaml
+    root: resources/mapi/assets/main.yaml
+    output: ./dist/mapi/assets.yaml
     title: Assets
 
 

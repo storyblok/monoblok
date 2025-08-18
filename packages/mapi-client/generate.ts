@@ -23,7 +23,7 @@ async function main() {
     const OPENAPI_PATH = openapiPackages[0].path;
 
     // Find all yaml files in the resources folder
-    const yamlFiles = await glob('dist/*.yaml', { cwd: OPENAPI_PATH });
+    const yamlFiles = await glob('dist/mapi/*.yaml', { cwd: OPENAPI_PATH });
     
     if (yamlFiles.length === 0) {
       console.log('No YAML files found in OpenAPI dist folder');

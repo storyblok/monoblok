@@ -83,7 +83,7 @@
     "@storyblok/eslint-config": "workspace:*",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/node": "^22.15.18",
-    "astro": "^5.12.9",
+    "astro": "^5.13.2",
     "cypress": "^14.3.3",
     "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.0.1",

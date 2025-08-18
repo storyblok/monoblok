@@ -13,7 +13,7 @@ export function useStoryblokApi(): StoryblokClient {
 }
 
 // TODO: should we pass the Astro object to this function or only the locals object?
-export async function getLiveStory(Astro: Readonly<AstroGlobal>) {
+export async function getLiveStory(Astro: AstroGlobal) {
   let story: ISbStoryData | null = null;
   if (Astro && Astro.locals._storyblok_preview_data) {
     story = Astro.locals._storyblok_preview_data;

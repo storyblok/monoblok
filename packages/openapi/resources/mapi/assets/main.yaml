@@ -15,7 +15,7 @@ servers:
   - url: https://app.storyblok.cn
     description: Base URL for spaces created in China
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/assets:
     get:
@@ -23,7 +23,7 @@ paths:
       summary: Retrieve Multiple Assets
       description: Returns an array of asset objects. This endpoint is paginated.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: in_folder
           in: query
           required: false
@@ -96,7 +96,7 @@ paths:
       summary: Upload Asset
       description: Step 1 of the upload process. Get a signed response object for uploading assets. This is the first step in a three-step upload process.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -140,8 +140,8 @@ paths:
       summary: Retrieve One Asset
       description: Returns a single asset object by providing a specific numeric id.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/asset_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_id
       responses:
         '200':
           description: Asset details
@@ -163,8 +163,8 @@ paths:
       summary: Update Asset
       description: Update an asset using the numeric ID of the asset.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/asset_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_id
       requestBody:
         required: true
         content:
@@ -234,8 +234,8 @@ paths:
       summary: Delete an Asset
       description: Delete an asset by using its numeric id.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/asset_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_id
       responses:
         '200':
           description: Asset deleted
@@ -258,7 +258,7 @@ paths:
       summary: Finish Asset Upload
       description: Step 3 of the upload process. Finalize the upload process after the file has been uploaded to S3. This is the final step in a three-step upload process.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: signed_response_object_id
           in: path
           required: true
@@ -289,7 +289,7 @@ paths:
       summary: Delete Multiple Assets
       description: Delete multiple assets by using their numeric IDs.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -328,7 +328,7 @@ paths:
       summary: Bulk Moving of Assets
       description: This endpoint allows moving multiple assets using their IDs to a specific folder.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -371,7 +371,7 @@ paths:
       summary: Bulk Restoration of Deleted Assets
       description: To bulk restoration of deleted assets, pass bulk_restore after assets in the endpoint. Inside of the array from the payload should contain the asset IDs that you want to restore.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -406,7 +406,7 @@ paths:
           description: Space not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Asset:
       type: object

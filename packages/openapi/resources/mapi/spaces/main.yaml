@@ -4,9 +4,9 @@ info:
   version: 1.0.0
   description: API for managing Storyblok spaces
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces:
     get:
@@ -67,7 +67,7 @@ paths:
       summary: Retrieve a Single Space
       description: Returns a single space object by providing a specific numeric id.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       responses:
         '200':
           description: Space details
@@ -89,7 +89,7 @@ paths:
       summary: Update a Space
       description: Update a space using the numeric ID. You can only able to update the properties mentioned here.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -122,7 +122,7 @@ paths:
       summary: Delete a Space
       description: Delete a space by its numeric id.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       responses:
         '200':
           description: Space deleted
@@ -141,7 +141,7 @@ paths:
           description: Space not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Space:
       type: object

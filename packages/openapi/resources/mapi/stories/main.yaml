@@ -4,16 +4,16 @@ info:
   version: 1.0.0
   description: API for managing Storyblok stories
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/stories:
     get:
       operationId: list
       summary: Retrieve Multiple Stories
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: page
           in: query
           required: false
@@ -253,7 +253,7 @@ paths:
       operationId: create
       summary: Create a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: release_id
           in: query
           required: false
@@ -317,8 +317,8 @@ paths:
       operationId: get
       summary: Retrieve One Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: uuid
           in: query
           required: false
@@ -351,8 +351,8 @@ paths:
       operationId: updateStory
       summary: Update a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: release_id
           in: query
           required: false
@@ -403,8 +403,8 @@ paths:
       operationId: delete
       summary: Delete a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
       responses:
         '200':
           description: Story deleted
@@ -426,8 +426,8 @@ paths:
       operationId: duplicate
       summary: Duplicate a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: release_id
           in: query
           required: false
@@ -473,8 +473,8 @@ paths:
       operationId: publish
       summary: Publish a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: lang
           in: query
           required: false
@@ -508,8 +508,8 @@ paths:
       operationId: unpublish
       summary: Unpublish a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: lang
           in: query
           required: false
@@ -543,8 +543,8 @@ paths:
       operationId: export
       summary: Export a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: false
@@ -584,8 +584,8 @@ paths:
       operationId: import
       summary: Import a Story
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: false
@@ -643,8 +643,8 @@ paths:
       operationId: translate
       summary: Translate a Story by AI
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
       requestBody:
         required: true
         content:
@@ -689,7 +689,7 @@ paths:
       operationId: versions
       summary: Get Story Versions (New)
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: by_story_id
           in: query
           required: false
@@ -802,8 +802,8 @@ paths:
       operationId: restoreVersions
       summary: Restore a Story Version
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: versions_v2
           in: query
           required: true
@@ -844,8 +844,8 @@ paths:
       summary: Compare a Story Version
       description: Compare the changes between two versions of a story in Storyblok. You need to provide the story `ID` and version `ID` in the request to retrieve the comparison results.
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/story_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
         - name: version
           in: query
           required: true
@@ -871,7 +871,7 @@ paths:
       operationId: getUnpublishedDependencies
       summary: Get Unpublished Dependencies
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -909,7 +909,7 @@ paths:
           description: Space not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Story:
       $ref: ./schemas/story.yaml

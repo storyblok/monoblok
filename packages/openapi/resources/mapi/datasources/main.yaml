@@ -4,16 +4,16 @@ info:
   version: 1.0.0
   description: API for managing Storyblok datasources
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/datasources:
     get:
       operationId: list
       summary: Retrieve Multiple Datasources
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: search
           in: query
           required: false
@@ -48,7 +48,7 @@ paths:
       operationId: create
       summary: Create a Datasource
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -76,7 +76,7 @@ paths:
       operationId: get
       summary: Retrieve One Datasource
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
@@ -103,7 +103,7 @@ paths:
       operationId: update
       summary: Update a Datasource
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
@@ -136,7 +136,7 @@ paths:
       operationId: delete
       summary: Delete a Datasource
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
@@ -154,7 +154,7 @@ paths:
           description: Datasource not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Datasource:
       type: object

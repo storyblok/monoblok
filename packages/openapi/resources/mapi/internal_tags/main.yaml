@@ -4,16 +4,16 @@ info:
   version: 1.0.0
   description: API for managing Storyblok internal tags
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/internal_tags:
     get:
       operationId: list
       summary: Retrieve Multiple Internal Tags
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: search
           in: query
           required: false
@@ -49,7 +49,7 @@ paths:
       operationId: create
       summary: Create an Internal Tag
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -77,7 +77,7 @@ paths:
       operationId: update
       summary: Update an Internal Tag
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: internal_tag_id
           in: path
           required: true
@@ -111,7 +111,7 @@ paths:
       operationId: delete
       summary: Delete an Internal Tag
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: internal_tag_id
           in: path
           required: true
@@ -129,7 +129,7 @@ paths:
           description: Internal tag not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     InternalTag:
       type: object

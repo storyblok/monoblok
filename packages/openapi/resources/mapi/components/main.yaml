@@ -4,9 +4,9 @@ info:
   version: 1.0.0
   description: API for managing Storyblok components
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/components:
     description: A component is a standalone entity that is meaningful in its own right. While components (or bloks) can be nested in each other, semantically they remain equal. Each component is a small piece of your data structure which can be filled with content. One component can consist of as many field types as required. The components endpoint allows you to retrieve, add, update, or delete components.
@@ -14,7 +14,7 @@ paths:
       operationId: list
       summary: Retrieve Multiple Components
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: by_ids
           in: query
           required: false
@@ -85,7 +85,7 @@ paths:
       operationId: create
       summary: Create a Component
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -117,8 +117,8 @@ paths:
       operationId: get
       summary: Retrieve One Component
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component details
@@ -139,8 +139,8 @@ paths:
       operationId: update
       summary: Update a Component
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
       requestBody:
         required: true
         content:
@@ -173,8 +173,8 @@ paths:
       operationId: deleteComponent
       summary: Delete a Component
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component deleted
@@ -197,8 +197,8 @@ paths:
       summary: Rename Component Attribute
       description: Rename an attribute within a component's schema
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
         - name: old_name
           in: query
           required: true
@@ -232,8 +232,8 @@ paths:
       summary: Restore Component
       description: Restore a component from its last version
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component restored
@@ -256,7 +256,7 @@ paths:
       summary: Bulk Move Components
       description: Update multiple components' group assignment
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -303,7 +303,7 @@ paths:
       operationId: versions
       summary: Retrieve Component Versions
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: page
           in: query
           required: false
@@ -379,8 +379,8 @@ paths:
       operationId: version
       summary: Retrieve a Single Component Version
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
-        - $ref: ../../shared/parameters.yaml#/component_id
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_id
         - name: version_id
           in: path
           required: true
@@ -413,7 +413,7 @@ paths:
       operationId: restoreVersion
       summary: Restore a Component Version
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: version_id
           in: path
           required: true
@@ -449,7 +449,7 @@ paths:
           description: Component or version not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Component:
       $ref: component.yaml

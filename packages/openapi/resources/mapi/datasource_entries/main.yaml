@@ -4,16 +4,16 @@ info:
   version: 1.0.0
   description: API for managing Storyblok datasource entries
 servers:
-  $ref: ../../shared/servers.yaml
+  $ref: ../shared/servers.yaml
 security:
-  $ref: ../../shared/security.yaml
+  $ref: ../shared/security.yaml
 paths:
   /v1/spaces/{space_id}/datasource_entries:
     get:
       operationId: list
       summary: Retrieve Multiple Datasource Entries
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: query
           required: false
@@ -54,7 +54,7 @@ paths:
       operationId: create
       summary: Create a Datasource Entry
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -82,7 +82,7 @@ paths:
       operationId: get
       summary: Retrieve a Single Datasource Entry
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_entry_id
           in: path
           required: true
@@ -109,7 +109,7 @@ paths:
       operationId: updateDatasourceEntry
       summary: Update a Datasource Entry
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_entry_id
           in: path
           required: true
@@ -142,7 +142,7 @@ paths:
       operationId: delete
       summary: Delete a Datasource Entry
       parameters:
-        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/space_id
         - name: datasource_entry_id
           in: path
           required: true
@@ -160,7 +160,7 @@ paths:
           description: Datasource entry not found
 components:
   securitySchemes:
-    $ref: ../../shared/security-schemes.yaml#/securitySchemes
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     DatasourceEntry:
       type: object

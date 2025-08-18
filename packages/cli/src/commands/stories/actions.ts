@@ -19,6 +19,7 @@ export const fetchStories = async (
     const allStories: Story[] = [];
     let currentPage = 1;
     let hasMorePages = true;
+    const perPage = 100;
 
     while (hasMorePages) {
       // Extract filter_query params to handle them separately
@@ -26,7 +27,7 @@ export const fetchStories = async (
 
       // Handle regular params with URLSearchParams
       const regularParams = new URLSearchParams({
-        ...objectToStringParams({ ...restParams, per_page: 100 }),
+        ...objectToStringParams({ ...restParams, per_page: perPage }),
         ...(currentPage > 1 && { page: currentPage.toString() }),
       }).toString();
 
@@ -39,16 +40,16 @@ export const fetchStories = async (
 
       const { data } = await client.get<{
         stories: Story[];
-        per_page: number;
-        total: number;
+        per_page?: number;
+        total?: number;
       }>(endpoint, {
       });
 
       allStories.push(...data.stories);
 
-      // Check if we have more pages to fetch
-      const totalPages = Math.ceil(data.total / data.per_page);
-      hasMorePages = currentPage < totalPages;
+      // Since per_page and total may not be available, check if we got fewer stories than requested
+      // If we got fewer stories than per_page, we've reached the end
+      hasMorePages = data.stories.length === perPage;
       currentPage++;
     }
 

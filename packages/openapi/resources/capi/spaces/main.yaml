@@ -1,0 +1,47 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Content Delivery API - Spaces
+  version: 1.0.0
+  description: |
+    Content Delivery API for retrieving Storyblok space information.
+    
+    This endpoint provides information about the space configuration and available languages.
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /cdn/spaces/me:
+    get:
+      operationId: getSpace
+      summary: Retrieve Space Information
+      description: |
+        Retrieve information about the current space.
+        
+        This endpoint returns space configuration including available languages,
+        domain settings, and other space metadata.
+      responses:
+        '200':
+          $ref: ../shared/responses.yaml#/SpaceResponse
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+        '403':
+          description: Forbidden - Token doesn't have access to this space
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+
+components: 
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes

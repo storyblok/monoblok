@@ -1,0 +1,47 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Content Delivery API - Assets
+  version: 1.0.0
+  description: |
+    Content Delivery API for retrieving Storyblok assets.
+    
+    This endpoint provides access to signed URLs for private assets.
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /cdn/assets/me:
+    get:
+      operationId: getSignedUrl
+      summary: Get Signed URL
+      description: |
+        This endpoint allows you to retrieve the signed URL for a private asset.
+        
+        Use this endpoint to access private assets that require authentication.
+      parameters:
+        - name: filename
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Full path of the asset, including the file name
+      responses:
+        '200':
+          $ref: ../shared/responses.yaml#/AssetResponse
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+
+components: 
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes

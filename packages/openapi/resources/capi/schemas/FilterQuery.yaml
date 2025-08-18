@@ -1,0 +1,135 @@
+type: object
+description: |
+  Filter query object for advanced story filtering.
+  
+  This schema represents the structure of filter queries used with the `filter_query` parameter.
+  Filter queries allow complex filtering operations on story content using JSON syntax.
+  
+  ## Basic Structure
+  ```json
+  {
+    "field_path": {
+      "$operation": "value"
+    }
+  }
+  ```
+  
+  ## Examples
+  
+  ### Simple field filtering:
+  ```json
+  {
+    "content.category": {
+      "$is": "news"
+    }
+  }
+  ```
+  
+  ### Multiple conditions with AND:
+  ```json
+  {
+    "$and": [
+      {
+        "content.category": {
+          "$is": "news"
+        }
+      },
+      {
+        "content.published": {
+          "$is": true
+        }
+      }
+    ]
+  }
+  ```
+  
+  ### Array operations:
+  ```json
+  {
+    "content.tags": {
+      "$any_in_array": ["featured", "breaking"]
+    }
+  }
+  ```
+  
+  ### Date range filtering:
+  ```json
+  {
+    "$and": [
+      {
+        "content.publish_date": {
+          "$gt_date": "2023-01-01"
+        }
+      },
+      {
+        "content.publish_date": {
+          "$lt_date": "2023-12-31"
+        }
+      }
+    ]
+  }
+  ```
+  
+  For complete documentation and all available operations, see [Filter Queries Documentation](../filter-queries.md).
+
+properties:
+  # This is a generic schema - actual properties depend on the specific filter query
+  # The schema is intentionally left minimal as filter queries are dynamic
+  _comment:
+    type: string
+    description: |
+      This schema represents the structure of filter queries.
+      Actual filter queries will have dynamic field names and operations.
+      
+      Common field paths:
+      - content.field_name - Direct content field
+      - content.field_name_lang - Language-specific field
+      - content.block.0.field - Nested block field
+      
+      Common operations:
+      - $is, $in, $not_in, $like, $not_like
+      - $any_in_array, $all_in_array
+      - $gt_date, $lt_date, $gt_int, $lt_int, $gt_float, $lt_float
+      - $and, $or, $not
+
+additionalProperties:
+  description: |
+    Filter query properties are dynamic and depend on the specific filtering needs.
+    Field names should match your content type structure.
+    Operations should use the supported filter operations.
+
+examples:
+  - summary: Simple category filter
+    value:
+      content:
+        category:
+          $is: "news"
+  
+  - summary: Tag-based filtering
+    value:
+      content:
+        tags:
+          $any_in_array: ["featured", "breaking"]
+  
+  - summary: Date range with multiple conditions
+    value:
+      $and:
+        - content:
+            category:
+              $is: "news"
+        - content:
+            publish_date:
+              $gt_date: "2023-01-01"
+        - content:
+            publish_date:
+              $lt_date: "2023-12-31"
+  
+  - summary: Multilingual content filtering
+    value:
+      $or:
+        - content:
+            title_en:
+              $like: "*breaking*"
+        - content:
+            title_de:
+              $like: "*wichtig*"

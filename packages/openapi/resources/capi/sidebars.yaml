@@ -1,0 +1,17 @@
+# API Resources sidebar
+- page: stories/main.yaml
+  group: Stories
+- page: spaces/main.yaml
+  group: Spaces
+- page: links/main.yaml
+  group: Links
+- page: datasources/main.yaml
+  group: Data Sources
+- page: datasource_entries/main.yaml
+  group: Data Source Entries
+- page: tags/main.yaml
+  group: Tags
+- page: assets/main.yaml
+  group: Assets
+- page: filter-queries.md
+

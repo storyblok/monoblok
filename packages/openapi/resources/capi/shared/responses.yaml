@@ -1,0 +1,183 @@
+
+StoryResponse:
+  description: A single story response
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/Story.yaml
+
+StoriesResponse:
+  description: Multiple stories response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          stories:
+            type: array
+            items:
+              $ref: ../schemas/Story.yaml
+          cv:
+            type: integer
+            description: Cache version
+          rels:
+            type: array
+            items:
+              $ref: ../schemas/Story.yaml
+            description: Related stories (when resolve_links=story)
+          links:
+            type: array
+            items:
+              $ref: ../schemas/Link.yaml
+            description: Related links (when resolve_links=url)
+
+SpaceResponse:
+  description: A single space response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          space:
+            $ref: ../schemas/Space.yaml
+        required:
+          - space
+
+SpacesResponse:
+  description: Multiple spaces response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          spaces:
+            type: array
+            items:
+              $ref: ../schemas/Space.yaml
+
+AssetResponse:
+  description: A single asset response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          asset:
+            $ref: ../schemas/Asset.yaml
+        required:
+          - asset
+
+AssetsResponse:
+  description: Multiple assets response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          assets:
+            type: array
+            items:
+              $ref: ../schemas/Asset.yaml
+        required:
+          - assets
+
+DatasourceResponse:
+  description: A single datasource response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          datasource:
+            $ref: ../schemas/Datasource.yaml
+          cv:
+            type: integer
+            description: Used to access a particular cached version of a published story by providing a Unix timestamp
+        required:
+          - datasource
+
+DatasourcesResponse:
+  description: Multiple datasources response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          datasources:
+            type: array
+            items:
+              $ref: ../schemas/Datasource.yaml
+          cv:
+            type: integer
+            description: Used to access a particular cached version of a published story by providing a Unix timestamp
+
+DatasourceEntriesResponse:
+  description: Multiple datasource entries response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          datasource_entries:
+            type: array
+            items:
+              $ref: ../schemas/DatasourceEntry.yaml
+          cv:
+            type: integer
+            description: Cached version Unix timestamp
+
+TagResponse:
+  description: A single tag response
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/Tag.yaml
+
+TagsResponse:
+  description: Multiple tags response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          tags:
+            type: array
+            items:
+              $ref: ../schemas/Tag.yaml
+
+LinkResponse:
+  description: A single link response
+  content:
+    application/json:
+      schema:
+        $ref: ../schemas/Link.yaml
+
+LinksResponse:
+  description: Multiple links response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          links:
+            type: object
+            description: An object of link objects, with each key constituting a link UUID
+            additionalProperties:
+              $ref: ../schemas/Link.yaml
+
+ErrorResponse:
+  description: Error response
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          message:
+            type: string
+            description: Error message
+          status:
+            type: integer
+            description: HTTP status code
+          error:
+            type: string
+            description: Error type

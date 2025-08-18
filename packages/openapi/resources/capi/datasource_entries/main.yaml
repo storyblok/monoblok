@@ -1,0 +1,71 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Content Delivery API - Data Source Entries
+  version: 1.0.0
+  description: |
+    Content Delivery API for retrieving Storyblok datasource entries.
+    
+    This endpoint provides access to datasource entries for dropdowns and select fields.
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /cdn/datasource_entries:
+    get:
+      operationId: getDatasourceEntries
+      summary: Retrieve Multiple Datasource Entries
+      description: |
+        Returns an array of datasource entry objects for the `datasource` and `dimension` defined.
+        
+        This endpoint is paginated by default, including a maximum of 1000 datasource entries in the response.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/cv
+        - name: datasource
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Datasource slug
+        - name: dimension
+          in: query
+          required: false
+          schema:
+            type: string
+          description: A dimension that is defined for a datasource (e.g., `dimension=en`)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 25
+          description: Number of datasource entries per page (max 1000)
+      responses:
+        '200':
+          $ref: ../shared/responses.yaml#/DatasourceEntriesResponse
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+
+components: 
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes

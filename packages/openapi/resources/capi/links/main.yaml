@@ -1,0 +1,87 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Content Delivery API - Links
+  version: 1.0.0
+  description: |
+    Content Delivery API for retrieving Storyblok links.
+    
+    This endpoint provides navigation links and story relationships.
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /cdn/links:
+    get:
+      operationId: getLinks
+      summary: Retrieve Navigation Links
+      description: |
+        Retrieve navigation links for the space.
+        
+        This endpoint returns the link structure for navigation menus and site maps.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/version
+        - $ref: ../shared/parameters.yaml#/cv
+        - $ref: ../shared/parameters.yaml#/starts_with
+        - name: with_parent
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: |
+            Filters links by `parent_id`. Can be set to `0` to return entries not located in a folder. 
+            In contrast, specifying a folder's `id` returns only entries located in this particular folder.
+        - name: include_dates
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 0
+          description: |
+            If set to `1`, the following fields are included in the response: `published_at`, `created_at`, `updated_at`.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 25
+          description: Number of links per page (max 1000)
+        - name: paginated
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+          description: |
+            For spaces created before May 9th, 2023, the links endpoint is not paginated by default. 
+            Setting this parameter to `1` enables pagination. This parameter does not impact spaces created after May 9th, 2023.
+      responses:
+        '200':
+          $ref: ../shared/responses.yaml#/LinksResponse
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: ../shared/responses.yaml#/ErrorResponse
+
+components: 
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes

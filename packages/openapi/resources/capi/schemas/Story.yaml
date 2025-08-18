@@ -1,0 +1,164 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: Unique story ID
+  uuid:
+    type: string
+    format: uuid
+    description: Unique story UUID
+  name:
+    type: string
+    description: Story name
+  slug:
+    type: string
+    description: Story slug
+  full_slug:
+    type: string
+    description: Full story path including parent folders
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp
+  published_at:
+    type: string
+    format: date-time
+    description: Publication timestamp
+  first_published_at:
+    type: string
+    format: date-time
+    description: First publication timestamp
+  updated_at:
+    type: string
+    format: date-time
+    description: Latest update date
+  content:
+    type: object
+    description: Story content based on the component schema
+    additionalProperties: true
+  position:
+    type: integer
+    description: Position within parent folder
+  tag_list:
+    type: array
+    items:
+      type: string
+    description: List of tags assigned to the story
+  is_startpage:
+    type: boolean
+    description: Whether this is the start page
+  parent_id:
+    type: integer
+    description: Parent story ID (if nested)
+  meta_data:
+    type: object
+    description: Object to store non-editable data that is exclusively maintained with the Management API
+    additionalProperties: true
+  group_id:
+    type: string
+    description: Group ID for grouped content
+  release_id:
+    type: integer
+    description: ID of the current release
+  lang:
+    type: string
+    description: Language code of the current language
+  path:
+    type: string
+    description: Value of the real path defined in the story's entry configuration
+  sort_by_date:
+    type: string
+    format: date
+    description: Date defined in the story's entry configuration
+  alternates:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The numeric ID
+        name:
+          type: string
+          description: The complete name provided for the story
+        slug:
+          type: string
+          description: The slug specific for the story
+        published:
+          type: boolean
+          description: True if a story is currently published, even if it has unpublished changes
+        full_slug:
+          type: string
+          description: The full slug of the story, combining the parent folder(s) and the designated story slug
+        is_folder:
+          type: boolean
+          description: True if the instance constitutes a folder
+        parent_id:
+          type: integer
+          description: ID of the parent folder
+      required:
+        - id
+        - name
+        - slug
+        - published
+        - full_slug
+        - is_folder
+    description: An array containing objects that provide basic data of the stories defined as alternates of the current story
+  default_full_slug:
+    type: string
+    description: Contains the complete slug of the default language (if the app Translatable Slugs is installed)
+  translated_slugs:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Value of the translated slug
+        name:
+          type: string
+          description: The complete name provided for the story
+        lang:
+          type: string
+          description: Language code of the current language
+        published:
+          type: boolean
+          description: True if a story is currently published, even if it has unpublished changes
+      required:
+        - path
+        - lang
+    description: Array of translated slug objects (if the app Translatable Slugs is installed)
+  meta:
+    type: object
+    properties:
+      first_published_at:
+        type: string
+        format: date-time
+      published_at:
+        type: string
+        format: date-time
+      unpublished_at:
+        type: string
+        format: date-time
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+      published:
+        type: boolean
+      unpublished:
+        type: boolean
+      sort_by_date:
+        type: string
+        format: date-time
+    description: Story metadata
+required:
+  - id
+  - uuid
+  - name
+  - slug
+  - full_slug
+  - created_at
+  - content

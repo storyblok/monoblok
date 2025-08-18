@@ -1,0 +1,272 @@
+
+version:
+  name: version
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [draft, published]
+    default: published
+  description: |
+    Version of the content to retrieve.
+    - `published`: Returns published content only (requires public token)
+    - `draft`: Returns draft content (requires preview token)
+
+cv:
+  name: cv
+  in: query
+  required: false
+  schema:
+    type: integer
+  description: |
+    Cache version. Used to invalidate cache when content changes.
+    Increment this value to force a cache refresh.
+
+resolve_links:
+  name: resolve_links
+  in: query
+  required: false
+  schema:
+    type: string
+    enum: [story, url, link, "0", "1"]
+  description: |
+    How to resolve links in the content.
+    - `story`: Resolve to full story objects
+    - `url`: Resolve to URLs only (minimum information)
+    - `link`: Provides access to additional information such as path, parent_id, is_folder, published, is_startpage, position, alternates, real_path, and more
+    - `0` or `1`: Legacy boolean values
+
+resolve_links_level:
+  name: resolve_links_level
+  in: query
+  required: false
+  schema:
+    type: integer
+    enum: [1, 2]
+    default: 1
+  description: |
+    Used to resolve up to two levels of links.
+    For example, if a story has a link field that references another story, the links in this story will also be resolved if `resolve_links_level` is set to `2`.
+
+resolve_relations:
+  name: resolve_relations
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Comma-separated list of relation field names to resolve.
+    Example: `post.categories,post.author`
+
+language:
+  name: language
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Language code for internationalized content.
+    Example: `en`, `de`, `fr`
+
+fallback_lang:
+  name: fallback_lang
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Fallback language when content is not available in the requested language.
+
+excluding_fields:
+  name: excluding_fields
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Comma-separated list of fields to exclude from the response.
+    Example: `content.body,content.image`
+
+by_slugs:
+  name: by_slugs
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Filter by story slugs. Multiple slugs can be provided as a comma-separated string.
+
+by_uuids:
+  name: by_uuids
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Filter by story UUIDs. Multiple UUIDs can be provided as a comma-separated string.
+
+by_ids:
+  name: by_ids
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Filter by story IDs. Multiple IDs can be provided as a comma-separated string.
+
+starts_with:
+  name: starts_with
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Filter stories starting with a specific slug.
+
+with_tag:
+  name: with_tag
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Filter by specific tag(s). Multiple tags can be provided as a comma-separated string.
+
+sort_by:
+  name: sort_by
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Sort entries by specific attribute and order.
+    Format: `content.YOUR_FIELD:asc` or `content.YOUR_FIELD:desc`
+    For numbers: append `:int` for integers or `:float` for floats.
+
+search_term:
+  name: search_term
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Search for content using full-text search.
+
+filter_query:
+  name: filter_query
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Advanced filtering using JSON query syntax.
+    Example: `{"component":{"$in":["post","article"]}}`
+
+excluding_slugs:
+  name: excluding_slugs
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Exclude stories by specifying comma-separated values of `full_slug`. 
+    It is possible to specify wildcards by using `*`.
+    Examples: `excluding_slugs=posts/my-third-post,posts/my-second-post`, `excluding_slugs=posts*`
+
+published_at_gt:
+  name: published_at_gt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories published after the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+published_at_lt:
+  name: published_at_lt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories published before the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+first_published_at_gt:
+  name: first_published_at_gt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories first published after the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+first_published_at_lt:
+  name: first_published_at_lt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories first published before the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+updated_at_gt:
+  name: updated_at_gt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories updated after the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+updated_at_lt:
+  name: updated_at_lt
+  in: query
+  required: false
+  schema:
+    type: string
+    format: date-time
+  description: |
+    Retrieve stories updated before the specified date.
+    Format: `yyyy-MM-dd HH:mm`
+
+in_workflow_stages:
+  name: in_workflow_stages
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Retrieve stories that are in a particular workflow stage by providing a comma-separated list of workflow stage IDs.
+    Workflow stage IDs can be retrieved via the Management API.
+    Example: `in_workflow_stages=325604,325605`
+
+content_type:
+  name: content_type
+  in: query
+  required: false
+  schema:
+    type: string
+  description: |
+    Retrieve stories of a specific content type.
+    Example: `content_type=page`
+
+level:
+  name: level
+  in: query
+  required: false
+  schema:
+    type: integer
+  description: |
+    Retrieve stories located in the specified folder level.
+    Examples: `level=1` retrieves stories from the root folder, `level=2` retrieves stories from top-level folders.
+    Only the immediate child stories are included in the response. Stories defined as root for the folder are excluded.

@@ -1,0 +1,25 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: The space ID
+  name:
+    type: string
+    description: The space name
+  domain:
+    type: string
+    description: The domain associated with the space (configured as the default environment for the Visual Editor)
+  version:
+    type: string
+    description: The timestamp of the latest changes in the space. This is useful for filling the `cv` parameter, for example, calling the story API endpoint
+  language_codes:
+    type: array
+    items:
+      type: string
+    description: An array of language i18n codes, representing all languages that are configured in the space
+required:
+  - id
+  - name
+  - domain
+  - version
+  - language_codes

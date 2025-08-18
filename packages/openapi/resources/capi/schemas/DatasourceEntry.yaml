@@ -1,0 +1,19 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: The numeric ID
+  name:
+    type: string
+    description: The complete name provided for the datasource entry
+  value:
+    type: string
+    description: Given value in the default dimension
+  dimension_value:
+    type: string
+    description: Given value in the requested dimension
+required:
+  - id
+  - name
+  - value
+  - dimension_value

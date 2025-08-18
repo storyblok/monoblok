@@ -1,0 +1,10 @@
+securitySchemes:
+  AccessTokenAuth:
+    type: apiKey
+    in: query
+    name: token
+    description: |
+      Your Storyblok API token. Use the **public** token for published content or the **preview** token for draft content.
+      
+      - **Public token**: Access to published content only
+      - **Preview token**: Access to both draft and published content

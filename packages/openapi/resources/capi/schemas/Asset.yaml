@@ -1,0 +1,43 @@
+type: object
+properties:
+  alt:
+    type: string
+    description: Alt text for the asset (default language)
+  asset_folder_id:
+    type: integer
+    description: Id of the folder containing this asset
+  content_length:
+    type: integer
+    description: The content length in bytes
+  content_type:
+    type: string
+    description: The content type (eg, image/png)
+  copyright:
+    type: string
+    description: Copyright text for the asset (default language)
+  created_at:
+    type: string
+    format: date-time
+    description: "Creation date (Format: yyyy-MM-dd'T'HH:mm:ssZ)"
+  expire_at:
+    type: string
+    format: date-time
+    description: "Date when the asset should expire (Format: yyyy-MM-dd'T'HH:mm:ssZ)"
+  filename:
+    type: string
+    description: Full path of the asset, including the file name
+  focus:
+    type: string
+    description: The focus point of the image (Only for image assets)
+  is_private:
+    type: boolean
+    description: Defines if the asset should be inaccessable to the public
+  signed_url:
+    type: string
+    description: The signed URL for the asset
+  title:
+    type: string
+    description: Title of the asset
+required:
+  - filename
+  - signed_url

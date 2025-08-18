@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: The numeric ID
+  name:
+    type: string
+    description: The complete name provided for the datasource
+  slug:
+    type: string
+    description: The unique slug of the datasource
+  dimensions:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The numeric ID
+        name:
+          type: string
+          description: The complete name provided for the datasource
+        entry_value:
+          type: string
+          description: The value provided for the datasource dimension (e.g., a language code)
+        datasource_id:
+          type: integer
+          description: The numeric ID of the datasource that the dimension belongs to
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest update date
+      required:
+        - id
+        - name
+        - entry_value
+        - datasource_id
+    description: An array listing the dimensions (e.g., per country, region, language, or other context) defined for the datasource
+required:
+  - id
+  - name
+  - slug

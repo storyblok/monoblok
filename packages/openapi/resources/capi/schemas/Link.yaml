@@ -1,0 +1,80 @@
+type: object
+properties:
+  id:
+    type: integer
+    description: The numeric ID
+  uuid:
+    type: string
+    format: uuid
+    description: Generated UUID string
+  slug:
+    type: string
+    description: The full slug of the story or folder
+  path:
+    type: string
+    description: Value of the real path defined in the story's entry configuration
+  real_path:
+    type: string
+    description: Either the full slug of the story or folder with a leading `/`, or, if existent, the value of the real path defined in the story's entry configuration with a leading `/`
+  name:
+    type: string
+    description: The complete name of the story or folder
+  published:
+    type: boolean
+    description: True if a story is currently published, even if it has unpublished changes
+  parent_id:
+    type: integer
+    description: ID of the parent folder
+  is_folder:
+    type: boolean
+    description: True if the instance constitutes a folder
+  is_startpage:
+    type: boolean
+    description: True if the story is defined as root for the folder
+  position:
+    type: integer
+    description: Numeric representation of the story's position in the folder
+  published_at:
+    type: string
+    format: date-time
+    description: Latest publishing date (only included if include_dates=1 is specified)
+  created_at:
+    type: string
+    format: date-time
+    description: Creation date (only included if include_dates=1 is specified)
+  updated_at:
+    type: string
+    format: date-time
+    description: Latest update date (only included if include_dates=1 is specified)
+  alternates:
+    type: object
+    description: An array containing objects that provide basic data of the different language versions of a story using Storyblok's Field Level Translation
+    additionalProperties:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Translated slug of the story (if the app Translatable Slugs is installed; otherwise, it matches the slug of the parent object)
+        name:
+          type: string
+          description: Translated name of the story (if the app Translatable Slugs is installed)
+        lang:
+          type: string
+          description: Language code of this story variant
+        published:
+          type: boolean
+          description: True if a story is currently published, even if it has unpublished changes
+        translated_slug:
+          type: string
+          description: Translated slug of the story (if the app Translatable Slugs is installed; otherwise, it matches the slug of the parent object)
+required:
+  - id
+  - uuid
+  - slug
+  - name
+  - published
+  - parent_id
+  - is_folder
+  - is_startpage
+  - position
+  - real_path

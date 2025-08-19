@@ -21,9 +21,9 @@ pnpm add @storyblok/mapi-client
 ## Quick Start
 
 ```typescript
-import { MapiClient } from '@storyblok/mapi-client';
+import { ManagementApiClient } from '@storyblok/mapi-client';
 
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-personal-access-token' },
   // Optional configuration
   region: 'us', // 'eu' | 'us' | 'ap' | 'ca' | 'cn'
@@ -56,14 +56,14 @@ const datasource = await client.datasources.create({
 
 ### Personal Access Token
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-personal-access-token' }
 });
 ```
 
 ### OAuth Token
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { oauthToken: 'your-oauth-token' }
 });
 ```
@@ -71,7 +71,7 @@ const client = new MapiClient({
 ## Configuration
 
 ```typescript
-interface MapiClientConfig {
+interface ManagementApiClientConfig {
   token: { accessToken: string } | { oauthToken: string };
   region?: 'eu' | 'us' | 'ap' | 'ca' | 'cn'; // Auto-detected from space_id if not provided
   baseUrl?: string; // Override automatic region resolution
@@ -134,7 +134,7 @@ await client.stories.list({ path: { space_id: 1127419670326897 } });
 
 ### Override Region Resolution
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-token' },
   baseUrl: 'https://custom-api.example.com' // Bypasses automatic region detection
 });
@@ -150,7 +150,7 @@ The client includes intelligent rate limiting and retry handling:
 - **Exponential Backoff**: Smart retry delays to avoid overwhelming the API
 
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-token' },
   rateLimiting: {
     maxConcurrent: 3,    // Max 3 concurrent requests
@@ -206,7 +206,7 @@ try {
 }
 
 // Or configure to not throw errors
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-token' },
   throwOnError: false
 });

@@ -12,7 +12,7 @@ type OAuthToken = {
   oauthToken: string;
 }
 
-export interface MapiClientConfig<ThrowOnError extends boolean = false> {
+export interface ManagementApiClientConfig<ThrowOnError extends boolean = false> {
   token: PersonalAccessToken | OAuthToken;
   region?: Region;
   baseUrl?: string; // Override for custom endpoints
@@ -20,13 +20,13 @@ export interface MapiClientConfig<ThrowOnError extends boolean = false> {
   throwOnError?: ThrowOnError;
 }
 
-export interface MapiClient<ThrowOnError extends boolean = false> extends SdkRegistryInstance {}
-export class MapiClient<ThrowOnError extends boolean = false> {
+export interface ManagementApiClient<ThrowOnError extends boolean = false> extends SdkRegistryInstance {}
+export class ManagementApiClient<ThrowOnError extends boolean = false> {
   protected client: Client;
-  protected config: MapiClientConfig<ThrowOnError>;
+  protected config: ManagementApiClientConfig<ThrowOnError>;
   protected sdkCache: Record<string, Promise<any>> = {};
 
-  constructor(config: MapiClientConfig<ThrowOnError>) {
+  constructor(config: ManagementApiClientConfig<ThrowOnError>) {
     this.config = config;
     this.client = createClientInstance(config);
 
@@ -57,7 +57,7 @@ export class MapiClient<ThrowOnError extends boolean = false> {
    * @example
    * client.setConfig({ region: 'eu' });
    */
-  setConfig(config: Partial<Omit<MapiClientConfig, 'token'>>): void {
+  setConfig(config: Partial<Omit<ManagementApiClientConfig, 'token'>>): void {
     const { region, baseUrl, headers } = config;
     
     let finalBaseUrl = baseUrl;
@@ -99,7 +99,7 @@ export class MapiClient<ThrowOnError extends boolean = false> {
 
 // Pure functions for client creation and setup
 function createClientInstance<ThrowOnError extends boolean = false>(
-  config: MapiClientConfig<ThrowOnError>
+  config: ManagementApiClientConfig<ThrowOnError>
 ): Client {
   const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
   

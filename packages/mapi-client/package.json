@@ -1,7 +1,7 @@
 {
-  "name": "@storyblok/mapi-client",
+  "name": "@storyblok/management-api-client",
   "version": "0.0.0",
-  "description": "Storyblok MAPI Client",
+  "description": "Storyblok Management API Client",
   "main": "./dist/index.mjs",
   "private": false,
   "module": "./dist/index.mjs",

@@ -13,9 +13,9 @@ security:
   $ref: ../shared/security.yaml
 
 paths:
-  /stories:
+  /v2/cdn/stories:
     get:
-      operationId: listStories
+      operationId: list
       summary: Retrieve Multiple Stories
       description: |
         Retrieve multiple stories from your Storyblok space.
@@ -103,9 +103,9 @@ paths:
               schema:
                 $ref: ../shared/responses.yaml#/ErrorResponse
   
-  /stories/{identifier}:
+  /v2/cdn/stories/{identifier}:
     get:
-      operationId: getStory
+      operationId: get
       summary: Retrieve a Single Story
       description: |
         Retrieve a single story by its full_slug, id, or uuid.

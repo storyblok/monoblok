@@ -11,9 +11,9 @@ servers:
 security:
   $ref: ../shared/security.yaml
 paths:
-  /cdn/assets/me:
+  /v2/cdn/assets/me:
     get:
-      operationId: getSignedUrl
+      operationId: get
       summary: Get Signed URL
       description: |
         This endpoint allows you to retrieve the signed URL for a private asset.

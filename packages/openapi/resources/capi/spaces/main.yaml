@@ -11,9 +11,9 @@ servers:
 security:
   $ref: ../shared/security.yaml
 paths:
-  /cdn/spaces/me:
+  /v2/cdn/spaces/me:
     get:
-      operationId: getSpace
+      operationId: get
       summary: Retrieve Space Information
       description: |
         Retrieve information about the current space.

@@ -11,9 +11,9 @@ servers:
 security:
   $ref: ../shared/security.yaml
 paths:
-  /cdn/datasource_entries:
+  /v2/cdn/datasource_entries:
     get:
-      operationId: getDatasourceEntries
+      operationId: list
       summary: Retrieve Multiple Datasource Entries
       description: |
         Returns an array of datasource entry objects for the `datasource` and `dimension` defined.

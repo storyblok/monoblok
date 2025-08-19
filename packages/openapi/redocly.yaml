@@ -42,6 +42,31 @@ apis:
     output: ./dist/mapi/assets.yaml
     title: Assets
 
+  capi-stories:
+    root: resources/capi/stories/main.yaml
+    output: ./dist/capi/stories.yaml
+    title: Stories CAPI
+  capi-spaces:
+    root: resources/capi/spaces/main.yaml
+    output: ./dist/capi/spaces.yaml
+    title: Spaces CAPI
+  capi-links:
+    root: resources/capi/links/main.yaml
+    output: ./dist/capi/links.yaml
+  capi-datasources:
+    root: resources/capi/datasources/main.yaml
+    output: ./dist/capi/datasources.yaml
+  capi-datasource_entries:
+    root: resources/capi/datasource_entries/main.yaml
+    output: ./dist/capi/datasource_entries.yaml
+  capi-tags:
+    root: resources/capi/tags/main.yaml
+    output: ./dist/capi/tags.yaml
+  capi-assets:
+    root: resources/capi/assets/main.yaml
+    output: ./dist/capi/assets.yaml
+  
+
 
 # Linting rules
 rules:

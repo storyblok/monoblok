@@ -11,9 +11,9 @@ servers:
 security:
   $ref: ../shared/security.yaml
 paths:
-  /cdn/datasources:
+  /v2/cdn/datasources:
     get:
-      operationId: getDatasources
+      operationId: list
       summary: Retrieve Multiple Datasources
       description: |
         Returns an array of all datasources (as datasource objects) contained in a Storyblok space.
@@ -53,9 +53,9 @@ paths:
               schema:
                 $ref: ../shared/responses.yaml#/ErrorResponse
 
-  /cdn/datasources/{id}:
+  /v2/cdn/datasources/{id}:
     get:
-      operationId: getDatasource
+      operationId: get
       summary: Retrieve a Single Datasource
       description: |
         Returns a single datasource object for the specified ID.

@@ -11,9 +11,9 @@ servers:
 security:
   $ref: ../shared/security.yaml
 paths:
-  /cdn/links:
+  /v2/cdn/links:
     get:
-      operationId: getLinks
+      operationId: list
       summary: Retrieve Navigation Links
       description: |
         Retrieve navigation links for the space.

@@ -38,7 +38,7 @@ const mockedComponents = [{
 }];
 
 const handlers = [
-  http.get('https://api.storyblok.com/v1/spaces/12345/components', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/12345/components', async ({ request }) => {
     const token = request.headers.get('Authorization');
     if (token === 'valid-token') {
       return HttpResponse.json({

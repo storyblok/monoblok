@@ -67,7 +67,7 @@ function createSession() {
   async function persistCredentials(region: RegionCode) {
     if (state.isLoggedIn && state.login && state.password && state.region) {
       await addCredentials({
-        machineName: regionsDomain[region] || 'api.storyblok.com',
+        machineName: regionsDomain[region] || 'mapi.storyblok.com',
         login: state.login,
         password: state.password,
         region: state.region,

@@ -103,7 +103,7 @@ const mockStories: Story[] = [
 
 // Set up MSW handlers
 const handlers = [
-  http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
     const token = request.headers.get('Authorization');
 
     if (token !== 'valid-token') {
@@ -258,7 +258,7 @@ describe('stories/actions', () => {
     it('should handle server errors', async () => {
       // Override handler to simulate a server error
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
@@ -288,7 +288,7 @@ describe('stories/actions', () => {
 
       // Override handler to simulate API without pagination metadata
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
           const url = new URL(request.url);
           const page = Number.parseInt(url.searchParams.get('page') || '1', 10);
 
@@ -328,7 +328,7 @@ describe('stories/actions', () => {
     beforeEach(() => {
       requestUrl = undefined;
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/*/stories*', ({ request }) => {
+        http.get('https://mapi.storyblok.com/v1/spaces/*/stories*', ({ request }) => {
           requestUrl = new URL(request.url).search;
           return HttpResponse.json({ stories: [], per_page: 100, total: 0 });
         }),
@@ -379,7 +379,7 @@ describe('stories/actions', () => {
 
     it('should handle error responses', async () => {
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/*/stories*', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/*/stories*', () => {
           return new HttpResponse(null, { status: 404, statusText: 'Not Found' });
         }),
       );

@@ -1,0 +1,80 @@
+{
+  "name": "@storyblok/management-api-client",
+  "version": "0.0.0",
+  "description": "Storyblok Management API Client",
+  "main": "./dist/index.mjs",
+  "private": false,
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mapi-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/mapi-client"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./resources/*": {
+      "types": "./dist/generated/*/types.gen.d.mts"
+    }
+  },
+  "scripts": {
+    "generate": "tsx generate.ts",
+    "build": "tsdown",
+    "test": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "packageManager": "pnpm@10.10.0",
+  "dependencies": {
+    "@storyblok/region-helper": "workspace:*"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.80.1",
+    "@storyblok/openapi": "workspace:*",
+    "@types/node": "^24.1.0",
+    "change-case": "^5.4.4",
+    "glob": "^10.3.10",
+    "mustache": "^4.2.0",
+    "tsdown": "^0.12.9",
+    "tsx": "^4.20.3",
+    "vitest": "^3.1.3"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated/**"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "generate",
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**"
+        ]
+      }
+    }
+  }
+}

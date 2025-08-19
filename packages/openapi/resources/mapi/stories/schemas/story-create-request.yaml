@@ -1,0 +1,17 @@
+type: object
+required:
+  - story
+properties:
+  story:
+    required: 
+      - name
+      - slug
+    allOf:
+      - $ref: ./story.yaml
+      - type: object
+  publish:
+    type: integer
+    description: Should the story be published immediately (set 1 to publish)
+  release_id:
+    type: integer
+    description: ID of the current release (can be requested with the from_release API parameter) 

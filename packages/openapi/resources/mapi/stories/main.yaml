@@ -1,0 +1,967 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Stories API
+  version: 1.0.0
+  description: API for managing Storyblok stories
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/stories:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Stories
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Current page of stories
+        - name: per_page
+          in: query
+          schema: 
+            type: integer
+          description: The number of stories to return
+        - name: contain_component
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filters by component in all levels of the content. Allows comma separated value for multiple components
+        - name: text_search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by a term using full text search
+        - name: sort_by
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as separator. 
+        - name: pinned
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by pinned stories if '1'
+        - name: excluding_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Exclude specific stories by providing their IDs as a comma-separated string.
+        - name: by_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by ids (comma separated)
+        - name: by_uuids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string.
+        - name: with_tag
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
+        - name: folder_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by folders only
+        - name: story_only
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by stories only
+        - name: with_parent
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by parent id
+        - name: starts_with
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter stories starting with a specific slug
+        - name: in_trash
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by items in the trash folder
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by search term
+        - name: filter_query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific attribute(s) of your content type. See Content Delivery API Documentation.
+        - name: in_release
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter items by the release id
+        - name: is_published
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: true for entries that are currently published; false for those that are currently not published or unpublished
+        - name: by_slugs
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve stories by comma-separated full_slug. It is possible to specify wildcards by using *.
+        - name: mine
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filters all the stories assigned to the current user whose token is being used
+        - name: excluding_slugs
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Exclude stories by specifying comma-separated values of full_slug. It is possible to specify wildcards by using *.
+        - name: in_workflow_stages
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve stories that are in a particular workflow stage by providing a comma-separated list of workflow stage IDs. Workflow stage IDs can be retrieved via the Management API.
+        - name: by_uuids_ordered
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string. The order of the stories in the response matches the order in which the UUIDs are listed.
+        - name: with_slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by exact slug. Make sure to use the full slug.
+        - name: with_summary
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: If added, returns content_summary object with relevant information.
+        - name: scheduled_at_gt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter stories that are scheduled after the provided date
+        - name: scheduled_at_lt
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter stories that are scheduled before the provided date
+        - name: favourite
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by your favourites.
+        - name: reference_search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by references. Can be used for texts (partial search supported) and other references like assets. Example - stories with specific asset. For stories with a specific asset, complete URL of an asset is recommended for specific results. Names are also valid but will include the results found with content search as well.
+        - name: branch_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by branch ID
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for filtering stories
+        - name: release_scope_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release scope ID for filtering stories
+        - name: in_release_filter
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter stories in specific release
+        - name: with_alts
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include alternate stories
+        - name: with_translated_stories
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Include translated stories
+      responses:
+        '200':
+          description: List of stories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: create
+      summary: Create a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for translated stories
+        - name: publish
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Publish the story after creation
+        - name: preset_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Preset ID to use for story content
+        - name: use_default_preset
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Use default preset for story content
+        - name: disable_fe_editor
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Disable frontend editor for this story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryCreateRequest'
+      responses:
+        '201':
+          description: Story created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/stories/{story_id}:
+    get:
+      operationId: get
+      summary: Retrieve One Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: uuid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Retrieve story by UUID instead of ID
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Retrieve specific version of the story
+      responses:
+        '200':
+          description: Story details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+    put:
+      operationId: updateStory
+      summary: Update a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Language code for translated stories
+        - name: force_update
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Force update even if story has been modified
+        - name: publish
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Publish the story after update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryUpdateRequest'
+      responses:
+        '200':
+          description: Story updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+    delete:
+      operationId: delete
+      summary: Delete a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+      responses:
+        '200':
+          description: Story deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/duplicate:
+    put:
+      operationId: duplicate
+      summary: Duplicate a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled content
+        - name: auto_create_folders
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Automatically create folders during duplication
+        - name: target_dimension
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Target dimension for duplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoryDuplicateRequest'
+      responses:
+        '200':
+          description: Story duplicated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/publish:
+    get:
+      operationId: publish
+      summary: Publish a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Accept a list of languages codes separated by a comma
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled publishing
+      responses:
+        '200':
+          description: Story published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/unpublish:
+    get:
+      operationId: unpublish
+      summary: Unpublish a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Accept a list of languages codes separated by a comma
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for scheduled unpublishing
+      responses:
+        '200':
+          description: Story unpublished
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/export.json:
+    get:
+      operationId: export
+      summary: Export a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['1', '2']
+            default: '1'
+        - name: lang_code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The language code for which the export should happen
+        - name: export_lang
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: If the values of the lang_code should be exported or not
+      responses:
+        '200':
+          description: Story exported
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Export data with field keys and values
+                additionalProperties: true
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/import.json:
+    put:
+      operationId: import
+      summary: Import a Story
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['1', '2']
+            default: '1'
+        - name: lang_code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: A language code
+        - name: import_lang
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: It shows to import language code or not
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - story
+              properties:
+                story:
+                  allOf:
+                    - $ref: "#/components/schemas/Story"
+                    - type: object
+                      required:
+                        - name
+                        - slug
+                      description: A single story object to import
+      responses:
+        '200':
+          description: Story imported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/ai_translate:
+    put:
+      operationId: translate
+      summary: Translate a Story by AI
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lang
+                - code
+              properties:
+                lang:
+                  type: string
+                  description: The official language code (e.g., en, de, fr) used for localization
+                code:
+                  type: string
+                  description: The custom language identifier defined in the Space Settings under Internationalization
+                overwrite:
+                  type: boolean
+                  description: Indicates whether the current value should replace the existing value for the specified language
+                release_id:
+                  type: integer
+                  description: Release ID of the story
+      responses:
+        '200':
+          description: Story translated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+                    description: A single story object, containing the translated fields in its content property
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/story_versions:
+    get:
+      operationId: versions
+      summary: Get Story Versions (New)
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: by_story_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID of the story. When this is passed, the endpoint returns versions of this particular story
+        - name: version_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID of a Story's version. Use it to retrieve only a specific version of a story
+        - name: by_release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID of the release. When this is passed, the endpoint returns versions of all stories within the release and stories not associated with a particular release
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+        - name: show_content
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use it to retrieve all the content of a version
+      responses:
+        '200':
+          description: Story versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story_versions:
+                    type: array
+                    description: An array of objects with each object representing a version and details about the version
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Numeric id of the story version
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation date
+                        user_id:
+                          type: integer
+                          description: User/numeric id of collaborator
+                        user:
+                          type: object
+                          description: Name of the author
+                          properties:
+                            id:
+                              type: integer
+                              description: The user ID
+                            firstname:
+                              type: string
+                              description: First name of collaborator
+                            lastname:
+                              type: string
+                              description: Last name of collaborator
+                            alt_email:
+                              type: string
+                              description: Email of collaborator
+                            avatar:
+                              type: string
+                              description: Avatar of collaborator usually an image
+                            userid:
+                              type: string
+                              description: User ID of collaborator
+                            friendly_name:
+                              type: string
+                              description: Friendly name of collaborator
+                        story_id:
+                          type: integer
+                          description: ID of the story
+                        status:
+                          type: string
+                          description: Publication status of the version
+                        release_id:
+                          type: integer
+                          description: ID of the release
+                        parent_id:
+                          type: integer
+                          description: ID of the parent folder
+                        content:
+                          type: object
+                          description: This object contains the Story's content when the show_content parameter is used
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+  /v1/spaces/{space_id}/stories/{story_id}/restore_with:
+    get:
+      operationId: restoreVersions
+      summary: Restore a Story Version
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: versions_v2
+          in: query
+          required: true
+          schema:
+            type: boolean
+          description: When set to true, the version passed is treated as a new story version, while setting it to false treats it as a legacy version. Read the note on the get story versions endpoint to learn how to differentiate between new and legacy versions
+        - name: version
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID of the story version
+        - name: release_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Release ID for version restoration
+      responses:
+        '200':
+          description: Story version restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/Story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story or version not found
+  /v1/spaces/{space_id}/stories/{story_id}/compare:
+    get:
+      operationId: compareVersions
+      summary: Compare a Story Version
+      description: Compare the changes between two versions of a story in Storyblok. You need to provide the story `ID` and version `ID` in the request to retrieve the comparison results.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/story_id
+        - name: version
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Story version id
+      responses:
+        '200':
+          description: Version comparison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryVersionComparison'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+
+  /v1/spaces/{space_id}/stories/unpublished_dependencies:
+    post:
+      operationId: getUnpublishedDependencies
+      summary: Get Unpublished Dependencies
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - story_ids
+              properties:
+                story_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: List of story IDs
+                release_id:
+                  type: integer
+                  description: ID of a release. If this is passed, the endpoint looks for unpublished dependencies in this specific release.
+      responses:
+        '200':
+          description: Unpublished dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unpublished_stories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UnpublishedStory'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    Story:
+      $ref: ./schemas/story.yaml
+    StoryCreateRequest:
+      $ref: ./schemas/story-create-request.yaml
+    StoryUpdateRequest:
+      $ref: ./schemas/story-update-request.yaml
+    StoryDuplicateRequest:
+      type: object
+      description: Request body for duplicating a story
+      properties:
+        story:
+          allOf:
+            - $ref: "#/components/schemas/Story"
+            - type: object
+              description: Any attributes sent here will be copied to the duplicated story. To link duplicated stories as alternates, specify a group_id in the story object.
+        target_dimension:
+          type: integer
+          description: The id of the target folder
+        same_path:
+          type: boolean
+          description: If set to true, the current story's path attribute will used for the duplicated story
+    StoryVersion:
+      $ref: ./schemas/story-version.yaml
+    StoryVersionComparison:
+      type: object
+      description: Comparison between two story versions
+      properties:
+        from_version:
+          type: integer
+          description: Source version ID
+        to_version:
+          type: integer
+          description: Target version ID
+        changes:
+          type: object
+          description: Changes between versions
+          properties:
+            added:
+              type: array
+              description: Added fields
+              items:
+                type: string
+            removed:
+              type: array
+              description: Removed fields
+              items:
+                type: string
+            modified:
+              type: array
+              description: Modified fields
+              items:
+                type: string
+    UnpublishedStory:
+      $ref: ./schemas/unpublished-story.yaml

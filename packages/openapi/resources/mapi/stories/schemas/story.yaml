@@ -1,0 +1,283 @@
+
+      type: object
+      description: A Storyblok story object representing a content entry
+      required: 
+        -  id
+      properties:
+        id:
+          type: integer
+          description: Numeric id of the story
+          readOnly: true
+        name:
+          type: string
+          description: The complete name provided for the story
+        parent_id:
+          type: integer
+          description: ID of the parent folder
+        group_id:
+          type: string
+          format: uuid
+          description: Group ID (UUID string), shared between stories defined as alternates
+        alternates:
+          type: array
+          description: An array containing objects that provide basic data of the stories defined as alternates of the current story
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: The numeric ID
+              name:
+                type: string
+                description: The complete name provided for the story
+              slug:
+                type: string
+                description: The slug specific for the story
+              published:
+                type: boolean
+                description: true if a story is currently published, even if it has unpublished changes
+              full_slug:
+                type: string
+                description: The full slug of the story, combining the parent folder(s) and the designated story slug
+              is_folder:
+                type: boolean
+                description: true if the instance constitutes a folder
+        created_at:
+          type: string
+          format: date-time
+          description: Creation date yyyy-MM-dd'T'HH:mm:ssZ
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Deleted date YYYY-mm-dd HH:MM
+        sort_by_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date defined in the story's entry configuration YYYY-mm-dd
+        tag_list:
+          type: array
+          description: Array of tag names
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest update date yyyy-MM-dd'T'HH:mm:ssZ
+        published_at:
+          type: string
+          format: date-time
+          description: Latest publishing date yyyy-MM-dd'T'HH:mm:ssZ
+        uuid:
+          type: string
+          format: uuid
+          description: Generated UUID string
+          readOnly: true
+        is_folder:
+          type: boolean
+          description: true if the instance constitutes a folder
+        content:
+          type: object
+          description: An object containing the field data associated with the specific story type's specific content structure. Also includes a component property with the story type's technical name.
+          properties:
+            _uid:
+              type: string
+              format: uuid
+              description: Unique identifier for the content
+            component:
+              type: string
+              description: The story type's technical name
+          additionalProperties: true
+        published:
+          type: boolean
+          description: true if a story is currently published, even if it has unpublished changes
+        slug:
+          type: string
+          description: The slug specific for the story
+        path:
+          type: string
+          nullable: true
+          description: Value of the real path defined in the story's entry configuration (usually, this value is only required for Storyblok's Visual Editor)
+        full_slug:
+          type: string
+          description: The full slug of the story, combining the parent folder(s) and the designated story slug
+        default_root:
+          type: string
+          nullable: true
+          description: Component name which will be used as default content type for this folders entries
+        disable_fe_editor:
+          type: boolean
+          description: Is side by side editor disabled for all entries in folder
+        parent:
+          type: object
+          description: Essential parent information as object (resolved from parent_id)
+          additionalProperties: true
+        is_startpage:
+          type: boolean
+          description: true if the story is defined as root for the folder
+        unpublished_changes:
+          type: boolean
+          description: Story has unpublished changes; saved but not published
+        meta_data:
+          type: object
+          nullable: true
+          description: Object to store non-editable data that is exclusively maintained with the Management API
+        imported_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Latest import date YYYY-mm-dd HH:MM
+        preview_token:
+          type: object
+          description: Preview token
+          properties:
+            token:
+              type: string
+              description: The token passed to the editor as preview parameter to allow edit mode verification
+            timestamp:
+              type: string
+              description: Timestamp passed to the editor as preview parameter to allow edit mode verification
+        pinned:
+          type: boolean
+          description: To pin the story in the toolbar
+        breadcrumbs:
+          type: array
+          description: Array of resolved subset of link objects (one per path segment / parent)
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: Story ID
+              name:
+                type: string
+                description: The complete name provided for the story
+              parent_id:
+                type: integer
+                description: ID of the parent folder
+              disable_fe_editor:
+                type: boolean
+                description: Is side by side editor disabled for all entries in folder
+              path:
+                type: string
+                description: Value of the real path defined in the story's entry configuration
+              slug:
+                type: string
+                description: The slug specific for the story
+              translated_slugs:
+                type: array
+                description: Array of translated slug objects (if the app Translatable Slugs is installed)
+                items:
+                  type: object
+                  properties:
+                    story_id:
+                      type: integer
+                      description: ID of the story
+                    lang:
+                      type: string
+                      description: Language code of the current language
+                    slug:
+                      type: string
+                      description: The slug specific for the story
+                    name:
+                      type: string
+                      description: The complete name provided for the story
+                    published:
+                      type: boolean
+                      description: true if a story is currently published, even if it has unpublished changes
+        first_published_at:
+          type: string
+          format: date-time
+          description: First publishing date yyyy-MM-dd'T'HH:mm:ssZ
+        last_author:
+          type: object
+          description: Last author
+          properties:
+            id:
+              type: integer
+              description: Last author user object numeric id
+            userid:
+              type: string
+              description: Last author userid/username
+            friendly_name:
+              type: string
+              description: Friendly name of last author
+        last_author_id:
+          type: integer
+          description: Id of the last Author
+        translated_slugs:
+          type: array
+          description: Array of translated slug objects (if the app Translatable Slugs is installed)
+          items:
+            type: object
+            properties:
+              story_id:
+                type: integer
+                description: ID of the story
+              lang:
+                type: string
+                description: Language code of the current language
+              slug:
+                type: string
+                description: The slug specific for the story
+              name:
+                type: string
+                description: The complete name provided for the story
+              published:
+                type: boolean
+                description: true if a story is currently published, even if it has unpublished changes
+        translated_slugs_attributes:
+          type: array
+          description: Array of translated slug attributes objects (if the app Translatable Slugs is installed) to change translated slugs when creating or updating a story
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: The numeric ID
+              lang:
+                type: string
+                description: Language code of the current language
+              slug:
+                type: string
+                description: The slug specific for the story
+              name:
+                type: string
+                description: The complete name provided for the story
+              published:
+                type: boolean
+                description: true if a story is currently published, even if it has unpublished changes
+        localized_paths:
+          type: array
+          description: An array of translated path objects
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+                description: Value of the real path defined in the story's entry configuration
+              name:
+                type: string
+                description: The complete name provided for the story
+              lang:
+                type: string
+                description: Language code of the current language
+              published:
+                type: boolean
+                description: true if a story is currently published, even if it has unpublished changes
+        position:
+          type: integer
+          description: Numeric representation of the story's position in the folder
+        release_id:
+          type: integer
+          description: ID of the current release (can be requested with the from_release API parameter)
+        scheduled_dates:
+          type: string
+          format: date-time
+          description: Scheduled publishing date YYYY-mm-dd HH:MM
+        favourite_for_user_ids:
+          type: array
+          description: Array of user IDs who have added the story in their favorites
+          items:
+            type: integer

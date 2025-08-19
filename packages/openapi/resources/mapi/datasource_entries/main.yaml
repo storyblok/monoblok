@@ -1,0 +1,218 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Datasource Entries API
+  version: 1.0.0
+  description: API for managing Storyblok datasource entries
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/datasource_entries:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Datasource Entries
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: datasource_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Provide the numeric id of a datasource
+        - name: datasource_slug
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provide the slug of a datasource
+        - name: dimension
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Provide dimension id to receive the dimension_value filled
+      responses:
+        '200':
+          description: List of datasource entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: create
+      summary: Create a Datasource Entry
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryCreateRequest'
+      responses:
+        '201':
+          description: Datasource entry created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/datasource_entries/{datasource_entry_id}:
+    get:
+      operationId: get
+      summary: Retrieve a Single Datasource Entry
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      responses:
+        '200':
+          description: Datasource entry details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    put:
+      operationId: updateDatasourceEntry
+      summary: Update a Datasource Entry
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasourceEntryUpdateRequest'
+      responses:
+        '200':
+          description: Datasource entry updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datasource_entry:
+                    $ref: '#/components/schemas/DatasourceEntry'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+    delete:
+      operationId: delete
+      summary: Delete a Datasource Entry
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: datasource_entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Numeric ID of datasource entry
+      responses:
+        '204':
+          description: Datasource entry deleted
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Datasource entry not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    DatasourceEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The numeric ID
+        name:
+          type: string
+          description: The key name of the datasource entry
+        value:
+          type: string
+          description: Given value in the default dimension
+        dimension_value:
+          type: string
+          description: Given value in the requested dimension
+          
+    DatasourceEntryCreateRequest:
+      type: object
+      properties:
+        datasource_entry:
+          type: object
+          required:
+            - name
+            - value
+            - datasource_id
+          properties:
+            name:
+              type: string
+              description: The key name of the datasource entry
+            value:
+              type: string
+              description: Given value in the default dimension
+            datasource_id:
+              type: integer
+              description: The numeric ID of the datasource
+              
+    DatasourceEntryUpdateRequest:
+      type: object
+      properties:
+        datasource_entry:
+          type: object
+          properties:
+            name:
+              type: string
+              description: The key name of the datasource entry
+            value:
+              type: string
+              description: Given value in the default dimension
+            dimension_value:
+              type: string
+              description: Given value in the requested dimension
+        dimension_id:
+          type: integer
+          description: Numeric dimension id (optional, but required to set a dimension_value)

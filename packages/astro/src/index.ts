@@ -1,5 +1,6 @@
 import storyblokIntegration from './lib/storyblok-integration';
 
+export { waitForStoryblokBridgeInstance } from './lib/bridge-instance';
 export { getLiveStory, useStoryblokApi } from './lib/helpers';
 export { handleStoryblokMessage } from './live-preview/handleStoryblokMessage';
 export * from './types';

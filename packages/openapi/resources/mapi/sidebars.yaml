@@ -17,3 +17,6 @@
   group: Presets
 - page: assets/main.yaml
   group: Assets
+- page: users/main.yaml
+  group: Users
+

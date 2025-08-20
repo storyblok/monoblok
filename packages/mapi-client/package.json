@@ -2,10 +2,10 @@
   "name": "@storyblok/management-api-client",
   "version": "0.1.0",
   "description": "Storyblok Management API Client",
-  "main": "./dist/index.mjs",
+  "main": "./dist/index.js",
   "private": false,
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
+  "types": "./dist/index.d.ts",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mapi-client#readme",
   "repository": {
     "type": "git",
@@ -20,17 +20,12 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.mts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
-    "./types": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js"
     },
     "./resources/*": {
-      "types": "./dist/generated/*/types.gen.d.mts"
+      "types": "./dist/generated/*/types.gen.d.ts"
     }
   },
   "scripts": {
@@ -63,7 +58,9 @@
           "^build"
         ],
         "outputs": [
-          "{projectRoot}/src/generated/**"
+          "{projectRoot}/src/generated/**",
+          "{projectRoot}/src/sdk-registry.generated.ts",
+          "{projectRoot}/src/types.generated.ts"
         ]
       },
       "build": {

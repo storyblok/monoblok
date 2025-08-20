@@ -79,6 +79,12 @@ export interface CreateSpaceRequest {
   has_pending_tasks?: boolean;
   /** Legacy (no longer in use). Used to enable or disable AI translations */
   ai_translation_disabled?: boolean;
+  /** The organization of the space */
+  org?: {
+    name: string;
+  };
+  /** If the space is in an organization */
+  in_org?: boolean;
 }
 
 /**
@@ -146,6 +152,10 @@ export interface Space {
   collaborator: SpaceCollaborator[];
   /** The user Object of the Owner */
   owner: SpaceOwner;
+  /** The organization of the space */
+  org: {
+    name: string;
+  };
 }
 /**
  * Creates a new space using the Storyblok Management API

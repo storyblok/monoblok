@@ -13,6 +13,9 @@ export const userCommand = program
   .description('Get the current user')
   .action(async () => {
     konsola.title(`${commands.USER}`, colorPalette.USER);
+
+    const verbose = program.opts().verbose;
+
     const { state, initializeSession } = session();
     await initializeSession();
 
@@ -29,6 +32,10 @@ export const userCommand = program
       }
       const { user } = await getUser(password, region);
       spinner.succeed();
+
+      if (verbose) {
+        konsola.info(JSON.stringify(user, null, 2));
+      }
       konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
     }
     catch (error) {

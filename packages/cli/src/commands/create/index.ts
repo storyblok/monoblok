@@ -7,9 +7,12 @@ import { input, select } from '@inquirer/prompts';
 import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
+import type { CreateSpaceRequest } from '../spaces';
 import { createSpace } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
+import { getUser } from '../user/actions';
+import type { StoryblokUser } from '../../types';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -48,6 +51,19 @@ export const createCommand = program
     const spinnerSpace = new Spinner({
       verbose: !isVitest,
     });
+
+    let userData: StoryblokUser;
+
+    try {
+      const { user } = await getUser(password, region);
+      userData = user;
+    }
+    catch (error) {
+      console.log(error);
+      konsola.warn('Failed to fetch user info. Please login again.');
+      konsola.br();
+      return;
+    }
 
     try {
       spinnerBlueprints.start('Fetching starter blueprints...');
@@ -119,17 +135,29 @@ export const createCommand = program
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
       let createdSpace;
+      const createInOrg = userData.has_org && await select({
+        message: `Would you like to create this space in your organization ${chalk.hex(colorPalette.PRIMARY)(userData.org.name)}?`,
+        choices: [
+          { name: 'Yes', value: true },
+          { name: 'No', value: false },
+        ],
+      });
       if (!options.skipSpace) {
         try {
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+
           // Find the selected blueprint from the dynamic blueprints array
           const selectedBlueprint = blueprints.find(bp => bp.value === technologyBlueprint);
           const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
-
-          createdSpace = await createSpace({
+          const spaceToCreate: CreateSpaceRequest = {
             name: toHumanReadable(projectName),
             domain: blueprintDomain,
-          });
+          };
+          if (createInOrg) {
+            spaceToCreate.org = userData.org;
+            spaceToCreate.in_org = true;
+          }
+          createdSpace = await createSpace(spaceToCreate);
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
         }
         catch (error) {

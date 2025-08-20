@@ -38,6 +38,7 @@ export interface StoryblokUser {
   org: {
     name: string;
   };
+  has_partner: boolean;
 }
 
 export interface StoryblokLoginResponse {

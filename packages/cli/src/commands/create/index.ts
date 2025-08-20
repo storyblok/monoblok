@@ -135,13 +135,21 @@ export const createCommand = program
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
       let createdSpace;
-      const createInOrg = userData.has_org && await select({
-        message: `Would you like to create this space in your organization ${chalk.hex(colorPalette.PRIMARY)(userData.org.name)}?`,
-        choices: [
-          { name: 'Yes', value: true },
-          { name: 'No', value: false },
-        ],
-      });
+      const choices = [
+        { name: 'My personal account', value: 'personal' },
+      ];
+      if (userData.has_org) {
+        choices.push({ name: `Organization (${userData.org.name})`, value: 'org' });
+      }
+      if (userData.has_partner) {
+        choices.push({ name: 'Partner Portal', value: 'partner' });
+      }
+      const whereToCreateSpace = userData.has_partner || userData.has_org
+        ? await select({
+          message: `Where would you like to create this space?`,
+          choices,
+        })
+        : 'personal';
       if (!options.skipSpace) {
         try {
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
@@ -153,9 +161,12 @@ export const createCommand = program
             name: toHumanReadable(projectName),
             domain: blueprintDomain,
           };
-          if (createInOrg) {
+          if (whereToCreateSpace === 'org') {
             spaceToCreate.org = userData.org;
             spaceToCreate.in_org = true;
+          }
+          else if (whereToCreateSpace === 'partner') {
+            spaceToCreate.assign_partner = true;
           }
           createdSpace = await createSpace(spaceToCreate);
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);

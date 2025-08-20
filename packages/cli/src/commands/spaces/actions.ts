@@ -85,6 +85,8 @@ export interface CreateSpaceRequest {
   };
   /** If the space is in an organization */
   in_org?: boolean;
+  /** If the space is in a partner portal */
+  assign_partner?: boolean;
 }
 
 /**

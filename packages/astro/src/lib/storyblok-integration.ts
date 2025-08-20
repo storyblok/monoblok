@@ -72,7 +72,6 @@ export default function storyblokIntegration(
       : '';
   const bridgeInitScript = `
   import { loadStoryblokBridge } from "@storyblok/astro";
-  import { handleStoryblokMessage } from "@storyblok/astro";
 
   loadStoryblokBridge().then(() => {
     if (!window.__sbInstance) {
@@ -143,7 +142,8 @@ export default function storyblokIntegration(
         if (resolvedOptions.livePreview) {
           injectScript(
             'page',
-            `${bridgeInitScript}
+            `import { handleStoryblokMessage } from "@storyblok/astro";
+            ${bridgeInitScript}
               storyblokInstance.on(["published", "change", "input"], handleStoryblokMessage);
             });`,
           );

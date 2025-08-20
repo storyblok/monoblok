@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { MapiClient } from '../index';
+import { ManagementApiClient } from '../index';
 
 // Mock fetch to simulate 429 responses
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
+describe('ManagementApiClient Integration - Per-Instance Rate Limiting', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockFetch.mockClear();
@@ -33,7 +33,7 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
       });
     });
 
-    const client = new MapiClient({
+    const client = new ManagementApiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
     });
@@ -69,7 +69,7 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
       });
     });
 
-    const client = new MapiClient({
+    const client = new ManagementApiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
     });
@@ -95,7 +95,7 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
       });
     });
 
-    const client = new MapiClient({
+    const client = new ManagementApiClient({
       token: { accessToken: 'test-token' },
       region: 'eu',
     });
@@ -123,12 +123,12 @@ describe('MapiClient Integration - Per-Instance Rate Limiting', () => {
     });
 
     // Create two separate client instances
-    const client1 = new MapiClient({
+    const client1 = new ManagementApiClient({
       token: { accessToken: 'token1' },
       region: 'eu',
     });
 
-    const client2 = new MapiClient({
+    const client2 = new ManagementApiClient({
       token: { accessToken: 'token2' },
       region: 'us',
     });

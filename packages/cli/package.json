@@ -1,7 +1,7 @@
 {
   "name": "storyblok",
   "type": "module",
-  "version": "4.3.3",
+  "version": "4.3.4",
   "packageManager": "pnpm@10.10.0",
   "description": "Storyblok CLI",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",

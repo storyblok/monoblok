@@ -1,6 +1,6 @@
-import { MapiClient } from '../dist/index.mjs';
+import { ManagementApiClient } from '../dist/index.mjs';
 
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: {
     accessToken: process.env.MAPI_TOKEN!,
   },

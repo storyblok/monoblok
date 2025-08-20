@@ -8,7 +8,7 @@ export default defineConfig({
   outDir: './dist',
   platform: "neutral",
   format: ['esm', "commonjs"],
-  globalName: 'StoryblokMapiClient',
+  globalName: 'StoryblokManagementApiClient',
   sourcemap: true,
   clean: true,
   dts: true,

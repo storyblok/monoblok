@@ -1,37 +1,31 @@
-# @storyblok/mapi-client
+# @storyblok/management-api-client
 
-A comprehensive TypeScript SDK for the Storyblok Management API with automatic rate limiting, 429 retry handling, and intelligent region resolution.
+A comprehensive TypeScript SDK for the Storyblok Management API with automatic region resolution and built-in retry logic.
 
 ## Features
 
 - **Type-Safe**: Generated from OpenAPI specifications with full TypeScript support
-- **Rate Limiting**: Built-in concurrency control and 429 retry handling  
 - **Region Resolution**: Automatic regional endpoint selection based on space ID
-- **Retry Logic**: Intelligent retry with exponential backoff and `retry-after` header support
+- **Retry Logic**: Built-in retry with exponential backoff and `retry-after` header support
 - **Multi-Resource**: Unified client for many MAPI resources (stories, datasources, components, etc.)
 
 ## Installation
 
 ```bash
-npm install @storyblok/mapi-client
+npm install @storyblok/management-api-client
 # or
-pnpm add @storyblok/mapi-client
+pnpm add @storyblok/management-api-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { MapiClient } from '@storyblok/mapi-client';
+import { ManagementApiClient } from '@storyblok/management-api-client';
 
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-personal-access-token' },
   // Optional configuration
   region: 'us', // 'eu' | 'us' | 'ap' | 'ca' | 'cn'
-  rateLimiting: {
-    maxConcurrent: 5,
-    retryDelay: 1000,
-    maxRetries: 3
-  }
 });
 
 // Get stories with full type safety
@@ -56,14 +50,14 @@ const datasource = await client.datasources.create({
 
 ### Personal Access Token
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-personal-access-token' }
 });
 ```
 
 ### OAuth Token
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { oauthToken: 'your-oauth-token' }
 });
 ```
@@ -71,17 +65,12 @@ const client = new MapiClient({
 ## Configuration
 
 ```typescript
-interface MapiClientConfig {
+interface ManagementApiClientConfig {
   token: { accessToken: string } | { oauthToken: string };
   region?: 'eu' | 'us' | 'ap' | 'ca' | 'cn'; // Auto-detected from space_id if not provided
   baseUrl?: string; // Override automatic region resolution
   headers?: Record<string, string>; // Additional headers
   throwOnError?: boolean; // Throw on HTTP errors (default: false)
-  rateLimiting?: {
-    maxConcurrent?: number; // Max concurrent requests (default: 5)
-    retryDelay?: number; // Retry delay in ms (default: 1000)
-    maxRetries?: number; // Max retry attempts (default: 3)
-  };
 }
 ```
 
@@ -134,37 +123,32 @@ await client.stories.list({ path: { space_id: 1127419670326897 } });
 
 ### Override Region Resolution
 ```typescript
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-token' },
   baseUrl: 'https://custom-api.example.com' // Bypasses automatic region detection
 });
 ```
 
-## Rate Limiting & Retry Logic
+## Retry Logic
 
-The client includes intelligent rate limiting and retry handling:
+The client includes built-in retry handling for rate limits and network errors:
 
-- **Concurrent Request Limiting**: Controls how many requests run simultaneously
 - **429 Retry Handling**: Automatically retries on rate limit responses
 - **Retry-After Support**: Respects `retry-after` headers from the API
 - **Exponential Backoff**: Smart retry delays to avoid overwhelming the API
+- **Network Error Retry**: Retries on network failures
 
 ```typescript
-const client = new MapiClient({
-  token: { accessToken: 'your-token' },
-  rateLimiting: {
-    maxConcurrent: 3,    // Max 3 concurrent requests
-    retryDelay: 2000,    // 2 second default retry delay
-    maxRetries: 5        // Retry up to 5 times on 429
-  }
+// The client automatically handles retries with these defaults:
+// - maxRetries: 3
+// - retryDelay: 1000ms
+// - Respects retry-after headers from 429 responses
+
+const stories = await client.stories.list({ 
+  path: { space_id: 123456 },
+  query: { per_page: 10 }
 });
-
-// These will be automatically queued and retried if needed
-const promises = Array.from({ length: 10 }, (_, i) =>
-  client.stories.list({ path: { space_id: 123456 }, query: { page: i + 1 } })
-);
-
-const results = await Promise.all(promises);
+// If rate limited, will automatically retry up to 3 times
 ```
 
 ## Runtime Configuration
@@ -180,16 +164,6 @@ client.setConfig({
 
 // Update authentication
 client.setToken({ accessToken: 'new-token' });
-
-// Update rate limiting
-client.setRateLimitConfig({ 
-  maxConcurrent: 10,
-  retryDelay: 500
-});
-
-// Get rate limiting stats
-const stats = client.getRateLimitStats();
-console.log(`Queue: ${stats.queueLength}, Running: ${stats.running}`);
 ```
 
 ## Error Handling
@@ -206,7 +180,7 @@ try {
 }
 
 // Or configure to not throw errors
-const client = new MapiClient({
+const client = new ManagementApiClient({
   token: { accessToken: 'your-token' },
   throwOnError: false
 });
@@ -231,7 +205,7 @@ import type {
   StoriesTypes,
   DatasourcesTypes,
   ComponentsTypes 
-} from '@storyblok/mapi-client';
+} from '@storyblok/management-api-client';
 
 // Full type safety for request/response data
 const createStory = async (storyData: StoriesTypes.CreateRequestBody) => {

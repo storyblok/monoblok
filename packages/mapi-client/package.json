@@ -1,11 +1,23 @@
 {
-  "name": "@storyblok/mapi-client",
-  "version": "0.0.0",
-  "description": "Storyblok MAPI Client",
+  "name": "@storyblok/management-api-client",
+  "version": "0.1.0",
+  "description": "Storyblok Management API Client",
   "main": "./dist/index.mjs",
   "private": false,
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mapi-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/mapi-client"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",

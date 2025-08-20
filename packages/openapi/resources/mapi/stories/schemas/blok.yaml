@@ -1,0 +1,26 @@
+
+type: object
+description: Generic component content structure that can be extended for specific component types. Supports deeply nested components in arrays and objects. Additional fields can be strings, numbers, booleans, objects, or arrays.
+required:
+  - _uid
+  - component
+properties:
+  _uid:
+    type: string
+    format: uuid
+    description: Unique identifier for the content
+  component:
+    type: string
+    description: The story type's technical name (e.g., 'page', 'teaser', 'grid', 'feature', etc.)
+  _editable:
+    type: string
+    description: Storyblok editor markup for inline editing
+additionalProperties:
+  oneOf:
+    - type: string
+    - type: number
+    - type: boolean
+    - type: array
+      items:
+        oneOf:
+          - $ref: '#'

@@ -1,11 +1,11 @@
 import { defineConfig } from 'astro/config';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
 import mkcert from 'vite-plugin-mkcert';
-import vercel from '@astrojs/vercel/serverless';
+import vercel from '@astrojs/vercel';
 import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
+import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
@@ -39,10 +39,9 @@ export default defineConfig({
         'main': 'storyblok/Main',
       },
     }),
-    tailwind(),
   ],
   vite: {
-    plugins: [mkcert()],
+    plugins: [mkcert(), tailwindcss()],
   },
   output: 'server',
   adapter: vercel(),

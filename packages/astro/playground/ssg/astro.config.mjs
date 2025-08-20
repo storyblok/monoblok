@@ -3,8 +3,8 @@ import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
 import mkcert from 'vite-plugin-mkcert';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   integrations: [
@@ -29,9 +29,8 @@ export default defineConfig({
         'featured-articles': 'storyblok/FeaturedArticles',
       },
     }),
-    tailwind(),
   ],
   vite: {
-    plugins: [mkcert()],
+    plugins: [mkcert(), tailwindcss()],
   },
 });

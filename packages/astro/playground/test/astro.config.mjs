@@ -3,7 +3,7 @@ import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   integrations: [
@@ -31,6 +31,8 @@ export default defineConfig({
         'embedded_blok': 'storyblok/EmbeddedBlok',
       },
     }),
-    tailwind(),
   ],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });

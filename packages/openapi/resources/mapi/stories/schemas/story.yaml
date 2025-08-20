@@ -78,17 +78,8 @@
           type: boolean
           description: true if the instance constitutes a folder
         content:
-          type: object
-          description: An object containing the field data associated with the specific story type's specific content structure. Also includes a component property with the story type's technical name.
-          properties:
-            _uid:
-              type: string
-              format: uuid
-              description: Unique identifier for the content
-            component:
-              type: string
-              description: The story type's technical name
-          additionalProperties: true
+          $ref: ./blok.yaml
+          description: An object containing the field data associated with the specific story type's specific content structure. Can contain deeply nested components in arrays and objects. Also includes a component property with the story type's technical name.
         published:
           type: boolean
           description: true if a story is currently published, even if it has unpublished changes

@@ -965,3 +965,5 @@ components:
                 type: string
     UnpublishedStory:
       $ref: ./schemas/unpublished-story.yaml
+    ComponentContent:
+      $ref: ./schemas/blok.yaml

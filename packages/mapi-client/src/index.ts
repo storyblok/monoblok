@@ -127,3 +127,6 @@ function getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, 
 // Export client utilities
 export { createClient } from './client';
 export type { Client } from './client/types';
+
+// Export all generated types
+export * from './types.generated';

@@ -144,12 +144,22 @@ export const createCommand = program
       if (userData.has_partner) {
         choices.push({ name: 'Partner Portal', value: 'partner' });
       }
-      const whereToCreateSpace = userData.has_partner || userData.has_org
-        ? await select({
+      let whereToCreateSpace = 'personal';
+      if (region === 'eu' && (userData.has_partner || userData.has_org)) {
+        whereToCreateSpace = await select({
           message: `Where would you like to create this space?`,
           choices,
-        })
-        : 'personal';
+        });
+      }
+      if (region !== 'eu' && userData.has_org) {
+        whereToCreateSpace = 'org';
+      }
+      if (region !== 'eu' && !userData.has_org) {
+        konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organisation, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+        konsola.br();
+        return;
+      }
+
       if (!options.skipSpace) {
         try {
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
@@ -208,7 +218,15 @@ export const createCommand = program
       konsola.br();
       konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyBlueprint)} project is ready 🎉 !`);
       if (createdSpace?.first_token) {
-        konsola.ok(`Storyblok space created, preview url and .env configured automatically`);
+        if (whereToCreateSpace === 'org') {
+          konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData.org.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
+        else if (whereToCreateSpace === 'partner') {
+          konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
+        else {
+          konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
       }
       konsola.br();
       konsola.info(`Next steps:

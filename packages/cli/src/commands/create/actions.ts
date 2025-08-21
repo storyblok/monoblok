@@ -117,7 +117,13 @@ STORYBLOK_DELIVERY_API_TOKEN=${accessToken}
  */
 export const generateSpaceUrl = (spaceId: number, region: RegionCode): string => {
   const domain = appDomains[region];
-  return `https://${domain}/#/me/spaces/${spaceId}/dashboard`;
+
+  const utmParams = new URLSearchParams({
+    utm_source: 'storyblok-cli',
+    utm_medium: 'cli',
+    utm_campaign: 'create',
+  });
+  return `https://${domain}/#/me/spaces/${spaceId}/dashboard?${utmParams.toString()}`;
 };
 
 /**

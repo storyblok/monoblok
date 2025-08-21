@@ -40,6 +40,7 @@
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
     "@storyblok/js": "workspace:*",
+    "@storyblok/management-api-client": "^0.1.1",
     "@storyblok/region-helper": "workspace:*",
     "@topcli/spinner": "^2.1.2",
     "chalk": "^5.4.1",

@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/js",
   "type": "module",
-  "version": "4.2.2",
+  "version": "4.2.4",
   "private": false,
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
@@ -31,6 +31,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

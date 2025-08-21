@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/nuxt",
   "type": "module",
-  "version": "8.0.2",
+  "version": "8.0.4",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok Nuxt module",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",
@@ -28,6 +28,7 @@
   "scripts": {
     "prepack": "nuxt-module-build build",
     "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "dev": "nuxi dev playground",
     "dev:build": "nuxi build playground",
     "dev:preview": "nuxi preview playground",

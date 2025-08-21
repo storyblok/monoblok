@@ -99,7 +99,7 @@ componentsCommand
       spinnerComponents.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Components')} - Completed in ${spinnerComponents.elapsedTime.toFixed(2)}ms`);
       await saveComponentsToFiles(
         space,
-        { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [] },
+        { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
         { ...options, path, separateFiles: separateFiles || !!componentName },
       );
       konsola.br();

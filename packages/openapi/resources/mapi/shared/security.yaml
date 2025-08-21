@@ -1,0 +1,8 @@
+# Storyblok Management API Security Schemes
+# Based on: https://www.storyblok.com/docs/api/management/getting-started/authentication
+
+# Personal Access Token - used without "Bearer" keyword
+- PersonalAccessToken: []
+
+# OAuth Access Token - used with "Bearer" keyword  
+- BearerAuth: []

@@ -1,7 +1,7 @@
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import { join, resolve } from 'node:path';
-import { resolvePath, saveToFile } from '../../../utils/filesystem';
+import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { SaveComponentsOptions } from './constants';
 import { mapiClient } from '../../../api';
 // Components
@@ -99,13 +99,14 @@ export const saveComponentsToFiles = async (
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const component of components) {
-        const componentFilePath = join(resolvedPath, suffix ? `${component.name}.${suffix}.json` : `${component.name}.json`);
+        const sanitizedName = sanitizeFilename(component.name);
+        const componentFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`);
         await saveToFile(componentFilePath, JSON.stringify(component, null, 2));
 
         // Find and save associated presets
         const componentPresets = presets.filter(preset => preset.component_id === component.id);
         if (componentPresets.length > 0) {
-          const presetsFilePath = join(resolvedPath, suffix ? `${component.name}.presets.${suffix}.json` : `${component.name}.presets.json`);
+          const presetsFilePath = join(resolvedPath, suffix ? `${sanitizedName}.presets.${suffix}.json` : `${sanitizedName}.presets.json`);
           await saveToFile(presetsFilePath, JSON.stringify(componentPresets, null, 2));
         }
         // Always save groups in a consolidated file

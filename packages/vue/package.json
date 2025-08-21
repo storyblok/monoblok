@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/vue",
   "type": "module",
-  "version": "9.2.2",
+  "version": "9.2.4",
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using Vue.",
   "author": "Storyblok",
@@ -37,6 +37,7 @@
     "test:unit:ui": "vitest --ui",
     "test:e2e": "pnpm run cy:components",
     "build": "vite build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "cy:run": "cypress run",

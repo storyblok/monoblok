@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToBlueprint } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
@@ -309,8 +309,8 @@ describe('extractPortFromTopics', () => {
   });
 });
 
-describe('repositoryToBlueprint', () => {
-  it('should convert a repo object to a DynamicBlueprint', () => {
+describe('repositoryToTemplate', () => {
+  it('should convert a repo object to a DynamicTemplate', () => {
     // Mock repo object with expected fields
     const repo = {
       name: 'blueprint-core-vue',
@@ -319,8 +319,8 @@ describe('repositoryToBlueprint', () => {
       description: 'A Vue starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const blueprint = repositoryToBlueprint(repo);
-    expect(blueprint).toEqual({
+    const template = repositoryToTemplate(repo);
+    expect(template).toEqual({
       name: 'Vue',
       value: 'vue',
       template: 'https://github.com/storyblok/blueprint-core-vue.git',
@@ -338,8 +338,8 @@ describe('repositoryToBlueprint', () => {
       description: 'A React starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const blueprint = repositoryToBlueprint(repo);
-    expect(blueprint.location).toBe('https://localhost:3000/');
+    const template = repositoryToTemplate(repo);
+    expect(template.location).toBe('https://localhost:3000/');
   });
 });
 

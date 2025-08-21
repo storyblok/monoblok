@@ -155,7 +155,7 @@ export const createCommand = program
         whereToCreateSpace = 'org';
       }
       if (region !== 'eu' && !userData.has_org) {
-        konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organisation, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+        konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
         konsola.br();
         return;
       }

@@ -23,14 +23,36 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "umd": "./dist/index.umd.js"
+    },
+    "./markdown-parser": {
+      "import": {
+        "types": "./dist/markdown-parser.d.ts",
+        "default": "./dist/markdown-parser.js"
+      },
+      "require": {
+        "types": "./dist/markdown-parser.d.cts",
+        "default": "./dist/markdown-parser.cjs"
+      },
+      "umd": "./dist/markdown-parser.umd.js"
     }
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "markdown-parser": ["./dist/markdown-parser.d.ts"]
+    }
+  },
   "files": [
     "*.d.ts",
     "dist"

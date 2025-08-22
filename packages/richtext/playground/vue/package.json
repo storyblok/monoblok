@@ -11,6 +11,8 @@
   "dependencies": {
     "@storyblok/richtext": "workspace:*",
     "@storyblok/vue": "workspace:*",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "vite-plugin-qrcode": "^0.3.0",
     "vue": "^3.4.21",
     "vue-router": "^4.4.5"
   },

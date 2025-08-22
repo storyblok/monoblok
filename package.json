@@ -19,10 +19,10 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@nx/js": "^21.0.3",
+    "@nx/js": "21.3.11",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
-    "nx": "21.0.3",
+    "nx": "21.3.11",
     "typescript": "5.8.3"
   },
   "resolutions": {

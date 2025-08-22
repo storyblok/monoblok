@@ -1,0 +1,12 @@
+# Main sidebar navigation for Storyblok Management API
+# Based on: https://redocly.com/docs/realm/navigation/sidebar
+
+# Authentication documentation section
+- group: Authentication
+  items:
+    - directory: authentication
+  
+
+- group: Management API
+  items:
+    - $ref: resources/mapi/sidebars.yaml 

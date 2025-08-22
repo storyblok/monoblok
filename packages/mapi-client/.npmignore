@@ -1,0 +1,8 @@
+src/
+examples/
+generate.ts
+tsdown.config.ts
+tsconfig.json
+*.generated.ts
+!dist/generated/
+!dist/*.generated.*

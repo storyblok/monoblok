@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 const { slug } = useRoute().params;
 const { story } = await useAsyncStoryblok(
-  slug && slug.length > 0 ? slug.join('/') : 'home',
+  slug && slug.length > 0 ? (slug as string[]).join('/') : 'home',
   {
     api: {
       version: 'draft',
       language: 'en',
       resolve_relations: ['popular-articles.articles'],
+    },
+    bridge: {
+      resolveRelations: 'popular-articles.articles',
     },
   },
 );

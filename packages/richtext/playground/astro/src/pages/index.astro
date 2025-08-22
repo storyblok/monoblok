@@ -2,7 +2,8 @@
 import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
 import { useStoryblokApi } from "@storyblok/astro";
-import { richTextResolver, markdownToStoryblokRichtext } from "@storyblok/richtext";
+import { richTextResolver } from "@storyblok/richtext";
+import { markdownToStoryblokRichtext } from "@storyblok/richtext/markdown-parser";
 
 const storyblokApi = useStoryblokApi();
 const { data } = await storyblokApi.get("cdn/stories/home", {

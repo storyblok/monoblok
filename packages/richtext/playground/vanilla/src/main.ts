@@ -1,4 +1,5 @@
-import { BlockTypes, markdownToStoryblokRichtext, richTextResolver } from '@storyblok/richtext';
+import { BlockTypes, richTextResolver } from '@storyblok/richtext';
+import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
 import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
 

@@ -1,7 +1,7 @@
 ---
 import { useStoryblokApi } from '@storyblok/astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-import BaseLayout from '../layouts/BaseLayout.astro';
+import BaseLayout from '@shared/components/BaseLayout.astro';
 
 export async function getStaticPaths() {
   const sbApi = useStoryblokApi();

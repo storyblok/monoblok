@@ -1,11 +1,11 @@
 import { defineConfig } from 'astro/config';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
 import mkcert from 'vite-plugin-mkcert';
 import vercel from '@astrojs/vercel/serverless';
 import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
+import { fileURLToPath } from 'node:url';
 
 // https://astro.build/config
 export default defineConfig({
@@ -26,6 +26,7 @@ export default defineConfig({
         resolveRelations: ['featured-articles.posts'],
       },
       enableFallbackComponent: true,
+      componentsDir: '../shared',
       livePreview: true,
       components: {
         'page': 'storyblok/Page',
@@ -39,10 +40,14 @@ export default defineConfig({
         'main': 'storyblok/Main',
       },
     }),
-    tailwind(),
   ],
   vite: {
     plugins: [mkcert()],
+    resolve: {
+      alias: {
+        '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
+      },
+    },
   },
   output: 'server',
   adapter: vercel(),

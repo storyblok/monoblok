@@ -41,12 +41,9 @@
   "scripts": {
     "build": "tsdown",
     "build:watch": "tsdown --watch",
-    "build:packages": "pnpm -r --filter='./packages/*' run build",
     "test:types": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:packages": "pnpm -r --parallel --filter='./packages/*' run lint",
-    "lint:packages:fix": "pnpm -r --parallel --filter='./packages/*' run lint:fix",
     "test": "vitest run",
     "test:ci": "vitest run",
     "test:ui": "vitest --ui",

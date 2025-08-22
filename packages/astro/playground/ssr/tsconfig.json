@@ -1,9 +1,16 @@
 {
   "extends": "astro/tsconfigs/base",
   "compilerOptions": {
+    "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": [
+        "../shared/*"
+      ]
     }
-  }
+  },
+  "include": [
+    "src",
+    "../shared"
+  ]
 }

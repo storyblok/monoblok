@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 import { storyblok } from '@storyblok/astro';
 import mkcert from 'vite-plugin-mkcert';
-import vercel from '@astrojs/vercel/serverless';
+import vercel from '@astrojs/vercel';
 import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';

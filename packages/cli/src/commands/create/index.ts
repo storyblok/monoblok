@@ -7,9 +7,12 @@ import { input, select } from '@inquirer/prompts';
 import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
+import type { CreateSpaceRequest } from '../spaces';
 import { createSpace } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
+import { getUser } from '../user/actions';
+import type { StoryblokUser } from '../../types';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -18,14 +21,25 @@ export const createCommand = program
   .command(`${commands.CREATE} [project-path]`)
   .alias('c')
   .description(`Scaffold a new project using Storyblok`)
-  .option('-b, --blueprint <blueprint>', 'technology starter blueprint')
+  .option('-t, --template <template>', 'technology starter template')
+  .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
   .option('--skip-space', 'skip space creation')
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
-    // Command options
-    const { blueprint } = options;
+    // Command options - handle backward compatibility
+    const { template, blueprint } = options;
+
+    // Handle deprecated blueprint option
+    let selectedTemplate = template;
+    if (blueprint && !template) {
+      konsola.warn(`The --blueprint flag is deprecated. Please use --template instead.`);
+      selectedTemplate = blueprint;
+    }
+    else if (blueprint && template) {
+      konsola.warn(`Both --blueprint and --template provided. Using --template and ignoring --blueprint.`);
+    }
 
     const { state, initializeSession } = session();
     await initializeSession();
@@ -49,39 +63,51 @@ export const createCommand = program
       verbose: !isVitest,
     });
 
-    try {
-      spinnerBlueprints.start('Fetching starter blueprints...');
-      const blueprints = await fetchBlueprintRepositories();
-      spinnerBlueprints.succeed('Starter blueprints fetched successfully');
+    let userData: StoryblokUser;
 
-      if (!blueprints) {
+    try {
+      const { user } = await getUser(password, region);
+      userData = user;
+    }
+    catch (error) {
+      konsola.error('Failed to fetch user info. Please login again.', error);
+      konsola.br();
+      return;
+    }
+
+    try {
+      spinnerBlueprints.start('Fetching starter templates...');
+      const templates = await fetchBlueprintRepositories();
+      spinnerBlueprints.succeed('Starter templates fetched successfully');
+
+      if (!templates) {
         spinnerBlueprints.failed();
-        konsola.warn('No starter blueprints found. Please contact support@storyblok.com');
+        konsola.warn('No starter templates found. Please contact support@storyblok.com');
         konsola.br();
         return;
       }
 
-      // Validate blueprint if provided via flag
-      let technologyBlueprint = blueprint;
-      if (blueprint) {
-        const validBlueprints = blueprints;
-        const isValidBlueprint = validBlueprints.find(bp => bp.value === blueprint);
-        if (!isValidBlueprint) {
-          const validOptions = validBlueprints.map(bp => bp.value).join(', ');
-          konsola.warn(`Invalid blueprint "${chalk.hex(colorPalette.CREATE)(blueprint)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`);
+      // Validate template if provided via flag
+      let technologyTemplate = selectedTemplate;
+      if (selectedTemplate) {
+        const validTemplates = templates;
+        const isValidTemplate = validTemplates.find(bp => bp.value === selectedTemplate);
+        if (!isValidTemplate) {
+          const validOptions = validTemplates.map(bp => bp.value).join(', ');
+          konsola.warn(`Invalid template "${chalk.hex(colorPalette.CREATE)(selectedTemplate)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`);
           konsola.br();
-          // Reset blueprint to show interactive selection
-          technologyBlueprint = undefined;
+          // Reset template to show interactive selection
+          technologyTemplate = undefined;
         }
       }
 
-      // Select technology blueprint (either not provided or invalid)
-      if (!technologyBlueprint) {
-        technologyBlueprint = await select({
+      // Select technology template (either not provided or invalid)
+      if (!technologyTemplate) {
+        technologyTemplate = await select({
           message: 'Please select the technology you would like to use:',
-          choices: blueprints.map(blueprint => ({
-            name: blueprint.name,
-            value: blueprint.value,
+          choices: templates.map(template => ({
+            name: template.name,
+            value: template.value,
           })),
         });
       }
@@ -91,7 +117,7 @@ export const createCommand = program
       if (!projectPath) {
         finalProjectPath = await input({
           message: 'What is the path for your project?',
-          default: `./my-${technologyBlueprint}-project`,
+          default: `./my-${technologyTemplate}-project`,
           validate: (value: string) => {
             if (!value.trim()) {
               return 'Project path is required';
@@ -112,24 +138,57 @@ export const createCommand = program
       const projectName = path.basename(resolvedPath);
 
       konsola.br();
-      konsola.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyBlueprint)} blueprint...`);
+      konsola.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`);
 
       // Generate the project from the template
-      await generateProject(technologyBlueprint!, projectName, targetDirectory);
+      await generateProject(technologyTemplate!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
       let createdSpace;
+      const choices = [
+        { name: 'My personal account', value: 'personal' },
+      ];
+      if (userData.has_org) {
+        choices.push({ name: `Organization (${userData.org.name})`, value: 'org' });
+      }
+      if (userData.has_partner) {
+        choices.push({ name: 'Partner Portal', value: 'partner' });
+      }
+      let whereToCreateSpace = 'personal';
+      if (region === 'eu' && (userData.has_partner || userData.has_org)) {
+        whereToCreateSpace = await select({
+          message: `Where would you like to create this space?`,
+          choices,
+        });
+      }
+      if (region !== 'eu' && userData.has_org) {
+        whereToCreateSpace = 'org';
+      }
+      if (region !== 'eu' && !userData.has_org) {
+        konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+        konsola.br();
+        return;
+      }
+
       if (!options.skipSpace) {
         try {
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
-          // Find the selected blueprint from the dynamic blueprints array
-          const selectedBlueprint = blueprints.find(bp => bp.value === technologyBlueprint);
-          const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
 
-          createdSpace = await createSpace({
+          // Find the selected blueprint from the dynamic blueprints array
+          const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
+          const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
+          const spaceToCreate: CreateSpaceRequest = {
             name: toHumanReadable(projectName),
             domain: blueprintDomain,
-          });
+          };
+          if (whereToCreateSpace === 'org') {
+            spaceToCreate.org = userData.org;
+            spaceToCreate.in_org = true;
+          }
+          else if (whereToCreateSpace === 'partner') {
+            spaceToCreate.assign_partner = true;
+          }
+          createdSpace = await createSpace(spaceToCreate);
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
         }
         catch (error) {
@@ -167,9 +226,17 @@ export const createCommand = program
 
       // Show next steps
       konsola.br();
-      konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyBlueprint)} project is ready 🎉 !`);
+      konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
       if (createdSpace?.first_token) {
-        konsola.ok(`Storyblok space created, preview url and .env configured automatically`);
+        if (whereToCreateSpace === 'org') {
+          konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData.org.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
+        else if (whereToCreateSpace === 'partner') {
+          konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
+        else {
+          konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+        }
       }
       konsola.br();
       konsola.info(`Next steps:

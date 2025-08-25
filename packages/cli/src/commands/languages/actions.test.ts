@@ -7,7 +7,7 @@ import { FetchError } from 'src/utils/fetch';
 import { APIError } from 'src/utils';
 
 const handlers = [
-  http.get('https://api.storyblok.com/v1/spaces/12345', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/12345', async ({ request }) => {
     const token = request.headers.get('Authorization');
     if (token === 'valid-token') {
       return HttpResponse.json({

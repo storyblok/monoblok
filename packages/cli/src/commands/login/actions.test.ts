@@ -10,14 +10,14 @@ import { APIError } from '../../utils';
 const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
 const handlers = [
-  http.get('https://api.storyblok.com/v1/users/me', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/users/me', async ({ request }) => {
     const token = request.headers.get('Authorization');
     if (token === 'valid-token') {
       return HttpResponse.json({ data: 'user data' });
     }
     return new HttpResponse('Unauthorized', { status: 401 });
   }),
-  http.post('https://api.storyblok.com/v1/users/login', async ({ request }) => {
+  http.post('https://mapi.storyblok.com/v1/users/login', async ({ request }) => {
     const body = await request.json() as { email: string; password: string };
 
     if (!emailRegex.test(body.email)) {
@@ -58,7 +58,7 @@ describe('login actions', () => {
 
     it('should throw a network error if response is empty (network)', async () => {
       server.use(
-        http.get('https://api.storyblok.com/v1/users/me', () => {
+        http.get('https://mapi.storyblok.com/v1/users/me', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
@@ -85,7 +85,7 @@ describe('login actions', () => {
   describe('loginWithOtp', () => {
     it('should login successfully with valid email, password, and otp', async () => {
       server.use(
-        http.post('https://api.storyblok.com/v1/users/login', async ({ request }) => {
+        http.post('https://mapi.storyblok.com/v1/users/login', async ({ request }) => {
           const body = await request.json() as { email: string; password: string; otp_attempt: string };
           if (body?.email === 'julio.iglesias@storyblok.com' && body?.password === 'password' && body?.otp_attempt === '123456') {
             return HttpResponse.json({ access_token: 'Awiwi' });

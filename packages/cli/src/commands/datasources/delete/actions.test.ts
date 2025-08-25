@@ -6,7 +6,7 @@ import { deleteDatasource } from './actions';
 
 // MSW handlers for mocking the datasources API endpoint
 const handlers = [
-  http.delete('https://api.storyblok.com/v1/spaces/12345/datasources/1', async ({ request }) => {
+  http.delete('https://mapi.storyblok.com/v1/spaces/12345/datasources/1', async ({ request }) => {
     const token = request.headers.get('Authorization');
 
     // Return success response for valid token

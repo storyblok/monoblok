@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCommand } from './';
 import { handleError, konsola, requireAuthentication, toHumanReadable } from '../../utils';
 import { input, select } from '@inquirer/prompts';
@@ -7,6 +7,8 @@ import { createSpace } from '../spaces';
 import type { Space } from '../spaces/actions';
 import { mapiClient } from '../../api';
 import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { getUser } from '../user/actions';
+import type { StoryblokUser } from '../../types';
 import { templates } from './constants';
 
 // Mock all dependencies
@@ -20,6 +22,10 @@ vi.mock('./actions', () => ({
 
 vi.mock('../spaces', () => ({
   createSpace: vi.fn(),
+}));
+
+vi.mock('../user/actions', () => ({
+  getUser: vi.fn(),
 }));
 
 vi.mock('../../api', () => ({
@@ -107,6 +113,22 @@ const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   ...overrides,
 });
 
+// Helper function to create a complete StoryblokUser mock object
+const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser => ({
+  id: 1,
+  email: 'test@example.com',
+  username: 'testuser',
+  friendly_name: 'Test User',
+  otp_required: false,
+  access_token: 'test-token',
+  has_org: false,
+  org: {
+    name: 'Test Organization',
+  },
+  has_partner: false,
+  ...overrides,
+});
+
 describe('createCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -117,6 +139,10 @@ describe('createCommand', () => {
     vi.mocked(toHumanReadable).mockImplementation((str: string) =>
       str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
     );
+    // Default user mock - can be overridden in individual tests
+    vi.mocked(getUser).mockResolvedValue({
+      user: createMockUser(),
+    });
   });
 
   describe('template validation', () => {
@@ -645,6 +671,353 @@ describe('createCommand', () => {
       expect(createSpace).not.toHaveBeenCalled();
       expect(createEnvFile).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('space creation choices and location', () => {
+    describe('eU region space creation choices', () => {
+      it('should automatically create in personal account for users without org or partner', async () => {
+        const mockUser = createMockUser({
+          has_org: false,
+          has_partner: false,
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should not prompt for space creation location since user has no org or partner
+        expect(select).not.toHaveBeenCalledWith(expect.objectContaining({
+          message: 'Where would you like to create this space?',
+        }));
+
+        // Should automatically create space with personal account (no org or partner flags)
+        expect(createSpace).toHaveBeenCalledWith({
+          name: 'My Project',
+          domain: templates.REACT.location,
+        });
+      });
+
+      it('should show organization choice for users with org in EU region', async () => {
+        const mockUser = createMockUser({
+          has_org: true,
+          has_partner: false,
+          org: { name: 'Test Organization' },
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select)
+          .mockResolvedValueOnce('org') // Space creation choice
+          .mockResolvedValueOnce('react'); // Blueprint choice if needed
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should prompt for space creation location
+        expect(select).toHaveBeenCalledWith(expect.objectContaining({
+          message: 'Where would you like to create this space?',
+          choices: [
+            { name: 'My personal account', value: 'personal' },
+            { name: 'Organization (Test Organization)', value: 'org' },
+          ],
+        }));
+
+        // Should create space with org flags
+        expect(createSpace).toHaveBeenCalledWith({
+          name: 'My Project',
+          domain: templates.REACT.location,
+          org: mockUser.org,
+          in_org: true,
+        });
+      });
+
+      it('should show partner portal choice for users with partner in EU region', async () => {
+        const mockUser = createMockUser({
+          has_org: false,
+          has_partner: true,
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select)
+          .mockResolvedValueOnce('partner') // Space creation choice
+          .mockResolvedValueOnce('react'); // Blueprint choice if needed
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should prompt for space creation location
+        expect(select).toHaveBeenCalledWith(expect.objectContaining({
+          message: 'Where would you like to create this space?',
+          choices: [
+            { name: 'My personal account', value: 'personal' },
+            { name: 'Partner Portal', value: 'partner' },
+          ],
+        }));
+
+        // Should create space with partner flag
+        expect(createSpace).toHaveBeenCalledWith({
+          name: 'My Project',
+          domain: templates.REACT.location,
+          assign_partner: true,
+        });
+      });
+
+      it('should show all choices for users with both org and partner in EU region', async () => {
+        const mockUser = createMockUser({
+          has_org: true,
+          has_partner: true,
+          org: { name: 'Test Organization' },
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select)
+          .mockResolvedValueOnce('personal') // Space creation choice
+          .mockResolvedValueOnce('react'); // Blueprint choice if needed
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should prompt for space creation location with all options
+        expect(select).toHaveBeenCalledWith(expect.objectContaining({
+          message: 'Where would you like to create this space?',
+          choices: [
+            { name: 'My personal account', value: 'personal' },
+            { name: 'Organization (Test Organization)', value: 'org' },
+            { name: 'Partner Portal', value: 'partner' },
+          ],
+        }));
+
+        // Should create space with personal account (no special flags)
+        expect(createSpace).toHaveBeenCalledWith({
+          name: 'My Project',
+          domain: templates.REACT.location,
+        });
+      });
+    });
+
+    describe('non-EU region space creation behavior', () => {
+      beforeEach(async () => {
+        // Mock session to return non-EU region by updating the existing mock
+        const sessionModule = await import('../../session');
+        const mockSession = sessionModule.session();
+        mockSession.state.region = 'us'; // Change to non-EU region
+      });
+
+      afterEach(async () => {
+        // Reset back to EU region for other tests
+        const sessionModule = await import('../../session');
+        const mockSession = sessionModule.session();
+        mockSession.state.region = 'eu';
+      });
+
+      it('should automatically use organization for users with org in non-EU region', async () => {
+        const mockUser = createMockUser({
+          has_org: true,
+          has_partner: false,
+          org: { name: 'Test Organization' },
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
+
+        // Should not prompt for space creation location in non-EU with org
+        expect(select).not.toHaveBeenCalledWith(expect.objectContaining({
+          message: 'Where would you like to create this space?',
+        }));
+
+        // Should create space with org flags automatically
+        expect(createSpace).toHaveBeenCalledWith({
+          name: 'My Project',
+          domain: templates.REACT.location,
+          org: mockUser.org,
+          in_org: true,
+        });
+      });
+
+      it('should warn and exit for users without org in non-EU region', async () => {
+        const mockUser = createMockUser({
+          has_org: false,
+          has_partner: false,
+        });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
+
+        // Should show warning message (note: American spelling "organization")
+        expect(konsola.warn).toHaveBeenCalledWith(
+          'Space creation in this region is limited to Enterprise accounts. If you\'re part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.',
+        );
+
+        // Should not attempt to create space
+        expect(createSpace).not.toHaveBeenCalled();
+        expect(createEnvFile).not.toHaveBeenCalled();
+        expect(openSpaceInBrowser).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('success messages based on space creation location', () => {
+      it('should show organization-specific success message when creating in org', async () => {
+        const mockUser = createMockUser({
+          has_org: true,
+          has_partner: false,
+          org: { name: 'Test Organization' },
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select).mockResolvedValueOnce('org'); // Space creation choice
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should show organization-specific success message
+        expect(konsola.ok).toHaveBeenCalledWith(
+          expect.stringContaining('Storyblok space created in organization Test Organization'),
+        );
+      });
+
+      it('should show partner-specific success message when creating in partner portal', async () => {
+        const mockUser = createMockUser({
+          has_org: false,
+          has_partner: true,
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select).mockResolvedValueOnce('partner'); // Space creation choice
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should show partner-specific success message
+        expect(konsola.ok).toHaveBeenCalledWith(
+          expect.stringContaining('Storyblok space created in partner portal'),
+        );
+      });
+
+      it('should show generic success message when creating in personal account', async () => {
+        const mockUser = createMockUser({
+          has_org: true,
+          has_partner: true,
+          org: { name: 'Test Organization' },
+        });
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(select).mockResolvedValueOnce('personal'); // Space creation choice
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        // Should show generic success message (not org or partner specific)
+        expect(konsola.ok).toHaveBeenCalledWith(
+          expect.stringMatching(/^Storyblok space created, preview url and \.env configured automatically/),
+        );
+        expect(konsola.ok).not.toHaveBeenCalledWith(
+          expect.stringContaining('organization'),
+        );
+        expect(konsola.ok).not.toHaveBeenCalledWith(
+          expect.stringContaining('partner portal'),
+        );
+      });
+    });
+
+    describe('user data fetching', () => {
+      it('should handle user data fetching failure', async () => {
+        const userError = new Error('Failed to fetch user');
+        vi.mocked(getUser).mockRejectedValue(userError);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Please login again.', userError);
+        expect(generateProject).not.toHaveBeenCalled();
+        expect(createSpace).not.toHaveBeenCalled();
+      });
+
+      it('should call getUser with correct parameters', async () => {
+        const mockUser = createMockUser();
+        const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+
+        expect(getUser).toHaveBeenCalledWith('test-token', 'eu');
+      });
     });
   });
 });

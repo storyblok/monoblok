@@ -409,6 +409,17 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Create space",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["create", "--blueprint", "react", "./playgrounds/test-project"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
     }
   ],
 }

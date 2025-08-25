@@ -123,7 +123,7 @@ export const generateSpaceUrl = (spaceId: number, region: RegionCode): string =>
     utm_medium: 'cli',
     utm_campaign: 'create',
   });
-  return `https://${domain}/me/spaces/${spaceId}/dashboard?${utmParams.toString()}#`;
+  return `https://${domain}/#/me/spaces/${spaceId}/dashboard?${utmParams.toString()}`;
 };
 
 /**

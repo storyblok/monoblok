@@ -155,7 +155,7 @@ export interface Space {
   /** The user Object of the Owner */
   owner: SpaceOwner;
   /** The organization of the space */
-  org: {
+  org?: {
     name: string;
   };
 }

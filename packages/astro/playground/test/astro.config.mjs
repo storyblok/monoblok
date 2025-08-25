@@ -3,7 +3,7 @@ import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   integrations: [
@@ -17,6 +17,7 @@ export default defineConfig({
       },
       enableFallbackComponent: true,
       customFallbackComponent: 'storyblok/CustomFallback',
+      componentsDir: '../shared',
       components: {
         'page': 'storyblok/Page',
         'feature': 'storyblok/subfolder/Feature',
@@ -31,6 +32,12 @@ export default defineConfig({
         'embedded_blok': 'storyblok/EmbeddedBlok',
       },
     }),
-    tailwind(),
   ],
+  vite: {
+    resolve: {
+      alias: {
+        '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
+      },
+    },
+  },
 });

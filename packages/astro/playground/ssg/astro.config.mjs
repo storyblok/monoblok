@@ -3,8 +3,8 @@ import svelte from '@astrojs/svelte';
 import vue from '@astrojs/vue';
 import react from '@astrojs/react';
 import { storyblok } from '@storyblok/astro';
-import tailwind from '@astrojs/tailwind';
 import mkcert from 'vite-plugin-mkcert';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   integrations: [
@@ -17,6 +17,7 @@ export default defineConfig({
         cache: { clear: 'auto', type: 'memory' },
       },
       enableFallbackComponent: true,
+      componentsDir: '../shared',
       components: {
         'page': 'storyblok/Page',
         'feature': 'storyblok/Feature',
@@ -29,9 +30,13 @@ export default defineConfig({
         'featured-articles': 'storyblok/FeaturedArticles',
       },
     }),
-    tailwind(),
   ],
   vite: {
     plugins: [mkcert()],
+    resolve: {
+      alias: {
+        '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
+      },
+    },
   },
 });

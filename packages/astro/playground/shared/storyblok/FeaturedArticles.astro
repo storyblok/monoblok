@@ -1,0 +1,56 @@
+---
+import { storyblokEditable } from '@storyblok/astro';
+
+const { blok } = Astro.props;
+---
+
+<div {...storyblokEditable(blok)} class="wrapper">
+  <h2 class="heading">{blok?.heading}</h2>
+  <div class="posts">
+    {
+      blok.posts?.map((blok) => {
+        return (
+          <div class="post">
+            <p class="post-title">{blok.name}</p>
+            <a class="post-link" href={blok.full_slug}>
+              Read full article
+            </a>
+          </div>
+        );
+      })
+    }
+  </div>
+</div>
+<style>
+  .wrapper {
+    margin: 1rem 0;
+    padding: 0.5rem 0;
+  }
+
+  .heading {
+    text-align: center;
+    font: 700 2.25rem/2.5rem sans-serif;
+  }
+
+  .posts {
+    max-width: 1280px;
+    margin: 1rem auto 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3rem;
+  }
+
+  .post {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+  }
+
+  .post-title {
+    margin-bottom: 0.5rem;
+    font: 700 1.25rem/1.75rem sans-serif;
+  }
+
+  .post-link {
+    text-decoration: underline;
+  }
+</style>

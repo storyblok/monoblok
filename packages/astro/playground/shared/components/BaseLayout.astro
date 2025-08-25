@@ -1,3 +1,7 @@
+---
+
+---
+
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -5,8 +9,18 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>@storyblok/astro</title>
   </head>
-
-  <body class="container">
+  <body>
     <slot />
   </body>
+  <style>
+    :root {
+      --color-primary: #50b0ae;
+      --color-secondary: #1c243d;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+    }
+  </style>
 </html>

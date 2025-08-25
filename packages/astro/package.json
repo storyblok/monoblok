@@ -47,7 +47,7 @@
   },
   "main": "./dist/storyblok-astro.es.js",
   "module": "./dist/storyblok-astro.js",
-  "types": "./dist/storyblok-astro.d.ts",
+  "types": "./dist/index.d.ts",
   "files": [
     "*.d.ts",
     "dist"

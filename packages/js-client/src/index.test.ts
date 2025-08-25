@@ -203,6 +203,26 @@ describe('storyblokClient', () => {
       });
     });
 
+    it('should return a clone from the cache', async () => {
+      const mockThrottle = vi.fn().mockResolvedValue({
+        data: {
+          stories: [{ id: 1, title: 'Maybe Cached' }],
+          cv: 1645521118,
+        },
+        headers: {},
+        status: 200,
+      });
+      client.throttle = mockThrottle;
+      client.cache.type = 'memory';
+
+      const result = await client.get('test', { version: 'published', token: 'test-token' });
+      const resultFromCache = await client.get('test', { version: 'published', token: 'test-token' });
+
+      expect(mockThrottle).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(resultFromCache);
+      expect(result).not.toBe(resultFromCache);
+    });
+
     it('should clear the cache', async () => {
       // Mock the cacheProvider and its flush method
       client.cacheProvider = vi.fn().mockReturnValue({

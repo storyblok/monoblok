@@ -674,7 +674,23 @@ export class Storyblok {
     if (params.version === 'published' && url !== '/cdn/spaces/me') {
       const cache = await provider.get(cacheKey);
       if (cache) {
-        return Promise.resolve(cache);
+        try {
+          if (typeof structuredClone !== 'function') {
+            return JSON.parse(JSON.stringify(cache));
+          }
+          return structuredClone(cache);
+        }
+
+        catch (error: Error | any) {
+          console.warn(
+            'Failed to clone a cached object. This can happen with complex data types like functions or circular references. '
+            + 'The cache is returning a direct, un-cloned reference to the data to prevent a crash.\n\n'
+            + '⚠️ To avoid unpredictable bugs and data pollution, DO NOT MUTATE this object.\n',
+            'Original cloning error:',
+            error,
+          );
+          return cache;
+        }
       }
     }
 

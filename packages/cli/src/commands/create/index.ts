@@ -76,13 +76,13 @@ export const createCommand = program
     }
 
     try {
-      spinnerBlueprints.start('Fetching starter blueprints...');
+      spinnerBlueprints.start('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
-      spinnerBlueprints.succeed('Starter blueprints fetched successfully');
+      spinnerBlueprints.succeed('Starter templates fetched successfully');
 
       if (!templates) {
         spinnerBlueprints.failed();
-        konsola.warn('No starter blueprints found. Please contact support@storyblok.com');
+        konsola.warn('No starter templates found. Please contact support@storyblok.com');
         konsola.br();
         return;
       }

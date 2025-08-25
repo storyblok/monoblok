@@ -702,7 +702,7 @@ describe('createCommand', () => {
         // Should automatically create space with personal account (no org or partner flags)
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
-          domain: blueprints.REACT.location,
+          domain: templates.REACT.location,
         });
       });
 
@@ -740,7 +740,7 @@ describe('createCommand', () => {
         // Should create space with org flags
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
-          domain: blueprints.REACT.location,
+          domain: templates.REACT.location,
           org: mockUser.org,
           in_org: true,
         });
@@ -779,7 +779,7 @@ describe('createCommand', () => {
         // Should create space with partner flag
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
-          domain: blueprints.REACT.location,
+          domain: templates.REACT.location,
           assign_partner: true,
         });
       });
@@ -819,7 +819,7 @@ describe('createCommand', () => {
         // Should create space with personal account (no special flags)
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
-          domain: blueprints.REACT.location,
+          domain: templates.REACT.location,
         });
       });
     });
@@ -856,7 +856,7 @@ describe('createCommand', () => {
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         ]);
 
-        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
         // Should not prompt for space creation location in non-EU with org
         expect(select).not.toHaveBeenCalledWith(expect.objectContaining({
@@ -866,7 +866,7 @@ describe('createCommand', () => {
         // Should create space with org flags automatically
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
-          domain: blueprints.REACT.location,
+          domain: templates.REACT.location,
           org: mockUser.org,
           in_org: true,
         });
@@ -884,11 +884,11 @@ describe('createCommand', () => {
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         ]);
 
-        await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
-        // Should show warning message
+        // Should show warning message (note: American spelling "organization")
         expect(konsola.warn).toHaveBeenCalledWith(
-          'Space creation in this region is limited to Enterprise accounts. If you\'re part of an organisation, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.',
+          'Space creation in this region is limited to Enterprise accounts. If you\'re part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.',
         );
 
         // Should not attempt to create space
@@ -996,7 +996,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(konsola.warn).toHaveBeenCalledWith('Failed to fetch user info. Please login again.');
+        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Please login again.', userError);
         expect(generateProject).not.toHaveBeenCalled();
         expect(createSpace).not.toHaveBeenCalled();
       });

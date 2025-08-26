@@ -57,12 +57,16 @@ componentsCommand
 
     let requestCount = 0;
 
-    mapiClient({
-      token: password,
-      region,
-      onRequest: (_request) => {
-        requestCount++;
+    const client = mapiClient({
+      token: {
+        accessToken: password,
       },
+      region,
+    });
+
+    client.interceptors.request.use((config) => {
+      requestCount++;
+      return config;
     });
 
     try {

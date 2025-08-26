@@ -16,6 +16,7 @@ import './commands/create';
 import pkg from '../package.json';
 
 import { colorPalette } from './constants';
+import { mapiClient } from './api';
 
 export * from './types/storyblok';
 
@@ -36,6 +37,26 @@ program.on('command:*', () => {
   program.outputHelp();
   process.exit(1);
 });
+
+program.command('test')
+  .description('Run tests')
+  .action(async () => {
+    mapiClient({
+      token: {
+        accessToken: 'valid-token',
+      },
+      region: 'eu',
+    });
+
+    const client1 = mapiClient({
+      token: {
+        accessToken: 'invalid-token',
+      },
+      region: 'us',
+    });
+
+    console.log('Client 1:', client1);
+  });
 
 try {
   program.parse(process.argv);

@@ -20,13 +20,16 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      component: SpaceComponent;
-    }>(`spaces/${space}/components`, {
-      body: JSON.stringify(component),
+    const { data } = await client.components.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: {
+        component,
+      },
     });
 
-    return data.component;
+    return data?.component;
   }
   catch (error) {
     handleAPIError('push_component', error as Error, `Failed to push component ${component.name}`);
@@ -37,12 +40,18 @@ export const updateComponent = async (space: string, componentId: number, compon
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      component: SpaceComponent;
-    }>(`spaces/${space}/components/${componentId}`, {
-      body: JSON.stringify(component),
+    const { data } = await client.components.update({
+      path: {
+        space_id: Number(space),
+        component_id: componentId,
+      },
+      body: {
+        component,
+      },
+      throwOnError: true,
     });
-    return data.component;
+
+    return data?.component;
   }
   catch (error) {
     handleAPIError('update_component', error as Error, `Failed to update component ${component.name}`);
@@ -70,12 +79,17 @@ export const pushComponentGroup = async (space: string, componentGroup: SpaceCom
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      component_group: SpaceComponentGroup;
-    }>(`spaces/${space}/component_groups`, {
-      body: JSON.stringify(componentGroup),
+    const { data } = await client.componentFolders.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: {
+        component_group: componentGroup,
+      },
+      throwOnError: true,
     });
-    return data.component_group;
+
+    return data?.component_group;
   }
   catch (error) {
     handleAPIError('push_component_group', error as Error, `Failed to push component group ${componentGroup.name}`);
@@ -86,12 +100,18 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      component_group: SpaceComponentGroup;
-    }>(`spaces/${space}/component_groups/${groupId}`, {
-      body: JSON.stringify(componentGroup),
+    const { data } = await client.componentFolders.update({
+      path: {
+        space_id: Number(space),
+        component_group_id: String(groupId),
+      },
+      body: {
+        component_group: componentGroup,
+      },
+      throwOnError: true,
     });
-    return data.component_group;
+
+    return data?.component_group;
   }
   catch (error) {
     handleAPIError('update_component_group', error as Error, `Failed to update component group ${componentGroup.name}`);
@@ -118,12 +138,17 @@ export const pushComponentPreset = async (space: string, componentPreset: { pres
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      preset: SpaceComponentPreset;
-    }>(`spaces/${space}/presets`, {
-      body: JSON.stringify(componentPreset),
+    const { data } = await client.presets.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: {
+        preset: componentPreset.preset,
+      },
+      throwOnError: true,
     });
-    return data.preset;
+
+    return data?.preset;
   }
   catch (error) {
     handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${componentPreset.preset.name}`);
@@ -134,12 +159,18 @@ export const updateComponentPreset = async (space: string, presetId: number, com
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      preset: SpaceComponentPreset;
-    }>(`spaces/${space}/presets/${presetId}`, {
-      body: JSON.stringify(componentPreset),
+    const { data } = await client.presets.update({
+      path: {
+        space_id: Number(space),
+        preset_id: presetId,
+      },
+      body: {
+        preset: componentPreset.preset,
+      },
+      throwOnError: true,
     });
-    return data.preset;
+
+    return data?.preset;
   }
   catch (error) {
     handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${componentPreset.preset.name}`);
@@ -167,11 +198,12 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      internal_tag: SpaceComponentInternalTag;
-    }>(`spaces/${space}/internal_tags`, {
-      method: 'POST',
-      body: JSON.stringify(componentInternalTag),
+    const { data } = await client.internalTags.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: componentInternalTag,
+      throwOnError: true,
     });
 
     return data.internal_tag;
@@ -185,11 +217,13 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      internal_tag: SpaceComponentInternalTag;
-    }>(`spaces/${space}/internal_tags/${tagId}`, {
-      method: 'PUT',
-      body: JSON.stringify(componentInternalTag),
+    const { data } = await client.internalTags.update({
+      path: {
+        space_id: Number(space),
+        internal_tag_id: tagId,
+      },
+      body: componentInternalTag,
+      throwOnError: true,
     });
 
     return data.internal_tag;

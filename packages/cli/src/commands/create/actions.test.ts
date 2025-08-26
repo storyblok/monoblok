@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToBlueprint } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
@@ -231,27 +231,27 @@ describe('create actions', () => {
   describe('generateSpaceUrl', () => {
     it('should generate correct URL for EU region', () => {
       const url = generateSpaceUrl(12345, 'eu');
-      expect(url).toBe('https://app.storyblok.com/#/me/spaces/12345/dashboard');
+      expect(url).toBe('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
 
     it('should generate correct URL for US region', () => {
       const url = generateSpaceUrl(67890, 'us');
-      expect(url).toBe('https://app-us.storyblok.com/#/me/spaces/67890/dashboard');
+      expect(url).toBe('https://app-us.storyblok.com/#/me/spaces/67890/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
 
     it('should generate correct URL for China region', () => {
       const url = generateSpaceUrl(11111, 'cn');
-      expect(url).toBe('https://app.storyblokchina.cn/#/me/spaces/11111/dashboard');
+      expect(url).toBe('https://app.storyblokchina.cn/#/me/spaces/11111/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
 
     it('should generate correct URL for Canada region', () => {
       const url = generateSpaceUrl(22222, 'ca');
-      expect(url).toBe('https://app-ca.storyblok.com/#/me/spaces/22222/dashboard');
+      expect(url).toBe('https://app-ca.storyblok.com/#/me/spaces/22222/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
 
     it('should generate correct URL for Asia Pacific region', () => {
       const url = generateSpaceUrl(33333, 'ap');
-      expect(url).toBe('https://app-ap.storyblok.com/#/me/spaces/33333/dashboard');
+      expect(url).toBe('https://app-ap.storyblok.com/#/me/spaces/33333/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
   });
 
@@ -261,7 +261,7 @@ describe('create actions', () => {
 
       await expect(openSpaceInBrowser(12345, 'eu')).resolves.toBeUndefined();
 
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblok.com/#/me/spaces/12345/dashboard');
+      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
 
     it('should handle errors when opening browser fails', async () => {
@@ -278,7 +278,7 @@ describe('create actions', () => {
 
       await openSpaceInBrowser(98765, 'cn');
 
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblokchina.cn/#/me/spaces/98765/dashboard');
+      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblokchina.cn/#/me/spaces/98765/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
   });
 });
@@ -309,8 +309,8 @@ describe('extractPortFromTopics', () => {
   });
 });
 
-describe('repositoryToBlueprint', () => {
-  it('should convert a repo object to a DynamicBlueprint', () => {
+describe('repositoryToTemplate', () => {
+  it('should convert a repo object to a DynamicTemplate', () => {
     // Mock repo object with expected fields
     const repo = {
       name: 'blueprint-core-vue',
@@ -319,8 +319,8 @@ describe('repositoryToBlueprint', () => {
       description: 'A Vue starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const blueprint = repositoryToBlueprint(repo);
-    expect(blueprint).toEqual({
+    const template = repositoryToTemplate(repo);
+    expect(template).toEqual({
       name: 'Vue',
       value: 'vue',
       template: 'https://github.com/storyblok/blueprint-core-vue.git',
@@ -338,8 +338,8 @@ describe('repositoryToBlueprint', () => {
       description: 'A React starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const blueprint = repositoryToBlueprint(repo);
-    expect(blueprint.location).toBe('https://localhost:3000/');
+    const template = repositoryToTemplate(repo);
+    expect(template.location).toBe('https://localhost:3000/');
   });
 });
 

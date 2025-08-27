@@ -62,7 +62,7 @@
       "request": "launch",
       "name": "Debug Pull languages",
       "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
-      "args": ["languages", "pull", "--space", "295018"],
+      "args": ["languages", "pull", "--space", "295017"],
       "cwd": "${workspaceFolder}/packages/cli",
       "console": "integratedTerminal",
       "sourceMaps": true,

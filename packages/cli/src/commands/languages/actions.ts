@@ -1,27 +1,19 @@
 import { join } from 'node:path';
 import { handleAPIError, handleFileSystemError } from '../../utils';
-import { customFetch } from '../../utils/fetch';
 import { resolvePath, saveToFile } from '../../utils/filesystem';
 import type { PullLanguagesOptions } from './constants';
-import type { RegionCode } from '../../constants';
 import type { SpaceInternationalization } from '../../types';
-import { getStoryblokUrl } from '../../utils/api-routes';
+import { fetchSpace } from '../spaces';
 
-export const fetchLanguages = async (space: string, token: string, region: RegionCode): Promise<SpaceInternationalization | undefined> => {
+export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationalization | undefined> => {
   try {
-    const url = getStoryblokUrl(region);
-    const response = await customFetch<{
-      space: SpaceInternationalization;
-    }>(`${url}/spaces/${space}`, {
-      headers: {
-        Authorization: token,
-      },
-    });
-
-    return {
-      default_lang_name: response.space.default_lang_name,
-      languages: response.space.languages,
-    };
+    const space = await fetchSpace(spaceId);
+    if (space?.default_lang_name !== undefined && space?.languages?.length) {
+      return {
+        default_lang_name: space?.default_lang_name,
+        languages: space?.languages,
+      } as SpaceInternationalization;
+    }
   }
   catch (error) {
     handleAPIError('pull_languages', error);

@@ -3,6 +3,25 @@ import { handleAPIError } from '../../utils';
 import { mapiClient } from '../../api';
 
 export type Space = Spaces.Space;
+
+export const fetchSpace = async (space: string): Promise<Space | undefined> => {
+  try {
+    const client = mapiClient();
+
+    const { data } = await client.spaces.get({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      throwOnError: true,
+    });
+
+    return data?.space;
+  }
+  catch (error) {
+    handleAPIError('pull_spaces', error as Error, `Failed to fetch space ${space}`);
+  }
+};
+
 /**
  * Creates a new space using the Storyblok Management API
  * @param space - The space creation request data

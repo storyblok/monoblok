@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
 import { Spinner } from '@topcli/spinner';
 import { resolveRegion } from '../../utils/region';
+import { mapiClient } from '../../api';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -46,13 +47,20 @@ languagesCommand
 
     const { password, region } = state;
 
+    mapiClient({
+      token: {
+        accessToken: password,
+      },
+      region,
+    });
+
     const spinner = new Spinner({
       verbose: !isVitest,
     });
     try {
       spinner.start(`Fetching ${chalk.hex(colorPalette.LANGUAGES)('languages')}`);
 
-      const internationalization = await fetchLanguages(space, password, region);
+      const internationalization = await fetchLanguages(space);
 
       if (!internationalization || internationalization.languages?.length === 0) {
         spinner.failed();

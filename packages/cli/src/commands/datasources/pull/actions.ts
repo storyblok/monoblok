@@ -17,10 +17,16 @@ export const fetchDatasourceEntries = async (
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasource_entries: SpaceDatasourceEntry[];
-    }>(`spaces/${space}/datasource_entries?datasource_id=${datasourceId}`);
-    return data.datasource_entries;
+    const { data } = await client.datasourceEntries.list({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      query: {
+        datasource_id: datasourceId,
+      },
+      throwOnError: true,
+    });
+    return data?.datasource_entries;
   }
   catch (error) {
     // Use 'pull_datasources' as the closest valid action for datasource entries errors
@@ -31,16 +37,19 @@ export const fetchDatasourceEntries = async (
 export const fetchDatasources = async (space: string): Promise<SpaceDatasource[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasources: SpaceDatasource[];
-    }>(`spaces/${space}/datasources`);
-    const datasources = data.datasources;
+    const { data } = await client.datasources.list({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      throwOnError: true,
+    });
+    const datasources = data?.datasources;
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
-      datasources.map(async (ds) => {
-        const entries = await fetchDatasourceEntries(space, ds.id);
+      datasources?.map(async (ds) => {
+        const entries = await fetchDatasourceEntries(space, ds.id as number);
         return { ...ds, entries };
-      }),
+      }) || [],
     );
     return datasourcesWithEntries;
   }
@@ -52,14 +61,20 @@ export const fetchDatasources = async (space: string): Promise<SpaceDatasource[]
 export const fetchDatasource = async (space: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasources: SpaceDatasource[];
-    }>(`spaces/${space}/datasources?search=${encodeURIComponent(datasourceName)}`);
-    const found = data.datasources?.find(d => d.name === datasourceName);
+    const { data } = await client.datasources.list({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      query: {
+        search: datasourceName,
+      },
+      throwOnError: true,
+    });
+    const found = data?.datasources?.find(d => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
-    const entries = await fetchDatasourceEntries(space, found.id);
-    return { ...found, entries };
+    const entries = await fetchDatasourceEntries(space, found.id as number);
+    return { ...found, entries: entries || [] } as SpaceDatasource;
   }
   catch (error) {
     handleAPIError('pull_datasources', error as Error, `Failed to fetch datasource ${datasourceName}`);

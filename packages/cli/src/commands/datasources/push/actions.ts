@@ -11,10 +11,14 @@ export const pushDatasource = async (space: string, datasource: SpaceDatasource)
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      datasource: SpaceDatasource;
-    }>(`spaces/${space}/datasources`, {
-      body: JSON.stringify(datasource),
+    const { data } = await client.datasources.create({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      body: {
+        datasource,
+      },
+      throwOnError: true,
     });
 
     return data.datasource;
@@ -28,10 +32,15 @@ export const updateDatasource = async (space: string, datasourceId: number, data
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      datasource: SpaceDatasource;
-    }>(`spaces/${space}/datasources/${datasourceId}`, {
-      body: JSON.stringify(datasource),
+    const { data } = await client.datasources.update({
+      path: {
+        space_id: Number.parseInt(space),
+        datasource_id: datasourceId,
+      },
+      body: {
+        datasource,
+      },
+      throwOnError: true,
     });
 
     return data.datasource;
@@ -61,15 +70,17 @@ export const pushDatasourceEntry = async (space: string, datasourceId: number, e
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      datasource_entry: SpaceDatasourceEntry;
-    }>(`spaces/${space}/datasource_entries`, {
-      body: JSON.stringify({
+    const { data } = await client.datasourceEntries.create({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      body: {
         datasource_entry: {
           ...entry,
           datasource_id: datasourceId,
         },
-      }),
+      },
+      throwOnError: true,
     });
 
     return data.datasource_entry;
@@ -90,14 +101,17 @@ export const updateDatasourceEntry = async (space: string, entryId: number, entr
   try {
     const client = mapiClient();
 
-    await client.put<{
-      datasource_entry: SpaceDatasourceEntry;
-    }>(`spaces/${space}/datasource_entries/${entryId}`, {
-      body: JSON.stringify({
+    // TODO: ask Imran why this update method is called differently
+    await client.datasourceEntries.updateDatasourceEntry({
+      path: {
+        space_id: Number.parseInt(space),
+        datasource_entry_id: entryId,
+      },
+      body: {
         datasource_entry: entry,
-      }),
+      },
+      throwOnError: true,
     });
-    // The API does not return the updated entry, returns a 204 No Content
   }
   catch (error) {
     handleAPIError('update_datasource', error as Error, `Failed to update datasource entry ${entry.name}`);

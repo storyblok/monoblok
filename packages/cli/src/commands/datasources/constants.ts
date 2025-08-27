@@ -1,32 +1,7 @@
-export interface SpaceDatasourceDimension {
-  name: string;
-  type: string;
-  entry_value: string;
-  datasource_id: number;
-  created_at: string;
-  updated_at: string;
-}
+import type { DatasourceEntries, Datasources } from '@storyblok/management-api-client';
 
-export interface SpaceDatasourceEntry {
-  id: number;
-  name: string;
-  value: string;
-  dimension_value: string;
-  datasource_id: number;
-}
-
-export interface SpaceDatasource {
-  id: number;
-  name: string;
-  slug: string;
-  dimensions: SpaceDatasourceDimension[];
-  created_at: string;
-  updated_at: string;
-  /**
-   * Optionally include entries when resolving datasources with their entries
-   */
-  entries?: SpaceDatasourceEntry[];
-}
+export type SpaceDatasource = Datasources.Datasource;
+export type SpaceDatasourceEntry = DatasourceEntries.DatasourceEntry;
 
 export interface SpaceDatasourcesData {
   datasources: SpaceDatasource[];

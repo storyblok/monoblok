@@ -86,7 +86,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "babel-jest": "^29.7.0",
     "cypress": "^14.3.3",
-    "eslint": "^9.34.0",
+    "eslint": "^9.26.0",
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-jest": "^28.11.0",
     "jsdom": "^26.1.0",

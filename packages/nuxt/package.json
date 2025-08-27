@@ -59,7 +59,7 @@
     "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^22.15.18",
     "cypress": "^14.3.3",
-    "eslint": "^9.34.0",
+    "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-vue": "^9.32.0",

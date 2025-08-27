@@ -286,6 +286,26 @@ components:
         owner:
           type: object
           description: The user Object of the Owner
+        org:
+          type: object
+          description: Organization object for the space
+          properties:
+            name:
+              type: string
+              description: Name of the organization
+            ai_text_generator_disabled_in_org:
+              type: boolean
+              description: Whether AI text generator is disabled in the organization
+            custom_upload_limit_in_mb:
+              type: integer
+              nullable: true
+              description: Custom upload limit in MB for the organization
+        in_org:
+          type: boolean
+          description: Whether the space is in an organization
+        assign_partner:
+          type: boolean
+          description: Whether the space is assigned to a partner
     Collaborator:
       type: object
       description: The Collaborator Object
@@ -413,7 +433,27 @@ components:
           description: Whether this is a demo space
         blueprint_reference:
           type: string
-          description: Reference to a blueprint 
+          description: Reference to a blueprint
+        org:
+          type: object
+          description: Organization object for the space
+          properties:
+            name:
+              type: string
+              description: Name of the organization
+            ai_text_generator_disabled_in_org:
+              type: boolean
+              description: Whether AI text generator is disabled in the organization
+            custom_upload_limit_in_mb:
+              type: integer
+              nullable: true
+              description: Custom upload limit in MB for the organization
+        in_org:
+          type: boolean
+          description: Whether the space is in an organization
+        assign_partner:
+          type: boolean
+          description: Whether the space is assigned to a partner 
 
     SpaceUpdateRequest:
       type: object

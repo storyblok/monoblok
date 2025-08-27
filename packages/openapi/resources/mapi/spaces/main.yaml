@@ -306,6 +306,25 @@ components:
         assign_partner:
           type: boolean
           description: Whether the space is assigned to a partner
+        languages:
+          type: array
+          description: Array of language objects available in the space
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                description: Language code (e.g., 'en', 'de', 'fr')
+              name:
+                type: string
+                description: Display name of the language
+              ai_translation_code:
+                type: string
+                nullable: true
+                description: AI translation code for the language, can be null
+        default_lang_name:
+          type: string
+          description: Default language code for the space
     Collaborator:
       type: object
       description: The Collaborator Object

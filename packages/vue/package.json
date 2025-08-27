@@ -57,7 +57,7 @@
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
+    "eslint": "^9.34.0",
     "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
     "pathe": "^2.0.3",

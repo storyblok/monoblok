@@ -7,8 +7,7 @@ import { input, select } from '@inquirer/prompts';
 import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
-import type { CreateSpaceRequest } from '../spaces';
-import { createSpace } from '../spaces';
+import { createSpace, type Space } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
 import { getUser } from '../user/actions';
@@ -51,7 +50,9 @@ export const createCommand = program
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 
@@ -177,7 +178,7 @@ export const createCommand = program
           // Find the selected blueprint from the dynamic blueprints array
           const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
           const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
-          const spaceToCreate: CreateSpaceRequest = {
+          const spaceToCreate: Partial<Space> = {
             name: toHumanReadable(projectName),
             domain: blueprintDomain,
           };

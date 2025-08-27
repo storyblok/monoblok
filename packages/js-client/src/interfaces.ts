@@ -141,6 +141,7 @@ export interface ISbStoryData<
     path: string;
     name: string | null;
     lang: ISbStoryData['lang'];
+    published: boolean;
   }[] | null;
   unpublished_changes?: boolean;
   updated_at?: string;
@@ -284,7 +285,7 @@ export interface ISbContentMangmntAPI<
     content?: Content;
     default_root?: string;
     is_folder?: boolean;
-    parent_id?: string;
+    parent_id?: number;
     disable_fe_editor?: boolean;
     path?: string;
     is_startpage?: boolean;
@@ -295,6 +296,7 @@ export interface ISbContentMangmntAPI<
       path: string;
       name: string | null;
       lang: ISbContentMangmntAPI['lang'];
+      published: boolean;
     }[];
   };
   force_update?: '1' | unknown;

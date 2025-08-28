@@ -1,7 +1,6 @@
 import type { SpaceOptions } from '../../constants';
 import type { StoriesFilterOptions, StoriesQueryParams, Story } from './constants';
 import { handleAPIError } from '../../utils/error';
-import { objectToStringParams } from '../../utils';
 import { mapiClient } from '../../api';
 
 /**
@@ -22,37 +21,29 @@ export const fetchStories = async (
     const perPage = 100;
 
     while (hasMorePages) {
-      // Extract filter_query params to handle them separately
-      const { filter_query, ...restParams } = params || {};
-
-      // Handle regular params with URLSearchParams
-      const regularParams = new URLSearchParams({
-        ...objectToStringParams({ ...restParams, per_page: perPage }),
-        ...(currentPage > 1 && { page: currentPage.toString() }),
-      }).toString();
-
-      // Combine regular params with filter_query params (if any)
-      const queryString = filter_query
-        ? `${regularParams ? `${regularParams}&` : ''}${filter_query}`
-        : regularParams;
-
-      const endpoint = `spaces/${space}/stories${queryString ? `?${queryString}` : ''}`;
-
-      const { data } = await client.get<{
-        stories: Story[];
-        per_page?: number;
-        total?: number;
-      }>(endpoint, {
+      const { data } = await client.stories.list({
+        path: {
+          space_id: Number.parseInt(space),
+        },
+        query: {
+          ...params,
+          per_page: perPage,
+          page: currentPage,
+        },
+        throwOnError: true,
       });
 
-      allStories.push(...data.stories);
-
-      // Since per_page and total may not be available, check if we got fewer stories than requested
-      // If we got fewer stories than per_page, we've reached the end
-      hasMorePages = data.stories.length === perPage && data.stories.length > 0;
-      if (data.stories.length < perPage) {
+      if (data?.stories) {
+        allStories.push(...data.stories);
+        hasMorePages = data.stories.length === perPage && data.stories.length > 0;
+        if (data.stories.length < perPage) {
+          break;
+        }
+      }
+      else {
         break;
       }
+
       currentPage++;
     }
 
@@ -101,13 +92,16 @@ export const fetchStory = async (
 ) => {
   try {
     const client = mapiClient();
-    const endpoint = `spaces/${space}/stories/${storyId}`;
 
-    const { data } = await client.get<{
-      story: Story;
-    }>(endpoint, {
+    const { data } = await client.stories.get({
+      path: {
+        space_id: Number.parseInt(space),
+        story_id: Number.parseInt(storyId),
+      },
+      throwOnError: true,
     });
-    return data.story;
+
+    return data?.story;
   }
   catch (error) {
     handleAPIError('pull_story', error as Error);
@@ -128,22 +122,28 @@ export const updateStory = async (
   space: string,
   storyId: number,
   payload: {
-    story: Partial<Story>;
+    story: Story;
     force_update?: string;
     publish?: number;
   },
 ): Promise<Story | undefined> => {
   try {
     const client = mapiClient();
-    const endpoint = `spaces/${space}/stories/${storyId}`;
 
-    const { data } = await client.put<{
-      story: Story;
-    }>(endpoint, {
-      body: JSON.stringify(payload),
+    const { data } = await client.stories.updateStory({
+      path: {
+        space_id: Number.parseInt(space),
+        story_id: storyId,
+      },
+      body: {
+        story: payload.story as Story,
+        force_update: payload.force_update === '1' ? '1' : '0',
+        publish: payload.publish,
+      },
+      throwOnError: true,
     });
 
-    return data.story;
+    return data?.story;
   }
   catch (error) {
     handleAPIError('update_story', error as Error);

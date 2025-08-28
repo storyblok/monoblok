@@ -1,3 +1,7 @@
+import type { Stories } from '@storyblok/management-api-client';
+
+export type Story = Stories.Story;
+
 export interface StoryAlternate {
   id: number;
   name: string;
@@ -60,66 +64,6 @@ export interface BreadcrumbItem {
   path: string;
   slug: string;
   translated_slugs?: TranslatedSlug[];
-}
-
-/**
- * Storyblok Story object from Management API
- * @see https://www.storyblok.com/docs/api/management/core-resources/stories/the-story-object
- */
-export interface Story {
-  // Basic properties
-  id: number;
-  name: string;
-  uuid: string;
-  slug: string;
-  full_slug: string;
-  content: StoryContent;
-
-  // Timestamps
-  created_at: string;
-  updated_at: string;
-  published_at: string | null;
-  first_published_at: string | null;
-  imported_at: string | null;
-  deleted_at: string | null;
-
-  // Status properties
-  published: boolean;
-  unpublished_changes: boolean;
-  is_startpage: boolean;
-  is_folder: boolean;
-  pinned: boolean;
-
-  // Structural properties
-  parent_id: number | null;
-  group_id: string;
-  parent: ParentInfo | null;
-  path: string | null;
-  position: number;
-  sort_by_date: string | null;
-  tag_list: string[];
-
-  // Editor and UI properties
-  disable_fe_editor: boolean;
-  default_root: string | null;
-  preview_token: PreviewToken | null;
-
-  // Metadata
-  meta_data: Record<string, any> | null;
-  release_id: number | null;
-  last_author: LastAuthor | null;
-  last_author_id: number | null;
-
-  // Internationalization properties
-  alternates: StoryAlternate[];
-  translated_slugs: TranslatedSlug[] | null;
-  translated_slugs_attributes: TranslatedSlugAttributes[] | null;
-  localized_paths: LocalizedPath[] | null;
-
-  // Additional properties
-  breadcrumbs: BreadcrumbItem[];
-  scheduled_dates: string | null;
-  favourite_for_user_ids: number[];
 }
 
 /**

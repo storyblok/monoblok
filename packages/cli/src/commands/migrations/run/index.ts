@@ -47,7 +47,9 @@ migrationsCommand.command('run [componentName]')
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 

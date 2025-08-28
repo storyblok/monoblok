@@ -194,6 +194,9 @@ components:
         live_chat_enabled:
           type: boolean
           description: Whether live chat is enabled for the user
+        friendly_name:
+          type: string
+          description: User-friendly display name for the user, shown in interfaces or reports to identify the user in a readable way.
         created_at:
           type: string
           format: date-time

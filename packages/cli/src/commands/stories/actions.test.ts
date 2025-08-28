@@ -168,11 +168,10 @@ const server = setupServer(...handlers);
 // Set up the MSW server
 beforeAll(() => server.listen());
 beforeEach(() => {
-  if (mapiClient().dispose) {
-    mapiClient().dispose();
-  }
   mapiClient({
-    token: 'valid-token',
+    token: {
+      accessToken: 'valid-token',
+    },
     region: 'eu',
   });
 });

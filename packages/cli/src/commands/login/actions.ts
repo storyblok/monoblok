@@ -11,6 +11,11 @@ export const loginWithToken = async (token: string, region: RegionCode) => {
     return await getUser(token, region);
   }
   catch (error) {
+    // If getUser already threw an APIError, just re-throw it
+    if (error instanceof APIError) {
+      throw error;
+    }
+
     if (error instanceof FetchError) {
       const status = error.response.status;
 

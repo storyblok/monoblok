@@ -56,7 +56,7 @@ describe('user actions', () => {
       }),
     );
     await expect(getUser('any-token', 'eu')).rejects.toThrow(
-      'Error fetching data from the API',
+      'No response from server, please check if you are correctly connected to internet',
     );
   });
 });

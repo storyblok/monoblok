@@ -34,6 +34,30 @@ export const getUser = async (token: string, region: RegionCode) => {
           throw new APIError('network_error', 'get_user', error);
       }
     }
+
+    // Handle specific error strings/responses from the management API client
+    if (typeof error === 'string' && error === 'Unauthorized') {
+      // Create a mock FetchError for consistency
+      const mockFetchError = new FetchError('Non-JSON response', {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: null,
+      });
+      throw new APIError('unauthorized', 'get_user', mockFetchError, `The token provided ${chalk.bold(maskToken(token))} is invalid.
+        Please make sure you are using the correct token and try again.`);
+    }
+
+    // Handle network/server errors (empty response objects)
+    if (typeof error === 'object' && error !== null && Object.keys(error).length === 0) {
+      // Create a mock FetchError for network errors
+      const mockFetchError = new FetchError('Network Error', {
+        status: 500,
+        statusText: 'Internal Server Error',
+        data: null,
+      });
+      throw new APIError('network_error', 'get_user', mockFetchError);
+    }
+
     throw new APIError('generic', 'get_user', error as FetchError);
   }
 };

@@ -33,12 +33,17 @@ export const userCommand = program
       }
 
       const user = await getUser(password, region);
-      spinner.succeed();
 
-      if (verbose) {
-        konsola.info(JSON.stringify(user, null, 2));
+      if (user) {
+        if (verbose) {
+          konsola.info(JSON.stringify(user, null, 2));
+        }
+        spinner.succeed();
+        konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
       }
-      konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
+      else {
+        spinner.failed('Failed to display user info, user not found');
+      }
     }
     catch (error) {
       spinner.failed();

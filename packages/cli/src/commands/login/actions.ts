@@ -3,18 +3,12 @@ import type { RegionCode } from '../../constants';
 import { customFetch, FetchError } from '../../utils/fetch';
 import { APIError, handleAPIError, maskToken } from '../../utils';
 import { getStoryblokUrl } from '../../utils/api-routes';
-import type { StoryblokLoginResponse, StoryblokLoginWithOtpResponse, StoryblokUser } from '../../types';
+import type { StoryblokLoginResponse, StoryblokLoginWithOtpResponse } from '../../types';
+import { getUser } from '../user/actions';
 
 export const loginWithToken = async (token: string, region: RegionCode) => {
   try {
-    const url = getStoryblokUrl(region);
-    return await customFetch<{
-      user: StoryblokUser;
-    }>(`${url}/users/me`, {
-      headers: {
-        Authorization: token,
-      },
-    });
+    return await getUser(token, region);
   }
   catch (error) {
     if (error instanceof FetchError) {
@@ -34,6 +28,7 @@ export const loginWithToken = async (token: string, region: RegionCode) => {
 
 export const loginWithEmailAndPassword = async (email: string, password: string, region: RegionCode) => {
   try {
+    // TODO: we cant use the mapiClient for now here because token is required for its instantiation
     const url = getStoryblokUrl(region);
     return await customFetch<StoryblokLoginResponse>(`${url}/users/login`, {
       method: 'POST',

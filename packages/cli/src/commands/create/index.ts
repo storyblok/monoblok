@@ -67,7 +67,7 @@ export const createCommand = program
     let userData: StoryblokUser;
 
     try {
-      const { user } = await getUser(password, region);
+      const user = await getUser(password, region);
       userData = user;
     }
     catch (error) {

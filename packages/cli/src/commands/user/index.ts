@@ -22,6 +22,7 @@ export const userCommand = program
     if (!requireAuthentication(state)) {
       return;
     }
+
     const spinner = new Spinner({
       verbose: !isVitest,
     }).start(`Fetching user info`);
@@ -30,7 +31,8 @@ export const userCommand = program
       if (!password || !region) {
         throw new Error('No password or region found');
       }
-      const { user } = await getUser(password, region);
+
+      const user = await getUser(password, region);
       spinner.succeed();
 
       if (verbose) {

@@ -115,7 +115,7 @@ export const loginCommand = program
             });
           }
           spinner.start(`Logging in with token`);
-          const { user } = await loginWithToken(userToken, userRegion);
+          const user = await loginWithToken(userToken, userRegion);
           spinner.succeed();
           updateSession(user.email, userToken, userRegion);
           await persistCredentials(userRegion);

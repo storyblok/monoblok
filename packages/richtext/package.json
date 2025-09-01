@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/richtext",
   "type": "module",
-  "version": "3.6.1",
+  "version": "3.7.0",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok RichText Resolver",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
@@ -61,8 +61,12 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "markdown-parser": ["./dist/markdown-parser.d.ts"],
-      "html-parser": ["./dist/html-parser.d.ts"]
+      "markdown-parser": [
+        "./dist/markdown-parser.d.ts"
+      ],
+      "html-parser": [
+        "./dist/html-parser.d.ts"
+      ]
     }
   },
   "files": [

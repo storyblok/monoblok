@@ -26,3 +26,17 @@ declare module 'virtual:storyblok-init' {
    */
   export const storyblokApiInstance: StoryblokClient;
 }
+
+declare module '@storyblok/astro/StoryblokComponent.astro' {
+  import type { SbBlokData } from '@storyblok/js';
+
+  function StoryblokComponent(
+    _props: Record<string, unknown> & {
+      /** The Storyblok blok data for this component (required) */
+      blok: SbBlokData;
+    }
+  ): any;
+
+  /** Renders a dynamic Storyblok component */
+  export default StoryblokComponent;
+}

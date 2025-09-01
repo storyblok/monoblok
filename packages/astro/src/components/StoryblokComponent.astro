@@ -29,7 +29,11 @@ let Component: AstroComponentFactory;
 if (!componentFound) {
   if (!options.enableFallbackComponent)
     throw new Error(
-      `Component could not be found for blok "${blok.component}"! Is it defined in astro.config.mjs?`
+      `No component found for blok "${blok.component}". 
+      Make sure the component is:
+      • Registered in your astro.config.mjs, or
+      • Placed in the "/${options.componentsDir}/storyblok" folder, or
+      • Enable the "fallbackComponent" option to handle missing components.`
     );
   else {
     Component = storyblokComponents['FallbackComponent'];

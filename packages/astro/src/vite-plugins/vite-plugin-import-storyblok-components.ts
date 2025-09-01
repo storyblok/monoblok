@@ -83,7 +83,9 @@ function generateModuleCode(
 ): string {
   // Normalize components directory path for Vite globbing
   const normalizedComponentsDir = normalizePath(componentsDir);
-  const globPattern = `${normalizedComponentsDir}/**/*.astro`;
+
+  // Only look into the storyblok folder
+  const globPattern = `${normalizedComponentsDir}/storyblok/**/*.astro`;
 
   return `
     // Import utilities and fallback component

@@ -36,6 +36,7 @@ export default defineConfig(() => {
         targets: [
           { src: 'src/live-preview/middleware.ts', dest: 'live-preview' },
           { src: 'src/dev-toolbar/toolbarApp.ts', dest: 'dev-toolbar' },
+          { src: 'src/lib/richTextToHTML.ts', dest: '.' },
           { src: 'src/vite-env.d.ts', dest: '.' },
           {
             src: [

@@ -1,10 +1,10 @@
 ---
 import { storyblokEditable } from '@storyblok/astro';
-import { renderRichText } from '@storyblok/astro';
+import { richTextToHTML } from '@storyblok/astro/richTextToHTML';
 
 const { blok } = Astro.props;
 
-const renderedRichText = renderRichText(blok.text);
+const renderedRichText = await richTextToHTML(blok.text);
 ---
 
 <div {...storyblokEditable(blok)}>

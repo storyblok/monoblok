@@ -39,8 +39,8 @@
       "require": "./dist/dev-toolbar/toolbarApp.ts"
     },
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
+    "./richTextToHTML": "./dist/richTextToHTML.ts",
     "./StoryblokComponent.astro": {
-      "types": "./dist/components/StoryblokComponent.d.ts",
       "import": "./dist/components/StoryblokComponent.astro",
       "require": "./dist/components/StoryblokComponent.astro"
     }

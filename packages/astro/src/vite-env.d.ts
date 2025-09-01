@@ -40,3 +40,15 @@ declare module '@storyblok/astro/StoryblokComponent.astro' {
   /** Renders a dynamic Storyblok component */
   export default StoryblokComponent;
 }
+
+declare module '@storyblok/astro/richTextToHTML' {
+  import type {
+    StoryblokRichTextNode,
+    StoryblokRichTextOptions,
+  } from '@storyblok/js';
+
+  export function richTextToHTML(
+    richTextField: StoryblokRichTextNode,
+    customResolvers?: StoryblokRichTextOptions['resolvers']
+  ): Promise<string>;
+}

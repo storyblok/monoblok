@@ -73,6 +73,7 @@ export interface BreadcrumbItem {
 export interface StoriesQueryParams {
   // Pagination
   page?: number;
+  per_page?: number;
 
   // Content filtering
   contain_component?: string;
@@ -112,4 +113,9 @@ export interface StoriesFilterOptions {
   componentName?: string;
   query?: string;
   starts_with?: string;
+}
+
+export interface FetchStoriesResult {
+  stories: Story[];
+  headers: Headers;
 }

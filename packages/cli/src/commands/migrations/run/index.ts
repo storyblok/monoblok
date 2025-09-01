@@ -5,7 +5,7 @@ import { CommandError, handleError, isVitest, konsola, requireAuthentication } f
 import { session } from '../../../session';
 import type { MigrationsRunOptions } from './constants';
 import { migrationsCommand } from '../command';
-import { fetchStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
+import { fetchAllStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
 import { readMigrationFiles } from './actions';
 import { handleMigrations, summarizeMigrationResults } from './operations';
 import type { Story, StoryContent } from '../../stories/constants';
@@ -89,7 +89,7 @@ migrationsCommand.command('run [componentName]')
       const storiesSpinner = new Spinner({ verbose: !isVitest }).start(`Fetching stories...`);
 
       // Fetch stories using the base component name
-      const stories = await fetchStoriesByComponent(
+      const stories = await fetchAllStoriesByComponent(
         {
           spaceId: space,
         },

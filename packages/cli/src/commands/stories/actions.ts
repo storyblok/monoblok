@@ -1,47 +1,92 @@
 import type { SpaceOptions } from '../../constants';
-import type { StoriesFilterOptions, StoriesQueryParams, Story } from './constants';
+import type { FetchStoriesResult, StoriesFilterOptions, StoriesQueryParams, Story } from './constants';
 import { handleAPIError } from '../../utils/error';
 import { mapiClient } from '../../api';
 
 /**
- * Fetches stories from Storyblok Management API with optional query parameters
+ * Fetches a single page of stories from Storyblok Management API
  * @param space - The space ID
  * @param params - Optional query parameters for filtering stories
- * @returns Promise with an array of stories or undefined if error occurs
+ * @returns Promise with an array of stories and response headers or undefined if error occurs
  */
 export const fetchStories = async (
   space: string,
   params?: StoriesQueryParams,
-) => {
+): Promise<FetchStoriesResult | undefined> => {
   try {
     const client = mapiClient();
+    const { data, response } = await client.stories.list({
+      path: {
+        space_id: Number.parseInt(space),
+      },
+      query: {
+        ...params,
+        per_page: params?.per_page || 100,
+        page: params?.page || 1,
+      },
+      throwOnError: true,
+    });
+
+    return {
+      stories: data?.stories || [],
+      headers: response.headers,
+    };
+  }
+  catch (error) {
+    handleAPIError('pull_stories', error as Error);
+  }
+};
+
+/**
+ * Fetches all stories from Storyblok Management API using pagination headers
+ * @param space - The space ID
+ * @param params - Optional query parameters for filtering stories
+ * @returns Promise with an array of all stories or undefined if error occurs
+ */
+export const fetchAllStories = async (
+  space: string,
+  params?: StoriesQueryParams,
+) => {
+  try {
     const allStories: Story[] = [];
     let currentPage = 1;
     let hasMorePages = true;
     const perPage = 100;
 
     while (hasMorePages) {
-      const { data } = await client.stories.list({
-        path: {
-          space_id: Number.parseInt(space),
-        },
-        query: {
-          ...params,
-          per_page: perPage,
-          page: currentPage,
-        },
-        throwOnError: true,
+      const result = await fetchStories(space, {
+        ...params,
+        per_page: perPage,
+        page: currentPage,
       });
 
-      if (data?.stories) {
-        allStories.push(...data.stories);
-        hasMorePages = data.stories.length === perPage && data.stories.length > 0;
-        if (data.stories.length < perPage) {
-          break;
+      if (!result) {
+        break;
+      }
+
+      const { stories, headers } = result;
+
+      if (stories && stories.length > 0) {
+        allStories.push(...stories);
+
+        // Check pagination headers
+        const total = headers.get('Total');
+        const perPageHeader = headers.get('Per-Page');
+
+        if (total && perPageHeader) {
+          const totalCount = Number.parseInt(total);
+          const perPageCount = Number.parseInt(perPageHeader);
+          const totalPages = Math.ceil(totalCount / perPageCount);
+
+          hasMorePages = currentPage < totalPages;
+        }
+        else {
+          // Fallback to current logic if headers are not available
+          hasMorePages = stories.length === perPage;
         }
       }
       else {
-        break;
+        hasMorePages = false;
       }
 
       currentPage++;
@@ -54,7 +99,7 @@ export const fetchStories = async (
   }
 };
 
-export async function fetchStoriesByComponent(
+export async function fetchAllStoriesByComponent(
   spaceOptions: SpaceOptions,
   filterOptions?: StoriesFilterOptions,
 ): Promise<Story[] | undefined> {
@@ -78,7 +123,7 @@ export async function fetchStoriesByComponent(
   }
 
   try {
-    const stories = await fetchStories(spaceId, params);
+    const stories = await fetchAllStories(spaceId, params);
     return stories ?? [];
   }
   catch (error) {

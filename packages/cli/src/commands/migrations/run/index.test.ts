@@ -6,7 +6,7 @@ import { konsola } from '../../../utils';
 import '../index';
 import { migrationsCommand } from '../command';
 import { readMigrationFiles } from './actions';
-import { fetchStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
+import { fetchAllStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
 import { handleMigrations, summarizeMigrationResults } from './operations';
 import type { Story } from '../../stories/constants';
 
@@ -56,7 +56,7 @@ vi.mock('../../../session', () => {
 });
 
 vi.mock('../../stories/actions', () => ({
-  fetchStoriesByComponent: vi.fn(),
+  fetchAllStoriesByComponent: vi.fn(),
   fetchStory: vi.fn(),
   updateStory: vi.fn(),
 }));
@@ -235,7 +235,7 @@ describe('migrations run command', () => {
       mockMigrationFiles,
     );
 
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
 
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
 
@@ -251,7 +251,7 @@ describe('migrations run command', () => {
       filter: undefined,
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -322,7 +322,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -335,7 +335,7 @@ describe('migrations run command', () => {
       filter: undefined,
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -401,7 +401,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -414,7 +414,7 @@ describe('migrations run command', () => {
       filter: '*.amount.js',
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -478,7 +478,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
 
@@ -519,7 +519,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
 
@@ -531,7 +531,7 @@ describe('migrations run command', () => {
       filter: undefined,
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -586,7 +586,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -599,7 +599,7 @@ describe('migrations run command', () => {
       filter: undefined,
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -776,7 +776,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -955,7 +955,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -1023,7 +1023,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -1036,7 +1036,7 @@ describe('migrations run command', () => {
       filter: undefined,
     });
 
-    expect(fetchStoriesByComponent).toHaveBeenCalledWith(
+    expect(fetchAllStoriesByComponent).toHaveBeenCalledWith(
       {
         spaceId: '12345',
       },
@@ -1157,7 +1157,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);
@@ -1321,7 +1321,7 @@ describe('migrations run command', () => {
     };
 
     vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-    vi.mocked(fetchStoriesByComponent).mockResolvedValue(mockStories);
+    vi.mocked(fetchAllStoriesByComponent).mockResolvedValue(mockStories);
     vi.mocked(fetchStory).mockResolvedValue(mockSingleStory);
     vi.mocked(handleMigrations).mockResolvedValue(mockMigrationResults);
     vi.mocked(updateStory).mockResolvedValue(mockSingleStory);

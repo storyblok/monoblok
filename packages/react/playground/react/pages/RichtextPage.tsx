@@ -2,7 +2,7 @@ import { StoryblokRichText, useStoryblok } from '@storyblok/react';
 import React from 'react';
 
 function RichtextPage() {
-  const story = useStoryblok('react/test-richtext', { version: 'draft' });
+  const story = useStoryblok('react/richtext', { version: 'draft' });
 
   if (!story?.content) {
     return <div>Loading...</div>;

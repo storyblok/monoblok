@@ -82,15 +82,19 @@ function App() {
     return <div>Loading...</div>;
   }
 
-  function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement {
+  function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement[] {
     const body = node?.attrs?.body;
-    const blok = Array.isArray(body) && body.length > 0 ? body[0] : undefined;
-    const key = node.attrs?.id;
+    
+    if (!Array.isArray(body) || body.length === 0) {
+      return [];
+    }
 
-    return React.createElement(StoryblokComponent, {
-      blok,
-      key,
-    });
+    return body.map((blok, index) => 
+      React.createElement(StoryblokComponent, {
+        blok,
+        key: `${node.attrs?.id}-${index}`,
+      })
+    );
   };
 
   const options: StoryblokRichTextOptions<ReactElement> = {

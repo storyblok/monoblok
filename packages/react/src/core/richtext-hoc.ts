@@ -13,15 +13,21 @@ export function createComponentResolver(
     isServerContext?: boolean;
   } = {},
 ) {
-  return function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement {
+  return function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement[] {
     const body = node?.attrs?.body;
-    const blok = Array.isArray(body) && body.length > 0 ? body[0] : undefined;
+
+    if (!Array.isArray(body) || body.length === 0) {
+      return [];
+    }
+
     const key = node.attrs?.id || (isServerContext ? `fallback-key-${JSON.stringify(node.attrs)}` : undefined);
 
-    return React.createElement(Component, {
-      blok,
-      key,
-    });
+    return body.map((blok, index) =>
+      React.createElement(Component, {
+        blok,
+        key: `${key}-${index}`,
+      }),
+    );
   };
 }
 
@@ -42,6 +48,8 @@ export function createRichTextHook(
     // Use the same component resolver that's exported
     const componentResolver = createComponentResolver(Component, { isServerContext });
 
+    const { resolvers: _, ...optionsWithoutResolvers } = options;
+
     const mergedOptions = {
       ...(isServerContext ? options : {}),
       renderFn: React.createElement,
@@ -53,7 +61,7 @@ export function createRichTextHook(
         ...options.resolvers,
       },
       keyedResolvers: true,
-      ...(isServerContext ? {} : options),
+      ...(isServerContext ? {} : optionsWithoutResolvers),
     };
 
     return richTextResolver(mergedOptions);

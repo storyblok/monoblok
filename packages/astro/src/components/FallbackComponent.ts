@@ -1,7 +1,9 @@
-import type { SbBlokData } from '@storyblok/js';
+import type { SbBlokData } from '@storyblok/astro';
 
-declare const FallbackComponent: (_props: {
-  blok: SbBlokData; // Required property for Storyblok
-  [prop: string]: unknown; // Allow additional properties
-}) => any;
+function FallbackComponent(
+  _props: Record<string, unknown> & {
+    /** The Storyblok blok data for this component (required) */
+    blok: SbBlokData;
+  },
+): any {}
 export default FallbackComponent;

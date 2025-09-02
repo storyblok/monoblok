@@ -13,13 +13,13 @@ declare module 'virtual:import-storyblok-components' {
 }
 
 declare module 'virtual:storyblok-options' {
-  import type { IntegrationOptions } from './lib/storyblok-integration';
+  import type { IntegrationOptions } from '@storyblok/astro';
 
   const options: IntegrationOptions;
   export default options;
 }
 declare module 'virtual:storyblok-init' {
-  import type { StoryblokClient } from '@storyblok/js';
+  import type { StoryblokClient } from '@storyblok/astro';
   /**
    * Storyblok API instance initialized with project credentials.
    * Available after `virtual:storyblok-init` is imported.
@@ -28,7 +28,7 @@ declare module 'virtual:storyblok-init' {
 }
 
 declare module '@storyblok/astro/StoryblokComponent.astro' {
-  import type { SbBlokData } from '@storyblok/js';
+  import type { SbBlokData } from '@storyblok/astro';
 
   function StoryblokComponent(
     _props: Record<string, unknown> & {
@@ -45,8 +45,18 @@ declare module '@storyblok/astro/richTextToHTML' {
   import type {
     StoryblokRichTextNode,
     StoryblokRichTextOptions,
-  } from '@storyblok/js';
-
+  } from '@storyblok/astro';
+  /**
+   * Converts a Storyblok RichText field into an HTML string.
+   *
+   * ⚠️ **Experimental**: This API is still under development and may change in future releases.
+   *
+   * @async
+   * @param {StoryblokRichTextNode} richTextField - The Storyblok RichText field node to be converted.
+   * @param {StoryblokRichTextOptions['resolvers']} [customResolvers] - Optional custom resolvers
+   *   for handling specific node types or marks in the RichText structure.
+   * @returns {Promise<string>} The generated HTML string representation of the RichText content.
+   */
   export function richTextToHTML(
     richTextField: StoryblokRichTextNode,
     customResolvers?: StoryblokRichTextOptions['resolvers']

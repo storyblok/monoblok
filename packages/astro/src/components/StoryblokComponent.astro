@@ -1,7 +1,6 @@
 ---
 import options from 'virtual:storyblok-options';
-import { toCamelCase } from '@storyblok/astro';
-import type { SbBlokData } from '@storyblok/js';
+import { toCamelCase, type SbBlokData } from '@storyblok/astro';
 import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import { storyblokComponents } from 'virtual:import-storyblok-components';
 
@@ -9,7 +8,6 @@ export interface Props {
   blok: SbBlokData;
   [prop: string]: unknown;
 }
-
 const { blok, ...props } = Astro.props;
 
 if (!blok) {
@@ -18,7 +16,7 @@ if (!blok) {
   );
 }
 /**
- * convert blok components to camel case to match vite-plugin-storyblok-components
+ * convert blok components to camel case to match vite-plugin-import-storyblok-components
  */
 let key = toCamelCase(blok.component as string);
 

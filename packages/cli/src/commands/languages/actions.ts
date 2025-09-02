@@ -12,7 +12,7 @@ export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationa
       return {
         default_lang_name: space?.default_lang_name,
         languages: space?.languages,
-      } as SpaceInternationalization;
+      };
     }
   }
   catch (error) {

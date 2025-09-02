@@ -41,9 +41,6 @@ export const userCommand = program
         spinner.succeed();
         konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
       }
-      else {
-        spinner.failed('Failed to display user info, user not found');
-      }
     }
     catch (error) {
       spinner.failed();

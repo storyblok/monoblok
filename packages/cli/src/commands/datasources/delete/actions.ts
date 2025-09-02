@@ -19,6 +19,6 @@ export async function deleteDatasource(spaceId: string, id: string): Promise<voi
     });
   }
   catch (error) {
-    handleAPIError('delete_datasource', error as Error, `Datasource with id '${id}' not found in space ${space}.`);
+    handleAPIError('delete_datasource', error as Error, `Datasource with id '${id}' not found in space ${spaceId}.`);
   }
 }

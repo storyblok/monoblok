@@ -38,12 +38,13 @@
       "import": "./dist/dev-toolbar/toolbarApp.ts",
       "require": "./dist/dev-toolbar/toolbarApp.ts"
     },
+    "./richTextToHTML": {
+      "types": "./dist/lib/richTextToHTML.d.ts",
+      "import": "./dist/lib/richTextToHTML.ts",
+      "require": "./dist/lib/richTextToHTML.ts"
+    },
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
-    "./richTextToHTML": "./dist/richTextToHTML.ts",
-    "./StoryblokComponent.astro": {
-      "import": "./dist/components/StoryblokComponent.astro",
-      "require": "./dist/components/StoryblokComponent.astro"
-    }
+    "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro"
   },
   "main": "./dist/storyblok-astro.es.js",
   "module": "./dist/storyblok-astro.js",

@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite';
-import type { IntegrationOptions } from '@storyblok/astro';
+import type { IntegrationOptions } from '../lib/storyblok-integration';
 
 export function vitePluginStoryblokOptions(
   options: IntegrationOptions,

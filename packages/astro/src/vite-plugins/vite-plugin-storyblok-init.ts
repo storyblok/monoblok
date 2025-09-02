@@ -1,4 +1,4 @@
-import type { ISbConfig } from '@storyblok/astro';
+import type { ISbConfig } from '@storyblok/js';
 import type { Plugin } from 'vite';
 
 export function vitePluginStoryblokInit(

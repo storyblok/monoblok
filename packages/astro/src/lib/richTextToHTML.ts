@@ -3,11 +3,11 @@ import {
   richTextResolver,
   type StoryblokRichTextNode,
   type StoryblokRichTextOptions,
-} from '@storyblok/astro';
+} from '@storyblok/js';
 import { experimental_AstroContainer } from 'astro/container';
 import { storyblokComponents } from 'virtual:import-storyblok-components';
-import { toCamelCase } from '@storyblok/astro';
 import options from 'virtual:storyblok-options';
+import { toCamelCase } from '@storyblok/astro';
 
 interface AsyncReplacement {
   placeholder: string;

@@ -1,6 +1,6 @@
 import { normalizeAstroExtension } from '../utils/normalizeAstroExtension';
 import { normalizePath } from '../utils/normalizePath';
-import { toCamelCase } from '@storyblok/astro';
+import { toCamelCase } from '../utils/toCamelCase';
 import type { Plugin } from 'vite';
 
 /**

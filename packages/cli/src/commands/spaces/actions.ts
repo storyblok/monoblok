@@ -4,13 +4,13 @@ import { mapiClient } from '../../api';
 
 export type Space = Spaces.Space;
 
-export const fetchSpace = async (space: string): Promise<Space | undefined> => {
+export const fetchSpace = async (spaceId: string): Promise<Space | undefined> => {
   try {
     const client = mapiClient();
 
     const { data } = await client.spaces.get({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       throwOnError: true,
     });
@@ -18,7 +18,7 @@ export const fetchSpace = async (space: string): Promise<Space | undefined> => {
     return data?.space;
   }
   catch (error) {
-    handleAPIError('pull_spaces', error as Error, `Failed to fetch space ${space}`);
+    handleAPIError('pull_spaces', error as Error, `Failed to fetch space ${spaceId}`);
   }
 };
 

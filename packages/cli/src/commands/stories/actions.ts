@@ -5,19 +5,19 @@ import { mapiClient } from '../../api';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param params - Optional query parameters for filtering stories
  * @returns Promise with an array of stories and response headers or undefined if error occurs
  */
 export const fetchStories = async (
-  space: string,
+  spaceId: string,
   params?: StoriesQueryParams,
 ): Promise<FetchStoriesResult | undefined> => {
   try {
     const client = mapiClient();
     const { data, response } = await client.stories.list({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       query: {
         ...params,
@@ -39,12 +39,12 @@ export const fetchStories = async (
 
 /**
  * Fetches all stories from Storyblok Management API using pagination headers
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param params - Optional query parameters for filtering stories
  * @returns Promise with an array of all stories or undefined if error occurs
  */
 export const fetchAllStories = async (
-  space: string,
+  spaceId: string,
   params?: StoriesQueryParams,
 ) => {
   try {
@@ -54,7 +54,7 @@ export const fetchAllStories = async (
     const perPage = 100;
 
     while (hasMorePages) {
-      const result = await fetchStories(space, {
+      const result = await fetchStories(spaceId, {
         ...params,
         per_page: perPage,
         page: currentPage,
@@ -74,8 +74,8 @@ export const fetchAllStories = async (
         const perPageHeader = headers.get('Per-Page');
 
         if (total && perPageHeader) {
-          const totalCount = Number.parseInt(total);
-          const perPageCount = Number.parseInt(perPageHeader);
+          const totalCount = Number(total);
+          const perPageCount = Number(perPageHeader);
           const totalPages = Math.ceil(totalCount / perPageCount);
 
           hasMorePages = currentPage < totalPages;
@@ -132,7 +132,7 @@ export async function fetchAllStoriesByComponent(
 }
 
 export const fetchStory = async (
-  space: string,
+  spaceId: string,
   storyId: string,
 ) => {
   try {
@@ -140,8 +140,8 @@ export const fetchStory = async (
 
     const { data } = await client.stories.get({
       path: {
-        space_id: Number.parseInt(space),
-        story_id: Number.parseInt(storyId),
+        space_id: spaceId,
+        story_id: storyId,
       },
       throwOnError: true,
     });
@@ -155,7 +155,7 @@ export const fetchStory = async (
 
 /**
  * Updates a story in Storyblok with new content
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param storyId - The ID of the story to update
  * @param payload - The payload containing story data and update options
  * @param payload.story - The story data to update
@@ -164,7 +164,7 @@ export const fetchStory = async (
  * @returns Promise with the updated story or undefined if error occurs
  */
 export const updateStory = async (
-  space: string,
+  spaceId: string,
   storyId: number,
   payload: {
     story: Story;
@@ -177,7 +177,7 @@ export const updateStory = async (
 
     const { data } = await client.stories.updateStory({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
         story_id: storyId,
       },
       body: {

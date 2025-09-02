@@ -7,19 +7,19 @@ import type { SaveDatasourcesOptions } from './constants';
 
 /**
  * Fetches entries for a given datasource id in a space.
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param datasourceId - The datasource ID
  * @returns Array of datasource entries
  */
 export const fetchDatasourceEntries = async (
-  space: string,
+  spaceId: string,
   datasourceId: number,
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
     const { data } = await client.datasourceEntries.list({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       query: {
         datasource_id: datasourceId,
@@ -34,12 +34,12 @@ export const fetchDatasourceEntries = async (
   }
 };
 
-export const fetchDatasources = async (space: string): Promise<SpaceDatasource[] | undefined> => {
+export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource[] | undefined> => {
   try {
     const client = mapiClient();
     const { data } = await client.datasources.list({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       throwOnError: true,
     });
@@ -47,7 +47,10 @@ export const fetchDatasources = async (space: string): Promise<SpaceDatasource[]
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
       datasources?.map(async (ds) => {
-        const entries = await fetchDatasourceEntries(space, ds.id as number);
+        if (!ds.id) {
+          return { ...ds, entries: [] };
+        }
+        const entries = await fetchDatasourceEntries(spaceId, ds.id);
         return { ...ds, entries };
       }) || [],
     );
@@ -58,12 +61,12 @@ export const fetchDatasources = async (space: string): Promise<SpaceDatasource[]
   }
 };
 
-export const fetchDatasource = async (space: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
+export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
     const client = mapiClient();
     const { data } = await client.datasources.list({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       query: {
         search: datasourceName,
@@ -98,7 +101,7 @@ export const saveDatasourcesToFiles = async (
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const datasource of datasources) {
-        const sanitizedName = sanitizeFilename(datasource.name);
+        const sanitizedName = sanitizeFilename(datasource.name || '');
         const datasourceFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`);
         await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
       }

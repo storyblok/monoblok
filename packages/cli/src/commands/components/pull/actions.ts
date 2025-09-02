@@ -6,13 +6,13 @@ import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesy
 import { mapiClient } from '../../../api';
 
 // Components
-export const fetchComponents = async (space: string): Promise<SpaceComponent[] | undefined> => {
+export const fetchComponents = async (spaceId: string): Promise<SpaceComponent[] | undefined> => {
   try {
     const client = mapiClient();
 
     const { data } = await client.components.list({
       path: {
-        space_id: Number.parseInt(space, 10),
+        space_id: spaceId,
       },
       throwOnError: true,
     });

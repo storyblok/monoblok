@@ -7,13 +7,13 @@ import { FileSystemError, handleAPIError, handleFileSystemError } from '../../..
 import { join } from 'node:path';
 import { mapiClient } from '../../../api';
 
-export const pushDatasource = async (space: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+export const pushDatasource = async (spaceId: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
     const client = mapiClient();
 
     const { data } = await client.datasources.create({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       body: {
         datasource,
@@ -28,13 +28,13 @@ export const pushDatasource = async (space: string, datasource: SpaceDatasource)
   }
 };
 
-export const updateDatasource = async (space: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+export const updateDatasource = async (spaceId: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
     const client = mapiClient();
 
     const { data } = await client.datasources.update({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
         datasource_id: datasourceId,
       },
       body: {
@@ -61,18 +61,18 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
 
 /**
  * Creates a new datasource entry in the specified space.
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param datasourceId - The datasource ID to add the entry to
  * @param entry - The datasource entry to create
  * @returns The created datasource entry
  */
-export const pushDatasourceEntry = async (space: string, datasourceId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<SpaceDatasourceEntry | undefined> => {
+export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<SpaceDatasourceEntry | undefined> => {
   try {
     const client = mapiClient();
 
     const { data } = await client.datasourceEntries.create({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
       },
       body: {
         datasource_entry: {
@@ -92,19 +92,19 @@ export const pushDatasourceEntry = async (space: string, datasourceId: number, e
 
 /**
  * Updates an existing datasource entry in the specified space.
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param entryId - The ID of the entry to update
  * @param entry - The updated datasource entry data
  * @returns it does not return anything
  */
-export const updateDatasourceEntry = async (space: string, entryId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<void> => {
+export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<void> => {
   try {
     const client = mapiClient();
 
     // TODO: ask Imran why this update method is called differently
     await client.datasourceEntries.updateDatasourceEntry({
       path: {
-        space_id: Number.parseInt(space),
+        space_id: spaceId,
         datasource_entry_id: entryId,
       },
       body: {

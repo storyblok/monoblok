@@ -11,13 +11,11 @@ import StoryblokComponent from '../components/StoryblokComponent.vue';
 const componentResolver: StoryblokRichTextNodeResolver<VNode> = (
   node: StoryblokRichTextNode<VNode>,
 ): VNode => {
-  return h(
-    StoryblokComponent,
-    {
-      blok: node?.attrs?.body[0],
-      id: node.attrs?.id,
-    },
-    node.children,
+  return node?.attrs?.body.map(blok =>
+    h(StoryblokComponent, {
+      blok,
+      id: node?.attrs?.id,
+    }, node.children),
   );
 };
 

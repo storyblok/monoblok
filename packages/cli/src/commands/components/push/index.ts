@@ -11,7 +11,7 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
+import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -111,7 +111,7 @@ componentsCommand
       }
 
       if (groups) {
-        (groups as SpaceComponentGroup[]).forEach((group) => {
+        (groups as SpaceComponentFolder[]).forEach((group) => {
           spaceState.target.groups.set(group.name, group);
         });
       }

@@ -1,5 +1,5 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
@@ -10,7 +10,7 @@ import { mapiClient } from '../../../api';
 // Define a type for components data without datasources
 export interface ComponentsData {
   components: SpaceComponent[];
-  groups: SpaceComponentGroup[];
+  groups: SpaceComponentFolder[];
   presets: SpaceComponentPreset[];
   internalTags: SpaceComponentInternalTag[];
 }
@@ -75,7 +75,7 @@ export const upsertComponent = async (
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentGroup): Promise<SpaceComponentGroup | undefined> => {
+export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
@@ -96,7 +96,7 @@ export const pushComponentGroup = async (space: string, componentGroup: SpaceCom
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentGroup): Promise<SpaceComponentGroup | undefined> => {
+export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
@@ -120,9 +120,9 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
 
 export const upsertComponentGroup = async (
   space: string,
-  group: SpaceComponentGroup,
+  group: SpaceComponentFolder,
   existingId?: number,
-): Promise<SpaceComponentGroup | undefined> => {
+): Promise<SpaceComponentFolder | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentGroup(space, existingId, group);
@@ -285,7 +285,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
-  let groups: SpaceComponentGroup[] = [];
+  let groups: SpaceComponentFolder[] = [];
   let internalTags: SpaceComponentInternalTag[] = [];
 
   const filteredFiles = files.filter((file) => {
@@ -302,7 +302,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
     const filePath = join(resolvedPath, file);
 
     if (file === 'groups.json' || file === `groups.${suffix}.json`) {
-      const result = await readJsonFile<SpaceComponentGroup>(filePath);
+      const result = await readJsonFile<SpaceComponentFolder>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -362,7 +362,7 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Pro
 
   // Read optional files
   const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<SpaceComponentGroup>(join(resolvedPath, suffix ? `groups.${suffix}.json` : 'groups.json')),
+    readJsonFile<SpaceComponentFolder>(join(resolvedPath, suffix ? `groups.${suffix}.json` : 'groups.json')),
     readJsonFile<SpaceComponentPreset>(join(resolvedPath, suffix ? `presets.${suffix}.json` : 'presets.json')),
     readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `tags.${suffix}.json` : 'tags.json')),
   ]);

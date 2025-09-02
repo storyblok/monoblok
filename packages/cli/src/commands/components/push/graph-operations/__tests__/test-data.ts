@@ -1,6 +1,6 @@
 import type {
   SpaceComponent,
-  SpaceComponentGroup,
+  SpaceComponentFolder,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
   SpaceComponentsDataState,
@@ -19,7 +19,7 @@ export function createTestTag(overrides: Partial<SpaceComponentInternalTag> = {}
   };
 }
 
-export function createTestGroup(overrides: Partial<SpaceComponentGroup> = {}): SpaceComponentGroup {
+export function createTestGroup(overrides: Partial<SpaceComponentFolder> = {}): SpaceComponentFolder {
   return {
     id: 1,
     name: 'test-group',
@@ -216,13 +216,13 @@ export function createSourceTargetReconciliationScenario() {
 export function createTestSpaceDataState(
   localData: {
     components?: SpaceComponent[];
-    groups?: SpaceComponentGroup[];
+    groups?: SpaceComponentFolder[];
     tags?: SpaceComponentInternalTag[];
     presets?: SpaceComponentPreset[];
   } = {},
   targetData: {
     components?: SpaceComponent[];
-    groups?: SpaceComponentGroup[];
+    groups?: SpaceComponentFolder[];
     tags?: SpaceComponentInternalTag[];
     presets?: SpaceComponentPreset[];
   } = {},

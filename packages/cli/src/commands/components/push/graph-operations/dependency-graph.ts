@@ -1,6 +1,6 @@
 import type {
   SpaceComponent,
-  SpaceComponentGroup,
+  SpaceComponentFolder,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
 } from '../../constants';
@@ -572,8 +572,8 @@ export class TagNode extends GraphNode<SpaceComponentInternalTag> {
   }
 }
 
-export class GroupNode extends GraphNode<SpaceComponentGroup> {
-  constructor(id: string, data: SpaceComponentGroup, targetGroup?: SpaceComponentGroup) {
+export class GroupNode extends GraphNode<SpaceComponentFolder> {
+  constructor(id: string, data: SpaceComponentFolder, targetGroup?: SpaceComponentFolder) {
     super(id, 'group', data.name, data, targetGroup);
   }
 
@@ -593,7 +593,7 @@ export class GroupNode extends GraphNode<SpaceComponentGroup> {
     }
   }
 
-  async upsert(space: string): Promise<SpaceComponentGroup> {
+  async upsert(space: string): Promise<SpaceComponentFolder> {
     const existingId = this.targetData?.id;
     const result = await upsertComponentGroup(space, this.sourceData, existingId as number | undefined);
     if (!result) {

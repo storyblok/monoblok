@@ -1,8 +1,8 @@
 import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
-import { useStoryblok } from '@storyblok/react';
+import { StoryblokComponent, useStoryblok } from '@storyblok/react';
 import './App.css';
 import type { ReactElement } from 'react';
-import React from 'react';
+import React, { Component } from 'react';
 
 function camelCase(str: string) {
   return str.replace(/-([a-z])/g, g => g[1].toUpperCase());
@@ -82,6 +82,17 @@ function App() {
     return <div>Loading...</div>;
   }
 
+  function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement {
+    const body = node?.attrs?.body;
+    const blok = Array.isArray(body) && body.length > 0 ? body[0] : undefined;
+    const key = node.attrs?.id;
+
+    return React.createElement(StoryblokComponent, {
+      blok,
+      key,
+    });
+  };
+
   const options: StoryblokRichTextOptions<ReactElement> = {
     renderFn: React.createElement,
     textFn: (text: string, attrs?: Record<string, any>) => React.createElement(React.Fragment, attrs, text),
@@ -90,6 +101,7 @@ function App() {
       [BlockTypes.LIST_ITEM]: (node: StoryblokRichTextNode<ReactElement>, ctx: StoryblokRichTextContext<ReactElement>) => {
         return ctx.render('li', {}, node?.children[0]?.props.children);
       },
+      [BlockTypes.COMPONENT]: componentResolver,
     },
   };
 

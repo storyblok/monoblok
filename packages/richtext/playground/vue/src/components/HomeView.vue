@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { VNode } from 'vue';
 import { createTextVNode, h } from 'vue';
-import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
-import { useStoryblok } from '@storyblok/vue';
+import { BlockTypes, richTextResolver, StoryblokRichTextNodeResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import { StoryblokComponent, useStoryblok } from '@storyblok/vue';
 
 import CodeBlock from './CodeBlock.vue';
 
@@ -372,6 +372,18 @@ const story = await useStoryblok('/home', {
   version: 'draft',
 });
 
+const componentResolver: StoryblokRichTextNodeResolver<VNode> = (
+  node: StoryblokRichTextNode<VNode>,
+): VNode => {
+  console.log(node)
+  return node?.attrs?.body.map((blok) =>
+    h(StoryblokComponent, {
+      blok,
+      id: node?.attrs?.id,
+    }, node.children)
+  );
+};
+
 const options: StoryblokRichTextOptions<VNode> = {
   renderFn: h,
   textFn: createTextVNode,
@@ -382,6 +394,7 @@ const options: StoryblokRichTextOptions<VNode> = {
         class: node?.attrs?.class,
       }, node.children);
     },
+    [BlockTypes.COMPONENT]: componentResolver,
   },
 };
 

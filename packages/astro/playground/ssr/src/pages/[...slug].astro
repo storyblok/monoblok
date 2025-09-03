@@ -1,11 +1,9 @@
 ---
-import {
-  getLiveStory,
-  useStoryblokApi,
-  type ISbStoryData,
-} from '@storyblok/astro';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import { getLiveStory, type ISbStoryData } from '@storyblok/astro';
+import { storyblokApi } from '@storyblok/astro/client';
 import BaseLayout from '@shared/components/BaseLayout.astro';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+
 const { slug } = Astro.params;
 let story: ISbStoryData | null = null;
 
@@ -13,8 +11,7 @@ const liveStory = await getLiveStory(Astro);
 if (liveStory) {
   story = liveStory;
 } else {
-  const sbApi = useStoryblokApi();
-  const { data } = await sbApi.get(`cdn/stories/${slug || 'home'}`, {
+  const { data } = await storyblokApi.get(`cdn/stories/${slug || 'home'}`, {
     version: 'draft',
     resolve_relations: ['featured-articles.posts'],
   });

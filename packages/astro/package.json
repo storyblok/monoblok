@@ -38,11 +38,7 @@
       "import": "./dist/dev-toolbar/toolbarApp.ts",
       "require": "./dist/dev-toolbar/toolbarApp.ts"
     },
-    "./richTextToHTML": {
-      "types": "./dist/lib/richTextToHTML.d.ts",
-      "import": "./dist/lib/richTextToHTML.ts",
-      "require": "./dist/lib/richTextToHTML.ts"
-    },
+    "./client": "./dist/lib/client.ts",
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
     "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro"
   },

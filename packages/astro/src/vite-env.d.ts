@@ -20,10 +20,7 @@ declare module 'virtual:storyblok-options' {
 }
 declare module 'virtual:storyblok-init' {
   import type { StoryblokClient } from '@storyblok/astro';
-  /**
-   * Storyblok API instance initialized with project credentials.
-   * Available after `virtual:storyblok-init` is imported.
-   */
+
   export const storyblokApiInstance: StoryblokClient;
 }
 
@@ -41,8 +38,9 @@ declare module '@storyblok/astro/StoryblokComponent.astro' {
   export default StoryblokComponent;
 }
 
-declare module '@storyblok/astro/richTextToHTML' {
+declare module '@storyblok/astro/client' {
   import type {
+    StoryblokClient,
     StoryblokRichTextNode,
     StoryblokRichTextOptions,
   } from '@storyblok/astro';
@@ -61,4 +59,21 @@ declare module '@storyblok/astro/richTextToHTML' {
     richTextField: StoryblokRichTextNode,
     customResolvers?: StoryblokRichTextOptions['resolvers']
   ): Promise<string>;
+
+  /**
+   * Provides direct access to the initialized Storyblok API client instance.
+   *
+   * This is useful when you need to call the Storyblok CDN API directly,
+   * for example inside an Astro API route, integration, or page code.
+   *
+   * @returns {StoryblokClient} The initialized Storyblok API client instance.
+   *
+   * @example
+   * ```ts
+   * import { storyblokApi } from '@storyblok/astro/client';
+   *
+   * const { data } = await storyblokApi.get('cdn/stories/home');
+   * ```
+   */
+  export const storyblokApi: StoryblokClient;
 }

@@ -3,6 +3,8 @@ import { handleAPIError } from '../../utils';
 import { mapiClient } from '../../api';
 
 export type Space = Spaces.Space;
+export type SpaceCreate = Spaces.SpaceCreateRequest;
+export type SpaceUpdate = Spaces.SpaceUpdateRequest;
 
 export const fetchSpace = async (spaceId: string): Promise<Space | undefined> => {
   try {
@@ -27,7 +29,7 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
  * @param space - The space creation request data
  * @returns Promise<Space> - The created space data
  */
-export const createSpace = async (space: Partial<Space>): Promise<Space | undefined> => {
+export const createSpace = async (space: SpaceCreate): Promise<Space | undefined> => {
   try {
     const client = mapiClient();
     const { data } = await client.spaces.create({

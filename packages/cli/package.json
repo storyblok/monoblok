@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "build": "unbuild",
-    "test:types": "tsc --noEmit --skipLibCheck",
+    "typecheck": "tsc --noEmit --skipLibCheck",
     "release": "release-it",
     "dev": "pnpm run build && node dist/index.mjs",
     "lint": "eslint .",

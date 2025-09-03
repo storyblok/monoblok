@@ -1,5 +1,5 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import type { SpaceComponent, SpaceComponentCreate, SpaceComponentFolder, SpaceComponentFolderCreate, SpaceComponentFolderUpdate, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentPresetCreate, SpaceComponentPresetUpdate, SpaceComponentUpdate } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
@@ -36,7 +36,7 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
   }
 };
 
-export const updateComponent = async (space: string, componentId: number, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
+export const updateComponent = async (space: string, componentId: number, component: SpaceComponentUpdate): Promise<SpaceComponent | undefined> => {
   try {
     const client = mapiClient();
 
@@ -60,7 +60,7 @@ export const updateComponent = async (space: string, componentId: number, compon
 
 export const upsertComponent = async (
   space: string,
-  component: SpaceComponent,
+  component: SpaceComponentUpdate | SpaceComponentCreate,
   existingId?: number,
 ): Promise<SpaceComponent | undefined> => {
   if (existingId) {
@@ -75,7 +75,7 @@ export const upsertComponent = async (
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
+export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolderCreate): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
@@ -96,7 +96,7 @@ export const pushComponentGroup = async (space: string, componentGroup: SpaceCom
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
+export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolderUpdate): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
@@ -120,7 +120,7 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
 
 export const upsertComponentGroup = async (
   space: string,
-  group: SpaceComponentFolder,
+  group: SpaceComponentFolderUpdate | SpaceComponentFolderCreate,
   existingId?: number,
 ): Promise<SpaceComponentFolder | undefined> => {
   if (existingId) {
@@ -129,12 +129,12 @@ export const upsertComponentGroup = async (
   }
   else {
     // New resource, create directly
-    return await pushComponentGroup(space, group);
+    return await pushComponentGroup(space, group as SpaceComponentFolderCreate);
   }
 };
 
 // Component preset actions
-export const pushComponentPreset = async (space: string, componentPreset: { preset: Partial<SpaceComponentPreset> }): Promise<SpaceComponentPreset | undefined> => {
+export const pushComponentPreset = async (space: string, preset: SpaceComponentPresetCreate): Promise<SpaceComponentPreset | undefined> => {
   try {
     const client = mapiClient();
 
@@ -143,7 +143,7 @@ export const pushComponentPreset = async (space: string, componentPreset: { pres
         space_id: Number(space),
       },
       body: {
-        preset: componentPreset.preset,
+        preset,
       },
       throwOnError: true,
     });
@@ -151,11 +151,11 @@ export const pushComponentPreset = async (space: string, componentPreset: { pres
     return data?.preset;
   }
   catch (error) {
-    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${componentPreset.preset.name}`);
+    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${preset.name}`);
   }
 };
 
-export const updateComponentPreset = async (space: string, presetId: number, componentPreset: { preset: Partial<SpaceComponentPreset> }): Promise<SpaceComponentPreset | undefined> => {
+export const updateComponentPreset = async (space: string, presetId: number, preset: SpaceComponentPresetUpdate): Promise<SpaceComponentPreset | undefined> => {
   try {
     const client = mapiClient();
 
@@ -165,7 +165,7 @@ export const updateComponentPreset = async (space: string, presetId: number, com
         preset_id: presetId,
       },
       body: {
-        preset: componentPreset.preset,
+        preset,
       },
       throwOnError: true,
     });
@@ -173,22 +173,22 @@ export const updateComponentPreset = async (space: string, presetId: number, com
     return data?.preset;
   }
   catch (error) {
-    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${componentPreset.preset.name}`);
+    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${preset.name}`);
   }
 };
 
 export const upsertComponentPreset = async (
   space: string,
-  preset: Partial<SpaceComponentPreset>,
+  preset: SpaceComponentPresetUpdate | SpaceComponentPresetCreate,
   existingId?: number,
 ): Promise<SpaceComponentPreset | undefined> => {
   if (existingId) {
     // We know it exists, update directly
-    return await updateComponentPreset(space, existingId, { preset });
+    return await updateComponentPreset(space, existingId, preset);
   }
   else {
     // New resource, create directly
-    return await pushComponentPreset(space, { preset });
+    return await pushComponentPreset(space, preset as SpaceComponentPresetCreate);
   }
 };
 

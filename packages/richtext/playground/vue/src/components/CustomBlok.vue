@@ -10,8 +10,6 @@ interface Props {
 }
 
 defineProps<Props>();
-
-
 </script>
 
 <template>
@@ -24,6 +22,5 @@ defineProps<Props>();
     <div class="text-6xl">
       {{ blok.count }}
     </div>
-
   </div>
 </template>

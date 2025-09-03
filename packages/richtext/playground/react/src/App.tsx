@@ -2,7 +2,7 @@ import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type Storyblo
 import { StoryblokComponent, useStoryblok } from '@storyblok/react';
 import './App.css';
 import type { ReactElement } from 'react';
-import React, { Component } from 'react';
+import React from 'react';
 
 function camelCase(str: string) {
   return str.replace(/-([a-z])/g, g => g[1].toUpperCase());
@@ -84,16 +84,16 @@ function App() {
 
   function componentResolver(node: StoryblokRichTextNode<React.ReactElement>): React.ReactElement[] {
     const body = node?.attrs?.body;
-    
+
     if (!Array.isArray(body) || body.length === 0) {
       return [];
     }
 
-    return body.map((blok, index) => 
+    return body.map((blok, index) =>
       React.createElement(StoryblokComponent, {
         blok,
         key: `${node.attrs?.id}-${index}`,
-      })
+      }),
     );
   };
 

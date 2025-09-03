@@ -2,7 +2,7 @@ import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import {
   richTextResolver,
   type StoryblokRichTextNode,
-  type StoryblokRichTextOptions,
+  type StoryblokRichTextResolvers,
 } from '@storyblok/js';
 import { experimental_AstroContainer } from 'astro/container';
 import { storyblokComponents } from 'virtual:import-storyblok-components';
@@ -20,19 +20,19 @@ interface AsyncReplacement {
  *
  * @async
  * @param {StoryblokRichTextNode} richTextField - The Storyblok RichText field node to be converted.
- * @param {StoryblokRichTextOptions['resolvers']} [customResolvers] - Optional custom resolvers
+ * @param {StoryblokRichTextResolvers} [customResolvers] - Optional custom resolvers
  *   for handling specific node types or marks in the RichText structure.
  * @returns {Promise<string>} The generated HTML string representation of the RichText content.
  */
 export const richTextToHTML = async (
   richTextField: StoryblokRichTextNode,
-  customResolvers?: StoryblokRichTextOptions['resolvers'],
+  customResolvers?: StoryblokRichTextResolvers,
 ): Promise<string> => {
   const container = await experimental_AstroContainer.create();
 
   const asyncReplacements: AsyncReplacement[] = [];
   // Build the resolvers object
-  const resolvers: StoryblokRichTextOptions['resolvers'] = {
+  const resolvers: StoryblokRichTextResolvers = {
     // Handle async components
     blok: (node) => {
       const componentBody = node.attrs?.body;

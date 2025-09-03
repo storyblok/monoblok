@@ -23,7 +23,7 @@ export default defineConfig(() => {
 
           if (fs.existsSync(indexDtsPath)) {
             const currentContent = fs.readFileSync(indexDtsPath, 'utf-8');
-            const referenceLine = `/// <reference path="./vite-env.d.ts" />`;
+            const referenceLine = `/// <reference path="./public.d.ts" />`;
 
             if (!currentContent.includes(referenceLine)) {
               const newContent = `${referenceLine}\n${currentContent}`;
@@ -40,7 +40,7 @@ export default defineConfig(() => {
             src: ['src/lib/richTextToHTML.ts', 'src/lib/client.ts'],
             dest: 'lib',
           },
-          { src: 'src/vite-env.d.ts', dest: '.' },
+          { src: 'src/public.d.ts', dest: '.' },
           {
             src: [
               'src/components/StoryblokComponent.astro',

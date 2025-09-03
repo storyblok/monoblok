@@ -1,6 +1,7 @@
 import type { VNode } from 'vue';
 import { createTextVNode, h } from 'vue';
 import type {
+  SbBlokData,
   StoryblokRichTextNode,
   StoryblokRichTextNodeResolver,
   StoryblokRichTextOptions,
@@ -11,7 +12,7 @@ import StoryblokComponent from '../components/StoryblokComponent.vue';
 const componentResolver: StoryblokRichTextNodeResolver<VNode> = (
   node: StoryblokRichTextNode<VNode>,
 ): VNode => {
-  return node?.attrs?.body.map(blok =>
+  return node?.attrs?.body.map((blok: SbBlokData) =>
     h(StoryblokComponent, {
       blok,
       id: node?.attrs?.id,

@@ -14,9 +14,11 @@ export const useStoryblokState: TUseStoryblokState = (
   const isBridgeEnabled = typeof window !== 'undefined'
     && typeof window.storyblokRegisterEvent !== 'undefined';
 
-  useEffect(() => {
+  if (initialStory !== story) {
     setStory(initialStory);
+  }
 
+  useEffect(() => {
     if (!isBridgeEnabled || !initialStory) {
       return;
     }

@@ -133,7 +133,6 @@ function createMinimalStubComponent(name: string): SpaceComponent {
     updated_at: new Date().toISOString(),
     id: 0, // Will be set by API
     schema: {}, // Minimal empty schema
-    color: null,
     internal_tags_list: [],
     internal_tag_ids: [],
   };

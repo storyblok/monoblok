@@ -154,6 +154,7 @@ components:
       required:
         - id
         - name
+        - uuid
       properties:
         id:
           readOnly: true

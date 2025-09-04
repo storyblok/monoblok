@@ -130,10 +130,7 @@ datasourcesCommand
             for (const entry of entries) {
               const existingEntryId = existingDatasource?.entries?.find(e => e.name === entry.name)?.id;
               try {
-                // For now, we'll create new entries since we don't have existing entry tracking
-                // TODO: Implement entry matching logic to determine if entry exists
-                const { id, ...entryData } = entry; // Remove id from entry data
-                await upsertDatasourceEntry(space, result.id, entryData, existingEntryId);
+                await upsertDatasourceEntry(space, result.id, entry, existingEntryId);
               }
               catch (entryError) {
                 results.failed.push({ name: datasource.name, error: entryError });

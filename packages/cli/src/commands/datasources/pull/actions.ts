@@ -76,7 +76,7 @@ export const fetchDatasource = async (spaceId: string, datasourceName: string): 
     const found = data?.datasources?.find(d => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
-    const entries = await fetchDatasourceEntries(space, found.id as number);
+    const entries = await fetchDatasourceEntries(spaceId, found.id as number);
     return { ...found, entries: entries || [] } as SpaceDatasource;
   }
   catch (error) {

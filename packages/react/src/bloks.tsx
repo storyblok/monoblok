@@ -6,7 +6,7 @@ import type { BlokData } from './types';
 import type { ISbStoryData } from '@storyblok/js';
 
 export interface BloksProps<T extends BlokData> {
-  fallback?: React.ComponentType<{ blok: T }>;
+  fallback?: React.ComponentType<{ blok: T; story?: ISbStoryData }>;
   children: ReactElement<BlokProps<T>> | ReactElement<BlokProps<T>>[];
   blok: T;
   story?: ISbStoryData; // Add story data support

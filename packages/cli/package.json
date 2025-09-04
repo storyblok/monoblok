@@ -27,12 +27,12 @@
   ],
   "scripts": {
     "build": "unbuild",
-    "typecheck": "tsc --noEmit --skipLibCheck",
     "release": "release-it",
     "dev": "pnpm run build && node dist/index.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test:ci": "vitest run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage"

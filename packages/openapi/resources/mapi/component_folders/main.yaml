@@ -58,7 +58,7 @@ paths:
               type: object
               properties:
                 component_group:
-                  $ref: '#/components/schemas/ComponentFolderInput'
+                  $ref: '#/components/schemas/ComponentFolder'
       responses:
         '201':
           description: Component folder created successfully
@@ -113,7 +113,7 @@ paths:
               type: object
               properties:
                 component_group:
-                  $ref: '#/components/schemas/ComponentFolderUpdateInput'
+                  $ref: '#/components/schemas/ComponentFolder'
       responses:
         '200':
           description: Component folder updated successfully
@@ -153,12 +153,14 @@ components:
       type: object
       properties:
         id:
+          readOnly: true
           type: number
           description: The id of the component folder
         name:
           type: string
           description: The name of the component folder
         uuid:
+          readOnly: true
           type: string
           format: uuid
           description: The UUID of the component folder
@@ -166,28 +168,7 @@ components:
           type: integer
           description: ID of the parent folder
         parent_uuid:
+          readOnly: true
           type: string
           format: uuid
           description: The UUID of the parent folder
-          
-    ComponentFolderInput:
-      type: object
-      required:
-        - name
-      properties:
-        name:
-          type: string
-          description: Name of the group
-        parent_id:
-          type: integer
-          description: ID of the parent folder
-          
-    ComponentFolderUpdateInput:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Name of the group
-        parent_id:
-          type: integer
-          description: ID of the parent folder

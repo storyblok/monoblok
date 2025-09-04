@@ -39,7 +39,7 @@ paths:
                 - user
               properties:
                 user:
-                  $ref: '#/components/schemas/UserUpdateRequest'
+                  $ref: '#/components/schemas/User'
       responses:
         '200':
           description: User updated
@@ -65,6 +65,9 @@ components:
       description: The User Object
       required:
         - id
+        - email
+        - created_at
+        - updated_at
       properties:
         id:
           type: integer
@@ -205,92 +208,3 @@ components:
           type: string
           format: date-time
           description: User last update date
-    UserUpdateRequest:
-      type: object
-      description: Request body for updating a user
-      properties:
-        email:
-          type: string
-          format: email
-          description: User's email address
-        alt_email:
-          type: string
-          format: email
-          description: User's alternative email address
-        firstname:
-          type: string
-          description: User's first name
-        lastname:
-          type: string
-          description: User's last name
-        username:
-          type: string
-          description: User's username
-        password:
-          type: string
-          description: New password
-        password_confirmation:
-          type: string
-          description: Password confirmation
-        current_password:
-          type: string
-          description: Current password (required for credential changes)
-        lang:
-          type: string
-          description: User's preferred language
-        timezone:
-          type: string
-          description: User's timezone
-        phone:
-          type: string
-          description: User's phone number
-        is_editor:
-          type: boolean
-          description: Whether user is an editor
-        job_role:
-          type: string
-          description: User's job role
-        job_title:
-          type: string
-          description: User's job title
-        company_name:
-          type: string
-          description: User's company name
-        company_size:
-          type: string
-          description: User's company size
-        usage_type:
-          type: string
-          description: User's usage type
-        framework_used:
-          type: string
-          description: Framework used by user
-        beta_user:
-          type: boolean
-          description: Whether user is a beta user
-        track_statistics:
-          type: boolean
-          description: Whether user allows statistics tracking
-        ui_theme:
-          type: object
-          description: User's UI theme preferences
-        favourite_spaces:
-          type: array
-          description: User's favorite spaces
-          items:
-            type: integer
-        favourite_ideas:
-          type: array
-          description: User's favorite ideas
-          items:
-            type: integer
-        notified:
-          type: array
-          description: User's notification preferences
-          items:
-            type: string
-        disclaimer_ids:
-          type: array
-          description: User's disclaimer IDs
-          items:
-            type: integer

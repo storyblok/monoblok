@@ -3,15 +3,15 @@ import type { SpaceDatasource } from '../datasources/constants';
 import type { ComponentFolders, Components, InternalTags, Presets } from '@storyblok/management-api-client';
 
 export type SpaceComponent = Components.Component;
-export type SpaceComponentCreate = Components.Component2;
+export type SpaceComponentCreate = Components.Component;
 export type SpaceComponentUpdate = Components.Component;
 
 export type SpaceComponentFolder = ComponentFolders.ComponentFolder;
-export type SpaceComponentFolderCreate = ComponentFolders.ComponentFolderInput;
-export type SpaceComponentFolderUpdate = ComponentFolders.ComponentFolderUpdateInput;
+export type SpaceComponentFolderCreate = ComponentFolders.ComponentFolder;
+export type SpaceComponentFolderUpdate = ComponentFolders.ComponentFolder;
 export type SpaceComponentPreset = Presets.Preset;
-export type SpaceComponentPresetCreate = Presets.PresetCreate;
-export type SpaceComponentPresetUpdate = Presets.PresetUpdate;
+export type SpaceComponentPresetCreate = Presets.Preset;
+export type SpaceComponentPresetUpdate = Presets.Preset;
 export type SpaceComponentInternalTag = InternalTags.InternalTag;
 // There is no create or update type for internal tags
 

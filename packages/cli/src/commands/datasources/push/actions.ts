@@ -15,9 +15,7 @@ export const pushDatasource = async (spaceId: string, datasource: SpaceDatasourc
       path: {
         space_id: spaceId,
       },
-      body: {
-        datasource,
-      },
+      body: { datasource },
       throwOnError: true,
     });
 
@@ -66,7 +64,7 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
  * @param entry - The datasource entry to create
  * @returns The created datasource entry
  */
-export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<SpaceDatasourceEntry | undefined> => {
+export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry): Promise<SpaceDatasourceEntry | undefined> => {
   try {
     const client = mapiClient();
 
@@ -97,7 +95,7 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  * @param entry - The updated datasource entry data
  * @returns it does not return anything
  */
-export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: Omit<SpaceDatasourceEntry, 'id'>): Promise<void> => {
+export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
   try {
     const client = mapiClient();
 
@@ -129,7 +127,7 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
 export const upsertDatasourceEntry = async (
   space: string,
   datasourceId: number,
-  entry: Omit<SpaceDatasourceEntry, 'id'>,
+  entry: SpaceDatasourceEntry,
   existingId?: number,
 ): Promise<SpaceDatasourceEntry | undefined> => {
   if (existingId) {

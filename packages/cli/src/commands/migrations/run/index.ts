@@ -168,7 +168,7 @@ migrationsCommand.command('run [componentName]')
           const originalStory = validStories.find(s => s.id === result.storyId);
           storiesByIdMap.set(result.storyId, {
             id: result.storyId,
-            name: result.name,
+            name: result.name || '',
             content: result.content,
             published: originalStory?.published,
             published_at: originalStory?.published_at || undefined,

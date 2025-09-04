@@ -1,7 +1,9 @@
 import type { DatasourceEntries, Datasources } from '@storyblok/management-api-client';
 
-export type SpaceDatasource = Datasources.Datasource;
 export type SpaceDatasourceEntry = DatasourceEntries.DatasourceEntry;
+export type SpaceDatasource = Datasources.Datasource & {
+  entries?: SpaceDatasourceEntry[];
+};
 
 export interface SpaceDatasourcesData {
   datasources: SpaceDatasource[];

@@ -191,7 +191,7 @@ migrationsCommand.command('run [componentName]')
           for (const story of storiesToUpdate) {
             const storySpinner = new Spinner({ verbose: !isVitest }).start(`Updating story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())}...`);
             const payload: {
-              story: Partial<Story>;
+              story: Story;
               force_update?: string;
               publish?: number;
             } = {

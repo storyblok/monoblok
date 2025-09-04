@@ -6,39 +6,13 @@ import type { RegionCode } from '../../../constants';
 import type { StoryContent } from '../../stories/constants';
 import { applyMigrationToAllBlocks, getMigrationFunction } from './actions';
 import { getComponentNameFromFilename } from '../../../utils/filesystem';
-import type { MigrationFile } from './constants';
+import type { MigrationFile, MigrationResult } from './constants';
 import { hash } from 'ohash';
 import { saveRollbackData } from '../rollback/actions';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 /**
  * Handles the processing of migration files for stories
- * @param options - Options for handling migrations
- * @param options.migrationFiles - Array of migration files to process
- * @param options.stories - Array of stories to apply migrations to
- * @param options.space - Space ID where the stories are located
- * @param options.path - Path to the migrations directory
- * @param options.componentName - Optional component name to filter migrations
- * @param options.password - Optional password for authentication
- * @param options.region - Optional region code for API requests
- * @returns {Promise<{
- *   successful: Array<{
- *     storyId: number;
- *     name: string;
- *     migrationName: string;
- *     content: StoryContent;
- *   }>;
- *   failed: Array<{
- *     storyId: number;
- *     migrationName: string;
- *     error: unknown;
- *   }>;
- *   skipped: Array<{
- *     storyId: number;
- *     name: string;
- *     migrationName: string;
- *     reason: string;
- *   }>;
- * }>} Object containing arrays of successful, failed, and skipped migrations
  */
 export async function handleMigrations({
   migrationFiles,
@@ -48,31 +22,17 @@ export async function handleMigrations({
   componentName,
 }: {
   migrationFiles: MigrationFile[];
-  stories: Array<{ id: number; name: string; content?: StoryContent }>;
+  stories: Story[];
   space: string;
   path: string;
   componentName?: string;
   password?: string;
   region?: RegionCode;
-}): Promise<{
-    successful: Array<{
-      storyId: number;
-      name: string;
-      migrationName: string;
-      content: StoryContent;
-    }>;
-    failed: Array<{ storyId: number; migrationName: string; error: unknown }>;
-    skipped: Array<{ storyId: number; name: string; migrationName: string; reason: string }>;
-  }> {
-  const results = {
-    successful: [] as Array<{
-      storyId: number;
-      name: string;
-      migrationName: string;
-      content: StoryContent;
-    }>,
-    failed: [] as Array<{ storyId: number; migrationName: string; error: unknown }>,
-    skipped: [] as Array<{ storyId: number; name: string; migrationName: string; reason: string }>,
+}): Promise<MigrationResult> {
+  const results: MigrationResult = {
+    successful: [],
+    failed: [],
+    skipped: [],
   };
 
   // Filter migrations based on component name if provided
@@ -198,21 +158,8 @@ export async function handleMigrations({
 
 /**
  * Summarizes the results of the migration operations
- * @param results - Object containing migration operation results
- * @param results.successful - Array of successfully applied migrations
- * @param results.failed - Array of failed migrations
- * @param results.skipped - Array of skipped migrations
  */
-export function summarizeMigrationResults(results: {
-  successful: Array<{
-    storyId: number;
-    name: string;
-    migrationName: string;
-    content: StoryContent;
-  }>;
-  failed: Array<{ storyId: number; migrationName: string; error: unknown }>;
-  skipped: Array<{ storyId: number; name: string; migrationName: string; reason: string }>;
-}): void {
+export function summarizeMigrationResults(results: MigrationResult): void {
   const { successful, failed, skipped } = results;
 
   // Count unique stories that were successfully processed

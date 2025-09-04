@@ -77,11 +77,14 @@ export const loginCommand = program
         }
         spinner.start(`Logging in with token`);
         const user = await loginWithToken(token, userRegion);
-        updateSession(user.email, token, userRegion);
-        await persistCredentials(userRegion);
-        spinner.succeed();
+        if (user) {
+          updateSession(user.email, token, userRegion);
 
-        konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          await persistCredentials(userRegion);
+          spinner.succeed();
+
+          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+        }
       }
       catch (error) {
         spinner.failed();
@@ -117,10 +120,12 @@ export const loginCommand = program
           spinner.start(`Logging in with token`);
           const user = await loginWithToken(userToken, userRegion);
           spinner.succeed();
-          updateSession(user.email, userToken, userRegion);
-          await persistCredentials(userRegion);
+          if (user) {
+            updateSession(user.email, userToken, userRegion);
+            await persistCredentials(userRegion);
 
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+            konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          }
         }
 
         else {

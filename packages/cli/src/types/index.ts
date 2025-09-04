@@ -34,6 +34,11 @@ export interface StoryblokUser {
   friendly_name: string;
   otp_required: boolean;
   access_token: string;
+  has_org: boolean;
+  org: {
+    name: string;
+  };
+  has_partner: boolean;
 }
 
 export interface StoryblokLoginResponse {

@@ -6,7 +6,7 @@ import { APIError } from '../../utils';
 import { FetchError } from '../../utils/fetch';
 
 const handlers = [
-  http.get('https://api.storyblok.com/v1/users/me', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/users/me', async ({ request }) => {
     const token = request.headers.get('Authorization');
     if (token === 'valid-token') {
       return HttpResponse.json({ data: 'user data' });
@@ -49,7 +49,7 @@ describe('user actions', () => {
 
   it('should throw a network error if response is empty (network)', async () => {
     server.use(
-      http.get('https://api.storyblok.com/v1/users/me', () => {
+      http.get('https://mapi.storyblok.com/v1/users/me', () => {
         return new HttpResponse(null, { status: 500 });
       }),
     );

@@ -1,0 +1,54 @@
+# Branding and customization
+logo:
+  link: https://www.storyblok.com
+  altText: Storyblok
+  image: https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg
+  srcSet: "https://www.storyblok.com/_astro/logotype-black.0LhNMJ6k.svg light, https://www.storyblok.com/_astro/logotype-white.0LhNMJ6k.svg dark"
+apis:
+  stories:
+    root: resources/mapi/stories/main.yaml
+    output: ./dist/mapi/stories.yaml
+    title: Stories
+  components:
+    root: resources/mapi/components/main.yaml
+    output: ./dist/mapi/components.yaml
+    title: Components
+  components-folders:
+    root: resources/mapi/component_folders/main.yaml
+    output: ./dist/mapi/component_folders.yaml
+    title: Component Folders
+  datasources:
+    root: resources/mapi/datasources/main.yaml
+    output: ./dist/mapi/datasources.yaml
+    title: Data Sources
+  datasource-entries:
+    root: resources/mapi/datasource_entries/main.yaml
+    output: ./dist/mapi/datasource_entries.yaml
+    title: Data Source Entries
+  internal-tags:
+    root: resources/mapi/internal_tags/main.yaml
+    output: ./dist/mapi/internal_tags.yaml
+    title: Internal Tags
+  spaces:
+    root: resources/mapi/spaces/main.yaml
+    output: ./dist/mapi/spaces.yaml
+    title: Spaces
+  presets:
+    root: resources/mapi/presets/main.yaml
+    output: ./dist/mapi/presets.yaml
+    title: Presets
+  assets:
+    root: resources/mapi/assets/main.yaml
+    output: ./dist/mapi/assets.yaml
+    title: Assets
+  users:
+    root: resources/mapi/users/main.yaml
+    output: ./dist/mapi/users.yaml
+    title: Users
+
+
+# Linting rules
+rules:
+  info-license: off
+  operation-4xx-response: off
+  operation-operationId: off 

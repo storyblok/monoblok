@@ -70,7 +70,7 @@ export interface StoryblokRichTextNode<T = string> {
 
 export interface LinkNode<T = string> extends StoryblokRichTextNode<T> {
   type: MarkTypes.LINK | MarkTypes.ANCHOR;
-  linktype: LinkTypes.ASSET | LinkTypes.EMAIL | LinkTypes.STORY | LinkTypes.URL;
+  linktype: LinkTypes;
   attrs: Record<string, any>;
 }
 
@@ -88,7 +88,6 @@ export interface MarkNode<T = string> extends StoryblokRichTextNode<T> {
     MarkTypes.TEXT_STYLE |
     MarkTypes.HIGHLIGHT;
   attrs?: Record<string, any>;
-  linkType: LinkTypes;
 }
 
 export interface TextNode<T = string> extends StoryblokRichTextNode<T> {

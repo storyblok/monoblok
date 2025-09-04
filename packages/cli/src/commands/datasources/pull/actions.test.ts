@@ -74,7 +74,7 @@ const mockedEntries: Record<number, SpaceDatasourceEntry[]> = {
 
 // MSW handlers for mocking the datasources API endpoint
 const handlers = [
-  http.get('https://api.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
     const token = request.headers.get('Authorization');
 
     // Return success response for valid token
@@ -87,7 +87,7 @@ const handlers = [
     // Return unauthorized error for invalid token
     return new HttpResponse('Unauthorized', { status: 401 });
   }),
-  http.get('https://api.storyblok.com/v1/spaces/:space/datasource_entries', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/:space/datasource_entries', async ({ request }) => {
     const url = new URL(request.url);
     const datasourceId = url.searchParams.get('datasource_id');
     const entries = mockedEntries[Number(datasourceId)] || [];
@@ -173,7 +173,7 @@ describe('pull datasources actions', () => {
     it('should handle empty datasources response', async () => {
       // Override the handler to return empty datasources
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/12345/datasources', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
           return HttpResponse.json({
             datasources: [],
           });
@@ -212,7 +212,7 @@ describe('pull datasources actions', () => {
     it('should handle network errors', async () => {
       // Override the handler to simulate network error
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/12345/datasources', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
           return HttpResponse.error();
         }),
       );
@@ -223,7 +223,7 @@ describe('pull datasources actions', () => {
     it('should handle server errors', async () => {
       // Override the handler to return server error
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/12345/datasources', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
           return new HttpResponse('Internal Server Error', { status: 500 });
         }),
       );
@@ -236,7 +236,7 @@ describe('pull datasources actions', () => {
 
       // Override handler to capture request URL
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/*/datasources', ({ request }) => {
+        http.get('https://mapi.storyblok.com/v1/spaces/*/datasources', ({ request }) => {
           requestUrl = request.url;
           return HttpResponse.json({
             datasources: mockedDatasources,
@@ -246,7 +246,7 @@ describe('pull datasources actions', () => {
 
       await fetchDatasources('54321');
 
-      expect(requestUrl).toBe('https://api.storyblok.com/v1/spaces/54321/datasources');
+      expect(requestUrl).toBe('https://mapi.storyblok.com/v1/spaces/54321/datasources');
     });
   });
 

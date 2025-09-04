@@ -103,7 +103,7 @@ const mockStories: Story[] = [
 
 // Set up MSW handlers
 const handlers = [
-  http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
     const token = request.headers.get('Authorization');
 
     if (token !== 'valid-token') {
@@ -258,7 +258,7 @@ describe('stories/actions', () => {
     it('should handle server errors', async () => {
       // Override handler to simulate a server error
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/:spaceId/stories', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
@@ -269,6 +269,52 @@ describe('stories/actions', () => {
           expect.any(Error),
         );
       });
+    });
+
+    it('should handle pagination when per_page and total are missing from response', async () => {
+      // Mock pages
+      const page1Stories = Array.from({ length: 100 }, (_, i) => ({
+        ...mockStories[0],
+        id: i + 1,
+        name: `Story ${i + 1}`,
+        uuid: `uuid-${i + 1}`,
+      }));
+      const page2Stories = Array.from({ length: 50 }, (_, i) => ({
+        ...mockStories[0],
+        id: i + 101,
+        name: `Story ${i + 101}`,
+        uuid: `uuid-${i + 101}`,
+      }));
+
+      // Override handler to simulate API without pagination metadata
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+          const url = new URL(request.url);
+          const page = Number.parseInt(url.searchParams.get('page') || '1', 10);
+
+          if (page === 1) {
+            // First page returns 100 stories (no per_page and total fields)
+            return HttpResponse.json({ stories: page1Stories });
+          }
+          else if (page === 2) {
+            // Second page returns 50 stories (less than per_page, indicating end)
+            return HttpResponse.json({ stories: page2Stories });
+          }
+          else {
+            // Third page returns empty array
+            return HttpResponse.json({ stories: [] });
+          }
+        }),
+      );
+
+      const result = await fetchStories(mockSpace);
+
+      // Should fetch all stories from both pages
+      expect(result).toHaveLength(150);
+      expect(result?.[0].id).toBe(1);
+      expect(result?.[99].id).toBe(100);
+      expect(result?.[100].id).toBe(101);
+      expect(result?.[149].id).toBe(150);
     });
   });
 
@@ -282,7 +328,7 @@ describe('stories/actions', () => {
     beforeEach(() => {
       requestUrl = undefined;
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/*/stories*', ({ request }) => {
+        http.get('https://mapi.storyblok.com/v1/spaces/*/stories*', ({ request }) => {
           requestUrl = new URL(request.url).search;
           return HttpResponse.json({ stories: [], per_page: 100, total: 0 });
         }),
@@ -333,7 +379,7 @@ describe('stories/actions', () => {
 
     it('should handle error responses', async () => {
       server.use(
-        http.get('https://api.storyblok.com/v1/spaces/*/stories*', () => {
+        http.get('https://mapi.storyblok.com/v1/spaces/*/stories*', () => {
           return new HttpResponse(null, { status: 404, statusText: 'Not Found' });
         }),
       );

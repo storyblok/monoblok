@@ -1,12 +1,12 @@
 ---
-import { useStoryblokApi } from "@storyblok/astro";
-import StoryblokComponent from "@storyblok/astro/StoryblokComponent.astro";
-import BaseLayout from "../layouts/BaseLayout.astro";
+import { useStoryblokApi } from '@storyblok/astro';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import BaseLayout from '@shared/components/BaseLayout.astro';
 
 const sbApi = useStoryblokApi();
-const { data } = await sbApi.get("cdn/stories/home", {
-  version: "draft",
-  resolve_relations: ["featured-articles.posts"],
+const { data } = await sbApi.get('cdn/stories/home', {
+  version: 'draft',
+  resolve_relations: ['featured-articles.posts'],
 });
 
 const story = data.story;

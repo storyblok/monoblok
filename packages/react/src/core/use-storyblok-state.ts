@@ -26,7 +26,7 @@ export const useStoryblokState: TUseStoryblokState = (
       newStory => setStory(newStory),
       bridgeOptions,
     );
-  }, [initialStory]);
+  }, [initialStory, bridgeOptions]);
 
   return story;
 };

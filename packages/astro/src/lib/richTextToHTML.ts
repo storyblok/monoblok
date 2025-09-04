@@ -1,18 +1,13 @@
-import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import {
   richTextResolver,
   type StoryblokRichTextNode,
   type StoryblokRichTextResolvers,
 } from '@storyblok/js';
 import { experimental_AstroContainer } from 'astro/container';
-import { storyblokComponents } from 'virtual:import-storyblok-components';
-import options from 'virtual:storyblok-options';
-import { toCamelCase } from '@storyblok/astro';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 
-interface AsyncReplacement {
-  placeholder: string;
-  promise: Promise<string>;
-}
+const container = await experimental_AstroContainer.create();
+
 /**
  * Converts a Storyblok RichText field into an HTML string.
  *
@@ -28,9 +23,7 @@ export const richTextToHTML = async (
   richTextField: StoryblokRichTextNode,
   customResolvers?: StoryblokRichTextResolvers,
 ): Promise<string> => {
-  const container = await experimental_AstroContainer.create();
-
-  const asyncReplacements: AsyncReplacement[] = [];
+  const asyncReplacements: Promise<string>[] = [];
   // Build the resolvers object
   const resolvers: StoryblokRichTextResolvers = {
     // Handle async components
@@ -42,33 +35,21 @@ export const richTextToHTML = async (
 
       return componentBody
         .map((blok) => {
-          const key = toCamelCase(blok.component as string);
-          const componentFound: boolean = key in storyblokComponents;
-          let Component: AstroComponentFactory;
-          if (!componentFound) {
-            if (!options.enableFallbackComponent) {
-              throw new Error(
-                `No component found for blok "${blok.component}". 
-                 Make sure the component is:
-                 • Registered in your astro.config.mjs, or
-                 • Placed in the "/${options.componentsDir}/storyblok" folder, or
-                 • Enable the "fallbackComponent" option to handle missing components.`,
-              );
-            }
-            else {
-              Component = storyblokComponents.FallbackComponent;
-            }
-          }
-          else {
-            Component = storyblokComponents[key];
+          if (!blok || typeof blok !== 'object') {
+            return '';
           }
 
           const placeholder = `<!--ASYNC-${asyncReplacements.length}-->`;
-          const promise = container.renderToString(Component, {
-            props: { blok },
-          });
+          const promise = container
+            .renderToString(StoryblokComponent, {
+              props: { blok },
+            })
+            .catch((err) => {
+              console.error('Component rendering failed:', err);
+              return '<!-- Component render error -->';
+            });
 
-          asyncReplacements.push({ placeholder, promise });
+          asyncReplacements.push(promise);
           return placeholder;
         })
         .join('\n');
@@ -81,18 +62,11 @@ export const richTextToHTML = async (
   const resolver = richTextResolver({ resolvers });
 
   let html = resolver.render(richTextField);
-
-  // Wait for all async operations and replace placeholders
-  for (const { placeholder, promise } of asyncReplacements) {
-    try {
-      const result = await promise;
-      html = html.replace(placeholder, result);
-    }
-    catch (error) {
-      console.error('Component rendering failed:', error);
-      html = html.replace(placeholder, '<!-- Component render error -->');
-    }
-  }
+  const results = await Promise.all(asyncReplacements);
+  html = html.replace(/<!--ASYNC-(\d+)-->/g, (_, idx) => {
+    const result = results[Number(idx)];
+    return result ?? '';
+  });
 
   return html;
 };

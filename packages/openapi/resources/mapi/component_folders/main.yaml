@@ -151,6 +151,9 @@ components:
   schemas:
     ComponentFolder:
       type: object
+      required:
+        - id
+        - name
       properties:
         id:
           readOnly: true

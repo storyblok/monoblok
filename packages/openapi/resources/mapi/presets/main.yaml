@@ -160,6 +160,7 @@ components:
         - id
         - component_id
         - preset
+        - name
       properties:
         id:
           readOnly: true

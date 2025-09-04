@@ -1,0 +1,50 @@
+{
+  "name": "article-overview-page",
+  "display_name": "Article Overview Page",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.788Z",
+  "updated_at": "2025-08-26T10:04:35.788Z",
+  "id": 84021558427829,
+  "schema": {
+    "meta_title": {
+      "type": "text",
+      "pos": 0,
+      "id": "L-dV7XKVQ2G8klpLKnll-g"
+    },
+    "meta_description": {
+      "type": "textarea",
+      "pos": 1,
+      "id": "bvHfw-QrToudyd_XDfvmZQ"
+    },
+    "headline": {
+      "type": "text",
+      "pos": 2,
+      "id": "G5ztFWgmRp2Yt9ToDOBlgA"
+    },
+    "tab-b15a8be7-87c9-4e66-8d3c-04a6d48f80c6": {
+      "display_name": "Meta",
+      "keys": [
+        "meta_description",
+        "meta_title"
+      ],
+      "pos": 3,
+      "type": "tab",
+      "id": "sVqL54fJTmaNPASm1I-Axg"
+    }
+  },
+  "image": null,
+  "preview_field": "headline",
+  "is_root": true,
+  "preview_tmpl": null,
+  "is_nestable": false,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Article Overview Page",
+  "component_group_uuid": null,
+  "color": "#1b243f",
+  "icon": "block-1-2block",
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

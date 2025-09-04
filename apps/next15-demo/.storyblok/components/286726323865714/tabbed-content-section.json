@@ -1,0 +1,61 @@
+{
+  "name": "tabbed-content-section",
+  "display_name": "Tabbed Content Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.236Z",
+  "updated_at": "2025-08-26T10:04:35.236Z",
+  "id": 84021556170907,
+  "schema": {
+    "headline": {
+      "type": "bloks",
+      "pos": 0,
+      "id": "ig4u_k-oQZmHhvM0LQPoVg",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "lead": {
+      "type": "textarea",
+      "pos": 1,
+      "id": "hZFXLrS3S96qXKNy62OcGA"
+    },
+    "entries": {
+      "type": "bloks",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "tabbed-content-entry"
+      ],
+      "maximum": 5,
+      "pos": 2,
+      "id": "N5yiYzqLSdCelXUy3Bexkg"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/fa92f78bea/tabbed.svg",
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>With <strong>{{it.entries.length}}</strong> entries</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021556235376,
+      "name": "Why choose a Brand New Day?",
+      "component_id": 84021556170907,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Tabbed Content Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

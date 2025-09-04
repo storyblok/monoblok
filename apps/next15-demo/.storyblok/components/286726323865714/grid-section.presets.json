@@ -1,0 +1,857 @@
+[
+  {
+    "id": 84021556976762,
+    "name": "Meet our team",
+    "preset": {
+      "_uid": "85cb1d9e-6cc1-44ec-8331-e401836e43b6",
+      "cols": "3",
+      "lead": "A passionate group of dreamers, designers, and digital builders dedicated to making your brand unforgettable.",
+      "cards": [
+        {
+          "_uid": "6df40fa7-5093-41c3-b04f-70dadb048168",
+          "text": "Lila specializes in crafting delightful brand experiences that feel effortless and intuitive. She believes that joy is in the details—whether it's a seamless website flow, a charming micro-interaction, or a campaign that makes people smile.",
+          "image": {
+            "id": 21410102,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/735x818/57dcbc851b/lila-bloom.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Lila Bloom, Experience Alchemist",
+          "component": "image-card",
+          "background_color": "background-2"
+        },
+        {
+          "_uid": "f062a824-771f-4207-9038-63fbe9db0acf",
+          "text": "Felix thrives on high-energy ideation sessions and loves turning big ideas into reality. With an infectious laugh and boundless enthusiasm, he keeps the creative team motivated and always pushing boundaries in joyful, unexpected ways.",
+          "image": {
+            "id": 20906543,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2400x2338/017551db08/joyful-team-2.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Felix Sparks, Creative Energy Lead",
+          "component": "image-card",
+          "background_color": "background-3"
+        },
+        {
+          "_uid": "d50f55ff-4d39-441b-a098-ad9a5368fe1d",
+          "text": "Joy blends innovation with a touch of magic, making sure technology never feels cold or intimidating. He’s always finding ways to make digital experiences more human, more interactive, and most importantly, more joyful.",
+          "image": {
+            "id": 20906560,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2301x2400/79c063b36a/joyful-team-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Joy Everly, Tech & Magic Architect",
+          "component": "image-card",
+          "background_color": "background-8"
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "9cbfb024-7793-4233-a215-d7011428449b",
+          "text": "Meet our team",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "white"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.432Z",
+    "updated_at": "2025-08-26T10:04:35.432Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557021819,
+    "name": "Our services",
+    "preset": {
+      "_uid": "3b7f8e1b-b2a9-4d77-846e-ee1e16110e18",
+      "cols": "3",
+      "lead": "From design to development, traffic to tech—our team makes digital magic happen. Fast, flexible, and fun to use!",
+      "cards": [
+        {
+          "_uid": "eca8cb6a-0ee2-4006-8373-59cc044f0801",
+          "icon": {
+            "id": 20903372,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1970x1808/6d92e4ca4d/icon-2.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "We don’t just build websites—we launch digital experiences that take off fast and scale effortlessly.",
+          "label": "Design to dev",
+          "button": [],
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "80"
+        },
+        {
+          "_uid": "6340452c-bc7b-4c30-b3c8-630a1dea97f3",
+          "icon": {
+            "id": 20903373,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1823x1808/c112624494/icon-1.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Your tools, working together in perfect harmony. No more headaches, just smooth workflows.",
+          "label": "Joyful integrations",
+          "button": [],
+          "row_span": "1",
+          "component": "grid-card",
+          "icon_width": "80",
+          "background_image": {
+            "id": 20906451,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1152x1746/1a91d8f94b/joyful-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          }
+        },
+        {
+          "_uid": "6b7a9e1e-1ae3-4047-a830-0bf8e582ec3b",
+          "icon": {
+            "id": 20903371,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1808x1586/fa88eba6a1/icon-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Your brand, but shinier! We craft visuals and stories that make people fall in love with your business.",
+          "label": "Brand glow-up",
+          "button": [],
+          "row_span": "",
+          "component": "grid-card",
+          "icon_width": "80"
+        }
+      ],
+      "button": [
+        {
+          "_uid": "835d72f2-45c2-4b83-b983-538c40c87c14",
+          "link": {
+            "id": "2970527d-b1b7-4cdc-8ab6-843cd791b595",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "services"
+          },
+          "size": "medium",
+          "label": "What we do",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "highlight-1"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "89dcee92-48c3-4402-997c-a952ac237de3",
+          "text": "Our Services",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "primary-background"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.443Z",
+    "updated_at": "2025-08-26T10:04:35.443Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557062780,
+    "name": "Our working process",
+    "preset": {
+      "_uid": "4046e908-1b01-49ac-a123-6eaa1686e68d",
+      "cols": "4",
+      "lead": "From vision to reality: A seamless journey to success",
+      "cards": [
+        {
+          "_uid": "f6624a35-6032-41be-8577-c279d8ac3bf2",
+          "icon": {
+            "id": 21368692,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/a4db736b31/discover.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "We get to know your brand, goals, and dreams.",
+          "label": "Discover",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "065fac88-86a3-4c5c-8de5-5e48174cc7a7",
+          "icon": {
+            "id": 21368695,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/0a283dedaf/design.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Crafting visually stunning and strategic concepts.",
+          "label": "Design",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "c5404175-7b4d-45ac-8148-3b9c271bd5d4",
+          "icon": {
+            "id": 21368693,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/b9ee88a662/develop.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Bringing your vision to life with flawless execution.",
+          "label": "Develop",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "8082c46f-9fe9-4e2b-99aa-808401c30290",
+          "icon": {
+            "id": 21368694,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/8beb612198/deliver.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Launch, optimize, and celebrate success!",
+          "label": "Deliver",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "b771f6fd-8753-4be4-b3f6-d7c8a9a20143",
+          "text": "Our working process",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "primary-background"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.453Z",
+    "updated_at": "2025-08-26T10:04:35.453Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557103741,
+    "name": "Pricing made simple",
+    "preset": {
+      "_uid": "8aa766b8-e70c-4765-bc7b-e28b16f461b5",
+      "cols": "3",
+      "lead": "Find the perfect plan to bring your brand to life!",
+      "cards": [
+        {
+          "_uid": "82c43c9b-7701-4983-9a79-c4257f00bcef",
+          "price": "999",
+          "button": [
+            {
+              "_uid": "19e181ef-b7dd-468f-b927-27cb21210ea2",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Perfect for small businesses and startups looking to establish their brand.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Basic website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Essential integrations",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Standard branding package",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Email support",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Starter",
+          "component": "price-card",
+          "most_popular": false
+        },
+        {
+          "_uid": "f71773c8-adf9-4b0b-b045-033b928a08b0",
+          "price": "2999",
+          "button": [
+            {
+              "_uid": "e8d42215-f9c1-4e02-8968-b95ef7481bf1",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Ideal for growing businesses ready to scale their online presence.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Custom website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Advanced integrations & automation",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Enhanced branding & storytelling",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Priority support",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Growth",
+          "component": "price-card",
+          "most_popular": true
+        },
+        {
+          "_uid": "25a126fb-449c-4c66-8ced-8153bebec6ca",
+          "price": "9999",
+          "button": [
+            {
+              "_uid": "31b61ef2-b63d-4d08-9d0f-d8fb80496384",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "For established brands seeking high-end, fully customized solutions.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Fully custom website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Complex integrations & API solutions",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Comprehensive branding & content strategy",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Dedicated support & consulting",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Premium",
+          "component": "price-card",
+          "most_popular": false
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "194acdf9-b6c5-495e-94ae-b61db1b383c1",
+          "text": "Pricing made simple",
+          "component": "headline-segment",
+          "highlight": "none"
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "white"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.463Z",
+    "updated_at": "2025-08-26T10:04:35.463Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

@@ -1,0 +1,160 @@
+{
+  "name": "image-text-section",
+  "display_name": "Image Text Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.287Z",
+  "updated_at": "2025-08-26T10:04:35.287Z",
+  "id": 84021556379806,
+  "schema": {
+    "background_color": {
+      "type": "option",
+      "source": "internal",
+      "datasource_slug": "basic-background-colors",
+      "exclude_empty_option": true,
+      "default_value": "white",
+      "pos": 0,
+      "id": "WeUfX36LRMiRtBDD26nIlQ"
+    },
+    "reverse_mobile_layout": {
+      "type": "boolean",
+      "pos": 1,
+      "id": "LmK8Mn8CRNyz7knNyecvrw"
+    },
+    "reverse_desktop_layout": {
+      "type": "boolean",
+      "pos": 2,
+      "default_value": false,
+      "translatable": true,
+      "id": "rkMODsOlSEyKM42FQFMhqw"
+    },
+    "eyebrow": {
+      "type": "text",
+      "pos": 3,
+      "id": "uttUl8_LTiyuKG4nefMyqw"
+    },
+    "headline": {
+      "type": "bloks",
+      "pos": 4,
+      "id": "TByIOPZGRBeyni0tzFHlRQ",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "text": {
+      "type": "richtext",
+      "pos": 5,
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold",
+        "italic",
+        "olist",
+        "list",
+        "link"
+      ],
+      "translatable": true,
+      "id": "cP4mVJ8mSGSZKm0xe7xqQA"
+    },
+    "buttons": {
+      "type": "bloks",
+      "maximum": 2,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "pos": 6,
+      "component_group_whitelist": [],
+      "id": "MO-yuEHAQgmT7fmJvc4xsQ"
+    },
+    "image": {
+      "type": "asset",
+      "pos": 7,
+      "filetypes": [
+        "images"
+      ],
+      "translatable": true,
+      "id": "j9hZeE_mQCWndV9VrVIV0A"
+    },
+    "preserve_image_aspect_ratio": {
+      "type": "boolean",
+      "pos": 8,
+      "id": "kPF01OzRRKy28tKpWeOD5w"
+    },
+    "tab-13ca152d-db6e-4fe4-9621-3fd4e9391a75": {
+      "display_name": "Style",
+      "keys": [
+        "background_color",
+        "reverse_layout",
+        "reverse_desktop_layout",
+        "reverse_mobile_layout"
+      ],
+      "pos": 9,
+      "type": "tab",
+      "name": "tab-13ca152d-db6e-4fe4-9621-3fd4e9391a75",
+      "id": "E8oVLdtuT-SWIT_U6TkadQ"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/797bf18957/image-text.svg",
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>\n{{@image(it.image.filename)/}}\n</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021556436081,
+      "name": "A joyful digital agency",
+      "component_id": 84021556379806,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021556481138,
+      "name": "Brand glow-up",
+      "component_id": 84021556379806,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021556526195,
+      "name": "Design to dev",
+      "component_id": 84021556379806,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021556567156,
+      "name": "Joyful integrations",
+      "component_id": 84021556379806,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021556612213,
+      "name": "What we stand for",
+      "component_id": 84021556379806,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Image Text Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

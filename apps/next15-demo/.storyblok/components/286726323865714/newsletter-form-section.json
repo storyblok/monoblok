@@ -1,0 +1,56 @@
+{
+  "name": "newsletter-form-section",
+  "display_name": "Newsletter Form Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.837Z",
+  "updated_at": "2025-08-26T10:04:35.837Z",
+  "id": 84021558632633,
+  "schema": {
+    "headline": {
+      "type": "bloks",
+      "pos": 0,
+      "id": "0aGM2zmhSaqA-h2Miu8wGQ",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "button": {
+      "type": "bloks",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "maximum": 1,
+      "id": "pWIm9GAmTRaUibCiVp6mYQ",
+      "pos": 2
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/5df7b59cbb/form.svg",
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021558684803,
+      "name": "Get instant updates",
+      "component_id": 84021558632633,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Newsletter Form Section",
+  "component_group_uuid": null,
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

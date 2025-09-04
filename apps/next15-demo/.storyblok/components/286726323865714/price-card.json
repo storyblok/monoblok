@@ -1,0 +1,73 @@
+{
+  "name": "price-card",
+  "display_name": "Price Card",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.660Z",
+  "updated_at": "2025-08-26T10:04:35.660Z",
+  "id": 84021557907629,
+  "schema": {
+    "most_popular": {
+      "type": "boolean",
+      "id": "oyavG-89TXeUhPEuIJM4ZA",
+      "pos": 0
+    },
+    "headline": {
+      "type": "text",
+      "pos": 1,
+      "key": "headline",
+      "id": "yApeeNTEQ4uaOnxd8QAINg"
+    },
+    "text_1": {
+      "type": "richtext",
+      "pos": 2,
+      "key": "text",
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold"
+      ],
+      "id": "2JiWCUKBT8WHoG70Am0S7g"
+    },
+    "price": {
+      "type": "number",
+      "pos": 3,
+      "key": "price",
+      "decimals": 0,
+      "id": "XyVIH9APSbm_uYHmQK6Vgw"
+    },
+    "button": {
+      "type": "bloks",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "maximum": 1,
+      "id": "55KDtZUIRAK25hQzc5AvgA",
+      "pos": 4
+    },
+    "text_2": {
+      "type": "richtext",
+      "customize_toolbar": true,
+      "toolbar": [
+        "list"
+      ],
+      "id": "43OT_apUTD6iMByxDRSetQ",
+      "pos": 5
+    }
+  },
+  "image": null,
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": null,
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Price Card",
+  "component_group_uuid": "1be9ae66-afc2-4c29-a165-5699c15094a1",
+  "color": "#f4cc48",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

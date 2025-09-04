@@ -1,0 +1,32 @@
+[
+  {
+    "id": 84021557525633,
+    "name": "What our clients say",
+    "preset": {
+      "_uid": "7003e2f9-4bb8-4ffd-98e7-4104ca0021b4",
+      "lead": "Spreading joy, one success story at a time!",
+      "headline": [
+        {
+          "_uid": "2a67e700-444e-4cf5-8b98-a0fe53bdc1b7",
+          "text": "What our clients say",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "testimonials-section",
+      "testimonials": [
+        "590f3970-ba48-441f-81b3-035419858491",
+        "d95cdb97-57d7-4990-8716-5eaf6c7ba90b",
+        "043178a9-b85f-4931-95ac-c07f43dc9a4d"
+      ]
+    },
+    "component_id": 84021557473447,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.566Z",
+    "updated_at": "2025-08-26T10:04:35.566Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

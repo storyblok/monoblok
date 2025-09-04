@@ -1,0 +1,156 @@
+{
+  "name": "grid-section",
+  "display_name": "Grid Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.420Z",
+  "updated_at": "2025-08-26T10:04:35.420Z",
+  "id": 84021556920481,
+  "schema": {
+    "cards": {
+      "type": "bloks",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "grid-card",
+        "price-card",
+        "image-card"
+      ],
+      "pos": 0,
+      "component_group_whitelist": [],
+      "id": "bPChJCRaQ5mO5qnOLBg_Xg"
+    },
+    "cols": {
+      "type": "option",
+      "display_name": "Columns",
+      "description": "The maximum amount of columns that should be shown in wide viewports.",
+      "options": [
+        {
+          "name": "Two",
+          "value": "2"
+        },
+        {
+          "value": "3",
+          "name": "Three"
+        },
+        {
+          "value": "4",
+          "name": "Four"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "3",
+      "pos": 1,
+      "id": "YT4EtjcRQ2ai8bMLCVXoyQ"
+    },
+    "headline": {
+      "type": "bloks",
+      "display_name": "Headline",
+      "pos": 2,
+      "id": "Ap-FctTISeeQEL4VcSr_pw",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "lead": {
+      "type": "textarea",
+      "pos": 3,
+      "translatable": true,
+      "id": "IJdMyh1RS_m8tV5uhSBdBw"
+    },
+    "tab-c4c97562-67b1-4ee3-821c-d46ba89b500c": {
+      "display_name": "Cards",
+      "keys": [
+        "cards"
+      ],
+      "pos": 4,
+      "type": "tab",
+      "name": "tab-c4c97562-67b1-4ee3-821c-d46ba89b500c",
+      "id": "xMl1YmexTuOCHNRrqJtQDA"
+    },
+    "tab-1a190f7e-99e2-4957-a54b-f92de6766ef4": {
+      "display_name": "Style",
+      "keys": [
+        "cols",
+        "background_color"
+      ],
+      "pos": 5,
+      "type": "tab",
+      "name": "tab-1a190f7e-99e2-4957-a54b-f92de6766ef4",
+      "id": "GhkPfpniSVelS_kt5nZu9A"
+    },
+    "background_color": {
+      "type": "option",
+      "source": "internal",
+      "datasource_slug": "basic-background-colors",
+      "default_value": "white",
+      "exclude_empty_option": true,
+      "pos": 6,
+      "id": "f6bWQ249Qi6jnTmCPepSMA"
+    },
+    "button": {
+      "type": "bloks",
+      "pos": 7,
+      "maximum": 1,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "id": "JO3iIVhdTISfjdSOSzu09w"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/4371846216/grid.svg",
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>With <strong>{{it.cards.length}}</strong> grid cards</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021556976762,
+      "name": "Meet our team",
+      "component_id": 84021556920481,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021557021819,
+      "name": "Our services",
+      "component_id": 84021556920481,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021557062780,
+      "name": "Our working process",
+      "component_id": 84021556920481,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    },
+    {
+      "id": 84021557103741,
+      "name": "Pricing made simple",
+      "component_id": 84021556920481,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Grid Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

@@ -1,0 +1,62 @@
+{
+  "name": "headline-segment",
+  "display_name": "Headline Segment",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.679Z",
+  "updated_at": "2025-08-26T10:04:35.679Z",
+  "id": 84021557985455,
+  "schema": {
+    "text": {
+      "type": "text",
+      "pos": 0,
+      "id": "u0MhEwuBSUSjTcrcQPLmPg"
+    },
+    "highlight": {
+      "type": "option",
+      "pos": 1,
+      "use_uuid": true,
+      "exclude_empty_option": true,
+      "options": [
+        {
+          "_uid": "69811f81-6ac2-498f-afa1-657c5a021d9c",
+          "name": "None",
+          "value": "none"
+        },
+        {
+          "_uid": "6b90d704-782d-457f-bb31-424de8859932",
+          "value": "color_1",
+          "name": "Color 1"
+        },
+        {
+          "_uid": "d0ce056d-5e90-42d2-b4e0-26f3a5f0d49b",
+          "value": "color_2",
+          "name": "Color 2"
+        },
+        {
+          "_uid": "9a317abc-f2ce-4b68-bbe4-cd5f3b98ea11",
+          "value": "color_3",
+          "name": "Color 3"
+        }
+      ],
+      "default_value": "",
+      "id": "T04yX4pWS5-XeSzjEuU-pg",
+      "source": "internal",
+      "datasource_slug": "highlight-colors"
+    }
+  },
+  "image": null,
+  "preview_field": "text",
+  "is_root": false,
+  "preview_tmpl": null,
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Headline Segment",
+  "component_group_uuid": "1be9ae66-afc2-4c29-a165-5699c15094a1",
+  "color": "#f4cc48",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

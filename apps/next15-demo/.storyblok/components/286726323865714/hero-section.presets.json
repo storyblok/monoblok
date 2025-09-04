@@ -1,0 +1,181 @@
+[
+  {
+    "id": 84021556706422,
+    "name": "A Brand New Day team",
+    "preset": {
+      "_uid": "fe71af1b-a6a9-4af3-8135-49fa43faf0ab",
+      "text": "A joyful agency built on passion, creativity, and collaboration.",
+      "image": {
+        "id": 21409892,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1566x642/b788320810/about-the-heros.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "layout": "stacked",
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "ca588fa9-c827-4b91-ac18-3ac5de1be879",
+          "text": "A Brand New Day team",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "center",
+      "background_color": "white",
+      "image_decoration": false,
+      "secondary_background_color": "primary-background",
+      "preserve_image_aspect_ratio": true
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.366Z",
+    "updated_at": "2025-08-26T10:04:35.366Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556751479,
+    "name": "We bring joy to everything we do",
+    "preset": {
+      "_uid": "6eb0d1f9-dd12-4559-a7da-fd031f2db7dd",
+      "text": "Discover the magic behind our joyful creations.",
+      "image": {
+        "id": 21059587,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/3568x2344/e1d983edff/joyful-banner.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "content_type": "png",
+        "is_external_url": false
+      },
+      "layout": "stacked",
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "e63948ca-451f-4dfc-9cc2-2785770189d4",
+          "text": "Bring joy to everything we do.",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "left",
+      "background_color": "background-1",
+      "image_decoration": true,
+      "secondary_background_color": {
+        "value": "#A59441",
+        "plugin": "storyblok-palette"
+      }
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.377Z",
+    "updated_at": "2025-08-26T10:04:35.377Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556792440,
+    "name": "Where creativity meets joy!",
+    "preset": {
+      "_uid": "177a9059-e922-4f5c-9805-d6e319c1f200",
+      "text": "We bring fresh ideas to life with energy, passion, and a touch of magic.",
+      "image": {
+        "id": 21059587,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/3568x2344/e1d983edff/joyful-banner.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "layout": "split",
+      "buttons": [
+        {
+          "_uid": "5527e127-1406-4a4d-b00b-d751da4efedb",
+          "link": {
+            "id": "2970527d-b1b7-4cdc-8ab6-843cd791b595",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "services"
+          },
+          "size": "medium",
+          "label": "What we do",
+          "style": "default",
+          "component": "button",
+          "text_color": "white",
+          "background_color": "primary-dark"
+        },
+        {
+          "_uid": "1613b84e-6511-45b0-8712-20949733a02a",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get in touch",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "white"
+        }
+      ],
+      "eyebrow": "Welcome to Brand New Day",
+      "headline": [
+        {
+          "_uid": "16b3aac9-f4b0-457b-9170-f88b7ccac591",
+          "text": "Where creativity meets",
+          "component": "headline-segment",
+          "highlight": ""
+        },
+        {
+          "_uid": "09e58d62-b62f-4c88-8fdc-a58fba662405",
+          "text": " joy!",
+          "component": "headline-segment",
+          "highlight": "highlight-2"
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "left",
+      "background_color": "background-1",
+      "image_decoration": true,
+      "secondary_background_color": "background-2"
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.387Z",
+    "updated_at": "2025-08-26T10:04:35.387Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

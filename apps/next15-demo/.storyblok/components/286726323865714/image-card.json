@@ -1,0 +1,76 @@
+{
+  "name": "image-card",
+  "display_name": "Image Card",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.689Z",
+  "updated_at": "2025-08-26T10:04:35.689Z",
+  "id": 84021558026416,
+  "schema": {
+    "image": {
+      "type": "asset",
+      "pos": 0,
+      "id": "UlFZAr71TD-mU-46k14LYg"
+    },
+    "tab-bc24d759-58fb-4e54-ac13-f11b26b2ede0": {
+      "display_name": "Style",
+      "keys": [
+        "background_color"
+      ],
+      "pos": 0,
+      "type": "tab",
+      "id": "vCTXWVj7TlSsE_EbJrLt4A"
+    },
+    "label": {
+      "type": "text",
+      "pos": 1,
+      "id": "U35zmvfrRte7hHjfAbbcPQ"
+    },
+    "text": {
+      "type": "textarea",
+      "pos": 2,
+      "id": "jjN0F04dTCGtBagz2dFyHA"
+    },
+    "background_color": {
+      "type": "option",
+      "pos": 4,
+      "field_type": "storyblok-palette",
+      "options": [
+        {
+          "name": "size",
+          "value": "medium",
+          "_uid": "d7fadd48-9f99-42c6-b7a2-a57057e01029"
+        },
+        {
+          "name": "defaultValue",
+          "value": "#fbe8d5",
+          "_uid": "c767df68-385c-426f-bcf2-d3f02073b6f8"
+        },
+        {
+          "name": "colors",
+          "value": "[\"#d8d4f9\", \"#fbe8d5\", \"#e9e8d2\", \"#e3f0d5\", \"#f8d7d4\", \"#d9e4f1\"]",
+          "_uid": "0cf847c7-bb04-4230-b32b-ccdcbe18bf4f"
+        }
+      ],
+      "id": "UEuDSK13TTiKpdqoba2C0Q",
+      "use_uuid": true,
+      "source": "internal",
+      "datasource_slug": "advanced-background-colors",
+      "default_value": "primary-background"
+    }
+  },
+  "image": null,
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": null,
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Image Card",
+  "component_group_uuid": "1be9ae66-afc2-4c29-a165-5699c15094a1",
+  "color": "#f4cc48",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

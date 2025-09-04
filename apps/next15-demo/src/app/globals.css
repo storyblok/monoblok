@@ -1,0 +1,404 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Safelist dynamic Storyblok color classes */
+@source inline("{hover:,}bg-{primary-highlight,highlight-1,highlight-2,highlight-3,primary-background,background-1,background-2,background-3,background-4,background-5,background-6,background-7,background-8,background-9,background-10,primary-dark,white}");
+@source inline("{hover:,}text-{primary-highlight,highlight-1,highlight-2,highlight-3,primary-background,background-1,background-2,background-3,background-4,background-5,background-6,background-7,background-8,background-9,background-10,primary-dark,white}");
+@source inline("border-{primary-highlight,highlight-1,highlight-2,highlight-3,primary-background,background-1,background-2,background-3,background-4,background-5,background-6,background-7,background-8,background-9,background-10,primary-dark,white}");
+@source inline("fill-{primary-highlight,highlight-1,highlight-2,highlight-3,primary-background,background-1,background-2,background-3,background-4,background-5,background-6,background-7,background-8,background-9,background-10,primary-dark,white}");
+
+/* Font Face Declarations */
+@font-face {
+  font-family: "ABCMarfa";
+  src: url("/fonts/ABCMarfa-Regular.Df7MMfty.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ABCMarfa";
+  src: url("/fonts/ABCMarfa-Medium.B6x9xJO4.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ABCMarfa";
+  src: url("/fonts/ABCMarfa-Semibold.7TntiHrX.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ABCMarfa";
+  src: url("/fonts/ABCMarfa-Black.C6V3HcGx.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/montserrat-v29-latin-regular.CIMKXMQI.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/montserrat-v29-latin-500.DBGu5uxW.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 600;
+  src: url("/fonts/montserrat-v29-latin-600.CjtsKS3e.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 900;
+  src: url("/fonts/montserrat-v29-latin-900.Cu5ORhvX.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Noto Serif";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/noto-serif-v23-latin-regular.BWmBr9Bw.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Noto Serif";
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/noto-serif-v23-latin-500.CJ3dBeRM.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Noto Serif";
+  font-style: normal;
+  font-weight: 600;
+  src: url("/fonts/noto-serif-v23-latin-600.CLey4LyT.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Noto Serif";
+  font-style: normal;
+  font-weight: 900;
+  src: url("/fonts/noto-serif-v23-latin-900.Dxf9r6B8.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Serif";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/roboto-serif-v15-latin-regular.BgT8Q8TT.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Serif";
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/roboto-serif-v15-latin-500.DqkdP_XT.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Serif";
+  font-style: normal;
+  font-weight: 600;
+  src: url("/fonts/roboto-serif-v15-latin-600.Bs1fNDAg.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Serif";
+  font-style: normal;
+  font-weight: 900;
+  src: url("/fonts/roboto-serif-v15-latin-900.DBV6dXxo.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Slab";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/roboto-slab-v34-latin-regular.BugDaDM0.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Slab";
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/roboto-slab-v34-latin-500.CN0NruAp.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Slab";
+  font-style: normal;
+  font-weight: 600;
+  src: url("/fonts/roboto-slab-v34-latin-600.D5QtnYSY.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Roboto Slab";
+  font-style: normal;
+  font-weight: 900;
+  src: url("/fonts/roboto-slab-v34-latin-900.DcHkc1SX.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/roboto-v47-latin-regular.CNwBRw8h.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 500;
+  src: url("/fonts/roboto-v47-latin-500.CkrA1NAy.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 600;
+  src: url("/fonts/roboto-v47-latin-600.aFTKHmff.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: Roboto;
+  font-style: normal;
+  font-weight: 900;
+  src: url("/fonts/roboto-v47-latin-900.93zEKV3C.woff2") format("woff2");
+}
+
+:root {
+  --nav-background-color: #ffffff;
+  --primary-highlight: #6251b8;
+  --highlight-1: #80efac;
+  --highlight-2: #786b2b;
+  --highlight-3: #d4ff92;
+  --primary-background: #f5f5f7;
+  --background-1: #f4f2e9;
+  --background-2: #e4ddb9;
+  --background-3: #d9eeff;
+  --background-4: #d7e4f2;
+  --background-5: #d9d4fc;
+  --background-6: #f2f1d7;
+  --background-7: #e0f0d2;
+  --background-8: #ffe7d3;
+  --background-9: #ffd5d3;
+  --background-10: #d2fec9;
+  --primary-dark: #1f1f1f;
+  --headline-color: var(--primary-dark);
+  /* Font family fallbacks for SSR */
+  --font-family-display:
+    ABCMarfa, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-body:
+    ABCMarfa, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* CSS Custom Properties */
+@theme {
+  --font-family-display:
+    ABCMarfa, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-body:
+    ABCMarfa, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-primary-highlight: #6251b8;
+  --color-highlight-1: #80efac;
+  --color-highlight-2: #786b2b;
+  --color-highlight-3: #d4ff92;
+  --color-primary-background: #f5f5f7;
+  --color-background-1: #f4f2e9;
+  --color-background-2: #e4ddb9;
+  --color-background-3: #d9eeff;
+  --color-background-4: #d7e4f2;
+  --color-background-5: #d9d4fc;
+  --color-background-6: #f2f1d7;
+  --color-background-7: #e0f0d2;
+  --color-background-8: #ffe7d3;
+  --color-background-9: #ffd5d3;
+  --color-background-10: #d2fec9;
+  --color-primary-dark: #1f1f1f;
+  --rounded-sm: 4px;
+  --rounded-default: 6px;
+  --rounded-md: 8px;
+  --rounded-lg: 10px;
+  --rounded-xl: 15px;
+  --rounded-2xl: 20px;
+  --rounded-3xl: 25px;
+  --rounded-full: 9999px;
+  --color-headline-color: var(--headline-color);
+  --color-nav-background-color: #fff;
+}
+
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improve font loading performance */
+html {
+  font-family: var(--font-family-body);
+}
+
+/* Ensure consistent font rendering during loading */
+* {
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeSpeed;
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+
+  @media (min-width: 1024px) {
+    padding-inline: 2rem;
+  }
+}
+
+body {
+  padding-top: 128px;
+  font-family: var(--font-family-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-display);
+}
+
+/* Utilities used in the Nuxt demo */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--primary-dark);
+  outline-offset: 2px;
+}
+
+.border-medium {
+  border-width: 1px;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.page-section {
+  /* Spacing handled by CSS rules below */
+}
+
+/* Add the same spacing logic as Nuxt demo */
+@layer components {
+  section.page-section {
+    @apply py-16 sm:py-20 md:py-24 lg:py-28 xl:py-32;
+  }
+
+  /* Remove top padding when adjacent sections have same background */
+  section.page-section.bg-white + section.page-section.bg-white,
+  section.page-section.bg-primary-background
+    + section.page-section.bg-primary-background {
+    @apply pt-0;
+  }
+
+  /* Special case for contact form section */
+  section.page-section.contact-form-section:last-child {
+    @media not all and screen(lg) {
+      @apply pb-0;
+    }
+  }
+}
+
+@layer base {
+  .prose ul {
+    @apply list-none pl-0! my-6;
+  }
+
+  .prose ul li {
+    @apply pl-10! relative! mb-3 list-none;
+  }
+
+  .prose ul li::before {
+    @apply content-[''] absolute top-1/2 -translate-y-1/2 left-0 bg-no-repeat bg-contain w-6 h-6 block;
+    background-image: url("/images/circle-arrow-right.svg");
+  }
+
+  .prose ul li p {
+    @apply m-0 p-0 leading-relaxed;
+  }
+}
+
+/* Header Styles to match Nuxt demo */
+header:not(.bg-primary-dark) {
+  background-color: var(--nav-background-color);
+}
+
+header.scroll:not(.bg-primary-dark) {
+  @apply bg-white;
+}
+
+header nav.main-nav a.active::after {
+  @apply content-[''] absolute bottom-0 left-0 h-[5px] w-full bg-primary-dark;
+}
+
+header nav.main-nav ul {
+  @apply flex space-x-4 xl:space-x-8;
+}
+
+header nav.main-nav ul li .nav-item {
+  @apply relative text-sm xl:text-base;
+}
+
+/* Newsletter form fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* FAQ section details styling */
+details::after {
+  content: "";
+  @apply absolute top-0 right-0 inline-block w-8 h-8 bg-no-repeat bg-contain;
+  background-image: url("/images/chevron-down.svg");
+}
+
+details[open]::after {
+  transform: rotate(180deg);
+}

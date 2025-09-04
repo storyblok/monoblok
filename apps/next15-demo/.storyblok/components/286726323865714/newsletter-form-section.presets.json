@@ -1,0 +1,44 @@
+[
+  {
+    "id": 84021558684803,
+    "name": "Get instant updates",
+    "preset": {
+      "_uid": "50783df5-4ef3-4383-a171-609cc1fbd350",
+      "button": [
+        {
+          "_uid": "2cf05338-078a-4506-bd68-16b763dbb367",
+          "link": {
+            "id": "",
+            "url": "#",
+            "linktype": "url",
+            "fieldtype": "multilink",
+            "cached_url": "#"
+          },
+          "size": "medium",
+          "label": "Stay in the loop!",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "highlight-1"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "352e8cf3-175c-4783-8d69-32d4311066d4",
+          "text": "Get instant updates—subscribe to our newsletter!",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "newsletter-form-section"
+    },
+    "component_id": 84021558632633,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.849Z",
+    "updated_at": "2025-08-26T10:04:35.849Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

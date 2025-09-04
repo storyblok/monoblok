@@ -1,0 +1,97 @@
+{
+  "name": "contact-form-section",
+  "display_name": "Contact Form Section",
+  "description": "",
+  "created_at": "2025-08-26T10:04:35.816Z",
+  "updated_at": "2025-08-26T10:04:35.816Z",
+  "id": 84021558546616,
+  "schema": {
+    "headline": {
+      "type": "bloks",
+      "pos": 0,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ],
+      "id": "8W26Is8MSyuYDIyhtSDzsQ"
+    },
+    "tab-f52d95c5-de43-415b-a7e3-71bd4af98082": {
+      "display_name": "Image",
+      "keys": [
+        "image",
+        "quote",
+        "name",
+        "position"
+      ],
+      "pos": 0,
+      "type": "tab",
+      "id": "9S2Vxd5DQVun43G9SvmAgg"
+    },
+    "text": {
+      "type": "richtext",
+      "pos": 1,
+      "id": "MjkbAxzgRdmupVk1XK1A1g",
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold"
+      ]
+    },
+    "button": {
+      "type": "bloks",
+      "pos": 2,
+      "maximum": 1,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "id": "ZVjKI37-QvCevbIHYfwA5g"
+    },
+    "image": {
+      "type": "asset",
+      "pos": 4,
+      "id": "fiBq2_n_QyeQE4MyIacplg"
+    },
+    "quote": {
+      "type": "textarea",
+      "pos": 5,
+      "id": "C2Sn6L0fSFapEqKtuxQBwg"
+    },
+    "name": {
+      "type": "text",
+      "pos": 6,
+      "id": "gCPum5JSQvaqGDNgEtowCw"
+    },
+    "position": {
+      "type": "text",
+      "pos": 7,
+      "id": "qmKNFTwhQUqvs1IO7x--qw"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/ffd2259b02/personalized.svg",
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>\n{{@image(it.image.filename)/}}\n</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021558594690,
+      "name": "Get in touch with our team",
+      "component_id": 84021558546616,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Contact Form Section",
+  "component_group_uuid": null,
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

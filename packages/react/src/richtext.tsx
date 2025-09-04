@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
-import { renderRichText } from '@storyblok/js';
-import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/js';
+import { richTextResolver } from '@storyblok/richtext';
+import type {
+  StoryblokRichTextNode,
+  StoryblokRichTextOptions,
+} from '@storyblok/richtext';
 import type { StoryblokRichTextProps } from './types';
 
 // Hook for rendering rich text
@@ -12,19 +15,22 @@ export const useStoryblokRichText = (
     if (!content) {
       return null;
     }
-    return renderRichText(content, options);
+    return richTextResolver(options).render(content);
   }, [content, options]);
 };
 
 // Component for rendering rich text
-export const StoryblokRichText: React.FC<StoryblokRichTextProps> = ({ doc, resolvers }) => {
-  const renderedContent = renderRichText(doc, { resolvers });
+export const StoryblokRichText: React.FC<StoryblokRichTextProps> = ({
+  doc,
+  resolvers,
+}) => {
+  const renderedContent = richTextResolver({ resolvers }).render(doc);
 
   if (!renderedContent) {
     return null;
   }
 
-  return <div>{renderedContent}</div>;
+  return <div dangerouslySetInnerHTML={{ __html: renderedContent }} />;
 };
 
 // Default export for backward compatibility

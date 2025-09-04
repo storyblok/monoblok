@@ -2,8 +2,8 @@ import type {
   ISbStoriesParams,
   StoryblokClient,
 } from '@storyblok/react/ssr';
-import { StoryblokServerStory } from '@storyblok/react/ssr';
 import { getStoryblokApi } from '@/lib/storyblok';
+import { BridgeHandler } from './components/BridgeHandler';
 import Link from 'next/link';
 
 export default async function Home() {
@@ -29,8 +29,8 @@ export default async function Home() {
 
         {data.story && (
           <div>
-            {/* @ts-ignore - React 19 type compatibility issue */}
-            <StoryblokServerStory story={data.story} />
+            {/* BridgeHandler handles live editing with server actions */}
+            <BridgeHandler story={data.story} />
           </div>
         )}
       </div>

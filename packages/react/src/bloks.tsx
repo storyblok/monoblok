@@ -3,16 +3,19 @@ import React, { useMemo } from 'react';
 import type { BlokProps } from './blok';
 import { Blok } from './blok';
 import type { BlokData } from './types';
+import type { ISbStoryData } from '@storyblok/js';
 
 export interface BloksProps<T extends BlokData> {
   fallback?: React.ComponentType<{ blok: T }>;
   children: ReactElement<BlokProps<T>> | ReactElement<BlokProps<T>>[];
   blok: T;
+  story?: ISbStoryData; // Add story data support
 }
 
 export const Bloks = <T extends BlokData>({
   fallback,
   children,
+  story,
   ...props
 }: BloksProps<T>) => {
   const components = useMemo(() => {
@@ -38,29 +41,34 @@ export const Bloks = <T extends BlokData>({
     const Component = components[blokToRender.component];
 
     if (Component) {
+      // Pass both blok and story data to the component
       return React.createElement(Component, {
         blok: blokToRender,
+        story, // Pass story data to components
         key: blokToRender._uid,
+        ...props,
       });
     }
 
     if (fallback) {
       return React.createElement(fallback, {
         blok: blokToRender,
+        story, // Pass story data to fallback
         key: blokToRender._uid,
+        ...props,
       });
     }
 
-    console.warn(`Component could not be found for blok "${blokToRender.component}"! Is it configured correctly?`);
+    console.warn(
+      `Component could not be found for blok "${blokToRender.component}"! Is it configured correctly?`,
+    );
 
     return (
       <div key={blokToRender._uid}>
         <p>
-          Component could not be found for blok
-          {' '}
-          <strong>{blokToRender.component}</strong>
-          !
-          Is it configured correctly?
+          Component could not be found for blok "
+          {blokToRender.component}
+          "
         </p>
       </div>
     );

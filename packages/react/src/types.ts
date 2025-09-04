@@ -5,8 +5,8 @@ import type {
 } from '@storyblok/js';
 
 export interface StoryblokRichTextProps {
-  doc: StoryblokRichTextNode<React.ReactElement>;
-  resolvers?: StoryblokRichTextResolvers<React.ReactElement>;
+  doc: StoryblokRichTextNode<React.ReactNode>;
+  resolvers?: StoryblokRichTextResolvers<React.ReactNode>;
 }
 
 export interface BlokData<T extends string = string> {

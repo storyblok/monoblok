@@ -1,0 +1,116 @@
+{
+  "name": "featured-articles-section",
+  "display_name": "Featured Articles Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.472Z",
+  "updated_at": "2025-08-26T10:04:35.472Z",
+  "id": 84021557137570,
+  "schema": {
+    "headline": {
+      "type": "bloks",
+      "display_name": "Headline",
+      "key": "headline",
+      "pos": 0,
+      "id": "YMu1t0wyS_SvsBQB1BjxBw",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "lead": {
+      "type": "text",
+      "pos": 1,
+      "id": "EJsFtckHR5CXTAZ37776jA"
+    },
+    "articles": {
+      "type": "options",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "grid-card"
+      ],
+      "source": "internal_stories",
+      "folder_slug": "articles/",
+      "filter_content_type": "article-page",
+      "min_options": "",
+      "max_options": "6",
+      "display_name": "Articles",
+      "key": "cards",
+      "pos": 2,
+      "is_reference_type": true,
+      "entry_appearance": "card",
+      "allow_advanced_search": true,
+      "id": "61niuQ6BR_6MkvLt9VK29g"
+    },
+    "cols": {
+      "type": "option",
+      "display_name": "Columns",
+      "description": "The maximum amount of columns that should be shown in wide viewports.",
+      "options": [
+        {
+          "name": "Two",
+          "value": "2"
+        },
+        {
+          "value": "3",
+          "name": "Three"
+        },
+        {
+          "value": "4",
+          "name": "Four"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "3",
+      "key": "cols",
+      "pos": 3,
+      "id": "Uy0r95frSmKNqORnN5gY2A"
+    },
+    "background_color": {
+      "type": "option",
+      "source": "internal",
+      "datasource_slug": "basic-background-colors",
+      "default_value": "white",
+      "exclude_empty_option": true,
+      "key": "background_color",
+      "pos": 4,
+      "id": "NLWjDT_lTLaoQtdOYpthvQ"
+    },
+    "tab-26911bf7-af2a-43c2-baee-632b6313c8af": {
+      "display_name": "Style",
+      "keys": [
+        "cols",
+        "background_color"
+      ],
+      "pos": 5,
+      "type": "tab",
+      "id": "JpEb968qQ8K67mMrYxPIrw"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/fe23cf1bc1/featured-articles.svg",
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>With <strong>{{it.articles.length}}</strong> articles</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021557189758,
+      "name": "Bright ideas, fresh off the wire",
+      "component_id": 84021557137570,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Featured Articles Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

@@ -1,0 +1,570 @@
+[
+  {
+    "id": 84021556235376,
+    "name": "Why choose a Brand New Day?",
+    "preset": {
+      "_uid": "72d9f11f-77c6-4c14-8408-8c7fd7033332",
+      "lead": "Bringing ideas to life should be fun, exciting, and effortless—let’s make it happen!",
+      "entries": [
+        {
+          "_uid": "02490239-5eff-4a39-91c5-107518ef5bd7",
+          "image": {
+            "id": 21568696,
+            "alt": "",
+            "name": "",
+            "focus": "263x670:264x671",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/904x1200/3eee4998cb/creative-workspace-with-abstract-art.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {
+              "alt": "",
+              "title": "",
+              "source": "",
+              "copyright": ""
+            },
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Effortless Creativity",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Ideas That Flow, Designs That Wow",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Turn your ideas into stunning realities with ease and joy.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "From Vision to Visuals",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Bring bold ideas to life without tech headaches or creative compromises.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Tools That Work With You",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Intuitive workflows that let you create, tweak, and launch without friction.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Limitless Possibilities",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Scale, experiment, and refine—your creativity has no ceiling.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "_uid": "6e846d4e-285a-4f71-babe-8e9af72151e1",
+          "image": {
+            "id": 21569150,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2400x2400/4eb9be9031/collaborative-workspace.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Seamless Collaboration",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One Team, One Vision",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Work with a team that gets your vision and makes it happen.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "On the Same Page, Always",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Designers, developers, and strategists working in sync, not silos.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Fewer Revisions, Faster Progress",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Clear communication and smart processes keep things moving.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Your Goals, Our Mission",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – We don’t just deliver—we partner with you to bring your vision to life.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "_uid": "2c7b0769-92cd-4454-aa09-7d19b6a5c6a0",
+          "image": {
+            "id": 21568735,
+            "alt": "",
+            "name": "",
+            "focus": "698x1010:699x1011",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1345x2400/6573757a33/man-working-in-library.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {
+              "alt": "",
+              "title": "",
+              "source": "",
+              "copyright": ""
+            },
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Radiant Results",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Shine Bright, Stand Out",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Watch your brand shine and captivate audiences with brilliance.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Memorable, Magnetic, Meaningful",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Designs and stories that turn heads and win hearts.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Built to Scale, Ready to Impress",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – A strong, cohesive brand that grows with you.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Real Impact, Real Results",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – More engagement, more love, more business.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "7a05f1aa-1b61-47e8-a9a6-3283cb18e45a",
+          "text": "Why choose a Brand New Day?",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "tabbed-content-section"
+    },
+    "component_id": 84021556170907,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.250Z",
+    "updated_at": "2025-08-26T10:04:35.250Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

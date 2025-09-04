@@ -1,0 +1,45 @@
+{
+  "name": "faq-entry",
+  "display_name": "FAQ Entry",
+  "description": "",
+  "created_at": "2025-08-26T10:04:35.699Z",
+  "updated_at": "2025-08-26T10:04:35.699Z",
+  "id": 84021558067377,
+  "schema": {
+    "question": {
+      "type": "text",
+      "pos": 0,
+      "id": "w9uwn5ceQLOvovJjFHyITQ"
+    },
+    "answer": {
+      "type": "richtext",
+      "pos": 1,
+      "restrict_type": "groups",
+      "restrict_components": true,
+      "component_group_whitelist": [
+        "e4165c3d-b636-41a6-8466-cc4f6ca35639"
+      ],
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold",
+        "list"
+      ],
+      "id": "TbSoeAJjSkarXX3vJR-P6Q"
+    }
+  },
+  "image": null,
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": null,
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "FAQ Entry",
+  "component_group_uuid": "1be9ae66-afc2-4c29-a165-5699c15094a1",
+  "color": "#f4cc48",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

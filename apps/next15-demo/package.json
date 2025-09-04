@@ -1,0 +1,40 @@
+{
+  "name": "@storyblok/next15-demo-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --experimental-https",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@storyblok/react": "workspace:*",
+    "@tailwindcss/typography": "^0.5.16",
+    "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
+    "next": "15.3.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "storyblok-js-client": "workspace:*",
+    "swiper": "^11.2.10",
+    "swr": "^2.3.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.10"
+  },
+  "resolutions": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@types/react": "^19"
+  },
+  "nx": {
+    "projectType": "application"
+  }
+}

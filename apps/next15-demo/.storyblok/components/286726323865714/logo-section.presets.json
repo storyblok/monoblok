@@ -1,0 +1,93 @@
+[
+  {
+    "id": 84021557353599,
+    "name": "The world’s leading brands believe in joy",
+    "preset": {
+      "_uid": "cb973cb3-4049-47b7-a906-d5142def0094",
+      "lead": "The world’s leading brands believe in joy.",
+      "logos": [
+        {
+          "id": 21022932,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/116x25/ab5ca68fad/marcopolo.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022931,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/105x28/66efae4ae3/netflix.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022930,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/96x32/5deb646cd3/oatly.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022686,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/49x33/20a6171328/adidas.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022682,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/146x24/fddbf89c4f/autodesk.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022684,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/70x29/66bce464df/disney.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        }
+      ],
+      "component": "logo-section"
+    },
+    "component_id": 84021557305509,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.524Z",
+    "updated_at": "2025-08-26T10:04:35.524Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

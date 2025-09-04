@@ -1,0 +1,38 @@
+{
+  "name": "banner-reference",
+  "display_name": "Banner (Reference)",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.492Z",
+  "updated_at": "2025-08-26T10:04:35.492Z",
+  "id": 84021557219491,
+  "schema": {
+    "banners": {
+      "type": "options",
+      "source": "internal_stories",
+      "folder_slug": "banners/",
+      "filter_content_type": "banner",
+      "translatable": true,
+      "key": "banner",
+      "pos": 0,
+      "is_reference_type": true,
+      "entry_appearance": "card",
+      "allow_advanced_search": true,
+      "id": "ioWtR577RWC487n3SOrOwQ"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/9ab85c7a93/banner.svg",
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": "{{@if(it.banners.length)}}\n<strong>{{it.banners.length}}</strong> Banners selected\n{{#else}}\n<strong>No</strong> banner selected\n{{/if}}",
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Banner (Reference)",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

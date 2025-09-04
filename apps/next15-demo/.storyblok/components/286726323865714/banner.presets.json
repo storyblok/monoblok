@@ -1,0 +1,76 @@
+[
+  {
+    "id": 84021556886649,
+    "name": "Ready to bring joy to your brand?",
+    "preset": {
+      "_uid": "1b7bcdc2-06b5-4ae6-9988-2ba6c6b59429",
+      "lead": "Get in touch today, and let’s create something wonderful together!",
+      "buttons": [
+        {
+          "_uid": "53ebbe12-728b-4d3d-b4a4-9d1550dc4876",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get in touch",
+          "style": "default",
+          "component": "button",
+          "text_color": "white",
+          "border_radius": "small",
+          "background_color": "primary-dark"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "ed487f45-8a90-41ad-9956-53c35fd6dfd4",
+          "text": "Ready to bring joy to your brand?",
+          "component": "headline-segment",
+          "highlight": "none"
+        }
+      ],
+      "component": "banner",
+      "text_alignment": "center",
+      "background_color": "background-1",
+      "background_image": {
+        "id": 21058889,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/570x427/1149305393/geometric-shapes.svg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "background_video": {
+        "id": null,
+        "alt": null,
+        "name": "",
+        "focus": null,
+        "title": null,
+        "filename": null,
+        "copyright": null,
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "background_image_cover": false,
+      "background_image_width": "50",
+      "background_image_alignment": "right"
+    },
+    "component_id": 84021556830368,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.410Z",
+    "updated_at": "2025-08-26T10:04:35.410Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

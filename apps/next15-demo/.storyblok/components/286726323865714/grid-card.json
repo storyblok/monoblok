@@ -1,0 +1,153 @@
+{
+  "name": "grid-card",
+  "display_name": "Grid Card",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.639Z",
+  "updated_at": "2025-08-26T10:04:35.639Z",
+  "id": 84021557821611,
+  "schema": {
+    "bold_text": {
+      "type": "text",
+      "pos": 0,
+      "id": "BYQ4fq2NSTK1NFzJW7Z64w"
+    },
+    "label": {
+      "type": "text",
+      "pos": 1,
+      "id": "p6hH-WXlSXOjjCR4CFxVsA"
+    },
+    "text": {
+      "type": "textarea",
+      "pos": 2,
+      "id": "aJD-6F7vSxOzzwzccHKp4g"
+    },
+    "button": {
+      "type": "bloks",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "maximum": 1,
+      "component_group_whitelist": [],
+      "pos": 3,
+      "id": "mhPUSSQ2QIatGOxO4zxoEA"
+    },
+    "row_span": {
+      "type": "option",
+      "pos": 4,
+      "use_uuid": true,
+      "options": [
+        {
+          "_uid": "7d2d5ac9-bedd-4d22-93b4-1e0d4a968b54",
+          "name": "One",
+          "value": "1"
+        },
+        {
+          "_uid": "2a15bf03-e609-4367-b47b-8d742a1bb99a",
+          "value": "2",
+          "name": "Two"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "1",
+      "id": "Es7wtBQQR0aR7iuE7UGQmQ"
+    },
+    "border": {
+      "type": "boolean",
+      "pos": 5,
+      "id": "W_orTmBsQsK-mlnxt7OefA"
+    },
+    "background_image": {
+      "type": "asset",
+      "pos": 6,
+      "id": "WTjvTFiQRlWhQBMl_glq-w"
+    },
+    "icon_width": {
+      "type": "option",
+      "use_uuid": true,
+      "options": [
+        {
+          "_uid": "49121888-b272-4bae-b5a1-f681f3dd5f06",
+          "value": "48",
+          "name": "48px"
+        },
+        {
+          "_uid": "44611e54-c57d-4151-b7ee-30f97bb6e9aa",
+          "name": "80px",
+          "value": "80"
+        },
+        {
+          "_uid": "e2cce0de-e399-454f-aac1-a10a01b67483",
+          "value": "160",
+          "name": "160px"
+        },
+        {
+          "_uid": "ade717bb-1895-497d-908a-195ad652df22",
+          "value": "200",
+          "name": "200"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "80",
+      "id": "r4e1wud6QzyOkQugdqE77w",
+      "pos": 7
+    },
+    "icon": {
+      "type": "asset",
+      "filetypes": [
+        "images"
+      ],
+      "pos": 8,
+      "id": "XmUdayt0QguA5WlRmjrl6Q"
+    },
+    "tab-307c3d24-e403-4d47-84e9-287689d3c962": {
+      "display_name": "Text",
+      "keys": [
+        "label",
+        "text",
+        "button",
+        "bold_text"
+      ],
+      "pos": 9,
+      "type": "tab",
+      "id": "MHw9JOQDTUeE6Sh2idPJYg"
+    },
+    "tab-29b72638-ed88-437c-be43-72073f6e51b9": {
+      "display_name": "Icon",
+      "keys": [
+        "icon",
+        "icon_width"
+      ],
+      "pos": 10,
+      "type": "tab",
+      "id": "KbcmOO2IQ3y-Q3IHP25RuQ"
+    },
+    "tab-c0cc1f0e-a708-460d-a33f-45083538d86d": {
+      "display_name": "Style",
+      "keys": [
+        "row_span",
+        "background_image",
+        "border"
+      ],
+      "pos": 11,
+      "type": "tab",
+      "id": "wMwfDqcIRg2jP0UINTjYbQ"
+    }
+  },
+  "image": null,
+  "preview_field": "label",
+  "is_root": false,
+  "preview_tmpl": "{{@image(it.icon.filename)/}}\n\n",
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Grid Card",
+  "component_group_uuid": "1be9ae66-afc2-4c29-a165-5699c15094a1",
+  "color": "#f4cc48",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

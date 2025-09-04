@@ -1,0 +1,117 @@
+{
+  "name": "text-section",
+  "display_name": "Text Section",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.276Z",
+  "updated_at": "2025-08-26T10:04:35.276Z",
+  "id": 84021556334749,
+  "schema": {
+    "eyebrow": {
+      "type": "text",
+      "pos": 0,
+      "id": "Uum_rx04RQCgDgXoGlolXQ"
+    },
+    "text_alignment": {
+      "type": "option",
+      "options": [
+        {
+          "name": "Left",
+          "value": "left"
+        },
+        {
+          "value": "center",
+          "name": "Center"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "center",
+      "pos": 1,
+      "id": "xM-i197oSxit_qmA6bNwOw"
+    },
+    "headline": {
+      "type": "bloks",
+      "pos": 2,
+      "id": "bEX0fWoXT7K9XKb-zvBREg",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "text": {
+      "type": "richtext",
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold",
+        "italic",
+        "list",
+        "olist",
+        "link",
+        "emoji",
+        "color",
+        "superscript",
+        "subscript",
+        "quote",
+        "highlight",
+        "blok"
+      ],
+      "pos": 3,
+      "translatable": true,
+      "restrict_type": "groups",
+      "restrict_components": true,
+      "component_group_whitelist": [
+        "e4165c3d-b636-41a6-8466-cc4f6ca35639"
+      ],
+      "id": "fNMIP82iSJmEgRqJFI669g"
+    },
+    "buttons": {
+      "type": "bloks",
+      "default_value": "",
+      "maximum": 2,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "pos": 4,
+      "component_group_whitelist": [],
+      "id": "SuGzVue2QC6vQ1i4WWFsOw",
+      "display_name": ""
+    },
+    "background_color": {
+      "type": "option",
+      "source": "internal",
+      "datasource_slug": "basic-background-colors",
+      "exclude_empty_option": true,
+      "default_value": "white",
+      "pos": 5,
+      "id": "uFT1hPlSQLqqlnwVT8BcQA"
+    },
+    "tab-d8c6b3bd-d5b4-413d-ba3a-0fe8d594b135": {
+      "display_name": "Style",
+      "keys": [
+        "background_color",
+        "alignment",
+        "text_alignment"
+      ],
+      "pos": 6,
+      "type": "tab",
+      "id": "2MazvdW0QT26Og_o1ZSxNQ"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/043f1fb5a4/text.svg",
+  "preview_field": "headline",
+  "is_root": false,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>",
+  "is_nestable": true,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Text Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

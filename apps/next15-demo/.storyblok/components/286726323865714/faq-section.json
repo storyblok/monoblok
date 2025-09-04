@@ -1,0 +1,61 @@
+{
+  "name": "faq-section",
+  "display_name": "FAQ Section",
+  "description": "",
+  "created_at": "2025-08-26T10:04:35.533Z",
+  "updated_at": "2025-08-26T10:04:35.533Z",
+  "id": 84021557387430,
+  "schema": {
+    "headline": {
+      "type": "bloks",
+      "pos": 0,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ],
+      "id": "WgK0Z4R9TveALNhHLJFEeQ"
+    },
+    "lead": {
+      "type": "text",
+      "pos": 1,
+      "id": "mz7w2KZsTkGtV2tTUZIXeg"
+    },
+    "faq_entries": {
+      "type": "bloks",
+      "pos": 2,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "faq-entry"
+      ],
+      "id": "iXgV4266TcapzduLFRp6vg",
+      "display_name": "FAQ Entries"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/7cc7fc40a1/faq.svg",
+  "preview_field": null,
+  "is_root": false,
+  "preview_tmpl": null,
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021557439616,
+      "name": "Frequently asked questions",
+      "component_id": 84021557387430,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "FAQ Section",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#f5a928",
+  "icon": null,
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

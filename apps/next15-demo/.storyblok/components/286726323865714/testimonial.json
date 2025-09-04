@@ -1,0 +1,48 @@
+{
+  "name": "testimonial",
+  "display_name": "Testimonial",
+  "description": "",
+  "created_at": "2025-08-26T10:04:35.857Z",
+  "updated_at": "2025-08-26T10:04:35.857Z",
+  "id": 84021558714554,
+  "schema": {
+    "quote": {
+      "type": "textarea",
+      "pos": 0,
+      "id": "1i2qImd2TD2vAyzAbPnYiw"
+    },
+    "photo": {
+      "type": "asset",
+      "pos": 1,
+      "filetypes": [
+        "images"
+      ],
+      "id": "tPBcRtXAQMGCW0VEe-nyWw"
+    },
+    "name": {
+      "type": "text",
+      "pos": 2,
+      "id": "0DwIENy4QKCaEZCgxoHMEA"
+    },
+    "role": {
+      "type": "text",
+      "pos": 3,
+      "id": "_GtzhxeDSvq8m6mowZqRhw"
+    }
+  },
+  "image": null,
+  "preview_field": null,
+  "is_root": true,
+  "preview_tmpl": null,
+  "is_nestable": false,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Testimonial",
+  "component_group_uuid": null,
+  "color": "#1b243f",
+  "icon": "block-comment",
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": null,
+  "metadata": {}
+}

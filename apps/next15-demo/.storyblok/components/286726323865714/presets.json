@@ -1,0 +1,3000 @@
+[
+  {
+    "id": 84021556706422,
+    "name": "A Brand New Day team",
+    "preset": {
+      "_uid": "fe71af1b-a6a9-4af3-8135-49fa43faf0ab",
+      "text": "A joyful agency built on passion, creativity, and collaboration.",
+      "image": {
+        "id": 21409892,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1566x642/b788320810/about-the-heros.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "layout": "stacked",
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "ca588fa9-c827-4b91-ac18-3ac5de1be879",
+          "text": "A Brand New Day team",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "center",
+      "background_color": "white",
+      "image_decoration": false,
+      "secondary_background_color": "primary-background",
+      "preserve_image_aspect_ratio": true
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.366Z",
+    "updated_at": "2025-08-26T10:04:35.366Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556436081,
+    "name": "A joyful digital agency",
+    "preset": {
+      "_uid": "a996fd46-4fc0-4608-830f-f1aa10575eab",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "At Brand New Day, we bring brands to life with creativity, strategy, and a whole lot of joy. From stunning websites to bold marketing campaigns, we craft digital experiences that don’t just work—they wow. Our mission? To make every brand feel fresh, exciting, and full of possibility.",
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#000000"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bullet_list",
+            "content": [
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Creative with Purpose",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#000000"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Effortless digital experiences",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#000000"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Marketing that feels like magic",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#000000"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21420155,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1800x2400/0ac6bc6f77/collaborative-brainstorming-session.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "buttons": [
+        {
+          "_uid": "6f9e2c46-a951-42cd-bc24-b808cbce8d9a",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get to know us",
+          "style": "ghost",
+          "component": "button",
+          "text_color": "white",
+          "background_color": "primary-dark"
+        }
+      ],
+      "eyebrow": "About Brand New Day",
+      "headline": [
+        {
+          "_uid": "445b649d-5ecc-4fc3-8108-adf7ca606549",
+          "text": "A joyful",
+          "component": "headline-segment",
+          "highlight": "color_3"
+        },
+        {
+          "_uid": "2c4a9381-76bd-49d6-9b59-30c85628f4dd",
+          "text": " digital agency",
+          "component": "headline-segment",
+          "highlight": "none"
+        }
+      ],
+      "component": "image-text-section",
+      "image_layout": "proportional",
+      "background_color": "white",
+      "reverse_desktop_layout": false
+    },
+    "component_id": 84021556379806,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.300Z",
+    "updated_at": "2025-08-26T10:04:35.300Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556481138,
+    "name": "Brand glow-up",
+    "preset": {
+      "_uid": "486a6899-8eb1-4c10-bec1-1a85ab1b9735",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Your brand, but shinier! We craft visuals and stories that make people fall in love with your business.",
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#000000"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bullet_list",
+            "content": [
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Bold Looks, Big Impact",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Sleek, modern design that turns heads and leaves a lasting impression.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Storytelling That Sticks",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Messaging that’s clear, compelling, and makes your audience feel something.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Consistency, Everywhere",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Seamless brand experiences across every touchpoint, from web to social and beyond.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21568735,
+        "alt": "",
+        "name": "",
+        "focus": "698x1010:699x1011",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1345x2400/6573757a33/man-working-in-library.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {
+          "alt": "",
+          "title": "",
+          "source": "",
+          "copyright": ""
+        },
+        "is_external_url": false
+      },
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "c024458d-3458-4916-8df1-d93c031a851e",
+          "text": "Brand glow-up",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "image-text-section",
+      "background_color": "white",
+      "reverse_mobile_layout": true,
+      "reverse_desktop_layout": false
+    },
+    "component_id": 84021556379806,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.311Z",
+    "updated_at": "2025-08-26T10:04:35.311Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557189758,
+    "name": "Bright ideas, fresh off the wire",
+    "preset": {
+      "_uid": "75c606a4-f136-4352-9c12-4fc20689e214",
+      "cols": "4",
+      "lead": "Stay inspired with our latest insights on design, branding, and the future of digital experiences.",
+      "articles": [
+        "60467eb3-3f72-43b0-8294-419f2b30e4c7",
+        "ddd62422-def4-475b-920a-f41a99700349",
+        "9861afdb-e70e-4459-9470-f60123396ddf",
+        "ede24881-55eb-4d74-ae9d-507166d5f744"
+      ],
+      "headline": [
+        {
+          "_uid": "63456fde-ef9f-4485-a27a-5f96f667c26a",
+          "text": "Bright ideas, fresh off the wire.",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "featured-articles-section",
+      "background_color": "white"
+    },
+    "component_id": 84021557137570,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.484Z",
+    "updated_at": "2025-08-26T10:04:35.484Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556526195,
+    "name": "Design to dev",
+    "preset": {
+      "_uid": "8d5f9c08-6f74-4ad5-af13-61869a428da7",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "We don't just build websites—we launch digital experiences that take off fast and scale effortlessly. ",
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#0E101A"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bullet_list",
+            "content": [
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Design, Meet Development",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – A seamless handoff from design tools to code, ensuring pixel-perfect execution without the usual back-and-forth.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Flexible Components, Zero Bottlenecks",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Developers get structured, reusable components while designers stay creative—no rigid templates or roadblocks.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Faster Launches, Fewer Headaches",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Iterate, test, and deploy faster with workflows that keep design and development in sync, not at odds.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21569150,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/2400x2400/4eb9be9031/collaborative-workspace.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "61c15a76-a2ba-4947-9316-4b6e7816e925",
+          "text": "Design to dev",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "image-text-section",
+      "background_color": "white",
+      "reverse_mobile_layout": true,
+      "reverse_desktop_layout": false,
+      "preserve_image_aspect_ratio": false
+    },
+    "component_id": 84021556379806,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.322Z",
+    "updated_at": "2025-08-26T10:04:35.322Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557439616,
+    "name": "Frequently asked questions",
+    "preset": {
+      "_uid": "5574cc2e-3dae-4421-b3a0-a13f243997c9",
+      "lead": "Got questions? We’ve got answers.",
+      "headline": [
+        {
+          "_uid": "27e43cc4-0da3-4161-8cff-c0eedc139bfc",
+          "text": "Frequently asked questions",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "faq-section",
+      "faq_entries": [
+        {
+          "_uid": "42fa1b69-c8fc-49c2-83e4-de0c356a38a9",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We collaborate with businesses of all sizes—from startups finding their voice to established brands looking for a fresh, modern glow-up.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Who do you work with?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "58630f76-d4b9-4083-8b81-ea2f1f6a52c9",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We do both! Our team handles everything from logo design and brand identity to fully custom website development.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Do you provide branding services only, or do you also develop websites?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "6858cdbf-6287-4d7d-84fc-bf4f4e1be438",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Yes! We understand that needs change, and we’re happy to adjust your plan accordingly.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Can I upgrade or downgrade my plan?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "4bf8ee11-7c4d-420e-a449-85223bf0ab26",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "While our plans are designed for ongoing support, we do take on select one-time projects. Let’s chat about what you need!",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Do you offer one-time projects or only monthly plans?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "87242e7c-3e0d-4cc1-9082-17d3721f2645",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We believe in effortless teamwork! From kickoff to launch, we keep communication clear and fun. Expect regular updates, creative check-ins, and a seamless workflow.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "How does the collaboration process work?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "8aea85cd-ad80-4fcf-90b8-b66b0e62f041",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Depending on your plan, we offer email support, priority support, or dedicated consulting. We’re here to ensure everything runs smoothly.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "What kind of support do you offer?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "d62bba90-dbdc-4d66-bb5f-d2eb4c8949f2",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Easy! Just reach out to us, and we’ll schedule a chat to learn more about your brand, your goals, and how we can bring your vision to life.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "How do I get started?",
+          "component": "faq-entry"
+        }
+      ]
+    },
+    "component_id": 84021557387430,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.545Z",
+    "updated_at": "2025-08-26T10:04:35.545Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021558684803,
+    "name": "Get instant updates",
+    "preset": {
+      "_uid": "50783df5-4ef3-4383-a171-609cc1fbd350",
+      "button": [
+        {
+          "_uid": "2cf05338-078a-4506-bd68-16b763dbb367",
+          "link": {
+            "id": "",
+            "url": "#",
+            "linktype": "url",
+            "fieldtype": "multilink",
+            "cached_url": "#"
+          },
+          "size": "medium",
+          "label": "Stay in the loop!",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "highlight-1"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "352e8cf3-175c-4783-8d69-32d4311066d4",
+          "text": "Get instant updates—subscribe to our newsletter!",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "newsletter-form-section"
+    },
+    "component_id": 84021558632633,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.849Z",
+    "updated_at": "2025-08-26T10:04:35.849Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021558594690,
+    "name": "Get in touch with our team",
+    "preset": {
+      "_uid": "6dbd18bf-b744-4d6b-b5a2-47fc98deb44d",
+      "name": "Joy Cheerful",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Got a question or need a hand? Our friendly team is here to help! Drop us a message, and we’ll get back to you in no time.",
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#000000"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21564306,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1808x2400/f4588702cd/contact-form.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "quote": "“Working with Brand New Day felt like a breath of fresh air! Their creativity, energy, and passion turned our vision into something truly magical. Every step was filled with excitement and joy!”",
+      "button": [
+        {
+          "_uid": "ea888bf5-b22e-44a4-a7f2-d4a4b789dfb6",
+          "link": {
+            "id": "",
+            "url": "#",
+            "linktype": "url",
+            "fieldtype": "multilink",
+            "cached_url": "#"
+          },
+          "size": "medium",
+          "label": "Submit",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "highlight-1"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "23f5857b-cf72-4fd2-9b57-b2d00cc7789a",
+          "text": "Get in touch with our team",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "position": "Ambassador of Smiles",
+      "component": "contact-form-section"
+    },
+    "component_id": 84021558546616,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.828Z",
+    "updated_at": "2025-08-26T10:04:35.828Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556567156,
+    "name": "Joyful integrations",
+    "preset": {
+      "_uid": "8e77ad58-1a36-4027-bc42-19facce1be22",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "Your tools work together in perfect harmony. No more headaches, just smooth workflows.",
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#0E101A"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bullet_list",
+            "content": [
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Plug In, Power Up",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Seamlessly connect your favorite tools, from eCommerce to localization, without wrestling with clunky workarounds.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Automate the Boring Stuff",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Free your team from repetitive tasks with integrations that sync content, assets, and data effortlessly.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Future-Proof Flexibility",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "bold"
+                          },
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "text": " – Swap, scale, and adapt your tech stack as you grow—without breaking what already works.",
+                        "type": "text",
+                        "marks": [
+                          {
+                            "type": "textStyle",
+                            "attrs": {
+                              "color": "#0E101A"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21569195,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/2400x1429/0f0b83d888/casual-coworkers-in-collaborative-workspace.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "a9ba1b3d-5591-47ef-b452-3817292c1d9f",
+          "text": "Joyful integrations",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "image-text-section",
+      "background_color": "white",
+      "reverse_mobile_layout": true,
+      "reverse_desktop_layout": true
+    },
+    "component_id": 84021556379806,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.333Z",
+    "updated_at": "2025-08-26T10:04:35.333Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556976762,
+    "name": "Meet our team",
+    "preset": {
+      "_uid": "85cb1d9e-6cc1-44ec-8331-e401836e43b6",
+      "cols": "3",
+      "lead": "A passionate group of dreamers, designers, and digital builders dedicated to making your brand unforgettable.",
+      "cards": [
+        {
+          "_uid": "6df40fa7-5093-41c3-b04f-70dadb048168",
+          "text": "Lila specializes in crafting delightful brand experiences that feel effortless and intuitive. She believes that joy is in the details—whether it's a seamless website flow, a charming micro-interaction, or a campaign that makes people smile.",
+          "image": {
+            "id": 21410102,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/735x818/57dcbc851b/lila-bloom.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Lila Bloom, Experience Alchemist",
+          "component": "image-card",
+          "background_color": "background-2"
+        },
+        {
+          "_uid": "f062a824-771f-4207-9038-63fbe9db0acf",
+          "text": "Felix thrives on high-energy ideation sessions and loves turning big ideas into reality. With an infectious laugh and boundless enthusiasm, he keeps the creative team motivated and always pushing boundaries in joyful, unexpected ways.",
+          "image": {
+            "id": 20906543,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2400x2338/017551db08/joyful-team-2.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Felix Sparks, Creative Energy Lead",
+          "component": "image-card",
+          "background_color": "background-3"
+        },
+        {
+          "_uid": "d50f55ff-4d39-441b-a098-ad9a5368fe1d",
+          "text": "Joy blends innovation with a touch of magic, making sure technology never feels cold or intimidating. He’s always finding ways to make digital experiences more human, more interactive, and most importantly, more joyful.",
+          "image": {
+            "id": 20906560,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2301x2400/79c063b36a/joyful-team-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "label": "Joy Everly, Tech & Magic Architect",
+          "component": "image-card",
+          "background_color": "background-8"
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "9cbfb024-7793-4233-a215-d7011428449b",
+          "text": "Meet our team",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "white"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.432Z",
+    "updated_at": "2025-08-26T10:04:35.432Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557021819,
+    "name": "Our services",
+    "preset": {
+      "_uid": "3b7f8e1b-b2a9-4d77-846e-ee1e16110e18",
+      "cols": "3",
+      "lead": "From design to development, traffic to tech—our team makes digital magic happen. Fast, flexible, and fun to use!",
+      "cards": [
+        {
+          "_uid": "eca8cb6a-0ee2-4006-8373-59cc044f0801",
+          "icon": {
+            "id": 20903372,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1970x1808/6d92e4ca4d/icon-2.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "We don’t just build websites—we launch digital experiences that take off fast and scale effortlessly.",
+          "label": "Design to dev",
+          "button": [],
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "80"
+        },
+        {
+          "_uid": "6340452c-bc7b-4c30-b3c8-630a1dea97f3",
+          "icon": {
+            "id": 20903373,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1823x1808/c112624494/icon-1.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Your tools, working together in perfect harmony. No more headaches, just smooth workflows.",
+          "label": "Joyful integrations",
+          "button": [],
+          "row_span": "1",
+          "component": "grid-card",
+          "icon_width": "80",
+          "background_image": {
+            "id": 20906451,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1152x1746/1a91d8f94b/joyful-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          }
+        },
+        {
+          "_uid": "6b7a9e1e-1ae3-4047-a830-0bf8e582ec3b",
+          "icon": {
+            "id": 20903371,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1808x1586/fa88eba6a1/icon-3.png",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Your brand, but shinier! We craft visuals and stories that make people fall in love with your business.",
+          "label": "Brand glow-up",
+          "button": [],
+          "row_span": "",
+          "component": "grid-card",
+          "icon_width": "80"
+        }
+      ],
+      "button": [
+        {
+          "_uid": "835d72f2-45c2-4b83-b983-538c40c87c14",
+          "link": {
+            "id": "2970527d-b1b7-4cdc-8ab6-843cd791b595",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "services"
+          },
+          "size": "medium",
+          "label": "What we do",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "highlight-1"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "89dcee92-48c3-4402-997c-a952ac237de3",
+          "text": "Our Services",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "primary-background"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.443Z",
+    "updated_at": "2025-08-26T10:04:35.443Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557062780,
+    "name": "Our working process",
+    "preset": {
+      "_uid": "4046e908-1b01-49ac-a123-6eaa1686e68d",
+      "cols": "4",
+      "lead": "From vision to reality: A seamless journey to success",
+      "cards": [
+        {
+          "_uid": "f6624a35-6032-41be-8577-c279d8ac3bf2",
+          "icon": {
+            "id": 21368692,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/a4db736b31/discover.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "We get to know your brand, goals, and dreams.",
+          "label": "Discover",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "065fac88-86a3-4c5c-8de5-5e48174cc7a7",
+          "icon": {
+            "id": 21368695,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/0a283dedaf/design.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Crafting visually stunning and strategic concepts.",
+          "label": "Design",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "c5404175-7b4d-45ac-8148-3b9c271bd5d4",
+          "icon": {
+            "id": 21368693,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/b9ee88a662/develop.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Bringing your vision to life with flawless execution.",
+          "label": "Develop",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        },
+        {
+          "_uid": "8082c46f-9fe9-4e2b-99aa-808401c30290",
+          "icon": {
+            "id": 21368694,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/52x52/8beb612198/deliver.svg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "text": "Launch, optimize, and celebrate success!",
+          "label": "Deliver",
+          "border": false,
+          "button": [],
+          "row_span": "1",
+          "bold_text": "",
+          "component": "grid-card",
+          "icon_width": "48",
+          "background_image": {
+            "id": null,
+            "alt": null,
+            "name": "",
+            "focus": null,
+            "title": null,
+            "source": null,
+            "filename": "",
+            "copyright": null,
+            "fieldtype": "asset",
+            "meta_data": {}
+          }
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "b771f6fd-8753-4be4-b3f6-d7c8a9a20143",
+          "text": "Our working process",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "primary-background"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.453Z",
+    "updated_at": "2025-08-26T10:04:35.453Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557103741,
+    "name": "Pricing made simple",
+    "preset": {
+      "_uid": "8aa766b8-e70c-4765-bc7b-e28b16f461b5",
+      "cols": "3",
+      "lead": "Find the perfect plan to bring your brand to life!",
+      "cards": [
+        {
+          "_uid": "82c43c9b-7701-4983-9a79-c4257f00bcef",
+          "price": "999",
+          "button": [
+            {
+              "_uid": "19e181ef-b7dd-468f-b927-27cb21210ea2",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Perfect for small businesses and startups looking to establish their brand.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Basic website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Essential integrations",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Standard branding package",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Email support",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Starter",
+          "component": "price-card",
+          "most_popular": false
+        },
+        {
+          "_uid": "f71773c8-adf9-4b0b-b045-033b928a08b0",
+          "price": "2999",
+          "button": [
+            {
+              "_uid": "e8d42215-f9c1-4e02-8968-b95ef7481bf1",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Ideal for growing businesses ready to scale their online presence.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Custom website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Advanced integrations & automation",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Enhanced branding & storytelling",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Priority support",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Growth",
+          "component": "price-card",
+          "most_popular": true
+        },
+        {
+          "_uid": "25a126fb-449c-4c66-8ced-8153bebec6ca",
+          "price": "9999",
+          "button": [
+            {
+              "_uid": "31b61ef2-b63d-4d08-9d0f-d8fb80496384",
+              "link": {
+                "id": "5254908c-d318-47c7-83a2-749ead21952d",
+                "url": "",
+                "linktype": "story",
+                "fieldtype": "multilink",
+                "cached_url": "about"
+              },
+              "size": "medium",
+              "label": "Get started",
+              "style": "default",
+              "component": "button",
+              "text_color": "primary-dark",
+              "background_color": "highlight-1"
+            }
+          ],
+          "text_1": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "For established brands seeking high-end, fully customized solutions.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "text_2": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Fully custom website design & development",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Complex integrations & API solutions",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Comprehensive branding & content strategy",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Dedicated support & consulting",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "headline": "Premium",
+          "component": "price-card",
+          "most_popular": false
+        }
+      ],
+      "button": [],
+      "headline": [
+        {
+          "_uid": "194acdf9-b6c5-495e-94ae-b61db1b383c1",
+          "text": "Pricing made simple",
+          "component": "headline-segment",
+          "highlight": "none"
+        }
+      ],
+      "component": "grid-section",
+      "background_color": "white"
+    },
+    "component_id": 84021556920481,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.463Z",
+    "updated_at": "2025-08-26T10:04:35.463Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556886649,
+    "name": "Ready to bring joy to your brand?",
+    "preset": {
+      "_uid": "1b7bcdc2-06b5-4ae6-9988-2ba6c6b59429",
+      "lead": "Get in touch today, and let’s create something wonderful together!",
+      "buttons": [
+        {
+          "_uid": "53ebbe12-728b-4d3d-b4a4-9d1550dc4876",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get in touch",
+          "style": "default",
+          "component": "button",
+          "text_color": "white",
+          "border_radius": "small",
+          "background_color": "primary-dark"
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "ed487f45-8a90-41ad-9956-53c35fd6dfd4",
+          "text": "Ready to bring joy to your brand?",
+          "component": "headline-segment",
+          "highlight": "none"
+        }
+      ],
+      "component": "banner",
+      "text_alignment": "center",
+      "background_color": "background-1",
+      "background_image": {
+        "id": 21058889,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/570x427/1149305393/geometric-shapes.svg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "background_video": {
+        "id": null,
+        "alt": null,
+        "name": "",
+        "focus": null,
+        "title": null,
+        "filename": null,
+        "copyright": null,
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "background_image_cover": false,
+      "background_image_width": "50",
+      "background_image_alignment": "right"
+    },
+    "component_id": 84021556830368,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.410Z",
+    "updated_at": "2025-08-26T10:04:35.410Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557353599,
+    "name": "The world’s leading brands believe in joy",
+    "preset": {
+      "_uid": "cb973cb3-4049-47b7-a906-d5142def0094",
+      "lead": "The world’s leading brands believe in joy.",
+      "logos": [
+        {
+          "id": 21022932,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/116x25/ab5ca68fad/marcopolo.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022931,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/105x28/66efae4ae3/netflix.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022930,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/96x32/5deb646cd3/oatly.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022686,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/49x33/20a6171328/adidas.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022682,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/146x24/fddbf89c4f/autodesk.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        },
+        {
+          "id": 21022684,
+          "alt": "",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://a.storyblok.com/f/325704/70x29/66bce464df/disney.svg",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": {}
+        }
+      ],
+      "component": "logo-section"
+    },
+    "component_id": 84021557305509,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.524Z",
+    "updated_at": "2025-08-26T10:04:35.524Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556751479,
+    "name": "We bring joy to everything we do",
+    "preset": {
+      "_uid": "6eb0d1f9-dd12-4559-a7da-fd031f2db7dd",
+      "text": "Discover the magic behind our joyful creations.",
+      "image": {
+        "id": 21059587,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/3568x2344/e1d983edff/joyful-banner.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "content_type": "png",
+        "is_external_url": false
+      },
+      "layout": "stacked",
+      "buttons": [],
+      "eyebrow": "",
+      "headline": [
+        {
+          "_uid": "e63948ca-451f-4dfc-9cc2-2785770189d4",
+          "text": "Bring joy to everything we do.",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "left",
+      "background_color": "background-1",
+      "image_decoration": true,
+      "secondary_background_color": {
+        "value": "#A59441",
+        "plugin": "storyblok-palette"
+      }
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.377Z",
+    "updated_at": "2025-08-26T10:04:35.377Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021557525633,
+    "name": "What our clients say",
+    "preset": {
+      "_uid": "7003e2f9-4bb8-4ffd-98e7-4104ca0021b4",
+      "lead": "Spreading joy, one success story at a time!",
+      "headline": [
+        {
+          "_uid": "2a67e700-444e-4cf5-8b98-a0fe53bdc1b7",
+          "text": "What our clients say",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "testimonials-section",
+      "testimonials": [
+        "590f3970-ba48-441f-81b3-035419858491",
+        "d95cdb97-57d7-4990-8716-5eaf6c7ba90b",
+        "043178a9-b85f-4931-95ac-c07f43dc9a4d"
+      ]
+    },
+    "component_id": 84021557473447,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.566Z",
+    "updated_at": "2025-08-26T10:04:35.566Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556612213,
+    "name": "What we stand for",
+    "preset": {
+      "_uid": "2c7ce60c-54e8-49c4-8831-d0d259e16bda",
+      "text": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "text": "At Brand New Day, we believe in bringing bold ideas to life with energy, heart, and innovation. We celebrate creativity, embrace challenges, and deliver joyful experiences for brands that want to shine.",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "type": "bullet_list",
+            "content": [
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Effortless creativity",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Seamless collaboration",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list_item",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "text": "Radiant results",
+                        "type": "text"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "image": {
+        "id": 21420093,
+        "alt": "",
+        "name": "",
+        "focus": "876x642:877x643",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/1800x2400/bccb7d71b7/young-professionals.jpeg",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {
+          "alt": "",
+          "title": "",
+          "source": "",
+          "copyright": ""
+        },
+        "is_external_url": false
+      },
+      "buttons": [
+        {
+          "_uid": "1e53a8ae-e618-4615-91ea-37a88bc9265f",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get in touch",
+          "style": "ghost",
+          "component": "button",
+          "text_color": "",
+          "border_radius": "small",
+          "background_color": "primary-dark"
+        }
+      ],
+      "eyebrow": "About Brand New Day",
+      "headline": [
+        {
+          "_uid": "8df8d546-74b4-4b0d-999e-95325508d603",
+          "text": "What we stand for",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "image-text-section",
+      "background_color": "primary-background",
+      "reverse_desktop_layout": false,
+      "preserve_image_aspect_ratio": true
+    },
+    "component_id": 84021556379806,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.343Z",
+    "updated_at": "2025-08-26T10:04:35.343Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556792440,
+    "name": "Where creativity meets joy!",
+    "preset": {
+      "_uid": "177a9059-e922-4f5c-9805-d6e319c1f200",
+      "text": "We bring fresh ideas to life with energy, passion, and a touch of magic.",
+      "image": {
+        "id": 21059587,
+        "alt": "",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://a.storyblok.com/f/325704/3568x2344/e1d983edff/joyful-banner.png",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": {},
+        "is_external_url": false
+      },
+      "layout": "split",
+      "buttons": [
+        {
+          "_uid": "5527e127-1406-4a4d-b00b-d751da4efedb",
+          "link": {
+            "id": "2970527d-b1b7-4cdc-8ab6-843cd791b595",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "services"
+          },
+          "size": "medium",
+          "label": "What we do",
+          "style": "default",
+          "component": "button",
+          "text_color": "white",
+          "background_color": "primary-dark"
+        },
+        {
+          "_uid": "1613b84e-6511-45b0-8712-20949733a02a",
+          "link": {
+            "id": "5254908c-d318-47c7-83a2-749ead21952d",
+            "url": "",
+            "linktype": "story",
+            "fieldtype": "multilink",
+            "cached_url": "about"
+          },
+          "size": "medium",
+          "label": "Get in touch",
+          "style": "default",
+          "component": "button",
+          "text_color": "primary-dark",
+          "background_color": "white"
+        }
+      ],
+      "eyebrow": "Welcome to Brand New Day",
+      "headline": [
+        {
+          "_uid": "16b3aac9-f4b0-457b-9170-f88b7ccac591",
+          "text": "Where creativity meets",
+          "component": "headline-segment",
+          "highlight": ""
+        },
+        {
+          "_uid": "09e58d62-b62f-4c88-8fdc-a58fba662405",
+          "text": " joy!",
+          "component": "headline-segment",
+          "highlight": "highlight-2"
+        }
+      ],
+      "component": "hero-section",
+      "text_alignment": "left",
+      "background_color": "background-1",
+      "image_decoration": true,
+      "secondary_background_color": "background-2"
+    },
+    "component_id": 84021556650143,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.387Z",
+    "updated_at": "2025-08-26T10:04:35.387Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  },
+  {
+    "id": 84021556235376,
+    "name": "Why choose a Brand New Day?",
+    "preset": {
+      "_uid": "72d9f11f-77c6-4c14-8408-8c7fd7033332",
+      "lead": "Bringing ideas to life should be fun, exciting, and effortless—let’s make it happen!",
+      "entries": [
+        {
+          "_uid": "02490239-5eff-4a39-91c5-107518ef5bd7",
+          "image": {
+            "id": 21568696,
+            "alt": "",
+            "name": "",
+            "focus": "263x670:264x671",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/904x1200/3eee4998cb/creative-workspace-with-abstract-art.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {
+              "alt": "",
+              "title": "",
+              "source": "",
+              "copyright": ""
+            },
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Effortless Creativity",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Ideas That Flow, Designs That Wow",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Turn your ideas into stunning realities with ease and joy.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "From Vision to Visuals",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Bring bold ideas to life without tech headaches or creative compromises.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Tools That Work With You",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Intuitive workflows that let you create, tweak, and launch without friction.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Limitless Possibilities",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Scale, experiment, and refine—your creativity has no ceiling.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "_uid": "6e846d4e-285a-4f71-babe-8e9af72151e1",
+          "image": {
+            "id": 21569150,
+            "alt": "",
+            "name": "",
+            "focus": "",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/2400x2400/4eb9be9031/collaborative-workspace.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {},
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Seamless Collaboration",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "One Team, One Vision",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Work with a team that gets your vision and makes it happen.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "On the Same Page, Always",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Designers, developers, and strategists working in sync, not silos.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Fewer Revisions, Faster Progress",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Clear communication and smart processes keep things moving.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Your Goals, Our Mission",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – We don’t just deliver—we partner with you to bring your vision to life.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "_uid": "2c7b0769-92cd-4454-aa09-7d19b6a5c6a0",
+          "image": {
+            "id": 21568735,
+            "alt": "",
+            "name": "",
+            "focus": "698x1010:699x1011",
+            "title": "",
+            "source": "",
+            "filename": "https://a.storyblok.com/f/325704/1345x2400/6573757a33/man-working-in-library.jpeg",
+            "copyright": "",
+            "fieldtype": "asset",
+            "meta_data": {
+              "alt": "",
+              "title": "",
+              "source": "",
+              "copyright": ""
+            },
+            "is_external_url": false
+          },
+          "button": [],
+          "headline": "Radiant Results",
+          "component": "tabbed-content-entry",
+          "description": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Shine Bright, Stand Out",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "bold"
+                      },
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Watch your brand shine and captivate audiences with brilliance.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#000000"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Memorable, Magnetic, Meaningful",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – Designs and stories that turn heads and win hearts.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Built to Scale, Ready to Impress",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – A strong, cohesive brand that grows with you.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "text": "Real Impact, Real Results",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "bold"
+                              },
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "text": " – More engagement, more love, more business.",
+                            "type": "text",
+                            "marks": [
+                              {
+                                "type": "textStyle",
+                                "attrs": {
+                                  "color": "#000000"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "headline": [
+        {
+          "_uid": "7a05f1aa-1b61-47e8-a9a6-3283cb18e45a",
+          "text": "Why choose a Brand New Day?",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "tabbed-content-section"
+    },
+    "component_id": 84021556170907,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.250Z",
+    "updated_at": "2025-08-26T10:04:35.250Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

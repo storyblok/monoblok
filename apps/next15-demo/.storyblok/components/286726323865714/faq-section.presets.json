@@ -1,0 +1,218 @@
+[
+  {
+    "id": 84021557439616,
+    "name": "Frequently asked questions",
+    "preset": {
+      "_uid": "5574cc2e-3dae-4421-b3a0-a13f243997c9",
+      "lead": "Got questions? We’ve got answers.",
+      "headline": [
+        {
+          "_uid": "27e43cc4-0da3-4161-8cff-c0eedc139bfc",
+          "text": "Frequently asked questions",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "faq-section",
+      "faq_entries": [
+        {
+          "_uid": "42fa1b69-c8fc-49c2-83e4-de0c356a38a9",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We collaborate with businesses of all sizes—from startups finding their voice to established brands looking for a fresh, modern glow-up.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Who do you work with?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "58630f76-d4b9-4083-8b81-ea2f1f6a52c9",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We do both! Our team handles everything from logo design and brand identity to fully custom website development.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Do you provide branding services only, or do you also develop websites?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "6858cdbf-6287-4d7d-84fc-bf4f4e1be438",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Yes! We understand that needs change, and we’re happy to adjust your plan accordingly.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Can I upgrade or downgrade my plan?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "4bf8ee11-7c4d-420e-a449-85223bf0ab26",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "While our plans are designed for ongoing support, we do take on select one-time projects. Let’s chat about what you need!",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "Do you offer one-time projects or only monthly plans?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "87242e7c-3e0d-4cc1-9082-17d3721f2645",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "We believe in effortless teamwork! From kickoff to launch, we keep communication clear and fun. Expect regular updates, creative check-ins, and a seamless workflow.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "How does the collaboration process work?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "8aea85cd-ad80-4fcf-90b8-b66b0e62f041",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Depending on your plan, we offer email support, priority support, or dedicated consulting. We’re here to ensure everything runs smoothly.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "What kind of support do you offer?",
+          "component": "faq-entry"
+        },
+        {
+          "_uid": "d62bba90-dbdc-4d66-bb5f-d2eb4c8949f2",
+          "answer": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "text": "Easy! Just reach out to us, and we’ll schedule a chat to learn more about your brand, your goals, and how we can bring your vision to life.",
+                    "type": "text",
+                    "marks": [
+                      {
+                        "type": "textStyle",
+                        "attrs": {
+                          "color": "#0E101A"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "question": "How do I get started?",
+          "component": "faq-entry"
+        }
+      ]
+    },
+    "component_id": 84021557387430,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.545Z",
+    "updated_at": "2025-08-26T10:04:35.545Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

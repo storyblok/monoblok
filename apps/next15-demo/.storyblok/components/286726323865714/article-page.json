@@ -1,0 +1,117 @@
+{
+  "name": "article-page",
+  "display_name": "Article Page",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.779Z",
+  "updated_at": "2025-08-26T10:04:35.779Z",
+  "id": 84021558395060,
+  "schema": {
+    "headline": {
+      "type": "text",
+      "pos": 0,
+      "key": "headline",
+      "translatable": true,
+      "max_length": 70,
+      "id": "vX9FI0pCT6uJj9JPcYWjig"
+    },
+    "tab-493fa447-68f8-474c-b4a5-c07cc1ac4d7a": {
+      "display_name": "Meta",
+      "keys": [
+        "meta_title",
+        "meta_description"
+      ],
+      "pos": 0,
+      "type": "tab",
+      "id": "ST-kR2j4R0y0pcB8waxNeg"
+    },
+    "image": {
+      "type": "asset",
+      "pos": 1,
+      "filetypes": [
+        "images"
+      ],
+      "key": "Image",
+      "translatable": true,
+      "id": "rOZRFzosQ0Wdp71_necJlA"
+    },
+    "text": {
+      "type": "richtext",
+      "customize_toolbar": true,
+      "toolbar": [
+        "bold",
+        "italic",
+        "h2",
+        "h3",
+        "h4",
+        "paragraph",
+        "list",
+        "olist",
+        "quote",
+        "link",
+        "blok"
+      ],
+      "pos": 3,
+      "key": "text",
+      "translatable": true,
+      "restrict_type": "groups",
+      "restrict_components": true,
+      "component_group_whitelist": [
+        "e4165c3d-b636-41a6-8466-cc4f6ca35639"
+      ],
+      "id": "U8kQyeItR2O9Md3C_uTPFQ"
+    },
+    "call_to_action": {
+      "type": "options",
+      "pos": 4,
+      "is_reference_type": true,
+      "source": "internal_stories",
+      "entry_appearance": "card",
+      "allow_advanced_search": true,
+      "folder_slug": "banners/",
+      "filter_content_type": [
+        "banner"
+      ],
+      "max_options": "1",
+      "id": "B7o9O7YiS12xj7AKQ9kb3A"
+    },
+    "categories": {
+      "type": "options",
+      "source": "internal_stories",
+      "folder_slug": "categories/",
+      "filter_content_type": "category",
+      "use_uuid": true,
+      "pos": 5,
+      "key": "categories",
+      "is_reference_type": true,
+      "entry_appearance": "card",
+      "allow_advanced_search": true,
+      "id": "oqcGMEhuQPSFth7xW8On7A",
+      "max_options": "3"
+    },
+    "meta_title": {
+      "type": "text",
+      "pos": 6,
+      "id": "8HDzkCPzRveSB2LEfPvIWA"
+    },
+    "meta_description": {
+      "type": "textarea",
+      "pos": 7,
+      "id": "fXLhmzURTzqgDWt4g-VTsQ"
+    }
+  },
+  "image": null,
+  "preview_field": "headline",
+  "is_root": true,
+  "preview_tmpl": null,
+  "is_nestable": false,
+  "all_presets": [],
+  "preset_id": null,
+  "real_name": "Article Page",
+  "component_group_uuid": null,
+  "color": "#1b243f",
+  "icon": "block-text-img-l",
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": "image",
+  "metadata": {}
+}

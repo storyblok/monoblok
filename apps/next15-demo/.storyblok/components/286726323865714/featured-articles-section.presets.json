@@ -1,0 +1,35 @@
+[
+  {
+    "id": 84021557189758,
+    "name": "Bright ideas, fresh off the wire",
+    "preset": {
+      "_uid": "75c606a4-f136-4352-9c12-4fc20689e214",
+      "cols": "4",
+      "lead": "Stay inspired with our latest insights on design, branding, and the future of digital experiences.",
+      "articles": [
+        "60467eb3-3f72-43b0-8294-419f2b30e4c7",
+        "ddd62422-def4-475b-920a-f41a99700349",
+        "9861afdb-e70e-4459-9470-f60123396ddf",
+        "ede24881-55eb-4d74-ae9d-507166d5f744"
+      ],
+      "headline": [
+        {
+          "_uid": "63456fde-ef9f-4485-a27a-5f96f667c26a",
+          "text": "Bright ideas, fresh off the wire.",
+          "component": "headline-segment",
+          "highlight": ""
+        }
+      ],
+      "component": "featured-articles-section",
+      "background_color": "white"
+    },
+    "component_id": 84021557137570,
+    "space_id": 286726323865714,
+    "created_at": "2025-08-26T10:04:35.484Z",
+    "updated_at": "2025-08-26T10:04:35.484Z",
+    "image": "",
+    "color": null,
+    "icon": null,
+    "description": null
+  }
+]

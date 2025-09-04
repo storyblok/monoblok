@@ -1,0 +1,237 @@
+{
+  "name": "banner",
+  "display_name": "Banner",
+  "description": null,
+  "created_at": "2025-08-26T10:04:35.397Z",
+  "updated_at": "2025-08-26T10:04:35.397Z",
+  "id": 84021556830368,
+  "schema": {
+    "background_image": {
+      "type": "asset",
+      "filetypes": [
+        "images"
+      ],
+      "asset_folder_id": null,
+      "pos": 0,
+      "translatable": true,
+      "id": "VS_KDV3HSGCVoFDoKpWW3g"
+    },
+    "background_image_cover": {
+      "type": "boolean",
+      "pos": 1,
+      "id": "iSo--cMBT4-UJ59tSHfY6Q"
+    },
+    "background_image_alignment": {
+      "type": "option",
+      "pos": 2,
+      "use_uuid": true,
+      "id": "0MWHP7mmR8SejRQOrjDI7w",
+      "exclude_empty_option": true,
+      "options": [
+        {
+          "_uid": "a36de9bb-a5ae-4f00-9bd4-e463f8e2ef68",
+          "name": "Left",
+          "value": "left"
+        },
+        {
+          "_uid": "8f1e7a91-e489-47da-92af-ea0d95a78d8b",
+          "value": "center",
+          "name": "Center"
+        },
+        {
+          "_uid": "9788adee-d839-49bb-9ca5-dfa5399c7500",
+          "value": "right",
+          "name": "Right"
+        }
+      ],
+      "default_value": "left",
+      "conditional_settings": [
+        {
+          "modifications": [
+            {
+              "display": "hide"
+            }
+          ],
+          "rule_match": "any",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "background_image_cover",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            }
+          ]
+        }
+      ]
+    },
+    "background_image_width": {
+      "type": "option",
+      "pos": 3,
+      "use_uuid": true,
+      "exclude_empty_option": true,
+      "options": [
+        {
+          "_uid": "8699668e-5d78-4afd-b7ce-c4252e967504",
+          "name": "100%",
+          "value": "100"
+        },
+        {
+          "_uid": "b2901157-c2fc-48fb-b3f6-da458cd59c0a",
+          "value": "75",
+          "name": "75%"
+        },
+        {
+          "_uid": "ca53c9d6-5f9b-444b-a92e-800ad95afa57",
+          "value": "50",
+          "name": "50%"
+        }
+      ],
+      "default_value": "100",
+      "id": "G0ZyqpbVS4S4A_7pCRpRWQ",
+      "conditional_settings": [
+        {
+          "modifications": [
+            {
+              "display": "hide"
+            }
+          ],
+          "rule_match": "any",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "background_image_cover",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            }
+          ]
+        }
+      ]
+    },
+    "background_video": {
+      "type": "asset",
+      "pos": 4,
+      "filetypes": [
+        "videos"
+      ],
+      "id": "DWYiF1JTR-GzYEUQzlfLRw"
+    },
+    "background_color": {
+      "type": "option",
+      "pos": 5,
+      "field_type": "storyblok-palette",
+      "options": [],
+      "description": "If no image or video is provided, select a background color to be shown. This color also works as a background color for transparent images.",
+      "conditional_settings": [],
+      "id": "Zv-w9KJCSeujt6QYfr8Wbw",
+      "use_uuid": true,
+      "source": "internal",
+      "datasource_slug": "advanced-background-colors",
+      "default_value": "primary-background"
+    },
+    "headline": {
+      "type": "bloks",
+      "pos": 6,
+      "id": "Hh5uvMG2RYa_HK3hhF4A2w",
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "headline-segment"
+      ]
+    },
+    "lead": {
+      "type": "textarea",
+      "pos": 7,
+      "id": "58xBHSOIQxyzep3i5US15g"
+    },
+    "buttons": {
+      "type": "bloks",
+      "pos": 8,
+      "maximum": 2,
+      "restrict_type": "",
+      "restrict_components": true,
+      "component_whitelist": [
+        "button"
+      ],
+      "component_group_whitelist": [],
+      "id": "KcHzlAKETrCKQcEoIMA68A"
+    },
+    "tab-e29481d7-c515-4647-9b2c-5d1ccffa2291": {
+      "display_name": "Background",
+      "keys": [
+        "background_image",
+        "background_image",
+        "background_image",
+        "background_video",
+        "background_color",
+        "background_image_width",
+        "background_image_alignment",
+        "background_image_cover"
+      ],
+      "pos": 9,
+      "type": "tab",
+      "name": "tab-e29481d7-c515-4647-9b2c-5d1ccffa2291",
+      "id": "4pSB18UVRkebLF0cz_oikQ"
+    },
+    "tab-092a9728-7952-4aff-ba3d-e7c5549a3ed6": {
+      "display_name": "Style",
+      "keys": [
+        "text_alignment"
+      ],
+      "pos": 10,
+      "type": "tab",
+      "id": "CSqXKHlSSv-6PefFVJo-1g",
+      "name": "tab-092a9728-7952-4aff-ba3d-e7c5549a3ed6"
+    },
+    "text_alignment": {
+      "type": "option",
+      "pos": 11,
+      "use_uuid": true,
+      "options": [
+        {
+          "_uid": "895f94f7-dd79-48d0-98b7-f5c9a6ef69a3",
+          "value": "center",
+          "name": "Center"
+        },
+        {
+          "_uid": "0df9dd45-2083-4084-b137-a83cf92c7214",
+          "name": "Left",
+          "value": "left"
+        }
+      ],
+      "exclude_empty_option": true,
+      "default_value": "center",
+      "id": "csi2csB8Tjqp_N4DhqiBdQ"
+    }
+  },
+  "image": "//a.storyblok.com/f/325704/x/9954bf5bf7/banner.svg",
+  "preview_field": "headline",
+  "is_root": true,
+  "preview_tmpl": "<div>\n{{@each(it.headline) =&gt; segment}}\n{{segment.text}}\n{{/each}}\n</div>\n<div>\n{{@image(it.background_image.filename)/}}</div>",
+  "is_nestable": true,
+  "all_presets": [
+    {
+      "id": 84021556886649,
+      "name": "Ready to bring joy to your brand?",
+      "component_id": 84021556830368,
+      "image": "",
+      "icon": null,
+      "color": null,
+      "description": null
+    }
+  ],
+  "preset_id": null,
+  "real_name": "Banner",
+  "component_group_uuid": "25bd5845-06f6-4a5f-bb46-4682b1f00f22",
+  "color": "#374dc3",
+  "icon": "block-text-img-c",
+  "internal_tags_list": [],
+  "internal_tag_ids": [],
+  "content_type_asset_preview": "background_image",
+  "metadata": {}
+}

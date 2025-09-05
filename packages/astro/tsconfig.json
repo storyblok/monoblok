@@ -9,6 +9,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "types": ["vite/client", "astro/client"],
     "allowImportingTsExtensions": true,
 
     /* Linting */

@@ -1,15 +1,13 @@
 ---
-import components from "virtual:storyblok-components";
-import options from "virtual:storyblok-options";
-import { toCamelCase } from "@storyblok/astro";
-import type { SbBlokData } from "@storyblok/js";
-import type { AstroComponentFactory } from "astro/runtime/server/index.js";
+import options from 'virtual:storyblok-options';
+import { toCamelCase, type SbBlokData } from '@storyblok/astro';
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+import { storyblokComponents } from 'virtual:import-storyblok-components';
 
 export interface Props {
   blok: SbBlokData;
   [prop: string]: unknown;
 }
-
 const { blok, ...props } = Astro.props;
 
 if (!blok) {
@@ -17,26 +15,29 @@ if (!blok) {
     "Cannot render StoryblokComponent. 'blok' prop is undefined."
   );
 }
-
 /**
- * convert blok components to camel case to match vite-plugin-storyblok-components
+ * convert blok components to camel case to match vite-plugin-import-storyblok-components
  */
 let key = toCamelCase(blok.component as string);
 
-const componentFound: boolean = key in components;
+const componentFound: boolean = key in storyblokComponents;
 
 let Component: AstroComponentFactory;
 
 if (!componentFound) {
   if (!options.enableFallbackComponent)
     throw new Error(
-      `Component could not be found for blok "${blok.component}"! Is it defined in astro.config.mjs?`
+      `No component found for blok "${blok.component}". 
+      Make sure the component is:
+      • Registered in your astro.config.mjs, or
+      • Placed in the "/${options.componentsDir}/storyblok" folder, or
+      • Enable the "fallbackComponent" option to handle missing components.`
     );
   else {
-    Component = components["FallbackComponent"];
+    Component = storyblokComponents['FallbackComponent'];
   }
 } else {
-  Component = components[key];
+  Component = storyblokComponents[key];
 }
 ---
 

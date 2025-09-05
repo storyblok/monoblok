@@ -38,12 +38,9 @@
       "import": "./dist/dev-toolbar/toolbarApp.ts",
       "require": "./dist/dev-toolbar/toolbarApp.ts"
     },
+    "./client": "./dist/lib/client.ts",
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
-    "./StoryblokComponent.astro": {
-      "types": "./dist/components/StoryblokComponent.d.ts",
-      "import": "./dist/components/StoryblokComponent.astro",
-      "require": "./dist/components/StoryblokComponent.astro"
-    }
+    "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro"
   },
   "main": "./dist/storyblok-astro.es.js",
   "module": "./dist/storyblok-astro.js",

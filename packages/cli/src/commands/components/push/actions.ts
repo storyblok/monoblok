@@ -22,7 +22,7 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
 
     const { data } = await client.components.create({
       path: {
-        space_id: Number(space),
+        space_id: space,
       },
       body: {
         component,

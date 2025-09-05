@@ -217,14 +217,14 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     };
   },
   [MarkdownTokenTypes.LINK]: (token, children) => {
-    return {
+    applyMarkInPlace(children, {
       type: MarkTypes.LINK,
       attrs: {
         href: token.attrGet('href'),
         title: token.attrGet('title') || null,
       },
-      content: children,
-    };
+    });
+    return null;
   },
   [MarkdownTokenTypes.HR]: () => {
     return {

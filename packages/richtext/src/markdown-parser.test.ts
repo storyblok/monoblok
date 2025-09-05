@@ -400,13 +400,59 @@ describe('markdownToStoryblokRichtext', () => {
           content: [
             { type: 'text', text: 'This is a ' },
             {
-              type: 'link',
-              attrs: {
-                href: 'https://www.storyblok.com/',
-                title: null,
-              },
-              content: [
-                { type: 'text', text: 'Storyblok link' },
+              type: 'text',
+              text: 'Storyblok link',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
+              ],
+            },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses formatting inside links', () => {
+    const md = 'This is a [Storyblok _link_](https://www.storyblok.com/).';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'This is a ' },
+            {
+              type: 'text',
+              text: 'Storyblok ',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
+              ],
+            },
+            {
+              type: 'text',
+              text: 'link',
+              marks: [
+                {
+                  type: 'italic',
+                },
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
               ],
             },
             { type: 'text', text: '.' },

@@ -98,8 +98,6 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
 export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
   try {
     const client = mapiClient();
-
-    // TODO: ask Imran why this update method is called differently
     await client.datasourceEntries.updateDatasourceEntry({
       path: {
         space_id: spaceId,

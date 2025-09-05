@@ -186,7 +186,6 @@ describe('pull datasources actions', () => {
       expect(result).toHaveLength(0);
     });
 
-    // TODO: ask Imran how to properly reset the instance
     /*  it('should throw a masked error for invalid token', async () => {
       // Configure client with invalid token
       mapiClient({

@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/vue",
   "type": "module",
-  "version": "9.2.6",
+  "version": "9.2.7",
   "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using Vue.",
   "author": "Storyblok",

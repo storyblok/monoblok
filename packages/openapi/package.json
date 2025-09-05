@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/openapi",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Storyblok Management API OpenAPI specifications",
   "private": true,
   "scripts": {

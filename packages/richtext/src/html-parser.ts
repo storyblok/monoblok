@@ -187,7 +187,7 @@ function resolveText({
 }: {
   marks?: MarkNode[];
 } = {}): HTMLNodeElementResolver {
-  return (node, _, { styleOptions }) => {
+  return (node, content = [], { styleOptions }) => {
     const marks: MarkNode[] = [...extraMarks];
     const nodeStyles = node.attrs.class ? node.attrs.class.split(' ') : [];
     const allowedStyles = styleOptions?.map(opt => opt.value) ?? [];
@@ -205,11 +205,17 @@ function resolveText({
       console.warn(`[StoryblokRichText] - \`class\` "${removedStyle}" on \`<${node.tag}>\` can not be transformed to rich text.`);
     }
 
-    return {
-      type: TextTypes.TEXT,
-      text: node.text,
-      marks: marks.length > 0 ? marks : undefined,
-    };
+    // Apply marks to child text nodes, preserving any existing marks
+    return content.map((child) => {
+      if (child.type === TextTypes.TEXT) {
+        if (marks.length === 0) {
+          return child;
+        }
+        const allMarks = child.marks ? [...child.marks, ...marks] : marks;
+        return { ...child, marks: allMarks };
+      }
+      return child;
+    });
   };
 }
 
@@ -505,6 +511,54 @@ function adaptParserNode(
   return elementNode;
 }
 
+/**
+ * The rich text format does not support elements nested inside of anchors. For
+ * simpler transformation logic, we transform the HTML tree beforehand to
+ * accommodate this limitation.
+ *
+ * For example, the structure:
+ * `<p>Please <a>click <b>here</b> for more</a> info.</p>`
+ * will be transformed into:
+ * `<p>Please <a>click </a><b><a>here</a></b><a> for more</a> info.</p>`
+ *
+ * @param element The `NodeHTMLParserNodeElement` to search for and normalize links within.
+ * @throws {Error} Throws an error if a nested element within an anchor contains non-text nodes.
+ */
+function normalizeLinks(element: NodeHTMLParserNodeElement) {
+  for (const anchor of element.querySelectorAll('a')) {
+    const hasOnlyTextNodes = !anchor.childNodes.some(c => c.nodeType === NodeType.ELEMENT_NODE);
+    if (hasOnlyTextNodes) {
+      continue;
+    }
+
+    const normalizedLinks = [];
+    for (const child of anchor.childNodes) {
+      if (child.nodeType === NodeType.TEXT_NODE) {
+        const a = anchor.clone();
+        a.childNodes.forEach(c => c.remove());
+        // @ts-expect-error node-html-parser types are wrong
+        a.appendChild(child);
+        normalizedLinks.push(a);
+        continue;
+      }
+
+      for (const text of child.childNodes) {
+        if (text.nodeType !== NodeType.TEXT_NODE) {
+          throw new Error('Non-text nodes within anchors are not supported!');
+        }
+        const a = anchor.clone();
+        a.childNodes.forEach(c => c.remove());
+        // @ts-expect-error node-html-parser types are wrong
+        a.appendChild(text);
+        // @ts-expect-error node-html-parser types are wrong
+        child.appendChild(a);
+      }
+      normalizedLinks.push(child);
+    }
+    anchor.replaceWith(...normalizedLinks);
+  }
+}
+
 export const defaultOptions: Required<HTMLParserOptions> = {
   allowCustomAttributes: false,
   normalizeWhitespace: true,
@@ -524,6 +578,8 @@ export function htmlToStoryblokRichtext(
   }
 
   const root = parse(html, { blockTextElements: {} });
+  normalizeLinks(root);
+
   const content = root.childNodes
     .map(parserNode =>
       toRichTextNode(adaptParserNode(parserNode as NodeHTMLParserNodeElement | NodeHTMLParserNodeText), {

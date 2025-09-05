@@ -7,20 +7,26 @@ import type { SaveDatasourcesOptions } from './constants';
 
 /**
  * Fetches entries for a given datasource id in a space.
- * @param space - The space ID
+ * @param spaceId - The space ID
  * @param datasourceId - The datasource ID
  * @returns Array of datasource entries
  */
 export const fetchDatasourceEntries = async (
-  space: string,
+  spaceId: string,
   datasourceId: number,
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasource_entries: SpaceDatasourceEntry[];
-    }>(`spaces/${space}/datasource_entries?datasource_id=${datasourceId}`);
-    return data.datasource_entries;
+    const { data } = await client.datasourceEntries.list({
+      path: {
+        space_id: spaceId,
+      },
+      query: {
+        datasource_id: datasourceId,
+      },
+      throwOnError: true,
+    });
+    return data?.datasource_entries;
   }
   catch (error) {
     // Use 'pull_datasources' as the closest valid action for datasource entries errors
@@ -28,19 +34,25 @@ export const fetchDatasourceEntries = async (
   }
 };
 
-export const fetchDatasources = async (space: string): Promise<SpaceDatasource[] | undefined> => {
+export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasources: SpaceDatasource[];
-    }>(`spaces/${space}/datasources`);
-    const datasources = data.datasources;
+    const { data } = await client.datasources.list({
+      path: {
+        space_id: spaceId,
+      },
+      throwOnError: true,
+    });
+    const datasources = data?.datasources;
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
-      datasources.map(async (ds) => {
-        const entries = await fetchDatasourceEntries(space, ds.id);
+      datasources?.map(async (ds) => {
+        if (!ds.id) {
+          return { ...ds, entries: [] };
+        }
+        const entries = await fetchDatasourceEntries(spaceId, ds.id);
         return { ...ds, entries };
-      }),
+      }) || [],
     );
     return datasourcesWithEntries;
   }
@@ -49,17 +61,23 @@ export const fetchDatasources = async (space: string): Promise<SpaceDatasource[]
   }
 };
 
-export const fetchDatasource = async (space: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
+export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.get<{
-      datasources: SpaceDatasource[];
-    }>(`spaces/${space}/datasources?search=${encodeURIComponent(datasourceName)}`);
-    const found = data.datasources?.find(d => d.name === datasourceName);
+    const { data } = await client.datasources.list({
+      path: {
+        space_id: spaceId,
+      },
+      query: {
+        search: datasourceName,
+      },
+      throwOnError: true,
+    });
+    const found = data?.datasources?.find(d => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
-    const entries = await fetchDatasourceEntries(space, found.id);
-    return { ...found, entries };
+    const entries = await fetchDatasourceEntries(spaceId, found.id as number);
+    return { ...found, entries: entries || [] } as SpaceDatasource;
   }
   catch (error) {
     handleAPIError('pull_datasources', error as Error, `Failed to fetch datasource ${datasourceName}`);
@@ -83,7 +101,7 @@ export const saveDatasourcesToFiles = async (
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const datasource of datasources) {
-        const sanitizedName = sanitizeFilename(datasource.name);
+        const sanitizedName = sanitizeFilename(datasource.name || '');
         const datasourceFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`);
         await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
       }

@@ -25,6 +25,7 @@
   },
   "release": {
     "projectsRelationship": "independent",
+    "projects": ["packages/*"],
     "version": {
       "conventionalCommits": true,
       "fallbackCurrentVersionResolver": "disk",

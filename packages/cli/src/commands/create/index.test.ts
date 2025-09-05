@@ -140,9 +140,7 @@ describe('createCommand', () => {
       str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
     );
     // Default user mock - can be overridden in individual tests
-    vi.mocked(getUser).mockResolvedValue({
-      user: createMockUser(),
-    });
+    vi.mocked(getUser).mockResolvedValue(createMockUser());
   });
 
   describe('template validation', () => {
@@ -492,7 +490,9 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       expect(mapiClient).toHaveBeenCalledWith({
-        token: 'test-token',
+        token: {
+          accessToken: 'test-token',
+        },
         region: 'eu',
       });
     });
@@ -683,7 +683,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
         vi.mocked(createEnvFile).mockResolvedValue(undefined);
@@ -714,7 +714,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select)
           .mockResolvedValueOnce('org') // Space creation choice
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
@@ -753,7 +753,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select)
           .mockResolvedValueOnce('partner') // Space creation choice
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
@@ -792,7 +792,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select)
           .mockResolvedValueOnce('personal') // Space creation choice
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
@@ -847,7 +847,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
         vi.mocked(createEnvFile).mockResolvedValue(undefined);
@@ -878,7 +878,7 @@ describe('createCommand', () => {
           has_partner: false,
         });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -907,7 +907,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select).mockResolvedValueOnce('org'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
@@ -933,7 +933,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select).mockResolvedValueOnce('partner'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
@@ -960,7 +960,7 @@ describe('createCommand', () => {
         });
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(select).mockResolvedValueOnce('personal'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
@@ -1005,7 +1005,7 @@ describe('createCommand', () => {
         const mockUser = createMockUser();
         const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-        vi.mocked(getUser).mockResolvedValue({ user: mockUser });
+        vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
         vi.mocked(createEnvFile).mockResolvedValue(undefined);

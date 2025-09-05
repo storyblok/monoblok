@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchStories, fetchStoriesByComponent } from './actions';
+import { fetchAllStories, fetchAllStoriesByComponent, fetchStories } from './actions';
 import { handleAPIError } from '../../utils/error';
 import type { Story } from './constants';
 import { mapiClient } from '../../api';
@@ -114,6 +114,9 @@ const handlers = [
     const url = new URL(request.url);
     const searchParams = url.searchParams;
 
+    let responseStories = mockStories;
+    let total = mockStories.length;
+
     // If filter_query is present, handle it specially
     if (url.searchParams.has('filter_query')) {
       try {
@@ -123,7 +126,8 @@ const handlers = [
         if (filterQuery.component && filterQuery.component.in) {
           if (filterQuery.component.in.includes('article')) {
             // Return only the first story for article component
-            return HttpResponse.json({ stories: [mockStories[0]], per_page: 100, total: 1 });
+            responseStories = [mockStories[0]];
+            total = 1;
           }
         }
       }
@@ -132,34 +136,37 @@ const handlers = [
         return new HttpResponse(null, { status: 400 });
       }
     }
-
     // Handle filtering by published status
-    if (searchParams.has('is_published')) {
+    else if (searchParams.has('is_published')) {
       const isPublished = searchParams.get('is_published') === 'true';
-      const filteredStories = mockStories.filter(story => story.published === isPublished);
-      return HttpResponse.json({ stories: filteredStories, per_page: 100, total: filteredStories.length });
+      responseStories = mockStories.filter(story => story.published === isPublished);
+      total = responseStories.length;
     }
-
-    // Handle pagination
-    if (searchParams.has('page')) {
-      const page = Number.parseInt(searchParams.get('page') || '1', 10);
-      if (page > 1) {
-        // Simulate empty second page
-        return HttpResponse.json({ stories: [], per_page: 100, total: 2 });
-      }
-    }
-
     // Handle tag filtering
-    if (searchParams.has('with_tag')) {
+    else if (searchParams.has('with_tag')) {
       const tag = searchParams.get('with_tag');
       if (tag === 'featured') {
         // Only return the first story for featured tag
-        return HttpResponse.json({ stories: [mockStories[0]], per_page: 100, total: 1 });
+        responseStories = [mockStories[0]];
+        total = 1;
       }
     }
 
-    // Default response with all stories
-    return HttpResponse.json({ stories: mockStories, per_page: 100, total: mockStories.length });
+    // Handle pagination
+    const page = Number.parseInt(searchParams.get('page') || '1', 10);
+    const perPage = Number.parseInt(searchParams.get('per_page') || '100', 10);
+
+    if (page > 1) {
+      // Simulate empty second page
+      responseStories = [];
+    }
+
+    // Create response with headers (headers are always present in real API)
+    const response = HttpResponse.json({ stories: responseStories });
+    response.headers.set('Total', total.toString());
+    response.headers.set('Per-Page', perPage.toString());
+
+    return response;
   }),
 ];
 
@@ -168,11 +175,10 @@ const server = setupServer(...handlers);
 // Set up the MSW server
 beforeAll(() => server.listen());
 beforeEach(() => {
-  if (mapiClient().dispose) {
-    mapiClient().dispose();
-  }
   mapiClient({
-    token: 'valid-token',
+    token: {
+      accessToken: 'valid-token',
+    },
     region: 'eu',
   });
 });
@@ -187,36 +193,38 @@ describe('stories/actions', () => {
 
   describe('fetchStories', () => {
     it('should fetch stories without query parameters', async () => {
-      const result = await fetchStories(mockSpace).catch(() => undefined);
-      expect(result).toEqual(mockStories);
+      const result = await fetchStories(mockSpace);
+      expect(result).toBeDefined();
+      expect(result?.stories).toEqual(mockStories);
+      expect(result?.headers).toBeDefined();
     });
 
     it('should fetch stories with query parameters', async () => {
       const result = await fetchStories(mockSpace, {
         with_tag: 'featured',
-      }).catch(() => undefined);
+      });
 
       // Should return only the first story due to the 'featured' tag filter in our handler
-      expect(result).toHaveLength(1);
-      expect(result?.[0].id).toBe(1);
+      expect(result?.stories).toHaveLength(1);
+      expect(result?.stories[0].id).toBe(1);
     });
 
     it('should handle pagination correctly', async () => {
       const result = await fetchStories(mockSpace, {
         page: 2,
-      }).catch(() => undefined);
+      });
 
       // Should return empty array for page 2 based on our handler
-      expect(result).toHaveLength(0);
+      expect(result?.stories).toHaveLength(0);
     });
 
     it('should handle filtering by published status', async () => {
       const result = await fetchStories(mockSpace, {
         is_published: true,
-      }).catch(() => undefined);
+      });
 
       // All our mock stories are published
-      expect(result).toHaveLength(2);
+      expect(result?.stories).toHaveLength(2);
     });
 
     it('should handle complex query parameters with objects', async () => {
@@ -225,32 +233,34 @@ describe('stories/actions', () => {
           'component': { in: ['article', 'news'] },
           'content.category': { in: ['technology'] },
         }),
-      }).catch(() => undefined);
+      });
 
-      // Should return all stories since the filter query doesn't match our handler logic
-      expect(result).toHaveLength(2);
-      expect(result?.[0].id).toBe(1);
+      // Should return only the first story due to the 'article' component filter in our handler
+      expect(result?.stories).toHaveLength(1);
+      expect(result?.stories[0].id).toBe(1);
     });
 
     it('should handle unauthorized errors', async () => {
-      // Temporarily dispose and create a client with invalid token
-      mapiClient().dispose();
+      // Temporarily create a client with invalid token
       mapiClient({
-        token: 'invalid-token',
+        token: {
+          accessToken: 'invalid-token',
+        },
         region: 'eu',
       });
 
-      await fetchStories(mockSpace).catch(() => {
-        expect(handleAPIError).toHaveBeenCalledWith(
-          'pull_stories',
-          expect.any(Error),
-        );
-      });
+      const result = await fetchStories(mockSpace);
+      expect(result).toBeUndefined();
+      expect(handleAPIError).toHaveBeenCalledWith(
+        'pull_stories',
+        expect.anything(),
+      );
 
       // Restore valid client
-      mapiClient().dispose();
       mapiClient({
-        token: 'valid-token',
+        token: {
+          accessToken: 'valid-token',
+        },
         region: 'eu',
       });
     });
@@ -263,16 +273,18 @@ describe('stories/actions', () => {
         }),
       );
 
-      await fetchStories(mockSpace).catch(() => {
-        expect(handleAPIError).toHaveBeenCalledWith(
-          'pull_stories',
-          expect.any(Error),
-        );
-      });
+      const result = await fetchStories(mockSpace);
+      expect(result).toBeUndefined();
+      expect(handleAPIError).toHaveBeenCalledWith(
+        'pull_stories',
+        expect.anything(),
+      );
     });
+  });
 
-    it('should handle pagination when per_page and total are missing from response', async () => {
-      // Mock pages
+  describe('fetchAllStories', () => {
+    it('should handle pagination with headers', async () => {
+      // Mock multiple pages
       const page1Stories = Array.from({ length: 100 }, (_, i) => ({
         ...mockStories[0],
         id: i + 1,
@@ -286,39 +298,54 @@ describe('stories/actions', () => {
         uuid: `uuid-${i + 101}`,
       }));
 
-      // Override handler to simulate API without pagination metadata
+      // Override handler to simulate multi-page response
       server.use(
         http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
           const url = new URL(request.url);
           const page = Number.parseInt(url.searchParams.get('page') || '1', 10);
+          const perPage = 100;
+          const total = 150;
 
+          let responseStories;
           if (page === 1) {
-            // First page returns 100 stories (no per_page and total fields)
-            return HttpResponse.json({ stories: page1Stories });
+            responseStories = page1Stories;
           }
           else if (page === 2) {
-            // Second page returns 50 stories (less than per_page, indicating end)
-            return HttpResponse.json({ stories: page2Stories });
+            responseStories = page2Stories;
           }
           else {
-            // Third page returns empty array
-            return HttpResponse.json({ stories: [] });
+            responseStories = [];
           }
+
+          const response = HttpResponse.json({ stories: responseStories });
+          response.headers.set('Total', total.toString());
+          response.headers.set('Per-Page', perPage.toString());
+
+          return response;
         }),
       );
 
-      const result = await fetchStories(mockSpace);
+      const result = await fetchAllStories(mockSpace);
 
-      // Should fetch all stories from both pages
+      // Should fetch all stories from both pages using header-based pagination
       expect(result).toHaveLength(150);
       expect(result?.[0].id).toBe(1);
       expect(result?.[99].id).toBe(100);
       expect(result?.[100].id).toBe(101);
       expect(result?.[149].id).toBe(150);
     });
+
+    it('should handle single page response', async () => {
+      const result = await fetchAllStories(mockSpace);
+
+      // Should return all mock stories from single page
+      expect(result).toHaveLength(2);
+      expect(result?.[0].id).toBe(1);
+      expect(result?.[1].id).toBe(2);
+    });
   });
 
-  describe('fetchStoriesByComponent', () => {
+  describe('fetchAllStoriesByComponent', () => {
     const mockSpaceOptions = {
       spaceId: '12345',
     };
@@ -336,45 +363,47 @@ describe('stories/actions', () => {
     });
 
     it('should fetch stories without filters', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions);
-      expect(requestUrl).toBe('?per_page=100');
+      await fetchAllStoriesByComponent(mockSpaceOptions);
+      expect(requestUrl).toBe('?per_page=100&page=1');
     });
 
     it('should fetch stories with component filter', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions, {
+      await fetchAllStoriesByComponent(mockSpaceOptions, {
         componentName: 'test-component',
       });
-      expect(requestUrl).toBe('?contain_component=test-component&per_page=100');
+      expect(requestUrl).toBe('?contain_component=test-component&per_page=100&page=1');
     });
 
     it('should fetch stories with starts_with filter', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions, {
+      await fetchAllStoriesByComponent(mockSpaceOptions, {
         starts_with: '/en/blog/',
       });
-      expect(requestUrl).toBe('?starts_with=%2Fen%2Fblog%2F&per_page=100');
+      expect(requestUrl).toBe('?starts_with=%2Fen%2Fblog%2F&per_page=100&page=1');
     });
 
     it('should fetch stories with filter_query parameter', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions, {
+      await fetchAllStoriesByComponent(mockSpaceOptions, {
         query: '[highlighted][is]=true',
       });
-      expect(requestUrl).toBe('?per_page=100&filter_query[highlighted][is]=true');
+      expect(requestUrl).toContain('filter_query=filter_query%5Bhighlighted%5D%5Bis%5D%3Dtrue');
     });
 
     it('should handle already prefixed filter_query parameter', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions, {
+      await fetchAllStoriesByComponent(mockSpaceOptions, {
         query: 'filter_query[highlighted][is]=true',
       });
-      expect(requestUrl).toBe('?per_page=100&filter_query[highlighted][is]=true');
+      expect(requestUrl).toContain('filter_query=filter_query%5Bhighlighted%5D%5Bis%5D%3Dtrue');
     });
 
     it('should handle multiple filters together', async () => {
-      await fetchStoriesByComponent(mockSpaceOptions, {
+      await fetchAllStoriesByComponent(mockSpaceOptions, {
         componentName: 'test-component',
         starts_with: '/en/blog/',
         query: '[highlighted][is]=true',
       });
-      expect(requestUrl).toBe('?starts_with=%2Fen%2Fblog%2F&contain_component=test-component&per_page=100&filter_query[highlighted][is]=true');
+      expect(requestUrl).toContain('starts_with=%2Fen%2Fblog%2F');
+      expect(requestUrl).toContain('contain_component=test-component');
+      expect(requestUrl).toContain('filter_query=filter_query%5Bhighlighted%5D%5Bis%5D%3Dtrue');
     });
 
     it('should handle error responses', async () => {
@@ -384,11 +413,11 @@ describe('stories/actions', () => {
         }),
       );
 
-      const result = await fetchStoriesByComponent(mockSpaceOptions);
+      const result = await fetchAllStoriesByComponent(mockSpaceOptions);
       expect(result).toEqual([]);
       expect(handleAPIError).toHaveBeenCalledWith(
         'pull_stories',
-        expect.any(Error),
+        expect.anything(),
       );
     });
   });

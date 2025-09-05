@@ -23,5 +23,8 @@
   "dependencies": {
     "@redocly/cli": "^2.0.2",
     "js-yaml": "^4.1.0"
+  },
+  "nx": {
+    "projectType": "library"
   }
 }

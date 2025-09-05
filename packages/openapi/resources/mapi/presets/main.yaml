@@ -53,7 +53,7 @@ paths:
               type: object
               properties:
                 preset:
-                  $ref: '#/components/schemas/PresetCreate'
+                  $ref: '#/components/schemas/Preset'
       responses:
         '201':
           description: Successfully created preset
@@ -109,7 +109,7 @@ paths:
               type: object
               properties:
                 preset:
-                  $ref: '#/components/schemas/PresetUpdate'
+                  $ref: '#/components/schemas/Preset'
       responses:
         '200':
           description: Successfully updated preset
@@ -153,74 +153,19 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
-    PresetCreate:
-      type: object
-      description: A Preset Object for creating new presets
-      required:
-        - name
-        - component_id
-      properties:
-        name:
-          type: string
-          description: Given name of your preset
-        preset:
-          type: object
-          description: Fields of the component filled with content
-          additionalProperties: true
-        component_id:
-          type: integer
-          description: The ID of the component the preset is for
-        image:
-          type: string
-          nullable: true
-          description: Screenshot or other preview image for your editor
-        color:
-          type: string
-          description: Color of the preset icon
-        icon:
-          type: string
-          description: Icon of the preset
-        description:
-          type: string
-          description: A description of the preset for the editors
-    PresetUpdate:
-      type: object
-      description: A Preset Object for updating existing presets
-      properties:
-        name:
-          type: string
-          description: Given name of your preset
-        preset:
-          type: object
-          description: Fields of the component filled with content
-          additionalProperties: true
-        component_id:
-          type: integer
-          description: The ID of the component the preset is for
-        image:
-          type: string
-          nullable: true
-          description: Screenshot or other preview image for your editors
-          default: null
-        color:
-          type: string
-          description: Color of the preset icon
-        icon:
-          type: string
-          description: Icon of the preset
-        description:
-          type: string
-          description: A description of the preset for the editors
     Preset:
       type: object
       description: A Preset Object representing a content preset
       required:
         - id
+        - component_id
+        - preset
+        - name
       properties:
         id:
+          readOnly: true
           type: integer
           description: Numeric ID of your preset
-          readOnly: true
         name:
           type: string
           description: Given name of your preset
@@ -232,13 +177,16 @@ components:
           type: integer
           description: The ID of the component the preset is for
         space_id:
+          readOnly: true
           type: integer
           description: Numeric ID of a space
         created_at:
+          readOnly: true
           type: string
           format: date-time
           description: Creation date
         updated_at:
+          readOnly: true
           type: string
           format: date-time
           description: Latest update date

@@ -7,12 +7,11 @@ import { input, select } from '@inquirer/prompts';
 import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
-import type { CreateSpaceRequest } from '../spaces';
-import { createSpace } from '../spaces';
+import { createSpace, type SpaceCreate } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
+import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import type { StoryblokUser } from '../../types';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -51,7 +50,9 @@ export const createCommand = program
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 
@@ -63,10 +64,13 @@ export const createCommand = program
       verbose: !isVitest,
     });
 
-    let userData: StoryblokUser;
+    let userData: User;
 
     try {
-      const { user } = await getUser(password, region);
+      const user = await getUser(password, region);
+      if (!user) {
+        throw new Error('User data is undefined');
+      }
       userData = user;
     }
     catch (error) {
@@ -149,7 +153,7 @@ export const createCommand = program
         { name: 'My personal account', value: 'personal' },
       ];
       if (userData.has_org) {
-        choices.push({ name: `Organization (${userData.org.name})`, value: 'org' });
+        choices.push({ name: `Organization (${userData?.org?.name})`, value: 'org' });
       }
       if (userData.has_partner) {
         choices.push({ name: 'Partner Portal', value: 'partner' });
@@ -177,7 +181,7 @@ export const createCommand = program
           // Find the selected blueprint from the dynamic blueprints array
           const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
           const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
-          const spaceToCreate: CreateSpaceRequest = {
+          const spaceToCreate: SpaceCreate = {
             name: toHumanReadable(projectName),
             domain: blueprintDomain,
           };
@@ -229,7 +233,7 @@ export const createCommand = program
       konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
       if (createdSpace?.first_token) {
         if (whereToCreateSpace === 'org') {
-          konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData.org.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+          konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
         }
         else if (whereToCreateSpace === 'partner') {
           konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);

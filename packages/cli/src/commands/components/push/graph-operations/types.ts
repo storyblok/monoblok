@@ -1,7 +1,7 @@
 import type { RegionCode } from '../../../../constants';
 import type {
   SpaceComponent,
-  SpaceComponentGroup,
+  SpaceComponentFolder,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
   SpaceComponentsDataState,
@@ -15,7 +15,7 @@ import type {
 export type NodeType = 'component' | 'group' | 'tag' | 'preset';
 
 /** Data that can be stored in a graph node */
-export type NodeData = SpaceComponent | SpaceComponentGroup | SpaceComponentInternalTag | SpaceComponentPreset;
+export type NodeData = SpaceComponent | SpaceComponentFolder | SpaceComponentInternalTag | SpaceComponentPreset;
 
 /** Target resource information colocated with graph nodes */
 export interface TargetResourceInfo<T extends NodeData> {

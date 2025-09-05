@@ -22,6 +22,7 @@ export const userCommand = program
     if (!requireAuthentication(state)) {
       return;
     }
+
     const spinner = new Spinner({
       verbose: !isVitest,
     }).start(`Fetching user info`);
@@ -30,13 +31,16 @@ export const userCommand = program
       if (!password || !region) {
         throw new Error('No password or region found');
       }
-      const { user } = await getUser(password, region);
-      spinner.succeed();
 
-      if (verbose) {
-        konsola.info(JSON.stringify(user, null, 2));
+      const user = await getUser(password, region);
+
+      if (user) {
+        if (verbose) {
+          konsola.info(JSON.stringify(user, null, 2));
+        }
+        spinner.succeed();
+        konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
       }
-      konsola.ok(`Hi ${chalk.bold(user.friendly_name)}, you are currently logged in with ${chalk.hex(colorPalette.PRIMARY)(user.email)} on ${chalk.bold(region)} region`, true);
     }
     catch (error) {
       spinner.failed();

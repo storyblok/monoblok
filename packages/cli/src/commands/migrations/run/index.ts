@@ -5,7 +5,7 @@ import { CommandError, handleError, isVitest, konsola, requireAuthentication } f
 import { session } from '../../../session';
 import type { MigrationsRunOptions } from './constants';
 import { migrationsCommand } from '../command';
-import { fetchStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
+import { fetchAllStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
 import { readMigrationFiles } from './actions';
 import { handleMigrations, summarizeMigrationResults } from './operations';
 import type { Story, StoryContent } from '../../stories/constants';
@@ -47,7 +47,9 @@ migrationsCommand.command('run [componentName]')
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 
@@ -87,7 +89,7 @@ migrationsCommand.command('run [componentName]')
       const storiesSpinner = new Spinner({ verbose: !isVitest }).start(`Fetching stories...`);
 
       // Fetch stories using the base component name
-      const stories = await fetchStoriesByComponent(
+      const stories = await fetchAllStoriesByComponent(
         {
           spaceId: space,
         },
@@ -166,7 +168,7 @@ migrationsCommand.command('run [componentName]')
           const originalStory = validStories.find(s => s.id === result.storyId);
           storiesByIdMap.set(result.storyId, {
             id: result.storyId,
-            name: result.name,
+            name: result.name || '',
             content: result.content,
             published: originalStory?.published,
             published_at: originalStory?.published_at || undefined,
@@ -189,7 +191,7 @@ migrationsCommand.command('run [componentName]')
           for (const story of storiesToUpdate) {
             const storySpinner = new Spinner({ verbose: !isVitest }).start(`Updating story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())}...`);
             const payload: {
-              story: Partial<Story>;
+              story: Story;
               force_update?: string;
               publish?: number;
             } = {

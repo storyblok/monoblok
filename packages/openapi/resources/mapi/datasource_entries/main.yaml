@@ -70,7 +70,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DatasourceEntryCreateRequest'
+              type: object
+              properties:
+                datasource_entry:
+                  $ref: '#/components/schemas/DatasourceEntry'
       responses:
         '201':
           description: Datasource entry created
@@ -131,7 +134,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DatasourceEntryUpdateRequest'
+              type: object
+              properties:
+                datasource_entry:
+                  $ref: '#/components/schemas/DatasourceEntry'
       responses:
         '200':
           description: Datasource entry updated
@@ -174,8 +180,13 @@ components:
   schemas:
     DatasourceEntry:
       type: object
+      required:
+        - id
+        - name
+        - datasource_id
       properties:
         id:
+          readOnly: true
           type: integer
           description: The numeric ID
         name:
@@ -184,45 +195,9 @@ components:
         value:
           type: string
           description: Given value in the default dimension
+        datasource_id:
+          type: integer
+          description: The numeric ID of the datasource
         dimension_value:
           type: string
           description: Given value in the requested dimension
-          
-    DatasourceEntryCreateRequest:
-      type: object
-      properties:
-        datasource_entry:
-          type: object
-          required:
-            - name
-            - value
-            - datasource_id
-          properties:
-            name:
-              type: string
-              description: The key name of the datasource entry
-            value:
-              type: string
-              description: Given value in the default dimension
-            datasource_id:
-              type: integer
-              description: The numeric ID of the datasource
-              
-    DatasourceEntryUpdateRequest:
-      type: object
-      properties:
-        datasource_entry:
-          type: object
-          properties:
-            name:
-              type: string
-              description: The key name of the datasource entry
-            value:
-              type: string
-              description: Given value in the default dimension
-            dimension_value:
-              type: string
-              description: Given value in the requested dimension
-        dimension_id:
-          type: integer
-          description: Numeric dimension id (optional, but required to set a dimension_value)

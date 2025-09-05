@@ -420,6 +420,16 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug NX",
+      "program": "${workspaceFolder}/node_modules/nx/bin/nx.js",
+      "args": ["release", "version", "-d"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true
     }
   ],
 }

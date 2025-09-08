@@ -23,15 +23,29 @@ declare module '@storyblok/astro/client' {
     StoryblokRichTextResolvers,
   } from '@storyblok/astro';
   /**
-   * Converts a Storyblok RichText field into an HTML string.
+   * @experimental Converts a Storyblok RichText field into an HTML string.
    *
-   * ⚠️ **Experimental**: This API is still under development and may change in future releases.
+   * This API is still under development and may change in future releases.
+   * It also relies on Astro’s experimental
+   * [experimental_AstroContainer](https://docs.astro.build/en/reference/container-reference/) feature.
    *
    * @async
-   * @param {StoryblokRichTextNode} richTextField - The Storyblok RichText field node to be converted.
+   * @param {StoryblokRichTextNode} richTextField - The root RichText node to convert.
    * @param {StoryblokRichTextResolvers} [customResolvers] - Optional custom resolvers
-   *   for handling specific node types or marks in the RichText structure.
-   * @returns {Promise<string>} The generated HTML string representation of the RichText content.
+   *   for customizing how specific nodes or marks are transformed into HTML.
+   * @returns {Promise<string>} A promise that resolves to the HTML string representation
+   *   of the provided RichText content.
+   *
+   * @example
+   * ```astro
+   * ---
+   * import { richTextToHTML } from '@storyblok/astro/client';
+   * const { blok } = Astro.props;
+   * const renderedRichText = await richTextToHTML(blok.text);
+   * ---
+   *
+   * <div set:html={renderedRichText} />
+   * ```
    */
   export function richTextToHTML(
     richTextField: StoryblokRichTextNode,

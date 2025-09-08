@@ -29,6 +29,7 @@ describe('normalizePath', () => {
   it('should trim whitespace around the path', () => {
     expect(normalizePath('  /components/ ')).toBe('/components');
   });
+
   it('should normalize relative paths like \'../shared\'', () => {
     expect(normalizePath('../shared')).toBe('/../shared');
   });

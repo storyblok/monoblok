@@ -48,7 +48,7 @@ export function createRichTextHook(
     // Use the same component resolver that's exported
     const componentResolver = createComponentResolver(Component, { isServerContext });
 
-    const { resolvers: _, ...optionsWithoutResolvers } = options;
+    const { resolvers, ...optionsWithoutResolvers } = options;
 
     const mergedOptions = {
       ...(isServerContext ? options : {}),
@@ -58,7 +58,7 @@ export function createRichTextHook(
       }, text),
       resolvers: {
         [BlockTypes.COMPONENT]: componentResolver,
-        ...options.resolvers,
+        ...resolvers,
       },
       keyedResolvers: true,
       ...(isServerContext ? {} : optionsWithoutResolvers),

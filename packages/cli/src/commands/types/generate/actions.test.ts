@@ -2,7 +2,7 @@ import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SpaceComponent, SpaceData } from '../../../commands/components/constants';
+import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import type { GenerateTypesOptions } from './constants';
 import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType } from './actions';
 
@@ -133,7 +133,7 @@ vi.mocked(readFileSync).mockImplementation((path) => {
   return '';
 });
 
-const mockSpaceData: SpaceData = {
+const mockSpaceData: SpaceComponentsData = {
   components: [
     {
       name: 'test_component',
@@ -151,11 +151,11 @@ const mockSpaceData: SpaceData = {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     },
   ],
+  datasources: [],
   groups: [],
   presets: [],
   internalTags: [],
@@ -356,14 +356,14 @@ describe('component property type annotations', () => {
           required: true,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTextType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -390,14 +390,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTextareaType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -424,14 +424,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithNumberType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -458,14 +458,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithBooleanType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -479,10 +479,56 @@ describe('component property type annotations', () => {
   });
 
   it('should handle multilink property type', async () => {
-    // Create a component with multilink property type
-    const componentWithMultilinkType: SpaceComponent = {
+    const componentWithMultilinkEmail: SpaceComponent = {
       name: 'test_component',
-      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: false,
+        },
+      },
+    };
+    const spaceData1: SpaceComponentsData = {
+      components: [componentWithMultilinkEmail],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData1, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;');
+
+    const componentWithMultilinkBoth: SpaceComponent = {
+      name: 'test_component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: true,
+        },
+      },
+    };
+    const spaceData2: SpaceComponentsData = {
+      components: [componentWithMultilinkBoth],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData2, { strict: false }))
+      .toContain('link?: StoryblokMultilink;');
+
+    const componentWithMultilinkNone: SpaceComponent = {
+      name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
       id: 1,
@@ -491,27 +537,19 @@ describe('component property type annotations', () => {
           type: 'multilink',
           required: false,
           email_link_type: false,
-          asset_link_type: true,
+          asset_link_type: false,
         },
       },
-      color: null,
-      internal_tags_list: [],
-      internal_tag_ids: [],
     };
-
-    // Create a space data with this component
-    const spaceData: SpaceData = {
-      components: [componentWithMultilinkType],
+    const spaceData3: SpaceComponentsData = {
+      components: [componentWithMultilinkNone],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
     };
-
-    // Generate types
-    const result = await generateTypes(spaceData, { strict: false });
-
-    // Verify that the result contains the expected property type
-    expect(result).toContain('link?:');
+    expect(await generateTypes(spaceData3, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "email"} | {linktype?: "asset"}>;');
   });
 
   it('should handle bloks property type with component restrictions', async () => {
@@ -530,14 +568,14 @@ describe('component property type annotations', () => {
           component_whitelist: ['button', 'image'],
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithBloksType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -559,7 +597,6 @@ describe('component property type annotations', () => {
       updated_at: '2023-01-01T00:00:00Z',
       id: 1,
       schema: {},
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: ['1', '2'], // Has tags 1 and 2
     };
@@ -571,7 +608,6 @@ describe('component property type annotations', () => {
       updated_at: '2023-01-01T00:00:00Z',
       id: 2,
       schema: {},
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: ['2', '3'], // Has tags 2 and 3
     };
@@ -583,7 +619,6 @@ describe('component property type annotations', () => {
       updated_at: '2023-01-01T00:00:00Z',
       id: 3,
       schema: {},
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: ['4'], // Has tag 4 only
     };
@@ -604,14 +639,14 @@ describe('component property type annotations', () => {
           component_tag_whitelist: [1, 2], // Only allow components with tags 1 or 2
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with these components
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [buttonComponent, imageComponent, textComponent, componentWithTagBasedBloks],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -644,14 +679,14 @@ describe('component property type annotations', () => {
           required: true,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTabbedProperties],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -680,14 +715,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithCustomType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],

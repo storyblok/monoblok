@@ -6,24 +6,45 @@ import {
 import { experimental_AstroContainer } from 'astro/container';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 
-const container = await experimental_AstroContainer.create();
+// Lazily initialized Astro container (for rendering blok components)
+let container: null | experimental_AstroContainer = null;
 
 /**
- * Converts a Storyblok RichText field into an HTML string.
+ * @experimental Converts a Storyblok RichText field into an HTML string.
  *
- * ⚠️ **Experimental**: This API is still under development and may change in future releases.
+ * This API is still under development and may change in future releases.
+ * It also relies on Astro’s experimental
+ * [experimental_AstroContainer](https://docs.astro.build/en/reference/container-reference/) feature.
  *
  * @async
- * @param {StoryblokRichTextNode} richTextField - The Storyblok RichText field node to be converted.
+ * @param {StoryblokRichTextNode} richTextField - The root RichText node to convert.
  * @param {StoryblokRichTextResolvers} [customResolvers] - Optional custom resolvers
- *   for handling specific node types or marks in the RichText structure.
- * @returns {Promise<string>} The generated HTML string representation of the RichText content.
+ *   for customizing how specific nodes or marks are transformed into HTML.
+ * @returns {Promise<string>} A promise that resolves to the HTML string representation
+ *   of the provided RichText content.
+ *
+ * @example
+ * ```astro
+ * ---
+ * import { richTextToHTML } from '@storyblok/astro/client';
+ * const { blok } = Astro.props;
+ * const renderedRichText = await richTextToHTML(blok.text);
+ * ---
+ *
+ * <div set:html={renderedRichText} />
+ * ```
  */
 export const richTextToHTML = async (
   richTextField: StoryblokRichTextNode,
   customResolvers?: StoryblokRichTextResolvers,
 ): Promise<string> => {
-  const asyncReplacements: Promise<string>[] = [];
+  // Create Astro container only once
+  if (!container) {
+    container = await experimental_AstroContainer.create();
+  }
+
+  // Collect async render results keyed by placeholder ID
+  const asyncReplacements: Promise<{ id: string; result: string }>[] = [];
   // Build the resolvers object
   const resolvers: StoryblokRichTextResolvers = {
     // Handle async components
@@ -35,18 +56,23 @@ export const richTextToHTML = async (
 
       return componentBody
         .map((blok) => {
-          if (!blok || typeof blok !== 'object') {
+          if (!blok || typeof blok !== 'object' || !container) {
             return '';
           }
 
-          const placeholder = `<!--ASYNC-${asyncReplacements.length}-->`;
+          // Generate unique placeholder ID
+          const id = crypto.randomUUID();
+          const placeholder = `<!--ASYNC-${id}-->`;
+
+          // Queue async render
           const promise = container
             .renderToString(StoryblokComponent, {
               props: { blok },
             })
+            .then(result => ({ id, result }))
             .catch((err) => {
               console.error('Component rendering failed:', err);
-              return '<!-- Component render error -->';
+              return { id, result: '<!-- Component render error -->' };
             });
 
           asyncReplacements.push(promise);
@@ -62,10 +88,15 @@ export const richTextToHTML = async (
   const resolver = richTextResolver({ resolvers });
 
   let html = resolver.render(richTextField);
+  // Wait for all async renders
   const results = await Promise.all(asyncReplacements);
-  html = html.replace(/<!--ASYNC-(\d+)-->/g, (_, idx) => {
-    const result = results[Number(idx)];
-    return result ?? '';
+  const replacements = new Map(
+    results.map(({ id, result }) => [id, result ?? '']),
+  );
+
+  // Single-pass replacement using regex
+  html = html.replace(/<!--ASYNC-([\w-]+)-->/g, (_, id: string) => {
+    return replacements.get(id) ?? '';
   });
 
   return html;

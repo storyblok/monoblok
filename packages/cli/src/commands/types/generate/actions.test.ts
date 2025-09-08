@@ -479,10 +479,56 @@ describe('component property type annotations', () => {
   });
 
   it('should handle multilink property type', async () => {
-    // Create a component with multilink property type
-    const componentWithMultilinkType: SpaceComponent = {
+    const componentWithMultilinkEmail: SpaceComponent = {
       name: 'test_component',
-      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: false,
+        },
+      },
+    };
+    const spaceData1: SpaceComponentsData = {
+      components: [componentWithMultilinkEmail],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData1, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;');
+
+    const componentWithMultilinkBoth: SpaceComponent = {
+      name: 'test_component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: true,
+        },
+      },
+    };
+    const spaceData2: SpaceComponentsData = {
+      components: [componentWithMultilinkBoth],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData2, { strict: false }))
+      .toContain('link?: StoryblokMultilink;');
+
+    const componentWithMultilinkNone: SpaceComponent = {
+      name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
       id: 1,
@@ -491,27 +537,19 @@ describe('component property type annotations', () => {
           type: 'multilink',
           required: false,
           email_link_type: false,
-          asset_link_type: true,
+          asset_link_type: false,
         },
       },
-      internal_tags_list: [],
-      internal_tag_ids: [],
     };
-
-    // Create a space data with this component
-    const spaceData: SpaceComponentsData = {
-      components: [componentWithMultilinkType],
+    const spaceData3: SpaceComponentsData = {
+      components: [componentWithMultilinkNone],
       datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
     };
-
-    // Generate types
-    const result = await generateTypes(spaceData, { strict: false });
-
-    // Verify that the result contains the expected property type
-    expect(result).toContain('link?:');
+    expect(await generateTypes(spaceData3, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "email"} | {linktype?: "asset"}>;');
   });
 
   it('should handle bloks property type with component restrictions', async () => {

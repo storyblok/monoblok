@@ -196,9 +196,9 @@ const getComponentPropertiesTypeAnnotations = async (
         ...(!schema.email_link_type ? ['{ linktype?: "email" }'] : []),
         ...(!schema.asset_link_type ? ['{ linktype?: "asset" }'] : []),
       ];
-      const componentType = toPascalCase(propertyType);
+      const componentType = `Storyblok${toPascalCase(propertyType)}`;
       propertyTypeAnnotation[key].tsType
-        = excludedLinktypes.length > 0 ? `Exclude<Storyblok${componentType}, ${excludedLinktypes.join(' | ')}>` : componentType;
+        = excludedLinktypes.length > 0 ? `Exclude<${componentType}, ${excludedLinktypes.join(' | ')}>` : componentType;
     }
 
     if (propertyType === 'bloks') {

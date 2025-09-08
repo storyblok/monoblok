@@ -1,7 +1,3 @@
-export const toPascalCase = (str: string) => {
-  return str.replace(/(?:^|_)(\w)/g, (_, char) => char.toUpperCase());
-};
-
 export const toCamelCase = (str: string) => {
   return str
     // First replace snake_case
@@ -13,6 +9,11 @@ export const toCamelCase = (str: string) => {
     .replace(/[^a-z0-9]([a-z])/gi, (_, letter) => letter.toUpperCase())
     // Remove special characters
     .replace(/[^a-z0-9]/gi, '');
+};
+
+export const toPascalCase = (str: string) => {
+  const camelCase = toCamelCase(str);
+  return camelCase ? camelCase[0].toUpperCase() + camelCase.slice(1) : camelCase;
 };
 
 export const toSnakeCase = (str: string) => {

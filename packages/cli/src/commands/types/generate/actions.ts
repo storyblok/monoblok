@@ -145,7 +145,7 @@ export const getComponentType = (
     .replace(/^_+|_+$/g, '');
 
   // Convert to PascalCase
-  const componentType = toPascalCase(toCamelCase(`${prefix}_${sanitizedName}_${suffix}`));
+  const componentType = toPascalCase(`${prefix}_${sanitizedName}_${suffix}`);
 
   // If the component type starts with a number, prefix it with an underscore
   const isFirstCharacterNumber = !Number.isNaN(Number.parseInt(componentType.charAt(0)));
@@ -187,7 +187,7 @@ const getComponentPropertiesTypeAnnotations = async (
 
     if (Array.from(storyblokSchemas.keys()).includes(propertyType as StoryblokPropertyType)) {
       // For Storyblok property types, don't apply the prefix
-      const componentType = toPascalCase(toCamelCase(propertyType));
+      const componentType = toPascalCase(propertyType);
       propertyTypeAnnotation[key].tsType = `Storyblok${componentType}`;
     }
 
@@ -196,7 +196,7 @@ const getComponentPropertiesTypeAnnotations = async (
         ...(!schema.email_link_type ? ['{ linktype?: "email" }'] : []),
         ...(!schema.asset_link_type ? ['{ linktype?: "asset" }'] : []),
       ];
-      const componentType = toPascalCase(toCamelCase(propertyType));
+      const componentType = toPascalCase(propertyType);
       propertyTypeAnnotation[key].tsType
         = excludedLinktypes.length > 0 ? `Exclude<Storyblok${componentType}, ${excludedLinktypes.join(' | ')}>` : componentType;
     }

@@ -27,6 +27,7 @@ export const API_ACTIONS = {
   update_datasource: 'Failed to update datasource',
   delete_datasource: 'Failed to delete datasource',
   create_space: 'Failed to create space',
+  pull_spaces: 'Failed to pull spaces',
   fetch_blueprints: 'Failed to fetch blueprints from GitHub',
 } as const;
 

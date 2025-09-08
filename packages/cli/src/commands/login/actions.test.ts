@@ -13,7 +13,9 @@ const handlers = [
   http.get('https://mapi.storyblok.com/v1/users/me', async ({ request }) => {
     const token = request.headers.get('Authorization');
     if (token === 'valid-token') {
-      return HttpResponse.json({ data: 'user data' });
+      return HttpResponse.json({
+        user: { id: 1, email: 'test@example.com', friendly_name: 'Test User' },
+      });
     }
     return new HttpResponse('Unauthorized', { status: 401 });
   }),
@@ -43,7 +45,7 @@ afterAll(() => server.close());
 describe('login actions', () => {
   describe('loginWithToken', () => {
     it('should login successfully with a valid token', async () => {
-      const mockResponse = { data: 'user data', perPage: 0, total: 0 };
+      const mockResponse = { id: 1, email: 'test@example.com', friendly_name: 'Test User' };
       const result = await loginWithToken('valid-token', 'eu');
       expect(result).toEqual(mockResponse);
     });

@@ -158,7 +158,7 @@ const getComponentPropertiesTypeAnnotations = async (
   spaceData: SpaceComponentsData,
   customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<JSONSchema['properties']> => {
-  return Object.entries<Record<string, any>>(component.schema).reduce(async (accPromise, [key, value]) => {
+  return Object.entries(component.schema).reduce(async (accPromise, [key, value]) => {
     const acc = await accPromise;
 
     // Skip tabbed properties
@@ -166,13 +166,19 @@ const getComponentPropertiesTypeAnnotations = async (
       return acc;
     }
 
-    const propertyType = value.type;
+    // Type guard to ensure value is ComponentPropertySchema
+    if (!value || typeof value !== 'object' || !('type' in value)) {
+      return acc;
+    }
+
+    const schema = value as ComponentPropertySchema;
+    const propertyType = schema.type;
     const propertyTypeAnnotation: JSONSchema = {
-      [key]: getPropertyTypeAnnotation(value as ComponentPropertySchema, options.typePrefix, options.typeSuffix),
+      [key]: getPropertyTypeAnnotation(schema, options.typePrefix, options.typeSuffix),
     };
 
     if (propertyType === 'custom' && customFieldsParser) {
-      const customField = typeof customFieldsParser === 'function' ? customFieldsParser(key, value) : {};
+      const customField = typeof customFieldsParser === 'function' ? customFieldsParser(key, schema as unknown as Record<string, unknown>) : {};
       return {
         ...acc,
         ...customField,
@@ -187,8 +193,8 @@ const getComponentPropertiesTypeAnnotations = async (
 
     if (propertyType === 'multilink') {
       const excludedLinktypes: string[] = [
-        ...(!value.email_link_type ? ['{ linktype?: "email" }'] : []),
-        ...(!value.asset_link_type ? ['{ linktype?: "asset" }'] : []),
+        ...(!schema.email_link_type ? ['{ linktype?: "email" }'] : []),
+        ...(!schema.asset_link_type ? ['{ linktype?: "asset" }'] : []),
       ];
       const componentType = toPascalCase(toCamelCase(propertyType));
       propertyTypeAnnotation[key].tsType
@@ -196,15 +202,15 @@ const getComponentPropertiesTypeAnnotations = async (
     }
 
     if (propertyType === 'bloks') {
-      if (value.restrict_components) {
+      if (schema.restrict_components) {
         // Components restricted by groups
-        if (value.restrict_type === 'groups') {
+        if (schema.restrict_type === 'groups') {
           if (
-            Array.isArray(value.component_group_whitelist)
-            && value.component_group_whitelist.length > 0
+            Array.isArray(schema.component_group_whitelist)
+            && schema.component_group_whitelist.length > 0
           ) {
             // Find components that belong to the whitelisted groups
-            const componentsInGroupWhitelist = value.component_group_whitelist.reduce(
+            const componentsInGroupWhitelist = schema.component_group_whitelist.reduce(
               (components: string[], groupUUID: string) => {
                 // Find components that have this group UUID
                 const componentsInGroup = spaceData.components.filter(
@@ -225,15 +231,15 @@ const getComponentPropertiesTypeAnnotations = async (
               = componentsInGroupWhitelist.length > 0 ? `(${componentsInGroupWhitelist.join(' | ')})[]` : `never[]`;
           }
         }
-        else if (value.restrict_type === 'tags') {
+        else if (schema.restrict_type === 'tags') {
           // Components restricted by tags
-          if (Array.isArray(value.component_tag_whitelist) && value.component_tag_whitelist.length > 0) {
+          if (Array.isArray(schema.component_tag_whitelist) && schema.component_tag_whitelist.length > 0) {
             // Find components that have any of the whitelisted tag IDs
             const componentsWithTags = spaceData.components.filter(
               component =>
                 component.internal_tag_ids
                 && component.internal_tag_ids.some(tagId =>
-                  value.component_tag_whitelist.includes(Number(tagId)),
+                  schema.component_tag_whitelist!.includes(Number(tagId)),
                 ),
             );
 
@@ -245,8 +251,8 @@ const getComponentPropertiesTypeAnnotations = async (
         }
         else {
           // Components restricted by 1-by-1 list
-          if (Array.isArray(value.component_whitelist) && value.component_whitelist.length > 0) {
-            propertyTypeAnnotation[key].tsType = `(${value.component_whitelist
+          if (Array.isArray(schema.component_whitelist) && schema.component_whitelist.length > 0) {
+            propertyTypeAnnotation[key].tsType = `(${schema.component_whitelist
               .map((name: string) => getComponentType(name, options))
               .join(' | ')})[]`;
           }
@@ -315,14 +321,14 @@ export const generateTypes = async (
     // Get the component type name with proper handling of numbers at the start
       const type = getComponentType(component.name, options);
       const componentPropertiesTypeAnnotations = await getComponentPropertiesTypeAnnotations(component, options, spaceData, customFieldsParser);
-      const requiredFields = Object.entries<Record<string, any>>(component?.schema || {}).reduce(
-        (acc, [key, value]) => {
-          if (value.required) {
+      const requiredFields = Object.entries(component?.schema || {}).reduce(
+        (acc: string[], [key, value]) => {
+          if (value && typeof value === 'object' && 'required' in value && value.required) {
             return [...acc, key];
           }
           return acc;
         },
-        ['component', '_uid'],
+        ['component', '_uid'] as string[],
       );
 
       // Check if any property has a type that's in storyblokSchemas.keys()

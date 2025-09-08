@@ -1,5 +1,11 @@
 type: object
 description: A Storyblok component object representing a content type
+required: 
+  - id
+  - name
+  - created_at
+  - updated_at
+  - schema
 properties:
   id:
     readOnly: true
@@ -13,10 +19,12 @@ properties:
     nullable: true
     description: Name that will be used in the editor interface
   created_at:
+    readOnly: true
     type: string
     format: date-time
     description: Creation date
   updated_at:
+    readOnly: true
     type: string
     format: date-time
     description: Latest update date

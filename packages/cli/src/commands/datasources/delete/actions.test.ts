@@ -28,9 +28,10 @@ afterAll(() => server.close());
 describe('delete datasources actions', () => {
   beforeEach(() => {
     // Reset and configure the MAPI client before each test
-    mapiClient().dispose();
     mapiClient({
-      token: 'valid-token',
+      token: {
+        accessToken: 'valid-token',
+      },
       region: 'eu',
     });
   });

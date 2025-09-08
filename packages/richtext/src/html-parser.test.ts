@@ -525,6 +525,235 @@ describe('htmlToStoryblokRichtext', () => {
     });
   });
 
+  it('parses multiple marks on one node', () => {
+    const md = [
+      '<p><strong><em>bold and italic</em></strong></p>',
+      '<p><strong>bold and <em>italic</em></strong></p>',
+      '<p><em><strong>italic and bold</strong></em></p>',
+      '<p><strong><a href="https://bold.storyblok.com">bold link</a></strong></p>',
+      '<p><a href="https://bold.storyblok.com"><strong>bold link 2</strong></a></p>',
+      '<p><em><a href="https://italic.storyblok.com">italic link</a></em></p>',
+      '<p><strong><em><a href="https://bold-italic.storyblok.com">bold and italic link</a></em></strong></p>',
+      '<p><a href="https://bold-italic.storyblok.com"><strong>bold </strong><em>and italic link</em></a></p>',
+      '<p><a href="https://mixed.storyblok.com"><strong>bold</strong>, normal <em>and italic link</em></a></p>',
+    ].join('\n');
+    const result = htmlToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'bold and italic',
+              marks: [
+                { type: 'italic' },
+                { type: 'bold' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'bold and ',
+              marks: [{ type: 'bold' }],
+            },
+            {
+              type: 'text',
+              text: 'italic',
+              marks: [
+                { type: 'italic' },
+                { type: 'bold' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'italic and bold',
+              marks: [
+                { type: 'bold' },
+                { type: 'italic' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold.storyblok.com',
+                  },
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold.storyblok.com',
+                  },
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold link 2',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+              ],
+              text: 'italic link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold-italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold and italic link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold-italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold ',
+            },
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold-italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+              ],
+              text: 'and italic link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://mixed.storyblok.com',
+                  },
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold',
+            },
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://mixed.storyblok.com',
+                  },
+                },
+              ],
+              text: ', normal ',
+            },
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://mixed.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+              ],
+              text: 'and italic link',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('does not preserve unsupported attributes by default', () => {
     const resultDefault = htmlToStoryblokRichtext(
       '<p class="unsupported">Hello <a data-unsupported-custom-attribute="whatever" target="_blank" href="/home">world!</a></p>',

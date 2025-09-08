@@ -54,7 +54,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DatasourceCreateRequest'
+              type: object
+              properties:
+                datasource:
+                  $ref: '#/components/schemas/Datasource'
       responses:
         '201':
           description: Datasource created
@@ -115,7 +118,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DatasourceUpdateRequest'
+              type: object
+              properties:
+                datasource:
+                  $ref: '#/components/schemas/Datasource'
       responses:
         '200':
           description: Datasource updated
@@ -158,8 +164,15 @@ components:
   schemas:
     Datasource:
       type: object
+      required:
+        - id
+        - name
+        - slug
+        - created_at
+        - updated_at
       properties:
         id:
+          readOnly: true
           type: integer
           description: The numeric ID of the datasource
         name:
@@ -202,55 +215,3 @@ components:
           type: string
           format: date-time
           description: Latest update date
-    DatasourceCreateRequest:
-      type: object
-      properties:
-        datasource:
-          type: object
-          required:
-            - name
-            - slug
-          properties:
-            name:
-              type: string
-              description: The complete name provided for a datasource
-            slug:
-              type: string
-              description: Slug of a datasource
-            dimensions_attributes:
-              type: array
-              description: An array of dimension attributes for creating dimensions within the datasource
-              items:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    description: The complete name provided for the datasource dimension
-                  entry_value:
-                    type: string
-                    description: The value provided for the datasource dimension (e.g., a language code)
-                    
-    DatasourceUpdateRequest:
-      type: object
-      properties:
-        datasource:
-          type: object
-          properties:
-            name:
-              type: string
-              description: The complete name provided for a datasource
-            slug:
-              type: string
-              description: Slug of a datasource
-            dimensions_attributes:
-              type: array
-              description: An array of dimension attributes for updating dimensions within the datasource
-              items:
-                type: object
-                properties:
-                  name:
-                    type: string
-                    description: The complete name provided for the datasource dimension
-                  entry_value:
-                    type: string
-                    description: The value provided for the datasource dimension (e.g., a language code)

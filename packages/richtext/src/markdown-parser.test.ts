@@ -400,13 +400,59 @@ describe('markdownToStoryblokRichtext', () => {
           content: [
             { type: 'text', text: 'This is a ' },
             {
-              type: 'link',
-              attrs: {
-                href: 'https://www.storyblok.com/',
-                title: null,
-              },
-              content: [
-                { type: 'text', text: 'Storyblok link' },
+              type: 'text',
+              text: 'Storyblok link',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
+              ],
+            },
+            { type: 'text', text: '.' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses formatting inside links', () => {
+    const md = 'This is a [Storyblok _link_](https://www.storyblok.com/).';
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'This is a ' },
+            {
+              type: 'text',
+              text: 'Storyblok ',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
+              ],
+            },
+            {
+              type: 'text',
+              text: 'link',
+              marks: [
+                {
+                  type: 'italic',
+                },
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                  },
+                },
               ],
             },
             { type: 'text', text: '.' },
@@ -471,6 +517,130 @@ describe('markdownToStoryblokRichtext', () => {
             { type: 'text', text: 'Line with a hard break here.' },
             { type: 'hard_break' },
             { type: 'text', text: 'Next line after break.' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parses multiple marks on one node', () => {
+    const md = [
+      '***bold and italic***',
+      '**bold and *italic***',
+      '_**italic and bold**_',
+      '**[bold link](https://bold.storyblok.com)**',
+      '_[italic link](https://italic.storyblok.com)_',
+      '**_[bold and italic link](https://bold-italic.storyblok.com)_**',
+    ].join('\n\n');
+    const result = markdownToStoryblokRichtext(md);
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'bold and italic',
+              marks: [
+                { type: 'bold' },
+                { type: 'italic' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'bold and ',
+              marks: [{ type: 'bold' }],
+            },
+            {
+              type: 'text',
+              text: 'italic',
+              marks: [
+                { type: 'italic' },
+                { type: 'bold' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'italic and bold',
+              marks: [
+                { type: 'bold' },
+                { type: 'italic' },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold.storyblok.com',
+                  },
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+              ],
+              text: 'italic link',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://bold-italic.storyblok.com',
+                  },
+                },
+                {
+                  type: 'italic',
+                },
+                {
+                  type: 'bold',
+                },
+              ],
+              text: 'bold and italic link',
+            },
           ],
         },
       ],

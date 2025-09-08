@@ -16,10 +16,10 @@ export interface CommandOptions {
  * Interface representing a language in Storyblok
  */
 export interface Language {
-  name: string;
-  code: string;
+  name?: string;
+  code?: string;
   fallback_code?: string;
-  ai_translation_code: string | null;
+  ai_translation_code?: string;
 }
 
 export interface SpaceInternationalization {

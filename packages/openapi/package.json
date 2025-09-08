@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/openapi",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Storyblok Management API OpenAPI specifications",
   "private": true,
   "scripts": {
@@ -23,5 +23,8 @@
   "dependencies": {
     "@redocly/cli": "^2.0.2",
     "js-yaml": "^4.1.0"
+  },
+  "nx": {
+    "projectType": "library"
   }
 }

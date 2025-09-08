@@ -76,7 +76,7 @@ describe('languagesCommand', () => {
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
-        expect(fetchLanguages).toHaveBeenCalledWith('12345', 'valid-token', 'eu');
+        expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, {
           path: undefined,
         });
@@ -154,7 +154,7 @@ describe('languagesCommand', () => {
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--path', '/tmp']);
-        expect(fetchLanguages).toHaveBeenCalledWith('12345', 'valid-token', 'eu');
+        expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, {
           path: '/tmp',
         });
@@ -185,7 +185,7 @@ describe('languagesCommand', () => {
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filename', 'custom-languages']);
-        expect(fetchLanguages).toHaveBeenCalledWith('12345', 'valid-token', 'eu');
+        expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, {
           filename: 'custom-languages',
           path: undefined,
@@ -217,7 +217,7 @@ describe('languagesCommand', () => {
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--suffix', 'custom-suffix']);
-        expect(fetchLanguages).toHaveBeenCalledWith('12345', 'valid-token', 'eu');
+        expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, {
           suffix: 'custom-suffix',
           path: undefined,

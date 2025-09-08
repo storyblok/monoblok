@@ -6,6 +6,7 @@ import { input, password, select } from '@inquirer/prompts';
 import { regions } from '../../constants';
 import chalk from 'chalk';
 import { session } from '../../session'; // Import as module to mock properly
+import type { User } from '../user/actions';
 
 vi.mock('./actions', () => ({
   loginWithEmailAndPassword: vi.fn(),
@@ -160,8 +161,8 @@ describe('loginCommand', () => {
       it('should login with token if token is provided using login-with-token strategy', async () => {
         vi.mocked(select).mockResolvedValueOnce('login-with-token');
         vi.mocked(password).mockResolvedValueOnce('test-token');
-        const mockUser = { email: 'user@example.com' };
-        vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+        const mockUser: User = { id: 1, email: 'user@example.com', friendly_name: 'Test User' } as User;
+        vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
         await loginCommand.parseAsync(['node', 'test', '--region', 'eu']);
 
@@ -180,8 +181,8 @@ describe('loginCommand', () => {
   describe('--token', () => {
     it('should login with a valid token', async () => {
       const mockToken = 'test-token';
-      const mockUser = { email: 'test@example.com', friendly_name: 'Test User' };
-      vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+      vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
       await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'eu']);
 
@@ -192,8 +193,8 @@ describe('loginCommand', () => {
 
     it('should login with a valid token in another region --region', async () => {
       const mockToken = 'test-token';
-      const mockUser = { email: 'test@example.com', friendly_name: 'Test User' };
-      vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+      vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
       await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'us']);
 

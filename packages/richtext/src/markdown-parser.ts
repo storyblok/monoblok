@@ -75,6 +75,38 @@ export const MarkdownTokenTypes = {
 export type MarkdownTokenType = keyof typeof MarkdownTokenTypes;
 
 /**
+ * Mark all text nodes in-place (including nested inline content).
+ */
+function applyMarkInPlace(
+  nodes: StoryblokRichTextDocumentNode[] | undefined,
+  mark: { type: string; attrs?: Record<string, unknown> | null },
+) {
+  if (!nodes) {
+    return;
+  }
+
+  for (const node of nodes) {
+    // If we’re applying a mark (bold/italic/strike) and encounter a link node,
+    // flatten it: apply link mark first, then the outer mark, then replace the
+    // link wrapper with its content.
+    if (node.type === MarkTypes.LINK && Array.isArray(node.content)) {
+      const linkMark = { type: MarkTypes.LINK, attrs: node.attrs ?? null };
+
+      // Apply link first to ensure expected order [link, <outer mark>]
+      applyMarkInPlace(node.content, linkMark);
+      applyMarkInPlace(node.content, mark);
+
+      // Replace the link node with its now-marked children
+      nodes.splice(nodes.indexOf(node), 1, ...node.content);
+      continue;
+    }
+
+    const existing = (node.marks || []) as Array<any>;
+    node.marks = [...existing, mark];
+  }
+}
+
+/**
  * Default resolvers for supported Markdown token types.
  * These map markdown-it tokens to Storyblok RichText nodes.
  */
@@ -105,20 +137,12 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     };
   },
   [MarkdownTokenTypes.STRONG]: (_token, children) => {
-    const text = children?.map(c => c.text).join('') ?? '';
-    return {
-      type: TextTypes.TEXT,
-      text,
-      marks: [{ type: MarkTypes.BOLD }],
-    };
+    applyMarkInPlace(children, { type: MarkTypes.BOLD });
+    return null; // flatten children
   },
   [MarkdownTokenTypes.EMP]: (_token, children) => {
-    const text = children?.map(c => c.text).join('') ?? '';
-    return {
-      type: TextTypes.TEXT,
-      text,
-      marks: [{ type: MarkTypes.ITALIC }],
-    };
+    applyMarkInPlace(children, { type: MarkTypes.ITALIC });
+    return null; // flatten children
   },
   [MarkdownTokenTypes.ORDERED_LIST]: (_token, children) => {
     return {
@@ -193,14 +217,14 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     };
   },
   [MarkdownTokenTypes.LINK]: (token, children) => {
-    return {
+    applyMarkInPlace(children, {
       type: MarkTypes.LINK,
       attrs: {
         href: token.attrGet('href'),
         title: token.attrGet('title') || null,
       },
-      content: children,
-    };
+    });
+    return null;
   },
   [MarkdownTokenTypes.HR]: () => {
     return {
@@ -208,12 +232,8 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     };
   },
   [MarkdownTokenTypes.DEL]: (_token, children) => {
-    const text = children?.map(c => c.text).join('') ?? '';
-    return {
-      type: TextTypes.TEXT,
-      text,
-      marks: [{ type: MarkTypes.STRIKE }],
-    };
+    applyMarkInPlace(children, { type: MarkTypes.STRIKE });
+    return null; // flatten children
   },
   [MarkdownTokenTypes.HARD_BREAK]: () => {
     return {
@@ -253,11 +273,10 @@ const defaultResolvers: Record<string, MarkdownNodeResolver> = {
     ],
   }),
   // Strikethrough support (GFM strikethrough is enabled by default in markdown-it)
-  [MarkdownTokenTypes.S]: (_token, children) => ({
-    type: TextTypes.TEXT,
-    text: children?.map(c => c.text).join('') ?? '',
-    marks: [{ type: MarkTypes.STRIKE }],
-  }),
+  [MarkdownTokenTypes.S]: (_token, children) => {
+    applyMarkInPlace(children, { type: MarkTypes.STRIKE });
+    return null; // flatten children
+  },
 };
 
 /**

@@ -1,5 +1,5 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentGroup, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
@@ -10,7 +10,7 @@ import { mapiClient } from '../../../api';
 // Define a type for components data without datasources
 export interface ComponentsData {
   components: SpaceComponent[];
-  groups: SpaceComponentGroup[];
+  groups: SpaceComponentFolder[];
   presets: SpaceComponentPreset[];
   internalTags: SpaceComponentInternalTag[];
 }
@@ -20,13 +20,16 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      component: SpaceComponent;
-    }>(`spaces/${space}/components`, {
-      body: JSON.stringify(component),
+    const { data } = await client.components.create({
+      path: {
+        space_id: space,
+      },
+      body: {
+        component,
+      },
     });
 
-    return data.component;
+    return data?.component;
   }
   catch (error) {
     handleAPIError('push_component', error as Error, `Failed to push component ${component.name}`);
@@ -37,12 +40,18 @@ export const updateComponent = async (space: string, componentId: number, compon
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      component: SpaceComponent;
-    }>(`spaces/${space}/components/${componentId}`, {
-      body: JSON.stringify(component),
+    const { data } = await client.components.update({
+      path: {
+        space_id: Number(space),
+        component_id: componentId,
+      },
+      body: {
+        component,
+      },
+      throwOnError: true,
     });
-    return data.component;
+
+    return data?.component;
   }
   catch (error) {
     handleAPIError('update_component', error as Error, `Failed to update component ${component.name}`);
@@ -66,32 +75,43 @@ export const upsertComponent = async (
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentGroup): Promise<SpaceComponentGroup | undefined> => {
+export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      component_group: SpaceComponentGroup;
-    }>(`spaces/${space}/component_groups`, {
-      body: JSON.stringify(componentGroup),
+    const { data } = await client.componentFolders.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: {
+        component_group: componentGroup,
+      },
+      throwOnError: true,
     });
-    return data.component_group;
+
+    return data?.component_group;
   }
   catch (error) {
     handleAPIError('push_component_group', error as Error, `Failed to push component group ${componentGroup.name}`);
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentGroup): Promise<SpaceComponentGroup | undefined> => {
+export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      component_group: SpaceComponentGroup;
-    }>(`spaces/${space}/component_groups/${groupId}`, {
-      body: JSON.stringify(componentGroup),
+    const { data } = await client.componentFolders.update({
+      path: {
+        space_id: Number(space),
+        component_group_id: String(groupId),
+      },
+      body: {
+        component_group: componentGroup,
+      },
+      throwOnError: true,
     });
-    return data.component_group;
+
+    return data?.component_group;
   }
   catch (error) {
     handleAPIError('update_component_group', error as Error, `Failed to update component group ${componentGroup.name}`);
@@ -100,9 +120,9 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
 
 export const upsertComponentGroup = async (
   space: string,
-  group: SpaceComponentGroup,
+  group: SpaceComponentFolder,
   existingId?: number,
-): Promise<SpaceComponentGroup | undefined> => {
+): Promise<SpaceComponentFolder | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentGroup(space, existingId, group);
@@ -114,50 +134,61 @@ export const upsertComponentGroup = async (
 };
 
 // Component preset actions
-export const pushComponentPreset = async (space: string, componentPreset: { preset: Partial<SpaceComponentPreset> }): Promise<SpaceComponentPreset | undefined> => {
+export const pushComponentPreset = async (space: string, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      preset: SpaceComponentPreset;
-    }>(`spaces/${space}/presets`, {
-      body: JSON.stringify(componentPreset),
+    const { data } = await client.presets.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: {
+        preset,
+      },
+      throwOnError: true,
     });
-    return data.preset;
+
+    return data?.preset;
   }
   catch (error) {
-    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${componentPreset.preset.name}`);
+    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${preset.name}`);
   }
 };
 
-export const updateComponentPreset = async (space: string, presetId: number, componentPreset: { preset: Partial<SpaceComponentPreset> }): Promise<SpaceComponentPreset | undefined> => {
+export const updateComponentPreset = async (space: string, presetId: number, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      preset: SpaceComponentPreset;
-    }>(`spaces/${space}/presets/${presetId}`, {
-      body: JSON.stringify(componentPreset),
+    const { data } = await client.presets.update({
+      path: {
+        space_id: Number(space),
+        preset_id: presetId,
+      },
+      body: {
+        preset,
+      },
+      throwOnError: true,
     });
-    return data.preset;
+
+    return data?.preset;
   }
   catch (error) {
-    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${componentPreset.preset.name}`);
+    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${preset.name}`);
   }
 };
 
 export const upsertComponentPreset = async (
   space: string,
-  preset: Partial<SpaceComponentPreset>,
+  preset: SpaceComponentPreset,
   existingId?: number,
 ): Promise<SpaceComponentPreset | undefined> => {
   if (existingId) {
     // We know it exists, update directly
-    return await updateComponentPreset(space, existingId, { preset });
+    return await updateComponentPreset(space, existingId, preset);
   }
   else {
     // New resource, create directly
-    return await pushComponentPreset(space, { preset });
+    return await pushComponentPreset(space, preset);
   }
 };
 
@@ -167,11 +198,12 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
   try {
     const client = mapiClient();
 
-    const { data } = await client.post<{
-      internal_tag: SpaceComponentInternalTag;
-    }>(`spaces/${space}/internal_tags`, {
-      method: 'POST',
-      body: JSON.stringify(componentInternalTag),
+    const { data } = await client.internalTags.create({
+      path: {
+        space_id: Number(space),
+      },
+      body: componentInternalTag,
+      throwOnError: true,
     });
 
     return data.internal_tag;
@@ -185,11 +217,13 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
   try {
     const client = mapiClient();
 
-    const { data } = await client.put<{
-      internal_tag: SpaceComponentInternalTag;
-    }>(`spaces/${space}/internal_tags/${tagId}`, {
-      method: 'PUT',
-      body: JSON.stringify(componentInternalTag),
+    const { data } = await client.internalTags.update({
+      path: {
+        space_id: Number(space),
+        internal_tag_id: tagId,
+      },
+      body: componentInternalTag,
+      throwOnError: true,
     });
 
     return data.internal_tag;
@@ -251,7 +285,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   const files = await readdir(resolvedPath);
   const components: SpaceComponent[] = [];
   const presets: SpaceComponentPreset[] = [];
-  let groups: SpaceComponentGroup[] = [];
+  let groups: SpaceComponentFolder[] = [];
   let internalTags: SpaceComponentInternalTag[] = [];
 
   const filteredFiles = files.filter((file) => {
@@ -268,7 +302,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
     const filePath = join(resolvedPath, file);
 
     if (file === 'groups.json' || file === `groups.${suffix}.json`) {
-      const result = await readJsonFile<SpaceComponentGroup>(filePath);
+      const result = await readJsonFile<SpaceComponentFolder>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -328,7 +362,7 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Pro
 
   // Read optional files
   const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<SpaceComponentGroup>(join(resolvedPath, suffix ? `groups.${suffix}.json` : 'groups.json')),
+    readJsonFile<SpaceComponentFolder>(join(resolvedPath, suffix ? `groups.${suffix}.json` : 'groups.json')),
     readJsonFile<SpaceComponentPreset>(join(resolvedPath, suffix ? `presets.${suffix}.json` : 'presets.json')),
     readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `tags.${suffix}.json` : 'tags.json')),
   ]);

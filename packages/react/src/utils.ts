@@ -29,10 +29,34 @@ export function convertAttributesInElement(element: React.ReactElement | React.R
 
   // Convert attributes of the current element.
   const attributeMap: { [key: string]: string } = {
+    allowfullscreen: 'allowFullScreen',
+    autocomplete: 'autoComplete',
+    autofocus: 'autoFocus',
+    autoplay: 'autoPlay',
+    charset: 'charSet',
     class: 'className',
+    colspan: 'colSpan',
+    colwidth: 'colWidth',
+    contenteditable: 'contentEditable',
+    crossorigin: 'crossOrigin',
+    enctype: 'encType',
     for: 'htmlFor',
+    formnovalidate: 'formNoValidate',
+    frameborder: 'frameBorder',
+    inputmode: 'inputMode',
+    marginheight: 'marginHeight',
+    marginwidth: 'marginWidth',
+    maxlength: 'maxLength',
+    minlength: 'minLength',
+    novalidate: 'noValidate',
+    playsinline: 'playsInline',
+    readonly: 'readOnly',
+    referrerpolicy: 'referrerPolicy',
+    rowspan: 'rowSpan',
+    srcset: 'srcSet',
+    tabindex: 'tabIndex',
     targetAttr: 'targetattr',
-    // Add more attribute conversions here as needed
+    usemap: 'useMap',
   };
 
   const newProps: { [key: string]: unknown } = Object.keys((element.props as Record<string, unknown>)).reduce((acc: { [key: string]: unknown }, key) => {

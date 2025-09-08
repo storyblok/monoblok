@@ -4,18 +4,23 @@ import { convertAttributesInElement } from '../utils';
 
 describe('utils', () => {
   describe('convertAttributesInElement', () => {
-    it('should convert HTML class attribute to React className', () => {
-      const input = React.createElement('div', { class: 'test-class' });
+    it('should convert HTML various lower case attributes to React camelCase', () => {
+      // The logic is always the same; we test only the most important cases.
+      const someAttributes = {
+        class: ['className', 'test-class'],
+        colspan: ['colSpan', '2'],
+        for: ['htmlFor', 'foo'],
+        rowspan: ['rowSpan', '3'],
+      };
+      const input = React.createElement(
+        'div',
+        Object.fromEntries(Object.entries(someAttributes).map(([attr, [_, value]]) => [attr, value])),
+      );
       const output = convertAttributesInElement(input);
-      expect(output.props).toHaveProperty('className', 'test-class');
-      expect(output.props).not.toHaveProperty('class');
-    });
-
-    it('should convert HTML for attribute to React htmlFor', () => {
-      const input = React.createElement('label', { for: 'test-input' });
-      const output = convertAttributesInElement(input);
-      expect(output.props).toHaveProperty('htmlFor', 'test-input');
-      expect(output.props).not.toHaveProperty('for');
+      for (const [original, [transformed, value]] of Object.entries(someAttributes)) {
+        expect(output.props).toHaveProperty(transformed, value);
+        expect(output.props).not.toHaveProperty(original);
+      }
     });
 
     it('should convert string style attributes to style objects', () => {

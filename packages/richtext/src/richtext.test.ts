@@ -1256,7 +1256,7 @@ describe('richtext', () => {
   });
 });
 
-describe('Text Alignment', () => {
+describe('text Alignment', () => {
   it('should render paragraph with text alignment', async () => {
     const { render } = richTextResolver();
     const node = {
@@ -1322,9 +1322,9 @@ describe('Text Alignment', () => {
 
     const html = render(doc as StoryblokRichTextNode<string>);
     expect(html).toBe(
-      '<p style="text-align: right;">Right aligned text</p>' +
-      '<p style="text-align: center;">Center aligned text</p>' +
-      '<p style="text-align: left;">Left aligned text</p>'
+      '<p style="text-align: right;">Right aligned text</p>'
+      + '<p style="text-align: center;">Center aligned text</p>'
+      + '<p style="text-align: left;">Left aligned text</p>',
     );
   });
 

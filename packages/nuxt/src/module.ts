@@ -78,6 +78,11 @@ export default defineNuxtModule<ModuleOptions>({
     for (const name of names) {
       addImports({ name, as: name, from: '@storyblok/vue' });
     }
+    addImports({
+      name: 'useAsyncStoryblok',
+      as: 'useAsyncStoryblok',
+      from: resolver.resolve('runtime/composables/useAsyncStoryblok'),
+    });
 
     nuxt.options.typescript.hoist.push('@storyblok/vue');
 

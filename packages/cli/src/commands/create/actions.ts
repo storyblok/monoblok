@@ -176,6 +176,7 @@ export const repositoryToTemplate = (repo: any): DynamicTemplate => {
     location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
     description: repo.description,
     updated_at: repo.updated_at,
+    stars: repo.stargazers_count,
   };
 };
 
@@ -195,7 +196,7 @@ export const fetchBlueprintRepositories = async () => {
     const blueprints = data.items
       .filter(repo => repo.name.startsWith('blueprint-core-'))
       .map(repositoryToTemplate)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => (b.stars || 0) - (a.stars || 0));
 
     return blueprints;
   }

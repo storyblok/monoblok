@@ -59,4 +59,5 @@ export interface DynamicTemplate {
   location: string;
   description?: string | null;
   updated_at?: string;
+  stars?: number;
 }

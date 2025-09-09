@@ -90,7 +90,8 @@ migrationsCommand.command('run [componentName]')
 
       const multiBar = new MultiBar({
         clearOnComplete: false,
-        format: `${chalk.bold(' {title} ')} ${chalk.hex(colorPalette.PRIMARY)('[{bar}]')} {percentage}% | {value}/{total} processed`,
+        format: `${chalk.bold(' {title} ')} ${chalk.hex(colorPalette.PRIMARY)('[{bar}]')} {percentage}% | {eta_formatted} | {value}/{total} processed`,
+        etaBuffer: 60,
       }, Presets.rect);
 
       const storiesProgress = multiBar.create(0, 0, {
@@ -115,7 +116,9 @@ migrationsCommand.command('run [componentName]')
           storiesProgress.setTotal(total);
           migrationsProgress.setTotal(total);
         },
-        onProgress: () => storiesProgress.increment(),
+        onProgress: () => {
+          storiesProgress.increment();
+        },
       });
 
       const migrationStream = new MigrationStream({
@@ -126,7 +129,9 @@ migrationsCommand.command('run [componentName]')
         onTotal: (total) => {
           updateProgress.setTotal(total);
         },
-        onProgress: () => migrationsProgress.increment(),
+        onProgress: () => {
+          migrationsProgress.increment();
+        },
       });
 
       const updateStream = new UpdateStream({
@@ -134,7 +139,9 @@ migrationsCommand.command('run [componentName]')
         publish,
         dryRun,
         batchSize: 100,
-        onProgress: () => updateProgress.increment(),
+        onProgress: () => {
+          updateProgress.increment();
+        },
       });
 
       return new Promise<void>((resolve, reject) => {

@@ -9,5 +9,6 @@ defineProps({ blok: Object });
       :key="inblok._uid"
       :blok="inblok"
     />
+    <slot name="footer"></slot>
   </div>
 </template>

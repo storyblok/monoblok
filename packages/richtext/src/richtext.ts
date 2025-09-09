@@ -1,6 +1,6 @@
 import { optimizeImage } from './images-optimization';
 import { BlockTypes, LinkTypes, MarkTypes, TextTypes } from './types';
-import type { MarkNode, StoryblokRichTextContext, StoryblokRichTextNode, StoryblokRichTextNodeResolver, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
+import type { BlockAttributes, MarkNode, StoryblokRichTextContext, StoryblokRichTextNode, StoryblokRichTextNodeResolver, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
 import { attrsToString, attrsToStyle, cleanObject, escapeHtml, SELF_CLOSING_TAGS } from './utils';
 
 /**
@@ -8,11 +8,11 @@ import { attrsToString, attrsToStyle, cleanObject, escapeHtml, SELF_CLOSING_TAGS
  *
  * @template T
  * @param {string} tag
- * @param {Record<string, any>} [attrs]
+ * @param {BlockAttributes} [attrs]
  * @param {T} children
  * @return {*}  {T}
  */
-function defaultRenderFn<T = string | null>(tag: string, attrs: Record<string, any> = {}, children?: T): T {
+function defaultRenderFn<T = string | null>(tag: string, attrs: BlockAttributes = {}, children?: T): T {
   const attrsString = attrsToString(attrs);
   const tagString = attrsString ? `${tag} ${attrsString}` : tag;
   const content = Array.isArray(children) ? children.join('') : children || '';
@@ -46,9 +46,30 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   } = options;
   const isExternalRenderFn = renderFn !== defaultRenderFn;
 
+  /**
+   * Processes attributes and styles for a node
+   * @param attrs The node attributes
+   * @returns Processed attributes with styles
+   */
+  const processAttributes = (attrs: BlockAttributes = {}): BlockAttributes => {
+    const { textAlign, class: className, id: idName, ...rest } = attrs;
+    const styles: string[] = [];
+
+    if (textAlign) {
+      styles.push(`text-align: ${textAlign};`);
+    }
+
+    return cleanObject({
+      ...rest,
+      class: className,
+      id: idName,
+      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+    });
+  };
+
   const nodeResolver = (tag: string): StoryblokRichTextNodeResolver<T> =>
     (node: StoryblokRichTextNode<T>, context): T => {
-      const attributes = node.attrs || {};
+      const attributes = processAttributes(node.attrs);
       return context.render(tag, attributes, node.children || null as any) as T;
     };
 
@@ -77,7 +98,8 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
 
   const headingResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
     const { level, ...rest } = node.attrs || {};
-    return context.render(`h${level}`, rest, node.children) as T;
+    const attributes = processAttributes(rest);
+    return context.render(`h${level}`, attributes, node.children) as T;
   };
 
   const emojiResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context) => {
@@ -179,34 +201,18 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   };
 
   const tableResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const attributes: Record<string, unknown> = {};
-
-    // Wrap children in tbody to ensure proper table structure
-    const tableBody = context.render('tbody', {}, node.children) as T;
-    return context.render('table', attributes, tableBody) as T;
+    const attributes = processAttributes(node.attrs);
+    const children = node.children || null as any;
+    return context.render('table', attributes, context.render('tbody', {}, children)) as T;
   };
 
   const tableRowResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const attributes: Record<string, unknown> = {};
-
+    const attributes = processAttributes(node.attrs);
     return context.render('tr', attributes, node.children) as T;
   };
 
   const tableCellResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const { colspan, rowspan, colwidth, backgroundColor, ...rest } = node.attrs || {};
-    const attributes = {
-      ...rest,
-    };
-
-    if (colspan > 1) {
-      attributes.colspan = colspan;
-    }
-
-    if (rowspan > 1) {
-      attributes.rowspan = rowspan;
-    }
-
-    // Handle both width and background color in style attribute
+    const { colspan, rowspan, colwidth, backgroundColor, textAlign, ...rest } = node.attrs || {};
     const styles: string[] = [];
 
     if (colwidth) {
@@ -217,28 +223,22 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       styles.push(`background-color: ${backgroundColor};`);
     }
 
-    if (styles.length > 0) {
-      attributes.style = styles.join(' ');
+    if (textAlign) {
+      styles.push(`text-align: ${textAlign};`);
     }
+
+    const attributes = {
+      ...rest,
+      ...(colspan > 1 ? { colspan } : {}),
+      ...(rowspan > 1 ? { rowspan } : {}),
+      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+    };
 
     return context.render('td', cleanObject(attributes), node.children) as T;
   };
 
   const tableHeaderResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const { colspan, rowspan, colwidth, backgroundColor, ...rest } = node.attrs || {};
-    const attributes = {
-      ...rest,
-    };
-
-    if (colspan > 1) {
-      attributes.colspan = colspan;
-    }
-
-    if (rowspan > 1) {
-      attributes.rowspan = rowspan;
-    }
-
-    // Handle both width and background color in style attribute
+    const { colspan, rowspan, colwidth, backgroundColor, textAlign, ...rest } = node.attrs || {};
     const styles: string[] = [];
 
     if (colwidth) {
@@ -249,9 +249,16 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       styles.push(`background-color: ${backgroundColor};`);
     }
 
-    if (styles.length > 0) {
-      attributes.style = styles.join(' ');
+    if (textAlign) {
+      styles.push(`text-align: ${textAlign};`);
     }
+
+    const attributes = {
+      ...rest,
+      ...(colspan > 1 ? { colspan } : {}),
+      ...(rowspan > 1 ? { rowspan } : {}),
+      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+    };
 
     return context.render('th', cleanObject(attributes), node.children) as T;
   };
@@ -297,7 +304,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   ]);
 
   const createRenderContext = () => {
-    const contextRenderFn = (tag: string, attrs: Record<string, any> = {}, children?: T): T => {
+    const contextRenderFn = (tag: string, attrs: BlockAttributes = {}, children?: T): T => {
       if (keyedResolvers && tag) {
         const currentCount = keyCounters.get(tag) || 0;
         keyCounters.set(tag, currentCount + 1);

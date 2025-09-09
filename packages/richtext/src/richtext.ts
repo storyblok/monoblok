@@ -52,9 +52,15 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
    * @returns Processed attributes with styles
    */
   const processAttributes = (attrs: BlockAttributes = {}): BlockAttributes => {
-    const { textAlign, class: className, id: idName, ...rest } = attrs;
+    const { textAlign, class: className, id: idName, style: existingStyle, ...rest } = attrs;
     const styles: string[] = [];
 
+    // Add existing styles if any
+    if (existingStyle) {
+      styles.push(existingStyle.endsWith(';') ? existingStyle : `${existingStyle};`);
+    }
+
+    // Add text alignment if specified
     if (textAlign) {
       styles.push(`text-align: ${textAlign};`);
     }

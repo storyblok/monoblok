@@ -1349,6 +1349,26 @@ describe('text Alignment', () => {
     expect(html).toBe('<p class="custom-class" id="custom-id" style="text-align: right;">Styled text</p>');
   });
 
+  it('should preserve existing style attributes when adding text alignment', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'right',
+        style: 'color: red;',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Colored and aligned text',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p style="color: red; text-align: right;">Colored and aligned text</p>');
+  });
+
   it('should handle text alignment in headings', async () => {
     const { render } = richTextResolver();
     const node = {

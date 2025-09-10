@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/nuxt",
   "type": "module",
-  "version": "8.0.8",
+  "version": "8.1.0",
   "packageManager": "pnpm@10.2.0",
   "description": "Storyblok Nuxt module",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",

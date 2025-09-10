@@ -3,7 +3,9 @@ import { RateLimit } from 'async-sema';
 
 let instance: ManagementApiClient | null = null;
 let storedConfig: ManagementApiClientConfig | null = null;
-const lim = RateLimit(6);
+const lim = RateLimit(6, {
+  uniformDistribution: true,
+});
 
 function configsAreEqual(config1: ManagementApiClientConfig, config2: ManagementApiClientConfig): boolean {
   return JSON.stringify(config1) === JSON.stringify(config2);

@@ -247,7 +247,8 @@ export const createCommand = program
   cd ${finalProjectPath}
   npm install
   npm run dev
-`);
+        `);
+      konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
     }
     catch (error) {
       spinnerSpace.failed();

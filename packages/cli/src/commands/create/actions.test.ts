@@ -353,6 +353,7 @@ describe('fetchBlueprintRepositories', () => {
         clone_url: 'https://github.com/storyblok/blueprint-core-vue.git',
         description: 'A Vue starter',
         updated_at: '2024-01-01T00:00:00Z',
+        stargazers_count: 50,
       },
       {
         name: 'blueprint-core-react',
@@ -360,6 +361,7 @@ describe('fetchBlueprintRepositories', () => {
         clone_url: 'https://github.com/storyblok/blueprint-core-react.git',
         description: 'A React starter',
         updated_at: '2024-01-02T00:00:00Z',
+        stargazers_count: 75,
       },
       // Should be filtered out - not a blueprint
       {
@@ -395,7 +397,7 @@ describe('fetchBlueprintRepositories', () => {
 
     // Only blueprint-core-* repos should be mapped and sorted alphabetically
     expect(blueprints).toHaveLength(2);
-    expect(blueprints?.[0]?.name).toBe('React'); // Sorted alphabetically
+    expect(blueprints?.[0]?.name).toBe('React');
     expect(blueprints?.[1]?.name).toBe('Vue');
 
     // Verify blueprint structure
@@ -406,6 +408,7 @@ describe('fetchBlueprintRepositories', () => {
       location: 'https://localhost:3000/',
       description: 'A React starter',
       updated_at: '2024-01-02T00:00:00Z',
+      stars: 75,
     });
   });
 

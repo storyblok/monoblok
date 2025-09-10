@@ -5,13 +5,14 @@ import { CommandError, handleError, isVitest, konsola, requireAuthentication } f
 import { session } from '../../../session';
 import type { MigrationsRunOptions } from './constants';
 import { migrationsCommand } from '../command';
-import { fetchAllStoriesByComponent, fetchStory, updateStory } from '../../stories/actions';
+import { createStoriesStream } from './streams/stories-stream';
 import { readMigrationFiles } from './actions';
-import { handleMigrations, summarizeMigrationResults } from './operations';
-import type { Story, StoryContent } from '../../stories/constants';
-import chalk from 'chalk';
-import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../stories/utils';
+import { MigrationStream } from './streams/migrations-transform';
+import { UpdateStream } from './streams/update-stream';
 import { mapiClient } from '../../../api';
+import { MultiBar, Presets } from 'cli-progress';
+import { pipeline } from 'node:stream';
+import chalk from 'chalk';
 
 const program = getProgram();
 
@@ -86,171 +87,88 @@ migrationsCommand.command('run [componentName]')
 
       // Spinner doesn't have update method, so we'll stop and start a new one
       spinner.succeed(`Found ${filteredMigrations.length} migration files.`);
-      const storiesSpinner = new Spinner({ verbose: !isVitest }).start(`Fetching stories...`);
 
-      // Fetch stories using the base component name
-      const stories = await fetchAllStoriesByComponent(
-        {
-          spaceId: space,
-        },
-        // Filter options
-        {
+      const multiBar = new MultiBar({
+        clearOnComplete: false,
+        format: `${chalk.bold(' {title} ')} ${chalk.hex(colorPalette.PRIMARY)('[{bar}]')} {percentage}% | {eta_formatted} | {value}/{total} processed`,
+        etaBuffer: 60,
+      }, Presets.rect);
+
+      const storiesProgress = multiBar.create(0, 0, {
+        title: 'Fetching Stories...'.padEnd(19),
+      });
+      const migrationsProgress = multiBar.create(0, 0, {
+        title: 'Applying Migrations'.padEnd(19),
+      });
+      const updateProgress = multiBar.create(0, 0, {
+        title: 'Updating Stories...'.padEnd(19),
+      });
+
+      const storiesStream = await createStoriesStream({
+        spaceId: space,
+        params: {
           componentName,
           query,
           starts_with: startsWith,
         },
-      );
+        batchSize: 100,
+        onTotal: (total) => {
+          storiesProgress.setTotal(total);
+          migrationsProgress.setTotal(total);
+        },
+        onProgress: () => {
+          storiesProgress.increment();
+        },
+      });
 
-      if (!stories || stories.length === 0) {
-        storiesSpinner.failed(`No stories found${componentName ? ` for component "${componentName}"` : ''}.`);
-        return;
-      }
-
-      // Fetch full content for each story
-      const storiesWithContent = await Promise.all(stories.map(async (story) => {
-        const fullStory = await fetchStory(space, story.id.toString());
-        return {
-          ...story,
-          content: fullStory?.content,
-        };
-      }));
-
-      // Filter out stories with no content
-      const validStories = storiesWithContent.filter(story => story.content);
-
-      // Build filter message parts
-      const filterParts = [];
-      if (componentName) {
-        filterParts.push(`component "${componentName}"`);
-      }
-      if (startsWith) {
-        filterParts.push(chalk.hex(colorPalette.PRIMARY)(`starts_with=${startsWith}`));
-      }
-      if (query) {
-        filterParts.push(chalk.hex(colorPalette.PRIMARY)(`filter_query=${query}`));
-      }
-
-      // Create filter message
-      const filterMessage = filterParts.length > 0
-        ? ` (filtered by ${filterParts.join(' and ')})`
-        : '';
-
-      // Spinner doesn't have update method, so we'll stop and start a new one
-      storiesSpinner.succeed(`Fetched ${validStories.length} ${validStories.length === 1 ? 'story' : 'stories'} with related content${filterMessage}.`);
-
-      // Process migrations using the new operations module
-      const processingSpinner = new Spinner({ verbose: !isVitest }).start(`Processing migrations...`);
-      processingSpinner.succeed(`Starting to process ${validStories.length} stories with ${filteredMigrations.length} migrations...`);
-
-      const migrationResults = await handleMigrations({
+      const migrationStream = new MigrationStream({
         migrationFiles: filteredMigrations,
-        stories: validStories,
         space,
         path,
         componentName,
-        password,
-        region,
+        onTotal: (total) => {
+          updateProgress.setTotal(total);
+        },
+        onProgress: () => {
+          migrationsProgress.increment();
+        },
       });
 
-      // Summarize the results
-      summarizeMigrationResults(migrationResults);
+      const updateStream = new UpdateStream({
+        space,
+        publish,
+        dryRun,
+        batchSize: 100,
+        onProgress: () => {
+          updateProgress.increment();
+        },
+      });
 
-      // Update the stories in Storyblok with the modified content
-      if (migrationResults.successful.length > 0 && !dryRun) {
-        const updateSpinner = new Spinner({ verbose: !isVitest }).start(`Updating stories in Storyblok...`);
-
-        // Group successful migrations by story ID to get the latest content for each story
-        const storiesByIdMap = new Map<number, { id: number; name: string; content: StoryContent; published?: boolean; published_at?: string; unpublished_changes?: boolean }>();
-
-        // Get the latest content for each story (in case multiple migrations were applied)
-        migrationResults.successful.forEach((result) => {
-          // Find the original story to get its published status
-          const originalStory = validStories.find(s => s.id === result.storyId);
-          storiesByIdMap.set(result.storyId, {
-            id: result.storyId,
-            name: result.name || '',
-            content: result.content,
-            published: originalStory?.published,
-            published_at: originalStory?.published_at || undefined,
-            unpublished_changes: originalStory?.unpublished_changes,
-          });
-        });
-
-        const storiesToUpdate = Array.from(storiesByIdMap.values());
-
-        if (storiesToUpdate.length === 0) {
-          updateSpinner.succeed(`No stories need to be updated in Storyblok.`);
-        }
-        else {
-          updateSpinner.succeed(`Found ${storiesToUpdate.length} stories to update.`);
-
-          // Update each story
-          let successCount = 0;
-          let failCount = 0;
-
-          for (const story of storiesToUpdate) {
-            const storySpinner = new Spinner({ verbose: !isVitest }).start(`Updating story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())}...`);
-            const payload: {
-              story: Story;
-              force_update?: string;
-              publish?: number;
-            } = {
-              story: {
-                content: story.content,
-                id: story.id,
-                name: story.name,
-              },
-              force_update: '1',
-            };
-
-            // If the story is published and has no unpublished changes, publish it
-            if (publish === 'published' && isStoryPublishedWithoutChanges(story)) {
-              payload.publish = 1;
+      return new Promise<void>((resolve, reject) => {
+        pipeline(
+          storiesStream,
+          migrationStream,
+          updateStream,
+          (err) => {
+            if (err) {
+              reject(err);
+              return;
             }
 
-            // If the story is published and has unpublished changes, publish it
-            if (publish === 'published-with-changes' && isStoryWithUnpublishedChanges(story)) {
-              payload.publish = 1;
-            }
+            multiBar.stop();
 
-            // If the story is not published, publish it
-            if (publish === 'all') {
-              payload.publish = 1;
-            }
+            // Show migration summary
+            const migrationSummary = migrationStream.getSummary();
+            konsola.info(migrationSummary);
 
-            try {
-              const updatedStory = await updateStory(space, story.id, payload);
+            // Show update summary
+            const updateSummary = updateStream.getSummary();
+            konsola.info(updateSummary);
 
-              if (updatedStory) {
-                successCount++;
-                storySpinner.succeed(`Updated story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())} - Completed in ${storySpinner.elapsedTime.toFixed(2)}ms`);
-              }
-              else {
-                failCount++;
-                storySpinner.failed(`Failed to update story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())}`);
-              }
-            }
-            catch (error) {
-              failCount++;
-              storySpinner.failed(`Failed to update story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.id.toString())}: ${(error as Error).message}`);
-            }
-          }
-
-          // Show summary
-          if (failCount > 0) {
-            konsola.warn(`Updated ${successCount} stories successfully, ${failCount} failed.`);
-          }
-          else if (successCount > 0) {
-            konsola.ok(`Successfully updated ${successCount} stories in Storyblok.`, true);
-          }
-        }
-      }
-      else if (dryRun) {
-        konsola.info(`Dry run mode: No stories were updated in Storyblok.`);
-      }
-      else if (migrationResults.successful.length === 0) {
-        konsola.info(`No stories were modified by the migrations.`);
-      }
+            resolve();
+          },
+        );
+      });
     }
     catch (error) {
       handleError(error as Error, verbose);

@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.0
 info:
   title: Storyblok Stories API
   version: 1.0.0
@@ -126,6 +126,13 @@ paths:
           schema:
             type: boolean
           description: true for entries that are currently published; false for those that are currently not published or unpublished
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['published', 'draft']
+            default: 'published'
         - name: by_slugs
           in: query
           required: false

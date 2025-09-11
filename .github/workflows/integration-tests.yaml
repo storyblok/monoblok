@@ -1,0 +1,56 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "!**"
+    branches:
+      - "**"
+  pull_request:
+
+env:
+  HUSKY: 0
+  NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
+
+jobs:
+  prepare-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker cache
+        id: cache-docker-image
+        uses: actions/cache@v4
+        with:
+          path: /tmp/specmatic.tar
+          key: ${{ runner.os }}-docker-specmatic-2.23.4
+
+      - name: Pull and save Docker image to cache
+        if: steps.cache-docker-image.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss. Pulling image and saving to cache..."
+          docker pull specmatic/specmatic:2.23.4
+          docker save specmatic/specmatic:2.23.4 --output /tmp/specmatic.tar
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: [prepare-docker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Restore Docker image from cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/specmatic.tar
+          key: ${{ runner.os }}-docker-specmatic-2.23.4
+
+      - name: Load Docker image
+        run: docker load --input /tmp/specmatic.tar
+
+      # TODO only run affected
+      - name: Build
+        run: pnpm nx run-many --target=build --parallel=3 -p="tag:npm:public"
+
+      - name: Run integration tests
+        run: pnpm nx test:integration storyblok-js-client

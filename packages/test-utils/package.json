@@ -1,0 +1,31 @@
+{
+  "name": "@storyblok/test-utils",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "NODE_ENV=development node src/server.js",
+    "test": "vitest run",
+    "mock": "docker run --rm -p 9000:9000 -v \"${PWD}/../openapi/dist/mapi:/usr/src/app/mapi\" -v \"${PWD}/specmatic.yaml:/usr/src/app/specmatic.yaml\" specmatic/specmatic stub"
+  },
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^14.2.0",
+    "@storyblok/openapi": "workspace:*",
+    "ajv": "^8.17.1",
+    "fastify": "^5.6.0",
+    "glob": "^10.4.5",
+    "js-yaml": "^4.1.0",
+    "openapi-backend": "^5.15.0",
+    "openapi-sampler": "^1.6.1"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/lodash.merge": "^4.6.9",
+    "@types/node": "^24.3.1",
+    "lodash.merge": "^4.6.2",
+    "vitest": "^3.1.3"
+  }
+}

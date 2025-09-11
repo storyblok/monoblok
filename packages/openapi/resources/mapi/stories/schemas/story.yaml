@@ -69,6 +69,7 @@
           type: string
           format: date-time
           description: Latest publishing date yyyy-MM-dd'T'HH:mm:ssZ
+          nullable: true
         uuid:
           type: string
           format: uuid
@@ -93,6 +94,9 @@
         full_slug:
           type: string
           description: The full slug of the story, combining the parent folder(s) and the designated story slug
+        default_full_slug:
+          type: string
+          nullable: true
         default_root:
           type: string
           nullable: true
@@ -159,6 +163,7 @@
               translated_slugs:
                 type: array
                 description: Array of translated slug objects (if the app Translatable Slugs is installed)
+                nullable: true
                 items:
                   type: object
                   properties:
@@ -181,6 +186,7 @@
           type: string
           format: date-time
           description: First publishing date yyyy-MM-dd'T'HH:mm:ssZ
+          nullable: true
         last_author:
           type: object
           description: Last author
@@ -263,6 +269,7 @@
         release_id:
           type: integer
           description: ID of the current release (can be requested with the from_release API parameter)
+          nullable: true
         scheduled_dates:
           type: string
           format: date-time
@@ -272,3 +279,6 @@
           description: Array of user IDs who have added the story in their favorites
           items:
             type: integer
+        "lang":
+          type: string
+          default: "default"

@@ -24,3 +24,7 @@ additionalProperties:
       items:
         oneOf:
           - $ref: '#'
+    - type: object
+      items:
+        oneOf:
+          - $ref: '#'

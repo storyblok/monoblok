@@ -1,17 +1,18 @@
 import {
   BlockTypes,
-  type MarkNode,
+
   MarkTypes,
-  type StoryblokRichTextDocumentNode,
+
   TextTypes,
 } from './types';
+import type { MarkNode, StoryblokRichTextDocumentNode } from './types';
 import {
-  type HTMLElement as NodeHTMLParserNodeElement,
-  type TextNode as NodeHTMLParserNodeText,
+
   NodeType,
   parse,
   valid,
 } from 'node-html-parser';
+import type { HTMLElement as NodeHTMLParserNodeElement, TextNode as NodeHTMLParserNodeText } from 'node-html-parser';
 import { BLOCK_LEVEL_TAGS, SELF_CLOSING_TAGS } from './utils';
 
 export interface StyleOption {

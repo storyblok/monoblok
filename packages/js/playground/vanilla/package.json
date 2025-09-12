@@ -8,9 +8,9 @@
   },
   "devDependencies": {
     "@storyblok/js": "workspace:*",
-    "@vitejs/plugin-basic-ssl": "^1.1.0",
-    "vite": "^6.0.1",
-    "vite-plugin-qrcode": "^0.2.3"
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "vite": "^6.3.6",
+    "vite-plugin-qrcode": "^0.2.4"
   },
   "nx": {
     "projectType": "application"

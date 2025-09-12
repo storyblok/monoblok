@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { vol } from 'memfs';
-import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MockedFunction } from 'vitest';
 import open from 'open';
 import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';

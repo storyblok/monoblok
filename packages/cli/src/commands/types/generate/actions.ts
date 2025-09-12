@@ -1,4 +1,5 @@
-import { compile, type JSONSchema } from 'json-schema-to-typescript';
+import { compile } from 'json-schema-to-typescript';
+import type { JSONSchema } from 'json-schema-to-typescript';
 import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase, toPascalCase } from '../../../utils';
 import type { GenerateTypesOptions } from './constants';

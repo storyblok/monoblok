@@ -7,11 +7,11 @@
   "private": true,
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.1.2",
-    "@tsconfig/svelte": "^5.0.4",
+    "@tsconfig/svelte": "^5.0.5",
     "pathe": "^1.1.2",
-    "svelte": "^4.2.19",
-    "vite": "^5.4.11",
-    "vite-plugin-qrcode": "^0.2.3"
+    "svelte": "^4.2.20",
+    "vite": "^5.4.20",
+    "vite-plugin-qrcode": "^0.2.4"
   },
   "dependencies": {
     "storyblok-js-client": "file:.."

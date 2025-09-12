@@ -2,10 +2,12 @@
 import {
   MarkTypes,
   StoryblokRichText,
-  type StoryblokRichTextNode,
+
   useStoryblok,
 } from '@storyblok/vue';
-import { h, type VNode } from 'vue';
+import type { StoryblokRichTextNode } from '@storyblok/vue';
+import { h } from 'vue';
+import type { VNode } from 'vue';
 import { RouterLink } from 'vue-router';
 
 const story = await useStoryblok('vue/test-richtext', { version: 'draft' });

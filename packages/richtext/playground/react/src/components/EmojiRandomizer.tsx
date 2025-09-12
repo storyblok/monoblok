@@ -1,6 +1,7 @@
 'use client';
 
-import React, { type FC, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { FC } from 'react';
 import type { SbBlokData } from '@storyblok/react';
 
 const useIsClient = () => {

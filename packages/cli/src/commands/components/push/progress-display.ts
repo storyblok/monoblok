@@ -1,12 +1,12 @@
 import chalk from 'chalk';
 import { konsola } from '../../../utils/konsola';
 
-export type ProcessingEvent =
-  | { type: 'start'; total: number }
-  | { type: 'success'; name: string; resourceType: string; color: string; elapsedMs?: number }
-  | { type: 'skip'; name: string; resourceType: string; elapsedMs?: number }
-  | { type: 'error'; name: string; resourceType: string; error: unknown; elapsedMs?: number }
-  | { type: 'complete'; summary: { updated: number; unchanged: number; failed: number } };
+export type ProcessingEvent
+  = | { type: 'start'; total: number }
+    | { type: 'success'; name: string; resourceType: string; color: string; elapsedMs?: number }
+    | { type: 'skip'; name: string; resourceType: string; elapsedMs?: number }
+    | { type: 'error'; name: string; resourceType: string; error: unknown; elapsedMs?: number }
+    | { type: 'complete'; summary: { updated: number; unchanged: number; failed: number } };
 
 export class ProgressDisplay {
   public total = 0;

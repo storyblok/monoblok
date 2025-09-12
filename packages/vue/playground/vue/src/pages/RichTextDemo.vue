@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { h, type VNode } from 'vue';
+import { h } from 'vue';
+import type { VNode } from 'vue';
 import {
   MarkTypes,
   StoryblokRichText,
-  type StoryblokRichTextNode,
+
   useStoryblok,
 } from '@storyblok/vue';
+import type { StoryblokRichTextNode } from '@storyblok/vue';
 import { RouterLink } from 'vue-router';
 
 const story = await useStoryblok(

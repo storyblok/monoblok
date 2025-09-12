@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { richTextResolver } from './richtext';
 import { createTextVNode, h } from 'vue';
 import type { VNode } from 'vue';
-import { BlockTypes, MarkTypes, type StoryblokRichTextNode, type StoryblokRichTextNodeResolver } from './types';
+import { BlockTypes, MarkTypes } from './types';
+import type { StoryblokRichTextNode, StoryblokRichTextNodeResolver } from './types';
 
 describe('richtext', () => {
   describe('document', () => {

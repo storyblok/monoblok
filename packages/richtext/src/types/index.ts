@@ -91,18 +91,18 @@ export interface LinkNode<T = string> extends StoryblokRichTextNode<T> {
 }
 
 export interface MarkNode<T = string> extends StoryblokRichTextNode<T> {
-  type: MarkTypes.BOLD |
-    MarkTypes.ITALIC |
-    MarkTypes.UNDERLINE |
-    MarkTypes.STRIKE |
-    MarkTypes.CODE |
-    MarkTypes.LINK |
-    MarkTypes.ANCHOR |
-    MarkTypes.STYLED |
-    MarkTypes.SUPERSCRIPT |
-    MarkTypes.SUBSCRIPT |
-    MarkTypes.TEXT_STYLE |
-    MarkTypes.HIGHLIGHT;
+  type: MarkTypes.BOLD
+    | MarkTypes.ITALIC
+    | MarkTypes.UNDERLINE
+    | MarkTypes.STRIKE
+    | MarkTypes.CODE
+    | MarkTypes.LINK
+    | MarkTypes.ANCHOR
+    | MarkTypes.STYLED
+    | MarkTypes.SUPERSCRIPT
+    | MarkTypes.SUBSCRIPT
+    | MarkTypes.TEXT_STYLE
+    | MarkTypes.HIGHLIGHT;
   attrs?: BlockAttributes;
 }
 

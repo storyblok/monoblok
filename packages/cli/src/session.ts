@@ -1,5 +1,6 @@
 // session.ts
-import { type RegionCode, regionsDomain } from './constants';
+import { regionsDomain } from './constants';
+import type { RegionCode } from './constants';
 import { addCredentials, getCredentials } from './creds';
 
 export interface SessionState {

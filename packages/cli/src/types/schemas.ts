@@ -1,19 +1,19 @@
 import type { StoryblokPropertyType } from './storyblok';
 
-export type ComponentPropertySchemaType =
-  | StoryblokPropertyType
-  | 'array'
-  | 'bloks'
-  | 'boolean'
-  | 'custom'
-  | 'datetime'
-  | 'image'
-  | 'markdown'
-  | 'number'
-  | 'option'
-  | 'options'
-  | 'text'
-  | 'textarea';
+export type ComponentPropertySchemaType
+  = | StoryblokPropertyType
+    | 'array'
+    | 'bloks'
+    | 'boolean'
+    | 'custom'
+    | 'datetime'
+    | 'image'
+    | 'markdown'
+    | 'number'
+    | 'option'
+    | 'options'
+    | 'text'
+    | 'textarea';
 
 export interface ComponentPropertySchemaOption {
   _uid: string;

@@ -6,6 +6,7 @@ import { readPackageUp } from 'read-package-up';
 
 let packageJson: NormalizedPackageJson;
 // Read package.json for metadata
+// eslint-disable-next-line antfu/no-top-level-await
 const result = await readPackageUp({
   cwd: __dirname,
 });

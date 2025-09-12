@@ -736,9 +736,6 @@ importers:
       '@storyblok/react':
         specifier: workspace:*
         version: file:packages/react(next@13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    dependenciesMeta:
-      '@storyblok/react':
-        injected: true
     devDependencies:
       '@types/node':
         specifier: ^20.17.10
@@ -758,6 +755,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.8.3
+    dependenciesMeta:
+      '@storyblok/react':
+        injected: true
 
   packages/react/playground/next13-app-router:
     dependencies:

@@ -74,6 +74,7 @@ export class Storyblok {
   private accessToken: string;
   private cache: ISbCache;
   private resolveCounter: number;
+  private enriched: WeakSet<ISbStoriesParams | ISbStoriesParams[]>;
   public relations: RelationsType;
   public links: LinksType;
   public version: StoryblokContentVersionKeys | undefined;
@@ -153,6 +154,7 @@ export class Storyblok {
     this.links = {} as LinksType;
     this.cache = config.cache || { clear: 'manual' };
     this.resolveCounter = 0;
+    this.enriched = new WeakSet();
     this.resolveNestedRelations = config.resolveNestedRelations || true;
     this.stringifiedStoriesCache = {} as Record<string, string>;
     this.version = config.version || StoryblokContentVersion.PUBLISHED; // the default version is published as per API documentation
@@ -343,10 +345,6 @@ export class Storyblok {
     }
   }
 
-  private _cleanCopy(value: LinksType): JSON {
-    return JSON.parse(JSON.stringify(value));
-  }
-
   private _insertLinks(
     jtree: ISbStoriesParams,
     treeItem: keyof ISbStoriesParams,
@@ -361,7 +359,7 @@ export class Storyblok {
       && typeof node.id === 'string'
       && this.links[resolveId][node.id]
     ) {
-      node.story = this._cleanCopy(this.links[resolveId][node.id]);
+      node.story = this.links[resolveId][node.id];
     }
     else if (
       node
@@ -369,7 +367,7 @@ export class Storyblok {
       && typeof node.uuid === 'string'
       && this.links[resolveId][node.uuid]
     ) {
-      node.story = this._cleanCopy(this.links[resolveId][node.uuid]);
+      node.story = this.links[resolveId][node.uuid];
     }
   }
 
@@ -467,24 +465,23 @@ export class Storyblok {
     resolveId: string,
   ): void {
     // Internal recursive function to process each node in the tree
-    const enrich = (jtree: ISbStoriesParams | any, path = '') => {
-      // Skip processing if node is null/undefined or marked to stop resolving
-      if (!jtree || jtree._stopResolving) {
+    const enrich = (jtree: ISbStoriesParams | any) => {
+      // Skip processing if node is null/undefined or already enriched
+      if (!jtree || this.enriched.has(jtree)) {
         return;
       }
 
       // Handle arrays by recursively processing each element
       // Maintains path context by adding array indices
       if (Array.isArray(jtree)) {
-        jtree.forEach((item, index) => enrich(item, `${path}[${index}]`));
+        jtree.forEach(item => enrich(item));
+        this.enriched.add(jtree);
       }
       // Handle object nodes
       else if (typeof jtree === 'object') {
+        this.enriched.add(jtree);
         // Process each property in the object
         for (const key in jtree) {
-          // Build the current path for the context
-          const newPath = path ? `${path}.${key}` : key;
-
           // If this is a component (has component and _uid) or a link,
           // attempt to resolve its relations and links
           if ((jtree.component && jtree._uid) || jtree.type === 'link') {
@@ -494,7 +491,7 @@ export class Storyblok {
 
           // Continue traversing deeper into the tree
           // This ensures we process nested components and their relations
-          enrich(jtree[key], newPath);
+          enrich(jtree[key]);
         }
       }
     };
@@ -541,10 +538,7 @@ export class Storyblok {
     }
 
     links.forEach((story: ISbStoryData | any) => {
-      this.links[resolveId][story.uuid] = {
-        ...story,
-        ...{ _stopResolving: true },
-      };
+      this.links[resolveId][story.uuid] = story;
     });
   }
 
@@ -592,10 +586,7 @@ export class Storyblok {
 
     if (relations && relations.length > 0) {
       relations.forEach((story: ISbStoryData) => {
-        this.relations[resolveId][story.uuid] = {
-          ...story,
-          ...{ _stopResolving: true },
-        };
+        this.relations[resolveId][story.uuid] = story;
       });
     }
   }

@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/astro",
   "type": "module",
-  "version": "7.2.8",
+  "version": "7.3.0",
   "private": false,
   "packageManager": "pnpm@9.13.2",
   "description": "Official Astro integration for the Storyblok Headless CMS",

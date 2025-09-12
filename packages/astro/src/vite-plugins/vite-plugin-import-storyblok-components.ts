@@ -116,7 +116,7 @@ function generateModuleCode(
     // Manual imports (overwrite auto if same key exists)
     ${manualImports
       .map((imp) => {
-        const varName = imp.match(/import (.*?) from/)?.[1];
+        const varName = imp.match(/import\s+(\w+)\s+from/)?.[1];
         return `storyblokComponents['${varName}'] = ${varName};`;
       })
       .join('\n')}

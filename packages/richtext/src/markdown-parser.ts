@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
-import { BlockTypes, MarkTypes, type StoryblokRichTextDocumentNode, TextTypes } from './types';
+import { BlockTypes, MarkTypes, TextTypes } from './types';
+import type { StoryblokRichTextDocumentNode } from './types';
 
 /**
  * markdown-it Token interface definition

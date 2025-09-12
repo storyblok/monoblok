@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, type VNode, watch } from 'vue';
+import { ref, watch } from 'vue';
+import type { VNode } from 'vue';
 import type {
   StoryblokRichTextNode,
   StoryblokRichTextResolvers,

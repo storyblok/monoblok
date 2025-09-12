@@ -1,5 +1,6 @@
 import { vol } from 'memfs';
-import { readRollbackFile, type RollbackData, saveRollbackData } from './actions';
+import { readRollbackFile, saveRollbackData } from './actions';
+import type { RollbackData } from './actions';
 import { CommandError } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';
 

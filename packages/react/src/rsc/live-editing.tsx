@@ -1,6 +1,7 @@
 'use client';
 
-import { type ISbStoryData, loadStoryblokBridge, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
+import { loadStoryblokBridge, registerStoryblokBridge } from '@storyblok/js';
+import type { ISbStoryData, StoryblokBridgeConfigV2 } from '@storyblok/js';
 import { startTransition, useEffect } from 'react';
 import { isBridgeLoaded, isVisualEditor } from '../utils';
 

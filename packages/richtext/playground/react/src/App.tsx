@@ -1,4 +1,5 @@
-import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import { BlockTypes, richTextResolver } from '@storyblok/richtext';
+import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
 import { StoryblokComponent, useStoryblok } from '@storyblok/react';
 import './App.css';
 import type { ReactElement } from 'react';

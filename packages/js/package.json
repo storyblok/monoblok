@@ -50,22 +50,22 @@
   },
   "devDependencies": {
     "@storyblok/eslint-config": "workspace:*",
-    "@tsconfig/recommended": "^1.0.8",
-    "@types/node": "^22.15.18",
-    "@vitest/ui": "^3.1.3",
-    "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
+    "@tsconfig/recommended": "^1.0.10",
+    "@types/node": "^22.18.1",
+    "@vitest/ui": "^3.2.4",
+    "cypress": "^14.5.4",
+    "eslint": "^9.35.0",
     "eslint-plugin-cypress": "^4.3.0",
-    "jsdom": "^26.0.0",
+    "jsdom": "^26.1.0",
     "kolorist": "^1.8.0",
     "pathe": "^2.0.3",
-    "start-server-and-test": "^2.0.11",
+    "start-server-and-test": "^2.1.0",
     "typescript": "5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-banner": "^0.8.0",
-    "vite-plugin-dts": "^4.5.3",
+    "vite": "^6.3.6",
+    "vite-plugin-banner": "^0.8.1",
+    "vite-plugin-dts": "^4.5.4",
     "vite-plugin-qrcode": "^0.2.4",
-    "vitest": "^3.1.3"
+    "vitest": "^3.2.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

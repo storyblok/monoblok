@@ -82,7 +82,6 @@ export type {
   AsyncFn,
   ISbAlternateObject, // previously AlternateObject
   ISbCache, // previously StoryblokCache
-  ISbComponentType as StoryblokComponentType,
   ISbConfig, // previously StoryblokConfig
   ISbContentMangmntAPI,
   ISbDimensions,
@@ -98,4 +97,5 @@ export type {
   ISbStoryParams, // previously StoryParams
   ISbThrottle,
   ISbThrottledRequest,
+  ISbComponentType as StoryblokComponentType,
 } from 'storyblok-js-client';

@@ -4,9 +4,11 @@ import type {
   ISbStoryData,
 } from 'storyblok-js-client';
 import type StoryblokJSClient from 'storyblok-js-client';
+import type { BridgeParams as StoryblokBridgeConfigV2 } from '@storyblok/preview-bridge';
 
 export type StoryblokClient = StoryblokJSClient;
 
+export type { StoryblokBridgeConfigV2 };
 declare global {
   interface Window {
     storyblokRegisterEvent: (cb: () => void) => void;
@@ -49,16 +51,6 @@ export interface ISbEventPayload<S extends ISbComponentType<string> = any> {
   slugChanged?: boolean;
   storyId?: number;
   reload?: boolean;
-}
-
-// TODO: temporary till the right bridge types are updated on storyblok-js-client
-export interface StoryblokBridgeConfigV2 {
-  resolveRelations?: string | string[];
-  customParent?: string;
-  preventClicks?: boolean;
-  language?: string;
-  resolveLinks?: 'url' | 'story' | '0' | '1' | 'link';
-  fallbackLang?: 'string';
 }
 
 export interface StoryblokBridgeV2 {

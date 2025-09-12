@@ -332,6 +332,9 @@ importers:
 
   packages/js:
     dependencies:
+      '@storyblok/preview-bridge':
+        specifier: ^2.1.5
+        version: 2.1.5
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../richtext
@@ -736,6 +739,9 @@ importers:
       '@storyblok/react':
         specifier: workspace:*
         version: file:packages/react(next@13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    dependenciesMeta:
+      '@storyblok/react':
+        injected: true
     devDependencies:
       '@types/node':
         specifier: ^20.17.10
@@ -755,9 +761,6 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.8.3
-    dependenciesMeta:
-      '@storyblok/react':
-        injected: true
 
   packages/react/playground/next13-app-router:
     dependencies:
@@ -4910,6 +4913,9 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
+  '@storyblok/preview-bridge@2.1.5':
+    resolution: {integrity: sha512-lJXd0S6g2FQyLgg8RRfW7q51/riqMnDiYzdSf3tgc87ocEZZ05+rRHM9vG+elSVGqsvRN9lncYUwbqXzGUQVQQ==}
+
   '@storyblok/react@file:packages/react':
     resolution: {directory: packages/react, type: directory}
     peerDependencies:
@@ -7957,6 +7963,7 @@ packages:
   eslint-plugin-markdown@5.1.0:
     resolution: {integrity: sha512-SJeyKko1K6GwI0AN6xeCDToXDkfKZfXcexA6B+O2Wr2btUS9GrC+YgwSyVli5DJnctUHjFXcQ2cqTaAmVoLi2A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: Please use @eslint/markdown instead
     peerDependencies:
       eslint: '>=8'
 
@@ -11459,6 +11466,9 @@ packages:
   pupa@3.1.0:
     resolution: {integrity: sha512-FLpr4flz5xZTSJxSeaheeMKN/EDzMdK7b8PTOC6a5PYFKTucWbdqjgqaEyH0shFiSJrVB1+Qqi4Tk19ccU6Aug==}
     engines: {node: '>=12.20'}
+
+  pure-parse@0.0.0-beta.8:
+    resolution: {integrity: sha512-9i10sb9eVsQ3RioUa8M5Y96HKW2Nw181xRdBDIwwkff9mOc4RxswXVfy2+76OgwOi6p0f8EqxlMZeK1paHfE2g==}
 
   qrcode-terminal@0.12.0:
     resolution: {integrity: sha512-EXtzRZmC+YGmGlDFbXKxQiMZNwCLEO6BANKXG4iCtSIM0yqc/pappSx3RIKr4r0uh5JsBckOXeKrB3Iz7mdQpQ==}
@@ -17948,6 +17958,10 @@ snapshots:
   '@sindresorhus/merge-streams@4.0.0': {}
 
   '@speed-highlight/core@1.2.7': {}
+
+  '@storyblok/preview-bridge@2.1.5':
+    dependencies:
+      pure-parse: 0.0.0-beta.8
 
   '@storyblok/react@file:packages/react(next@13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
@@ -26655,6 +26669,8 @@ snapshots:
   pupa@3.1.0:
     dependencies:
       escape-goat: 4.0.0
+
+  pure-parse@0.0.0-beta.8: {}
 
   qrcode-terminal@0.12.0: {}
 

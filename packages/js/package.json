@@ -45,6 +45,7 @@
     "cy:open": "cypress open"
   },
   "dependencies": {
+    "@storyblok/preview-bridge": "^2.1.5",
     "@storyblok/richtext": "workspace:*",
     "storyblok-js-client": "workspace:*"
   },

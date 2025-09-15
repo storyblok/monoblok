@@ -32,7 +32,7 @@ export class ManagementApiClient<ThrowOnError extends boolean = false> {
 
     Object.entries(sdkRegistry).forEach(([name, Sdk]) => {
       Object.defineProperty(this, name, {
-        get: () => new Sdk({ client: this.client }),
+        get: () => new Sdk({ client: this.client as any }),
         enumerable: true,
         configurable: true
       });
@@ -60,17 +60,10 @@ export class ManagementApiClient<ThrowOnError extends boolean = false> {
   setConfig(config: Partial<Omit<ManagementApiClientConfig, 'token'>>): void {
     const { region, baseUrl, headers } = config;
     
-    let finalBaseUrl = baseUrl;
-    if (region && !baseUrl) {
-      finalBaseUrl = getManagementBaseUrl(region, "https");
-    }
-    
-    if (finalBaseUrl) {
-      this.client.setConfig({ baseUrl: finalBaseUrl });
-    }
-    
     if (headers) {
-      this.client.setConfig({ 
+      this.client.setConfig({
+        baseUrl: baseUrl || this.config.baseUrl,
+        region: region || this.config.region!,
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(this.config.token),
@@ -88,6 +81,7 @@ export class ManagementApiClient<ThrowOnError extends boolean = false> {
   setToken(token: PersonalAccessToken | OAuthToken): void {
     this.config.token = token;
     this.client.setConfig({
+      region: this.config.region ?? "eu",
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeader(token),
@@ -103,10 +97,9 @@ function createClientInstance<ThrowOnError extends boolean = false>(
 ): Client {
   const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
   
-  const finalBaseUrl = baseUrl || getManagementBaseUrl(region, 'https');
-  
   return createClient({
-    baseUrl: finalBaseUrl,
+    baseUrl,
+    region,
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeader(token),

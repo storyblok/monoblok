@@ -15,7 +15,7 @@ type ReqInit = Omit<RequestInit, 'body' | 'headers'> & {
   headers: ReturnType<typeof mergeHeaders>;
 };
 
-export const createClient = (config: Config = {}): Client => {
+export const createClient = (config: Config): Client => {
   let _config = mergeConfigs(createConfig(), config);
 
   const getConfig = (): Config => ({ ..._config });
@@ -40,12 +40,15 @@ export const createClient = (config: Config = {}): Client => {
       headers: mergeHeaders(_config.headers, options.headers),
     };
 
+
     // If the baseUrl is not set and we have a space_id, we can attempt toinfer the region
     if (!_config.baseUrl && options.path?.space_id) {
       const region = getRegion(options.path.space_id as number);
       if (region) {
         opts.baseUrl = getManagementBaseUrl(region, 'https');
       }
+    } else if (opts.region) {
+      opts.baseUrl = getManagementBaseUrl(opts.region, 'https');
     }
 
     if (opts.security) {

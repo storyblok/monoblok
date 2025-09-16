@@ -133,18 +133,24 @@ function getRegionByBitInterval(spaceId: number): Region | undefined {
  * return the region codes based on the space id
  * @method getRegion
  * @param {Number | string} spaceId
+ * @param {Region} preferredRegion - Optional preferred region for disambiguation when EU/CN overlap
  * @returns {Region | undefined}
  * @description
  * Get the region based on the space id range. Accepts both numbers and numeric strings.
+ * When space ID is in the overlapping EU/CN range [0, 1_000_000], uses preferredRegion if provided.
  * @example
  * ```ts
  * getRegion(12345678901234567890) // 'eu'
  * getRegion("1234567890") // 'us'
  * getRegion("12345678901234567890") // 'cn'
  * getRegion("asfdasd") // undefined
+ * getRegion(123456, 'cn') // 'cn' (when in overlapping range)
  * ```
  */
-export function getRegion(spaceId: number | string): Region | undefined {
+export function getRegion(
+  spaceId: number | string,
+  preferredRegion?: Region,
+): Region | undefined {
   const validatedSpaceId = validateSpaceId(spaceId)
 
   if (
@@ -155,6 +161,19 @@ export function getRegion(spaceId: number | string): Region | undefined {
   }
 
   if (!isSpaceIdOver49Bits(validatedSpaceId)) {
+    // Handle the EU/CN overlap case
+    if (
+      validatedSpaceId >= ALL_REGION_RANGES[EU_CODE][0] &&
+      validatedSpaceId < ALL_REGION_RANGES[EU_CODE][1]
+    ) {
+      // If we have a preferred region and it's either EU or CN, use it
+      if (preferredRegion && [EU_CODE, CN_CODE].includes(preferredRegion)) {
+        return preferredRegion
+      }
+      // Otherwise default to EU
+      return EU_CODE
+    }
+
     return ALL_REGIONS.find(
       (region) =>
         validatedSpaceId >= ALL_REGION_RANGES[region][0] &&

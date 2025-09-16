@@ -19,7 +19,7 @@ export function optimizeImage(src: string, options?: boolean | Partial<Storyblok
   }
 
   if (typeof options === 'object') {
-    if (options.width) {
+    if (options.width !== undefined) {
       if (typeof options.width === 'number' && options.width >= 0) {
         attrs.width = options.width;
         w = options.width;
@@ -28,7 +28,7 @@ export function optimizeImage(src: string, options?: boolean | Partial<Storyblok
         console.warn('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
       }
     }
-    if (options.height) {
+    if (options.height !== undefined) {
       if (typeof options.height === 'number' && options.height >= 0) {
         attrs.height = options.height;
         h = options.height;

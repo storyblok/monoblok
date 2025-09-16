@@ -1,3 +1,4 @@
+import { Region } from '@storyblok/region-helper';
 import type { Auth } from '../core/auth';
 import type {
   Client as CoreClient,
@@ -56,6 +57,13 @@ export interface Config<T extends ClientOptions = ClientOptions>
    * @default false
    */
   throwOnError?: T['throwOnError'];
+
+  /**
+   * Fallback region to use for any requests that cannot infer the region from the path
+   *
+   * @default 'eu'
+   */
+  region?: Region;
 }
 
 export interface RequestOptions<

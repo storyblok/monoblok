@@ -43,7 +43,7 @@ export const createClient = (config: Config): Client => {
 
     // If the baseUrl is not set and we have a space_id, we can attempt toinfer the region
     if (!_config.baseUrl && options.path?.space_id) {
-      const region = getRegion(options.path.space_id as number);
+      const region = getRegion(options.path.space_id as number, opts.region);
       if (region) {
         opts.baseUrl = getManagementBaseUrl(region, 'https');
       }

@@ -28,12 +28,30 @@ describe('images-optimization', () => {
     expect(resultSrc).toBe(`${src}/m/800x600/`);
   });
 
+  it('should add width to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { width: 800 });
+    expect(resultSrc).toBe(`${src}/m/800x0/`);
+  });
+
+  it('should add height to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { height: 600 });
+    expect(resultSrc).toBe(`${src}/m/0x600/`);
+  });
+
+  it('should not add width or height to the src if both are at 0', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { width: 0, height: 0 });
+    expect(resultSrc).toBe(`${src}/m/`);
+  });
+
   it('should not add width to the src if width is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     // @ts-expect-error provide width as string for testing
     optimizeImage(src, { width: '800', height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -41,7 +59,7 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: -800, height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -56,7 +74,7 @@ describe('images-optimization', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     // @ts-expect-error provide height as string for testing
     optimizeImage(src, { width: 800, height: '600' });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -64,7 +82,7 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: 800, height: -600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 

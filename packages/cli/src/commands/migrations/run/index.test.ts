@@ -160,6 +160,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -228,6 +229,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -297,6 +299,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -367,6 +370,7 @@ describe('migrations run command - streaming approach', () => {
         per_page: 500,
         page: 1,
         contain_component: 'migration-component',
+        story_only: true,
       }),
     );
 

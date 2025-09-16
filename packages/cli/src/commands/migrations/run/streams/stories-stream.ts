@@ -40,6 +40,7 @@ export async function* storiesIterator(
       ...transformedParams,
       per_page: perPage,
       page: 1,
+      story_only: true,
     });
 
     if (!result) {
@@ -60,6 +61,7 @@ export async function* storiesIterator(
         ...transformedParams,
         per_page: perPage,
         page,
+        story_only: true,
       });
 
       if (!result) {

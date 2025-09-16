@@ -44,21 +44,21 @@ export class MigrationStream extends Transform {
     };
   }
 
-  _transform(chunk: Story, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
+  async _transform(chunk: Story, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
     try {
-      this.processStory(chunk).then((results) => {
-        this.results.totalProcessed++;
-        this.options.onProgress?.(this.results.totalProcessed);
+      const results = await this.processStory(chunk);
 
-        // Output successful migration results for further processing
-        if (results.length > 0) {
-          this.totalProcessed += results.length;
-          this.options.onTotal?.(this.totalProcessed);
-          for (const result of results) {
-            this.push(result);
-          }
+      this.results.totalProcessed++;
+      this.options.onProgress?.(this.results.totalProcessed);
+
+      // Output successful migration results for further processing
+      if (results.length > 0) {
+        this.totalProcessed += results.length;
+        this.options.onTotal?.(this.totalProcessed);
+        for (const result of results) {
+          this.push(result);
         }
-      });
+      }
 
       callback();
     }

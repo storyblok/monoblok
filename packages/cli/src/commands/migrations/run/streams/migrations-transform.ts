@@ -55,12 +55,10 @@ export class MigrationStream extends Transform {
           this.totalProcessed += results.length;
           this.options.onTotal?.(this.totalProcessed);
           for (const result of results) {
-            this.push(result);
+            callback(null, result);
           }
         }
       });
-
-      callback();
     }
     catch (error) {
       callback(error as Error);

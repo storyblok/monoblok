@@ -430,6 +430,17 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug assets push",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["assets", "push", "--space", "295017", "--path", "./public/img/scene-diagram.png", "--verbose"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
     }
   ],
 }

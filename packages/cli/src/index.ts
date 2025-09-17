@@ -13,6 +13,8 @@ import './commands/migrations';
 import './commands/types';
 import './commands/datasources';
 import './commands/create';
+import './commands/assets';
+
 import pkg from '../package.json';
 
 import { colorPalette } from './constants';

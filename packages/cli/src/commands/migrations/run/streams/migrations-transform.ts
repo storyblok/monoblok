@@ -27,6 +27,7 @@ export interface MigrationStreamResult {
  * Outputs successful migration results for further processing by update streams
  */
 export class MigrationStream extends Transform {
+  private timestamp: number = Date.now();
   private results: MigrationStreamResult;
   private migrationFunctions: Map<string, ((block: any) => any) | null> = new Map();
   private totalProcessed: number = 0;
@@ -127,7 +128,8 @@ export class MigrationStream extends Transform {
       await saveRollbackData({
         space: this.options.space,
         path: this.options.path,
-        stories: [{ id: story.id, name: story.name || '', content: story.content as StoryContent }],
+        story: { id: story.id, name: story.name || '', content: story.content as StoryContent },
+        migrationTimestamp: this.timestamp,
         migrationFile: migrationFile.name,
       });
 

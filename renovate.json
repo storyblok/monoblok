@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "group:allNonMajor",
+    "schedule:weekly",
+    ":approveMajorUpdates",
+    ":automergeMinor",
+    ":disablePeerDependencies",
+    ":maintainLockFilesMonthly",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "rangeStrategy": "bump",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "packageRules": [
+    {
+      "matchPaths": ["**/react/**/playground/**"],
+      "groupName": "React playground dependencies",
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchPaths": ["**/vue/**/playground/**"],
+      "groupName": "Vue playground dependencies",
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchPaths": ["**/svelte/**/playground/**"],
+      "groupName": "Svelte playground dependencies",
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchPaths": ["**/astro/**/playground/**"],
+      "groupName": "Astro playground dependencies",
+      "rangeStrategy": "bump"
+    },
+    {
+      "matchPaths": ["**/nuxt/**/playground/**"],
+      "groupName": "Nuxt playground dependencies",
+      "rangeStrategy": "bump"
+    }
+  ]
+}

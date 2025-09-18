@@ -23,8 +23,8 @@ export const StoryblokContentVersion = {
   PUBLISHED: 'published',
 } as const;
 
-export type StoryblokContentVersionKeys =
-  typeof StoryblokContentVersion[keyof typeof StoryblokContentVersion];
+export type StoryblokContentVersionKeys
+  = typeof StoryblokContentVersion[keyof typeof StoryblokContentVersion];
 
 export const StoryblokContentVersionValues = Object.values(
   StoryblokContentVersion,

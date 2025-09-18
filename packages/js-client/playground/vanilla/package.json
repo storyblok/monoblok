@@ -9,12 +9,12 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.4",
+    "@tailwindcss/vite": "^4.1.13",
     "pathe": "^1.1.2",
-    "tailwindcss": "^4.1.4",
-    "typescript": "^5.7.2",
-    "vite": "^5.4.11",
-    "vite-plugin-qrcode": "^0.2.3"
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.20",
+    "vite-plugin-qrcode": "^0.2.4"
   },
   "dependencies": {
     "storyblok-js-client": "workspace:*"

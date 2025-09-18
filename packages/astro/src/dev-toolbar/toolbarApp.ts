@@ -1,7 +1,8 @@
 import {
-  type Icon,
+
   isDefinedIcon,
 } from 'astro/runtime/client/dev-toolbar/ui-library/icons.js';
+import type { Icon } from 'astro/runtime/client/dev-toolbar/ui-library/icons.js';
 import { defineToolbarApp } from 'astro/toolbar';
 
 export const storyblokLogo = `

@@ -1,5 +1,7 @@
-import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import { computed, type ComputedRef, type Ref, watch } from 'vue';
+import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
+import { computed, watch } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import { useAsyncData } from '#app';
 import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
 import type { DedupeOption } from 'nuxt/app/defaults';

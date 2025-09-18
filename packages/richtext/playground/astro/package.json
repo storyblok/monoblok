@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@storyblok/astro": "workspace:*",
-    "astro": "^5.5.3"
+    "astro": "^5.13.7"
   },
   "nx": {
     "projectType": "application"

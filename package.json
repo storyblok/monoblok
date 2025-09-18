@@ -29,6 +29,6 @@
     "cypress": "^14.3.3"
   },
   "dependencies": {
-    "cypress": "^14.3.3"
+    "cypress": "^14.5.4"
   }
 }

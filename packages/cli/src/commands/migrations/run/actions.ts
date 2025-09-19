@@ -127,7 +127,8 @@ export function applyMigrationToAllBlocks(content: StoryContent, migrationFuncti
     processed = true;
   }
 
-  for (const key of Object.keys(content)) {
+  const uniqueKeys = new Set([...Object.keys(content), ...Object.keys(migratedContent || {})]);
+  for (const key of uniqueKeys) {
     if (migratedContent) {
       if (!(key in migratedContent)) {
         delete content[key];

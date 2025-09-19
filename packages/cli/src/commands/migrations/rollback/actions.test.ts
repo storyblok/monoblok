@@ -29,7 +29,7 @@ describe('saveRollbackData', () => {
       path: '/test/path',
       story: mockStory1,
       migrationTimestamp: 123,
-      migrationFile: 'test-migration.js',
+      migrationNames: ['test-migration.js'],
     });
     const mockStory2 = {
       id: 2,
@@ -41,7 +41,7 @@ describe('saveRollbackData', () => {
       path: '/test/path',
       story: mockStory2,
       migrationTimestamp: 123,
-      migrationFile: 'test-migration.js',
+      migrationNames: ['test-migration.js'],
     });
 
     // Check if file was created with correct content
@@ -77,7 +77,7 @@ describe('saveRollbackData', () => {
       path: '/nonexistent/path',
       story: mockStory,
       migrationTimestamp: 123,
-      migrationFile: 'test-migration.js',
+      migrationNames: ['test-migration.js'],
     });
 
     // Verify directory was created

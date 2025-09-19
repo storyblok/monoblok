@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { appendToFile, resolvePath } from '../../../utils/filesystem';
+import { appendToFile, getComponentNameFromFilename, resolvePath } from '../../../utils/filesystem';
 import type { StoryContent } from '../../stories/constants';
 import { readFile } from 'node:fs/promises';
 import { CommandError } from '../../../utils';
@@ -28,13 +28,13 @@ export async function saveRollbackData({
   path,
   story,
   migrationTimestamp,
-  migrationFile,
+  migrationNames,
 }: {
   space: string;
   path: string;
   story: { id: number; name: string; content: StoryContent };
   migrationTimestamp: number;
-  migrationFile: string;
+  migrationNames: string[];
 }): Promise<void> {
   const rollbackData: RollbackDataStory = {
     storyId: story.id,
@@ -44,9 +44,10 @@ export async function saveRollbackData({
 
   // Resolve the path for rollbacks
   const rollbacksPath = resolvePath(path, `migrations/${space}/rollbacks`);
-
-  // The rollback file will have the same name as the migration file but with a migration ID suffix
-  const rollbackFileName = `${migrationFile.replace('.js', '')}.${migrationTimestamp}.jsonl`;
+  const componentNames = migrationNames.map(n => getComponentNameFromFilename(n));
+  // Deduplicate component names and join the component names for final rollback name
+  const rollbackName = [...new Set(componentNames)].join('~');
+  const rollbackFileName = `${rollbackName}.${migrationTimestamp}.jsonl`;
   const rollbackFilePath = join(rollbacksPath, rollbackFileName);
 
   // Save the rollback data as JSONL

@@ -29,19 +29,19 @@ export interface MigrationResult {
 export interface SuccessfulMigration {
   storyId: number;
   name: string | undefined;
-  migrationName: string;
+  migrationNames: string[];
   content: StoryContent;
 }
 
 export interface FailedMigration {
   storyId: number;
-  migrationName: string;
+  migrationNames: string[];
   error: unknown;
 }
 
 export interface SkippedMigration {
   storyId: number;
   name: string | undefined;
-  migrationName: string;
+  migrationNames: string[];
   reason: string;
 }

@@ -5,6 +5,7 @@ import { migrationsCommand } from '../command';
 import { session } from '../../../session';
 import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
+import { mapiClient } from '../../../api';
 import { Spinner } from '@topcli/spinner';
 import chalk from 'chalk';
 
@@ -31,6 +32,14 @@ migrationsCommand.command('rollback [migrationFile]')
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
+
+    const { password, region } = state;
+    mapiClient({
+      token: {
+        accessToken: password,
+      },
+      region,
+    });
 
     try {
       // Read the rollback data

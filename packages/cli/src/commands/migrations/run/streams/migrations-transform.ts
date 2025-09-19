@@ -137,13 +137,13 @@ export class MigrationStream extends Transform {
       const storyContent = structuredClone(story.content) as StoryContent;
 
       // Calculate original content hash
-      const originalContentHash = hash(story.content);
+      const originalContentHash = hash(storyContent);
 
       // Determine the target component
       const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
 
       // Apply the migration
-      const modified = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+      const processed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
 
       // Calculate new content hash
       const newContentHash = hash(storyContent);
@@ -151,7 +151,7 @@ export class MigrationStream extends Transform {
       // Check if content was actually modified
       const contentChanged = originalContentHash !== newContentHash;
 
-      if (modified && contentChanged) {
+      if (processed && contentChanged) {
         this.results.successful.push({
           storyId: story.id,
           name: story.name,
@@ -165,7 +165,7 @@ export class MigrationStream extends Transform {
           content: storyContent,
         };
       }
-      else if (modified && !contentChanged) {
+      else if (processed && !contentChanged) {
         this.results.skipped.push({
           storyId: story.id,
           name: story.name,

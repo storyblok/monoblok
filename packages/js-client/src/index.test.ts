@@ -921,7 +921,6 @@ describe('storyblokClient', () => {
           name: 'Test Event Type',
           component: 'event_type',
         },
-        _stopResolving: true,
       });
 
       // Verify that get was called two times
@@ -997,7 +996,6 @@ describe('storyblokClient', () => {
             name: 'Tag 1',
             component: 'tag',
           },
-          _stopResolving: true,
         },
         {
           _uid: 'tag-2-uid',
@@ -1006,7 +1004,6 @@ describe('storyblokClient', () => {
             name: 'Tag 2',
             component: 'tag',
           },
-          _stopResolving: true,
         },
       ]);
     });
@@ -1081,7 +1078,6 @@ describe('storyblokClient', () => {
           name: 'John Doe',
           component: 'author',
         },
-        _stopResolving: true,
       });
 
       expect(result.data.story.content.category).toEqual({
@@ -1091,7 +1087,6 @@ describe('storyblokClient', () => {
           name: 'Technology',
           component: 'category',
         },
-        _stopResolving: true,
       });
     });
 

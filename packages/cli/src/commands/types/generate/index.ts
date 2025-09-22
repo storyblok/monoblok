@@ -14,6 +14,7 @@ typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
   .option('--sf, --separate-files', '')
+  .option('--filename <name>', 'File name for the generated type files')
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')

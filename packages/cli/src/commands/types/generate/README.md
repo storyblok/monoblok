@@ -17,6 +17,7 @@ storyblok types generate --space <spaceId>
 |--------|-------------|---------|
 | `--sf, --separate-files` | Generate separate type definition files for each component | `false` |
 | `--strict` | Enable strict mode with no loose typing | `false` |
+| `--filename <name>` | File name for the generated type files | `storyblok` |
 | `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
 | `--suffix <suffix>` | Suffix for component names | - |
 | `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |

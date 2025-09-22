@@ -4,7 +4,6 @@ import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
-import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
 
@@ -35,7 +34,9 @@ typesCommand
     try {
       spinner.start(`Generating types...`);
       const spaceData = await readComponentsFiles({
-        ...options as ReadComponentsOptions,
+        verbose: !isVitest,
+        separateFiles: options.separateFiles,
+        suffix: options.suffix,
         from: space,
         path,
       });

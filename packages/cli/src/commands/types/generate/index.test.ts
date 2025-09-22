@@ -13,6 +13,7 @@ vi.mock('./actions', () => ({
   generateStoryblokTypes: vi.fn(),
   generateTypes: vi.fn(),
   getComponentType: vi.fn(),
+  saveTypesToFile: vi.fn(),
 }));
 
 vi.mock('../../components/push/actions', () => ({
@@ -404,6 +405,52 @@ describe('types generate', () => {
         compilerOptions: '/path/to/options.json',
         path: undefined,
       });
+    });
+
+    it('handles generateTypes returning an array (separate-files mode) without crashing', async () => {
+      const mockResponse = [{
+        name: 'component-name',
+        display_name: 'Component Name',
+        created_at: '2021-08-09T12:00:00Z',
+        updated_at: '2021-08-09T12:00:00Z',
+        id: 12345,
+        schema: { type: 'object' },
+        color: null,
+        internal_tags_list: [],
+        internal_tag_ids: [],
+      }];
+
+      const mockSpaceData = {
+        components: mockResponse,
+        groups: [],
+        presets: [],
+        internalTags: [],
+        datasources: [],
+      };
+
+      session().state = {
+        isLoggedIn: true,
+        password: 'valid-token',
+        region: 'eu',
+      };
+
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+
+      // simulate separate-files result from the action
+      vi.mocked(generateTypes).mockResolvedValue([
+        { name: 'ComponentName', content: '// d.ts content' },
+      ] as any);
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
+
+      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
+        separateFiles: true,
+        path: undefined,
+      });
+
+      // We only assert that no error was logged.
+      expect(konsola.error).not.toHaveBeenCalled();
     });
   });
 });

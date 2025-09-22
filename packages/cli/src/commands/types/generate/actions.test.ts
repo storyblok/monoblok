@@ -823,6 +823,16 @@ describe('saveTypesToFile', () => {
     vi.clearAllMocks();
   })
   
+  it('should call saveToFile with the expected path and default filename', async () => {
+    const dummyTypes = '// types content';
+    await saveTypesToFile('12345', dummyTypes, {});
+
+    // We expect join to be called with the filename ending in -components.d.ts
+    expect(join).toHaveBeenCalledWith(expect.any(String), `storyblok-components.d.ts`);
+    // We expect saveToFile to be called with the mocked joined path and the dummy types
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+  });
+
   it('should call saveToFile with the expected path and custom filename', async () => {
     const customFilename = 'my-custom-types';
     const dummyTypes = '// types content';

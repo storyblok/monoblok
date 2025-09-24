@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 
 import { handleError, konsola } from './utils';
 import { getProgram } from './program';
+import { initializePluginSystem } from './plugins';
 import './commands/login';
 import './commands/logout';
 import './commands/signup';
@@ -13,6 +14,7 @@ import './commands/migrations';
 import './commands/types';
 import './commands/datasources';
 import './commands/create';
+import './commands/plugins';
 import pkg from '../package.json';
 
 import { colorPalette } from './constants';
@@ -21,6 +23,8 @@ export * from './types/storyblok';
 
 dotenv.config(); // This will load variables from .env into process.env
 const program = getProgram();
+
+await initializePluginSystem();
 
 konsola.br();
 konsola.br();

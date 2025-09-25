@@ -457,7 +457,6 @@ export const generateTypes = async (
 
     const imports = buildImportsFromUsedTypes(globalUsed, {
       relativeStoryblokDts: '../storyblok.d.ts',
-      removeISb: true,
     });
 
     const finalTypeDef = [...header, ...imports, ...compiled];

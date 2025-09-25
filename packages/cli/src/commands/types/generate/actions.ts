@@ -298,9 +298,9 @@ async function loadCompilerOptions(path: string) {
   return {};
 }
 
-const getRequiredFields = (schema: Record<string, any> | undefined): string[] => {
+const getRequiredFields = (schema: Record<string, any> | undefined) => {
   return Object.entries(schema || {}).reduce<string[]>(
-    (acc, [_, v]) => (v && typeof v === 'object' && 'required' in v && (v as any).required ? [...acc, _] : acc),
+    (acc, [_, v]) => (v && typeof v === 'object' && 'required' in v && v.required ? [...acc, _] : acc),
     ['component', '_uid'],
   );
 };
@@ -485,13 +485,18 @@ export const saveTypesToFile = async (
       return;
     }
 
-    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedef as string);
+    if (typeof typedef !== 'string') {
+      throw new Error(
+        'Expected typedef to be a string when separateFiles is false.'
+      );
+    }
+
+    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedef);
   } catch (error) {
     handleFileSystemError('write', error as Error);
   }
 };
 
-// Add SaveTypesOptions interface
 export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'> {}
 
 /**

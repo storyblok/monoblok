@@ -112,3 +112,62 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
     return { data: [], error: error as Error };
   }
 }
+
+/**
+ * Recursively copy a directory and its contents
+ * @param src - Source directory path
+ * @param dest - Destination directory path
+ * @param options - Copy options
+ * @param options.skipNodeModules - Whether to skip node_modules directories (default: true)
+ */
+export async function copyDirectory(src: string, dest: string, options: { skipNodeModules?: boolean } = {}): Promise<void> {
+  const { mkdir, readdir, copyFile } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+
+  try {
+    await mkdir(dest, { recursive: true });
+    const entries = await readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      // Skip node_modules by default to avoid dependency conflicts and socket errors
+      if (options.skipNodeModules !== false && entry.name === 'node_modules') {
+        continue;
+      }
+
+      const srcPath = join(src, entry.name);
+      const destPath = join(dest, entry.name);
+
+      try {
+        if (entry.isDirectory()) {
+          await copyDirectory(srcPath, destPath, options);
+        }
+        else if (entry.isFile()) {
+          await copyFile(srcPath, destPath);
+        }
+        // Skip other types (sockets, pipes, etc.) that can't be copied
+      }
+      catch (error: any) {
+        // Log the error but continue with other files
+        console.warn(`Failed to copy ${srcPath}: ${error.message}`);
+      }
+    }
+  }
+  catch (error) {
+    handleFileSystemError('mkdir', error as Error);
+  }
+}
+
+/**
+ * Recursively remove a directory and its contents
+ * @param dir - Directory path to remove
+ */
+export async function removeDirectory(dir: string): Promise<void> {
+  const { rm } = await import('node:fs/promises');
+
+  try {
+    await rm(dir, { recursive: true, force: true });
+  }
+  catch {
+    // Directory doesn't exist or permission error, ignore
+  }
+}

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 import { handleError, konsola } from './utils';
 import { getProgram } from './program';
-import { initializePluginSystem } from './plugins';
+import { initializePluginSystem, PluginManager } from './plugins';
 import './commands/login';
 import './commands/logout';
 import './commands/signup';
@@ -26,6 +26,10 @@ const program = getProgram();
 
 await initializePluginSystem();
 
+// Run init hooks after plugin system is initialized
+const pluginManager = PluginManager.getInstance();
+await pluginManager.runLifecycleHook('init');
+
 konsola.br();
 konsola.br();
 konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
@@ -41,9 +45,24 @@ program.on('command:*', () => {
   process.exit(1);
 });
 
+let success = true;
+let executionError: Error | undefined;
+
 try {
+  // Add preRun hook before parsing
+  await pluginManager.runLifecycleHook('preRun', { args: process.argv });
+
   program.parse(process.argv);
 }
 catch (error) {
+  success = false;
+  executionError = error as Error;
   handleError(error as Error);
+}
+finally {
+  // Always run postRun hook with success/failure context
+  await pluginManager.runLifecycleHook('postRun', {
+    success,
+    error: executionError,
+  });
 }

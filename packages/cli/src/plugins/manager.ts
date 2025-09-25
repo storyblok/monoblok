@@ -1,15 +1,19 @@
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { konsola } from '../utils';
-import { getStoryblokGlobalPath, readJsonFile, saveToFile } from '../utils/filesystem';
+import { copyDirectory, getStoryblokGlobalPath, readJsonFile, removeDirectory, saveToFile } from '../utils/filesystem';
 import type {
+  HookContext,
+  HookFunction,
   InstalledPlugin,
+  LifecycleHook,
   Plugin,
   PluginContext,
   PluginManifest,
   PluginRegistry,
   PluginSource,
 } from './types';
+import { mapiClient } from '../api';
 import { getProgram } from '../program';
 import { session } from '../session';
 import * as utils from '../utils';
@@ -20,6 +24,7 @@ export class PluginManager {
   private registryPath: string;
   private pluginsDir: string;
   private loadedPlugins: Map<string, Plugin> = new Map();
+  private hooks: Map<string, HookFunction[]> = new Map(); // hookName -> hook functions
 
   constructor() {
     const configDir = getStoryblokGlobalPath();
@@ -69,6 +74,35 @@ export class PluginManager {
     await saveToFile(this.registryPath, JSON.stringify(this.registry, null, 2));
   }
 
+  private async loadManifest(pluginPath: string): Promise<PluginManifest | null> {
+    // Try plugin.json first
+    const pluginJsonPath = join(pluginPath, 'plugin.json');
+    const pluginJsonResult = await readJsonFile<PluginManifest>(pluginJsonPath);
+
+    if (!pluginJsonResult.error && pluginJsonResult.data[0]) {
+      return pluginJsonResult.data[0];
+    }
+
+    // Fallback to package.json with storyblok key
+    const packageJsonPath = join(pluginPath, 'package.json');
+    const packageJsonResult = await readJsonFile<any>(packageJsonPath);
+
+    if (!packageJsonResult.error && packageJsonResult.data[0]?.storyblok) {
+      const packageJson = packageJsonResult.data[0];
+      const storyblokConfig = packageJson.storyblok;
+
+      // Only extract the essential fields for plugin manifest
+      return {
+        name: storyblokConfig.name || packageJson.name,
+        version: storyblokConfig.version || packageJson.version,
+        commands: storyblokConfig.commands || [],
+        hooks: storyblokConfig.hooks || [],
+      };
+    }
+
+    return null;
+  }
+
   private async loadInstalledPlugins(): Promise<void> {
     for (const [pluginName, installedPlugin] of Object.entries(this.registry.plugins)) {
       try {
@@ -87,19 +121,17 @@ export class PluginManager {
     }
 
     const pluginPath = installedPlugin.installPath;
-    const manifestPath = join(pluginPath, 'plugin.json');
 
     try {
-      // Load manifest using the filesystem utility
-      const manifestResult = await readJsonFile<PluginManifest>(manifestPath);
-      if (manifestResult.error) {
-        throw manifestResult.error;
+      // Load manifest using the utility function
+      const manifest = await this.loadManifest(pluginPath);
+      if (!manifest) {
+        throw new Error('No valid plugin manifest found');
       }
-      const manifest = manifestResult.data[0];
 
-      // Load plugin module
-      const mainFile = manifest.main || 'index.js';
-      const pluginModule = await import(join(pluginPath, mainFile));
+      // Load plugin module using Node.js module resolution
+      // This will respect package.json's main, module, exports fields
+      const pluginModule = await import(pluginPath);
 
       let plugin: Plugin;
       if (typeof pluginModule.default === 'function') {
@@ -122,6 +154,19 @@ export class PluginManager {
       // Register commands using manifest and plugin actions
       this.registerPluginCommands(manifest, plugin);
 
+      // Register custom hooks declared in manifest
+      this.registerCustomHooks(manifest);
+
+      // Register lifecycle hooks from plugin object if they exist
+      if (plugin.hooks) {
+        for (const [hookName, hookFunctions] of Object.entries(plugin.hooks)) {
+          const functions = Array.isArray(hookFunctions) ? hookFunctions : [hookFunctions];
+          for (const fn of functions) {
+            this.registerHook(hookName, fn);
+          }
+        }
+      }
+
       // Store loaded plugin
       this.loadedPlugins.set(pluginName, plugin);
 
@@ -138,6 +183,26 @@ export class PluginManager {
       logger: konsola,
       session: session(),
       utils,
+      mapiClient: mapiClient(),
+      runCommand: this.createCommandRunner(),
+      getPlugin: (name: string) => this.getPlugin(name),
+      runHook: (hookName: string, context?: any) => this.runHook(hookName, context),
+    };
+  }
+
+  private createCommandRunner() {
+    return async (command: string, args: string[] = []): Promise<void> => {
+      const program = getProgram();
+
+      // Parse and execute the command
+      try {
+        // Create a new argv array with the command and args
+        const argv = ['node', 'storyblok', command, ...args];
+        await program.parseAsync(argv);
+      }
+      catch (error: any) {
+        throw new Error(`Failed to run command "${command}": ${error.message}`);
+      }
     };
   }
 
@@ -199,7 +264,7 @@ export class PluginManager {
 
     try {
       // Remove existing installation
-      await this.removeDirectory(installPath);
+      await removeDirectory(installPath);
 
       // Install based on source type
       switch (source.type) {
@@ -210,13 +275,11 @@ export class PluginManager {
           throw new Error(`Unsupported source type: ${source.type}`);
       }
 
-      // Load manifest using filesystem utility
-      const manifestPath = join(installPath, 'plugin.json');
-      const manifestResult = await readJsonFile<PluginManifest>(manifestPath);
-      if (manifestResult.error) {
-        throw manifestResult.error;
+      // Load manifest using the utility function
+      const manifest = await this.loadManifest(installPath);
+      if (!manifest) {
+        throw new Error('No valid plugin manifest found (plugin.json or package.json with storyblok config)');
       }
-      const manifest = manifestResult.data[0];
 
       // Update registry with resolved source path
       const resolvedSource: PluginSource = {
@@ -272,18 +335,16 @@ export class PluginManager {
       await fs.mkdir(this.pluginsDir, { recursive: true });
 
       // Remove existing link/directory if it exists
-      await this.removeDirectory(linkPath);
+      await removeDirectory(linkPath);
 
       // Create symlink
       await fs.symlink(resolvedSourcePath, linkPath, 'dir');
 
-      // Load manifest
-      const manifestPath = join(linkPath, 'plugin.json');
-      const manifestResult = await readJsonFile<PluginManifest>(manifestPath);
-      if (manifestResult.error) {
-        throw manifestResult.error;
+      // Load manifest using the utility function
+      const manifest = await this.loadManifest(linkPath);
+      if (!manifest) {
+        throw new Error('No valid plugin manifest found (plugin.json or package.json with storyblok config)');
       }
-      const manifest = manifestResult.data[0];
 
       // Update registry with resolved source path
       const resolvedSource: PluginSource = {
@@ -323,45 +384,7 @@ export class PluginManager {
 
   private async installFromLocal(localPath: string, installPath: string): Promise<void> {
     const resolvedPath = resolve(localPath);
-    await this.copyDirectory(resolvedPath, installPath);
-  }
-
-  private async copyDirectory(src: string, dest: string): Promise<void> {
-    await fs.mkdir(dest, { recursive: true });
-    const entries = await fs.readdir(src, { withFileTypes: true });
-
-    for (const entry of entries) {
-      // Skip node_modules to avoid dependency conflicts and socket errors
-      if (entry.name === 'node_modules') {
-        continue;
-      }
-
-      const srcPath = join(src, entry.name);
-      const destPath = join(dest, entry.name);
-
-      try {
-        if (entry.isDirectory()) {
-          await this.copyDirectory(srcPath, destPath);
-        }
-        else if (entry.isFile()) {
-          await fs.copyFile(srcPath, destPath);
-        }
-        // Skip other types (sockets, pipes, etc.) that can't be copied
-      }
-      catch (error: any) {
-        // Log the error but continue with other files
-        konsola.warn(`Failed to copy ${srcPath}: ${error.message}`);
-      }
-    }
-  }
-
-  private async removeDirectory(dir: string): Promise<void> {
-    try {
-      await fs.rm(dir, { recursive: true, force: true });
-    }
-    catch {
-      // Directory doesn't exist, ignore
-    }
+    await copyDirectory(resolvedPath, installPath);
   }
 
   async unlinkPlugin(pluginName: string): Promise<void> {
@@ -384,7 +407,7 @@ export class PluginManager {
 
       // Remove symlink
       const linkPath = pluginInfo.installPath;
-      await this.removeDirectory(linkPath);
+      await removeDirectory(linkPath);
 
       // Remove from registry
       delete this.registry.plugins[pluginName];
@@ -419,7 +442,7 @@ export class PluginManager {
 
       // Remove from filesystem
       const installPath = pluginInfo.installPath;
-      await this.removeDirectory(installPath);
+      await removeDirectory(installPath);
 
       // Remove from registry
       delete this.registry.plugins[pluginName];
@@ -442,5 +465,77 @@ export class PluginManager {
 
   getPlugin(name: string): Plugin | undefined {
     return this.loadedPlugins.get(name);
+  }
+
+  /**
+   * Register a hook function for a specific hook event
+   */
+  private registerHook(hookName: string, hookFunction: HookFunction): void {
+    if (!this.hooks.has(hookName)) {
+      this.hooks.set(hookName, []);
+    }
+    this.hooks.get(hookName)!.push(hookFunction);
+  }
+
+  /**
+   * Run all hooks for a specific event
+   */
+  async runHook(hookName: string, context: any = {}): Promise<void> {
+    const hookFunctions = this.hooks.get(hookName);
+    if (!hookFunctions || hookFunctions.length === 0) {
+      return;
+    }
+
+    const hookContext: HookContext = {
+      config: this.registry,
+      exit: (code = 0) => process.exit(code),
+      error: (message: string | Error, options?: { code?: string; exit?: number }) => {
+        const errorMessage = message instanceof Error ? message.message : message;
+        konsola.error(errorMessage);
+        if (options?.exit !== undefined) {
+          process.exit(options.exit);
+        }
+        throw new Error(errorMessage);
+      },
+      ...context,
+    };
+
+    // Run all hooks in parallel (following oclif pattern)
+    await Promise.all(
+      hookFunctions.map(async (hookFn) => {
+        try {
+          await hookFn(hookContext);
+        }
+        catch (error) {
+          // Log hook errors but don't fail the entire process
+          konsola.warn(`Hook ${hookName} failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }),
+    );
+  }
+
+  /**
+   * Run lifecycle hooks at specific points
+   */
+  async runLifecycleHook(hookName: LifecycleHook, context: any = {}): Promise<void> {
+    await this.runHook(hookName, context);
+  }
+
+  /**
+   * Register custom hooks declared in the plugin manifest
+   */
+  private registerCustomHooks(manifest: PluginManifest): void {
+    if (!manifest.hooks) {
+      return;
+    }
+
+    // Just register the hook names - implementations will be provided by plugins
+    for (const hookName of manifest.hooks) {
+      // Ensure the hook exists in our registry (create empty array if not)
+      if (!this.hooks.has(hookName)) {
+        this.hooks.set(hookName, []);
+      }
+      konsola.ok(`Registered custom hook: ${hookName}`);
+    }
   }
 }

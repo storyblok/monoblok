@@ -122,9 +122,6 @@ export const pluginInstallCommand = program
           const statusIcon = plugin.isLinked ? '🔗' : '📦';
 
           console.log(`${statusIcon} ${plugin.manifest.name}@${plugin.manifest.version} (${status})`);
-          if (plugin.manifest.description) {
-            console.log(`  ${plugin.manifest.description}`);
-          }
           console.log(`  Source: ${plugin.source.type}:${plugin.source.location}`);
           console.log(`  ${status === 'linked' ? 'Linked' : 'Installed'}: ${new Date(plugin.installedAt).toLocaleDateString()}`);
 

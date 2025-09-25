@@ -1,75 +1,103 @@
 # Storyblok CLI Plugin System
 
-The Storyblok CLI plugin system allows developers to extend the CLI with custom commands. Plugins work by convention with minimal configuration required, making it easy to add new functionality to the Storyblok CLI.
+Extend the Storyblok CLI with custom commands and functionality. The plugin system follows convention-over-configuration principles, making it simple to create powerful extensions.
 
-## Key Features
+## 🚀 Quick Start
 
-- **Single Source of Truth**: Command structure defined in `plugin.json`
-- **Action Handlers**: Implementation provides only the action functions
-- **Automatic Help**: Help generation from manifest
-- **Lifecycle Management**: Optional `initialize`/`dispose` hooks
-- **Command Aliases**: Multiple names for commands
-- **Development Linking**: Symlink plugins for development
-
-## Plugin Commands
-
-### Installation & Management
-- `storyblok plugins install <path>` - Install a plugin from local path (copies files)
-- `storyblok plugins link <path>` - Link a plugin for development (creates symlink)
-- `storyblok plugins unlink <name>` - Unlink a development plugin
-- `storyblok plugins uninstall <name>` - Uninstall a plugin (works for both installed and linked)
-- `storyblok plugins list` - List all plugins with their status (installed/linked)
-
-### Path Support
-All commands support both relative and absolute paths:
 ```bash
-# Relative paths (resolved from current directory)
-storyblok plugins install ./my-plugin
-storyblok plugins link ../my-other-plugin
-storyblok plugins install .                    # Current directory
+# Install a plugin
+storyblok plugins install ./my-awesome-plugin
 
-# Absolute paths
-storyblok plugins install /path/to/my-plugin
+# Use the plugin
+storyblok my-awesome-plugin hello --name "World"
+
+# Link for development (changes reflect immediately)
+storyblok plugins link ./my-awesome-plugin
 ```
 
-### Development Workflow
+## ✨ Key Features
+
+- **📝 Simple Configuration**: Define the plugin within `package.json` or in a separate `plugin.json`
+- **🔄 Development Mode**: Live reloading with symlinks
+- **🪝 Hooks System**: Lifecycle and custom hooks
+- **🔌 Inter-plugin Communication**: Plugins can interact with each other
+- **🌐 CLI Context access**: Plugins have access to the CLI utils, commands, mapiClient, etc
+
+## 📋 Commands
+
+| Command | Description | Use Case |
+|---------|-------------|----------|
+| `storyblok plugins install <path>` | Install plugin (copies files) | Production use |
+| `storyblok plugins link <path>` | Link plugin (symlink) | Development |
+| `storyblok plugins unlink <name>` | Unlink a plugin | Stop development |
+| `storyblok plugins uninstall <name>` | Remove plugin completely | Cleanup |
+| `storyblok plugins list` | Show all plugins | Check status |
+
+### 🛠️ Development Workflow
+
 ```bash
-# During development, link your plugin for instant updates
+# 1. Link your plugin for development
 storyblok plugins link ./my-plugin
 
-# Make changes to your plugin code...
-# Changes are immediately available (no reinstall needed)
+# 2. Make changes to your code (auto-reflected)
+# 3. Test your changes
+storyblok my-plugin hello --name "Test"
 
-# When done developing
+# 4. When ready, install for production
 storyblok plugins unlink my-plugin
-
-# Or install for production use
 storyblok plugins install ./my-plugin
 ```
 
-## Plugin Structure
+> **💡 Tip**: All commands support relative (`./plugin`) and absolute (`/path/to/plugin`) paths
 
-A plugin requires:
+## 📁 Plugin Structure
+
+In essence, a plugin is a minimal npm package with extra configuration provided in its **manifest**.
 
 ```
 my-plugin/
-├── plugin.json          # Plugin manifest (required)
-└── index.js            # Main plugin file
+├── package.json         # 📦 Manifest within "storyblok" key, or in a separated `plugin.json`
+└── index.js            # 🚀 Main plugin code
 ```
 
-### Plugin Manifest (plugin.json)
+## 📝 Plugin manifest
 
+### package.json
+```json
+{
+  "name": "my-storyblok-plugin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "storyblok": {
+    "name": "my-plugin",
+    "commands": [
+      {
+        "name": "hello",
+        "description": "Say hello command",
+        "aliases": ["hi", "greet"],
+        "options": [
+          {
+            "flags": "-n, --name <name>",
+            "description": "Your name"
+          }
+        ]
+      }
+    ],
+    "hooks": ["my-custom-hook"]
+  }
+}
+```
+
+### plugin.json (Alternative)
 ```json
 {
   "name": "my-plugin",
   "version": "1.0.0",
-  "description": "Description of what the plugin does",
-  "main": "index.js",
   "commands": [
     {
       "name": "hello",
       "description": "Say hello command",
-      "aliases": ["hi"],
+      "aliases": ["hi", "greet"],
       "options": [
         {
           "flags": "-n, --name <name>",
@@ -77,117 +105,230 @@ my-plugin/
         }
       ]
     }
-  ]
+  ],
+  "hooks": ["my-custom-hook"]
 }
 ```
 
-### Plugin Implementation (index.js)
+## 💻 Implementation
 
+### Basic Plugin
 ```javascript
 export default function createPlugin(context) {
-  const { logger, session, utils } = context;
+  const { logger, mapiClient, runCommand, runHook } = context;
 
   return {
-    // Action handlers for commands defined in plugin.json
+    // 🎯 Command actions (match names in manifest)
     actions: {
       hello: async (options) => {
         logger.info(`Hello, ${options.name || 'World'}!`);
+
+        // 🌐 Access Storyblok API
+        const components = await mapiClient.get('spaces/12345/components');
+
+        // 🔗 Run other CLI commands
+        await runCommand('pull-components');
+
+        // 🔥 Trigger custom hooks
+        await runHook('my-custom-hook', { data: options });
       }
     },
 
-    initialize: async () => {
-      logger.info('Plugin initialized');
-    },
-
-    dispose: async () => {
-      logger.info('Plugin disposed');
+    // 🪝 Listen to hooks
+    hooks: {
+      init: async () => logger.info('Plugin initialized'),
+      preRun: async () => logger.info('Command starting'),
+      postRun: async ({ success, error }) => {
+        if (success) {
+          logger.info('✅ Success');
+        }
+        else {
+          logger.warn('❌ Failed:', error?.message);
+        }
+      },
+      'my-custom-hook': async () => {
+        // ...
+      }
     }
   };
 }
 ```
 
-## Usage
+### Plugin Context API
 
-Once installed or linked, use plugin commands:
-```bash
-storyblok <plugin-name> <command> [options]
+| Property | Description | Example |
+|----------|-------------|---------|
+| `logger` | Console logger (konsola) | `logger.info('Hello')` |
+| `mapiClient` | Storyblok Management API | `await mapiClient.get('spaces/123/components')` |
+| `runCommand` | Execute CLI commands | `await runCommand('pull-components')` |
+| `getPlugin` | Access other plugins | `getPlugin('other-plugin')` |
+| `runHook` | Trigger custom hooks | `await runHook('deploy', { env: 'prod' })` |
+| `session` | Current CLI session | Access tokens, config |
+| `utils` | CLI utility functions | File operations, etc. |
+
+## 📊 Plugin Types
+
+| Type | Storage | Use Case | Command |
+|------|---------|----------|---------|
+| **Installed** 📦 | Copied to `~/.storyblok/plugins/` | Production, stable | `install` |
+| **Linked** 🔗 | Symlinked to source | Development, live changes | `link` |
+
+> Use `storyblok plugins list` to see all plugins and their status
+
+## 🪝 Hooks System
+
+Extend plugin functionality with lifecycle and custom hooks.
+
+### Lifecycle Hooks (Built-in)
+
+**No declaration needed** - implement only what you need:
+
+| Hook | When | Context |
+|------|------|---------|
+| `init` | CLI startup | Basic context |
+| `preRun` | Before command | Command args |
+| `postRun` | After command | Success/error status |
+
+```javascript
+// Example implementation in plugin
+export default function createPlugin(context) {
+  return {
+    actions: {
+      // ...
+    },
+    hooks: {
+      init: async () => {
+        logger.info('🚀 Plugin ready');
+      },
+      preRun: async ({ args }) => {
+        logger.info('Running:', args[0]);
+      },
+      postRun: async ({ success, error }) => {
+        if (success) {
+          logger.info('✅ Done');
+        }
+        else {
+          logger.error('❌ Error:', error?.message);
+        }
+      }
+    }
+  };
+}
 ```
 
-Examples:
-```bash
-# Install a plugin
-storyblok plugins install ./my-plugin
+### Custom Hooks
 
-# Use the plugin
-storyblok my-plugin hello --name "Alex"
+**Must be declared** in manifest for inter-plugin communication:
 
-# List all plugins (shows status: installed/linked)
-storyblok plugins list
-
-# For development - link instead of install
-storyblok plugins link ./my-plugin
-# Now any changes in ./my-plugin are immediately available
-storyblok my-plugin hello --name "Dev"
+```json
+{
+  "name": "deploy-plugin",
+  "hooks": ["before-deploy", "after-deploy", "rollback"]
+}
 ```
 
-## Plugin Status
+```javascript
+// Implement custom hooks in plugin
+export default function createPlugin(context) {
+  const { logger, runHook } = context;
 
-The plugin system tracks two types of plugins:
+  return {
+    hooks: {
+      'before-deploy': async ({ environment, version }) => {
+        logger.info(`🚀 Deploying ${version} to ${environment}`);
+        // Pre-deployment logic
+      },
+      'after-deploy': async ({ success, environment }) => {
+        if (success) {
+          logger.info(`✅ Deployed to ${environment}`);
+        }
+      }
+    },
 
-### Installed Plugins 📦
-- Files are **copied** to `~/.storyblok/plugins/<plugin-name>/`
-- Independent of source directory
-- Stable for production use
-- Use `storyblok plugins install <path>`
+    // Trigger from other plugins
+    actions: {
+      deploy: async (options) => {
+        await runHook('before-deploy', {
+          environment: options.env,
+          version: '1.2.3'
+        });
 
-### Linked Plugins 🔗
-- **Symlinked** to source directory
-- Changes reflect immediately
-- Perfect for development
-- Use `storyblok plugins link <path>`
+        // Deployment logic...
 
-Use `storyblok plugins list` to see the status of all plugins.
+        await runHook('after-deploy', {
+          success: true,
+          environment: options.env
+        });
+      }
+    }
+  };
+}
+```
 
-## Examples
+## 📚 Examples & Resources
 
-- [examples/sample-plugin](../../../examples/sample-plugin/) - Basic plugin example
-- [examples/wp-to-storyblok-plugin](../../../examples/wp-to-storyblok-plugin/) - Advanced plugin with multiple commands
+### Quick Examples
 
-## Plugin Context
+#### Simple Hello Plugin
+```javascript
+// plugin.json: { "name": "hello", "commands": [{"name": "greet"}] }
+export default function createPlugin({ logger }) {
+  return {
+    actions: {
+      greet: async ({ name = 'World' }) => {
+        logger.info(`Hello, ${name}!`);
+      }
+    }
+  };
+}
+```
 
-The plugin receives a context object with:
-- `logger` - CLI logger (konsola)
-- `session` - Current CLI session
-- `utils` - CLI utility functions
-- `program` - Commander.js program instance
+#### API Integration Plugin
+```javascript
+export default function createPlugin({ mapiClient, logger }) {
+  return {
+    actions: {
+      'list-spaces': async () => {
+        const spaces = await mapiClient.get('spaces');
+        spaces.forEach(space => logger.info(`• ${space.name}`));
+      }
+    }
+  };
+}
+```
 
-## Best Practices
+### Sample Plugins
+- [examples/sample-plugin](../../../examples/sample-plugin/) - Basic plugin
+- [examples/wp-to-storyblok-plugin](../../../examples/wp-to-storyblok-plugin/) - Advanced multi-command plugin
 
-### Development
-1. Use `storyblok plugins link` during development
-2. Keep your plugin in version control
-3. Test with both relative and absolute paths
-4. Use the provided context instead of importing CLI internals
+## 🔧 Best Practices
 
-### Distribution
-1. Use `storyblok plugins install` for stable installations
-2. Include clear documentation in your plugin directory
-3. Follow the plugin structure conventions
-4. Handle errors gracefully in your action handlers
+### Development ✅
+- Use `link` command for active development
+- Keep plugins in version control
+- Test with different path formats
+- Use TypeScript for better DX
 
-## Troubleshooting
+### Production ✅
+- Use `install` command for stable deployments
+- Include comprehensive README
+- Handle errors gracefully
+- Follow semantic versioning
 
-### Plugin Not Loading
-- Ensure `plugin.json` exists and is valid JSON
-- Check that the `main` file exists (defaults to `index.js`)
-- Verify command names in `plugin.json` match action handlers
+### Architecture ✅
+- Keep actions focused and single-purpose
+- Use hooks for cross-cutting concerns
+- Leverage context APIs instead of imports
+- Document custom hooks for other plugins
 
-### Path Issues
-- Use absolute paths if relative paths don't work
-- Remember that relative paths are resolved from the current working directory
-- Check that the plugin directory contains the required files
+## 🐛 Troubleshooting
 
-### Linking Issues
-- Ensure the source directory exists and contains a valid plugin
-- Use `storyblok plugins unlink <name>` before linking again
-- Check symlink permissions on your system
+| Issue | Solution |
+|-------|----------|
+| Plugin not found | Check `plugin.json` exists or `package.json` has `storyblok` key |
+| Command not working | Verify action name matches command name in manifest |
+| Path resolution fails | Try absolute paths, check file permissions |
+| Link not updating | Unlink first, then re-link: `unlink plugin-name && link ./path` |
+| Hook not triggering | Ensure custom hooks are declared in manifest |
+
+> **💡 Pro Tip**: Use `storyblok plugins list` to debug plugin status and paths

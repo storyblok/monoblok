@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { appendToFile, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
+import { appendToFile, copyDirectory, getComponentNameFromFilename, getStoryblokGlobalPath, removeDirectory, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
 import { join, resolve } from 'node:path';
 
 // tell vitest to use fs mock from __mocks__ folder
@@ -191,6 +191,114 @@ describe('filesystem utils', async () => {
       expect(sanitizeFilename('path/to/file')).toBe('path_to_file');
       expect(sanitizeFilename('My Component Name')).toBe('My Component Name');
       expect(sanitizeFilename('Special@Characters!')).toBe('Special@Characters!');
+    });
+  });
+
+  describe('copyDirectory', () => {
+    beforeEach(() => {
+      vol.reset();
+    });
+
+    it('should copy a directory with files recursively', async () => {
+      // Setup source directory structure
+      vol.fromJSON({
+        '/source/file1.txt': 'content1',
+        '/source/file2.js': 'console.log("test");',
+        '/source/subdir/file3.md': '# Test markdown',
+        '/source/subdir/nested/file4.json': '{"test": true}',
+      });
+
+      await copyDirectory('/source', '/destination');
+
+      // Verify all files were copied
+      expect(vol.readFileSync('/destination/file1.txt', 'utf8')).toBe('content1');
+      expect(vol.readFileSync('/destination/file2.js', 'utf8')).toBe('console.log("test");');
+      expect(vol.readFileSync('/destination/subdir/file3.md', 'utf8')).toBe('# Test markdown');
+      expect(vol.readFileSync('/destination/subdir/nested/file4.json', 'utf8')).toBe('{"test": true}');
+    });
+
+    it('should skip node_modules directory', async () => {
+      vol.fromJSON({
+        '/source/package.json': '{"name": "test"}',
+        '/source/src/index.js': 'console.log("app");',
+        '/source/node_modules/dep/index.js': 'dependency code',
+        '/source/node_modules/dep/package.json': '{"name": "dep"}',
+      });
+
+      await copyDirectory('/source', '/destination');
+
+      // Verify main files were copied but node_modules was skipped
+      expect(vol.readFileSync('/destination/package.json', 'utf8')).toBe('{"name": "test"}');
+      expect(vol.readFileSync('/destination/src/index.js', 'utf8')).toBe('console.log("app");');
+      expect(vol.existsSync('/destination/node_modules')).toBe(false);
+    });
+
+    it('should handle empty directories', async () => {
+      vol.fromJSON({
+        '/source/empty/placeholder': '',
+        '/source/file.txt': 'content',
+      });
+
+      await copyDirectory('/source', '/destination');
+
+      expect(vol.readFileSync('/destination/file.txt', 'utf8')).toBe('content');
+      expect(vol.existsSync('/destination/empty')).toBe(true);
+    });
+
+    it('should create destination directory if it does not exist', async () => {
+      vol.fromJSON({
+        '/source/file.txt': 'content',
+      });
+
+      await copyDirectory('/source', '/deep/nested/destination');
+
+      expect(vol.readFileSync('/deep/nested/destination/file.txt', 'utf8')).toBe('content');
+    });
+
+    it('should continue copying other files when one file fails', async () => {
+      vol.fromJSON({
+        '/source/file1.txt': 'content1',
+        '/source/file2.txt': 'content2',
+      });
+
+      // Should not throw and copy available files
+      await expect(copyDirectory('/source', '/destination')).resolves.not.toThrow();
+
+      // Verify successful files were copied
+      expect(vol.readFileSync('/destination/file1.txt', 'utf8')).toBe('content1');
+      expect(vol.readFileSync('/destination/file2.txt', 'utf8')).toBe('content2');
+    });
+  });
+
+  describe('removeDirectory', () => {
+    beforeEach(() => {
+      vol.reset();
+    });
+
+    it('should remove a directory and all its contents', async () => {
+      vol.fromJSON({
+        '/target/file1.txt': 'content1',
+        '/target/subdir/file2.txt': 'content2',
+        '/target/subdir/nested/file3.txt': 'content3',
+      });
+
+      expect(vol.existsSync('/target')).toBe(true);
+
+      await removeDirectory('/target');
+
+      expect(vol.existsSync('/target')).toBe(false);
+    });
+
+    it('should not throw when directory does not exist', async () => {
+      expect(vol.existsSync('/nonexistent')).toBe(false);
+
+      await expect(removeDirectory('/nonexistent')).resolves.not.toThrow();
+    });
+
+    it('should handle ENOENT errors gracefully by not throwing', async () => {
+      // With memfs, trying to remove a non-existent directory should not throw
+      expect(vol.existsSync('/nonexistent')).toBe(false);
+      await expect(removeDirectory('/nonexistent')).resolves.not.toThrow();
     });
   });
 });

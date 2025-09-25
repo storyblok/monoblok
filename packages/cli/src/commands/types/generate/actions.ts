@@ -306,19 +306,21 @@ const getRequiredFields = (schema: Record<string, any> | undefined): string[] =>
 };
 
 const collectUsedTypesFromProps = (
-  props: JSONSchema['properties'],
-  used: Set<string>,
-) => {
-  if (!props) return;
+  props: JSONSchema['properties']
+): Set<string> => {
+  const collected = new Set<string>();
+  if (!props) return collected;
 
   Object.values(props).forEach((property) => {
     if (property?.type && isStoryblokPropertyType(property.type)) {
-      used.add(property.type);
+      collected.add(property.type);
     }
     if (property?.tsType?.includes(STORY_TYPE)) {
-      used.add(STORY_TYPE);
+      collected.add(STORY_TYPE);
     }
   });
+
+  return collected;
 };
 
 const buildImportsFromUsedTypes = (
@@ -354,7 +356,6 @@ const buildSchemaForComponent = async (
     | ((key: string, value: Record<string, unknown>) => Record<string, unknown>)
     | undefined,
 ) => {
-  const used = new Set<string>();
   const title = getComponentType(component.name, options);
 
   const props = await getComponentPropertiesTypeAnnotations(
@@ -364,7 +365,7 @@ const buildSchemaForComponent = async (
     customFieldsParser,
   );
 
-  collectUsedTypesFromProps(props, used);
+  const used = collectUsedTypesFromProps(props)
 
   const required = getRequiredFields(component?.schema);
 

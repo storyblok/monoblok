@@ -459,7 +459,7 @@ export const generateTypes = async (
       console.error('generateTypes error:', error);
 
     handleError(error as Error);
-    return undefined
+    return undefined;
   }
 };
 

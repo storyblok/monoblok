@@ -821,7 +821,7 @@ describe('generateStoryblokTypes', () => {
 describe('saveTypesToFile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  })
+  });
   
   it('should call saveToFile with the expected path and default filename', async () => {
     const dummyTypes = '// types content';

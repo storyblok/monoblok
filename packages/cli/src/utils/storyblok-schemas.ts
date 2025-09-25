@@ -427,3 +427,10 @@ export const storyblokSchemas = new Map<StoryblokPropertyType, JSONSchema>([
   ['table', getTableJSONSchema],
   ['richtext', getRichtextJSONSchema],
 ]);
+
+export const isStoryblokPropertyType = (property: unknown): property is StoryblokPropertyType => {
+ return (
+    typeof property === 'string' &&
+    (storyblokSchemas as Map<string, JSONSchema>).has(property)
+  );
+}

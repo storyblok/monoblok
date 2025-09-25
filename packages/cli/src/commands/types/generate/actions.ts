@@ -2,8 +2,7 @@ import { compile, type JSONSchema } from 'json-schema-to-typescript';
 import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase, toPascalCase } from '../../../utils';
 import type { GenerateTypesOptions } from './constants';
-import type { StoryblokPropertyType } from '../../../types/storyblok';
-import { storyblokSchemas } from '../../../utils/storyblok-schemas';
+import { isStoryblokPropertyType } from '../../../utils/storyblok-schemas';
 import { join, resolve } from 'node:path';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';
@@ -22,9 +21,7 @@ const DEFAULT_TYPEDEFS_HEADER = [
 ];
 
 const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
-  // If a property type is one of the ones provided by Storyblok, return that type
-  // Casting as string[] to avoid TS error on using Array.includes on different narrowed types
-  if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
+  if (isStoryblokPropertyType(property.type)) {
     return { type: property.type };
   }
   // Initialize property type as any (fallback type)
@@ -185,7 +182,7 @@ const getComponentPropertiesTypeAnnotations = async (
       };
     }
 
-    if (Array.from(storyblokSchemas.keys()).includes(propertyType as StoryblokPropertyType)) {
+    if (isStoryblokPropertyType(propertyType)) {
       // For Storyblok property types, don't apply the prefix
       const componentType = toPascalCase(propertyType);
       propertyTypeAnnotation[key].tsType = `Storyblok${componentType}`;
@@ -308,9 +305,9 @@ const collectUsedTypesFromProps = (
   used: Set<string>,
 ) => {
   if (!props) return;
-  Object.values(props).forEach((property: any) => {
-    if (property?.type && storyblokSchemas.has(property.type as StoryblokPropertyType)) {
-      used.add(property.type as StoryblokPropertyType);
+  Object.values(props).forEach((property) => {
+    if (property?.type && isStoryblokPropertyType(property.type)) {
+      used.add(property.type);
     }
     if (property?.tsType?.includes(STORY_TYPE)) {
       used.add(STORY_TYPE);

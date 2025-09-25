@@ -843,7 +843,7 @@ export class Storyblok {
 
       let processedNode = { ...node };
       if (processedNode.fieldtype === 'asset' && Array.isArray(response.data.assets)) {
-        // Enricht the asset with an actual asset object
+        // Enrich the asset with an actual asset object
         processedNode = {
           ...response.data.assets.find((asset: any) => asset.id === processedNode.id),
           ...processedNode,

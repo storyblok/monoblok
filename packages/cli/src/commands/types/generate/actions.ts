@@ -325,13 +325,16 @@ const collectUsedTypesFromProps = (
 
 const buildImportsFromUsedTypes = (
   used: Set<string>,
-  { relativeStoryblokDts = '../storyblok.d.ts', removeISb = true } = {},
+  props: {
+    relativeStoryblokDts: string;
+  },
 ): string[] => {
+  const { relativeStoryblokDts } = props;
   const lines: string[] = [];
 
   if (used.has(STORY_TYPE)) {
     lines.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
-    if (removeISb) used.delete(STORY_TYPE);
+    used.delete(STORY_TYPE)
   }
 
   if (used.size > 0) {
@@ -420,7 +423,6 @@ export const generateTypes = async (
 
           const imports = buildImportsFromUsedTypes(used, {
             relativeStoryblokDts: '../storyblok.d.ts',
-            removeISb: true,
           });
 
           return {

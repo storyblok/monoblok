@@ -89,9 +89,9 @@ export class UpdateStream extends Writable {
         payload.publish = 1;
       }
 
-      const updatedStory = await updateStory(this.options.space, storyId, payload);
-
-      if (updatedStory) {
+      const updatedStory = !this.options.dryRun && await updateStory(this.options.space, storyId, payload);
+      const isStoryUpdated = Boolean(updatedStory);
+      if (isStoryUpdated || this.options.dryRun) {
         this.results.successful.push({ storyId, name: storyName });
         this.results.totalProcessed++;
         this.options.onProgress?.(this.results.totalProcessed);

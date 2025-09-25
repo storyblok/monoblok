@@ -25,6 +25,9 @@ migrationsCommand.command('run [componentName]')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
   .action(async (componentName: string | undefined, options: MigrationsRunOptions) => {
     konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Running migrations for component ${componentName}...` : 'Running migrations...');
+    if (options.dryRun) {
+      konsola.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
+    }
 
     // Global options
     const verbose = program.opts().verbose;

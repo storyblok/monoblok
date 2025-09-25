@@ -37,6 +37,11 @@ export function optimizeImage(src: string, options?: boolean | Partial<Storyblok
         console.warn('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
       }
     }
+    if (options.height === 0 && options.width === 0) {
+      delete attrs.width;
+      delete attrs.height;
+      console.warn('[StoryblokRichText] - Width and height values cannot both be 0');
+    }
     if (options.loading && ['lazy', 'eager'].includes(options.loading)) {
       attrs.loading = options.loading;
     }

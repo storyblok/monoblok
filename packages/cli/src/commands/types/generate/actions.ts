@@ -13,6 +13,11 @@ export interface ComponentGroupsAndNamesObject {
   componentNames: Set<string>;
 }
 
+interface ComponentFileDefinition {
+  name: string;
+  content: string;
+}
+
 // Constants
 const STORY_TYPE = 'ISbStoryData';
 const DEFAULT_TYPEDEFS_HEADER = [
@@ -457,11 +462,6 @@ export const generateTypes = async (
     return undefined;
   }
 };
-
-type ComponentFileDefinition = {
-  name: string;
-  content: string;
-}
 
 export const saveTypesToFile = async (
   space: string,

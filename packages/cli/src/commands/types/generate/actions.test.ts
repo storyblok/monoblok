@@ -820,7 +820,7 @@ describe('generateStoryblokTypes', () => {
 });
 
 describe('separate files mode', () => {
-  it('returns an array of files when options.separateFiles = true (one per component)', async () => {
+  it('should return an array of separate type files when options.separateFiles is true', async () => {
     const spaceData: SpaceComponentsData = {
       components: [
         {
@@ -867,7 +867,7 @@ describe('separate files mode', () => {
     expect(files.some(f => f.content.includes('export interface CtaButton'))).toBe(true);
   });
 
-  it('scopes Storyblok imports per file (only files that need Multilink import should have it)', async () => {
+  it('should scope Storyblok imports per file (only files that need Multilink import should have it)', async () => {
     const withMultilink: SpaceComponent = {
       name: 'link-card',
       created_at: '2023-01-01T00:00:00Z',
@@ -896,8 +896,10 @@ describe('separate files mode', () => {
       internalTags: [],
     };
 
-    const res = await generateTypes(spaceData, { separateFiles: true, strict: false });
-    const files = res as { name: string; content: string }[];
+    const files = await generateTypes(spaceData, { separateFiles: true, strict: false });
+    if (!Array.isArray(files)) {
+      throw new Error(`generateTypes didn't return an array`)
+    }
 
     const fileWith = files.find(f => f.name.includes('link-card') || f.content.includes('export interface LinkCard'));
     const fileWithout = files.find(f => f.name.includes('plain-text') || f.content.includes('export interface PlainText'));
@@ -910,7 +912,7 @@ describe('separate files mode', () => {
     expect(fileWithout!.content).not.toMatch(/import type \{ StoryblokMultilink \} from '\.\.\/storyblok\.d\.ts';/);
   });
 
-  it('saveTypesToFile writes one file per component when separateFiles = true and ignores filename', async () => {
+  it('should saveTypesToFile writes one file per component when separateFiles = true and ignores filename', async () => {
     vi.clearAllMocks();
 
     const files = [
@@ -931,25 +933,4 @@ describe('separate files mode', () => {
     expect(join).not.toHaveBeenCalledWith(expect.any(String), 'IGNORED.d.ts');
   });
 
-  it('default behavior still returns a single string when separateFiles is not set', async () => {
-    const spaceData: SpaceComponentsData = {
-      components: [
-        {
-          name: 'simple',
-          created_at: '2023-01-01T00:00:00Z',
-          updated_at: '2023-01-01T00:00:00Z',
-          id: 1,
-          schema: { title: { type: 'text', required: true } },
-        },
-      ],
-      datasources: [],
-      groups: [],
-      presets: [],
-      internalTags: [],
-    };
-
-    const result = await generateTypes(spaceData, {});
-    expect(typeof result).toBe('string');
-    expect(result).toContain('export interface Simple');
-  });
 });

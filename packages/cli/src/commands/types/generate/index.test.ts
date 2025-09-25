@@ -407,7 +407,7 @@ describe('types generate', () => {
       });
     });
 
-    it('handles generateTypes returning an array (separate-files mode) without crashing', async () => {
+    it('should pass separateFiles option to generateTypes when --separate-files flag is used', async () => {
       const mockResponse = [{
         name: 'component-name',
         display_name: 'Component Name',

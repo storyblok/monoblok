@@ -456,8 +456,6 @@ export const generateTypes = async (
     const finalTypeDef = [...header, ...imports, ...compiled];
     return [...finalTypeDef].join('\n');
   } catch (error) {
-      console.error('generateTypes error:', error);
-
     handleError(error as Error);
     return undefined;
   }
@@ -494,7 +492,7 @@ export const saveTypesToFile = async (
 };
 
 // Add SaveTypesOptions interface
-export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'>{}
+export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'> {}
 
 /**
  * Generates a d.ts file with the Storyblok type definitions

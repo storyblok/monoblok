@@ -67,7 +67,7 @@ The following structure will be created:
 └── types/
     ├── storyblok.d.ts            # Base Storyblok types
     └── 295018/
-        └── storyblok.d.ts        # Your component types
+        └── storyblok-components.d.ts        # Your component types
 ```
 
 > **Note:**

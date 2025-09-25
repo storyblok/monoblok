@@ -19,19 +19,28 @@ export function optimizeImage(src: string, options?: boolean | Partial<Storyblok
   }
 
   if (typeof options === 'object') {
-    if (typeof options.width === 'number' && options.width > 0) {
-      attrs.width = options.width;
-      w = options.width;
+    if (options.width !== undefined) {
+      if (typeof options.width === 'number' && options.width >= 0) {
+        attrs.width = options.width;
+        w = options.width;
+      }
+      else {
+        console.warn('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
+      }
     }
-    else {
-      console.warn('[StoryblokRichText] - Width value must be a number greater than 0');
+    if (options.height !== undefined) {
+      if (typeof options.height === 'number' && options.height >= 0) {
+        attrs.height = options.height;
+        h = options.height;
+      }
+      else {
+        console.warn('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
+      }
     }
-    if (options.height && typeof options.height === 'number' && options.height > 0) {
-      attrs.height = options.height;
-      h = options.height;
-    }
-    else {
-      console.warn('[StoryblokRichText] - Height value must be a number greater than 0');
+    if (options.height === 0 && options.width === 0) {
+      delete attrs.width;
+      delete attrs.height;
+      console.warn('[StoryblokRichText] - Width and height values cannot both be 0');
     }
     if (options.loading && ['lazy', 'eager'].includes(options.loading)) {
       attrs.loading = options.loading;
@@ -93,7 +102,7 @@ export function optimizeImage(src: string, options?: boolean | Partial<Storyblok
   // server-side WebP support detection https://www.storyblok.com/docs/image-service/#optimize
   // https://a.storyblok.com/f/39898/3310x2192/e4ec08624e/demo-image.jpeg/m/
   let resultSrc = `${src}/m/`;
-  if (w > 0 && h > 0) {
+  if (w > 0 || h > 0) {
     resultSrc = `${resultSrc}${w}x${h}/`;
   }
   if (filterParams.length > 0) {

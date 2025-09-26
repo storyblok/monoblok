@@ -35,14 +35,14 @@ export interface HookContext {
 // Built-in lifecycle hook events
 export type LifecycleHook =
   | 'init' // Runs when CLI is initialized
-  | 'preRun' // Runs before command execution
-  | 'postRun'; // Runs after command execution (success or failure)
+  | 'before-command' // Runs before command execution
+  | 'after-command' // Runs after successful command execution
+  | 'on-error' // Runs when command fails
+  | 'teardown'; // Runs when CLI is shutting down
 
 export interface Plugin {
   actions: Record<string, (options: Record<string, any>, ...args: any[]) => Promise<void> | void>;
-  hooks?: Record<string, HookFunction | HookFunction[]>; // Hook handlers
-  initialize?: () => Promise<void> | void;
-  dispose?: () => Promise<void> | void;
+  hooks?: Record<string, HookFunction | HookFunction[]>; // Hook handlers (includes init and teardown lifecycle hooks)
 }
 
 export interface PluginSource {
@@ -66,7 +66,6 @@ export interface PluginRegistry {
 export interface PluginContext {
   program: Command;
   logger: any; // konsola instance
-  session: any; // session instance
   utils: any; // utility functions
   mapiClient: ManagementApiClient; // Management API client
   runCommand: (command: string, args?: string[]) => Promise<void>; // Run other CLI commands

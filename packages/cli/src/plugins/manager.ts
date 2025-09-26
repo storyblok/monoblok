@@ -15,7 +15,6 @@ import type {
 } from './types';
 import { mapiClient } from '../api';
 import { getProgram } from '../program';
-import { session } from '../session';
 import * as utils from '../utils';
 
 export class PluginManager {
@@ -24,7 +23,7 @@ export class PluginManager {
   private registryPath: string;
   private pluginsDir: string;
   private loadedPlugins: Map<string, Plugin> = new Map();
-  private hooks: Map<string, HookFunction[]> = new Map(); // hookName -> hook functions
+  private hooks: Map<string, HookFunction[]> = new Map();
 
   constructor() {
     const configDir = getStoryblokGlobalPath();
@@ -146,11 +145,6 @@ export class PluginManager {
         throw new TypeError('Plugin must export a function or object as default export');
       }
 
-      // Initialize plugin if it has an initialize method
-      if (plugin.initialize) {
-        await plugin.initialize();
-      }
-
       // Register commands using manifest and plugin actions
       this.registerPluginCommands(manifest, plugin);
 
@@ -181,7 +175,6 @@ export class PluginManager {
     return {
       program: getProgram(),
       logger: konsola,
-      session: session(),
       utils,
       mapiClient: mapiClient(),
       runCommand: this.createCommandRunner(),
@@ -400,11 +393,6 @@ export class PluginManager {
     konsola.info(`Unlinking plugin: ${pluginName}`);
 
     try {
-      const plugin = this.loadedPlugins.get(pluginName);
-      if (plugin?.dispose) {
-        await plugin.dispose();
-      }
-
       // Remove symlink
       const linkPath = pluginInfo.installPath;
       await removeDirectory(linkPath);
@@ -435,11 +423,6 @@ export class PluginManager {
     konsola.info(`${action} plugin: ${pluginName}`);
 
     try {
-      const plugin = this.loadedPlugins.get(pluginName);
-      if (plugin?.dispose) {
-        await plugin.dispose();
-      }
-
       // Remove from filesystem
       const installPath = pluginInfo.installPath;
       await removeDirectory(installPath);

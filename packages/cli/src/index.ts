@@ -45,24 +45,32 @@ program.on('command:*', () => {
   process.exit(1);
 });
 
-let success = true;
 let executionError: Error | undefined;
 
 try {
-  // Add preRun hook before parsing
-  await pluginManager.runLifecycleHook('preRun', { args: process.argv });
+  // Add before-command hook before parsing
+  await pluginManager.runLifecycleHook('before-command', { args: process.argv });
 
   program.parse(process.argv);
+
+  // Run after-command hook on successful execution
+  await pluginManager.runLifecycleHook('after-command', { args: process.argv });
 }
 catch (error) {
-  success = false;
   executionError = error as Error;
+
+  // Run on-error hook when command fails
+  await pluginManager.runLifecycleHook('on-error', {
+    error: executionError,
+    args: process.argv,
+  });
+
   handleError(error as Error);
 }
 finally {
-  // Always run postRun hook with success/failure context
-  await pluginManager.runLifecycleHook('postRun', {
-    success,
+  // Run teardown hook for cleanup
+  await pluginManager.runLifecycleHook('teardown', {
     error: executionError,
+    args: process.argv,
   });
 }

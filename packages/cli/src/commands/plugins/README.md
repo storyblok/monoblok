@@ -2,7 +2,7 @@
 
 Extend the Storyblok CLI with custom commands and functionality. The plugin system follows convention-over-configuration principles, making it simple to create powerful extensions.
 
-## TODO
+**To-Do**
 
 - [ ] Implement `install` command (decide on best approach)
 

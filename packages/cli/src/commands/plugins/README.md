@@ -8,13 +8,7 @@ Extend the Storyblok CLI with custom commands and functionality. The plugin syst
 # Create a new plugin (interactive prompts)
 storyblok plugins create
 
-# Link for developm             logger.info(`📊 Space: ${spaceData.name}`);
-          logger.info(`🌍 Default locale: ${spaceData.default_locale}`);
-          logger.info(`🎨 Components: ${components.length}`);
-          logger.info(`📅 Created: ${new Date(spaceData.created_at).toLocaleDateString()}`);   logger.info(`📊 Space: ${spaceData.name}`);
-          logger.info(`🌍 Default locale: ${spaceData.default_locale}`);
-          logger.info(`🎨 Components: ${components.length}`);
-          logger.info(`📅 Created: ${new Date(spaceData.created_at).toLocaleDateString()}`);(changes reflect immediately)
+# Link for development (changes reflect immediately)
 storyblok plugins link ./my-plugin
 
 # Use it
@@ -176,17 +170,6 @@ export default function createPlugin(context) {
 }
 ```
 
-### Plugin Context API
-
-| Property | Description | Example |
-|----------|-------------|---------|
-| `logger` | Console logger (konsola) | `logger.info('Hello')` |
-| `mapiClient` | Storyblok Management API | `await mapiClient.get('spaces/123/components')` |
-| `utils` | CLI utility functions | `utils.getStoryblokGlobalPath()` |
-| `runCommand` | Execute CLI commands | `await runCommand('components', ['pull'])` |
-| `getPlugin` | Access other loaded plugins | `getPlugin('other-plugin-name')` |
-| `runHook` | Trigger custom hooks | `await runHook('deploy', { env: 'prod' })` |
-
 ## 🪝 Hooks System
 
 Extend plugin functionality with lifecycle and custom hooks.
@@ -289,23 +272,6 @@ export default function createPlugin(context) {
 }
 ```
 
-### 🛠️ Development Workflow
-
-```bash
-# 1. Link your plugin for development
-storyblok plugins link ./my-plugin
-
-# 2. Make changes to your code (auto-reflected)
-# 3. Test your changes
-storyblok my-plugin hello --name "Test"
-
-# 4. When ready, install for production
-storyblok plugins unlink my-plugin
-storyblok plugins install ./my-plugin
-```
-
-> **💡 Tip**: All commands support relative (`./plugin`) and absolute (`/path/to/plugin`) paths
-
 ## 📊 Plugin Installation types
 
 | Type | Storage | Use Case | Command |
@@ -317,26 +283,9 @@ storyblok plugins install ./my-plugin
 
 ## 🍳 Recipes
 
-Real-world plugin examples for common Storyblok workflows.
+Simple plugin examples as inspiration.
 
-### 1. Minimal Plugin
-A simple "hello world" to get started:
-
-```javascript
-// package.json: { "storyblok": { "name": "hello", "commands": [{"name": "greet"}] } }
-export default function createPlugin({ logger }) {
-  return {
-    actions: {
-      greet: async (options) => {
-        const name = options.name || 'World';
-        logger.info(`👋 Hello, ${name}!`);
-      }
-    }
-  };
-}
-```
-
-### 2. Space Info Plugin
+### 1. Space Info Plugin
 
 Display basic space information and stats:
 
@@ -364,7 +313,7 @@ export default function createPlugin({ mapiClient, logger }) {
 }
 ```
 
-### 3. SEO Story Checker Plugin
+### 2. SEO Story Checker Plugin
 Check if a story has proper SEO fields filled out:
 
 ```javascript
@@ -440,6 +389,34 @@ export default function createPlugin({ mapiClient, logger }) {
   };
 }
 ```
+
+### Plugin Context API
+
+| Property | Description | Example |
+|----------|-------------|---------|
+| `logger` | Console logger (konsola) | `logger.info('Hello')` |
+| `mapiClient` | Storyblok Management API | `await mapiClient.get('spaces/123/components')` |
+| `utils` | CLI utility functions | `utils.getStoryblokGlobalPath()` |
+| `runCommand` | Execute CLI commands | `await runCommand('components', ['pull'])` |
+| `getPlugin` | Access other loaded plugins | `getPlugin('other-plugin-name')` |
+| `runHook` | Trigger custom hooks | `await runHook('deploy', { env: 'prod' })` |
+
+### 🛠️ Development Workflow
+
+```bash
+# 1. Link your plugin for development
+storyblok plugins link ./my-plugin
+
+# 2. Make changes to your code (auto-reflected)
+# 3. Test your changes
+storyblok my-plugin hello --name "Test"
+
+# 4. When ready, install for production
+storyblok plugins unlink my-plugin
+storyblok plugins install ./my-plugin
+```
+
+> **💡 Tip**: All commands support relative (`./plugin`) and absolute (`/path/to/plugin`) paths
 
 ## 🔧 Best Practices
 

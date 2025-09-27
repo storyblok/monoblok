@@ -308,10 +308,10 @@ const getRequiredFields = (schema: Record<string, any> | undefined) => {
 };
 
 const collectUsedTypesFromProps = (
-  props: JSONSchema['properties']
+  props: JSONSchema['properties'],
 ): Set<string> => {
   const collected = new Set<string>();
-  if (!props) return collected;
+  if (!props) { return collected; }
 
   Object.values(props).forEach((property) => {
     if (property?.type && isStoryblokPropertyType(property.type)) {
@@ -336,7 +336,7 @@ const buildImportsFromUsedTypes = (
 
   if (used.has(STORY_TYPE)) {
     lines.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
-    used.delete(STORY_TYPE)
+    used.delete(STORY_TYPE);
   }
 
   if (used.size > 0) {
@@ -357,7 +357,7 @@ const buildSchemaForComponent = async (
   component: SpaceComponent,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
-  customFieldsParser?: CustomFieldParserType
+  customFieldsParser?: CustomFieldParserType,
 ) => {
   const title = getComponentType(component.name, options);
 
@@ -368,7 +368,7 @@ const buildSchemaForComponent = async (
     customFieldsParser,
   );
 
-  const used = collectUsedTypesFromProps(props)
+  const used = collectUsedTypesFromProps(props);
 
   const required = getRequiredFields(component?.schema);
 
@@ -406,7 +406,7 @@ export const generateTypes = async (
 
     if (options.separateFiles) {
       const perComponent = await Promise.all(
-        spaceData.components.map(async (component) =>
+        spaceData.components.map(async component =>
           buildSchemaForComponent(component, options, spaceData, customFieldsParser),
         ),
       );
@@ -436,7 +436,7 @@ export const generateTypes = async (
     const globalUsed = new Set<string>();
 
     const mapped = await Promise.all(
-      spaceData.components.map(async (component) =>
+      spaceData.components.map(async component =>
         buildSchemaForComponent(component, options, spaceData, customFieldsParser),
       ),
     );
@@ -459,7 +459,8 @@ export const generateTypes = async (
 
     const finalTypeDef = [...header, ...imports, ...compiled];
     return [...finalTypeDef].join('\n');
-  } catch (error) {
+  }
+  catch (error) {
     handleError(error as Error);
     return undefined;
   }
@@ -485,18 +486,19 @@ export const saveTypesToFile = async (
     }
 
     if (typeof typedef !== 'string') {
-      throw new Error(
-        'Expected typedef to be a string when separateFiles is false.'
+      throw new TypeError(
+        'Expected typedef to be a string when separateFiles is false.',
       );
     }
 
     await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedef);
-  } catch (error) {
+  }
+  catch (error) {
     handleFileSystemError('write', error as Error);
   }
 };
 
-export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'> {}
+export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'> {}
 
 /**
  * Generates a d.ts file with the Storyblok type definitions

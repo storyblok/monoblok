@@ -83,7 +83,7 @@ describe('types generate', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
+        color: undefined,
         internal_tags_list: [],
         internal_tag_ids: [],
       }];
@@ -128,7 +128,7 @@ describe('types generate', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
+        color: undefined,
         internal_tags_list: [],
         internal_tag_ids: [],
       }];
@@ -169,7 +169,7 @@ describe('types generate', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
+        color: undefined,
         internal_tags_list: [],
         internal_tag_ids: [],
       }];
@@ -284,7 +284,7 @@ describe('types generate', () => {
       });
     });
 
-    it('should pass separateFiles option to generateTypes when --separate-files flag is used', async () => {
+    it('should pass separateFiles option to generateTypes when --separate-files flag is used (basic case)', async () => {
       const mockResponse = [{
         name: 'component-name',
         display_name: 'Component Name',
@@ -407,7 +407,7 @@ describe('types generate', () => {
       });
     });
 
-    it('should pass separateFiles option to generateTypes when --separate-files flag is used', async () => {
+    it('should pass separateFiles option and handle multiple file outputs when --separate-files flag is used', async () => {
       const mockResponse = [{
         name: 'component-name',
         display_name: 'Component Name',

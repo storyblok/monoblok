@@ -14,7 +14,7 @@ typesCommand
   .description('Generate types d.ts for your component schemas')
   .option(
     '--sf, --separate-files',
-    'Generate one .d.ts file per component (requires components pulled with --separate-files)'
+    'Generate one .d.ts file per component (requires components pulled with --separate-files)',
   )
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
@@ -46,8 +46,8 @@ typesCommand
 
       if (options.separateFiles && !Array.isArray(spaceData.components)) {
         throw new Error(
-          `--separate-files requires that components are pulled as separate JSON files.\n` +
-          `Please run "storyblok components pull --separate-files" before generating types.`
+          `--separate-files requires that components are pulled as separate JSON files.\n`
+          + `Please run "storyblok components pull --separate-files" before generating types.`,
         );
       }
 

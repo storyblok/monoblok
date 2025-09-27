@@ -1,4 +1,4 @@
-import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentFile } from './actions';
+import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentsFile } from './actions';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -805,14 +805,14 @@ describe('generateStoryblokTypes', () => {
   });
 });
 
-describe('saveTypesToComponentFile', () => {
+describe('saveTypesToComponentsFile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should call saveTypesToComponentFile with the expected path and default filename', async () => {
+  it('should call saveTypesToComponentsFile with the expected path and default filename', async () => {
     const dummyTypes = '// types content';
-    await saveTypesToComponentFile('12345', dummyTypes, {});
+    await saveTypesToComponentsFile('12345', dummyTypes, {});
 
     // We expect join to be called with the filename ending in -components.d.ts
     expect(join).toHaveBeenCalledWith(expect.any(String), `storyblok-components.d.ts`);
@@ -820,10 +820,10 @@ describe('saveTypesToComponentFile', () => {
     expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
   });
 
-  it('should call saveTypesToComponentFile with the expected path and custom filename', async () => {
+  it('should call saveTypesToComponentsFile with the expected path and custom filename', async () => {
     const customFilename = 'my-custom-types';
     const dummyTypes = '// types content';
-    await saveTypesToComponentFile('12345', dummyTypes, { filename: customFilename });
+    await saveTypesToComponentsFile('12345', dummyTypes, { filename: customFilename });
 
     // We expect join to be called with the filename ending in -components.d.ts
     expect(join).toHaveBeenCalledWith(expect.any(String), `${customFilename}.d.ts`);

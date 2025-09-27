@@ -6,7 +6,7 @@ import { type ComponentsData, readComponentsFiles } from '../../components/push/
 import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
-import { generateStoryblokTypes, generateTypes, saveTypesToComponentFile } from './actions';
+import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
 
 const program = getProgram();
 
@@ -60,7 +60,7 @@ typesCommand
       });
 
       if (typedefString) {
-        await saveTypesToComponentFile(space, typedefString, {
+        await saveTypesToComponentsFile(space, typedefString, {
           filename: options.filename,
           path,
         });

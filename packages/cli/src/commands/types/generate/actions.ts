@@ -404,7 +404,7 @@ export const generateTypes = async (
   }
 };
 
-export const saveTypesToComponentFile = async (space: string, typedefString: string, options: Pick<GenerateTypesOptions, 'path' | 'filename'>) => {
+export const saveTypesToComponentsFile = async (space: string, typedefString: string, options: Pick<GenerateTypesOptions, 'path' | 'filename'>) => {
   const { filename = DEFAULT_COMPONENT_FILENAME, path } = options;
   // Ensure we always include the components/space folder structure regardless of custom path
   const resolvedPath = path

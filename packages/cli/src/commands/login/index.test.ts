@@ -155,10 +155,10 @@ describe('loginCommand', () => {
         await loginCommand.parseAsync(['node', 'test']);
 
         expect(konsola.info).toHaveBeenCalledWith(
-          expect.stringContaining('You can use a Personal Access Token to log in')
+          expect.stringContaining('You can use a Personal Access Token to log in'),
         );
         expect(konsola.info).toHaveBeenCalledWith(
-          expect.stringContaining('https://app.storyblok.com/#/me/account?tab=token')
+          expect.stringContaining('https://app.storyblok.com/#/me/account?tab=token'),
         );
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({

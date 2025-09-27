@@ -103,8 +103,8 @@ export const loginCommand = program
             `🔑 You can use a Personal Access Token to log in. 
             This works for all accounts, including SSO accounts.
             Generate one in your Storyblok account settings: ${chalk.underline.blue(
-              'https://app.storyblok.com/#/me/account?tab=token'
-            )}`
+              'https://app.storyblok.com/#/me/account?tab=token',
+            )}`,
           );
 
           const userToken = await password({

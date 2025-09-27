@@ -47,7 +47,7 @@ storyblok login --token PERSONAL_ACCESS_TOKEN --region us
 - If you're already logged in, you'll need to logout first to switch accounts
 - For CI environments, it's recommended to use the `--token` option
 - The CLI supports two-factor authentication (2FA) when using email login
-> If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.  
+> If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.
 > Generate one in your account settings: [Generate token](https://app.storyblok.com/#/me/account?tab=token).
 
 ## Available Regions

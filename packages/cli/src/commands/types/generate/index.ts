@@ -4,7 +4,6 @@ import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
-import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
 
@@ -13,7 +12,10 @@ const program = getProgram();
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', '')
+  .option(
+    '--sf, --separate-files',
+    'Generate one .d.ts file per component (requires components pulled with --separate-files)',
+  )
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
@@ -35,10 +37,19 @@ typesCommand
     try {
       spinner.start(`Generating types...`);
       const spaceData = await readComponentsFiles({
-        ...options as ReadComponentsOptions,
+        verbose: !isVitest,
+        separateFiles: options.separateFiles,
+        suffix: options.suffix,
         from: space,
         path,
       });
+
+      if (options.separateFiles && !Array.isArray(spaceData.components)) {
+        throw new Error(
+          `--separate-files requires that components are pulled as separate JSON files.\n`
+          + `Please run "storyblok components pull --separate-files" before generating types.`,
+        );
+      }
 
       await generateStoryblokTypes({
         ...options,

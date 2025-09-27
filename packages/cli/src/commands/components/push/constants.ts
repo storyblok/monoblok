@@ -26,7 +26,13 @@ export interface PushComponentsOptions extends CommandOptions {
 
 export interface ReadComponentsOptions extends PushComponentsOptions {
   /**
-   * The path to read the components file from.
+   * Local path where component JSON files are located.
+   *
+   * ⚠️ Important: When using types generation command,
+   * if you provide a custom `--path`, it must be the same
+   * `--path` that was used when running
+   * `storyblok components pull`.
+   *
    * Defaults to `.storyblok/components`.
    * @default `.storyblok/components`
    */
@@ -35,4 +41,10 @@ export interface ReadComponentsOptions extends PushComponentsOptions {
    * Target space
    */
   space?: string;
+  /**
+   * Determines the flow:
+   * - `push-components`: pushing local components to Storyblok
+   * - `types-generate`: generating type definitions from local JSON files
+   */
+  purpose?: 'push-components' | 'types-generate';
 }

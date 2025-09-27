@@ -20,7 +20,7 @@ const loginStrategy = {
       short: 'Email',
     },
     {
-      name: 'With Token (SSO)',
+      name: 'With Token (Personal Access Token – works also for SSO accounts)',
       value: 'login-with-token',
       short: 'Token',
     },
@@ -99,8 +99,14 @@ export const loginCommand = program
       try {
         const strategy = await select(loginStrategy);
         if (strategy === 'login-with-token') {
+          konsola.info([
+            '🔑 You can use a Personal Access Token to log in.',
+            'This works for all accounts, including SSO accounts.',
+            `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
+          ].join('\n'));
+
           const userToken = await password({
-            message: 'Please enter your token:',
+            message: 'Please enter your Personal Access Token:',
             validate: (value: string) => {
               return value.length > 0;
             },

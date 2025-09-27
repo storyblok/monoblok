@@ -10,11 +10,11 @@ storyblok login
 
 This will start an interactive login process where you can choose between:
 - Email and password login
-- Token-based login (SSO)
+- Token login (Personal Access Token – recommended for CI and required for SSO users)
 
 ### Get your personal access token
 
-Go to https://app.storyblok.com/#/me/account?tab=token and click on **Generate new token**.
+Go to [https://app.storyblok.com/#/me/account?tab=token] and click on **Generate new token**.
 
 ## Options
 
@@ -47,6 +47,8 @@ storyblok login --token PERSONAL_ACCESS_TOKEN --region us
 - If you're already logged in, you'll need to logout first to switch accounts
 - For CI environments, it's recommended to use the `--token` option
 - The CLI supports two-factor authentication (2FA) when using email login
+> If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.
+> Generate one in your account settings: [Generate token](https://app.storyblok.com/#/me/account?tab=token).
 
 ## Available Regions
 

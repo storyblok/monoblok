@@ -99,7 +99,6 @@ export const loginCommand = program
       try {
         const strategy = await select(loginStrategy);
         if (strategy === 'login-with-token') {
-          // Show clear 3-line guidance without carrying over code indentation spaces
           konsola.info([
             '🔑 You can use a Personal Access Token to log in.',
             'This works for all accounts, including SSO accounts.',

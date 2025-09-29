@@ -6,14 +6,18 @@ import { type ComponentsData, readComponentsFiles } from '../../components/push/
 import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
-import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
+import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
 
 const program = getProgram();
 
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', '')
+  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
+  .option(
+    '--filename <name>',
+    'Base file name for all component types when generating a single declarations file (e.g. components.d.ts). Ignored when using --separate-files.',
+  )
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
@@ -41,7 +45,6 @@ typesCommand
       });
 
       await generateStoryblokTypes({
-        ...options,
         path,
       });
 
@@ -57,8 +60,8 @@ typesCommand
       });
 
       if (typedefString) {
-        await saveTypesToFile(space, typedefString, {
-          ...options,
+        await saveTypesToComponentsFile(space, typedefString, {
+          filename: options.filename,
           path,
         });
       }

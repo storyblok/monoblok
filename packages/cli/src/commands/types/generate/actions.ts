@@ -2,16 +2,20 @@ import { compile, type JSONSchema } from 'json-schema-to-typescript';
 import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase, toPascalCase } from '../../../utils';
 import type { GenerateTypesOptions } from './constants';
-import type { StoryblokPropertyType } from '../../../types/storyblok';
-import { storyblokSchemas } from '../../../utils/storyblok-schemas';
+import { isStoryblokPropertyType } from '../../../utils/storyblok-schemas';
 import { join, resolve } from 'node:path';
-import { resolvePath, saveToFile } from '../../../utils/filesystem';
+import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';
 import type { ComponentPropertySchema } from '../../../types/schemas';
 
 export interface ComponentGroupsAndNamesObject {
   componentGroups: Map<string, Set<string>>;
   componentNames: Set<string>;
+}
+
+interface ComponentFileDefinition {
+  name: string;
+  content: string;
 }
 
 // Constants
@@ -22,9 +26,7 @@ const DEFAULT_TYPEDEFS_HEADER = [
 ];
 
 const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
-  // If a property type is one of the ones provided by Storyblok, return that type
-  // Casting as string[] to avoid TS error on using Array.includes on different narrowed types
-  if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
+  if (isStoryblokPropertyType(property.type)) {
     return { type: property.type };
   }
   // Initialize property type as any (fallback type)
@@ -156,7 +158,7 @@ const getComponentPropertiesTypeAnnotations = async (
   component: SpaceComponent,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
-  customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,
+  customFieldsParser?: CustomFieldParserType,
 ): Promise<JSONSchema['properties']> => {
   return Object.entries(component.schema).reduce(async (accPromise, [key, value]) => {
     const acc = await accPromise;
@@ -185,7 +187,7 @@ const getComponentPropertiesTypeAnnotations = async (
       };
     }
 
-    if (Array.from(storyblokSchemas.keys()).includes(propertyType as StoryblokPropertyType)) {
+    if (isStoryblokPropertyType(propertyType)) {
       // For Storyblok property types, don't apply the prefix
       const componentType = toPascalCase(propertyType);
       propertyTypeAnnotation[key].tsType = `Storyblok${componentType}`;
@@ -277,7 +279,9 @@ const getComponentPropertiesTypeAnnotations = async (
   }, Promise.resolve({} as JSONSchema));
 };
 
-const loadCustomFieldsParser = async (path: string): Promise<((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined> => {
+type CustomFieldParserType = ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
+
+const loadCustomFieldsParser = async (path: string): Promise<CustomFieldParserType> => {
   try {
     const customFieldsParser = await import(resolve(path));
     return customFieldsParser.default;
@@ -296,133 +300,205 @@ async function loadCompilerOptions(path: string) {
   return {};
 }
 
+const getRequiredFields = (schema: Record<string, any> | undefined) => {
+  return Object.entries(schema || {}).reduce<string[]>(
+    (acc, [_, v]) => (v && typeof v === 'object' && 'required' in v && v.required ? [...acc, _] : acc),
+    ['component', '_uid'],
+  );
+};
+
+const collectUsedTypesFromProps = (
+  props: JSONSchema['properties'],
+): Set<string> => {
+  const collected = new Set<string>();
+  if (!props) { return collected; }
+
+  Object.values(props).forEach((property) => {
+    if (property?.type && isStoryblokPropertyType(property.type)) {
+      collected.add(property.type);
+    }
+    if (property?.tsType?.includes(STORY_TYPE)) {
+      collected.add(STORY_TYPE);
+    }
+  });
+
+  return collected;
+};
+
+const buildImportsFromUsedTypes = (
+  used: Set<string>,
+  props: {
+    relativeStoryblokDts: string;
+  },
+): string[] => {
+  const { relativeStoryblokDts } = props;
+  const lines: string[] = [];
+
+  if (used.has(STORY_TYPE)) {
+    lines.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
+    used.delete(STORY_TYPE);
+  }
+
+  if (used.size > 0) {
+    const typeImports = Array.from(used).map(t => `Storyblok${toPascalCase(t)}`);
+    lines.push(`import type { ${typeImports.join(', ')} } from '${relativeStoryblokDts}';`);
+  }
+
+  return lines;
+};
+
+/**
+ * Maps a Storyblok component into:
+ * - computed JSONSchema
+ * - per-component used Storyblok helper types (for imports)
+ * - the generated TypeScript interface name (title)
+ */
+const buildSchemaForComponent = async (
+  component: SpaceComponent,
+  options: GenerateTypesOptions,
+  spaceData: SpaceComponentsData,
+  customFieldsParser?: CustomFieldParserType,
+) => {
+  const title = getComponentType(component.name, options);
+
+  const props = await getComponentPropertiesTypeAnnotations(
+    component,
+    options,
+    spaceData,
+    customFieldsParser,
+  );
+
+  const used = collectUsedTypesFromProps(props);
+
+  const required = getRequiredFields(component?.schema);
+
+  const schema: JSONSchema = {
+    $id: `#/${component.name}`,
+    title,
+    type: 'object',
+    required,
+    properties: {
+      ...props,
+      component: { type: 'string', enum: [component.name] },
+      _uid: { type: 'string' },
+    },
+  };
+
+  return { schema, used, title };
+};
+
 export const generateTypes = async (
   spaceData: SpaceComponentsData,
-  options: GenerateTypesOptions = {
-    strict: false,
-  },
-) => {
+  options: GenerateTypesOptions = { strict: false },
+): Promise<string | ComponentFileDefinition[] | undefined> => {
   try {
-    const typeDefs = [...DEFAULT_TYPEDEFS_HEADER];
-    const storyblokPropertyTypes = new Set<string>();
-    let customFieldsParser: ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    const header = [...DEFAULT_TYPEDEFS_HEADER];
+
+    let customFieldsParser: CustomFieldParserType;
     let compilerOptions: Record<string, unknown> | undefined;
-    // Custom fields parser
+
     if (options.customFieldsParser) {
       customFieldsParser = await loadCustomFieldsParser(options.customFieldsParser);
     }
-
-    // Compiler options
     if (options.compilerOptions) {
       compilerOptions = await loadCompilerOptions(options.compilerOptions);
     }
 
-    const schemas = await Promise.all(spaceData.components.map(async (component) => {
-    // Get the component type name with proper handling of numbers at the start
-      const type = getComponentType(component.name, options);
-      const componentPropertiesTypeAnnotations = await getComponentPropertiesTypeAnnotations(component, options, spaceData, customFieldsParser);
-      const requiredFields = Object.entries(component?.schema || {}).reduce(
-        (acc: string[], [key, value]) => {
-          if (value && typeof value === 'object' && 'required' in value && value.required) {
-            return [...acc, key];
-          }
-          return acc;
-        },
-        ['component', '_uid'] as string[],
+    if (options.separateFiles) {
+      const perComponent = await Promise.all(
+        spaceData.components.map(async component =>
+          buildSchemaForComponent(component, options, spaceData, customFieldsParser),
+        ),
       );
 
-      // Check if any property has a type that's in storyblokSchemas.keys()
-      if (componentPropertiesTypeAnnotations) {
-        Object.entries(componentPropertiesTypeAnnotations).forEach(([_, property]) => {
-          if (property.type && Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
-            storyblokPropertyTypes.add(property.type as StoryblokPropertyType);
-          }
-          // Check if the property uses ISbStoryData
-          if (property.tsType && property.tsType.includes(STORY_TYPE)) {
-            storyblokPropertyTypes.add(STORY_TYPE);
-          }
-        });
-      }
+      const files: ComponentFileDefinition[] = await Promise.all(
+        perComponent.map(async ({ schema, used }) => {
+          const code = await compile(schema, schema.title!, {
+            additionalProperties: !options.strict,
+            bannerComment: '',
+            ...compilerOptions,
+          });
 
-      const componentSchema: JSONSchema = {
-        $id: `#/${component.name}`,
-        title: type, // This is the key - we're using the properly formatted type name
-        type: 'object',
-        required: requiredFields,
-        properties: {
-          ...componentPropertiesTypeAnnotations,
-          component: {
-            type: 'string',
-            enum: [component.name],
-          },
-          _uid: {
-            type: 'string',
-          },
-        },
-      };
+          const imports = buildImportsFromUsedTypes(used, {
+            relativeStoryblokDts: '../storyblok.d.ts',
+          });
 
-      return componentSchema;
-    }));
+          return {
+            name: sanitizeFilename(schema.$id?.replace('#/', '') || ''),
+            content: [...header, ...imports, code].join('\n'),
+          };
+        }),
+      );
 
-    const result = await Promise.all(schemas.map(async (schema) => {
-    // Use the title as the interface name
-      return await compile(schema, schema.title || schema.$id.replace('#/', ''), {
-        additionalProperties: !options.strict,
-        bannerComment: '',
-        ...compilerOptions,
-      });
-    }));
-
-    // Add imports for Storyblok types if needed
-    const imports: string[] = [];
-
-    // Check if ISbStoryData is needed
-    const needsISbStoryData = storyblokPropertyTypes.has(STORY_TYPE);
-    if (needsISbStoryData) {
-      imports.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
-      storyblokPropertyTypes.delete(STORY_TYPE); // Remove it so it's not included in the next import
+      return files;
     }
 
-    if (storyblokPropertyTypes.size > 0) {
-      const typeImports = Array.from(storyblokPropertyTypes).map((type) => {
-        const pascalType = toPascalCase(type);
-        return `Storyblok${pascalType}`;
-      });
+    const globalUsed = new Set<string>();
 
-      imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
-    }
+    const mapped = await Promise.all(
+      spaceData.components.map(async component =>
+        buildSchemaForComponent(component, options, spaceData, customFieldsParser),
+      ),
+    );
 
-    const finalTypeDef = [...typeDefs, ...imports, ...result];
+    mapped.forEach(({ used }) => used.forEach(t => globalUsed.add(t)));
 
-    return [
-      ...finalTypeDef,
-    ].join('\n');
+    const compiled = await Promise.all(
+      mapped.map(({ schema }) =>
+        compile(schema, schema.title!, {
+          additionalProperties: !options.strict,
+          bannerComment: '',
+          ...compilerOptions,
+        }),
+      ),
+    );
+
+    const imports = buildImportsFromUsedTypes(globalUsed, {
+      relativeStoryblokDts: '../storyblok.d.ts',
+    });
+
+    const finalTypeDef = [...header, ...imports, ...compiled];
+    return [...finalTypeDef].join('\n');
   }
   catch (error) {
     handleError(error as Error);
+    return undefined;
   }
 };
 
-export const saveTypesToFile = async (space: string, typedefString: string, options: SaveTypesOptions) => {
-  const { filename = 'storyblok-components', path } = options;
-  // Ensure we always include the components/space folder structure regardless of custom path
+export const saveTypesToFile = async (
+  space: string,
+  typedef: string | ComponentFileDefinition[],
+  options: SaveTypesOptions,
+) => {
+  const { filename = 'storyblok-components', path, separateFiles } = options;
+
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'types', space)
     : resolvePath(path, `types/${space}`);
 
   try {
-    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedefString);
+    if (separateFiles && Array.isArray(typedef)) {
+      for (const { name, content } of typedef) {
+        await saveToFile(join(resolvedPath, `${name}.d.ts`), content);
+      }
+      return;
+    }
+
+    if (typeof typedef !== 'string') {
+      throw new TypeError(
+        'Expected typedef to be a string when separateFiles is false.',
+      );
+    }
+
+    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedef);
   }
   catch (error) {
     handleFileSystemError('write', error as Error);
   }
 };
 
-// Add SaveTypesOptions interface
-export interface SaveTypesOptions {
-  filename?: string;
-  path?: string;
-}
+export interface SaveTypesOptions extends Pick<GenerateTypesOptions, 'filename' | 'path' | 'separateFiles'> {}
 
 /**
  * Generates a d.ts file with the Storyblok type definitions

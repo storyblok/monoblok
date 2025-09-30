@@ -40,14 +40,13 @@ export const createClient = (config: Config): Client => {
       headers: mergeHeaders(_config.headers, options.headers),
     };
 
-
-    // If the baseUrl is not set and we have a space_id, we can attempt toinfer the region
+    // If the baseUrl is not set and we have a space_id, we can attempt to infer the region
     if (!_config.baseUrl && options.path?.space_id) {
       const region = getRegion(options.path.space_id as number, opts.region);
       if (region) {
         opts.baseUrl = getManagementBaseUrl(region, 'https');
       }
-    } else if (opts.region) {
+    } else if (!_config.baseUrl && opts.region) {
       opts.baseUrl = getManagementBaseUrl(opts.region, 'https');
     }
 

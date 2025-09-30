@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "contracts": [
+    {
+      "consumes": [
+        "./node_modules/@storyblok/openapi/dist/capi/stories.yaml"
+      ]
+    }
+  ]
+}

@@ -14,7 +14,7 @@ paths:
       operationId: list
       summary: Retrieve Multiple Component Folders
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: search
           in: query
           required: false
@@ -49,7 +49,7 @@ paths:
       operationId: create
       summary: Create a Component Folder
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -81,8 +81,8 @@ paths:
       operationId: get
       summary: Retrieve a Single Component Folder
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_group_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       responses:
         '200':
           description: Component folder details
@@ -103,8 +103,8 @@ paths:
       operationId: update
       summary: Update a Component Folder
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_group_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       requestBody:
         required: true
         content:
@@ -134,8 +134,8 @@ paths:
       operationId: delete
       summary: Delete a Component Folder
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_group_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_group_id
       responses:
         '204':
           description: Component folder deleted successfully

@@ -1,0 +1,5 @@
+# Storyblok Content Delivery API Security Schemes
+# Based on: https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/authentication
+
+# Personal Access Token - used without "Bearer" keyword
+- PersonalAccessToken: []

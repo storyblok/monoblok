@@ -15,7 +15,7 @@ type HttpMethod =
 export type HttpRequest = {
   method: HttpMethod;
   path: string;
-  headers?: Record<string, string>;
+  headers?: Record<string, number | string>;
   query?: Record<
     string,
     string | number | boolean | Array<string | number | boolean>
@@ -25,7 +25,7 @@ export type HttpRequest = {
 
 export type HttpResponse = {
   status: number;
-  headers?: Record<string, string>;
+  headers?: Record<string, number | string>;
   body?: unknown;
 };
 
@@ -62,16 +62,15 @@ export const makeStore = ({ baseURL }: { baseURL: string }) => ({
   },
 });
 
-const specmaticConfigPath = path.resolve(process.cwd(), "specmatic.json");
-const specmaticConfig = JSON.parse(
-  readFileSync(specmaticConfigPath, {
-    encoding: "utf8",
-  })
-) as {
-  contracts: { consumes: string[] }[];
-};
-
 export const startServer = async ({ port }: { port: number }) => {
+  const specmaticConfigPath = path.resolve(process.cwd(), "specmatic.json");
+  const specmaticConfig = JSON.parse(
+    readFileSync(specmaticConfigPath, {
+      encoding: "utf8",
+    })
+  ) as {
+    contracts: { consumes: string[] }[];
+  };
   const contractMaps = specmaticConfig.contracts.flatMap((x) =>
     x.consumes.map(
       (y) => [path.resolve(process.cwd(), y), y] satisfies [string, string]
@@ -84,18 +83,24 @@ export const startServer = async ({ port }: { port: number }) => {
   const id = execSync(
     `docker run --rm -d -p ${port}:9000 ${mounts.join(
       " "
-    )} -v "${specmaticConfigPath}:/usr/src/app/specmatic.json" specmatic/specmatic:2.21.0 stub`
+    )} -v "${specmaticConfigPath}:/usr/src/app/specmatic.json" specmatic/specmatic:2.23.4 stub --strict`
   )
     .toString()
     .trim();
+  const stop = async () => {
+    if (id) await execSync(`docker stop ${id}`);
+  };
 
   const baseURL = `http://localhost:${port}`;
-  await waitForHTTP(`${baseURL}/actuator/health`);
+  try {
+    await waitForHTTP(`${baseURL}/actuator/health`);
+  } catch (error) {
+    await stop();
+    throw error;
+  }
 
   return {
     baseURL,
-    stop: async () => {
-      if (id) await execSync(`docker stop ${id}`);
-    },
+    stop,
   };
 };

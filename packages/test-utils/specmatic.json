@@ -1,4 +1,0 @@
-{
-  "version": 2,
-  "contracts": [{ "consumes": ["mapi/stories.yaml", "mapi/users.yaml"] }]
-}

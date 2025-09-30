@@ -1,0 +1,10 @@
+# Storyblok Management API Security Schemes
+# Based on: https://www.storyblok.com/docs/api/management/getting-started/authentication
+
+securitySchemes:
+  # Personal Access Token - obtained from Storyblok UI
+  # Used without "Bearer" keyword in Authorization header
+  PersonalAccessToken:
+    type: apiKey
+    in: query
+    name: token

@@ -14,7 +14,7 @@ paths:
       summary: Retrieve Multiple Presets
       description: Returns an array of preset objects.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: component_id
           in: query
           required: false
@@ -34,17 +34,17 @@ paths:
                     items:
                       $ref: '#/components/schemas/Preset'
         '400':
-          $ref: ../shared/responses.yaml#/BadRequest
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          $ref: ../shared/responses.yaml#/Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
-          $ref: ../shared/responses.yaml#/NotFound
+          $ref: ../../shared/responses.yaml#/NotFound
     post:
       operationId: create
       summary: Create a Preset
       description: This endpoint can be used to create new presets.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -65,19 +65,19 @@ paths:
                   preset:
                     $ref: '#/components/schemas/Preset'
         '400':
-          $ref: ../shared/responses.yaml#/BadRequest
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          $ref: ../shared/responses.yaml#/Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
-          $ref: ../shared/responses.yaml#/NotFound
+          $ref: ../../shared/responses.yaml#/NotFound
   /v1/spaces/{space_id}/presets/{preset_id}:
     get:
       operationId: get
       summary: Retrieve a Single Preset
       description: Returns a single preset object with a specific numeric id.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/preset_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
       responses:
         '200':
           description: Successfully retrieved preset
@@ -89,18 +89,18 @@ paths:
                   preset:
                     $ref: '#/components/schemas/Preset'
         '400':
-          $ref: ../shared/responses.yaml#/BadRequest
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          $ref: ../shared/responses.yaml#/Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
-          $ref: ../shared/responses.yaml#/NotFound
+          $ref: ../../shared/responses.yaml#/NotFound
     put:
       operationId: update
       summary: Update a Preset
       description: This endpoint can be used to update presets using the numeric ID.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/preset_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
       requestBody:
         required: true
         content:
@@ -121,18 +121,18 @@ paths:
                   preset:
                     $ref: '#/components/schemas/Preset'
         '400':
-          $ref: ../shared/responses.yaml#/BadRequest
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          $ref: ../shared/responses.yaml#/Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
-          $ref: ../shared/responses.yaml#/NotFound
+          $ref: ../../shared/responses.yaml#/NotFound
     delete:
       operationId: delete
       summary: Delete a Preset
       description: Delete a preset by using its numeric id.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/preset_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/preset_id
       responses:
         '200':
           description: Successfully deleted preset
@@ -144,11 +144,11 @@ paths:
                   preset:
                     $ref: '#/components/schemas/Preset'
         '400':
-          $ref: ../shared/responses.yaml#/BadRequest
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          $ref: ../shared/responses.yaml#/Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
-          $ref: ../shared/responses.yaml#/NotFound
+          $ref: ../../shared/responses.yaml#/NotFound
 components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes

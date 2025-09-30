@@ -61,6 +61,7 @@
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",
     "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi": "workspace:*",
     "@types/cli-progress": "^3.11.6",
     "@types/inquirer": "^9.0.8",
     "@types/node": "^22.15.18",

@@ -20,7 +20,7 @@ describe('getAll()', () => {
       expect(resultEmpty.length).toBe(0);
 
       const story = makeStory({ name: 'foo bar' });
-      await prepare(hasStories({ spaceId: '123', stories: [makeStory({ name: 'foo bar' })] }));
+      await prepare(hasStories({ spaceId: '123', stories: [story] }));
       const result = await mapi.getAll(
         `spaces/123/stories`,
       );

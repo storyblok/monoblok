@@ -1,3 +1,9 @@
+export const PORT_RANGE_APP =
+  process.env.STORYBLOK_TEST_UTILS_PORT_RANGE_APP ?? "3000-3100";
+
+export const PORT_RANGE_STUB_SERVER =
+  process.env.STORYBLOK_TEST_UTILS_PORT_RANGE_STUB_SERVER ?? "9000-9100";
+
 export const waitForHTTP = async (
   url: string,
   {
@@ -31,4 +37,14 @@ export const waitForHTTP = async (
   }
 
   throw lastError;
+};
+
+export const parsePortRange = (range: string) => {
+  const [start, end] = range.split("-").map(Number);
+  if (!start || !end || Number.isNaN(start) || Number.isNaN(end))
+    throw new Error(
+      `Invalid port range "${range}". The range must be in the format "9000-9100".`
+    );
+
+  return { start, end };
 };

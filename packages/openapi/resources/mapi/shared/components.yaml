@@ -1,5 +1,0 @@
-BearerAuth:
-  type: http
-  scheme: bearer
-  description: Bearer token authentication  
-

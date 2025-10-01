@@ -5,10 +5,14 @@ import { migrationsCommand } from '../command';
 import { konsola } from '../../../utils';
 import { canNotUpdateStory, hasStory } from '../../../../../test-utils/src/preconditions/stories-mapi';
 import { makeBlok, makeStory } from '../../../../../test-utils/src/preconditions/stories';
-import { mapiClient } from '../../../api';
+
+process.env.STORYBLOK_LOGIN = 'foo';
+process.env.STORYBLOK_TOKEN = 'Bearer foo.bar.baz';
+process.env.STORYBLOK_REGION = 'eu';
+process.env.STORYBLOK_BASE_URL = 'http://localhost:9000';
 
 it('should handle dry run mode correctly', async ({ prepare, stubServer }) => {
-  mapiClient({ baseUrl: stubServer.baseURL, token: { accessToken: 'Bearer super-valid-token' } });
+  process.env.STORYBLOK_BASE_URL = stubServer.baseURL;
   const story = makeStory({
     content: makeBlok({
       field: 'original',
@@ -23,12 +27,11 @@ it('should handle dry run mode correctly', async ({ prepare, stubServer }) => {
     // update.
     canNotUpdateStory({ spaceId, storyId: story.id }),
   ]);
-
   using konsolaWarnSpy = vi.spyOn(konsola, 'warn');
   using konsolaInfoSpy = vi.spyOn(konsola, 'info');
 
   // Run the command with dry run
-  await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--dry-run', '--path', './src/commands/migrations/run/__test__']);
+  await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', spaceId, '--dry-run', '--path', './src/commands/migrations/run/__data__']);
 
   expect(konsolaWarnSpy).toHaveBeenCalledWith(
     expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),

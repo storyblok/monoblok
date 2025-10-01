@@ -27,12 +27,12 @@ export const userCommand = program
       verbose: !isVitest,
     }).start(`Fetching user info`);
     try {
-      const { password, region } = state;
+      const { password, region, baseUrl } = state;
       if (!password || !region) {
         throw new Error('No password or region found');
       }
 
-      const user = await getUser(password, region);
+      const user = await getUser(password, region, baseUrl);
 
       if (user) {
         if (verbose) {

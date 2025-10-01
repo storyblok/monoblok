@@ -6,9 +6,9 @@ import { getStoryblokUrl } from '../../utils/api-routes';
 import type { StoryblokLoginResponse, StoryblokLoginWithOtpResponse } from '../../types';
 import { getUser } from '../user/actions';
 
-export const loginWithToken = async (token: string, region: RegionCode) => {
+export const loginWithToken = async (token: string, region: RegionCode, baseUrl?: string) => {
   try {
-    return await getUser(token, region);
+    return await getUser(token, region, baseUrl);
   }
   catch (error) {
     // If getUser already threw an APIError, just re-throw it

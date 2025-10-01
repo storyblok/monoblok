@@ -103,10 +103,6 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('pull datasources actions', () => {
   beforeEach(() => {
     mapiClient({
@@ -252,10 +248,6 @@ describe('pull datasources actions', () => {
   });
 
   describe('saveDatasourcesToFiles', () => {
-    beforeEach(() => {
-      vol.reset();
-    });
-
     it('should save datasources to a single consolidated file', async () => {
       vol.fromJSON({
         '/mock/path/': null,

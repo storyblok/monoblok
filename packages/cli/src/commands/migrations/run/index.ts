@@ -48,13 +48,14 @@ migrationsCommand.command('run [componentName]')
       return;
     }
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
 
     mapiClient({
       token: {
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     try {

@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
-import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
 import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToTemplate } from './actions';
@@ -8,7 +7,6 @@ import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
 vi.mock('node:fs/promises', () => ({
   default: {
     access: vi.fn(),
@@ -39,7 +37,6 @@ const mockedHandleAPIError = vi.mocked(handleAPIError);
 describe('create actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vol.reset();
   });
 
   describe('generateProject', () => {

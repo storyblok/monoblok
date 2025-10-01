@@ -57,7 +57,7 @@ describe('userCommand', () => {
     vi.mocked(getUser).mockResolvedValue(mockResponse);
     await userCommand.parseAsync(['node', 'test']);
 
-    expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
+    expect(getUser).toHaveBeenCalledWith('valid-token', 'eu', undefined);
     expect(konsola.ok).toHaveBeenCalledWith(
       `Hi ${chalk.bold('John Doe')}, you are currently logged in with ${chalk.hex('#45bfb9')(mockResponse.email)} on ${chalk.bold('eu')} region`,
       true,

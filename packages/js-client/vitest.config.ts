@@ -1,22 +1,13 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
+import path from 'node:path';
 
 export default defineConfig({
   test: {
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-    },
-    env: {
-      NO_COLOR: '1',
-      FORCE_COLOR: '0',
-    },
     teardownTimeout: 45_000,
     projects: [
       {
         test: {
-          globals: true,
-          setupFiles: ['./test/setup.ts'],
-          include: ['**/*.{spec,test}.ts', '!**/*.integration.spec.ts'],
+          include: ['**/*.spec.ts', '!**/*.integration.spec.ts'],
           name: 'unit',
           environment: 'node',
         },
@@ -30,5 +21,10 @@ export default defineConfig({
         },
       },
     ],
+  },
+  resolve: {
+    alias: {
+      'storyblok-js-client': path.resolve(__dirname, 'dist'),
+    },
   },
 });

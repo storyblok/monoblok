@@ -7,7 +7,7 @@ securitySchemes:
   PersonalAccessToken:
     type: apiKey
     in: header
-    name: authorization
+    name: Authorization
     description: |
       ## Personal Access Token Authentication
       

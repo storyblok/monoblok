@@ -67,7 +67,7 @@ export interface PluginContext {
   program: Command;
   logger: any; // konsola instance
   utils: any; // utility functions
-  mapiClient: ManagementApiClient; // Management API client
+  getMapiClient: () => ManagementApiClient; // Get Management API client instance (lazy)
   runCommand: (command: string, args?: string[]) => Promise<void>; // Run other CLI commands
   getPlugin: (name: string) => Plugin | undefined; // Access other loaded plugins
   runHook: (hookName: string, context?: any) => Promise<void>; // Run custom hooks

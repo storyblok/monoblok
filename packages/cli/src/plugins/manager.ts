@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { konsola } from '../utils';
 import { copyDirectory, getStoryblokGlobalPath, readJsonFile, removeDirectory, saveToFile } from '../utils/filesystem';
 import type {
@@ -128,9 +129,13 @@ export class PluginManager {
         throw new Error('No valid plugin manifest found');
       }
 
-      // Load plugin module using Node.js module resolution
-      // This will respect package.json's main, module, exports fields
-      const pluginModule = await import(pluginPath);
+      // Load plugin module using Node.js module resolution like npm/pnpm linking
+      const Module = await import('node:module');
+      const require = Module.createRequire(import.meta.url);
+
+      const resolvedPath = require.resolve(pluginPath);
+      const pluginModuleUrl = pathToFileURL(resolvedPath).href;
+      const pluginModule = await import(pluginModuleUrl);
 
       let plugin: Plugin;
       if (typeof pluginModule.default === 'function') {
@@ -176,7 +181,7 @@ export class PluginManager {
       program: getProgram(),
       logger: konsola,
       utils,
-      mapiClient: mapiClient(),
+      getMapiClient: () => mapiClient(), // Lazy initialization of MAPI client
       runCommand: this.createCommandRunner(),
       getPlugin: (name: string) => this.getPlugin(name),
       runHook: (hookName: string, context?: any) => this.runHook(hookName, context),

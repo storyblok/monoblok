@@ -116,7 +116,7 @@ async function createPlugin(
     // Generate index.js (plugin implementation)
     const indexJs = `// ${pluginName} plugin for Storyblok CLI
 export default function createPlugin(context) {
-  const { logger, mapiClient, utils, runCommand, getPlugin, runHook } = context;
+  const { logger, getMapiClient, utils, runCommand, getPlugin, runHook } = context;
 
   return {
     // Command actions
@@ -126,6 +126,7 @@ export default function createPlugin(context) {
         logger.info(\`👋 Hello, \${name}!\`);
         
         // 🌐 Access Storyblok Management API
+        // const mapiClient = getMapiClient();
         // const spaces = await mapiClient.get('spaces');
         // logger.info(\`Found \${spaces.length} spaces\`);
         

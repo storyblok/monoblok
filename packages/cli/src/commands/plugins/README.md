@@ -121,7 +121,7 @@ my-plugin/
 ### Basic Plugin
 ```javascript
 export default function createPlugin(context) {
-  const { logger, mapiClient, utils, runCommand, getPlugin, runHook } = context;
+  const { logger, getMapiClient, utils, runCommand, getPlugin, runHook } = context;
 
   return {
     // 🎯 Command actions (match names in manifest)
@@ -130,7 +130,7 @@ export default function createPlugin(context) {
         logger.info(`Hello, ${options.name || 'World'}!`);
 
         // 🌐 Access Storyblok Management API
-        const components = await mapiClient.get('spaces/12345/components');
+        const components = await getMapiClient().get('spaces/12345/components');
         logger.info(`Found ${components.length} components`);
 
         // 🛠️ Use utility functions
@@ -295,11 +295,12 @@ Display basic space information and stats:
 
 ```javascript
 // package.json: { "storyblok": { "name": "space-info", "commands": [{"name": "info"}] } }
-export default function createPlugin({ mapiClient, logger }) {
+export default function createPlugin({ getMapiClient, logger }) {
   return {
     actions: {
       info: async ({ space }) => {
         try {
+          const mapiClient = getMapiClient();
           const spaceData = await mapiClient.get(`spaces/${space}`);
           const components = await mapiClient.get(`spaces/${space}/components`);
 
@@ -322,11 +323,12 @@ Check if a story has proper SEO fields filled out:
 
 ```javascript
 // package.json: { "storyblok": { "name": "seo-checker", "commands": [{"name": "check-seo"}] } }
-export default function createPlugin({ mapiClient, logger }) {
+export default function createPlugin({ getMapiClient, logger }) {
   return {
     actions: {
       'check-seo': async ({ space, slug = 'home' }) => {
         try {
+          const mapiClient = getMapiClient();
           const story = await mapiClient.get(`spaces/${space}/stories`, {
             params: { with_slug: slug }
           });
@@ -399,7 +401,7 @@ export default function createPlugin({ mapiClient, logger }) {
 | Property | Description | Example |
 |----------|-------------|---------|
 | `logger` | Console logger (konsola) | `logger.info('Hello')` |
-| `mapiClient` | Storyblok Management API | `await mapiClient.get('spaces/123/components')` |
+| `getMapiClient` | Get Storyblok Management API client | `const client = getMapiClient(); await client.get('spaces/123/components')` |
 | `utils` | CLI utility functions | `utils.getStoryblokGlobalPath()` |
 | `runCommand` | Execute CLI commands | `await runCommand('components', ['pull'])` |
 | `getPlugin` | Access other loaded plugins | `getPlugin('other-plugin-name')` |

@@ -47,7 +47,7 @@
     "test:unit:ci": "vitest run",
     "test:unit:ui": "vitest --ui",
     "test:e2e": "vitest run -c vitest.config.e2e.ts",
-    "test:integration": "pnpx vitest run -c vitest.config.e2e.ts tests/api/mapi.e2e.ts",
+    "test:integration": "vitest run --project integration",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "playground": "pnpm run --filter ./playground/vanilla dev",

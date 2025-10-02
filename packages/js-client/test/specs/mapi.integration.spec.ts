@@ -23,7 +23,7 @@ describe('getAll()', () => {
     const result = await mapi.getAll(
       `spaces/123/stories`,
     );
-    expect(result).toBe([story]);
+    expect(result).toEqual([story]);
   });
 });
 

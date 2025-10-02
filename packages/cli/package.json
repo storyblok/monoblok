@@ -35,6 +35,7 @@
     "test:types": "tsc --noEmit --skipLibCheck",
     "test:ci": "vitest run",
     "test:ui": "vitest --ui",
+    "test:integration": "vitest run --project integration",
     "coverage": "vitest run --coverage"
   },
   "dependencies": {

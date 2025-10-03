@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.0
 info:
   title: Storyblok Spaces API
   version: 1.0.0
@@ -89,7 +89,7 @@ paths:
       summary: Retrieve a Single Space
       description: Returns a single space object by providing a specific numeric id.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       responses:
         '200':
           description: Space details
@@ -113,7 +113,7 @@ paths:
       summary: Update a Space
       description: Update a space using the numeric ID. You can only able to update the properties mentioned here.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -150,7 +150,7 @@ paths:
       summary: Delete a Space
       description: Delete a space by its numeric id.
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       responses:
         '200':
           description: Space deleted

@@ -50,13 +50,14 @@ datasourcesCommand
     konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(options.from || space)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
 
     mapiClient({
       token: {
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     try {

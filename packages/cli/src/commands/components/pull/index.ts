@@ -38,13 +38,14 @@ componentsCommand
       return;
     }
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
 
     mapiClient({
       token: {
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     const spinnerGroups = new Spinner({

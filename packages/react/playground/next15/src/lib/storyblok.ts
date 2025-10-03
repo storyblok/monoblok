@@ -6,6 +6,9 @@ import { apiPlugin, storyblokInit } from '@storyblok/react/rsc';
 
 export const getStoryblokApi = storyblokInit({
   accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
+  apiOptions: {
+    endpoint: process.env.STORYBLOK_API_ENDPOINT,
+  },
   use: [apiPlugin],
   components: {
     'teaser': Teaser,

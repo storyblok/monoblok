@@ -1,0 +1,53 @@
+openapi: 3.0.0
+info:
+  title: Storyblok Stories API
+  version: 1.0.0
+  description: API for delivering Storyblok stories
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/cdn/stories/{slug}:
+    get:
+      operationId: get
+      summary: Retrieve One Story
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - published
+              - draft
+            default: published
+      responses:
+        '200':
+          description: Story details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  story:
+                    $ref: '#/components/schemas/story'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    story:
+      $ref: ./schemas/story.yaml
+    blok:
+      $ref: ./schemas/blok.yaml

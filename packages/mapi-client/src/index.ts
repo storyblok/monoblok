@@ -1,7 +1,7 @@
 // Import generated SDKs with shared client support
 import { createClient } from './client';
 import type { Client } from './client/types';
-import { getManagementBaseUrl, type Region } from '@storyblok/region-helper';
+import { type Region } from '@storyblok/region-helper';
 import { sdkRegistry, SdkRegistryInstance } from './sdk-registry.generated';
 
 type PersonalAccessToken = {
@@ -96,7 +96,7 @@ function createClientInstance<ThrowOnError extends boolean = false>(
   config: ManagementApiClientConfig<ThrowOnError>
 ): Client {
   const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
-  
+
   return createClient({
     baseUrl,
     region,

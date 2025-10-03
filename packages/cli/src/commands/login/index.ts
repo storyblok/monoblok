@@ -76,7 +76,7 @@ export const loginCommand = program
           });
         }
         spinner.start(`Logging in with token`);
-        const user = await loginWithToken(token, userRegion);
+        const user = await loginWithToken(token, userRegion, state.baseUrl);
         if (user) {
           updateSession(user.email, token, userRegion);
 
@@ -124,7 +124,7 @@ export const loginCommand = program
             });
           }
           spinner.start(`Logging in with token`);
-          const user = await loginWithToken(userToken, userRegion);
+          const user = await loginWithToken(userToken, userRegion, state.baseUrl);
           spinner.succeed();
           if (user) {
             updateSession(user.email, userToken, userRegion);

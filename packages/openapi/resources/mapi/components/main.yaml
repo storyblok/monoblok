@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.0
 info:
   title: Storyblok Components API
   version: 1.0.0
@@ -14,8 +14,8 @@ paths:
       operationId: list
       summary: Retrieve Multiple Components
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/pagination.yaml#/page
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/pagination.yaml#/page
         - name: per_page
           in: query
           required: false
@@ -95,7 +95,7 @@ paths:
       operationId: create
       summary: Create a Component
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -127,8 +127,8 @@ paths:
       operationId: get
       summary: Retrieve One Component
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component details
@@ -149,8 +149,8 @@ paths:
       operationId: update
       summary: Update a Component
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       requestBody:
         required: true
         content:
@@ -183,8 +183,8 @@ paths:
       operationId: deleteComponent
       summary: Delete a Component
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component deleted
@@ -207,8 +207,8 @@ paths:
       summary: Rename Component Attribute
       description: Rename an attribute within a component's schema
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
         - name: old_name
           in: query
           required: true
@@ -242,8 +242,8 @@ paths:
       summary: Restore Component
       description: Restore a component from its last version
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
       responses:
         '200':
           description: Component restored
@@ -266,7 +266,7 @@ paths:
       summary: Bulk Move Components
       description: Update multiple components' group assignment
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -313,7 +313,7 @@ paths:
       operationId: versions
       summary: Retrieve Component Versions
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: page
           in: query
           required: false
@@ -389,8 +389,8 @@ paths:
       operationId: version
       summary: Retrieve a Single Component Version
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/component_id
         - name: version_id
           in: path
           required: true
@@ -423,7 +423,7 @@ paths:
       operationId: restoreVersion
       summary: Restore a Component Version
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: version_id
           in: path
           required: true

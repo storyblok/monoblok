@@ -1,12 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { readDatasourcesFiles } from './actions';
 import type { SpaceDatasource } from '../constants';
 import { vol } from 'memfs';
 import { FileSystemError } from '../../../utils';
-
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 // Mock datasources data that matches the SpaceDatasource interface
 const mockDatasource1: SpaceDatasource = {
@@ -62,14 +58,6 @@ const mockDatasource2: SpaceDatasource = {
 };
 
 describe('push datasources actions', () => {
-  beforeEach(() => {
-    vol.reset();
-  });
-
-  afterEach(() => {
-    vol.reset();
-  });
-
   describe('readDatasourcesFiles', () => {
     describe('error handling', () => {
       it('should throw FileSystemError when directory does not exist', async () => {

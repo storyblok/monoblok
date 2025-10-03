@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
@@ -102,10 +102,6 @@ const server = setupServer(...handlers);
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
-
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 describe('pull datasources actions', () => {
   beforeEach(() => {
@@ -252,10 +248,6 @@ describe('pull datasources actions', () => {
   });
 
   describe('saveDatasourcesToFiles', () => {
-    beforeEach(() => {
-      vol.reset();
-    });
-
     it('should save datasources to a single consolidated file', async () => {
       vol.fromJSON({
         '/mock/path/': null,

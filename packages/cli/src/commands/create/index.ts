@@ -47,13 +47,14 @@ export const createCommand = program
       return;
     }
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
 
     mapiClient({
       token: {
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     const spinnerBlueprints = new Spinner({
@@ -67,7 +68,7 @@ export const createCommand = program
     let userData: User;
 
     try {
-      const user = await getUser(password, region);
+      const user = await getUser(password, region, baseUrl);
       if (!user) {
         throw new Error('User data is undefined');
       }

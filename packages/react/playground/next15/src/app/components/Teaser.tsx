@@ -1,7 +1,7 @@
 import { storyblokEditable } from '@storyblok/react/rsc';
 import { headers } from 'next/headers';
 
-const Teaser = ({ blok }) => {
+const Teaser = ({ blok }: { blok: { headline: any }}) => {
   // Although we are not using the headers here, we need to call it to test that server only components are working.
   headers();
   return (

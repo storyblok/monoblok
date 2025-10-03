@@ -3,7 +3,9 @@ import { getStoryblokApi } from '@/lib/storyblok';
 import { StoryblokServerRichText } from '@storyblok/react/rsc';
 
 export default async function RichtextPage() {
-  const { data } = await fetchData();
+  const sbParams: ISbStoriesParams = { version: 'draft' };
+  const storyblokApi: StoryblokClient = getStoryblokApi();
+  const { data } = await storyblokApi.get(`cdn/stories/react/richtext`, sbParams);
 
   if (!data.story?.content) {
     return (
@@ -27,11 +29,4 @@ export default async function RichtextPage() {
           )}
     </div>
   );
-}
-
-export async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: 'draft' };
-
-  const storyblokApi: StoryblokClient = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/react/richtext`, sbParams);
 }

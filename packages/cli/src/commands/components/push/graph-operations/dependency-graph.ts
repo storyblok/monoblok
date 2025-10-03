@@ -11,6 +11,11 @@ import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upse
 // HELPER FUNCTIONS
 // =============================================================================
 
+/**
+ * Field types that support component whitelists (group, tag, and component whitelists)
+ */
+const fieldTypesWithDependencies = ['bloks', 'richtext'] as const;
+
 // =============================================================================
 // GRAPH BUILDING
 // =============================================================================
@@ -182,7 +187,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
   const datasourceNames = new Set<string>();
 
   function traverseField(field: Record<string, any>) {
-    if (field.type === 'bloks' || field.type === 'richtext') {
+    if (fieldTypesWithDependencies.includes(field.type)) {
       // Collect group dependencies
       if (field.component_group_whitelist && Array.isArray(field.component_group_whitelist)) {
         field.component_group_whitelist.forEach((uuid: string) => groupUuids.add(uuid));
@@ -690,7 +695,7 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
       const resolvedField = { ...field };
 
       // Resolve bloks and richtext field references (both support component whitelists)
-      if (resolvedField.type === 'bloks' || resolvedField.type === 'richtext') {
+      if (fieldTypesWithDependencies.includes(resolvedField.type)) {
         // Resolve component group whitelist
         if (resolvedField.component_group_whitelist && Array.isArray(resolvedField.component_group_whitelist)) {
           resolvedField.component_group_whitelist = resolvedField.component_group_whitelist.map((groupUuid: string) => {

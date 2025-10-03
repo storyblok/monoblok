@@ -132,7 +132,8 @@ export class MigrationStream extends Transform {
         }
 
         const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
-        processed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+        const migrationProcessed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+        processed = processed || migrationProcessed;
       }
 
       const newContentHash = hash(storyContent);

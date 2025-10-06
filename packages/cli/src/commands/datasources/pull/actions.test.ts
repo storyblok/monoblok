@@ -89,8 +89,9 @@ const handlers = [
   }),
   http.get('https://mapi.storyblok.com/v1/spaces/:space/datasource_entries', async ({ request }) => {
     const url = new URL(request.url);
-    const datasourceId = url.searchParams.get('datasource_id');
-    const entries = mockedEntries[Number(datasourceId)] || [];
+    const datasourceSlug = url.searchParams.get('datasource_slug');
+    const datasource = mockedDatasources.find(ds => ds.slug === datasourceSlug);
+    const entries = mockedEntries[Number(datasource?.id)] || [];
     return HttpResponse.json({ datasource_entries: entries });
   }),
 ];

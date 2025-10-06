@@ -13,7 +13,7 @@ import type { SaveDatasourcesOptions } from './constants';
  */
 export const fetchDatasourceEntries = async (
   spaceId: string,
-  datasourceId: number,
+  datasourceSlug: string,
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
@@ -22,7 +22,7 @@ export const fetchDatasourceEntries = async (
         space_id: spaceId,
       },
       query: {
-        datasource_id: datasourceId,
+        datasource_slug: datasourceSlug,
       },
       throwOnError: true,
     });
@@ -47,10 +47,10 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
       datasources?.map(async (ds) => {
-        if (!ds.id) {
+        if (!ds.slug) {
           return { ...ds, entries: [] };
         }
-        const entries = await fetchDatasourceEntries(spaceId, ds.id);
+        const entries = await fetchDatasourceEntries(spaceId, ds.slug);
         return { ...ds, entries };
       }) || [],
     );
@@ -76,7 +76,7 @@ export const fetchDatasource = async (spaceId: string, datasourceName: string): 
     const found = data?.datasources?.find(d => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
-    const entries = await fetchDatasourceEntries(spaceId, found.id as number);
+    const entries = await fetchDatasourceEntries(spaceId, found.slug as string);
     return { ...found, entries: entries || [] } as SpaceDatasource;
   }
   catch (error) {

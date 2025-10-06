@@ -48,3 +48,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .nx
 .cursor
+
+**/*/CLAUDE.md

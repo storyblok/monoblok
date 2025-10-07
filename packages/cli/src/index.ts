@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import { loadConfig } from 'c12';
 
 import { handleError, konsola } from './utils';
 import { getProgram } from './program';
@@ -29,6 +28,7 @@ konsola.br();
 konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
 
 program.option('--verbose', 'Enable verbose output', false);
+program.option('--global-flag <global-flag>', 'Enable global flag', 'default');
 program.version(pkg.version, '-v, --vers', 'Output the current version');
 program.helpOption('-h, --help', 'Display help for command');
 
@@ -39,19 +39,28 @@ program.on('command:*', () => {
   process.exit(1);
 });
 
+// TODO remove this before merging
 program.command('test')
   .description('Test command')
-  .option('--verbose', 'Enable verbose output')
+  .option('--local-flag <local-flag>', 'Enable debug output', 'default')
   .option('--region <region>', 'Specify region')
-  .hook('preAction', resolveConfig)
   .action(async (options, thisCommand) => {
-    const config = await loadConfig({
-      name: 'storyblok',
-    });
-    console.log('Loaded config:', config.config);
-    console.log('Command options after config resolution:', thisCommand.opts());
-    console.log('Final verbose value:', thisCommand.opts().verbose);
-    console.log('Final region value:', thisCommand.opts().region);
+    const resolvedOpts = await resolveConfig(thisCommand);
+    console.log('Resolved options:', resolvedOpts);
+  });
+
+const deepCommand = program.command('deep')
+  .description('Deep command');
+
+deepCommand.command('pull [componentName]')
+  .description('Pull command')
+  .option('--global-flag <global-flag>', 'Enable debug output')
+  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
+  .option('--sf, --separate-files', 'Argument to create a single file for each component')
+  .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
+  .action(async (componentName: string, options, thisCommand) => {
+    const resolvedOpts = await resolveConfig(thisCommand);
+    console.log('Resolved options:', resolvedOpts);
   });
 
 try {

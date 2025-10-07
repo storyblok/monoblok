@@ -467,7 +467,7 @@ export const generateTypes = async (
   }
 };
 
-export const saveTypesToComponentsFile = async (space: string, typedef: string | ComponentFileDefinition[], options: Pick<GenerateTypesOptions, 'path' | 'filename' | 'separateFiles'>) => {
+export const saveTypesToFile = async (space: string, typedef: string | ComponentFileDefinition[], options: Pick<GenerateTypesOptions, 'path' | 'filename' | 'separateFiles'>) => {
   const { filename = DEFAULT_COMPONENT_FILENAME, path, separateFiles } = options;
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'types', space)

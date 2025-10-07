@@ -5,7 +5,7 @@ import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
 import { typesCommand } from '../command';
-import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
+import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
 
 const program = getProgram();
 
@@ -71,7 +71,7 @@ typesCommand
       });
 
       if (typedefString) {
-        await saveTypesToComponentsFile(space, typedefString, {
+        await saveTypesToFile(space, typedefString, {
           filename: options.filename,
           path,
         });

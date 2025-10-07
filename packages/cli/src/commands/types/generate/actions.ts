@@ -158,7 +158,7 @@ const getComponentPropertiesTypeAnnotations = async (
   component: SpaceComponent,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
-  customFieldsParser?: CustomFieldParserType,
+  customFieldsParser?: CustomFieldParser,
 ): Promise<JSONSchema['properties']> => {
   return Object.entries(component.schema).reduce(async (accPromise, [key, value]) => {
     const acc = await accPromise;
@@ -279,9 +279,9 @@ const getComponentPropertiesTypeAnnotations = async (
   }, Promise.resolve({} as JSONSchema));
 };
 
-type CustomFieldParserType = ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
+type CustomFieldParser = ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
 
-const loadCustomFieldsParser = async (path: string): Promise<CustomFieldParserType> => {
+const loadCustomFieldsParser = async (path: string): Promise<CustomFieldParser> => {
   try {
     const customFieldsParser = await import(resolve(path));
     return customFieldsParser.default;
@@ -357,7 +357,7 @@ const buildSchemaForComponent = async (
   component: SpaceComponent,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
-  customFieldsParser?: CustomFieldParserType,
+  customFieldsParser?: CustomFieldParser,
 ) => {
   const title = getComponentType(component.name, options);
 
@@ -394,7 +394,7 @@ export const generateTypes = async (
   try {
     const header = [...DEFAULT_TYPEDEFS_HEADER];
 
-    let customFieldsParser: CustomFieldParserType;
+    let customFieldsParser: CustomFieldParser;
     let compilerOptions: Record<string, unknown> | undefined;
 
     if (options.customFieldsParser) {

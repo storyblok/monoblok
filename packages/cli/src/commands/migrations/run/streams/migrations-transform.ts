@@ -68,19 +68,22 @@ export class MigrationStream extends Transform {
     }
   }
 
-  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent }>> {
-    if (!story.content) {
-      // Mark all migrations as failed for this story
-      for (const migrationFile of this.options.migrationFiles) {
-        this.results.failed.push({
-          storyId: story.id,
-          migrationName: migrationFile.name,
-          error: new Error('Story content is missing'),
-        });
-      }
-      return [];
+  private async getOrLoadMigrationFunction(migrationFile: MigrationFile) {
+    if (this.migrationFunctions.has(migrationFile.name)) {
+      return this.migrationFunctions.get(migrationFile.name);
     }
 
+    const migrationFunction = await getMigrationFunction(
+      migrationFile.name,
+      this.options.space,
+      this.options.path,
+    );
+    this.migrationFunctions.set(migrationFile.name, migrationFunction);
+
+    return migrationFunction;
+  }
+
+  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent }>> {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
       ? this.options.migrationFiles.filter((file) => {
@@ -89,73 +92,67 @@ export class MigrationStream extends Transform {
         })
       : this.options.migrationFiles;
 
+    if (!story.content) {
+      this.results.failed.push({
+        storyId: story.id,
+        migrationNames: relevantMigrations.map(m => m.name),
+        error: new Error('Story content is missing'),
+      });
+      return [];
+    }
+
     const successfulResults: Array<{ storyId: number; name: string | undefined; content: StoryContent }> = [];
 
     // Process each relevant migration
-    for (const migrationFile of relevantMigrations) {
-      const result = await this.applyMigrationToStory(story, migrationFile);
-      if (result) {
-        successfulResults.push(result);
-      }
+    const result = await this.applyMigrationsToStory(story, relevantMigrations);
+    if (result) {
+      successfulResults.push(result);
     }
 
     return successfulResults;
   }
 
-  private async applyMigrationToStory(story: Story, migrationFile: MigrationFile): Promise<{ storyId: number; name: string | undefined; content: StoryContent } | null> {
+  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: StoryContent } | null> {
+    const migrationNames = migrationFiles.map(f => f.name);
+
     try {
-      // Get or load the migration function
-      let migrationFunction = this.migrationFunctions.get(migrationFile.name);
-      if (!migrationFunction) {
-        migrationFunction = await getMigrationFunction(
-          migrationFile.name,
-          this.options.space,
-          this.options.path,
-        );
-        this.migrationFunctions.set(migrationFile.name, migrationFunction);
-      }
-
-      if (!migrationFunction) {
-        this.results.failed.push({
-          storyId: story.id,
-          migrationName: migrationFile.name,
-          error: new Error(`Failed to load migration function from file "${migrationFile.name}"`),
-        });
-        return null;
-      }
-
-      // Save rollback data before applying migration
-      await saveRollbackData({
-        space: this.options.space,
-        path: this.options.path,
-        story: { id: story.id, name: story.name || '', content: story.content as StoryContent },
-        migrationTimestamp: this.timestamp,
-        migrationFile: migrationFile.name,
-      });
-
-      // Create a deep copy of the story content
       const storyContent = structuredClone(story.content) as StoryContent;
-
-      // Calculate original content hash
       const originalContentHash = hash(storyContent);
 
-      // Determine the target component
-      const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+      let processed = false;
+      for (const migrationFile of migrationFiles) {
+        const migrationFunction = await this.getOrLoadMigrationFunction(migrationFile);
+        if (!migrationFunction) {
+          this.results.failed.push({
+            storyId: story.id,
+            migrationNames,
+            error: new Error(`Failed to load migration function from file "${migrationFile.name}"`),
+          });
+          return null;
+        }
 
-      // Apply the migration
-      const processed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+        const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+        const migrationProcessed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+        processed = processed || migrationProcessed;
+      }
 
-      // Calculate new content hash
       const newContentHash = hash(storyContent);
-
-      // Check if content was actually modified
       const contentChanged = originalContentHash !== newContentHash;
 
       if (processed && contentChanged) {
+        // Save rollback data before applying migration
+        await saveRollbackData({
+          space: this.options.space,
+          path: this.options.path,
+          story: { id: story.id, name: story.name || '', content: story.content as StoryContent },
+          migrationTimestamp: this.timestamp,
+          migrationNames,
+        });
+
         this.results.successful.push({
           storyId: story.id,
           name: story.name,
-          migrationName: migrationFile.name,
+          migrationNames,
           content: storyContent,
         });
 
@@ -169,18 +166,23 @@ export class MigrationStream extends Transform {
         this.results.skipped.push({
           storyId: story.id,
           name: story.name,
-          migrationName: migrationFile.name,
+          migrationNames,
           reason: 'No changes detected after migration',
         });
         return null;
       }
       else {
-        const baseComponent = targetComponent.split('.')[0];
+        const reason = migrationFiles.map((migrationFile) => {
+          const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+          const baseComponent = targetComponent.split('.')[0];
+          return baseComponent === this.options.componentName ? `No matching components found for ${migrationFile.name}` : `Different component target ${migrationFile.name}`;
+        }).join('\n');
+
         this.results.skipped.push({
           storyId: story.id,
           name: story.name,
-          migrationName: migrationFile.name,
-          reason: baseComponent === this.options.componentName ? 'No matching components found' : 'Different component target',
+          migrationNames,
+          reason,
         });
         return null;
       }
@@ -188,7 +190,7 @@ export class MigrationStream extends Transform {
     catch (error) {
       this.results.failed.push({
         storyId: story.id,
-        migrationName: migrationFile.name,
+        migrationNames,
         error,
       });
       return null;

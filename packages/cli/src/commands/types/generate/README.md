@@ -15,6 +15,7 @@ storyblok types generate --space <spaceId>
 |--------|-------------|---------|
 | `--sf, --separate-files` | Generate separate `.d.ts` files for each component (requires components pulled with `--separate-files`) | `false` |
 | `--strict` | Enable strict mode with no loose typing | `false` |
+| `--filename <name>` | File name for the generated type files | `storyblok` |
 | `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
 | `--suffix <suffix>` | Suffix for component names | - |
 | `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |
@@ -64,7 +65,7 @@ The following structure will be created:
 └── types/
     ├── storyblok.d.ts            # Base Storyblok types
     └── 295018/
-        └── storyblok.d.ts        # Your component types
+        └── storyblok-components.d.ts        # Your component types
 ```
 
 If you use `--separate-files`, then each component will have its own `.d.ts` file:

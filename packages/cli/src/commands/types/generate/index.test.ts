@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { konsola } from '../../../utils';
-import { generateStoryblokTypes, generateTypes } from './actions';
+import type { ComponentFileDefinition } from './actions';
+import { generateComponentTypes, generateStoryblokTypes, generateTypes } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
 // Import the main components module first to ensure proper initialization
@@ -12,8 +13,8 @@ import { readComponentsFiles } from '../../components/push/actions';
 vi.mock('./actions', () => ({
   generateStoryblokTypes: vi.fn(),
   generateTypes: vi.fn(),
+  generateComponentTypes: vi.fn(),
   getComponentType: vi.fn(),
-  saveTypesToFile: vi.fn(),
 }));
 
 vi.mock('../../components/push/actions', () => ({
@@ -110,12 +111,9 @@ describe('types generate', () => {
 
       expect(generateStoryblokTypes).toHaveBeenCalledWith({
         filename: undefined,
-        path: undefined,
       });
 
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        path: undefined,
-      });
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: {}, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
 
       expect(konsola.ok).toHaveBeenCalledWith(`Successfully generated types for space ${chalk.hex(colorPalette.PRIMARY)('12345')}`, true);
     });
@@ -154,11 +152,8 @@ describe('types generate', () => {
       // Run the command with the --strict flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--strict']);
 
-      // Verify that generateTypes was called with the strict option set to true
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        strict: true,
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the strict option set to true
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { strict: true }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass typePrefix option to generateTypes when --type-prefix flag is used', async () => {
@@ -195,11 +190,8 @@ describe('types generate', () => {
       // Run the command with the --type-prefix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--type-prefix', 'Custom']);
 
-      // Verify that generateTypes was called with the typePrefix option set to 'Custom'
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        typePrefix: 'Custom',
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the typePrefix option set to 'Custom'
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { typePrefix: 'Custom' }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass typeSuffix option to generateTypes when --type-suffix flag is used', async () => {
@@ -236,11 +228,8 @@ describe('types generate', () => {
       // Run the command with the --type-prefix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--type-suffix', 'CustomTypeSuffix']);
 
-      // Verify that generateTypes was called with the typePrefix option set to 'Custom'
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        typeSuffix: 'CustomTypeSuffix',
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the typePrefix option set to 'Custom'
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { typeSuffix: 'CustomTypeSuffix' }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass suffix option to generateTypes when --suffix flag is used', async () => {
@@ -277,11 +266,8 @@ describe('types generate', () => {
       // Run the command with the --suffix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--suffix', 'Component']);
 
-      // Verify that generateTypes was called with the suffix option set to 'Component'
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        suffix: 'Component',
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the suffix option set to 'Component'
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { suffix: 'Component' }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass separateFiles option to generateTypes when --separate-files flag is used (basic case)', async () => {
@@ -318,11 +304,8 @@ describe('types generate', () => {
       // Run the command with the --separate-files flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
 
-      // Verify that generateTypes was called with the separateFiles option set to true
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        separateFiles: true,
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the separateFiles option set to true
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { separateFiles: true }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass customFieldsParser option to generateTypes when --custom-fields-parser flag is used', async () => {
@@ -359,11 +342,8 @@ describe('types generate', () => {
       // Run the command with the --custom-fields-parser flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--custom-fields-parser', '/path/to/parser.ts']);
 
-      // Verify that generateTypes was called with the customFieldsParser option set to '/path/to/parser.ts'
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        customFieldsParser: '/path/to/parser.ts',
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the customFieldsParser option set to '/path/to/parser.ts'
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { customFieldsParser: '/path/to/parser.ts' }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass compilerOptions option to generateTypes when --compiler-options flag is used', async () => {
@@ -400,11 +380,8 @@ describe('types generate', () => {
       // Run the command with the --compiler-options flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--compiler-options', '/path/to/options.json']);
 
-      // Verify that generateTypes was called with the compilerOptions option set to '/path/to/options.json'
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        compilerOptions: '/path/to/options.json',
-        path: undefined,
-      });
+      // Verify that generateComponentTypes was called with the compilerOptions option set to '/path/to/options.json'
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { compilerOptions: '/path/to/options.json' }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
     });
 
     it('should pass separateFiles option and handle multiple file outputs when --separate-files flag is used', async () => {
@@ -436,18 +413,12 @@ describe('types generate', () => {
 
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
-
-      // simulate separate-files result from the action
       vi.mocked(generateTypes).mockResolvedValue([
         { name: 'ComponentName', content: '// d.ts content' },
-      ] as any);
+      ] as ComponentFileDefinition[]);
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
-
-      expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, {
-        separateFiles: true,
-        path: undefined,
-      });
+      expect(generateComponentTypes).toHaveBeenCalledWith({ options: { separateFiles: true }, typeCommandOptions: { space: '12345', path: undefined }, spaceData: mockSpaceData });
 
       // We only assert that no error was logged.
       expect(konsola.error).not.toHaveBeenCalled();

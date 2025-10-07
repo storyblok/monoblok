@@ -1,4 +1,4 @@
-import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToFile } from './actions';
+import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveConsolidatedTypeFile, saveSeparateTypeFiles } from './actions';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -902,50 +902,47 @@ describe('separate files mode', () => {
   });
 });
 
-describe('saveTypesToFile', () => {
+describe('saveConsolidatedTypeFile', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should saveTypesToFile writes one file per component when separateFiles = true and ignores filename', async () => {
-    vi.clearAllMocks();
+  it('should write a single file with default filename', async () => {
+    const dummyTypes = '// types content';
+    await saveConsolidatedTypeFile('12345', dummyTypes, '/some/path');
 
+    expect(join).toHaveBeenCalledWith(expect.any(String), 'storyblok-components.d.ts');
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+  });
+
+  it('should write a single file with custom filename', async () => {
+    const dummyTypes = '// types content';
+    const customFilename = 'my-custom-types';
+
+    await saveConsolidatedTypeFile('12345', dummyTypes, '/some/path', customFilename);
+
+    expect(join).toHaveBeenCalledWith(expect.any(String), `${customFilename}.d.ts`);
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+  });
+});
+
+describe('saveSeparateTypeFiles', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should write one file per component', async () => {
     const files = [
       { name: 'Hero', content: '// hero' },
       { name: 'Button', content: '// button' },
     ];
 
-    await saveTypesToFile('12345', files, { separateFiles: true, filename: 'IGNORED' });
+    await saveSeparateTypeFiles('12345', files, '/some/path');
 
-    // Two writes
     expect(saveToFile).toHaveBeenCalledTimes(2);
-
-    // join() receives the sanitized filenames (we only mocked return; assert args)
     expect(join).toHaveBeenCalledWith(expect.any(String), 'Hero.d.ts');
     expect(join).toHaveBeenCalledWith(expect.any(String), 'Button.d.ts');
-
-    // Should not try to use the single-file filename
-    expect(join).not.toHaveBeenCalledWith(expect.any(String), 'IGNORED.d.ts');
-  });
-
-  it('should call saveTypesToFile with the expected path and default filename', async () => {
-    const dummyTypes = '// types content';
-    await saveTypesToFile('12345', dummyTypes, {});
-
-    // We expect join to be called with the filename ending in -components.d.ts
-    expect(join).toHaveBeenCalledWith(expect.any(String), `storyblok-components.d.ts`);
-    // We expect saveToFile to be called with the mocked joined path and the dummy types
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
-  });
-
-  it('should call saveTypesToFile with the expected path and custom filename', async () => {
-    const customFilename = 'my-custom-types';
-    const dummyTypes = '// types content';
-    await saveTypesToFile('12345', dummyTypes, { filename: customFilename });
-
-    // We expect join to be called with the filename ending in -components.d.ts
-    expect(join).toHaveBeenCalledWith(expect.any(String), `${customFilename}.d.ts`);
-    // We expect saveToFile to be called with the mocked joined path and the dummy types
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', '// hero');
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', '// button');
   });
 });

@@ -3,6 +3,11 @@ import { getProgram } from '../../program';
 
 const program = getProgram(); // Get the shared singleton instance
 
+export interface TypesCommandOptions {
+  space: string;
+  path?: string;
+}
+
 // Components root command
 export const typesCommand = program
   .command(commands.TYPES)

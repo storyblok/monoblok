@@ -7,13 +7,15 @@ import { join, resolve } from 'node:path';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';
 import type { ComponentPropertySchema } from '../../../types/schemas';
+import type { TypesCommandOptions } from '../command';
+import type { ComponentsData } from 'src/commands/components';
 
 export interface ComponentGroupsAndNamesObject {
   componentGroups: Map<string, Set<string>>;
   componentNames: Set<string>;
 }
 
-interface ComponentFileDefinition {
+export interface ComponentFileDefinition {
   name: string;
   content: string;
 }
@@ -388,13 +390,81 @@ const buildSchemaForComponent = async (
   return { schema, used, title };
 };
 
+async function generateSeparateTypeFiles(
+  spaceData: SpaceComponentsData,
+  options: GenerateTypesOptions,
+  customFieldsParser?: CustomFieldParser,
+  compilerOptions?: Record<string, unknown>,
+) {
+  const header = [...DEFAULT_TYPEDEFS_HEADER];
+
+  const perComponent = await Promise.all(
+    spaceData.components.map(async component =>
+      buildSchemaForComponent(component, options, spaceData, customFieldsParser),
+    ),
+  );
+
+  const files: ComponentFileDefinition[] = await Promise.all(
+    perComponent.map(async ({ schema, used }) => {
+      const code = await compile(schema, schema.title!, {
+        additionalProperties: !options.strict,
+        bannerComment: '',
+        ...compilerOptions,
+      });
+
+      const imports = buildImportsFromUsedTypes(used, {
+        relativeStoryblokDts: '../storyblok.d.ts',
+      });
+
+      return {
+        name: sanitizeFilename(schema.$id?.replace('#/', '') || ''),
+        content: [...header, ...imports, code].join('\n'),
+      };
+    }),
+  );
+
+  return files;
+}
+
+async function generateConsolidatedTypeFile(
+  spaceData: SpaceComponentsData,
+  options: GenerateTypesOptions,
+  customFieldsParser?: CustomFieldParser,
+  compilerOptions?: Record<string, unknown>,
+) {
+  const header = [...DEFAULT_TYPEDEFS_HEADER];
+  const globalUsed = new Set<string>();
+
+  const mapped = await Promise.all(
+    spaceData.components.map(async component =>
+      buildSchemaForComponent(component, options, spaceData, customFieldsParser),
+    ),
+  );
+
+  mapped.forEach(({ used }) => used.forEach(t => globalUsed.add(t)));
+
+  const compiled = await Promise.all(
+    mapped.map(({ schema }) =>
+      compile(schema, schema.title!, {
+        additionalProperties: !options.strict,
+        bannerComment: '',
+        ...compilerOptions,
+      }),
+    ),
+  );
+
+  const imports = buildImportsFromUsedTypes(globalUsed, {
+    relativeStoryblokDts: '../storyblok.d.ts',
+  });
+
+  return [...header, ...imports, ...compiled].join('\n');
+}
+
 export const generateTypes = async (
   spaceData: SpaceComponentsData,
   options: GenerateTypesOptions = { strict: false },
 ): Promise<string | ComponentFileDefinition[] | undefined> => {
   try {
-    const header = [...DEFAULT_TYPEDEFS_HEADER];
-
     let customFieldsParser: CustomFieldParser;
     let compilerOptions: Record<string, unknown> | undefined;
 
@@ -406,60 +476,11 @@ export const generateTypes = async (
     }
 
     if (options.separateFiles) {
-      const perComponent = await Promise.all(
-        spaceData.components.map(async component =>
-          buildSchemaForComponent(component, options, spaceData, customFieldsParser),
-        ),
-      );
-
-      const files: ComponentFileDefinition[] = await Promise.all(
-        perComponent.map(async ({ schema, used }) => {
-          const code = await compile(schema, schema.title!, {
-            additionalProperties: !options.strict,
-            bannerComment: '',
-            ...compilerOptions,
-          });
-
-          const imports = buildImportsFromUsedTypes(used, {
-            relativeStoryblokDts: '../storyblok.d.ts',
-          });
-
-          return {
-            name: sanitizeFilename(schema.$id?.replace('#/', '') || ''),
-            content: [...header, ...imports, code].join('\n'),
-          };
-        }),
-      );
-
-      return files;
+      return await generateSeparateTypeFiles(spaceData, options, customFieldsParser, compilerOptions);
     }
-
-    const globalUsed = new Set<string>();
-
-    const mapped = await Promise.all(
-      spaceData.components.map(async component =>
-        buildSchemaForComponent(component, options, spaceData, customFieldsParser),
-      ),
-    );
-
-    mapped.forEach(({ used }) => used.forEach(t => globalUsed.add(t)));
-
-    const compiled = await Promise.all(
-      mapped.map(({ schema }) =>
-        compile(schema, schema.title!, {
-          additionalProperties: !options.strict,
-          bannerComment: '',
-          ...compilerOptions,
-        }),
-      ),
-    );
-
-    const imports = buildImportsFromUsedTypes(globalUsed, {
-      relativeStoryblokDts: '../storyblok.d.ts',
-    });
-
-    const finalTypeDef = [...header, ...imports, ...compiled];
-    return [...finalTypeDef].join('\n');
+    else {
+      return await generateConsolidatedTypeFile(spaceData, options, customFieldsParser, compilerOptions);
+    }
   }
   catch (error) {
     handleError(error as Error);
@@ -467,27 +488,28 @@ export const generateTypes = async (
   }
 };
 
-export const saveTypesToFile = async (space: string, typedef: string | ComponentFileDefinition[], options: Pick<GenerateTypesOptions, 'path' | 'filename' | 'separateFiles'>) => {
-  const { filename = DEFAULT_COMPONENT_FILENAME, path, separateFiles } = options;
+export const saveConsolidatedTypeFile = async (space: string, typeDef: string, path: TypesCommandOptions['path'], filename: GenerateTypesOptions['filename'] = DEFAULT_COMPONENT_FILENAME) => {
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'types', space)
     : resolvePath(path, `types/${space}`);
 
   try {
-    if (separateFiles && Array.isArray(typedef)) {
-      for (const { name, content } of typedef) {
-        await saveToFile(join(resolvedPath, `${name}.d.ts`), content);
-      }
-      return;
-    }
+    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typeDef);
+  }
+  catch (error) {
+    handleFileSystemError('write', error as Error);
+  }
+};
 
-    if (typeof typedef !== 'string') {
-      throw new TypeError(
-        'Expected typedef to be a string when separateFiles is false.',
-      );
-    }
+export const saveSeparateTypeFiles = async (space: string, componentTypeDefs: ComponentFileDefinition[], path: TypesCommandOptions['path']) => {
+  const resolvedPath = path
+    ? resolve(process.cwd(), path, 'types', space)
+    : resolvePath(path, `types/${space}`);
 
-    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedef);
+  try {
+    for (const { name, content } of componentTypeDefs) {
+      await saveToFile(join(resolvedPath, `${name}.d.ts`), content);
+    }
   }
   catch (error) {
     handleFileSystemError('write', error as Error);
@@ -499,7 +521,7 @@ export const saveTypesToFile = async (space: string, typedef: string | Component
  * @param options - Options for generating the types
  * @returns Promise that resolves when the file is saved
  */
-export const generateStoryblokTypes = async (options: Pick<GenerateTypesOptions, 'path'> = {}) => {
+export const generateStoryblokTypes = async (options: Pick<TypesCommandOptions, 'path'> = {}) => {
   const { path } = options;
 
   try {
@@ -528,5 +550,39 @@ export const generateStoryblokTypes = async (options: Pick<GenerateTypesOptions,
   catch (error) {
     handleFileSystemError('read', error as Error);
     return false;
+  }
+};
+
+interface GenerateComponentTypesParams {
+  options: GenerateTypesOptions;
+  typeCommandOptions: TypesCommandOptions;
+  spaceData: ComponentsData & { datasources: [] };
+}
+
+export const generateComponentTypes = async (params: GenerateComponentTypesParams) => {
+  const { typeCommandOptions, spaceData, options } = params;
+  const { space, path } = typeCommandOptions;
+
+  const generated = await generateTypes(spaceData, {
+    ...options,
+  });
+
+  if (options.separateFiles) {
+    if (!generated || !Array.isArray(generated)) {
+      throw new TypeError(
+        `Expected generated types (with separateFiles: true) to be an array of ComponentFileDefinition, received: '${generated}'`,
+      );
+    }
+
+    await saveSeparateTypeFiles(space, generated, path);
+  }
+  else {
+    if (!generated || typeof generated !== 'string') {
+      throw new TypeError(
+        `Expected generated types (with separateFiles: false) to be a string, received: '${generated}'`,
+      );
+    }
+
+    await saveConsolidatedTypeFile(space, generated, path, options.filename);
   }
 };

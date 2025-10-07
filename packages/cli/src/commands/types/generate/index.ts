@@ -4,8 +4,9 @@ import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
+import type { TypesCommandOptions } from '../command';
 import { typesCommand } from '../command';
-import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
+import { generateComponentTypes, generateStoryblokTypes } from './actions';
 
 const program = getProgram();
 
@@ -32,7 +33,7 @@ typesCommand
     const verbose = program.opts().verbose;
 
     // Command options
-    const { space, path } = typesCommand.opts();
+    const { space, path } = typesCommand.opts<TypesCommandOptions>();
 
     const spinner = new Spinner({
       verbose: !isVitest,
@@ -65,17 +66,11 @@ typesCommand
         datasources: [],
       };
 
-      const typedefString = await generateTypes(spaceDataWithDatasources, {
-        ...options,
-        path,
+      await generateComponentTypes({
+        options,
+        typeCommandOptions: { space, path },
+        spaceData: spaceDataWithDatasources,
       });
-
-      if (typedefString) {
-        await saveTypesToFile(space, typedefString, {
-          filename: options.filename,
-          path,
-        });
-      }
 
       spinner.succeed();
       konsola.ok(`Successfully generated types for space ${space}`, true);

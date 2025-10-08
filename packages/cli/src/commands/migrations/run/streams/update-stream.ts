@@ -45,7 +45,7 @@ export class UpdateStream extends Writable {
     });
   }
 
-  async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent }, _encoding: string, callback: (error?: Error | null) => void) {
+  async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {
     try {
       await this.semaphore.acquire();
 
@@ -60,8 +60,8 @@ export class UpdateStream extends Writable {
     }
   }
 
-  private async updateStory(migrationResult: { storyId: number; name: string | undefined; content: StoryContent }): Promise<void> {
-    const { storyId, name, content } = migrationResult;
+  private async updateStory(migrationResult: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }): Promise<void> {
+    const { storyId, name, content, published, unpublished_changes } = migrationResult;
     const storyName = name || storyId.toString();
 
     try {
@@ -78,11 +78,11 @@ export class UpdateStream extends Writable {
         force_update: '1',
       };
 
-      // Determine if we should publish based on options
-      if (this.options.publish === 'published' && isStoryPublishedWithoutChanges({ published: true, unpublished_changes: false })) {
+      // Determine if we should publish based on options using actual story data
+      if (this.options.publish === 'published' && isStoryPublishedWithoutChanges({ published, unpublished_changes })) {
         payload.publish = 1;
       }
-      else if (this.options.publish === 'published-with-changes' && isStoryWithUnpublishedChanges({ published: true, unpublished_changes: true })) {
+      else if (this.options.publish === 'published-with-changes' && isStoryWithUnpublishedChanges({ published, unpublished_changes })) {
         payload.publish = 1;
       }
       else if (this.options.publish === 'all') {

@@ -83,7 +83,7 @@ export class MigrationStream extends Transform {
     return migrationFunction;
   }
 
-  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent }>> {
+  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }>> {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
       ? this.options.migrationFiles.filter((file) => {
@@ -101,7 +101,7 @@ export class MigrationStream extends Transform {
       return [];
     }
 
-    const successfulResults: Array<{ storyId: number; name: string | undefined; content: StoryContent }> = [];
+    const successfulResults: Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }> = [];
 
     // Process each relevant migration
     const result = await this.applyMigrationsToStory(story, relevantMigrations);
@@ -112,7 +112,7 @@ export class MigrationStream extends Transform {
     return successfulResults;
   }
 
-  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: StoryContent } | null> {
+  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean } | null> {
     const migrationNames = migrationFiles.map(f => f.name);
 
     try {
@@ -144,7 +144,13 @@ export class MigrationStream extends Transform {
         await saveRollbackData({
           space: this.options.space,
           path: this.options.path,
-          story: { id: story.id, name: story.name || '', content: story.content as StoryContent },
+          story: {
+            id: story.id,
+            name: story.name || '',
+            content: story.content as StoryContent,
+            published: story.published,
+            unpublished_changes: story.unpublished_changes,
+          },
           migrationTimestamp: this.timestamp,
           migrationNames,
         });
@@ -160,6 +166,8 @@ export class MigrationStream extends Transform {
           storyId: story.id,
           name: story.name,
           content: storyContent,
+          published: story.published,
+          unpublished_changes: story.unpublished_changes,
         };
       }
       else if (processed && !contentChanged) {

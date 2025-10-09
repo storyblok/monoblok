@@ -8,6 +8,8 @@ export interface RollbackDataStory {
   storyId: number;
   name: string;
   content: StoryContent;
+  published?: boolean;
+  unpublished_changes?: boolean;
 }
 
 export interface RollbackData {
@@ -20,8 +22,13 @@ export interface RollbackData {
  * @param options.space - The space ID
  * @param options.path - Base path for saving rollback data
  * @param options.story - Story with their original content
+ * @param options.story.id - Story ID
+ * @param options.story.name - Story name
+ * @param options.story.content - Story content
+ * @param options.story.published - Story publication status
+ * @param options.story.unpublished_changes - Story unpublished changes status
  * @param options.migrationTimestamp - The timestamp when the migration started
- * @param options.migrationFile - Name of the migration file being applied
+ * @param options.migrationNames - Names of the migration files being applied
  */
 export async function saveRollbackData({
   space,
@@ -32,7 +39,7 @@ export async function saveRollbackData({
 }: {
   space: string;
   path: string;
-  story: { id: number; name: string; content: StoryContent };
+  story: { id: number; name: string; content: StoryContent; published?: boolean; unpublished_changes?: boolean };
   migrationTimestamp: number;
   migrationNames: string[];
 }): Promise<void> {
@@ -40,6 +47,8 @@ export async function saveRollbackData({
     storyId: story.id,
     name: story.name,
     content: story.content,
+    published: story.published,
+    unpublished_changes: story.unpublished_changes,
   };
 
   // Resolve the path for rollbacks

@@ -53,14 +53,26 @@ migrationsCommand.command('rollback [migrationFile]')
       for (const story of rollbackData.stories) {
         const spinner = new Spinner({ verbose }).start(`Restoring story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}...`);
         try {
-          await updateStory(space, story.storyId, {
+          const payload: any = {
             story: {
               content: story.content,
               id: story.storyId,
               name: story.name,
             },
             force_update: '1',
-          });
+          };
+
+          // Only restore publication status if it was saved in the rollback data
+          // For backwards compatibility, we check if the published status exists in the rollback data
+          if (story.published !== undefined && story.unpublished_changes !== undefined) {
+            // If the story was originally published without changes, publish it
+            if (story.published && !story.unpublished_changes) {
+              payload.publish = 1;
+            }
+            // Otherwise, don't publish (let it remain as draft or with unpublished changes)
+          }
+
+          await updateStory(space, story.storyId, payload);
           spinner.succeed(`Restored story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}`);
         }
         catch (error) {

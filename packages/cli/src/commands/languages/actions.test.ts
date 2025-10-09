@@ -36,9 +36,6 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('pull languages actions', () => {
   beforeEach(() => {
     mapiClient({
@@ -48,7 +45,6 @@ describe('pull languages actions', () => {
       region: 'eu',
     });
     vi.clearAllMocks();
-    vol.reset();
   });
 
   describe('fetchLanguages', () => {

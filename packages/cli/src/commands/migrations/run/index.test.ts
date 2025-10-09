@@ -162,7 +162,7 @@ describe('migrations run command - streaming approach', () => {
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
-        per_page: 500,
+        per_page: 100,
         page: 1,
         story_only: true,
       }),
@@ -227,7 +227,7 @@ describe('migrations run command - streaming approach', () => {
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
-        per_page: 500,
+        per_page: 100,
         page: 1,
         story_only: true,
       }),
@@ -297,7 +297,7 @@ describe('migrations run command - streaming approach', () => {
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
-        per_page: 500,
+        per_page: 100,
         page: 1,
         story_only: true,
       }),
@@ -370,7 +370,7 @@ describe('migrations run command - streaming approach', () => {
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
-        per_page: 500,
+        per_page: 100,
         page: 1,
         contain_component: 'migration-component',
         story_only: true,

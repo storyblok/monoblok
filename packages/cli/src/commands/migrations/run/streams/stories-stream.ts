@@ -14,7 +14,7 @@ export async function* storiesIterator(
   onTotal?: (total: number) => void,
 ) {
   try {
-    let perPage = 500;
+    let perPage = 100;
 
     // Apply the same parameter transformations as fetchAllStoriesByComponent
     const transformedParams: StoriesQueryParams = {

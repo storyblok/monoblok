@@ -2,14 +2,7 @@ import { vol } from 'memfs';
 import { getMigrationFunction, readJavascriptFile, readMigrationFiles } from './actions';
 import { FileSystemError } from '../../../utils/error';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('readJavascriptFile', () => {
-  beforeEach(() => {
-    vol.reset();
-  });
-
   it('should read javascript file successfully', async () => {
     vol.fromJSON({
       '/path/to/migrations/12345/migration-1.js': 'export default function (block) { return block; }',
@@ -131,7 +124,6 @@ describe('readMigrationFiles', () => {
 
 describe('getMigrationFunction', () => {
   beforeEach(() => {
-    vol.reset();
     vi.resetModules();
   });
 

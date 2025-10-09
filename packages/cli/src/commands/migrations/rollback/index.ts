@@ -33,12 +33,13 @@ migrationsCommand.command('rollback [migrationFile]')
       return;
     }
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
     mapiClient({
       token: {
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     try {

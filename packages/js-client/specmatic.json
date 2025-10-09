@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "contracts": [
+    {
+      "consumes": [
+        "./node_modules/@storyblok/openapi/dist/mapi/stories.yaml",
+        "./node_modules/@storyblok/openapi/dist/mapi/users.yaml"
+      ]
+    }
+  ]
+}

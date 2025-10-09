@@ -11,11 +11,9 @@ The `types generate` command generates TypeScript type definitions (`.d.ts` file
 storyblok types generate --space <spaceId>
 ```
 
-## Options
-
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--sf, --separate-files` | Generate separate type definition files for each component | `false` |
+| `--sf, --separate-files` | Generate separate `.d.ts` files for each component (requires components pulled with `--separate-files`) | `false` |
 | `--strict` | Enable strict mode with no loose typing | `false` |
 | `--filename <name>` | File name for the generated type files | `storyblok` |
 | `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
@@ -23,7 +21,7 @@ storyblok types generate --space <spaceId>
 | `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |
 | `--compiler-options <options>` | Path to the compiler options from json-schema-to-typescript | - |
 | `--space <spaceId>` | (Required) The ID of your Storyblok space | - |
-| `--path <path>` | Path to the directory containing your component files | `.storyblok/components` |
+| `--path <path>` | Path to the directory containing your component files | `.storyblok/types/{spaceId}/storyblok-components.d.ts` |
 
 ## Examples
 
@@ -70,6 +68,17 @@ The following structure will be created:
         └── storyblok-components.d.ts        # Your component types
 ```
 
+If you use `--separate-files`, then each component will have its own `.d.ts` file:
+```
+.storyblok/
+└── types/
+    ├── storyblok.d.ts
+    └── 295018/
+        ├── Hero.d.ts
+        ├── ProductCard.d.ts
+        └── Footer.d.ts
+```
+
 > **Note:**
 > The `{spaceId}` folder corresponds to the ID of your Storyblok space.
 > The generated files are always placed under `.storyblok/types/` and `.storyblok/types/{spaceId}/`.
@@ -81,3 +90,4 @@ The following structure will be created:
 - The generated types are based on your component schemas in Storyblok
 - When using `--strict`, the generated types will be more precise but may require more explicit type handling in your code
 - Custom field types can be handled by providing a parser file with `--custom-fields-parser`
+- If you use `--separate-files`, make sure your component files were pulled with the same flag (`components pull --separate-files`)

@@ -247,10 +247,10 @@ export const upsertComponentInternalTag = async (
     return await pushComponentInternalTag(space, tag);
   }
 };
-
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<ComponentsData> => {
-  const { from, path, separateFiles = false, suffix } = options;
+  options: ReadComponentsOptions,
+): Promise<ComponentsData> => {
+  const { from, path = '.storyblok', separateFiles = false, suffix, purpose = 'push-components' } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
@@ -258,13 +258,34 @@ export const readComponentsFiles = async (
     await readdir(resolvedPath);
   }
   catch (error) {
-    const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:
+    const err = error as NodeJS.ErrnoException;
+    const notFound = err?.code === 'ENOENT';
+    const header = notFound
+      ? `No local components directory found for space ${chalk.bold(from)}.`
+      : `Failed to read local components for space ${chalk.bold(from)}.`;
 
-1. Pull the components from your source space:
-   ${chalk.cyan(`storyblok components pull --space ${from}`)}
+    const nextStep = purpose === 'types-generate'
+      ? `To generate types, the CLI needs the local component JSON files.
+If you ran ${chalk.cyan('storyblok components pull')} with a custom ${chalk.bold('--path')},
+you must use the same path again when running ${chalk.cyan('storyblok types generate')}.
 
-2. Then try pushing again:
-   ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
+Example:
+  ${chalk.cyan(`storyblok components pull --space ${from} --path ./custom-folder`)}
+  ${chalk.cyan(`storyblok types generate --space ${from} --path ./custom-folder`)}`
+      : `To push components you need the local component JSON files.
+Pull them first with:
+  ${chalk.cyan(`storyblok components pull --space ${from}`)}
+
+Then run your push command again:
+  ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
+
+    const message = `${header}
+
+The CLI attempted to read component files from:
+${chalk.cyan(resolvedPath)}
+
+${nextStep}
+`;
 
     throw new FileSystemError(
       'file_not_found',

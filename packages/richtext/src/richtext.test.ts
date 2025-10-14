@@ -1502,6 +1502,25 @@ describe('text Alignment', () => {
     expect(html).toBe('<p style="text-align: center;"></p>');
   });
 
+  it('should not add text-align style when textAlign is null', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: null,
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Text with null alignment',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p>Text with null alignment</p>');
+  });
+
   it('should handle text alignment with mixed content', async () => {
     const { render } = richTextResolver();
     const node = {

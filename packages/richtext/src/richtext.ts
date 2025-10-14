@@ -60,8 +60,8 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       styles.push(existingStyle.endsWith(';') ? existingStyle : `${existingStyle};`);
     }
 
-    // Add text alignment if specified
-    if (textAlign) {
+    // Add text alignment if specified and not null
+    if (textAlign != null) {
       styles.push(`text-align: ${textAlign};`);
     }
 

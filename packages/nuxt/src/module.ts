@@ -63,7 +63,10 @@ export default defineNuxtModule<AllModuleOptions>({
       addPlugin(resolver.resolve('./runtime/plugin'));
     }
 
-    // nitroConfig.alias['#supabase/server'] = resolver.resolve('./runtime/server');
+    nuxt.hook('nitro:config', (nitroConfig) => {
+      nitroConfig.alias = nitroConfig.alias || {};
+      nitroConfig.alias['#storyblok/server'] = resolver.resolve('./runtime/server');
+    });
 
     // Add auto imports
     const names = [

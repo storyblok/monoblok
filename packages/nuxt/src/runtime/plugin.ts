@@ -5,7 +5,7 @@ export default defineNuxtPlugin(({ vueApp }) => {
   let { storyblok } = useRuntimeConfig().public;
   storyblok = JSON.parse(JSON.stringify(storyblok));
 
-  if (storyblok.serverOnly) {
+  if (storyblok.enableServerClient) {
     vueApp.use(StoryblokVue, { ...storyblok });
   }
   else {

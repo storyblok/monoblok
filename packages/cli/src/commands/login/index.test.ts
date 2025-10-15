@@ -6,6 +6,7 @@ import { input, password, select } from '@inquirer/prompts';
 import { regions } from '../../constants';
 import chalk from 'chalk';
 import { session } from '../../session'; // Import as module to mock properly
+import type { User } from '../user/actions';
 
 vi.mock('./actions', () => ({
   loginWithEmailAndPassword: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock('../../utils', async () => {
       title: vi.fn(),
       br: vi.fn(),
       error: vi.fn(),
+      info: vi.fn(),
     },
     isVitestRunning: true,
     handleError: (error: Error, header = false) => {
@@ -152,21 +154,28 @@ describe('loginCommand', () => {
 
         await loginCommand.parseAsync(['node', 'test']);
 
+        expect(konsola.info).toHaveBeenCalledWith(
+          expect.stringContaining('You can use a Personal Access Token to log in'),
+        );
+        expect(konsola.info).toHaveBeenCalledWith(
+          expect.stringContaining('https://app.storyblok.com/#/me/account?tab=token'),
+        );
+
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your token:',
+          message: 'Please enter your Personal Access Token:',
         }));
       });
 
       it('should login with token if token is provided using login-with-token strategy', async () => {
         vi.mocked(select).mockResolvedValueOnce('login-with-token');
         vi.mocked(password).mockResolvedValueOnce('test-token');
-        const mockUser = { email: 'user@example.com' };
-        vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+        const mockUser: User = { id: 1, email: 'user@example.com', friendly_name: 'Test User' } as User;
+        vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
         await loginCommand.parseAsync(['node', 'test', '--region', 'eu']);
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your token:',
+          message: 'Please enter your Personal Access Token:',
         }));
         // Verify that loginWithToken was called with the correct arguments
         expect(loginWithToken).toHaveBeenCalledWith('test-token', 'eu');
@@ -180,8 +189,8 @@ describe('loginCommand', () => {
   describe('--token', () => {
     it('should login with a valid token', async () => {
       const mockToken = 'test-token';
-      const mockUser = { email: 'test@example.com', friendly_name: 'Test User' };
-      vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+      vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
       await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'eu']);
 
@@ -192,8 +201,8 @@ describe('loginCommand', () => {
 
     it('should login with a valid token in another region --region', async () => {
       const mockToken = 'test-token';
-      const mockUser = { email: 'test@example.com', friendly_name: 'Test User' };
-      vi.mocked(loginWithToken).mockResolvedValue({ user: mockUser });
+      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+      vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
       await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'us']);
 

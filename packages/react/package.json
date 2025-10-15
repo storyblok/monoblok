@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/react",
   "type": "module",
-  "version": "5.4.0",
+  "version": "5.4.14",
   "private": false,
   "packageManager": "pnpm@10.10.0",
   "description": "SDK to integrate Storyblok into your project using React.",
@@ -42,6 +42,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

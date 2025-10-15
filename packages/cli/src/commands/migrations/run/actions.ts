@@ -111,44 +111,48 @@ export async function getMigrationFunction(fileName: string, space: string, base
  * @returns Whether any blocks were modified
  */
 export function applyMigrationToAllBlocks(content: StoryContent, migrationFunction: (block: StoryContent) => StoryContent, targetComponent: string): boolean {
-  if (!content || typeof content !== 'object') {
-    return false;
-  }
+  let processed = false;
 
-  let modified = false;
+  if (!content || typeof content !== 'object') {
+    return processed;
+  }
 
   // Get the base component name (everything before the first dot)
   const baseTargetComponent = targetComponent.split('.')[0];
 
   // If the content has a component property and it matches the base component name
+  let migratedContent = null;
   if (content.component === baseTargetComponent) {
-    // Apply the migration function to this block
-    const migratedContent = migrationFunction({ ...content });
-    Object.assign(content, migratedContent);
-    modified = true;
+    migratedContent = migrationFunction({ ...content });
+    processed = true;
   }
 
-  // Recursively process all properties that might contain nested blocks
-  for (const key in content) {
-    if (Object.prototype.hasOwnProperty.call(content, key)) {
-      const value = content[key];
+  const uniqueKeys = new Set([...Object.keys(content), ...Object.keys(migratedContent || {})]);
+  for (const key of uniqueKeys) {
+    if (migratedContent) {
+      if (!(key in migratedContent)) {
+        delete content[key];
+        continue;
+      }
+      content[key] = migratedContent[key];
+    }
 
-      // Process arrays (might contain blocks)
-      if (Array.isArray(value)) {
-        for (let i = 0; i < value.length; i++) {
-          if (value[i] && typeof value[i] === 'object') {
-            const blockModified = applyMigrationToAllBlocks(value[i], migrationFunction, targetComponent);
-            modified = modified || blockModified;
-          }
+    // Recursively process all properties that might contain nested blocks
+    // Process arrays (might contain blocks)
+    if (Array.isArray(content[key])) {
+      for (const value of content[key]) {
+        if (value && typeof value === 'object') {
+          const blockProcessed = applyMigrationToAllBlocks(value, migrationFunction, targetComponent);
+          processed = processed || blockProcessed;
         }
       }
-      // Process nested objects (might be blocks)
-      else if (value && typeof value === 'object') {
-        const blockModified = applyMigrationToAllBlocks(value, migrationFunction, targetComponent);
-        modified = modified || blockModified;
-      }
+    }
+    // Process nested objects (might be blocks)
+    else if (content[key] && typeof content[key] === 'object') {
+      const blockProcessed = applyMigrationToAllBlocks(content[key], migrationFunction, targetComponent);
+      processed = processed || blockProcessed;
     }
   }
 
-  return modified;
+  return processed;
 }

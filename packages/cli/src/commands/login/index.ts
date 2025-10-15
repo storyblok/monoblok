@@ -20,7 +20,7 @@ const loginStrategy = {
       short: 'Email',
     },
     {
-      name: 'With Token (SSO)',
+      name: 'With Token (Personal Access Token – works also for SSO accounts)',
       value: 'login-with-token',
       short: 'Token',
     },
@@ -39,7 +39,7 @@ export const loginCommand = program
     token: string;
     region: RegionCode;
   }) => {
-    konsola.title(` ${commands.LOGIN} `, colorPalette.LOGIN);
+    konsola.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
     const verbose = program.opts().verbose;
     // Command options
@@ -76,12 +76,15 @@ export const loginCommand = program
           });
         }
         spinner.start(`Logging in with token`);
-        const { user } = await loginWithToken(token, userRegion);
-        updateSession(user.email, token, userRegion);
-        await persistCredentials(userRegion);
-        spinner.succeed();
+        const user = await loginWithToken(token, userRegion);
+        if (user) {
+          updateSession(user.email, token, userRegion);
 
-        konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          await persistCredentials(userRegion);
+          spinner.succeed();
+
+          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+        }
       }
       catch (error) {
         spinner.failed();
@@ -96,8 +99,14 @@ export const loginCommand = program
       try {
         const strategy = await select(loginStrategy);
         if (strategy === 'login-with-token') {
+          konsola.info([
+            '🔑 You can use a Personal Access Token to log in.',
+            'This works for all accounts, including SSO accounts.',
+            `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
+          ].join('\n'));
+
           const userToken = await password({
-            message: 'Please enter your token:',
+            message: 'Please enter your Personal Access Token:',
             validate: (value: string) => {
               return value.length > 0;
             },
@@ -115,12 +124,14 @@ export const loginCommand = program
             });
           }
           spinner.start(`Logging in with token`);
-          const { user } = await loginWithToken(userToken, userRegion);
+          const user = await loginWithToken(userToken, userRegion);
           spinner.succeed();
-          updateSession(user.email, userToken, userRegion);
-          await persistCredentials(userRegion);
+          if (user) {
+            updateSession(user.email, userToken, userRegion);
+            await persistCredentials(userRegion);
 
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+            konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          }
         }
 
         else {

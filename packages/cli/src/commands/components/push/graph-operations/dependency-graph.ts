@@ -1,32 +1,20 @@
 import type {
   SpaceComponent,
-  SpaceComponentGroup,
+  SpaceComponentFolder,
   SpaceComponentInternalTag,
   SpaceComponentPreset,
 } from '../../constants';
-import type { SpaceDatasource } from '../../../datasources/constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
-import { upsertDatasource } from '../../../datasources/push/actions';
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
 /**
- * Creates a minimal stub datasource with only required fields.
+ * Field types that support component whitelists (group, tag, and component whitelists)
  */
-function createStubDatasource(name: string): SpaceDatasource {
-  return {
-    id: 0, // Will be set by API
-    name,
-    slug: name,
-    dimensions: [],
-    entries: [], // Empty entries for stub
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-}
+const fieldTypesWithDependencies = ['bloks', 'richtext'] as const;
 
 // =============================================================================
 // GRAPH BUILDING
@@ -53,27 +41,8 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     }
   }
 
-  // Collect all datasource names referenced by components
-  const referencedDatasources = new Set<string>();
-  spaceState.local.components.forEach((component) => {
-    if (component.schema) {
-      const dependencies = collectWhitelistDependencies(component.schema);
-      dependencies.datasourceNames.forEach((datasourceName) => {
-        referencedDatasources.add(datasourceName);
-      });
-    }
-  });
-
-  // Create stub datasource nodes for all referenced datasources
-  referencedDatasources.forEach((datasourceName) => {
-    const nodeId = `datasource:${datasourceName}`;
-    const targetDatasource = spaceState.target.datasources?.get(datasourceName);
-
-    // Create minimal stub datasource
-    const stubDatasource = createStubDatasource(datasourceName);
-    const node = new DatasourceNode(nodeId, stubDatasource, targetDatasource);
-    graph.nodes.set(nodeId, node);
-  });
+  // Note: Datasource dependencies are not processed by the components push command.
+  // Datasources should be managed using the dedicated 'storyblok datasources push' command.
 
   // Create nodes for all tags with colocated target data
   spaceState.local.internalTags.forEach((tag) => {
@@ -185,13 +154,6 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
         const dependencyId = `component:${componentName}`;
         addDependency(componentId, dependencyId);
       });
-
-      // Add dependencies on datasources (from schema fields with internal source)
-      dependencies.datasourceNames.forEach((datasourceName) => {
-        const datasourceId = `datasource:${datasourceName}`;
-        // Always add dependency since we create stubs for all referenced datasources
-        addDependency(componentId, datasourceId);
-      });
     }
   });
 
@@ -225,7 +187,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
   const datasourceNames = new Set<string>();
 
   function traverseField(field: Record<string, any>) {
-    if (field.type === 'bloks') {
+    if (fieldTypesWithDependencies.includes(field.type)) {
       // Collect group dependencies
       if (field.component_group_whitelist && Array.isArray(field.component_group_whitelist)) {
         field.component_group_whitelist.forEach((uuid: string) => groupUuids.add(uuid));
@@ -615,8 +577,8 @@ export class TagNode extends GraphNode<SpaceComponentInternalTag> {
   }
 }
 
-export class GroupNode extends GraphNode<SpaceComponentGroup> {
-  constructor(id: string, data: SpaceComponentGroup, targetGroup?: SpaceComponentGroup) {
+export class GroupNode extends GraphNode<SpaceComponentFolder> {
+  constructor(id: string, data: SpaceComponentFolder, targetGroup?: SpaceComponentFolder) {
     super(id, 'group', data.name, data, targetGroup);
   }
 
@@ -636,7 +598,7 @@ export class GroupNode extends GraphNode<SpaceComponentGroup> {
     }
   }
 
-  async upsert(space: string): Promise<SpaceComponentGroup> {
+  async upsert(space: string): Promise<SpaceComponentFolder> {
     const existingId = this.targetData?.id;
     const result = await upsertComponentGroup(space, this.sourceData, existingId as number | undefined);
     if (!result) {
@@ -732,8 +694,8 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
 
       const resolvedField = { ...field };
 
-      // Resolve bloks field references
-      if (resolvedField.type === 'bloks') {
+      // Resolve bloks and richtext field references (both support component whitelists)
+      if (fieldTypesWithDependencies.includes(resolvedField.type)) {
         // Resolve component group whitelist
         if (resolvedField.component_group_whitelist && Array.isArray(resolvedField.component_group_whitelist)) {
           resolvedField.component_group_whitelist = resolvedField.component_group_whitelist.map((groupUuid: string) => {
@@ -755,17 +717,9 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
         // Component whitelist doesn't need ID resolution as it uses names
       }
 
-      // Resolve datasource references in option/options fields with internal source
-      if ((resolvedField.type === 'option' || resolvedField.type === 'options') && resolvedField.source === 'internal') {
-        if (resolvedField.datasource_slug && typeof resolvedField.datasource_slug === 'string') {
-          const datasourceNodeId = `datasource:${resolvedField.datasource_slug}`;
-          const datasourceNode = graph.nodes.get(datasourceNodeId) as DatasourceNode;
-          if (datasourceNode?.targetData) {
-            // Update the datasource_slug to the target datasource slug
-            resolvedField.datasource_slug = datasourceNode.targetData.resource.slug;
-          }
-        }
-      }
+      // Note: Datasource references are not resolved by the components push command.
+      // Components that reference datasources will work correctly if the datasources
+      // already exist in the target space with the same slug names.
 
       // Recursively resolve nested fields
       Object.keys(resolvedField).forEach((key) => {
@@ -857,28 +811,5 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
   }
 }
 
-export class DatasourceNode extends GraphNode<SpaceDatasource> {
-  constructor(id: string, data: SpaceDatasource, targetDatasource?: SpaceDatasource) {
-    super(id, 'datasource', data.name, data, targetDatasource);
-  }
-
-  resolveReferences(_graph: DependencyGraph): void {
-    // Datasources don't have references to resolve
-  }
-
-  async upsert(space: string): Promise<SpaceDatasource> {
-    const existingDatasource = this.targetData?.resource as SpaceDatasource | undefined;
-    const existingId = existingDatasource?.id;
-
-    // For components push, we only create the datasource stub without entries.
-    // Pushing entries is handled by the datasources push command.
-    const { entries, ...datasourceDefinition } = this.sourceData;
-
-    const result = await upsertDatasource(space, datasourceDefinition, existingId);
-    if (!result) {
-      throw new Error(`Failed to upsert datasource ${this.name}`);
-    }
-
-    return result;
-  }
-}
+// Note: DatasourceNode class removed as datasources are not managed
+// by the components push command. Use 'storyblok datasources push' instead.

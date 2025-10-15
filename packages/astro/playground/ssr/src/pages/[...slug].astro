@@ -1,11 +1,8 @@
 ---
-import {
-  getLiveStory,
-  useStoryblokApi,
-  type ISbStoryData,
-} from '@storyblok/astro';
+import { getLiveStory, type ISbStoryData } from '@storyblok/astro';
+import { storyblokApi } from '@storyblok/astro/client';
+import BaseLayout from '@shared/components/BaseLayout.astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-import BaseLayout from '../layouts/BaseLayout.astro';
 
 const { slug } = Astro.params;
 let story: ISbStoryData | null = null;
@@ -14,8 +11,7 @@ const liveStory = await getLiveStory(Astro);
 if (liveStory) {
   story = liveStory;
 } else {
-  const sbApi = useStoryblokApi();
-  const { data } = await sbApi.get(`cdn/stories/${slug || 'home'}`, {
+  const { data } = await storyblokApi.get(`cdn/stories/${slug || 'home'}`, {
     version: 'draft',
     resolve_relations: ['featured-articles.posts'],
   });
@@ -25,4 +21,77 @@ if (liveStory) {
 
 <BaseLayout>
   <StoryblokComponent blok={story.content} />
+  <div class="spinner" style="display: none;" id="spinner">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"
+      ><radialGradient
+        id="a11"
+        cx=".66"
+        fx=".66"
+        cy=".3125"
+        fy=".3125"
+        gradientTransform="scale(1.5)"
+        ><stop offset="0" stop-color="#50B0AE"></stop><stop
+          offset=".3"
+          stop-color="#50B0AE"
+          stop-opacity=".9"></stop><stop
+          offset=".6"
+          stop-color="#50B0AE"
+          stop-opacity=".6"></stop><stop
+          offset=".8"
+          stop-color="#50B0AE"
+          stop-opacity=".3"></stop><stop
+          offset="1"
+          stop-color="#50B0AE"
+          stop-opacity="0"></stop></radialGradient
+      ><circle
+        transform-origin="center"
+        fill="none"
+        stroke="url(#a11)"
+        stroke-width="15"
+        stroke-linecap="round"
+        stroke-dasharray="200 1000"
+        stroke-dashoffset="0"
+        cx="100"
+        cy="100"
+        r="70"
+        ><animateTransform
+          type="rotate"
+          attributeName="transform"
+          calcMode="spline"
+          dur="2"
+          values="360;0"
+          keyTimes="0;1"
+          keySplines="0 0 1 1"
+          repeatCount="indefinite"></animateTransform></circle
+      ><circle
+        transform-origin="center"
+        fill="none"
+        opacity=".2"
+        stroke="#50B0AE"
+        stroke-width="15"
+        stroke-linecap="round"
+        cx="100"
+        cy="100"
+        r="70"></circle></svg
+    >
+  </div>
 </BaseLayout>
+<style>
+  .spinner {
+    width: 50px;
+    height: 50px;
+    position: fixed;
+    bottom: 0;
+  }
+</style>
+<script>
+  const spinner = document.getElementById('spinner');
+
+  document.addEventListener('storyblok-live-preview-updating', () => {
+    if (spinner) spinner.style.display = 'block'; // show spinner
+  });
+
+  document.addEventListener('storyblok-live-preview-updated', () => {
+    if (spinner) spinner.style.display = 'none'; // hide spinner
+  });
+</script>

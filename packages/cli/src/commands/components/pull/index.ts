@@ -19,7 +19,7 @@ componentsCommand
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`)
   .action(async (componentName: string | undefined, options: PullComponentsOptions) => {
-    konsola.title(` ${commands.COMPONENTS} `, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
+    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
     // Global options
     const verbose = program.opts().verbose;
 
@@ -41,7 +41,9 @@ componentsCommand
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 
@@ -99,7 +101,7 @@ componentsCommand
       spinnerComponents.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Components')} - Completed in ${spinnerComponents.elapsedTime.toFixed(2)}ms`);
       await saveComponentsToFiles(
         space,
-        { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [] },
+        { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
         { ...options, path, separateFiles: separateFiles || !!componentName },
       );
       konsola.br();

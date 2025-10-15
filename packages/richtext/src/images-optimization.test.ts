@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { optimizeImage } from './images-optimization';
+import type { StoryblokRichTextImageOptimizationOptions } from './types';
 
 describe('images-optimization', () => {
   it('should return the original src if no options are passed', async () => {
@@ -27,11 +28,32 @@ describe('images-optimization', () => {
     expect(resultSrc).toBe(`${src}/m/800x600/`);
   });
 
+  it('should add width to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { width: 800 });
+    expect(resultSrc).toBe(`${src}/m/800x0/`);
+  });
+
+  it('should add height to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { height: 600 });
+    expect(resultSrc).toBe(`${src}/m/0x600/`);
+  });
+
+  it('should not add width or height to the src if both are at 0', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const consoleWarnSpy = vi.spyOn(console, 'warn');
+    const { src: resultSrc } = optimizeImage(src, { width: 0, height: 0 });
+    expect(resultSrc).toBe(`${src}/m/`);
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width and height values cannot both be 0');
+  });
+
   it('should not add width to the src if width is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
+    // @ts-expect-error provide width as string for testing
     optimizeImage(src, { width: '800', height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -39,21 +61,42 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: -800, height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
-  it('should add width to the attrs if provided', async () => {
+  it('should add width and height to the attrs if provided', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const { attrs } = optimizeImage(src, { width: 800, height: 600 });
     expect(attrs).toEqual({ width: 800, height: 600 });
   });
 
+  it('should add width to the attrs if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { attrs } = optimizeImage(src, { width: 800 });
+    expect(attrs).toEqual({ width: 800 });
+  });
+
+  it('should add height to the attrs if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { attrs } = optimizeImage(src, { height: 600 });
+    expect(attrs).toEqual({ height: 600 });
+  });
+
+  it('should not add width or height to the attrs if both are at 0', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const consoleWarnSpy = vi.spyOn(console, 'warn');
+    const { attrs } = optimizeImage(src, { width: 0, height: 0 });
+    expect(attrs).toEqual({});
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width and height values cannot both be 0');
+  });
+
   it('should not add height to the src if height is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
+    // @ts-expect-error provide height as string for testing
     optimizeImage(src, { width: 800, height: '600' });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -61,7 +104,7 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: 800, height: -600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -86,6 +129,7 @@ describe('images-optimization', () => {
   it('should not add blur filter if value is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
+    // @ts-expect-error provide blur as string for testing
     optimizeImage(src, { filters: { blur: '5' } });
     expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Blur value must be a number between 0 and 100 (inclusive)');
     consoleWarnSpy.mockRestore();
@@ -116,6 +160,7 @@ describe('images-optimization', () => {
   it('should not add brightness filter if value is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
+    // @ts-expect-error provide brightness as string for testing
     optimizeImage(src, { filters: { brightness: '0.5' } });
     expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Brightness value must be a number between 0 and 100 (inclusive)');
     consoleWarnSpy.mockRestore();
@@ -158,6 +203,7 @@ describe('images-optimization', () => {
   it('should not add quality filter if value is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
+    // @ts-expect-error provide quality as string for testing
     optimizeImage(src, { filters: { quality: '80' } });
     expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Quality value must be a number between 0 and 100 (inclusive)');
     consoleWarnSpy.mockRestore();
@@ -201,7 +247,7 @@ describe('images-optimization', () => {
       quality: 80,
       rotate: 90,
       format: 'webp',
-    };
+    } satisfies StoryblokRichTextImageOptimizationOptions['filters'];
     const { src: resultSrc } = optimizeImage(src, { filters });
     expect(resultSrc).toBe(`${src}/m/filters:blur(5):quality(80):brightness(0.5):fill(transparent):grayscale():rotate(90):format(webp)`);
   });
@@ -221,7 +267,7 @@ describe('images-optimization', () => {
 
   it('should add srcset attribute with width and height if provided as an array of arrays', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
-    const srcset = [[400, 300], [800, 600], [1200, 900]];
+    const srcset = [[400, 300], [800, 600], [1200, 900]] satisfies StoryblokRichTextImageOptimizationOptions['srcset'];
     const { attrs } = optimizeImage(src, { srcset });
     expect(attrs).toEqual({ srcset: 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/400x300/ 400w, https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/800x600/ 800w, https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/1200x900/ 1200w' });
   });

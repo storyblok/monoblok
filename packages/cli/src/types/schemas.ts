@@ -24,6 +24,7 @@ export interface ComponentPropertySchemaOption {
 export interface ComponentPropertySchema {
   asset_link_type?: boolean;
   component_group_whitelist?: string[];
+  component_tag_whitelist?: number[];
   component_whitelist?: string[];
   email_link_type?: boolean;
   exclude_empty_option?: boolean;
@@ -32,7 +33,7 @@ export interface ComponentPropertySchema {
   options?: ComponentPropertySchemaOption[];
   pos: number;
   restrict_components?: boolean;
-  restrict_type?: 'groups' | '';
+  restrict_type?: 'groups' | 'components' | 'tags' | '';
   source?: 'internal' | 'external' | 'internal_stories' | 'internal_languages';
   type: ComponentPropertySchemaType;
   use_uuid?: boolean;

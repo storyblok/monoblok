@@ -1,9 +1,10 @@
-import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType } from './actions';
-import type { SpaceComponent, SpaceData } from '../../../commands/components/constants';
-import type { GenerateTypesOptions } from './constants';
-import { join, resolve } from 'node:path';
+import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentsFile } from './actions';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
+import type { GenerateTypesOptions } from './constants';
 
 // Import the mocked functions
 import { saveToFile } from '../../../utils/filesystem';
@@ -111,7 +112,8 @@ export interface StoryblokBloks {
   restrict_components?: boolean;
   component_whitelist?: string[];
   component_group_whitelist?: string[];
-  restrict_type?: 'groups' | 'components';
+  component_tag_whitelist?: number[];
+  restrict_type?: 'groups' | 'components' | 'tags';
 }
 
 export interface StoryblokCustom {
@@ -131,7 +133,7 @@ vi.mocked(readFileSync).mockImplementation((path) => {
   return '';
 });
 
-const mockSpaceData: SpaceData = {
+const mockSpaceData: SpaceComponentsData = {
   components: [
     {
       name: 'test_component',
@@ -149,11 +151,11 @@ const mockSpaceData: SpaceData = {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     },
   ],
+  datasources: [],
   groups: [],
   presets: [],
   internalTags: [],
@@ -292,6 +294,20 @@ describe('getComponentType', () => {
     expect(getComponentType('test_component', options)).toBe('TestComponent');
   });
 
+  it('should apply typeSuffix when provided', () => {
+    const options: GenerateTypesOptions = {
+      typeSuffix: 'CustomSuffixValue',
+    };
+    expect(getComponentType('test_component', options)).toBe('TestComponentCustomSuffixValue');
+  });
+
+  it('should handle empty typeSuffix', () => {
+    const options: GenerateTypesOptions = {
+      typeSuffix: '',
+    };
+    expect(getComponentType('test_component', options)).toBe('TestComponent');
+  });
+
   it('should handle component names with spaces', () => {
     const options: GenerateTypesOptions = {};
     expect(getComponentType('test component', options)).toBe('TestComponent');
@@ -340,14 +356,14 @@ describe('component property type annotations', () => {
           required: true,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTextType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -374,14 +390,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTextareaType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -408,14 +424,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithNumberType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -442,14 +458,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithBooleanType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -463,10 +479,56 @@ describe('component property type annotations', () => {
   });
 
   it('should handle multilink property type', async () => {
-    // Create a component with multilink property type
-    const componentWithMultilinkType: SpaceComponent = {
+    const componentWithMultilinkEmail: SpaceComponent = {
       name: 'test_component',
-      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: false,
+        },
+      },
+    };
+    const spaceData1: SpaceComponentsData = {
+      components: [componentWithMultilinkEmail],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData1, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;');
+
+    const componentWithMultilinkBoth: SpaceComponent = {
+      name: 'test_component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        link: {
+          type: 'multilink',
+          required: false,
+          email_link_type: true,
+          asset_link_type: true,
+        },
+      },
+    };
+    const spaceData2: SpaceComponentsData = {
+      components: [componentWithMultilinkBoth],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+    expect(await generateTypes(spaceData2, { strict: false }))
+      .toContain('link?: StoryblokMultilink;');
+
+    const componentWithMultilinkNone: SpaceComponent = {
+      name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
       id: 1,
@@ -475,27 +537,19 @@ describe('component property type annotations', () => {
           type: 'multilink',
           required: false,
           email_link_type: false,
-          asset_link_type: true,
+          asset_link_type: false,
         },
       },
-      color: null,
-      internal_tags_list: [],
-      internal_tag_ids: [],
     };
-
-    // Create a space data with this component
-    const spaceData: SpaceData = {
-      components: [componentWithMultilinkType],
+    const spaceData3: SpaceComponentsData = {
+      components: [componentWithMultilinkNone],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
     };
-
-    // Generate types
-    const result = await generateTypes(spaceData, { strict: false });
-
-    // Verify that the result contains the expected property type
-    expect(result).toContain('link?:');
+    expect(await generateTypes(spaceData3, { strict: false }))
+      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "email"} | {linktype?: "asset"}>;');
   });
 
   it('should handle bloks property type with component restrictions', async () => {
@@ -514,14 +568,14 @@ describe('component property type annotations', () => {
           component_whitelist: ['button', 'image'],
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithBloksType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -532,6 +586,79 @@ describe('component property type annotations', () => {
 
     // Verify that the result contains the expected property type
     expect(result).toContain('content?:');
+  });
+
+  it('should handle bloks property type with tag-based restrictions', async () => {
+    // Create components with different tag IDs
+    const buttonComponent: SpaceComponent = {
+      name: 'button',
+      display_name: 'Button',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {},
+      internal_tags_list: [],
+      internal_tag_ids: ['1', '2'], // Has tags 1 and 2
+    };
+
+    const imageComponent: SpaceComponent = {
+      name: 'image',
+      display_name: 'Image',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 2,
+      schema: {},
+      internal_tags_list: [],
+      internal_tag_ids: ['2', '3'], // Has tags 2 and 3
+    };
+
+    const textComponent: SpaceComponent = {
+      name: 'text',
+      display_name: 'Text',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 3,
+      schema: {},
+      internal_tags_list: [],
+      internal_tag_ids: ['4'], // Has tag 4 only
+    };
+
+    // Create a component with bloks property type and tag-based restrictions
+    const componentWithTagBasedBloks: SpaceComponent = {
+      name: 'test_component',
+      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 4,
+      schema: {
+        content: {
+          type: 'bloks',
+          required: false,
+          restrict_components: true,
+          restrict_type: 'tags',
+          component_tag_whitelist: [1, 2], // Only allow components with tags 1 or 2
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    // Create a space data with these components
+    const spaceData: SpaceComponentsData = {
+      components: [buttonComponent, imageComponent, textComponent, componentWithTagBasedBloks],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    // Generate types
+    const result = await generateTypes(spaceData, { strict: false });
+
+    // Verify that the result contains the expected union type for tag-based restrictions
+    // Should include Button and Image (both have tags 1 or 2), but not Text (only has tag 4)
+    expect(result).toContain('content?:');
+    expect(result).toContain('(Button | Image)[]');
   });
 
   it('should handle tabbed properties correctly', async () => {
@@ -552,14 +679,14 @@ describe('component property type annotations', () => {
           required: true,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithTabbedProperties],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -588,14 +715,14 @@ describe('component property type annotations', () => {
           required: false,
         },
       },
-      color: null,
       internal_tags_list: [],
       internal_tag_ids: [],
     };
 
     // Create a space data with this component
-    const spaceData: SpaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithCustomType],
+      datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
@@ -636,6 +763,7 @@ describe('generateStoryblokTypes', () => {
 
     // Verify that readFileSync was called with the correct path
     expect(readFileSync).toHaveBeenCalledWith('/mocked/path', 'utf-8');
+    expect(join).toHaveBeenCalledWith(expect.any(String), 'storyblok.d.ts');
 
     // Verify that saveToFile was called with the correct parameters
     const savedContent = vi.mocked(saveToFile).mock.calls[0][1];
@@ -645,18 +773,6 @@ describe('generateStoryblokTypes', () => {
     expect(lines[0]).toBe('// This file was generated by the Storyblok CLI.');
     expect(lines[1]).toBe('// DO NOT MODIFY THIS FILE BY HAND.');
     expect(lines[2]).toBe('import type { ISbStoryData } from \'@storyblok/js\';');
-  });
-
-  it('should generate Storyblok types with custom filename', async () => {
-    // Call the function with custom filename
-    const result = await generateStoryblokTypes({ filename: 'custom-storyblok' });
-
-    // Verify that the function returns true
-    expect(result).toBe(true);
-
-    // Verify that saveToFile was called with the correct filename
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', expect.any(String));
-    expect(join).toHaveBeenCalledWith(expect.any(String), 'custom-storyblok.d.ts');
   });
 
   it('should generate Storyblok types with custom path', async () => {
@@ -686,5 +802,32 @@ describe('generateStoryblokTypes', () => {
     expect(savedContent).toContain('export interface StoryblokMultilink');
     expect(savedContent).toContain('export interface StoryblokBloks');
     expect(savedContent).toContain('export interface StoryblokCustom');
+  });
+});
+
+describe('saveTypesToComponentsFile', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should call saveTypesToComponentsFile with the expected path and default filename', async () => {
+    const dummyTypes = '// types content';
+    await saveTypesToComponentsFile('12345', dummyTypes, {});
+
+    // We expect join to be called with the filename ending in -components.d.ts
+    expect(join).toHaveBeenCalledWith(expect.any(String), `storyblok-components.d.ts`);
+    // We expect saveToFile to be called with the mocked joined path and the dummy types
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+  });
+
+  it('should call saveTypesToComponentsFile with the expected path and custom filename', async () => {
+    const customFilename = 'my-custom-types';
+    const dummyTypes = '// types content';
+    await saveTypesToComponentsFile('12345', dummyTypes, { filename: customFilename });
+
+    // We expect join to be called with the filename ending in -components.d.ts
+    expect(join).toHaveBeenCalledWith(expect.any(String), `${customFilename}.d.ts`);
+    // We expect saveToFile to be called with the mocked joined path and the dummy types
+    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
   });
 });

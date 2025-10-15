@@ -1,3 +1,5 @@
+import type { BlockAttributes } from '../types';
+
 export const SELF_CLOSING_TAGS = [
   'area',
   'base',
@@ -13,6 +15,45 @@ export const SELF_CLOSING_TAGS = [
   'source',
   'track',
   'wbr',
+];
+
+export const BLOCK_LEVEL_TAGS = [
+  'address',
+  'article',
+  'aside',
+  'blockquote',
+  'canvas',
+  'dd',
+  'div',
+  'dl',
+  'dt',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'form',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'hgroup',
+  'hr',
+  'li',
+  'main',
+  'nav',
+  'noscript',
+  'ol',
+  'output',
+  'p',
+  'pre',
+  'section',
+  'table',
+  'tfoot',
+  'ul',
+  'video',
 ];
 
 /**
@@ -37,9 +78,13 @@ export const SELF_CLOSING_TAGS = [
  * ```
  *
  */
-export const attrsToString = (attrs: Record<string, string> = {}) => Object.keys(attrs)
-  .map(key => `${key}="${attrs[key]}"`)
-  .join(' ');
+export const attrsToString = (attrs: BlockAttributes = {}) => {
+  const { custom, ...attrsWithoutCustom } = attrs;
+  const normalizedAttrs = { ...attrsWithoutCustom, ...custom };
+  return Object.keys(normalizedAttrs)
+    .map(key => `${key}="${normalizedAttrs[key]}"`)
+    .join(' ');
+};
 
 /**
  * Converts an object of attributes to a CSS style string.

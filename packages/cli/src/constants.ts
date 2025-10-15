@@ -1,3 +1,4 @@
+// Please do not change the casing of the commands, it's used for the CLI commands definition
 export const commands = {
   LOGIN: 'login',
   LOGOUT: 'logout',
@@ -5,9 +6,9 @@ export const commands = {
   USER: 'user',
   COMPONENTS: 'components',
   LANGUAGES: 'languages',
-  MIGRATIONS: 'Migrations',
-  TYPES: 'Types',
-  DATASOURCES: 'Datasources',
+  MIGRATIONS: 'migrations',
+  TYPES: 'types',
+  DATASOURCES: 'datasources',
   CREATE: 'create',
 } as const;
 
@@ -52,10 +53,10 @@ export const regionsDomain: Record<RegionCode, string> = {
 
 export const managementApiRegions: Record<RegionCode, string> = {
   eu: 'mapi.storyblok.com',
-  us: 'mapi-us.storyblok.com',
-  cn: 'mapi.storyblokchina.cn',
-  ca: 'mapi-ca.storyblok.com',
-  ap: 'mapi-ap.storyblok.com',
+  us: 'api-us.storyblok.com',
+  cn: 'app.storyblokchina.cn',
+  ca: 'api-ca.storyblok.com',
+  ap: 'api-ap.storyblok.com',
 } as const;
 
 export const appDomains: Record<RegionCode, string> = {
@@ -81,6 +82,4 @@ export const DEFAULT_AGENT = {
 
 export interface SpaceOptions {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }

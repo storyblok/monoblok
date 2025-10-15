@@ -36,6 +36,8 @@ import type {
   ISbStoryParams,
 } from './interfaces';
 
+export * from './interfaces';
+
 let memory: Partial<IMemoryType> = {};
 
 const cacheVersions = {} as CachedVersions;
@@ -64,7 +66,7 @@ const _VERSION = {
 type ObjectValues<T> = T[keyof T];
 type Version = ObjectValues<typeof _VERSION>;
 
-class Storyblok {
+export class Storyblok {
   private client: SbFetch;
   private maxRetries: number;
   private retriesDelay: number;
@@ -262,7 +264,7 @@ class Storyblok {
       firstPage,
       fetchOptions,
     );
-    const lastPage = firstRes.total ? Math.ceil(firstRes.total / perPage) : 1;
+    const lastPage = firstRes.total ? Math.ceil(firstRes.total / (firstRes.perPage || perPage)) : 1;
 
     const restRes: any = await asyncMap(
       range(firstPage, lastPage),
@@ -835,20 +837,16 @@ class Storyblok {
         return node;
       }
 
-      // Handle arrays
       if (Array.isArray(node)) {
         return node.map(item => processNode(item));
       }
 
-      // Process object
       let processedNode = { ...node };
-
-      // Check if this is an asset field
       if (processedNode.fieldtype === 'asset' && Array.isArray(response.data.assets)) {
-        // Replace the assets array with the actual asset objects
+        // Enrich the asset with an actual asset object
         processedNode = {
-          ...processedNode,
           ...response.data.assets.find((asset: any) => asset.id === processedNode.id),
+          ...processedNode,
         };
       }
 

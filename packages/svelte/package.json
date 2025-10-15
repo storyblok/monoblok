@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/svelte",
   "type": "module",
-  "version": "5.2.0",
+  "version": "5.2.11",
   "private": false,
   "packageManager": "pnpm@9.15.9",
   "description": "SDK to integrate Storyblok into your project using Svelte.",
@@ -41,6 +41,7 @@
     "build": "pnpm package",
     "preview": "vite preview",
     "package": "svelte-kit sync && svelte-package && publint",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit:ci && pnpm run test:e2e",
     "test:unit": "vitest",
     "test:unit:ci": "vitest run",

@@ -3,3 +3,12 @@ apps
 examples
 .husky
 .github
+pnpm-lock.yaml
+commitlint.config.js
+
+LICENSE
+CONTRIBUTING.md
+README.md
+RELEASING.md
+.gitignore
+nx.json

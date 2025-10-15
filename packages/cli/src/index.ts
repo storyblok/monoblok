@@ -33,7 +33,8 @@ program.helpOption('-h, --help', 'Display help for command');
 program.on('command:*', () => {
   console.error(`Invalid command: ${program.args.join(' ')}`);
   konsola.br();
-  program.help();
+  program.outputHelp();
+  process.exit(1);
 });
 
 try {

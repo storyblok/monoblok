@@ -19,7 +19,7 @@ datasourcesCommand
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. datasources.<suffix>.json)')
   .description('Pull datasources from your space')
   .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions) => {
-    konsola.title(` ${commands.DATASOURCES} `, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
+    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
 
     // Global options
     const verbose = program.opts().verbose;
@@ -42,7 +42,9 @@ datasourcesCommand
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 

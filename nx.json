@@ -25,22 +25,7 @@
   },
   "release": {
     "projectsRelationship": "independent",
-    "groups": {
-      "core-js": {
-        "projects": [
-          "storyblok-js-client",
-          "js",
-          "richtext",
-          "storyblok",
-          "eslint-config"
-        ],
-        "projectsRelationship": "independent"
-      },
-      "sdk": {
-        "projects": ["react", "vue", "astro", "svelte", "nuxt"],
-        "projectsRelationship": "independent"
-      }
-    },
+    "projects": ["packages/*"],
     "version": {
       "conventionalCommits": true,
       "fallbackCurrentVersionResolver": "disk",

@@ -24,6 +24,10 @@ onMounted(() => {
 
 <template>
   <div class="prose mx-auto">
-    <StoryblokComponent v-if="story" :blok="story.content" />
+    <StoryblokComponent v-if="story" :blok="story.content">
+      <template #footer>
+        <div class="text-center">&copy; Storyblok</div>
+      </template>
+    </StoryblokComponent>
   </div>
 </template>

@@ -1,0 +1,178 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Component Folders API
+  version: 1.0.0
+  description: API for managing Storyblok component folders (component groups)
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/component_groups:
+    description: A component folder can be used to group components together. Each component can have only one component folder. Component folders can be seen as block folders in the Storyblok App. This endpoint allows you to manage the component groups (folders). You can use it to retrieve, create, update, or delete the component folders.
+    get:
+      operationId: list
+      summary: Retrieve Multiple Component Folders
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by group's name
+        - name: with_parent
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by parent id
+      responses:
+        '200':
+          description: List of component folders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component_groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ComponentFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: create
+      summary: Create a Component Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                component_group:
+                  $ref: '#/components/schemas/ComponentFolder'
+      responses:
+        '201':
+          description: Component folder created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component_group:
+                    $ref: '#/components/schemas/ComponentFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/component_groups/{component_group_id}:
+    description: Operations for a specific component folder
+    get:
+      operationId: get
+      summary: Retrieve a Single Component Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_group_id
+      responses:
+        '200':
+          description: Component folder details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component_group:
+                    $ref: '#/components/schemas/ComponentFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component folder not found
+    put:
+      operationId: update
+      summary: Update a Component Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_group_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                component_group:
+                  $ref: '#/components/schemas/ComponentFolder'
+      responses:
+        '200':
+          description: Component folder updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  component_group:
+                    $ref: '#/components/schemas/ComponentFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component folder not found
+    delete:
+      operationId: delete
+      summary: Delete a Component Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/component_group_id
+      responses:
+        '204':
+          description: Component folder deleted successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Component folder not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    ComponentFolder:
+      type: object
+      required:
+        - id
+        - name
+        - uuid
+      properties:
+        id:
+          readOnly: true
+          type: number
+          description: The id of the component folder
+        name:
+          type: string
+          description: The name of the component folder
+        uuid:
+          readOnly: true
+          type: string
+          format: uuid
+          description: The UUID of the component folder
+        parent_id: 
+          type: integer
+          description: ID of the parent folder
+        parent_uuid:
+          readOnly: true
+          type: string
+          format: uuid
+          description: The UUID of the parent folder

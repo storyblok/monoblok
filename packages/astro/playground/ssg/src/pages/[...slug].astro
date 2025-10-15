@@ -1,15 +1,15 @@
 ---
-import { useStoryblokApi } from "@storyblok/astro";
-import StoryblokComponent from "@storyblok/astro/StoryblokComponent.astro";
-import BaseLayout from "../layouts/BaseLayout.astro";
+import { useStoryblokApi } from '@storyblok/astro';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import BaseLayout from '@shared/components/BaseLayout.astro';
 
 export async function getStaticPaths() {
   const sbApi = useStoryblokApi();
-  const { data } = await sbApi.get("cdn/links", {
-    version: "draft",
+  const { data } = await sbApi.get('cdn/links', {
+    version: 'draft',
   });
-  let links = data.links;
-  links = Object.values(links);
+  let linksObj = data.links;
+  let links = Object.values(linksObj);
 
   return links.map((link) => {
     return {
@@ -21,8 +21,8 @@ const { slug } = Astro.params;
 
 const sbApi = useStoryblokApi();
 const { data } = await sbApi.get(`cdn/stories/${slug}`, {
-  version: "draft",
-  resolve_relations: ["featured-articles.posts"],
+  version: 'draft',
+  resolve_relations: ['featured-articles.posts'],
 });
 
 const story = data.story;

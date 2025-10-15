@@ -16,6 +16,8 @@ export async function handleStoryblokMessage(event: {
   if (action === 'input' && story) {
     // Debounce the getNewHTMLBody function
     const debouncedGetNewHTMLBody = async () => {
+      dispatchStoryblokEvent('storyblok-live-preview-updating', { story });
+
       const newBody = await getNewHTMLBody(story);
       const currentBody = document.body;
       if (newBody.outerHTML === currentBody.outerHTML) {
@@ -25,7 +27,7 @@ export async function handleStoryblokMessage(event: {
       const focusedElem = document.querySelector('[data-blok-focused="true"]');
       updateDOMWithNewBody(currentBody, newBody, focusedElem);
       // Dispatch a custom event after the body update
-      document.dispatchEvent(new Event('storyblok-live-preview-updated'));
+      dispatchStoryblokEvent('storyblok-live-preview-updated', { story });
     };
     const debounceDelay = 500; // Adjust the delay as needed
     clearTimeout(timeout);
@@ -78,4 +80,11 @@ async function getNewHTMLBody(story: ISbStoryData) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   return doc.body;
+}
+
+/**
+ * Dispatches a custom event with optional detail payload.
+ */
+function dispatchStoryblokEvent<T>(name: string, detail?: T) {
+  document.dispatchEvent(new CustomEvent<T>(name, { detail }));
 }

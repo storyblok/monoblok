@@ -5,6 +5,22 @@ import type {
 } from '../types';
 import type { AstroGlobal } from 'astro';
 
+/**
+ * Returns the Storyblok API client instance.
+ *
+ * This function gives you access to the `StoryblokClient` that is initialized
+ * when setting up the Storyblok SDK in your Astro configuration.
+ *
+ * @throws {Error} If the `storyblokApiInstance` has not been initialized in Astro config.
+ * @returns {StoryblokClient} The initialized Storyblok API client instance.
+ *
+ * @example
+ * ```ts
+ * // In an Astro route or integration code:
+ * const storyblokApi = useStoryblokApi();
+ * const { data } = await storyblokApi.get('cdn/stories/home');
+ * ```
+ */
 export function useStoryblokApi(): StoryblokClient {
   if (!globalThis?.storyblokApiInstance) {
     throw new Error('storyblokApiInstance has not been initialized correctly');
@@ -12,8 +28,27 @@ export function useStoryblokApi(): StoryblokClient {
   return globalThis.storyblokApiInstance;
 }
 
-// TODO: should we pass the Astro object to this function or only the locals object?
-export async function getLiveStory(Astro: Readonly<AstroGlobal>) {
+/**
+ * Retrieves the live Storyblok story from Astro's `locals` during preview mode.
+ *
+ * This function is primarily useful when working with the Storyblok Visual Editor
+ * and live preview updates in an Astro project.
+ *
+ * @param {Readonly<AstroGlobal>} Astro - The Astro global object.
+ * @returns {Promise<ISbStoryData | null>} The Storyblok story data if available,
+ * otherwise `null`.
+ *
+ * @example
+ * ```ts
+ * const story = await getLiveStory(Astro);
+ * if (story) {
+ *   console.log('Previewing story:', story.name);
+ * }
+ * ```
+ */
+export async function getLiveStory(
+  Astro: Readonly<AstroGlobal>,
+): Promise<ISbStoryData | null> {
   let story: ISbStoryData | null = null;
   if (Astro && Astro.locals._storyblok_preview_data) {
     story = Astro.locals._storyblok_preview_data;

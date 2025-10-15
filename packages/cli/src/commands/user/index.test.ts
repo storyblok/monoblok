@@ -1,8 +1,9 @@
+import chalk from 'chalk';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { userCommand } from './';
 import { getUser } from './actions';
 import { konsola } from '../../utils';
 import { session } from '../../session';
-import chalk from 'chalk';
 
 vi.mock('./actions', () => ({
   getUser: vi.fn(),
@@ -44,10 +45,9 @@ describe('userCommand', () => {
 
   it('should show the user information', async () => {
     const mockResponse = {
-      user: {
-        friendly_name: 'John Doe',
-        email: 'john.doe@storyblok.com',
-      },
+      id: 1,
+      friendly_name: 'John Doe',
+      email: 'john.doe@storyblok.com',
     };
     session().state = {
       isLoggedIn: true,
@@ -59,7 +59,7 @@ describe('userCommand', () => {
 
     expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
     expect(konsola.ok).toHaveBeenCalledWith(
-      `Hi ${chalk.bold('John Doe')}, you are currently logged in with ${chalk.hex('#45bfb9')(mockResponse.user.email)} on ${chalk.bold('eu')} region`,
+      `Hi ${chalk.bold('John Doe')}, you are currently logged in with ${chalk.hex('#45bfb9')(mockResponse.email)} on ${chalk.bold('eu')} region`,
       true,
     );
   });

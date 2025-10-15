@@ -1,9 +1,10 @@
 export interface CreateOptions {
-  blueprint?: string;
+  template?: string;
+  blueprint?: string; // Deprecated, use template instead
   skipSpace?: boolean;
 }
 
-export const blueprints = {
+export const templates = {
   REACT: {
     name: 'React',
     value: 'react',
@@ -49,13 +50,14 @@ export const blueprints = {
 } as const;
 
 /**
- * Interface for dynamic blueprints
+ * Interface for dynamic templates
  */
-export interface DynamicBlueprint {
+export interface DynamicTemplate {
   name: string;
   value: string;
   template: string;
   location: string;
   description?: string | null;
   updated_at?: string;
+  stars?: number;
 }

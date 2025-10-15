@@ -5,7 +5,7 @@
       "type": "node",
       "request": "launch",
       "name": "Debug Vitest Tests",
-      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "program": "${workspaceFolder}/packages/cli/node_modules/vitest/vitest.mjs",
       "args": ["run"],
       "autoAttachChildProcesses": true,
       "smartStep": true,
@@ -62,7 +62,7 @@
       "request": "launch",
       "name": "Debug Pull languages",
       "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
-      "args": ["languages", "pull", "--space", "295018"],
+      "args": ["languages", "pull", "--space", "295017"],
       "cwd": "${workspaceFolder}/packages/cli",
       "console": "integratedTerminal",
       "sourceMaps": true,
@@ -409,6 +409,27 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Create space",
+      "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
+      "args": ["create", "--blueprint", "react", "./playgrounds/test-project"],
+      "cwd": "${workspaceFolder}/packages/cli",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/packages/cli/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug NX",
+      "program": "${workspaceFolder}/node_modules/nx/bin/nx.js",
+      "args": ["release", "version", "-d"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true
     }
   ],
 }

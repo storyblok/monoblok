@@ -1,0 +1,44 @@
+{
+  "name": "@storyblok/region-helper",
+  "version": "1.3.1",
+  "description": "",
+  "repository": "storyblok/region-helper",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "dev": "vitest dev",
+    "play": "jiti playground",
+    "lint": "eslint --cache --ext .ts,.js,.mjs,.cjs . && prettier -c src test",
+    "lint:fix": "eslint --cache --ext .ts,.js,.mjs,.cjs . --fix && prettier -c src test -w",
+    "prepack": "pnpm run build",
+    "test": "pnpm lint && pnpm test:types && vitest run --coverage",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "@vitest/coverage-v8": "^3.1.3",
+    "eslint": "^9.26.0",
+    "eslint-config-unjs": "^0.5.0",
+    "jiti": "^2.4.2",
+    "prettier": "^3.5.3",
+    "typescript": "5.8.3",
+    "unbuild": "^3.5.0",
+    "vitest": "^3.1.3"
+  },
+  "packageManager": "pnpm@9.9.0"
+}

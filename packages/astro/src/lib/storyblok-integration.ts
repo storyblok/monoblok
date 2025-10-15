@@ -1,10 +1,10 @@
 import type { ISbConfig, StoryblokBridgeConfigV2 } from '@storyblok/js';
 import type { AstroIntegration } from 'astro';
 import { storyblokLogo } from '../dev-toolbar/toolbarApp';
-import { vitePluginStoryblokComponents } from '../vite-plugins/vite-plugin-storyblok-components';
 import { vitePluginStoryblokInit } from '../vite-plugins/vite-plugin-storyblok-init';
 import { vitePluginStoryblokOptions } from '../vite-plugins/vite-plugin-storyblok-options';
 import { initStoryblokBridge } from './helpers';
+import { vitePluginImportStoryblokComponents } from '../vite-plugins/vite-plugin-import-storyblok-components';
 
 export interface IntegrationOptions {
   /**
@@ -66,6 +66,19 @@ export default function storyblokIntegration(
     livePreview: false,
     ...options,
   };
+
+  const {
+    accessToken,
+    useCustomApi,
+    apiOptions,
+    componentsDir,
+    customFallbackComponent,
+    enableFallbackComponent,
+    components,
+    bridge,
+    livePreview,
+  } = resolvedOptions;
+
   const initBridge = initStoryblokBridge(resolvedOptions.bridge);
   return {
     name: '@storyblok/astro',
@@ -80,22 +93,18 @@ export default function storyblokIntegration(
         updateConfig({
           vite: {
             plugins: [
-              vitePluginStoryblokInit(
-                resolvedOptions.accessToken,
-                resolvedOptions.useCustomApi,
-                resolvedOptions.apiOptions,
-              ),
-              vitePluginStoryblokComponents(
-                resolvedOptions.componentsDir,
-                resolvedOptions.components,
-                resolvedOptions.enableFallbackComponent,
-                resolvedOptions.customFallbackComponent,
+              vitePluginStoryblokInit(accessToken, useCustomApi, apiOptions),
+              vitePluginImportStoryblokComponents(
+                components || {},
+                componentsDir,
+                enableFallbackComponent,
+                customFallbackComponent,
               ),
               vitePluginStoryblokOptions(resolvedOptions),
             ],
           },
         });
-        if (resolvedOptions.livePreview && config?.output !== 'server') {
+        if (livePreview && config?.output !== 'server') {
           throw new Error(
             'To utilize the Astro Storyblok Live feature, Astro must be configured to run in SSR mode. Please disable this feature or switch Astro to SSR mode.',
           );
@@ -110,7 +119,7 @@ export default function storyblokIntegration(
 
         // This is only enabled if LivePreview is disabled and bridge is enabled.
 
-        if (resolvedOptions.bridge && !resolvedOptions.livePreview) {
+        if (bridge && !livePreview) {
           injectScript(
             'page',
             `import { loadStoryblokBridge } from "@storyblok/astro";
@@ -128,7 +137,7 @@ export default function storyblokIntegration(
         }
 
         // This is only enabled if LivePreview feature is on
-        if (resolvedOptions.livePreview) {
+        if (livePreview) {
           injectScript(
             'page',
             `import { loadStoryblokBridge, handleStoryblokMessage } from "@storyblok/astro";

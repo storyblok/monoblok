@@ -21,7 +21,7 @@ datasourcesCommand
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions) => {
-    konsola.title(` ${commands.DATASOURCES} `, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
+    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
     // Global options
     const verbose = program.opts().verbose;
     const { space, path } = datasourcesCommand.opts();
@@ -53,7 +53,9 @@ datasourcesCommand
     const { password, region } = state;
 
     mapiClient({
-      token: password,
+      token: {
+        accessToken: password,
+      },
       region,
     });
 
@@ -128,10 +130,7 @@ datasourcesCommand
             for (const entry of entries) {
               const existingEntryId = existingDatasource?.entries?.find(e => e.name === entry.name)?.id;
               try {
-                // For now, we'll create new entries since we don't have existing entry tracking
-                // TODO: Implement entry matching logic to determine if entry exists
-                const { id, ...entryData } = entry; // Remove id from entry data
-                await upsertDatasourceEntry(space, result.id, entryData, existingEntryId);
+                await upsertDatasourceEntry(space, result.id, entry, existingEntryId);
               }
               catch (entryError) {
                 results.failed.push({ name: datasource.name, error: entryError });

@@ -8,8 +8,9 @@ import {
 } from '@nuxt/kit';
 import type { NuxtHookName } from '@nuxt/schema';
 import type { Nuxt } from 'nuxt/schema';
-
 import type { AllModuleOptions, PublicModuleOptions } from './types';
+
+export * from './types';
 
 export default defineNuxtModule<AllModuleOptions>({
   meta: {
@@ -46,6 +47,7 @@ export default defineNuxtModule<AllModuleOptions>({
     nuxt.options.build.transpile.push(resolver.resolve('./runtime'));
     nuxt.options.build.transpile.push('@storyblok/nuxt');
     nuxt.options.build.transpile.push('@storyblok/vue');
+    addImportsDir(resolver.resolve('./runtime/composables'));
 
     if (options.enableServerClient) {
       const { accessToken, ...publicOptions } = options;
@@ -86,9 +88,13 @@ export default defineNuxtModule<AllModuleOptions>({
     for (const name of names) {
       addImports({ name, as: name, from: '@storyblok/vue' });
     }
+    addImports({
+      name: 'useAsyncStoryblok',
+      as: 'useAsyncStoryblok',
+      from: resolver.resolve('runtime/composables/useAsyncStoryblok'),
+    });
 
     nuxt.options.typescript.hoist.push('@storyblok/vue');
-    addImportsDir(resolver.resolve('./runtime/composables'));
 
     if (options.devtools) {
       nuxt.hook('devtools:customTabs' as NuxtHookName, (iframeTabs: Array<unknown>): void => {

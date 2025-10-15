@@ -1,21 +1,26 @@
 import chalk from 'chalk';
-import type { RegionCode } from '../../constants';
-import { customFetch, FetchError } from '../../utils/fetch';
+import { FetchError } from '../../utils/fetch';
 import { APIError, maskToken } from '../../utils';
-import { getStoryblokUrl } from '../../utils/api-routes';
-import type { StoryblokUser } from '../../types';
+import { mapiClient } from '../../api';
+import type { Users } from '@storyblok/management-api-client';
+import type { RegionCode } from '../../constants';
+
+export type User = Users.User;
 
 export const getUser = async (token: string, region: RegionCode) => {
   try {
-    const url = getStoryblokUrl(region);
-    const response = await customFetch<{
-      user: StoryblokUser;
-    }>(`${url}/users/me`, {
-      headers: {
-        Authorization: token,
+    const client = mapiClient({
+      token: {
+        accessToken: token,
       },
+      region,
     });
-    return response;
+
+    const { data } = await client.users.me({
+      throwOnError: true,
+    });
+
+    return data?.user;
   }
   catch (error) {
     if (error instanceof FetchError) {
@@ -29,6 +34,30 @@ export const getUser = async (token: string, region: RegionCode) => {
           throw new APIError('network_error', 'get_user', error);
       }
     }
+
+    // Handle specific error strings/responses from the management API client
+    if (typeof error === 'string' && error === 'Unauthorized') {
+      // Create a mock FetchError for consistency
+      const mockFetchError = new FetchError('Non-JSON response', {
+        status: 401,
+        statusText: 'Unauthorized',
+        data: null,
+      });
+      throw new APIError('unauthorized', 'get_user', mockFetchError, `The token provided ${chalk.bold(maskToken(token))} is invalid.
+        Please make sure you are using the correct token and try again.`);
+    }
+
+    // Handle network/server errors (empty response objects)
+    if (typeof error === 'object' && error !== null && Object.keys(error).length === 0) {
+      // Create a mock FetchError for network errors
+      const mockFetchError = new FetchError('Network Error', {
+        status: 500,
+        statusText: 'Internal Server Error',
+        data: null,
+      });
+      throw new APIError('network_error', 'get_user', mockFetchError);
+    }
+
     throw new APIError('generic', 'get_user', error as FetchError);
   }
 };

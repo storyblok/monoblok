@@ -1,7 +1,8 @@
 import { join, parse, resolve } from 'node:path';
-import { mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
+import filenamify from 'filenamify';
 
 export interface FileOptions {
   mode?: number;
@@ -37,6 +38,26 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   }
 };
 
+export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Ensure the directory exists
+  try {
+    await mkdir(resolvedPath, { recursive: true });
+  }
+  catch (mkdirError) {
+    handleFileSystemError('mkdir', mkdirError as Error);
+    return;
+  }
+  try {
+    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+    await appendFile(filePath, dataWithNewline, options);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
 export const readFile = async (filePath: string) => {
   try {
     return await readFileImpl(filePath, 'utf8');
@@ -64,6 +85,18 @@ export const resolvePath = (path: string | undefined, folder: string) => {
 export const getComponentNameFromFilename = (filename: string): string => {
   // Remove the .js extension
   return filename.replace(/\.js$/, '');
+};
+
+/**
+ * Sanitizes a string to be safe for use as a filename by removing/replacing problematic characters
+ * https://github.com/parshap/node-sanitize-filename/blob/master/index.js
+ * @param filename - The filename to sanitize
+ * @returns A safe filename string
+ */
+export const sanitizeFilename = (filename: string): string => {
+  return filenamify(filename, {
+    replacement: '_',
+  });
 };
 
 export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {

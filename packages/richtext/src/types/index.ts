@@ -50,10 +50,26 @@ export enum LinkTypes {
   EMAIL = 'email',
 }
 
+/**
+ * Represents text alignment attributes that can be applied to block-level elements.
+ */
+export interface TextAlignmentAttrs {
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+}
+
+/**
+ * Represents common attributes that can be applied to block-level elements.
+ */
+export interface BlockAttributes extends TextAlignmentAttrs {
+  class?: string;
+  id?: string;
+  [key: string]: any;
+}
+
 export interface StoryblokRichTextDocumentNode {
   type: string;
   content?: StoryblokRichTextDocumentNode[];
-  attrs?: Record<string, any>;
+  attrs?: BlockAttributes;
   text?: string;
   marks?: StoryblokRichTextDocumentNode[];
 }
@@ -64,14 +80,14 @@ export interface StoryblokRichTextNode<T = string> {
   type: StoryblokRichTextNodeTypes;
   content: StoryblokRichTextNode<T>[];
   children?: T;
-  attrs?: Record<string, any>;
+  attrs?: BlockAttributes;
   text?: string;
 }
 
 export interface LinkNode<T = string> extends StoryblokRichTextNode<T> {
   type: MarkTypes.LINK | MarkTypes.ANCHOR;
-  linktype: LinkTypes.ASSET | LinkTypes.EMAIL | LinkTypes.STORY | LinkTypes.URL;
-  attrs: Record<string, any>;
+  linktype: LinkTypes;
+  attrs: BlockAttributes;
 }
 
 export interface MarkNode<T = string> extends StoryblokRichTextNode<T> {
@@ -87,8 +103,7 @@ export interface MarkNode<T = string> extends StoryblokRichTextNode<T> {
     MarkTypes.SUBSCRIPT |
     MarkTypes.TEXT_STYLE |
     MarkTypes.HIGHLIGHT;
-  attrs?: Record<string, any>;
-  linkType: LinkTypes;
+  attrs?: BlockAttributes;
 }
 
 export interface TextNode<T = string> extends StoryblokRichTextNode<T> {
@@ -108,7 +123,7 @@ export interface StoryblokRichTextContext<T = string> {
    * @param attrs - The attributes for the tag
    * @param children - Optional children content
    */
-  render: (tag: string, attrs?: Record<string, any>, children?: T) => T;
+  render: (tag: string, attrs?: BlockAttributes, children?: T) => T;
   /**
    * Original resolvers map
    */
@@ -219,7 +234,7 @@ export type StoryblokRichTextResolvers<T = string> = Partial<Record<StoryblokRic
 /**
  * Represents the options for rendering rich text.
  */
-export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: Record<string, any>, children?: T) => T> {
+export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: BlockAttributes, children?: T) => T> {
   /**
    * Defines the function that will be used to render the final HTML string (vanilla) or Framework component (React, Vue).
    *
@@ -251,7 +266,7 @@ export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: R
    * }
    * ```
    */
-  textFn?: (text: string, attrs?: Record<string, any>) => T;
+  textFn?: (text: string, attrs?: BlockAttributes) => T;
 
   /**
    * Defines the resolvers for each type of node.

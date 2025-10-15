@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildDependencyGraph, collectWhitelistDependencies, determineProcessingOrder, validateGraph } from '../dependency-graph';
+import { buildDependencyGraph, determineProcessingOrder, validateGraph } from '../dependency-graph';
 import { processAllResources } from '../resource-processor';
 import type { SpaceComponentsDataState } from '../../../constants';
 
@@ -403,6 +403,392 @@ describe('graph Integration Tests', () => {
     });
   });
 
+  describe('richtext Field Dependencies', () => {
+    it('should resolve richtext field dependencies correctly', async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+
+      // Mock successful upserts
+      (upsertComponentInternalTag as any).mockResolvedValue({ id: 2001, name: 'richtext-tag', object_type: 'component' });
+      (upsertComponentGroup as any).mockResolvedValue({ id: 3001, name: 'richtext-group', uuid: 'richtext-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponent as any)
+        .mockResolvedValueOnce({ id: 4001, name: 'allowed-component', display_name: 'Allowed', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 4002,
+          name: 'richtext-component',
+          display_name: 'Richtext Component',
+          created_at: '2023-01-01T00:00:00.000Z',
+          updated_at: '2023-01-01T00:00:00.000Z',
+          schema: {
+            content: {
+              type: 'richtext',
+              component_whitelist: ['allowed-component'],
+              component_group_whitelist: ['richtext-group-uuid'], // Should be resolved
+              component_tag_whitelist: [2001], // Should be resolved
+            },
+          },
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        });
+
+      const spaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'allowed-component',
+              display_name: 'Allowed',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {},
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+            {
+              id: 2,
+              name: 'richtext-component',
+              display_name: 'Richtext Component',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {
+                content: {
+                  type: 'richtext',
+                  component_whitelist: ['allowed-component'],
+                  component_group_whitelist: ['richtext-group-uuid'],
+                  component_tag_whitelist: [150], // Source tag ID
+                },
+              },
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
+          groups: [{
+            id: 300,
+            name: 'richtext-group',
+            uuid: 'richtext-group-uuid',
+            parent_id: undefined,
+            parent_uuid: undefined,
+          }],
+          internalTags: [{
+            id: 150,
+            name: 'richtext-tag',
+            object_type: 'component' as const,
+          }],
+          presets: [],
+          datasources: [],
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Verify dependencies are correctly established
+      const richtextComponentNode = graph.nodes.get('component:richtext-component')!;
+      const _allowedComponentNode = graph.nodes.get('component:allowed-component')!;
+      const _groupNode = graph.nodes.get('group:richtext-group-uuid')!;
+      const _tagNode = graph.nodes.get('tag:150')!;
+
+      // Richtext component should depend on allowed component, group, and tag
+      expect(richtextComponentNode.dependencies.has('component:allowed-component')).toBe(true);
+      expect(richtextComponentNode.dependencies.has('group:richtext-group-uuid')).toBe(true);
+      expect(richtextComponentNode.dependencies.has('tag:150')).toBe(true);
+
+      await processAllResources(graph, 'test-space', 5);
+
+      // Verify that schema references were resolved
+      const richtextComponentCall = (upsertComponent as any).mock.calls.find(
+        call => call[1].name === 'richtext-component',
+      );
+
+      expect(richtextComponentCall).toBeDefined();
+      const schemaContent = richtextComponentCall[1].schema.content;
+
+      // Tag whitelist should be resolved to new tag ID
+      expect(schemaContent.component_tag_whitelist).toEqual([2001]);
+
+      // Group whitelist should remain as UUID (UUIDs don't change)
+      expect(schemaContent.component_group_whitelist).toEqual(['richtext-group-uuid']);
+
+      // Component whitelist should remain as names (names don't change)
+      expect(schemaContent.component_whitelist).toEqual(['allowed-component']);
+    });
+
+    it('should handle mixed bloks and richtext field dependencies', async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+
+      // Mock successful upserts
+      (upsertComponentInternalTag as any)
+        .mockResolvedValueOnce({ id: 1101, name: 'bloks-tag', object_type: 'component' })
+        .mockResolvedValueOnce({ id: 1102, name: 'richtext-tag', object_type: 'component' });
+      (upsertComponentGroup as any)
+        .mockResolvedValueOnce({ id: 2101, name: 'bloks-group', uuid: 'bloks-group-uuid', parent_id: null, parent_uuid: null })
+        .mockResolvedValueOnce({ id: 2102, name: 'richtext-group', uuid: 'richtext-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponent as any)
+        .mockResolvedValueOnce({ id: 3101, name: 'shared-component', display_name: 'Shared', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 3102,
+          name: 'mixed-component',
+          display_name: 'Mixed Component',
+          created_at: '2023-01-01T00:00:00.000Z',
+          updated_at: '2023-01-01T00:00:00.000Z',
+          schema: {
+            sections: {
+              type: 'bloks',
+              component_whitelist: ['shared-component'],
+              component_group_whitelist: ['bloks-group-uuid'],
+              component_tag_whitelist: [1101],
+            },
+            content: {
+              type: 'richtext',
+              component_whitelist: ['shared-component'],
+              component_group_whitelist: ['richtext-group-uuid'],
+              component_tag_whitelist: [1102],
+            },
+          },
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        });
+
+      const spaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'shared-component',
+              display_name: 'Shared',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {},
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+            {
+              id: 2,
+              name: 'mixed-component',
+              display_name: 'Mixed Component',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {
+                sections: {
+                  type: 'bloks',
+                  component_whitelist: ['shared-component'],
+                  component_group_whitelist: ['bloks-group-uuid'],
+                  component_tag_whitelist: [250], // Source bloks tag ID
+                },
+                content: {
+                  type: 'richtext',
+                  component_whitelist: ['shared-component'],
+                  component_group_whitelist: ['richtext-group-uuid'],
+                  component_tag_whitelist: [350], // Source richtext tag ID
+                },
+              },
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
+          groups: [
+            {
+              id: 400,
+              name: 'bloks-group',
+              uuid: 'bloks-group-uuid',
+              parent_id: undefined,
+              parent_uuid: undefined,
+            },
+            {
+              id: 500,
+              name: 'richtext-group',
+              uuid: 'richtext-group-uuid',
+              parent_id: undefined,
+              parent_uuid: undefined,
+            },
+          ],
+          internalTags: [
+            {
+              id: 250,
+              name: 'bloks-tag',
+              object_type: 'component' as const,
+            },
+            {
+              id: 350,
+              name: 'richtext-tag',
+              object_type: 'component' as const,
+            },
+          ],
+          presets: [],
+          datasources: [],
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Verify dependencies are correctly established for both bloks and richtext fields
+      const mixedComponentNode = graph.nodes.get('component:mixed-component')!;
+
+      // Mixed component should depend on shared component and both groups and tags
+      expect(mixedComponentNode.dependencies.has('component:shared-component')).toBe(true);
+      expect(mixedComponentNode.dependencies.has('group:bloks-group-uuid')).toBe(true);
+      expect(mixedComponentNode.dependencies.has('group:richtext-group-uuid')).toBe(true);
+      expect(mixedComponentNode.dependencies.has('tag:250')).toBe(true);
+      expect(mixedComponentNode.dependencies.has('tag:350')).toBe(true);
+
+      await processAllResources(graph, 'test-space', 5);
+
+      // Verify that schema references were resolved for both field types
+      const mixedComponentCall = (upsertComponent as any).mock.calls.find(
+        call => call[1].name === 'mixed-component',
+      );
+
+      expect(mixedComponentCall).toBeDefined();
+      const schema = mixedComponentCall[1].schema;
+
+      // Bloks field should have resolved references
+      expect(schema.sections.component_tag_whitelist).toEqual([1101]);
+      expect(schema.sections.component_group_whitelist).toEqual(['bloks-group-uuid']);
+      expect(schema.sections.component_whitelist).toEqual(['shared-component']);
+
+      // Richtext field should have resolved references
+      expect(schema.content.component_tag_whitelist).toEqual([1102]);
+      expect(schema.content.component_group_whitelist).toEqual(['richtext-group-uuid']);
+      expect(schema.content.component_whitelist).toEqual(['shared-component']);
+    });
+
+    it('should handle richtext fields with nested dependencies', async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+
+      // Mock successful upserts
+      (upsertComponentInternalTag as any).mockResolvedValue({ id: 5001, name: 'nested-tag', object_type: 'component' });
+      (upsertComponentGroup as any).mockResolvedValue({ id: 6001, name: 'nested-group', uuid: 'nested-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponent as any)
+        .mockResolvedValueOnce({ id: 7001, name: 'nested-component', display_name: 'Nested', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 7002,
+          name: 'complex-nested-component',
+          display_name: 'Complex Nested',
+          created_at: '2023-01-01T00:00:00.000Z',
+          updated_at: '2023-01-01T00:00:00.000Z',
+          schema: {
+            level1: {
+              level2: {
+                nested_content: {
+                  type: 'richtext',
+                  component_whitelist: ['nested-component'],
+                  component_group_whitelist: ['nested-group-uuid'],
+                  component_tag_whitelist: [5001],
+                },
+              },
+            },
+          },
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        });
+
+      const spaceState: SpaceComponentsDataState = {
+        local: {
+          components: [
+            {
+              id: 1,
+              name: 'nested-component',
+              display_name: 'Nested',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {},
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+            {
+              id: 2,
+              name: 'complex-nested-component',
+              display_name: 'Complex Nested',
+              created_at: '2023-01-01T00:00:00.000Z',
+              updated_at: '2023-01-01T00:00:00.000Z',
+              schema: {
+                level1: {
+                  level2: {
+                    nested_content: {
+                      type: 'richtext',
+                      component_whitelist: ['nested-component'],
+                      component_group_whitelist: ['nested-group-uuid'],
+                      component_tag_whitelist: [450], // Source tag ID
+                    },
+                  },
+                },
+              },
+              color: undefined,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
+          groups: [{
+            id: 600,
+            name: 'nested-group',
+            uuid: 'nested-group-uuid',
+            parent_id: undefined,
+            parent_uuid: undefined,
+          }],
+          internalTags: [{
+            id: 450,
+            name: 'nested-tag',
+            object_type: 'component' as const,
+          }],
+          presets: [],
+          datasources: [],
+        },
+        target: {
+          components: new Map(),
+          groups: new Map(),
+          tags: new Map(),
+          presets: new Map(),
+          datasources: new Map(),
+        },
+      };
+
+      const graph = buildDependencyGraph({ spaceState });
+
+      // Verify nested dependencies are correctly established
+      const complexNestedComponentNode = graph.nodes.get('component:complex-nested-component')!;
+
+      // Should depend on nested component, group, and tag even when deeply nested
+      expect(complexNestedComponentNode.dependencies.has('component:nested-component')).toBe(true);
+      expect(complexNestedComponentNode.dependencies.has('group:nested-group-uuid')).toBe(true);
+      expect(complexNestedComponentNode.dependencies.has('tag:450')).toBe(true);
+
+      await processAllResources(graph, 'test-space', 5);
+
+      // Verify that nested schema references were resolved
+      const complexNestedComponentCall = (upsertComponent as any).mock.calls.find(
+        call => call[1].name === 'complex-nested-component',
+      );
+
+      expect(complexNestedComponentCall).toBeDefined();
+      const nestedContent = complexNestedComponentCall[1].schema.level1.level2.nested_content;
+
+      // Nested richtext field should have resolved references
+      expect(nestedContent.component_tag_whitelist).toEqual([5001]);
+      expect(nestedContent.component_group_whitelist).toEqual(['nested-group-uuid']);
+      expect(nestedContent.component_whitelist).toEqual(['nested-component']);
+    });
+  });
+
   describe('preset Uniqueness Issues', () => {
     it('should correctly handle presets with the same name but different IDs', () => {
       // Presets are nested resources under components - they can have the same name across different components
@@ -751,199 +1137,6 @@ describe('graph Integration Tests', () => {
       // Processing order should handle the circular dependency
       const processingOrder = determineProcessingOrder(graph);
       expect(processingOrder.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('datasource Dependencies', () => {
-    it('should detect datasource dependencies in component schemas', () => {
-      const schema = {
-        option_field: {
-          type: 'option',
-          source: 'internal',
-          datasource_slug: 'colors',
-        },
-        options_field: {
-          type: 'options',
-          source: 'internal',
-          datasource_slug: 'categories',
-        },
-        external_option: {
-          type: 'option',
-          source: 'external',
-          url: 'https://api.example.com/data',
-        },
-      };
-
-      const dependencies = collectWhitelistDependencies(schema);
-
-      expect(dependencies.datasourceNames.has('colors')).toBe(true);
-      expect(dependencies.datasourceNames.has('categories')).toBe(true);
-      expect(dependencies.datasourceNames.size).toBe(2);
-    });
-
-    it('should build dependency graph with datasources from component references', () => {
-      const mockSpaceState: SpaceComponentsDataState = {
-        local: {
-          components: [
-            {
-              id: 1,
-              name: 'ProductCard',
-              display_name: 'Product Card',
-              schema: {
-                category: {
-                  type: 'option',
-                  source: 'internal',
-                  datasource_slug: 'categories',
-                },
-              },
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              space_id: 123,
-            },
-          ],
-          groups: [],
-          presets: [],
-          internalTags: [],
-          datasources: [], // No local datasources - stubs created from component references
-        },
-        target: {
-          components: new Map(),
-          groups: new Map(),
-          tags: new Map(),
-          presets: new Map(),
-          datasources: new Map(),
-        },
-      };
-
-      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
-
-      expect(graph.nodes.has('component:ProductCard')).toBe(true);
-      expect(graph.nodes.has('datasource:categories')).toBe(true);
-
-      const component = graph.nodes.get('component:ProductCard');
-      const datasource = graph.nodes.get('datasource:categories');
-
-      expect(component?.dependencies.has('datasource:categories')).toBe(true);
-      expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
-    });
-
-    it('should create stub datasources for referenced datasources', () => {
-      const mockSpaceState: SpaceComponentsDataState = {
-        local: {
-          components: [
-            {
-              id: 1,
-              name: 'ProductCard',
-              display_name: 'Product Card',
-              schema: {
-                category: {
-                  type: 'option',
-                  source: 'internal',
-                  datasource_slug: 'referenced_datasource',
-                },
-              },
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              space_id: 123,
-            },
-          ],
-          groups: [],
-          presets: [],
-          internalTags: [],
-          datasources: [], // No datasources in local workspace
-        },
-        target: {
-          components: new Map(),
-          groups: new Map(),
-          tags: new Map(),
-          presets: new Map(),
-          datasources: new Map(),
-        },
-      };
-
-      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
-
-      expect(graph.nodes.has('component:ProductCard')).toBe(true);
-      expect(graph.nodes.has('datasource:referenced_datasource')).toBe(true);
-
-      const component = graph.nodes.get('component:ProductCard');
-      const datasource = graph.nodes.get('datasource:referenced_datasource');
-
-      expect(component?.dependencies.has('datasource:referenced_datasource')).toBe(true);
-      expect(datasource?.dependents.has('component:ProductCard')).toBe(true);
-
-      // Verify the stub datasource has correct structure
-      expect(datasource?.sourceData.name).toBe('referenced_datasource');
-      expect(datasource?.sourceData.slug).toBe('referenced_datasource');
-      expect(datasource?.sourceData.entries).toEqual([]);
-    });
-
-    it('should resolve datasource references in component schemas', () => {
-      const mockTargetDatasource = {
-        id: 42,
-        name: 'categories',
-        slug: 'target_categories',
-        dimensions: [],
-        entries: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const mockSpaceState: SpaceComponentsDataState = {
-        local: {
-          components: [
-            {
-              id: 1,
-              name: 'ProductCard',
-              display_name: 'Product Card',
-              schema: {
-                category: {
-                  type: 'option',
-                  source: 'internal',
-                  datasource_slug: 'categories',
-                },
-              },
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              space_id: 123,
-            },
-          ],
-          groups: [],
-          presets: [],
-          internalTags: [],
-          datasources: [
-            {
-              id: 1,
-              name: 'categories',
-              slug: 'categories',
-              dimensions: [],
-              entries: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ],
-        },
-        target: {
-          components: new Map(),
-          groups: new Map(),
-          tags: new Map(),
-          presets: new Map(),
-          datasources: new Map([['categories', mockTargetDatasource]]),
-        },
-      };
-
-      const graph = buildDependencyGraph({ spaceState: mockSpaceState });
-
-      // Simulate that the datasource was successfully upserted
-      const datasourceNode = graph.nodes.get('datasource:categories');
-      datasourceNode?.updateTargetData(mockTargetDatasource);
-
-      const componentNode = graph.nodes.get('component:ProductCard') as ComponentNode;
-      componentNode.resolveReferences(graph);
-
-      // Check that the schema reference was resolved to the target datasource
-      const resolvedSchema = componentNode.sourceData.schema;
-      expect(resolvedSchema.category.datasource_slug).toBe('target_categories');
     });
   });
 });

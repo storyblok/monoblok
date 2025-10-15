@@ -1,0 +1,210 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Users API
+  version: 1.0.0
+  description: API for managing current user information
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/users/me:
+    get:
+      operationId: me
+      summary: Get Current User
+      description: Returns the current authenticated user's information.
+      responses:
+        '200':
+          description: Current user details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+    put:
+      operationId: updateMe
+      summary: Update Current User
+      description: Update the current authenticated user's information.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '422':
+          description: Unprocessable entity - validation errors
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    User:
+      type: object
+      description: The User Object
+      required:
+        - id
+        - email
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: User ID
+          readOnly: true
+        email:
+          type: string
+          format: email
+          description: User's email address
+        alt_email:
+          type: string
+          format: email
+          description: User's alternative email address
+        firstname:
+          type: string
+          description: User's first name
+        lastname:
+          type: string
+          description: User's last name
+        username:
+          type: string
+          description: User's username
+        avatar:
+          type: string
+          description: User's avatar URL
+        lang:
+          type: string
+          description: User's preferred language
+        timezone:
+          type: string
+          description: User's timezone
+        phone:
+          type: string
+          description: User's phone number
+        is_editor:
+          type: boolean
+          description: Whether user is an editor
+        job_role:
+          type: string
+          description: User's job role
+        job_title:
+          type: string
+          description: User's job title
+        company_name:
+          type: string
+          description: User's company name
+        company_size:
+          type: string
+          description: User's company size
+        usage_type:
+          type: string
+          description: User's usage type
+        framework_used:
+          type: string
+          description: Framework used by user
+        beta_user:
+          type: boolean
+          description: Whether user is a beta user
+        track_statistics:
+          type: boolean
+          description: Whether user allows statistics tracking
+        ui_theme:
+          type: object
+          description: User's UI theme preferences
+        favourite_spaces:
+          type: array
+          description: User's favorite spaces
+          items:
+            type: integer
+        favourite_ideas:
+          type: array
+          description: User's favorite ideas
+          items:
+            type: integer
+        notified:
+          type: array
+          description: User's notification preferences
+          items:
+            type: string
+        disclaimer_ids:
+          type: array
+          description: User's disclaimer IDs
+          items:
+            type: integer
+        has_org:
+          type: boolean
+          description: Whether the user belongs to an organization
+        has_partner:
+          type: boolean
+          description: Whether the user has an approved partner status
+        partner_status:
+          type: string
+          description: Partner status (e.g., 'approved')
+        org_role:
+          type: string
+          description: User's role in the organization (admin, owner, member)
+        partner_role:
+          type: string
+          description: User's role as a partner (partner_owner, partner_member)
+        org:
+          type: object
+          description: Organization information
+          properties:
+            settings:
+              type: object
+              description: Organization settings
+            name:
+              type: string
+              description: Organization name
+            status:
+              type: string
+              description: Organization status
+        role:
+          type: string
+          description: User's system role (admin, normal, banned, sso, superuser, devops, marketer)
+        sso:
+          type: boolean
+          description: Whether the user uses SSO authentication
+        totp_factor_verified:
+          type: boolean
+          description: Whether TOTP factor is verified
+        configured_2fa_options:
+          type: array
+          description: Configured two-factor authentication options
+          items:
+            type: string
+        live_chat_enabled:
+          type: boolean
+          description: Whether live chat is enabled for the user
+        friendly_name:
+          type: string
+          description: User-friendly display name for the user, shown in interfaces or reports to identify the user in a readable way.
+        created_at:
+          type: string
+          format: date-time
+          description: User creation date
+        updated_at:
+          type: string
+          format: date-time
+          description: User last update date

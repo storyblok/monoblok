@@ -1256,6 +1256,286 @@ describe('richtext', () => {
   });
 });
 
+describe('text Alignment', () => {
+  it('should render paragraph with text alignment', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'right',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Right aligned text',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p style="text-align: right;">Right aligned text</p>');
+  });
+
+  it('should handle multiple paragraphs with different alignments', async () => {
+    const { render } = richTextResolver();
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: {
+            textAlign: 'right',
+          },
+          content: [
+            {
+              type: 'text',
+              text: 'Right aligned text',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          attrs: {
+            textAlign: 'center',
+          },
+          content: [
+            {
+              type: 'text',
+              text: 'Center aligned text',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          attrs: {
+            textAlign: 'left',
+          },
+          content: [
+            {
+              type: 'text',
+              text: 'Left aligned text',
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = render(doc as StoryblokRichTextNode<string>);
+    expect(html).toBe(
+      '<p style="text-align: right;">Right aligned text</p>'
+      + '<p style="text-align: center;">Center aligned text</p>'
+      + '<p style="text-align: left;">Left aligned text</p>',
+    );
+  });
+
+  it('should handle text alignment with other attributes', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'right',
+        class: 'custom-class',
+        id: 'custom-id',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Styled text',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p class="custom-class" id="custom-id" style="text-align: right;">Styled text</p>');
+  });
+
+  it('should preserve existing style attributes when adding text alignment', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'right',
+        style: 'color: red;',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Colored and aligned text',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p style="color: red; text-align: right;">Colored and aligned text</p>');
+  });
+
+  it('should handle text alignment in headings', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'heading',
+      attrs: {
+        level: 2,
+        textAlign: 'center',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Centered Heading',
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<h2 style="text-align: center;">Centered Heading</h2>');
+  });
+
+  it('should handle text alignment in list items', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'bullet_list',
+      content: [
+        {
+          type: 'list_item',
+          attrs: {
+            textAlign: 'right',
+          },
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Right aligned list item',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<ul><li style="text-align: right;"><p>Right aligned list item</p></li></ul>');
+  });
+
+  it('should handle text alignment in table cells', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'table',
+      content: [
+        {
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableCell',
+              attrs: {
+                textAlign: 'center',
+              },
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Centered cell',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<table><tbody><tr><td style="text-align: center;"><p>Centered cell</p></td></tr></tbody></table>');
+  });
+
+  it('should handle text alignment with multiple styles in table cells', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'table',
+      content: [
+        {
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableCell',
+              attrs: {
+                textAlign: 'center',
+                backgroundColor: '#F5F5F5',
+                colwidth: 200,
+              },
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Styled cell',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<table><tbody><tr><td style="width: 200px; background-color: #F5F5F5; text-align: center;"><p>Styled cell</p></td></tr></tbody></table>');
+  });
+
+  it('should handle empty paragraphs with text alignment', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'center',
+      },
+      content: [],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p style="text-align: center;"></p>');
+  });
+
+  it('should handle text alignment with mixed content', async () => {
+    const { render } = richTextResolver();
+    const node = {
+      type: 'paragraph',
+      attrs: {
+        textAlign: 'right',
+      },
+      content: [
+        {
+          type: 'text',
+          text: 'Text with ',
+        },
+        {
+          type: 'text',
+          text: 'bold',
+          marks: [{ type: 'bold' }],
+        },
+        {
+          type: 'text',
+          text: ' and ',
+        },
+        {
+          type: 'text',
+          text: 'link',
+          marks: [{ type: 'link', attrs: { href: '#' } }],
+        },
+      ],
+    };
+
+    const html = render(node as StoryblokRichTextNode<string>);
+    expect(html).toBe('<p style="text-align: right;">Text with <strong>bold</strong> and <a href="#">link</a></p>');
+  });
+});
+
 describe('richTextResolver', () => {
   describe('render', () => {
     it('should render a paragraph with text', () => {
@@ -1305,7 +1585,7 @@ describe('richTextResolver', () => {
       expect(html).toBe('<h1 key="h1-0">Hello, world!</h1>');
     });
 
-    it('should render a link with text and keys', () => {
+    it('should render a link with text, keys, and custom attrs', () => {
       const link = {
         type: 'paragraph',
         content: [{
@@ -1313,12 +1593,17 @@ describe('richTextResolver', () => {
           text: 'Click me',
           marks: [{
             type: 'link',
-            attrs: { href: 'https://example.com' },
+            attrs: {
+              href: 'https://example.com',
+              custom: {
+                'data-custom': 'foo',
+              },
+            },
           }],
         }],
       };
       const html = richTextResolver<string>({ keyedResolvers: true }).render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p key="p-0"><a href="https://example.com" key="a-0">Click me</a></p>');
+      expect(html).toBe('<p key="p-0"><a href="https://example.com" key="a-0" data-custom="foo">Click me</a></p>');
     });
 
     it('should render text with multiple marks and keys', () => {

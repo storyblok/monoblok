@@ -106,7 +106,7 @@ export interface ISbStoryData<
   deleted_at?: string;
   default_full_slug?: string | null;
   default_root?: string;
-  disble_fe_editor?: boolean;
+  disable_fe_editor?: boolean;
   favourite_for_user_ids?: number[] | null;
   first_published_at?: string | null;
   full_slug: string;
@@ -141,6 +141,7 @@ export interface ISbStoryData<
     path: string;
     name: string | null;
     lang: ISbStoryData['lang'];
+    published: boolean;
   }[] | null;
   unpublished_changes?: boolean;
   updated_at?: string;
@@ -282,10 +283,10 @@ export interface ISbContentMangmntAPI<
     name: string;
     slug: string;
     content?: Content;
-    default_root?: boolean;
+    default_root?: string;
     is_folder?: boolean;
-    parent_id?: string;
-    disble_fe_editor?: boolean;
+    parent_id?: number;
+    disable_fe_editor?: boolean;
     path?: string;
     is_startpage?: boolean;
     position?: number;
@@ -295,6 +296,7 @@ export interface ISbContentMangmntAPI<
       path: string;
       name: string | null;
       lang: ISbContentMangmntAPI['lang'];
+      published: boolean;
     }[];
   };
   force_update?: '1' | unknown;

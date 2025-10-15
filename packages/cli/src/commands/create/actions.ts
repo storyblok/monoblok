@@ -7,7 +7,7 @@ import { FileSystemError, handleFileSystemError } from '../../utils/error/filesy
 import open from 'open';
 import { createOctokit } from '../../github';
 import { handleAPIError } from '../../utils';
-import type { DynamicBlueprint } from './constants';
+import type { DynamicTemplate } from './constants';
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -117,7 +117,13 @@ STORYBLOK_DELIVERY_API_TOKEN=${accessToken}
  */
 export const generateSpaceUrl = (spaceId: number, region: RegionCode): string => {
   const domain = appDomains[region];
-  return `https://${domain}/#/me/spaces/${spaceId}/dashboard`;
+
+  const utmParams = new URLSearchParams({
+    utm_source: 'storyblok-cli',
+    utm_medium: 'cli',
+    utm_campaign: 'create',
+  });
+  return `https://${domain}/#/me/spaces/${spaceId}/dashboard?${utmParams.toString()}`;
 };
 
 /**
@@ -159,7 +165,7 @@ export const extractPortFromTopics = (topics: string[]): string => {
  * @param repo - GitHub repository data
  * @returns Formatted blueprint object
  */
-export const repositoryToBlueprint = (repo: any): DynamicBlueprint => {
+export const repositoryToTemplate = (repo: any): DynamicTemplate => {
   const technology = repo.name.replace('blueprint-core-', '');
   const port = extractPortFromTopics(repo.topics || []);
 
@@ -170,6 +176,7 @@ export const repositoryToBlueprint = (repo: any): DynamicBlueprint => {
     location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
     description: repo.description,
     updated_at: repo.updated_at,
+    stars: repo.stargazers_count,
   };
 };
 
@@ -188,8 +195,8 @@ export const fetchBlueprintRepositories = async () => {
     // Filter and convert repositories to blueprints
     const blueprints = data.items
       .filter(repo => repo.name.startsWith('blueprint-core-'))
-      .map(repositoryToBlueprint)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map(repositoryToTemplate)
+      .sort((a, b) => (b.stars || 0) - (a.stars || 0));
 
     return blueprints;
   }

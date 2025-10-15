@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/astro",
   "type": "module",
-  "version": "7.2.0",
+  "version": "7.3.3",
   "private": false,
   "packageManager": "pnpm@9.13.2",
   "description": "Official Astro integration for the Storyblok Headless CMS",
@@ -38,16 +38,13 @@
       "import": "./dist/dev-toolbar/toolbarApp.ts",
       "require": "./dist/dev-toolbar/toolbarApp.ts"
     },
+    "./client": "./dist/lib/client.ts",
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
-    "./StoryblokComponent.astro": {
-      "types": "./dist/components/StoryblokComponent.d.ts",
-      "import": "./dist/components/StoryblokComponent.astro",
-      "require": "./dist/components/StoryblokComponent.astro"
-    }
+    "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro"
   },
   "main": "./dist/storyblok-astro.es.js",
   "module": "./dist/storyblok-astro.js",
-  "types": "./dist/storyblok-astro.d.ts",
+  "types": "./dist/index.d.ts",
   "files": [
     "*.d.ts",
     "dist"
@@ -55,6 +52,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && tsc --project tsconfig.json",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "playground": "pnpm run --filter ./playground/ssg dev",
     "playground:ssr": "pnpm run --filter ./playground/ssr dev",
     "playground:test": "pnpm run --filter ./playground/test dev",
@@ -83,7 +81,7 @@
     "@storyblok/eslint-config": "workspace:*",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/node": "^22.15.18",
-    "astro": "^5.0.9",
+    "astro": "^5.13.2",
     "cypress": "^14.3.3",
     "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.0.1",

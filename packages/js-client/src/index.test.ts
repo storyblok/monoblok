@@ -390,6 +390,118 @@ describe('storyblokClient', () => {
       expect(mockGet).toHaveBeenCalledTimes(1);
     });
 
+    it('should enrich inline assets with data from an asset object', async () => {
+      const story = {
+        data: {
+          story: {
+            id: 123456,
+            uuid: 'story-uuid-123',
+            name: 'Page',
+            slug: 'page',
+            full_slug: 'folder/page',
+            created_at: '2023-01-01T12:00:00.000Z',
+            published_at: '2023-01-02T12:00:00.000Z',
+            first_published_at: '2023-01-02T12:00:00.000Z',
+            content: {
+              _uid: 'content-123',
+              component: 'page',
+              image: {
+                id: 87196701025710,
+                alt: 'story alt',
+                name: 'image',
+                focus: '',
+                title: '',
+                source: '',
+                filename: 'https://a.storyblok.com/f/286701504322473/1888x1538/3cc0705569/image.jpeg',
+                copyright: '',
+                fieldtype: 'asset',
+                meta_data: {
+                  alt: 'story alt',
+                  title: '',
+                  source: '',
+                  copyright: '',
+                },
+                is_external_url: false,
+              },
+            },
+            position: 1,
+            is_startpage: false,
+            parent_id: 654321,
+            group_id: '789-group',
+            alternates: [],
+            translated_slugs: [],
+            default_full_slug: null,
+            lang: 'default',
+          },
+          rels: [],
+          links: [],
+          assets: [
+            {
+              id: 87196701025710,
+              content_type: 'image/jpeg',
+              content_length: 438695,
+              created_at: '2025-09-04T09:24:17.084Z',
+              updated_at: '2025-09-04T09:35:53.799Z',
+              deleted_at: null,
+              alt: 'asset alt',
+              title: '',
+              copyright: '',
+              focus: '',
+              is_private: false,
+              s3_filename: 'https://a.storyblok.com/f/286701504322473/1888x1538/3cc0705569/image.jpeg',
+              meta_data: {
+                alt: 'asset alt',
+                title: '',
+                source: '',
+                copyright: '',
+              },
+            },
+          ],
+        },
+        headers: {},
+        status: 200,
+        statusText: 'OK',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue(story);
+
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+        baseURL: 'https://api.storyblok.com/v2',
+      };
+      client.inlineAssets = true;
+
+      const result = await client.get('cdn/stories/folder/complex-page');
+
+      expect(result.data.story.content.image).toEqual({
+        alt: 'story alt',
+        content_length: 438695,
+        content_type: 'image/jpeg',
+        copyright: '',
+        created_at: '2025-09-04T09:24:17.084Z',
+        deleted_at: null,
+        fieldtype: 'asset',
+        filename: 'https://a.storyblok.com/f/286701504322473/1888x1538/3cc0705569/image.jpeg',
+        focus: '',
+        id: 87196701025710,
+        is_external_url: false,
+        is_private: false,
+        meta_data: {
+          alt: 'story alt',
+          copyright: '',
+          source: '',
+          title: '',
+        },
+        name: 'image',
+        s3_filename: 'https://a.storyblok.com/f/286701504322473/1888x1538/3cc0705569/image.jpeg',
+        source: '',
+        title: '',
+        updated_at: '2025-09-04T09:35:53.799Z',
+      });
+    });
+
     describe('cdn/links endpoint', () => {
       it('should fetch links with dates when include_dates is set to 1', async () => {
         const mockLinksResponse = {
@@ -593,6 +705,53 @@ describe('storyblokClient', () => {
         { id: 1, name: 'Test Story 1' },
         { id: 2, name: 'Test Story 2' },
       ]);
+    });
+
+    it('should use API response perPage for pagination calculation when per_page not provided', async () => {
+      // When per_page is not provided and API returns different perPage
+      const mockMakeRequestFixed = vi.fn()
+        .mockResolvedValueOnce({
+          data: { stories: Array.from({ length: 100 }, (_, i) => ({ id: i + 1, name: `Story ${i + 1}` })) },
+          total: 1000, // Total stories
+          perPage: 100, // API returns 100 per page (different from client default 25)
+          status: 200,
+        })
+
+        // getAll should calculate Math.ceil(1000/100) = 10 pages using firstRes.perPage
+        .mockResolvedValue({
+          data: { stories: Array.from({ length: 100 }, (_, i) => ({ id: i + 101, name: `Story ${i + 101}` })) },
+          total: 1000,
+          perPage: 100,
+          status: 200,
+        });
+
+      client.makeRequest = mockMakeRequestFixed;
+      await client.getAll('cdn/stories', { version: 'draft' });
+
+      // Should make 10 requests (1 + 9) using firstRes.perPage = 100
+      expect(mockMakeRequestFixed).toHaveBeenCalledTimes(10);
+    });
+
+    it('should fall back to client perPage when API does not return perPage', async () => {
+      // Test fallback behavior when API doesn't return perPage
+      const mockMakeRequestFallback = vi.fn()
+        .mockResolvedValueOnce({
+          data: { stories: Array.from({ length: 25 }, (_, i) => ({ id: i + 1, name: `Story ${i + 1}` })) },
+          total: 100, // Total stories
+          // perPage: undefined, // API doesn't return perPage
+          status: 200,
+        })
+        .mockResolvedValue({
+          data: { stories: Array.from({ length: 25 }, (_, i) => ({ id: i + 26, name: `Story ${i + 26}` })) },
+          total: 100,
+          status: 200,
+        });
+
+      client.makeRequest = mockMakeRequestFallback;
+      await client.getAll('cdn/stories', { version: 'draft' });
+
+      // Should fall back to client default perPage = 25: Math.ceil(100/25) = 4 requests
+      expect(mockMakeRequestFallback).toHaveBeenCalledTimes(4);
     });
   });
 

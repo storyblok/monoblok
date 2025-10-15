@@ -1,0 +1,123 @@
+type: object
+description: A Storyblok component object representing a content type
+required: 
+  - id
+  - name
+  - created_at
+  - updated_at
+  - schema
+properties:
+  id:
+    readOnly: true
+    type: integer
+    description: The numeric ID
+  name:
+    type: string
+    description: Technical name used for component property in entries
+  display_name:
+    type: string
+    nullable: true
+    description: Name that will be used in the editor interface
+  created_at:
+    readOnly: true
+    type: string
+    format: date-time
+    description: Creation date
+  updated_at:
+    readOnly: true
+    type: string
+    format: date-time
+    description: Latest update date
+  schema:
+    type: object
+    description: Component schema definition containing fields and their configurations
+    properties:
+      _uid:
+        type: object
+        description: Unique identifier field configuration
+      component:
+        type: object
+        description: Component type field configuration
+    additionalProperties: true
+  image:
+    type: string
+    nullable: true
+    description: URL to the preview image
+  preview_field:
+    type: string
+    description: The field that is for preview in the interface (Preview Field)
+  is_root:
+    type: boolean
+    description: Whether the component can be used as a root component
+  preview_tmpl:
+    type: string
+    nullable: true
+    description: Preview template for the component
+  is_nestable:
+    type: boolean
+    description: True if the component is nestable (insertable) in block field types
+  all_presets:
+    type: array
+    description: An array of presets for this component
+    items:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The numeric ID of the preset
+        name:
+          type: string
+          description: Name of the preset
+        component_id:
+          type: number
+          description: The ID of the component the preset is for
+        image:
+          type: string
+          nullable: true
+          description: Link to the preview image of the preset
+        icon:
+          type: string
+          description: Icon selected for the preset
+        color:
+          type: string
+          description: Color of the icon selected for the preset
+        description:
+          type: string
+          description: The description of the preset
+  preset_id:
+    type: integer
+    nullable: true
+    description: ID of the preset currently selected for this component
+  real_name:
+    type: string
+    description: Duplicated technical name or display name, used for internal tasks
+  component_group_uuid:
+    type: string
+    format: uuid
+    description: The component folder ID of the component
+  color:
+    type: string
+    description: The color of the icon selected for the component
+  icon:
+    type: string
+    description: Icon selected for the component
+  internal_tags_list:
+    type: array
+    description: List of internal tags assigned to the component
+    items:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Tag ID
+        name:
+          type: string
+          description: Tag name
+  internal_tag_ids:
+    type: array
+    description: List of IDs of the tags assigned to the component
+    items:
+      type: string
+  content_type_asset_preview:
+    type: string
+    description: Asset preview field (Preview Card) for a content type component

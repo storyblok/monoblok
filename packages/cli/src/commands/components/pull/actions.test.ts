@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
 import { mapiClient } from '../../../api';
 
@@ -55,9 +55,6 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 describe('pull components actions', () => {
   beforeEach(() => {

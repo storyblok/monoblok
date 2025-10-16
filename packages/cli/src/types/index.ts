@@ -66,4 +66,5 @@ export interface StoryblokCredentials {
   login: string;
   password: string;
   region: RegionCode;
+  baseUrl?: string;
 }

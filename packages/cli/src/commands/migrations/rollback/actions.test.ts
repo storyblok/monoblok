@@ -3,10 +3,6 @@ import { readRollbackFile, saveRollbackData } from './actions';
 import { CommandError } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';
 
-// Mock dependencies
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 const mockStoryContent: StoryContent = {
   _uid: 'test-uid',
   component: 'test',
@@ -14,10 +10,6 @@ const mockStoryContent: StoryContent = {
 };
 
 describe('saveRollbackData', () => {
-  beforeEach(() => {
-    vol.reset();
-  });
-
   it('should save rollback data successfully', async () => {
     const mockStory1 = {
       id: 1,
@@ -86,10 +78,6 @@ describe('saveRollbackData', () => {
 });
 
 describe('readRollbackFile', () => {
-  beforeEach(() => {
-    vol.reset();
-  });
-
   it('should read rollback file successfully', async () => {
     const mockRollbackData = [
       {

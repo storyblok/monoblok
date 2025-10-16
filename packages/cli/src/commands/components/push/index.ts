@@ -53,7 +53,7 @@ componentsCommand
     konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(options.from)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
     konsola.br();
 
-    const { password, region } = state;
+    const { password, region, baseUrl } = state;
 
     let requestCount = 0;
 
@@ -62,6 +62,7 @@ componentsCommand
         accessToken: password,
       },
       region,
+      baseUrl,
     });
 
     client.interceptors.request.use((config) => {

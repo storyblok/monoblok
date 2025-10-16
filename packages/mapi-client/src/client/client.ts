@@ -37,7 +37,7 @@ export const createClient = (config: Config): Client => {
       ..._config,
       ...options,
       fetch: options.fetch ?? _config.fetch ?? globalThis.fetch,
-      headers: mergeHeaders(_config.headers, options.headers),
+      headers: options.headers ? mergeHeaders(_config.headers, options.headers) : _config.headers,
     };
 
     // If the baseUrl is not set and we have a space_id, we can attempt to infer the region

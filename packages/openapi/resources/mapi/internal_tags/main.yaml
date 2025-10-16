@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.0
 info:
   title: Storyblok Internal Tags API
   version: 1.0.0
@@ -13,8 +13,8 @@ paths:
       operationId: list
       summary: Retrieve Multiple Internal Tags
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/pagination.yaml#/page
+        - $ref: ../../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/pagination.yaml#/page
         - name: per_page
           in: query
           required: false
@@ -41,7 +41,7 @@ paths:
         '200':
           description: List of internal tags
           headers:
-            $ref: ../shared/pagination.yaml#/pagination_headers
+            $ref: ../../shared/pagination.yaml#/pagination_headers
           content:
             application/json:
               schema:
@@ -61,7 +61,7 @@ paths:
       operationId: create
       summary: Create an Internal Tag
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -89,7 +89,7 @@ paths:
       operationId: update
       summary: Update an Internal Tag
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: internal_tag_id
           in: path
           required: true
@@ -123,7 +123,7 @@ paths:
       operationId: delete
       summary: Delete an Internal Tag
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: internal_tag_id
           in: path
           required: true

@@ -1,0 +1,45 @@
+{
+  "name": "@storyblok/test-utils",
+  "version": "1.0.0",
+  "description": "Storyblok Test Utils",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/test-utils#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/mapi-client"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./preconditions/*": {
+      "types": "./dist/preconditions/*.d.ts"
+    },
+    "./vitest/test-utils": {
+      "types": "./dist/vitest/test-utils.d.ts"
+    }
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "@storyblok/management-api-client": "workspace:*",
+    "lodash.merge": "^4.6.2"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.55.0",
+    "vitest": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/lodash.merge": "^4.6.9",
+    "@types/node": "^24.3.1"
+  }
+}

@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.0
 info:
   title: Storyblok Datasources API
   version: 1.0.0
@@ -13,7 +13,7 @@ paths:
       operationId: list
       summary: Retrieve Multiple Datasources
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: search
           in: query
           required: false
@@ -48,7 +48,7 @@ paths:
       operationId: create
       summary: Create a Datasource
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
       requestBody:
         required: true
         content:
@@ -79,7 +79,7 @@ paths:
       operationId: get
       summary: Retrieve One Datasource
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
@@ -106,7 +106,7 @@ paths:
       operationId: update
       summary: Update a Datasource
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true
@@ -142,7 +142,7 @@ paths:
       operationId: delete
       summary: Delete a Datasource
       parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../../shared/parameters.yaml#/space_id
         - name: datasource_id
           in: path
           required: true

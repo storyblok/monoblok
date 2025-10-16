@@ -7,13 +7,14 @@ import type { RegionCode } from '../../constants';
 
 export type User = Users.User;
 
-export const getUser = async (token: string, region: RegionCode) => {
+export const getUser = async (token: string, region: RegionCode, baseUrl?: string) => {
   try {
     const client = mapiClient({
       token: {
         accessToken: token,
       },
       region,
+      baseUrl,
     });
 
     const { data } = await client.users.me({

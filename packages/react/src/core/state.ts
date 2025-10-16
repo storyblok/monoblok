@@ -15,7 +15,7 @@ declare global {
   var storyCache: Map<string, ISbStoryData>;
 }
 
-globalThis.storyCache = !globalThis.storyCache ? new Map<string, ISbStoryData>() : globalThis.storyCache;
+globalThis.storyCache = globalThis.storyCache || new Map<string, ISbStoryData>();
 
 // State accessors
 export const getStoryblokApiInstance = (): StoryblokClient => storyblokApiInstance;

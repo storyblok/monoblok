@@ -6,6 +6,8 @@ import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 import { vol } from 'memfs';
 
+const MAX_RETRY_DURATION = 14_000;
+
 // Mock datasources data that matches the SpaceDatasource interface
 const mockedDatasources: SpaceDatasource[] = [
   {
@@ -109,6 +111,7 @@ vi.mock('node:fs/promises');
 
 describe('pull datasources actions', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     mapiClient({
       token: {
         accessToken: 'valid-token',
@@ -117,9 +120,15 @@ describe('pull datasources actions', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe('fetchDatasources', () => {
     it('should fetch datasources successfully with a valid token', async () => {
-      const result = await fetchDatasources('12345');
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
 
       // Each datasource should now have an 'entries' property
       expect(result).toHaveLength(2);
@@ -143,7 +152,9 @@ describe('pull datasources actions', () => {
     });
 
     it('should return datasources with correct structure', async () => {
-      const result = await fetchDatasources('12345');
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
 
       expect(result).toBeDefined();
 
@@ -180,7 +191,9 @@ describe('pull datasources actions', () => {
         }),
       );
 
-      const result = await fetchDatasources('12345');
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
@@ -218,7 +231,10 @@ describe('pull datasources actions', () => {
         }),
       );
 
-      await expect(fetchDatasources('12345')).rejects.toThrow();
+      await expect(Promise.all([
+        fetchDatasources('12345'),
+        vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION),
+      ])).rejects.toThrow();
     });
 
     it('should handle server errors', async () => {
@@ -229,7 +245,10 @@ describe('pull datasources actions', () => {
         }),
       );
 
-      await expect(fetchDatasources('12345')).rejects.toThrow();
+      await expect(Promise.all([
+        fetchDatasources('12345'),
+        vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION),
+      ])).rejects.toThrow();
     });
 
     it('should make request to correct endpoint with space parameter', async () => {
@@ -245,7 +264,9 @@ describe('pull datasources actions', () => {
         }),
       );
 
-      await fetchDatasources('54321');
+      const resultPromise = fetchDatasources('54321');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      await resultPromise;
 
       expect(requestUrl).toBe('https://mapi.storyblok.com/v1/spaces/54321/datasources');
     });

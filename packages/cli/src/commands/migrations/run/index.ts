@@ -114,7 +114,7 @@ migrationsCommand.command('run [componentName]')
           query,
           starts_with: startsWith,
         },
-        batchSize: 100,
+        batchSize: 12,
         onTotal: (total) => {
           storiesProgress.setTotal(total);
           migrationsProgress.setTotal(total);
@@ -141,7 +141,7 @@ migrationsCommand.command('run [componentName]')
         space,
         publish,
         dryRun,
-        batchSize: 100,
+        batchSize: 12,
         onProgress: () => {
           updateProgress.increment();
         },

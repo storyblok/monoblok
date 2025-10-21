@@ -103,12 +103,12 @@ describe('ManagementApiClient Integration - Per-Instance Rate Limiting', () => {
     const promise = client.spaces.list({});
     
     // Advance timers to allow all retries
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(14000);
     
     const result = await promise;
     
-    // Should make initial + maxRetries calls (3 retries = 4 total)
-    expect(mockFetch).toHaveBeenCalledTimes(4);
+    // Should make initial + maxRetries calls (12 retries = 13 total)
+    expect(mockFetch).toHaveBeenCalledTimes(13);
     
     // Result should contain the error since all retries failed
     expect(result).toBeDefined();

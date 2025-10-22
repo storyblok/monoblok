@@ -40,9 +40,7 @@ export class UpdateStream extends Writable {
       totalProcessed: 0,
     };
 
-    this.semaphore = new Sema(this.batchSize, {
-      capacity: this.batchSize,
-    });
+    this.semaphore = new Sema(this.batchSize);
   }
 
   async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {

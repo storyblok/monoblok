@@ -9,6 +9,8 @@ import {
   mergeHeaders,
   setAuthParams,
 } from './utils';
+import { calculateRetryDelay } from "../utils/calculate-retry-delay";
+import { delay } from "../utils/delay";
 
 type ReqInit = Omit<RequestInit, 'body' | 'headers'> & {
   body?: any;
@@ -90,7 +92,7 @@ export const createClient = (config: Config): Client => {
     
     // Execute with retry logic by recreating the request for each attempt
     let response = await executeWithRetry(_fetch, url, requestInit, {
-      maxRetries: 3,
+      maxRetries: 12,
       retryDelay: 1000
     });
 
@@ -206,9 +208,8 @@ export const createClient = (config: Config): Client => {
       
       if (response.status === 429 && attempt < retryConfig.maxRetries) {
         const retryAfter = response.headers.get('retry-after');
-        const delay = retryAfter ? parseInt(retryAfter) * 1000 : retryConfig.retryDelay;
-        
-        await new Promise(resolve => setTimeout(resolve, delay));
+        const retryDelay = retryAfter ? parseInt(retryAfter) * 1000 : calculateRetryDelay(attempt, retryConfig.retryDelay);
+        await delay(retryDelay);
         
         // Use the original unconsumed request for retry
         return executeWithRetry(fetchFn, url, requestInit, retryConfig, attempt + 1);

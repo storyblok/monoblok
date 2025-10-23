@@ -741,7 +741,35 @@ importers:
         specifier: ^3.1.3
         version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.18)(@vitest/ui@3.1.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.1)(msw@2.10.2(@types/node@22.15.18)(typescript@5.8.3))(terser@5.39.2)(tsx@4.20.3)(yaml@2.8.0)
 
-  packages/react/playground/next-e2e-testing:
+  packages/react/playground/next-13:
+    dependencies:
+      '@storyblok/react':
+        specifier: workspace:*
+        version: file:packages/react(next@13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.10
+        version: 20.17.47
+      '@types/react':
+        specifier: ^18.3.4
+        version: 18.3.21
+      next:
+        specifier: ^13.4.6
+        version: 13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.8.3
+    dependenciesMeta:
+      '@storyblok/react':
+        injected: true
+
+  packages/react/playground/next-13-e2e-testing:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
@@ -767,6 +795,43 @@ importers:
         version: 2.3.3(react@18.3.1)
 
   packages/react/playground/next-latest:
+    dependencies:
+      '@storyblok/react':
+        specifier: workspace:*
+        version: link:../..
+      '@tailwindcss/typography':
+        specifier: ^0.5.16
+        version: 0.5.16(tailwindcss@4.1.10)
+      next:
+        specifier: ^16.0.0
+        version: 16.0.0(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.10
+        version: 4.1.10
+      '@types/node':
+        specifier: ^20
+        version: 20.17.47
+      '@types/react':
+        specifier: ^19
+        version: 19.1.4
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.1.5(@types/react@19.1.4)
+      postcss:
+        specifier: ^8.5.6
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^4.1.10
+        version: 4.1.10
+
+  packages/react/playground/next-latest-e2e-testing:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
@@ -839,34 +904,6 @@ importers:
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.10
-
-  packages/react/playground/next13:
-    dependencies:
-      '@storyblok/react':
-        specifier: workspace:*
-        version: file:packages/react(next@13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    devDependencies:
-      '@types/node':
-        specifier: ^20.17.10
-        version: 20.17.47
-      '@types/react':
-        specifier: ^18.3.4
-        version: 18.3.21
-      next:
-        specifier: ^13.4.6
-        version: 13.5.11(@babel/core@7.27.1)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: 18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: 18.3.1
-        version: 18.3.1(react@18.3.1)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.8.3
-    dependenciesMeta:
-      '@storyblok/react':
-        injected: true
 
   packages/react/playground/react:
     dependencies:
@@ -23036,7 +23073,7 @@ snapshots:
   caniuse-api@3.0.0:
     dependencies:
       browserslist: 4.24.5
-      caniuse-lite: 1.0.30001718
+      caniuse-lite: 1.0.30001750
       lodash.memoize: 4.1.2
       lodash.uniq: 4.5.0
 
@@ -31551,7 +31588,7 @@ snapshots:
   terser@5.39.2:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.1
+      acorn: 8.15.0
       commander: 2.20.3
       source-map-support: 0.5.21
 

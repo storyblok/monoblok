@@ -119,7 +119,7 @@ class SbFetch {
     const controller = new AbortController();
     const { signal } = controller;
 
-    let timeout: number | null = null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     if (this.timeout) {
       timeout = setTimeout(() => controller.abort(), this.timeout);

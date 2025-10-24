@@ -105,7 +105,7 @@ class SbFetch {
   ): Promise<ISbResponse | ISbError> {
     let urlString = `${this.baseURL}${this.url}`;
 
-    let body = null;
+    let body: string | null = null;
 
     if (method === 'get') {
       urlString = `${this.baseURL}${this.url}?${stringify(this.parameters)}`;
@@ -119,7 +119,7 @@ class SbFetch {
     const controller = new AbortController();
     const { signal } = controller;
 
-    let timeout;
+    let timeout: number | null = null;
 
     if (this.timeout) {
       timeout = setTimeout(() => controller.abort(), this.timeout);
@@ -134,7 +134,7 @@ class SbFetch {
         ...this.fetchOptions,
       });
 
-      if (this.timeout) {
+      if (this.timeout && timeout) {
         clearTimeout(timeout);
       }
 

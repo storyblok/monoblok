@@ -32,8 +32,7 @@ export const fetchDatasourceEntries = async (
     const total = Number(response.headers.get('total')) || 0;
     const fetchedEntries = data?.datasource_entries || [];
     const allEntries = [...collectedEntries, ...fetchedEntries];
-
-    if (allEntries.length < total) {
+    if (fetchedEntries.length === 0 || allEntries.length < total) {
       return fetchDatasourceEntries(spaceId, datasourceId, page + 1, allEntries);
     }
 

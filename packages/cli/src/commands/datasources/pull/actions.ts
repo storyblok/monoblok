@@ -14,19 +14,30 @@ import type { SaveDatasourcesOptions } from './constants';
 export const fetchDatasourceEntries = async (
   spaceId: string,
   datasourceId: number,
+  page = 1,
+  collectedEntries: SpaceDatasourceEntry[] = [],
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.datasourceEntries.list({
+    const { data, response } = await client.datasourceEntries.list({
       path: {
         space_id: spaceId,
       },
       query: {
         datasource_id: datasourceId,
+        page,
       },
       throwOnError: true,
     });
-    return data?.datasource_entries;
+    const total = Number(response.headers.get('total')) || 0;
+    const fetchedEntries = data?.datasource_entries || [];
+    const allEntries = [...collectedEntries, ...fetchedEntries];
+
+    if (allEntries.length < total) {
+      return fetchDatasourceEntries(spaceId, datasourceId, page + 1, allEntries);
+    }
+
+    return allEntries;
   }
   catch (error) {
     // Use 'pull_datasources' as the closest valid action for datasource entries errors

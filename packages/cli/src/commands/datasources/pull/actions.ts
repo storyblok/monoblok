@@ -20,7 +20,13 @@ async function fetchAllPages<T, R>(
   collectedItems: R[] = [],
 ): Promise<R[]> {
   const { data, response } = await fetchFunction(page);
-  const total = Number(response.headers.get('total')) || 0;
+  const totalHeader = (response.headers.get('total'));
+  const total = Number(totalHeader);
+
+  if (!totalHeader || Number.isNaN(total)) {
+  // No valid 'total' header — assume not paginated, return current page only
+    return extractDataFunction(data);
+  }
   const fetchedItems = extractDataFunction(data);
   const allItems = [...collectedItems, ...fetchedItems];
   if (allItems.length < total && fetchedItems.length > 0) {

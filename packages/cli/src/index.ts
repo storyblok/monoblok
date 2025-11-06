@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
 import { handleError, konsola } from './utils';
 import { getProgram } from './program';
@@ -20,7 +20,6 @@ import { resolveConfig } from './utils/config';
 
 export * from './types/storyblok';
 
-dotenv.config(); // This will load variables from .env into process.env
 const program = getProgram();
 
 konsola.br();

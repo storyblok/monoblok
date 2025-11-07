@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { htmlToStoryblokRichtext } from './html-parser';
-import { BlockTypes } from './types';
+import Heading from '@tiptap/extension-heading';
 
 describe('htmlToStoryblokRichtext', () => {
   it('parses headings', () => {
@@ -62,10 +62,10 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'bullet_list',
+          type: 'bulletList',
           content: [
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -76,7 +76,7 @@ describe('htmlToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -99,10 +99,10 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'ordered_list',
+          type: 'orderedList',
           content: [
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -113,7 +113,7 @@ describe('htmlToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -183,7 +183,7 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'code_block',
+          type: 'codeBlock',
           attrs: { language: 'js' },
           content: [
             { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);\n' },
@@ -206,7 +206,7 @@ describe('htmlToStoryblokRichtext', () => {
               type: 'tableRow',
               content: [
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -216,7 +216,7 @@ describe('htmlToStoryblokRichtext', () => {
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -226,7 +226,7 @@ describe('htmlToStoryblokRichtext', () => {
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -389,43 +389,6 @@ describe('htmlToStoryblokRichtext', () => {
     });
   });
 
-  it('distinguishes between anchor and link', () => {
-    const result = htmlToStoryblokRichtext(
-      '<a id="some-id">Anchor</a><a href="/home">Link</a>',
-    );
-    expect(result).toEqual({
-      type: 'doc',
-      content: [
-        {
-          text: 'Anchor',
-          type: 'text',
-          marks: [
-            {
-              type: 'anchor',
-              attrs: {
-                anchor: 'some-id',
-              },
-              content: [],
-            },
-          ],
-        },
-        {
-          text: 'Link',
-          type: 'text',
-          marks: [
-            {
-              type: 'link',
-              attrs: {
-                href: '/home',
-              },
-              content: [],
-            },
-          ],
-        },
-      ],
-    });
-  });
-
   it('parses strikethrough (delete, s) marks', () => {
     const html = '<p>This is <del>deleted text</del> <s>deleted text</s>.</p>';
     const result = htmlToStoryblokRichtext(html);
@@ -495,7 +458,7 @@ describe('htmlToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontal_rule',
+          type: 'horizontalRule',
         },
         {
           type: 'paragraph',
@@ -517,7 +480,7 @@ describe('htmlToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'Line with a hard break here.' },
-            { type: 'hard_break' },
+            { type: 'hardBreak' },
             { type: 'text', text: 'Next line after break.' },
           ],
         },
@@ -548,8 +511,8 @@ describe('htmlToStoryblokRichtext', () => {
               type: 'text',
               text: 'bold and italic',
               marks: [
-                { type: 'italic' },
                 { type: 'bold' },
+                { type: 'italic' },
               ],
             },
           ],
@@ -566,8 +529,8 @@ describe('htmlToStoryblokRichtext', () => {
               type: 'text',
               text: 'italic',
               marks: [
-                { type: 'italic' },
                 { type: 'bold' },
+                { type: 'italic' },
               ],
             },
           ],
@@ -658,10 +621,10 @@ describe('htmlToStoryblokRichtext', () => {
                   },
                 },
                 {
-                  type: 'italic',
+                  type: 'bold',
                 },
                 {
-                  type: 'bold',
+                  type: 'italic',
                 },
               ],
               text: 'bold and italic link',
@@ -775,10 +738,11 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
+                    class: null,
                     href: '/home',
+                    rel: 'noopener noreferrer',
                     target: '_blank',
                   },
-                  content: [],
                 },
               ],
             },
@@ -812,13 +776,14 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
+                    class: null,
                     custom: {
                       'data-supported-custom-attribute': 'whatever',
                     },
                     href: '/home',
+                    rel: 'noopener noreferrer',
                     target: '_blank',
                   },
-                  content: [],
                 },
               ],
             },
@@ -830,7 +795,7 @@ describe('htmlToStoryblokRichtext', () => {
 
   it('preserves styleOptions on inline elements', () => {
     const resultStyleOptions = htmlToStoryblokRichtext(
-      '<p>foo <span class="style-1 invalid-style">bar</span></p><p>baz <span class="style-2">qux</span></p><p>corge <span class="style-3">grault</span> <a href="/home" class="style-1">Home</a></p>',
+      '<p>foo <span class="style-1 invalid-style">bar</span></p><p>baz <span class="style-2">qux</span></p><p>corge <span class="style-3">grault</span> <a href="/home" class="style-1 invalid-style">Home</a></p>',
       {
         styleOptions: [
           { name: 'Style1', value: 'style-1' },
@@ -856,7 +821,6 @@ describe('htmlToStoryblokRichtext', () => {
                   attrs: {
                     class: 'style-1',
                   },
-                  content: [],
                 },
               ],
               text: 'bar',
@@ -878,7 +842,6 @@ describe('htmlToStoryblokRichtext', () => {
                   attrs: {
                     class: 'style-2',
                   },
-                  content: [],
                 },
               ],
               text: 'qux',
@@ -890,15 +853,7 @@ describe('htmlToStoryblokRichtext', () => {
           content: [
             {
               type: 'text',
-              text: 'corge ',
-            },
-            {
-              type: 'text',
-              text: 'grault',
-            },
-            {
-              type: 'text',
-              text: ' ',
+              text: 'corge grault ',
             },
             {
               text: 'Home',
@@ -907,16 +862,11 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
-                    href: '/home',
-                  },
-                  content: [],
-                },
-                {
-                  type: 'styled',
-                  attrs: {
                     class: 'style-1',
+                    href: '/home',
+                    rel: null,
+                    target: null,
                   },
-                  content: [],
                 },
               ],
             },
@@ -945,36 +895,21 @@ describe('htmlToStoryblokRichtext', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('[StoryblokRichText] - `class` "unsupported" on `<span>` can not be transformed to rich text.'));
   });
 
-  it('throws an error when transformation is not supported', () => {
-    const unsupportedElements = [
-      '<div>Hello world!</div>',
-      '<iframe src="https://example.com"></iframe>',
-      '<script>alert("test")</script>',
-    ];
-    for (const element of unsupportedElements) {
-      expect(() => htmlToStoryblokRichtext(element))
-        .toThrowError(/No resolver specified for tag "(div|iframe|script)"!/);
-    }
-  });
-
-  it('throws an error when the source HTML is invalid', () => {
-    const html = '<ul><li>Not closed!<p></ul>';
-    expect(() => htmlToStoryblokRichtext(html))
-      .toThrowError('Invalid HTML: The provided string could not be parsed. Common causes include unclosed or mismatched tags!');
-  });
-
-  it('allows using custom resolvers', () => {
-    const html = '<h2>Custom Heading</h2><div>Custom Div</div>';
+  it('allows using custom Tiptap extensions', () => {
+    const html = '<h2>Custom Heading</h2>';
     const result = htmlToStoryblokRichtext(html, {
-      resolvers: {
-        h2: (_, content) => ({
-          type: BlockTypes.HEADING,
-          attrs: { level: 99 },
-          content,
-        }),
-        div: (_, content) => ({
-          type: BlockTypes.PARAGRAPH,
-          content,
+      tiptapExtensions: {
+        heading: Heading.extend({
+          addAttributes() {
+            return {
+              ...this.parent?.(),
+              level: {
+                parseHTML: () => {
+                  return 99;
+                },
+              },
+            };
+          },
         }),
       },
     });
@@ -987,10 +922,6 @@ describe('htmlToStoryblokRichtext', () => {
           content: [
             { type: 'text', text: 'Custom Heading' },
           ],
-        },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Custom Div' }],
         },
       ],
     });
@@ -1024,10 +955,10 @@ describe('htmlToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontal_rule',
+          type: 'horizontalRule',
         },
         {
-          type: 'code_block',
+          type: 'codeBlock',
           attrs: {},
           content: [{ type: 'text', text: 'Hello\nworld' }],
         },

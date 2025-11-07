@@ -1,5 +1,13 @@
 import type { RegionCode } from '../constants';
 import type { Command, Option } from 'commander';
+import type { CommandOptions } from '../types';
+import type { PullComponentsOptions } from '../commands/components/pull/constants';
+import type { PushComponentsOptions } from '../commands/components/push/constants';
+import type { PullDatasourcesOptions } from '../commands/datasources/pull/constants';
+import type { PushDatasourcesOptions } from '../commands/datasources/push/constants';
+import type { MigrationsGenerateOptions } from '../commands/migrations/generate/constants';
+import type { MigrationsRunOptions } from '../commands/migrations/run/constants';
+import type { GenerateTypesOptions } from '../commands/types/generate/constants';
 
 export type PlainObject = Record<string, any>;
 
@@ -39,6 +47,59 @@ export interface GlobalConfig {
 export interface ResolvedCliConfig extends GlobalConfig {
   verbose: boolean;
   [key: string]: any;
+}
+
+type StripCommandOption<T> = T extends CommandOptions ? Omit<T, keyof CommandOptions> : T;
+type CommandConfig<T> = Partial<StripCommandOption<T>>;
+
+export interface ComponentsModuleConfig extends Record<string, unknown> {
+  space?: string;
+  path?: string;
+  pull?: CommandConfig<PullComponentsOptions>;
+  push?: CommandConfig<PushComponentsOptions>;
+}
+
+export interface DatasourcesModuleConfig extends Record<string, unknown> {
+  space?: string;
+  path?: string;
+  pull?: CommandConfig<PullDatasourcesOptions>;
+  push?: CommandConfig<PushDatasourcesOptions>;
+}
+
+export interface MigrationsModuleConfig extends Record<string, unknown> {
+  space?: string;
+  path?: string;
+  generate?: CommandConfig<MigrationsGenerateOptions>;
+  run?: CommandConfig<MigrationsRunOptions>;
+}
+
+export interface TypesModuleConfig extends Record<string, unknown> {
+  space?: string;
+  path?: string;
+  generate?: CommandConfig<GenerateTypesOptions>;
+}
+
+export type ModulesConfig = Record<string, PlainObject> & {
+  components?: ComponentsModuleConfig;
+  datasources?: DatasourcesModuleConfig;
+  migrations?: MigrationsModuleConfig;
+  types?: TypesModuleConfig;
+};
+
+export type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends (...args: any[]) => any
+    ? T[K]
+    : T[K] extends object
+      ? DeepPartial<T[K]>
+      : T[K];
+};
+
+export interface StoryblokConfig extends DeepPartial<GlobalConfig> {
+  modules?: ModulesConfig;
+}
+
+export function defineConfig<T extends StoryblokConfig>(config: T): T {
+  return config;
 }
 
 export type OptionParser<T> = (value: string, previous?: T) => T;

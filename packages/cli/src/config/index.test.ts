@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { resolveConfig } from './resolver';
 import { applyConfigToCommander } from './commander';
 import { DEFAULT_GLOBAL_CONFIG } from './defaults';
+import { defineConfig } from './types';
 import * as helpers from './helpers';
 
 interface CommandHierarchy {
@@ -166,5 +167,23 @@ describe('config resolver', () => {
     expect(root.getOptionValue('region')).toBe('us');
     expect(components.getOptionValue('path')).toBe('.storyblok');
     expect(pull.getOptionValue('suffix')).toBe('resolved');
+  });
+});
+
+describe('defineConfig', () => {
+  it('returns the same config reference for typed authoring', () => {
+    const input = {
+      region: 'us',
+      modules: {
+        components: {
+          path: '.storyblok',
+          pull: {
+            separateFiles: true,
+          },
+        },
+      },
+    } as const;
+    const result = defineConfig(input);
+    expect(result).toBe(input);
   });
 });

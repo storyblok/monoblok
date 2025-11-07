@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Command } from 'commander';
 import { resolve as resolvePath } from 'pathe';
-import { CONFIG_FILE_NAME, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers } from './helpers';
+import { CONFIG_FILE_NAME, formatConfigForDisplay, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
+import type { ResolvedCliConfig } from './types';
 
 const existsSyncMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
@@ -137,5 +139,79 @@ describe('loadConfigLayers', () => {
 
     expect(layers).toEqual([]);
     expect(konsolaInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
+  });
+});
+
+function buildCommandChain() {
+  const root = new Command('storyblok');
+  root
+    .exitOverride()
+    .option('--verbose', '', false);
+
+  const components = root
+    .command('components')
+    .option('-s, --space <space>')
+    .option('-p, --path <path>');
+
+  const pull = components
+    .command('pull')
+    .option('--separate-files', '', false)
+    .option('--filename <filename>');
+
+  root.setOptionValueWithSource('verbose', true, 'config');
+  components.setOptionValueWithSource('space', '123', 'config');
+  components.setOptionValueWithSource('path', '.storyblok', 'config');
+  pull.setOptionValueWithSource('separateFiles', true, 'config');
+  pull.setOptionValueWithSource('filename', 'components', 'config');
+  return [root, components, pull];
+}
+
+const mockConfig: ResolvedCliConfig = {
+  region: 'us',
+  api: {
+    maxRetries: 5,
+    maxConcurrency: 6,
+  },
+  log: {
+    console: {
+      enabled: true,
+      level: 'info',
+    },
+    file: {
+      enabled: true,
+      level: 'warn',
+      maxFiles: 10,
+    },
+  },
+  report: {
+    enabled: true,
+    maxFiles: 5,
+  },
+  verbose: true,
+};
+
+describe('config inspector helpers', () => {
+  it('serializes global and local config for display', () => {
+    const ancestry = buildCommandChain();
+    const formatted = formatConfigForDisplay(mockConfig, ancestry);
+    const parsed = JSON.parse(formatted);
+
+    expect(parsed.global.region).toBe('us');
+    expect(parsed.global.api.maxRetries).toBe(5);
+    expect(parsed.global.log.file.level).toBe('warn');
+    expect(parsed.local.components.space).toBe('123');
+    expect(parsed.local.components.path).toBe('.storyblok');
+    expect(parsed.local.pull.filename).toBe('components');
+  });
+
+  it('logs the active config only when verbose mode is enabled', () => {
+    const ancestry = buildCommandChain();
+
+    logActiveConfig(mockConfig, ancestry, false);
+    expect(konsolaInfoMock).not.toHaveBeenCalled();
+
+    logActiveConfig(mockConfig, ancestry, true);
+    expect(konsolaInfoMock).toHaveBeenCalledTimes(1);
+    expect(konsolaInfoMock.mock.calls[0][0]).toContain('Active config for "storyblok components pull"');
   });
 });

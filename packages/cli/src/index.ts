@@ -16,7 +16,7 @@ import './commands/create';
 import pkg from '../package.json';
 
 import { colorPalette } from './constants';
-import { applyConfigToCommander, getCommandAncestry, GLOBAL_OPTION_DEFINITIONS, resolveConfig, setActiveConfig } from './config';
+import { applyConfigToCommander, getCommandAncestry, GLOBAL_OPTION_DEFINITIONS, logActiveConfig, resolveConfig, setActiveConfig } from './config';
 
 export * from './types/storyblok';
 
@@ -55,6 +55,7 @@ program.hook('preAction', async (thisCommand, actionCommand) => {
   const resolved = await resolveConfig(targetCommand, ancestry);
   applyConfigToCommander(ancestry, resolved);
   setActiveConfig(resolved);
+  logActiveConfig(resolved, ancestry, resolved.verbose);
 });
 
 try {

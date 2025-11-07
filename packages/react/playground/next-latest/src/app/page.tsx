@@ -13,16 +13,14 @@ export default async function Home() {
           Storyblok Next.js 15 Example
         </h1>
 
-        { // TODO: Enable for https://github.com/storyblok/monoblok/issues/35
-          <nav className="space-y-4">
-            <Link
-              href="/richtext"
-              className="block p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              Go to Rich Text Example
-            </Link>
-          </nav>
-        }
+        <nav className="space-y-4">
+          <Link
+            href="/react/richtext"
+            className="block p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Go to Rich Text Example
+          </Link>
+        </nav>
 
         {data.story && (
           <div>

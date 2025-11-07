@@ -9,6 +9,8 @@ import {
   mergeHeaders,
   setAuthParams,
 } from './utils';
+import { calculateRetryDelay } from "../utils/calculate-retry-delay";
+import { delay } from "../utils/delay";
 
 type ReqInit = Omit<RequestInit, 'body' | 'headers'> & {
   body?: any;
@@ -40,14 +42,13 @@ export const createClient = (config: Config): Client => {
       headers: mergeHeaders(_config.headers, options.headers),
     };
 
-
-    // If the baseUrl is not set and we have a space_id, we can attempt toinfer the region
+    // If the baseUrl is not set and we have a space_id, we can attempt to infer the region
     if (!_config.baseUrl && options.path?.space_id) {
-      const region = getRegion(options.path.space_id as number);
+      const region = getRegion(options.path.space_id as number, opts.region);
       if (region) {
         opts.baseUrl = getManagementBaseUrl(region, 'https');
       }
-    } else if (opts.region) {
+    } else if (!_config.baseUrl && opts.region) {
       opts.baseUrl = getManagementBaseUrl(opts.region, 'https');
     }
 
@@ -91,7 +92,7 @@ export const createClient = (config: Config): Client => {
     
     // Execute with retry logic by recreating the request for each attempt
     let response = await executeWithRetry(_fetch, url, requestInit, {
-      maxRetries: 3,
+      maxRetries: 12,
       retryDelay: 1000
     });
 
@@ -207,9 +208,8 @@ export const createClient = (config: Config): Client => {
       
       if (response.status === 429 && attempt < retryConfig.maxRetries) {
         const retryAfter = response.headers.get('retry-after');
-        const delay = retryAfter ? parseInt(retryAfter) * 1000 : retryConfig.retryDelay;
-        
-        await new Promise(resolve => setTimeout(resolve, delay));
+        const retryDelay = retryAfter ? parseInt(retryAfter) * 1000 : calculateRetryDelay(attempt, retryConfig.retryDelay);
+        await delay(retryDelay);
         
         // Use the original unconsumed request for retry
         return executeWithRetry(fetchFn, url, requestInit, retryConfig, attempt + 1);

@@ -1585,7 +1585,7 @@ describe('richTextResolver', () => {
       expect(html).toBe('<h1 key="h1-0">Hello, world!</h1>');
     });
 
-    it('should render a link with text and keys', () => {
+    it('should render a link with text, keys, and custom attrs', () => {
       const link = {
         type: 'paragraph',
         content: [{
@@ -1593,12 +1593,17 @@ describe('richTextResolver', () => {
           text: 'Click me',
           marks: [{
             type: 'link',
-            attrs: { href: 'https://example.com' },
+            attrs: {
+              href: 'https://example.com',
+              custom: {
+                'data-custom': 'foo',
+              },
+            },
           }],
         }],
       };
       const html = richTextResolver<string>({ keyedResolvers: true }).render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p key="p-0"><a href="https://example.com" key="a-0">Click me</a></p>');
+      expect(html).toBe('<p key="p-0"><a href="https://example.com" key="a-0" data-custom="foo">Click me</a></p>');
     });
 
     it('should render text with multiple marks and keys', () => {

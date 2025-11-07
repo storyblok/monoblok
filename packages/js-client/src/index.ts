@@ -837,20 +837,16 @@ export class Storyblok {
         return node;
       }
 
-      // Handle arrays
       if (Array.isArray(node)) {
         return node.map(item => processNode(item));
       }
 
-      // Process object
       let processedNode = { ...node };
-
-      // Check if this is an asset field
       if (processedNode.fieldtype === 'asset' && Array.isArray(response.data.assets)) {
-        // Replace the assets array with the actual asset objects
+        // Enrich the asset with an actual asset object
         processedNode = {
-          ...processedNode,
           ...response.data.assets.find((asset: any) => asset.id === processedNode.id),
+          ...processedNode,
         };
       }
 

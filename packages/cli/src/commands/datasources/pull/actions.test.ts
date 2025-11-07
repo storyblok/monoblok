@@ -1,100 +1,63 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchDatasources, saveDatasourcesToFiles } from './actions';
+
+import mockedDatasources from './datasource.mock.json' assert { type: 'json' };
 import { mapiClient } from '../../../api';
-import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
+import { fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { vol } from 'memfs';
 
-// Mock datasources data that matches the SpaceDatasource interface
-const mockedDatasources: SpaceDatasource[] = [
-  {
-    id: 1,
-    name: 'Countries',
-    slug: 'countries',
-    dimensions: [
-      {
-        name: 'United States',
-        type: 'option',
-        entry_value: 'us',
-        datasource_id: 1,
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-      },
-      {
-        name: 'Canada',
-        type: 'option',
-        entry_value: 'ca',
-        datasource_id: 1,
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-      },
-    ],
-    created_at: '2021-08-09T12:00:00Z',
-    updated_at: '2021-08-09T12:00:00Z',
-  },
-  {
-    id: 2,
-    name: 'Categories',
-    slug: 'categories',
-    dimensions: [
-      {
-        name: 'Technology',
-        type: 'option',
-        entry_value: 'tech',
-        datasource_id: 2,
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-      },
-      {
-        name: 'Business',
-        type: 'option',
-        entry_value: 'business',
-        datasource_id: 2,
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-      },
-    ],
-    created_at: '2021-08-09T12:00:00Z',
-    updated_at: '2021-08-09T12:00:00Z',
-  },
-];
+const MAX_RETRY_DURATION = 14_000;
 
-// Mock datasource entries data
-const mockedEntries: Record<number, SpaceDatasourceEntry[]> = {
-  1: [
-    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
-    { id: 102, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
-  ],
-  2: [
-    { id: 201, name: 'tech', value: 'Technology', dimension_value: '', datasource_id: 2 },
-    { id: 202, name: 'business', value: 'Business', dimension_value: '', datasource_id: 2 },
-  ],
-};
+/**
+ * Helper function to create paginated responses
+ */
+function createPaginatedResponse<T>(items: T[], request: Request, perPage = 25) {
+  const url = new URL(request.url);
+  const page = Number(url.searchParams.get('page')) || 1;
 
-// MSW handlers for mocking the datasources API endpoint
+  const startIndex = (page - 1) * perPage;
+  const endIndex = startIndex + perPage;
+  const paginatedItems = items.slice(startIndex, endIndex);
+  return {
+    items: paginatedItems,
+    headers: {
+      total: String(items.length),
+      page: String(page),
+    },
+  };
+}
+
+// Track request counts globally
+let datasourcesPageRequests = 0;
+let entriesPageRequests = 0;
+
 const handlers = [
   http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
+    datasourcesPageRequests++;
     const token = request.headers.get('Authorization');
-
-    // Return success response for valid token
     if (token === 'valid-token') {
-      return HttpResponse.json({
-        datasources: mockedDatasources,
-      });
-    }
+      const { items, headers } = createPaginatedResponse(mockedDatasources, request);
 
-    // Return unauthorized error for invalid token
-    return new HttpResponse('Unauthorized', { status: 401 });
+      return HttpResponse.json({
+        datasources: items.map(({ entries, ...rest }) => rest),
+      }, { headers });
+    }
+    return HttpResponse.text('Unauthorized', { status: 401 });
   }),
-  http.get('https://mapi.storyblok.com/v1/spaces/:space/datasource_entries', async ({ request }) => {
+  http.get('https://mapi.storyblok.com/v1/spaces/12345/datasource_entries', async ({ request }) => {
+    entriesPageRequests++;
     const url = new URL(request.url);
     const datasourceId = url.searchParams.get('datasource_id');
-    const entries = mockedEntries[Number(datasourceId)] || [];
-    return HttpResponse.json({ datasource_entries: entries });
+
+    const allEntries = mockedDatasources.find(ds => ds.id === Number(datasourceId))?.entries || [];
+    const { items, headers } = createPaginatedResponse(allEntries, request);
+
+    return HttpResponse.json({
+      datasource_entries: items,
+    }, { headers });
   }),
 ];
-
 // Set up MSW server
 const server = setupServer(...handlers);
 
@@ -109,6 +72,10 @@ vi.mock('node:fs/promises');
 
 describe('pull datasources actions', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    // Reset counters before each test
+    datasourcesPageRequests = 0;
+    entriesPageRequests = 0;
     mapiClient({
       token: {
         accessToken: 'valid-token',
@@ -117,38 +84,23 @@ describe('pull datasources actions', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   describe('fetchDatasources', () => {
-    it('should fetch datasources successfully with a valid token', async () => {
-      const result = await fetchDatasources('12345');
-
-      // Each datasource should now have an 'entries' property
-      expect(result).toHaveLength(2);
-      expect(result?.[0]).toMatchObject({
-        id: 1,
-        name: 'Countries',
-        slug: 'countries',
-        dimensions: expect.any(Array),
-        entries: mockedEntries[1],
-      });
-      expect(result?.[1]).toMatchObject({
-        id: 2,
-        name: 'Categories',
-        slug: 'categories',
-        dimensions: expect.any(Array),
-        entries: mockedEntries[2],
-      });
-      // Ensure entries is an array
-      expect(Array.isArray(result?.[0].entries)).toBe(true);
-      expect(Array.isArray(result?.[1].entries)).toBe(true);
-    });
-
-    it('should return datasources with correct structure', async () => {
-      const result = await fetchDatasources('12345');
-
+    it('should fetch all datasources across multiple pages', async () => {
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
       expect(result).toBeDefined();
 
       // Test the structure of the first datasource
       const firstDatasource = result?.[0];
+      // Should fetch all 51 datasources (2 pages at 25 per page)
+      expect(result).toHaveLength(51);
+      expect(firstDatasource).toHaveProperty('name');
+      expect(firstDatasource).toHaveProperty('entries');
+      expect(Array.isArray(firstDatasource?.entries)).toBe(true);
       expect(firstDatasource).toMatchObject({
         id: expect.any(Number),
         name: expect.any(String),
@@ -158,18 +110,44 @@ describe('pull datasources actions', () => {
         updated_at: expect.any(String),
         entries: expect.any(Array), // New: entries property
       });
-      // Test the structure of an entry
-      const firstEntry = firstDatasource?.entries?.[0];
-      if (firstEntry) {
-        expect(firstEntry).toMatchObject({
-          id: expect.any(Number),
-          name: expect.any(String),
-          value: expect.any(String),
-          dimension_value: expect.any(String),
-        });
-      }
     });
 
+    it('should fetch all datasource entries across multiple pages', async () => {
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
+
+      // Find the "colors" datasource which has 33 entries (needs 2 pages at 25 per page)
+      const colorsDatasource = result?.find(ds => ds.name === 'colors');
+      expect(colorsDatasource).toBeDefined();
+      expect(colorsDatasource?.entries).toHaveLength(33);
+      expect(colorsDatasource?.entries?.[0]).toMatchObject({
+        id: 99540095392100,
+        name: 'Red',
+        value: 'red',
+        dimension_value: '',
+        datasource_id: 1,
+      });
+      // Verify some specific entries to ensure all pages were fetched
+      const entryNames = colorsDatasource?.entries?.map(e => e.name);
+      expect(entryNames).toContain('Red'); // First page
+      expect(entryNames).toContain('white'); // Second page (entry 33)
+    });
+
+    it('should handle pagination headers correctly', async () => {
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
+      // Should make 3 requests for datasources (51 items / 25 per page)
+      expect(datasourcesPageRequests).toBe(3);
+
+      // Should fetch all datasources and their entries
+      expect(result).toHaveLength(51);
+
+      // Verify multiple pagination requests were made for datasource entries
+      // The colors datasource has 33 entries, requiring 2 pages
+      expect(entriesPageRequests).toBeGreaterThan(50); // At least one request per datasource
+    });
     it('should handle empty datasources response', async () => {
       // Override the handler to return empty datasources
       server.use(
@@ -180,12 +158,41 @@ describe('pull datasources actions', () => {
         }),
       );
 
-      const result = await fetchDatasources('12345');
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
     });
 
+    it('should handle network errors', async () => {
+      // Override the handler to simulate network error
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
+          return HttpResponse.error();
+        }),
+      );
+
+      await expect(Promise.all([
+        fetchDatasources('12345'),
+        vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION),
+      ])).rejects.toThrow();
+    });
+
+    it('should handle server errors', async () => {
+      // Override the handler to return server error
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
+          return new HttpResponse('Internal Server Error', { status: 500 });
+        }),
+      );
+
+      await expect(Promise.all([
+        fetchDatasources('12345'),
+        vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION),
+      ])).rejects.toThrow();
+    });
     /*  it('should throw a masked error for invalid token', async () => {
       // Configure client with invalid token
       mapiClient({
@@ -209,29 +216,6 @@ describe('pull datasources actions', () => {
         }),
       );
     }); */
-
-    it('should handle network errors', async () => {
-      // Override the handler to simulate network error
-      server.use(
-        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
-          return HttpResponse.error();
-        }),
-      );
-
-      await expect(fetchDatasources('12345')).rejects.toThrow();
-    });
-
-    it('should handle server errors', async () => {
-      // Override the handler to return server error
-      server.use(
-        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () => {
-          return new HttpResponse('Internal Server Error', { status: 500 });
-        }),
-      );
-
-      await expect(fetchDatasources('12345')).rejects.toThrow();
-    });
-
     it('should make request to correct endpoint with space parameter', async () => {
       let requestUrl = '';
 
@@ -240,14 +224,15 @@ describe('pull datasources actions', () => {
         http.get('https://mapi.storyblok.com/v1/spaces/*/datasources', ({ request }) => {
           requestUrl = request.url;
           return HttpResponse.json({
-            datasources: mockedDatasources,
+            datasources: [],
           });
         }),
       );
 
-      await fetchDatasources('54321');
-
-      expect(requestUrl).toBe('https://mapi.storyblok.com/v1/spaces/54321/datasources');
+      const resultPromise = fetchDatasources('54321');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      await resultPromise;
+      expect(requestUrl).toBe('https://mapi.storyblok.com/v1/spaces/54321/datasources?page=1');
     });
   });
 
@@ -260,31 +245,7 @@ describe('pull datasources actions', () => {
       vol.fromJSON({
         '/mock/path/': null,
       });
-      const datasources = [
-        {
-          id: 1,
-          name: 'colors',
-          slug: 'colors',
-          dimensions: [],
-          created_at: '2024-10-15T07:57:12.655Z',
-          updated_at: '2024-10-15T07:57:12.655Z',
-          entries: [
-            { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
-          ],
-        },
-        {
-          id: 2,
-          name: 'numbers',
-          slug: 'numbers',
-          dimensions: [],
-          created_at: '2025-04-09T08:56:07.819Z',
-          updated_at: '2025-04-09T08:56:07.819Z',
-          entries: [
-            { id: 201, name: 'one', value: '1', dimension_value: '' },
-          ],
-        },
-      ];
-      await saveDatasourcesToFiles('12345', datasources, {
+      await saveDatasourcesToFiles('12345', mockedDatasources, {
         path: '/mock/path/',
         filename: 'datasources',
         verbose: false,
@@ -293,7 +254,7 @@ describe('pull datasources actions', () => {
       expect(files).toEqual(['datasources.json']);
       const fileContent = vol.readFileSync('/mock/path/datasources/12345/datasources.json').toString();
       const parsed = JSON.parse(fileContent);
-      expect(parsed).toHaveLength(2);
+      expect(parsed).toHaveLength(51);
       expect(parsed[0]).toHaveProperty('entries');
     });
 
@@ -301,41 +262,17 @@ describe('pull datasources actions', () => {
       vol.fromJSON({
         '/mock/path2/': null,
       });
-      const datasources = [
-        {
-          id: 1,
-          name: 'colors',
-          slug: 'colors',
-          dimensions: [],
-          created_at: '2024-10-15T07:57:12.655Z',
-          updated_at: '2024-10-15T07:57:12.655Z',
-          entries: [
-            { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
-          ],
-        },
-        {
-          id: 2,
-          name: 'numbers',
-          slug: 'numbers',
-          dimensions: [],
-          created_at: '2025-04-09T08:56:07.819Z',
-          updated_at: '2025-04-09T08:56:07.819Z',
-          entries: [
-            { id: 201, name: 'one', value: '1', dimension_value: '' },
-          ],
-        },
-      ];
-      await saveDatasourcesToFiles('12345', datasources, {
+      await saveDatasourcesToFiles('12345', mockedDatasources, {
         path: '/mock/path2/',
         separateFiles: true,
         verbose: false,
       });
       const files = vol.readdirSync('/mock/path2/datasources/12345');
-      expect(files.sort()).toEqual(['colors.json', 'numbers.json']);
+      expect(files.sort()).toEqual(mockedDatasources.map(ds => `${ds.name}.json`).sort());
       const colorsContent = vol.readFileSync('/mock/path2/datasources/12345/colors.json').toString();
       const parsedColors = JSON.parse(colorsContent);
       expect(parsedColors).toHaveProperty('entries');
-      expect(parsedColors.entries[0].name).toBe('blue');
+      expect(parsedColors.entries[0].name).toBe('Red');
     });
   });
 });

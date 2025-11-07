@@ -8,11 +8,11 @@ import {
 } from '@nuxt/kit';
 import type { NuxtHookName } from '@nuxt/schema';
 import type { Nuxt } from 'nuxt/schema';
-import type { ModuleOptions } from './types';
+import type { AllModuleOptions, PublicModuleOptions } from './types';
 
 export * from './types';
 
-export default defineNuxtModule<ModuleOptions>({
+export default defineNuxtModule<AllModuleOptions>({
   meta: {
     name: '@storyblok/nuxt',
     configKey: 'storyblok',
@@ -25,8 +25,9 @@ export default defineNuxtModule<ModuleOptions>({
     devtools: false,
     componentsDir: '~/storyblok',
     apiOptions: {},
+    enableServerClient: false,
   },
-  setup(options: ModuleOptions, nuxt: Nuxt) {
+  setup(options: AllModuleOptions, nuxt: Nuxt) {
     const resolver = createResolver(import.meta.url);
 
     if (nuxt.options.vite.optimizeDeps) {
@@ -48,12 +49,24 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.build.transpile.push('@storyblok/vue');
     addImportsDir(resolver.resolve('./runtime/composables'));
 
-    // Add plugin
-    nuxt.options.runtimeConfig.public.storyblok = options;
+    if (options.enableServerClient) {
+      const { accessToken, ...publicOptions } = options;
+      nuxt.options.runtimeConfig.storyblok = { accessToken };
+      (nuxt.options.runtimeConfig.public.storyblok as unknown as PublicModuleOptions) = publicOptions;
+    }
+    else {
+      nuxt.options.runtimeConfig.public.storyblok = options;
+    }
+
     const enablePluginCondition = options.usePlugin === true && options.enableSudoMode === false;
     if (enablePluginCondition) {
       addPlugin(resolver.resolve('./runtime/plugin'));
     }
+
+    nuxt.hook('nitro:config', (nitroConfig) => {
+      nitroConfig.alias = nitroConfig.alias || {};
+      nitroConfig.alias['#storyblok/server'] = resolver.resolve('./runtime/server');
+    });
 
     // Add auto imports
     const names = [

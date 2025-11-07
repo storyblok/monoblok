@@ -1,5 +1,5 @@
 import { join, parse, resolve } from 'node:path';
-import { mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
@@ -35,6 +35,26 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   // Write the file
   try {
     await writeFile(filePath, data, options);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
+export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Ensure the directory exists
+  try {
+    await mkdir(resolvedPath, { recursive: true });
+  }
+  catch (mkdirError) {
+    handleFileSystemError('mkdir', mkdirError as Error);
+    return;
+  }
+  try {
+    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+    await appendFile(filePath, dataWithNewline, options);
   }
   catch (writeError) {
     handleFileSystemError('write', writeError as Error);

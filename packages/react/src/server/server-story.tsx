@@ -20,7 +20,7 @@ const StoryblokServerStory = forwardRef<HTMLElement, StoryblokServerStoryProps>(
     }
 
     // Handle cached story updates (for revalidation scenarios)
-    if (globalThis.storyCache?.has(story.uuid)) {
+    if (globalThis?.storyCache.has(story.uuid)) {
       story = globalThis.storyCache.get(story.uuid);
       // Delete the story from the cache to avoid draft content leaking
       globalThis.storyCache.delete(story.uuid);

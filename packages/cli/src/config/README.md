@@ -92,7 +92,6 @@ Tips:
 | `--report.enabled [boolean]` | Enable report generation | `true` |
 | `--report.max-files <number>` | Max report files kept on disk | `10` |
 
-
 ## How Overrides Work
 
 1. Start with the CLI’s built-in defaults.

@@ -39,6 +39,10 @@ describe('getRegion', () => {
     expect(getRegion(1)).toBe(EU_CODE)
   })
 
+  it('should return `cn` region when preferred region is cn', () => {
+    expect(getRegion(1, 'cn')).toBe(CN_CODE)
+  })
+
   it('should return `us` region', () => {
     expect(getRegion(1_000_000)).toBe(US_CODE)
   })

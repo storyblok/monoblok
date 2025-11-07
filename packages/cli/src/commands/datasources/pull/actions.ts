@@ -6,6 +6,38 @@ import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
 
 /**
+ * Generic pagination helper that fetches all pages of data
+ * @param fetchFunction - Function that fetches a single page
+ * @param extractDataFunction - Function that extracts data array from response
+ * @param page - Current page number
+ * @param collectedItems - Previously collected items
+ * @returns Array of all items across all pages
+ */
+async function fetchAllPages<T, R>(
+  fetchFunction: (page: number) => Promise<{ data: T; response: Response }>,
+  extractDataFunction: (data: T) => R[],
+  page = 1,
+  collectedItems: R[] = [],
+): Promise<R[]> {
+  const { data, response } = await fetchFunction(page);
+  const totalHeader = (response.headers.get('total'));
+  const total = Number(totalHeader);
+
+  const fetchedItems = extractDataFunction(data);
+  const allItems = [...collectedItems, ...fetchedItems];
+
+  if (!totalHeader || Number.isNaN(total)) {
+  // No valid 'total' header — assume not paginated, return all collected items plus current page
+    return allItems;
+  }
+
+  if (allItems.length < total && fetchedItems.length > 0) {
+    return fetchAllPages(fetchFunction, extractDataFunction, page + 1, allItems);
+  }
+  return allItems;
+}
+
+/**
  * Fetches entries for a given datasource id in a space.
  * @param spaceId - The space ID
  * @param datasourceId - The datasource ID
@@ -17,16 +49,19 @@ export const fetchDatasourceEntries = async (
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.datasourceEntries.list({
-      path: {
-        space_id: spaceId,
-      },
-      query: {
-        datasource_id: datasourceId,
-      },
-      throwOnError: true,
-    });
-    return data?.datasource_entries;
+    return await fetchAllPages(
+      (page: number) => client.datasourceEntries.list({
+        path: {
+          space_id: spaceId,
+        },
+        query: {
+          datasource_id: datasourceId,
+          page,
+        },
+        throwOnError: true,
+      }),
+      data => data?.datasource_entries || [],
+    );
   }
   catch (error) {
     // Use 'pull_datasources' as the closest valid action for datasource entries errors
@@ -37,22 +72,27 @@ export const fetchDatasourceEntries = async (
 export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource[] | undefined> => {
   try {
     const client = mapiClient();
-    const { data } = await client.datasources.list({
-      path: {
-        space_id: spaceId,
-      },
-      throwOnError: true,
-    });
-    const datasources = data?.datasources;
+    const datasources = await fetchAllPages(
+      (page: number) => client.datasources.list({
+        path: {
+          space_id: spaceId,
+        },
+        query: {
+          page,
+        },
+        throwOnError: true,
+      }),
+      data => data?.datasources || [],
+    );
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
-      datasources?.map(async (ds) => {
+      datasources.map(async (ds: any) => {
         if (!ds.id) {
           return { ...ds, entries: [] };
         }
         const entries = await fetchDatasourceEntries(spaceId, ds.id);
         return { ...ds, entries };
-      }) || [],
+      }),
     );
     return datasourcesWithEntries;
   }

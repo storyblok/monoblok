@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { loadConfig, SUPPORTED_EXTENSIONS } from 'c12';
 import { toCamelCase } from '../utils/format';
 import { isPlainObject } from '../utils/object';
+import { konsola } from '../utils/konsola';
 import type {
   CommanderCommand,
   CommanderOption,
@@ -78,20 +79,25 @@ export function getOptionPath(option: CommanderOption): string[] {
     .map(segment => toCamelCase(segment));
 }
 
-function hasSupportedConfigFile(cwd: string, configFile: string): boolean {
-  return SUPPORTED_EXTENSIONS.some((ext) => {
-    const candidate = resolvePath(cwd, `${configFile}.${ext}`);
-    return existsSync(candidate);
-  });
+function resolveConfigFilePath(cwd: string, configFile: string): string | null {
+  for (const ext of SUPPORTED_EXTENSIONS) {
+    const candidate = resolvePath(cwd, `${configFile}${ext}`);
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 async function loadConfigLayer({ cwd, configFile }: ConfigLocation): Promise<Record<string, any> | null> {
   if (!existsSync(cwd)) {
     return null;
   }
-  if (!hasSupportedConfigFile(cwd, configFile)) {
+  const filePath = resolveConfigFilePath(cwd, configFile);
+  if (!filePath) {
     return null;
   }
+  konsola.info(`Loaded Storyblok config: ${filePath}`, { margin: false });
   const { config } = await loadConfig({
     name: 'storyblok',
     cwd,
@@ -129,6 +135,9 @@ export async function loadConfigLayers(): Promise<Record<string, any>[]> {
     if (layer) {
       layers.push(layer);
     }
+  }
+  if (!layers.length) {
+    konsola.info('No Storyblok config files found. Falling back to defaults.');
   }
   return layers;
 }

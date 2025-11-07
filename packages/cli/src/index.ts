@@ -26,8 +26,6 @@ konsola.br();
 konsola.br();
 konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
 
-program.option('--verbose', 'Enable verbose output', false);
-
 // Set all the global config options
 for (const option of GLOBAL_OPTION_DEFINITIONS) {
   if (option.parser) {

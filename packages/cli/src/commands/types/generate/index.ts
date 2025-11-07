@@ -7,14 +7,15 @@ import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToFile } from './actions';
+import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram();
 
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', '')
-  .option('--strict', 'strict mode, no loose typing')
+  .option('--sf, --separate-files [boolean]', '', parseOptionalBoolean, false)
+  .option('--strict [boolean]', 'strict mode, no loose typing', parseOptionalBoolean, false)
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
   .option('--suffix <suffix>', 'Components suffix')

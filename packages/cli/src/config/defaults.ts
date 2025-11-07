@@ -21,12 +21,9 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
     enabled: true,
     maxFiles: 10,
   },
+  verbose: false,
 };
 
 export function createDefaultResolvedConfig(): ResolvedCliConfig {
-  return {
-    ...structuredClone(DEFAULT_GLOBAL_CONFIG),
-    // Runtime-only flags live here so they never leak into persisted config files.
-    verbose: false,
-  };
+  return structuredClone(DEFAULT_GLOBAL_CONFIG) as ResolvedCliConfig;
 }

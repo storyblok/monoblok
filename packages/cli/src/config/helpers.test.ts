@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { resolve as resolvePath } from 'pathe';
 import { CONFIG_FILE_NAME, formatConfigForDisplay, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
 import type { ResolvedCliConfig } from './types';
+import { parseOptionalBoolean } from './options';
 
 const existsSyncMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
@@ -146,7 +147,7 @@ function buildCommandChain() {
   const root = new Command('storyblok');
   root
     .exitOverride()
-    .option('--verbose', '', false);
+    .option('--verbose [boolean]', '', parseOptionalBoolean, false);
 
   const components = root
     .command('components')
@@ -155,7 +156,7 @@ function buildCommandChain() {
 
   const pull = components
     .command('pull')
-    .option('--separate-files', '', false)
+    .option('--separate-files [boolean]', '', parseOptionalBoolean, false)
     .option('--filename <filename>');
 
   root.setOptionValueWithSource('verbose', true, 'config');

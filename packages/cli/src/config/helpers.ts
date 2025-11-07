@@ -10,6 +10,7 @@ import type {
   CommanderOption,
   ConfigLocation,
   PlainObject,
+  ResolvedCliConfig,
 } from './types';
 
 export const CONFIG_FILE_NAME = 'storyblok.config';
@@ -140,4 +141,41 @@ export async function loadConfigLayers(): Promise<Record<string, any>[]> {
     konsola.info('No Storyblok config files found. Falling back to defaults.');
   }
   return layers;
+}
+
+function pickLocalOptions(command: CommanderCommand): Record<string, unknown> {
+  const snapshot: Record<string, unknown> = {};
+  for (const option of command.options) {
+    const attrName = option.attributeName();
+    snapshot[attrName] = command.getOptionValue(attrName);
+  }
+  return snapshot;
+}
+
+export function formatConfigForDisplay(config: ResolvedCliConfig, ancestry: CommanderCommand[]): string {
+  const [, ...commands] = ancestry;
+  const localBag: Record<string, unknown> = {};
+  for (const command of commands) {
+    localBag[command.name()] = pickLocalOptions(command);
+  }
+  const payload = {
+    global: {
+      region: config.region,
+      api: config.api,
+      log: config.log,
+      report: config.report,
+      verbose: config.verbose,
+    },
+    local: localBag,
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+export function logActiveConfig(config: ResolvedCliConfig, ancestry: CommanderCommand[], verbose: boolean): void {
+  if (!verbose) {
+    return;
+  }
+  const layerName = ancestry.map(cmd => cmd.name()).join(' ');
+  const formattedConfig = formatConfigForDisplay(config, ancestry);
+  konsola.info(`Active config for "${layerName}":\n${formattedConfig}`, { margin: false });
 }

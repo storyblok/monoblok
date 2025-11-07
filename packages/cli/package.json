@@ -18,7 +18,18 @@
     "node",
     "javascript"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.mjs"
+    }
+  },
   "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "bin": {
     "storyblok": "./dist/index.mjs"
   },

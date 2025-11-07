@@ -4,7 +4,8 @@ import { CONFIG_FILE_NAME, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfi
 
 const existsSyncMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
-const supportedExtensions = vi.hoisted(() => ['json', 'yaml', 'ts']);
+const konsolaInfoMock = vi.hoisted(() => vi.fn());
+const supportedExtensions = vi.hoisted(() => ['.json', '.yaml', '.ts']);
 
 vi.mock('node:os', () => ({
   homedir: () => '/home/tester',
@@ -17,6 +18,12 @@ vi.mock('node:fs', () => ({
 vi.mock('c12', () => ({
   SUPPORTED_EXTENSIONS: supportedExtensions,
   loadConfig: (options: any) => loadConfigMock(options),
+}));
+
+vi.mock('../utils/konsola', () => ({
+  konsola: {
+    info: konsolaInfoMock,
+  },
 }));
 
 const HOME_DIR = '/home/tester';
@@ -34,7 +41,7 @@ function registerDirectory(path: string): void {
 }
 
 function addConfigFile(dir: string, baseFile: string, extension: string): void {
-  files.add(resolvePath(dir, `${baseFile}.${extension}`));
+  files.add(resolvePath(dir, `${baseFile}${extension}`));
 }
 
 function resetFilesystem(): void {
@@ -59,13 +66,14 @@ afterEach(() => {
   cwdSpy?.mockRestore();
   loadConfigMock.mockReset();
   existsSyncMock.mockReset();
+  konsolaInfoMock.mockReset();
 });
 
 describe('loadConfigLayers', () => {
   it('loads configs from home, workspace hidden dir, and project root honoring priority and supported extensions', async () => {
-    addConfigFile(HOME_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, 'json');
-    addConfigFile(LOCAL_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, 'yaml');
-    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, 'ts');
+    addConfigFile(HOME_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, '.json');
+    addConfigFile(LOCAL_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, '.yaml');
+    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, '.ts');
 
     responses.set(HOME_CONFIG_DIR, { scope: 'home', ext: 'json' });
     responses.set(LOCAL_CONFIG_DIR, { scope: 'workspace-hidden', ext: 'yaml' });
@@ -85,6 +93,12 @@ describe('loadConfigLayers', () => {
       `${LOCAL_CONFIG_DIR}:${HIDDEN_CONFIG_FILE_NAME}`,
       `${WORKSPACE_DIR}:${CONFIG_FILE_NAME}`,
     ]);
+    expect(konsolaInfoMock).toHaveBeenCalledTimes(3);
+    expect(konsolaInfoMock.mock.calls.map(([message]: [string]) => message)).toEqual([
+      `Loaded Storyblok config: ${resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`)}`,
+      `Loaded Storyblok config: ${resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.yaml`)}`,
+      `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
+    ]);
 
     const expectedCandidates = [
       resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`),
@@ -100,7 +114,7 @@ describe('loadConfigLayers', () => {
   });
 
   it('skips locations that do not expose a supported config file', async () => {
-    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, 'ts');
+    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, '.ts');
     responses.set(WORKSPACE_DIR, { scope: 'workspace-root', ext: 'ts' });
 
     const layers = await loadConfigLayers();
@@ -111,5 +125,17 @@ describe('loadConfigLayers', () => {
       cwd: WORKSPACE_DIR,
       configFile: CONFIG_FILE_NAME,
     }));
+    expect(konsolaInfoMock).toHaveBeenCalledTimes(1);
+    expect(konsolaInfoMock).toHaveBeenCalledWith(
+      `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
+      expect.any(Object),
+    );
+  });
+
+  it('logs fallback info when no config layers are detected', async () => {
+    const layers = await loadConfigLayers();
+
+    expect(layers).toEqual([]);
+    expect(konsolaInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
   });
 });

@@ -9,13 +9,15 @@ import { componentsCommand } from '../command';
 import chalk from 'chalk';
 import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
+import { join } from 'pathe';
+import { DEFAULT_STORAGE_DIR } from '../../../utils/filesystem';
 
 const program = getProgram();
 
 componentsCommand
   .command('pull [componentName]')
-  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
-  .option('--sf, --separate-files', 'Argument to create a single file for each component')
+  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id', 'components')
+  .option('--sf, --separate-files', 'Argument to create a single file for each component', false)
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`)
   .action(async (componentName: string | undefined, options: PullComponentsOptions) => {
@@ -25,7 +27,14 @@ componentsCommand
 
     // Command options
     const { space, path } = componentsCommand.opts();
-    const { separateFiles, suffix, filename = 'components' } = options;
+    const {
+      separateFiles = false,
+      suffix,
+      filename = 'components',
+    } = options;
+    // `--path` overrides remain command-scoped; fallback keeps the historic .storyblok output.
+    const resolvedBaseDir = path ?? DEFAULT_STORAGE_DIR;
+    const componentsOutputDir = join(resolvedBaseDir, 'components', space);
 
     const { state, initializeSession } = session();
     await initializeSession();
@@ -109,18 +118,18 @@ componentsCommand
         if (filename !== 'components') {
           konsola.warn(`The --filename option is ignored when using --separate-files`);
         }
-        const filePath = path ? `${path}/components/${space}/` : `.storyblok/components/${space}/`;
+        const filePath = `${componentsOutputDir}/`;
 
         konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
       }
       else if (componentName) {
         const fileName = suffix ? `${filename}.${suffix}.json` : `${componentName}.json`;
-        const filePath = path ? `${path}/components/${space}/${fileName}` : `.storyblok/components/${space}/${fileName}`;
+        const filePath = join(componentsOutputDir, fileName);
         konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
       }
       else {
         const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
-        const filePath = path ? `${path}/components/${space}/${fileName}` : `.storyblok/components/${space}/${fileName}`;
+        const filePath = join(componentsOutputDir, fileName);
 
         konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
       }

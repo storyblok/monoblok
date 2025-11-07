@@ -23,12 +23,14 @@ async function fetchAllPages<T, R>(
   const totalHeader = (response.headers.get('total'));
   const total = Number(totalHeader);
 
-  if (!totalHeader || Number.isNaN(total)) {
-  // No valid 'total' header — assume not paginated, return current page only
-    return extractDataFunction(data);
-  }
   const fetchedItems = extractDataFunction(data);
   const allItems = [...collectedItems, ...fetchedItems];
+
+  if (!totalHeader || Number.isNaN(total)) {
+  // No valid 'total' header — assume not paginated, return all collected items plus current page
+    return allItems;
+  }
+
   if (allItems.length < total && fetchedItems.length > 0) {
     return fetchAllPages(fetchFunction, extractDataFunction, page + 1, allItems);
   }

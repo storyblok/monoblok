@@ -2,6 +2,7 @@ import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getMigrationFunction, readMigrationFiles } from './actions';
 import { FileSystemError } from '../../../utils/error';
+import * as filesystem from '../../../utils/filesystem';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -110,15 +111,12 @@ describe('getMigrationFunction', () => {
 
   it('should return migration function successfully', async () => {
     const mockMigrationFn = (block: any) => ({ ...block, migrated: true });
+    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
+    importModuleSpy.mockImplementation(() => Promise.resolve({ default: mockMigrationFn }));
 
     vol.fromJSON({
       '/path/to/migrations/12351/migration-1.js': 'export default function (block) { return block; }',
     });
-
-    // Mock the module system to handle dynamic imports
-    vi.doMock('/path/to/migrations/12351/migration-1.js', () => ({
-      default: mockMigrationFn,
-    }));
 
     const result = await getMigrationFunction('migration-1.js', '12351', '/path/to/');
 
@@ -131,14 +129,12 @@ describe('getMigrationFunction', () => {
   });
 
   it('should return null when module does not export a default function', async () => {
+    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
+    // Mock the module without a default export
+    importModuleSpy.mockImplementation(() => Promise.resolve({}));
     vol.fromJSON({
       '/path/to/migrations/12351/migration-2.js': 'export const something = true;',
     });
-
-    // Mock the module without a default export
-    vi.doMock('/path/to/migrations/12351/migration-2.js', () => ({
-      something: true,
-    }));
 
     const result = await getMigrationFunction('migration-2.js', '12351', '/path/to/');
     expect(result).toBeNull();

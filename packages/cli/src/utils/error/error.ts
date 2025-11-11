@@ -1,3 +1,4 @@
+import { getLogger } from '../../utils/logger';
 import { konsola } from '..';
 import type { FetchError } from '../fetch';
 import { APIError } from './api-error';
@@ -51,6 +52,6 @@ export function handleError(error: Error | FetchError, verbose = false): void {
 
   if (!process.env.VITEST) {
     console.log(''); // Add a line break for readability
-    // process.exit(1) // Exit process if not in a test environment
   }
+  getLogger().error(error.message, { errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR' });
 }

@@ -112,3 +112,7 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
     return { data: [], error: error as Error };
   }
 }
+
+export function importModule(filePath: string) {
+  return import(`file://${filePath}`);
+}

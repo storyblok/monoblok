@@ -1,3 +1,7 @@
+/**
+ * DEPRECATED!
+ * Use `getUI()` instead.
+ */
 import chalk from 'chalk';
 import { capitalize } from './format';
 

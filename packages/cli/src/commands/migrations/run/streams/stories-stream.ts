@@ -1,9 +1,11 @@
-import { fetchStories, fetchStory } from '../../../stories/actions';
-import type { StoriesQueryParams } from '../../../stories/constants';
 import { pipeline, Readable, Transform } from 'node:stream';
-import { handleAPIError } from '../../../../utils/error';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { Sema } from 'async-sema';
+import { fetchStories, fetchStory } from '../../../stories/actions';
+import type { StoriesQueryParams } from '../../../stories/constants';
+import { handleAPIError } from '../../../../utils/error';
+import { getLogger } from '../../../../utils/logger';
+import { ERROR_CODES } from '../constants';
 
 /**
  * Iterator that fetches stories
@@ -42,6 +44,7 @@ export async function* storiesIterator(
       page: 1,
       story_only: true,
     });
+    getLogger().info(`Fetched stories page 1 of ${perPage}`);
 
     if (!result) {
       return;
@@ -63,6 +66,7 @@ export async function* storiesIterator(
         page,
         story_only: true,
       });
+      getLogger().info(`Fetched stories page ${page} of ${perPage}`);
 
       if (!result) {
         return;
@@ -102,6 +106,7 @@ class StoriesStream extends Transform {
       this.onProgress?.();
     }).finally(() => {
       this.semaphore.release();
+      getLogger().info('Fetched story', { storyId: chunk.id });
     });
 
     callback();
@@ -136,6 +141,7 @@ export const createStoriesStream = async ({
   return pipeline(listStoriesStream, new StoriesStream(spaceId, batchSize, onProgress), (err) => {
     if (err) {
       console.error(err);
+      getLogger().error(err.message, { errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });
     }
   });
 };

@@ -49,6 +49,9 @@ This will run migrations for the specified component:
 | `--starts-with <path>` | Filter stories by path (e.g., `--starts-with="/en/blog/"`) | - |
 | `--publish <publish>` | Publication mode: `all` (publish all stories), `published` (only publish stories that were already published), or `published-with-changes` (only publish stories that have unpublished changes) | - |
 | `-p, --path <path>` | Custom path to read migration files from | `.storyblok/migrations` |
+| `--ui` / `--no-ui` | Enable or disable pretty console output. | `true` |
+| `--log-console` / `--no-log-console` | Enable or disable console logging. | `false` |
+| `--log-console-level <level>` | Console log level. | `info` |
 
 ## Examples
 
@@ -95,6 +98,12 @@ storyblok migrations run --space 12345 --starts-with "/en/blog/"
 9. Run migrations on stories matching a query:
 ```bash
 storyblok migrations run --space 12345 --query "[highlighted][in]=true"
+```
+
+10. Run migrations on CI:
+```bash
+# Disable pretty console output in favor of structured console logging
+storyblok migrations run --space 12345 --no-ui --log-console
 ```
 
 ## File Structure

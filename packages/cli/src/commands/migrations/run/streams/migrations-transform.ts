@@ -1,10 +1,11 @@
 import { Transform } from 'node:stream';
 import type { Story, StoryContent } from '../../../stories/constants';
-import type { FailedMigration, MigrationFile, SkippedMigration, SuccessfulMigration } from '../constants';
+import { ERROR_CODES, type FailedMigration, type MigrationFile, type SkippedMigration, type SuccessfulMigration } from '../constants';
 import { applyMigrationToAllBlocks, getMigrationFunction } from '../actions';
 import { getComponentNameFromFilename } from '../../../../utils/filesystem';
 import { hash } from 'ohash';
 import { saveRollbackData } from '../../rollback/actions';
+import { getLogger } from '../../../../utils/logger';
 
 export interface MigrationStreamOptions {
   migrationFiles: MigrationFile[];
@@ -98,6 +99,10 @@ export class MigrationStream extends Transform {
         migrationNames: relevantMigrations.map(m => m.name),
         error: new Error('Story content is missing'),
       });
+      getLogger().error('Failed to process story: Content is missing', {
+        storyId: story.id,
+        errorCode: ERROR_CODES.MIGRATION_STORY_CONTENT_MISSING,
+      });
       return [];
     }
 
@@ -123,10 +128,14 @@ export class MigrationStream extends Transform {
       for (const migrationFile of migrationFiles) {
         const migrationFunction = await this.getOrLoadMigrationFunction(migrationFile);
         if (!migrationFunction) {
+          const error = new Error(`Failed to load migration function from file "${migrationFile.name}"`);
           this.results.failed.push({
             storyId: story.id,
             migrationNames,
-            error: new Error(`Failed to load migration function from file "${migrationFile.name}"`),
+            error,
+          });
+          getLogger().error(error.message, {
+            errorCode: ERROR_CODES.MIGRATION_FILE_NOT_FOUND,
           });
           return null;
         }
@@ -161,6 +170,7 @@ export class MigrationStream extends Transform {
           migrationNames,
           content: storyContent,
         });
+        getLogger().info('Applied migration', { storyId: story.id, migrationNames });
 
         return {
           storyId: story.id,
@@ -177,6 +187,7 @@ export class MigrationStream extends Transform {
           migrationNames,
           reason: 'No changes detected after migration',
         });
+        getLogger().info('Skipped migration: No changes detected', { storyId: story.id, migrationNames });
         return null;
       }
       else {
@@ -192,6 +203,7 @@ export class MigrationStream extends Transform {
           migrationNames,
           reason,
         });
+        getLogger().info(`Skipped migration: ${reason}`, { storyId: story.id, migrationNames });
         return null;
       }
     }
@@ -200,6 +212,11 @@ export class MigrationStream extends Transform {
         storyId: story.id,
         migrationNames,
         error,
+      });
+      getLogger().error((error as Error).message, {
+        storyId: story.id,
+        migrationNames,
+        errorCode: ERROR_CODES.MIGRATION_APPLY_TO_STORY_ERROR,
       });
       return null;
     }

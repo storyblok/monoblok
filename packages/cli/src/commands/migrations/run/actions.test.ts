@@ -1,36 +1,10 @@
 import { vol } from 'memfs';
-import { getMigrationFunction, readJavascriptFile, readMigrationFiles } from './actions';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getMigrationFunction, readMigrationFiles } from './actions';
 import { FileSystemError } from '../../../utils/error';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
-
-describe('readJavascriptFile', () => {
-  beforeEach(() => {
-    vol.reset();
-  });
-
-  it('should read javascript file successfully', async () => {
-    vol.fromJSON({
-      '/path/to/migrations/12345/migration-1.js': 'export default function (block) { return block; }',
-    });
-
-    const result = await readJavascriptFile('/path/to/migrations/12345/migration-1.js');
-    expect(result).toEqual('export default function (block) { return block; }');
-  });
-
-  it('should throw FileSystemError when file does not exist', async () => {
-    await expect(readJavascriptFile('/path/to/nonexistent.js')).rejects.toThrow(FileSystemError);
-  });
-
-  it('should throw FileSystemError when file is empty', async () => {
-    vol.fromJSON({
-      '/path/to/migrations/12345/empty.js': '',
-    });
-
-    await expect(readJavascriptFile('/path/to/migrations/12345/empty.js')).rejects.toThrow(FileSystemError);
-  });
-});
 
 describe('readMigrationFiles', () => {
   it('should read migration files successfully', async () => {
@@ -46,7 +20,6 @@ describe('readMigrationFiles', () => {
     expect(result).toEqual([
       {
         name: 'migration-1.js',
-        content: 'export default function (block) { return block; }',
       },
     ]);
   });

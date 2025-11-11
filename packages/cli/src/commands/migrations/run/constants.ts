@@ -17,7 +17,6 @@ export interface ReadMigrationFilesOptions {
 
 export interface MigrationFile {
   name: string;
-  content: string;
 }
 
 export interface MigrationResult {

@@ -1,23 +1,10 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { resolvePath } from '../../../utils/filesystem';
 import { FileSystemError } from '../../../utils/error';
 import { join } from 'node:path';
 import type { MigrationFile, ReadMigrationFilesOptions } from './constants';
 import { createRegexFromGlob, konsola } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';
-
-export async function readJavascriptFile(filePath: string): Promise<string> {
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    if (!content) {
-      throw new FileSystemError('invalid_argument', 'read', new Error(`File ${filePath} is empty`));
-    }
-    return content;
-  }
-  catch (error) {
-    throw new FileSystemError('file_not_found', 'read', error as Error);
-  }
-}
 
 export async function readMigrationFiles(options: ReadMigrationFilesOptions): Promise<MigrationFile[]> {
   const { space, path, filter } = options;
@@ -53,12 +40,8 @@ export async function readMigrationFiles(options: ReadMigrationFilesOptions): Pr
           continue;
         }
 
-        const filePath = join(resolvedPath, file);
-        const content = await readJavascriptFile(filePath);
-
         migrationFiles.push({
           name: file,
-          content,
         });
       }
     }

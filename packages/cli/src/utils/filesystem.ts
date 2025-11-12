@@ -3,6 +3,7 @@ import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
+import { appendFileSync, mkdirSync } from 'node:fs';
 
 export interface FileOptions {
   mode?: number;
@@ -52,6 +53,27 @@ export const appendToFile = async (filePath: string, data: string, options?: Fil
   try {
     const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
     await appendFile(filePath, dataWithNewline, options);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
+export const appendToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Ensure the directory exists
+  try {
+    mkdirSync(resolvedPath, { recursive: true });
+  }
+  catch (mkdirError) {
+    handleFileSystemError('mkdir', mkdirError as Error);
+    return;
+  }
+
+  try {
+    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+    appendFileSync(filePath, dataWithNewline, options);
   }
   catch (writeError) {
     handleFileSystemError('write', writeError as Error);

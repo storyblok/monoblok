@@ -142,15 +142,20 @@ describe('migrations run command', () => {
     );
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     // Logging
+    const logFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
     expect(console.info).toHaveBeenCalledWith(
       expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}Migration finished\s{2}\(runId: \d+/),
     );
+    expect(logFile).toContain('Migration finished');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('migrationResults: {"total":1,"succeeded":1,"skipped":0,"failed":0}'),
     );
+    expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('updateResults: {"total":1,"succeeded":1,"failed":0}'),
     );
+    expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
@@ -167,12 +172,16 @@ describe('migrations run command', () => {
 
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
+    const logFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
     expect(console.error).toHaveBeenCalledWith(
       expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}ERROR\s{2}Couldn't load migration function\s{2}\(runId: \d+/),
     );
+    expect(logFile).toContain('Couldn\'t load migration function');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('errorCode: MIGRATION_LOAD_ERROR'),
     );
+    expect(logFile).toContain('MIGRATION_LOAD_ERROR');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
@@ -190,6 +199,9 @@ describe('migrations run command', () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}ERROR\s{2}No directory found for space "12345". Please make sure you have pulled the migrations first by running:\\n\\n\s{2}storyblok migrations pull --space 12345 {2}\(runId: \d+/),
     );
+    const logFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
+    expect(logFile).toContain('No directory found for space \\"12345\\".');
   });
 
   it('should handle dry run mode correctly', async () => {
@@ -209,12 +221,16 @@ describe('migrations run command', () => {
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
+    const logFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}WARN\s{3}Dry run mode enabled\s{2}\(runId: \d+/),
     );
+    expect(logFile).toContain('Dry run mode enabled');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}Migration finished\s{2}\(runId: \d+/),
     );
+    expect(logFile).toContain('Migration finished');
     // UI
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),

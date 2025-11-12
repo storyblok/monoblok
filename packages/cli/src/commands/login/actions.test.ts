@@ -26,7 +26,7 @@ const handlers = [
       return new HttpResponse('Unprocessable Entity', { status: 422 });
     }
 
-    if (body?.email === 'julio.profesional@storyblok.com' && body?.password === 'password') {
+    if (body?.email === 'julio.professional@storyblok.com' && body?.password === 'password') {
       return HttpResponse.json({ otp_required: true });
     }
     else {
@@ -73,7 +73,7 @@ describe('login actions', () => {
   describe('loginWithEmailAndPassword', () => {
     it('should get if the user requires otp', async () => {
       const expected = { otp_required: true, perPage: 0, total: 0 };
-      const result = await loginWithEmailAndPassword('julio.profesional@storyblok.com', 'password', 'eu');
+      const result = await loginWithEmailAndPassword('julio.professional@storyblok.com', 'password', 'eu');
       expect(result).toEqual(expected);
     });
 
@@ -89,7 +89,7 @@ describe('login actions', () => {
       server.use(
         http.post('https://mapi.storyblok.com/v1/users/login', async ({ request }) => {
           const body = await request.json() as { email: string; password: string; otp_attempt: string };
-          if (body?.email === 'julio.profesional@storyblok.com' && body?.password === 'password' && body?.otp_attempt === '123456') {
+          if (body?.email === 'julio.professional@storyblok.com' && body?.password === 'password' && body?.otp_attempt === '123456') {
             return HttpResponse.json({ access_token: 'Awiwi' });
           }
 
@@ -100,7 +100,7 @@ describe('login actions', () => {
       );
       const expected = { access_token: 'Awiwi', perPage: 0, total: 0 };
 
-      const result = await loginWithOtp('julio.profesional@storyblok.com', 'password', '123456', 'eu');
+      const result = await loginWithOtp('julio.professional@storyblok.com', 'password', '123456', 'eu');
 
       expect(result).toEqual(expected);
     });

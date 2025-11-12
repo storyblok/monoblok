@@ -17,7 +17,7 @@ describe('creds', async () => {
       vol.fromJSON({
         'test/credentials.json': JSON.stringify({
           'api.storyblok.com': {
-            login: 'julio.iglesias@storyblok.com',
+            login: 'julio.professional@storyblok.com',
             password: 'my_access_token',
             region: 'eu',
           },
@@ -27,7 +27,7 @@ describe('creds', async () => {
       const credentials = await getCredentials('/temp/test/credentials.json') as StoryblokCredentials;
 
       expect(credentials['api.storyblok.com']).toEqual({
-        login: 'julio.iglesias@storyblok.com',
+        login: 'julio.professional@storyblok.com',
         password: 'my_access_token',
         region: 'eu',
       });
@@ -47,13 +47,13 @@ describe('creds', async () => {
       await addCredentials({
         filePath: '/temp/test/credentials.json',
         machineName: 'api.storyblok.com',
-        login: 'julio.iglesias@storyblok.com',
+        login: 'julio.professional@storyblok.com',
         password: 'my_access_token',
         region: 'eu',
       });
 
       const content = vol.readFileSync('/temp/test/credentials.json', 'utf8');
-      expect(content).toBe('{\n  "api.storyblok.com": {\n    "login": "julio.iglesias@storyblok.com",\n    "password": "my_access_token",\n    "region": "eu"\n  }\n}');
+      expect(content).toBe('{\n  "api.storyblok.com": {\n    "login": "julio.professional@storyblok.com",\n    "password": "my_access_token",\n    "region": "eu"\n  }\n}');
     });
   });
 
@@ -62,7 +62,7 @@ describe('creds', async () => {
       vol.fromJSON({
         'test/credentials.json': JSON.stringify({
           'api.storyblok.com': {
-            login: 'julio.iglesias@storyblok.com',
+            login: 'julio.professional@storyblok.com',
             password: 'my_access_token',
             region: 'eu',
           },

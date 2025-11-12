@@ -11,6 +11,9 @@ export interface MigrationsRunOptions extends CommandOptions {
   ui: boolean;
   logConsole: boolean;
   logConsoleLevel: LogLevel;
+  logFile: boolean;
+  logFileDir: string;
+  logFileMaxFiles: number;
 }
 
 export interface ReadMigrationFilesOptions {

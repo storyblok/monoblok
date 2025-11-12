@@ -1,11 +1,14 @@
 import { Command } from 'commander';
 import type { NormalizedPackageJson } from 'read-package-up';
 import { readPackageUp } from 'read-package-up';
+import path from 'node:path';
 import { __dirname, handleError } from './utils';
 import type { LogTransport } from './utils/logger';
 import { ConsoleTransport } from './utils/logger-transport-console';
 import { getLogger } from './utils/logger';
 import { getUI } from './utils/ui';
+import { FileTransport } from './utils/logger-transport-file';
+import { resolvePath } from './utils/filesystem';
 
 let packageJson: NormalizedPackageJson;
 // Read package.json for metadata
@@ -44,18 +47,29 @@ export function getProgram(): Command {
       .version(packageJson.version)
       .hook('preAction', (_, actionCmd) => {
         const options = actionCmd.optsWithGlobals();
-        const path: string[] = [];
+        const commandPieces: string[] = [];
         for (let c: Command | null = actionCmd; c; c = c.parent as Command | null) {
-          path.unshift(c.name());
+          commandPieces.unshift(c.name());
         }
-        const command = path.join(' ');
+        const command = commandPieces.join(' ');
 
+        const runId = Date.now();
         const transports: LogTransport[] = [];
         if (options.logConsole) {
           transports.push(new ConsoleTransport({ level: options.logConsoleLevel }));
         }
+        if (options.logFile) {
+          const logPath = resolvePath(options.path, path.join(options.logFileDir, options.space));
+          const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+          const filePath = path.join(logPath, logFilename);
+          transports.push(new FileTransport({
+            filePath,
+            level: options.logFileLevel,
+            maxFiles: options.logFileMaxFiles,
+          }));
+        }
         getLogger({
-          context: { runId: Date.now(), command, options, cliVersion: packageJson.version },
+          context: { runId, command, options, cliVersion: packageJson.version },
           transports,
         });
 

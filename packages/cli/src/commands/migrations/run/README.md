@@ -52,6 +52,10 @@ This will run migrations for the specified component:
 | `--ui` / `--no-ui` | Enable or disable pretty console output. | `true` |
 | `--log-console` / `--no-log-console` | Enable or disable console logging. | `false` |
 | `--log-console-level <level>` | Console log level. | `info` |
+| `--log-file` / `--no-log-file` | Enable or disable file logging. | `true` |
+| `--log-file-level <level>` | File log level. | `info` |
+| `--log-file-dir <dir>` | Directory for log files. | `.storyblok/migrations/{SPACE_ID}/logs` |
+| `--log-file-max-files <number>` | Max number of log files to keep. | `10` |
 
 ## Examples
 
@@ -104,6 +108,8 @@ storyblok migrations run --space 12345 --query "[highlighted][in]=true"
 ```bash
 # Disable pretty console output in favor of structured console logging
 storyblok migrations run --space 12345 --no-ui --log-console
+# Disable log file generation
+storyblok migrations run --space 12345 --no-ui --log-console --no-log-file
 ```
 
 ## File Structure

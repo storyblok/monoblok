@@ -4,16 +4,19 @@ import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
-import type { ReadComponentsOptions } from '../../components/push/constants';
+import type { TypesCommandOptions } from '../command';
 import { typesCommand } from '../command';
-import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
+import { generateComponentTypes, generateStoryblokTypes } from './actions';
 
 const program = getProgram();
 
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
+  .option(
+    '--sf, --separate-files',
+    'Generate one .d.ts file per component (requires components pulled with --separate-files)',
+  )
   .option(
     '--filename <name>',
     'Base file name for all component types when generating a single declarations file (e.g. components.d.ts). Ignored when using --separate-files.',
@@ -30,7 +33,7 @@ typesCommand
     const verbose = program.opts().verbose;
 
     // Command options
-    const { space, path } = typesCommand.opts();
+    const { space, path } = typesCommand.opts<TypesCommandOptions>();
 
     const spinner = new Spinner({
       verbose: !isVitest,
@@ -39,10 +42,19 @@ typesCommand
     try {
       spinner.start(`Generating types...`);
       const spaceData = await readComponentsFiles({
-        ...options as ReadComponentsOptions,
+        verbose: !isVitest,
+        separateFiles: options.separateFiles,
+        suffix: options.suffix,
         from: space,
         path,
       });
+
+      if (options.separateFiles && !Array.isArray(spaceData.components)) {
+        throw new Error(
+          `--separate-files requires that components are pulled as separate JSON files.\n`
+          + `Please run "storyblok components pull --separate-files" before generating types.`,
+        );
+      }
 
       await generateStoryblokTypes({
         path,
@@ -54,17 +66,11 @@ typesCommand
         datasources: [],
       };
 
-      const typedefString = await generateTypes(spaceDataWithDatasources, {
-        ...options,
-        path,
+      await generateComponentTypes({
+        options,
+        typeCommandOptions: { space, path },
+        spaceData: spaceDataWithDatasources,
       });
-
-      if (typedefString) {
-        await saveTypesToComponentsFile(space, typedefString, {
-          filename: options.filename,
-          path,
-        });
-      }
 
       spinner.succeed();
       konsola.ok(`Successfully generated types for space ${space}`, true);

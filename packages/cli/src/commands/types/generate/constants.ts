@@ -4,7 +4,6 @@ export interface GenerateTypesOptions {
   typePrefix?: string;
   typeSuffix?: string;
   filename?: string;
-  path?: string;
   suffix?: string;
   customFieldsParser?: string;
   compilerOptions?: string;

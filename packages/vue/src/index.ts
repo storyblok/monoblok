@@ -30,6 +30,7 @@ export {
   MarkTypes,
   renderRichText,
   richTextResolver,
+  StoryblokClient,
   type StoryblokRichTextDocumentNode,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,

@@ -97,7 +97,7 @@ export const stringify = (
   prefix?: string,
   isArray?: boolean,
 ): string => {
-  const pairs = [];
+  const pairs: string[] = [];
   for (const key in params) {
     if (!Object.prototype.hasOwnProperty.call(params, key)) {
       continue;

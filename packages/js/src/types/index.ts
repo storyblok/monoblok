@@ -3,9 +3,8 @@ import type {
   ISbConfig,
   ISbStoryData,
 } from 'storyblok-js-client';
-import type StoryblokJSClient from 'storyblok-js-client';
 
-export type StoryblokClient = StoryblokJSClient;
+import type StoryblokClient from 'storyblok-js-client';
 
 declare global {
   interface Window {

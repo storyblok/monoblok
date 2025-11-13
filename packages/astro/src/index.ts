@@ -14,3 +14,4 @@ export {
   storyblokEditable,
 } from '@storyblok/js';
 export { storyblokIntegration as storyblok };
+export { apiPlugin, storyblokInit } from '@storyblok/js';

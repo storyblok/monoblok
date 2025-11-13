@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
+import { appendToFile, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
 import { join, resolve } from 'node:path';
 
 // tell vitest to use fs mock from __mocks__ folder
@@ -136,6 +136,19 @@ describe('filesystem utils', async () => {
 
       const content = vol.readFileSync(filePath, 'utf8');
       expect(content).toBe(data);
+    });
+  });
+
+  describe('appendToFile', async () => {
+    it('should append a new line to a file', async () => {
+      const filePath = '/path/to/file.txt';
+      const data = 'Hello, World!';
+
+      await appendToFile(filePath, data);
+      await appendToFile(filePath, data);
+
+      const content = vol.readFileSync(filePath, 'utf8');
+      expect(content).toBe(`${data}\n${data}\n`);
     });
   });
 

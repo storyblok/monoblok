@@ -40,6 +40,7 @@ export async function* storiesIterator(
       ...transformedParams,
       per_page: perPage,
       page: 1,
+      story_only: true,
     });
 
     if (!result) {
@@ -60,6 +61,7 @@ export async function* storiesIterator(
         ...transformedParams,
         per_page: perPage,
         page,
+        story_only: true,
       });
 
       if (!result) {
@@ -89,9 +91,7 @@ class StoriesStream extends Transform {
       objectMode: true,
     });
 
-    this.semaphore = new Sema(this.batchSize, {
-      capacity: this.batchSize,
-    });
+    this.semaphore = new Sema(this.batchSize);
   }
 
   async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {

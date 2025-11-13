@@ -6,7 +6,6 @@ import { fetchLanguages, saveLanguagesToFile } from './actions';
 import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
 import { Spinner } from '@topcli/spinner';
-import { resolveRegion } from '../../utils/region';
 import { mapiClient } from '../../api';
 
 const program = getProgram(); // Get the shared singleton instance
@@ -16,8 +15,7 @@ export const languagesCommand = program
   .alias('lang')
   .description(`Manage your space's languages`)
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/languages')
-  .hook('preAction', resolveRegion);
+  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/languages');
 
 languagesCommand
   .command('pull')

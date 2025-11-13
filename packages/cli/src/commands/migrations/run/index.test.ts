@@ -23,11 +23,15 @@ vi.mock('../../../utils', async () => {
   };
 });
 
-// Mock the actions
-vi.mock('./actions', () => ({
-  readMigrationFiles: vi.fn(),
-  getMigrationFunction: vi.fn(),
-}));
+// Mock actions
+vi.mock('./actions', async () => {
+  const actual = await vi.importActual<typeof import('./actions')>('./actions');
+  return {
+    applyMigrationToAllBlocks: actual.applyMigrationToAllBlocks,
+    readMigrationFiles: vi.fn(),
+    getMigrationFunction: vi.fn(),
+  };
+});
 
 vi.mock('../../stories/actions', () => ({
   fetchStories: vi.fn(),
@@ -160,6 +164,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -169,16 +174,12 @@ describe('migrations run command - streaming approach', () => {
     // Verify that getMigrationFunction was called
     expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
 
-    // In the new streaming approach, updateStory is only called if the migration actually changes content
-    // Since our mock migration function doesn't actually change the content hash, updateStory won't be called
-    // This is the correct behavior - only stories with actual changes should be updated
-
     // Verify that progress bars were displayed (konsola.info should be called for summaries)
     expect(konsola.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
     expect(konsola.info).toHaveBeenCalledWith(
-      expect.stringContaining('No stories required updates'),
+      expect.stringContaining('Update Results: 1 stories updated.'),
     );
   });
 
@@ -228,6 +229,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -297,6 +299,7 @@ describe('migrations run command - streaming approach', () => {
       expect.objectContaining({
         per_page: 500,
         page: 1,
+        story_only: true,
       }),
     );
 
@@ -306,6 +309,9 @@ describe('migrations run command - streaming approach', () => {
     // Verify that getMigrationFunction was called
     expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
 
+    expect(konsola.warn).toHaveBeenCalledWith(
+      expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
+    );
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
 
@@ -367,6 +373,7 @@ describe('migrations run command - streaming approach', () => {
         per_page: 500,
         page: 1,
         contain_component: 'migration-component',
+        story_only: true,
       }),
     );
 

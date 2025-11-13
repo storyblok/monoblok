@@ -1,3 +1,5 @@
+import type { BlockAttributes } from '../types';
+
 export const SELF_CLOSING_TAGS = [
   'area',
   'base',
@@ -76,9 +78,13 @@ export const BLOCK_LEVEL_TAGS = [
  * ```
  *
  */
-export const attrsToString = (attrs: Record<string, string> = {}) => Object.keys(attrs)
-  .map(key => `${key}="${attrs[key]}"`)
-  .join(' ');
+export const attrsToString = (attrs: BlockAttributes = {}) => {
+  const { custom, ...attrsWithoutCustom } = attrs;
+  const normalizedAttrs = { ...attrsWithoutCustom, ...custom };
+  return Object.keys(normalizedAttrs)
+    .map(key => `${key}="${normalizedAttrs[key]}"`)
+    .join(' ');
+};
 
 /**
  * Converts an object of attributes to a CSS style string.

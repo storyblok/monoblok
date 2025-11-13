@@ -19,7 +19,7 @@ export function vitePluginStoryblokInit(
     async load(id: string) {
       if (id === resolvedVirtualModuleId) {
         return `
-          import { storyblokInit, apiPlugin } from "@storyblok/js";
+          import { storyblokInit, apiPlugin } from "@storyblok/astro";
           const { storyblokApi } = storyblokInit({
             accessToken: "${accessToken}",
             use: ${useCustomApi ? '[]' : '[apiPlugin]'},

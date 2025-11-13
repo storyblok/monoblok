@@ -140,7 +140,7 @@ The client includes built-in retry handling for rate limits and network errors:
 
 ```typescript
 // The client automatically handles retries with these defaults:
-// - maxRetries: 3
+// - maxRetries: 12
 // - retryDelay: 1000ms
 // - Respects retry-after headers from 429 responses
 
@@ -148,7 +148,7 @@ const stories = await client.stories.list({
   path: { space_id: 123456 },
   query: { per_page: 10 }
 });
-// If rate limited, will automatically retry up to 3 times
+// If rate limited, will automatically retry up to 12 times
 ```
 
 ## Runtime Configuration

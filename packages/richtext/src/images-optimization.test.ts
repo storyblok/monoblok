@@ -28,12 +28,32 @@ describe('images-optimization', () => {
     expect(resultSrc).toBe(`${src}/m/800x600/`);
   });
 
+  it('should add width to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { width: 800 });
+    expect(resultSrc).toBe(`${src}/m/800x0/`);
+  });
+
+  it('should add height to the src if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { src: resultSrc } = optimizeImage(src, { height: 600 });
+    expect(resultSrc).toBe(`${src}/m/0x600/`);
+  });
+
+  it('should not add width or height to the src if both are at 0', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const consoleWarnSpy = vi.spyOn(console, 'warn');
+    const { src: resultSrc } = optimizeImage(src, { width: 0, height: 0 });
+    expect(resultSrc).toBe(`${src}/m/`);
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width and height values cannot both be 0');
+  });
+
   it('should not add width to the src if width is not a number', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     // @ts-expect-error provide width as string for testing
     optimizeImage(src, { width: '800', height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -41,14 +61,34 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: -800, height: 600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
+  });
+
+  it('should add width and height to the attrs if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { attrs } = optimizeImage(src, { width: 800, height: 600 });
+    expect(attrs).toEqual({ width: 800, height: 600 });
   });
 
   it('should add width to the attrs if provided', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
-    const { attrs } = optimizeImage(src, { width: 800, height: 600 });
-    expect(attrs).toEqual({ width: 800, height: 600 });
+    const { attrs } = optimizeImage(src, { width: 800 });
+    expect(attrs).toEqual({ width: 800 });
+  });
+
+  it('should add height to the attrs if provided', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const { attrs } = optimizeImage(src, { height: 600 });
+    expect(attrs).toEqual({ height: 600 });
+  });
+
+  it('should not add width or height to the attrs if both are at 0', async () => {
+    const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
+    const consoleWarnSpy = vi.spyOn(console, 'warn');
+    const { attrs } = optimizeImage(src, { width: 0, height: 0 });
+    expect(attrs).toEqual({});
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Width and height values cannot both be 0');
   });
 
   it('should not add height to the src if height is not a number', async () => {
@@ -56,7 +96,7 @@ describe('images-optimization', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     // @ts-expect-error provide height as string for testing
     optimizeImage(src, { width: 800, height: '600' });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 
@@ -64,7 +104,7 @@ describe('images-optimization', () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
     const consoleWarnSpy = vi.spyOn(console, 'warn');
     optimizeImage(src, { width: 800, height: -600 });
-    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than 0');
+    expect(consoleWarnSpy).toBeCalledWith('[StoryblokRichText] - Height value must be a number greater than or equal to 0');
     consoleWarnSpy.mockRestore();
   });
 

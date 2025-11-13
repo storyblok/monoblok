@@ -4,16 +4,16 @@
 
 ## Installation
 
-For the latest beta version, install the package using the following command:
+For the latest version, install the package using the following command:
 
 ```bash
-npm install storyblok@beta
+npm install storyblok
 ```
 
-Or for an specific beta version:
+Or for a specific version:
 
 ```bash
-npm install storyblok@4.0.0-beta.<version>
+npm install storyblok@<version>
 ```
 
 ## API

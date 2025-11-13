@@ -6,8 +6,9 @@ import { __dirname, handleError } from './utils';
 import type { LogTransport } from './utils/logger';
 import { getLogger } from './utils/logger';
 import { getUI } from './utils/ui';
+import { getReporter } from './utils/reporter';
 import { FileTransport } from './utils/logger-transport-file';
-import { getLogsPath } from './utils/filesystem';
+import { resolveCommandPath } from './utils/filesystem';
 import { directories } from './constants';
 
 let packageJson: NormalizedPackageJson;
@@ -44,7 +45,9 @@ export function getProgram(): Command {
     programInstance
       .name(packageJson.name)
       .description(packageJson.description || '')
-      .version(packageJson.version)
+      .version(packageJson.version, '-v, --vers', 'Output the current version')
+      .helpOption('-h, --help', 'Display help for command')
+      .option('--verbose', 'Enable verbose output')
       .hook('preAction', (_, actionCmd) => {
         const options = actionCmd.optsWithGlobals();
         const commandPieces: string[] = [];
@@ -55,7 +58,7 @@ export function getProgram(): Command {
 
         const runId = Date.now();
         const transports: LogTransport[] = [];
-        const logsPath = getLogsPath(directories.log, options.space, options.path);
+        const logsPath = resolveCommandPath(directories.log, options.space, options.path);
         const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
         const filePath = path.join(logsPath, logFilename);
         transports.push(new FileTransport({
@@ -68,6 +71,16 @@ export function getProgram(): Command {
         });
 
         getUI({ enabled: true });
+
+        const reportPath = resolveCommandPath(directories.report, options.space, options.path);
+        const reportFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+        const reportFilePath = path.join(reportPath, reportFilename);
+        getReporter({ enabled: true, filePath: reportFilePath })
+          .addMeta('command', command)
+          .addMeta('cliVersion', packageJson.version)
+          .addMeta('runId', String(runId))
+          .addMeta('logPath', filePath)
+          .addMeta('config', options);
       });
 
     // Global error handling

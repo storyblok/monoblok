@@ -5,6 +5,7 @@ import { handleError, konsola, requireAuthentication } from '../../../utils';
 
 import { session } from '../../../session';
 import { assetsCommand } from '../command';
+import { fetchAllAssets, saveAssetsToFiles } from './actions';
 
 const program = getProgram();
 
@@ -30,7 +31,7 @@ assetsCommand
 
     const { password, region } = state;
 
-    const client = mapiClient({
+    mapiClient({
       token: {
         accessToken: password,
       },
@@ -38,13 +39,13 @@ assetsCommand
     });
 
     try {
-      const { data } = await client.assets.list({
-        path: {
-          space_id: space!,
-        },
-        throwOnError: true,
-      });
-      console.log(data);
+      const assets = await fetchAllAssets(space!);
+      if (assets) {
+        await saveAssetsToFiles(space!, assets);
+      }
+      else {
+        konsola.warn(`No assets found in the space ${space}`);
+      }
     }
     catch (error) {
       handleError(error as Error, verbose);

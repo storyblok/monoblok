@@ -6,21 +6,24 @@ import { konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { assetsCommand } from '../command';
 import { formatAssetFilename, readAssetFromPath } from './actions';
+import chalk from 'chalk';
 
 const program = getProgram();
 
 assetsCommand
   .command('push')
   .description(`Push assets to your space`)
-  .action(async (_options) => {
+  .option('-f, --from <from>', 'source space id')
+
+  .action(async (options) => {
     // Implement the pull action
-    konsola.title(`${commands.ASSETS}`, colorPalette.ASSETS, `Pulling assets...`);
+    konsola.title(`${commands.ASSETS}`, colorPalette.ASSETS, `Pushing assets...`);
 
     // Global options
     const verbose = program.opts().verbose;
 
     // Command options
-    const { space, path } = assetsCommand.opts();
+    const { space, path, from } = assetsCommand.opts();
 
     const { state, initializeSession } = session();
     await initializeSession();
@@ -28,6 +31,14 @@ assetsCommand
     if (!requireAuthentication(state, verbose)) {
       return;
     }
+
+    if (!from) {
+      // If no source space is provided, use the target space as source
+      options.from = space;
+    }
+
+    konsola.info(`Attempting to push assets ${chalk.bold('from')} space ${chalk.hex(colorPalette.ASSETS)(options.from || space)} ${chalk.bold('to')} ${chalk.hex(colorPalette.ASSETS)(space)}`);
+    konsola.br();
 
     const { password, region } = state;
 

@@ -1,4 +1,3 @@
-import { resolveRegion } from '../../utils/region';
 import { commands } from '../../constants';
 import { getProgram } from '../../program';
 
@@ -10,5 +9,4 @@ export const assetsCommand = program
   .alias('as')
   .description(`Manage your space's assets`)
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/assets')
-  .hook('preAction', resolveRegion);
+  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/assets');

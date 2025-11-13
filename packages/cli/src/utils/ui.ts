@@ -100,6 +100,12 @@ export class UI {
     }
   }
 
+  list(items: string[]) {
+    for (const item of items) {
+      this.console?.log(`  ${item}`);
+    }
+  }
+
   createProgressBar(options: { title: string }) {
     return this.multiBar?.create(0, 0, options) || noopProgressBar;
   }

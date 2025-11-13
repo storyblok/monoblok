@@ -53,9 +53,9 @@ export class FileTransport implements LogTransport {
     directory: string,
     keep: number,
     extension = '.jsonl',
-  ): void {
+  ) {
     if (!existsSync(directory)) {
-      return;
+      return 0;
     }
 
     const files = readdirSync(directory)
@@ -64,12 +64,29 @@ export class FileTransport implements LogTransport {
 
     const filesToDelete = files.length - keep;
     if (filesToDelete <= 0) {
-      return;
+      return 0;
     }
 
     for (const file of files.slice(0, filesToDelete)) {
       unlinkSync(join(directory, file));
     }
+
+    return filesToDelete;
+  }
+
+  public static listLogFiles(
+    directory: string,
+    extension = '.jsonl',
+  ) {
+    if (!existsSync(directory)) {
+      return [];
+    }
+
+    const files = readdirSync(directory)
+      .filter(file => extname(file) === extension)
+      .sort();
+
+    return files.map(f => join(directory, f).replace(process.cwd(), '.'));
   }
 
   private levelRank(level: LogLevel): number {

@@ -35,6 +35,7 @@ export interface ComponentPropertySchema {
   restrict_components?: boolean;
   restrict_type?: 'groups' | 'components' | 'tags' | '';
   source?: 'internal' | 'external' | 'internal_stories' | 'internal_languages';
+  datasource_slug?: string;
   type: ComponentPropertySchemaType;
   use_uuid?: boolean;
 };

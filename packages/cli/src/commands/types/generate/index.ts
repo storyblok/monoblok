@@ -7,6 +7,9 @@ import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
+import { readDatasourcesFiles } from '../../datasources/push/actions';
+import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
+import type { ReadDatasourcesOptions } from './../../datasources/push/constants';
 
 const program = getProgram();
 
@@ -38,23 +41,35 @@ typesCommand
 
     try {
       spinner.start(`Generating types...`);
-      const spaceData = await readComponentsFiles({
-        ...options as ReadComponentsOptions,
+      const componentsData = await readComponentsFiles({
+        ...(options as ReadComponentsOptions),
         from: space,
         path,
       });
-
+      // Try to read datasources, but make it optional
+      let dataSourceData: SpaceDatasourcesData;
+      try {
+        dataSourceData = await readDatasourcesFiles({
+          ...(options as ReadDatasourcesOptions),
+          from: space,
+          path,
+        });
+      }
+      catch {
+        // If no datasources found, use empty array
+        dataSourceData = { datasources: [] };
+      }
       await generateStoryblokTypes({
         path,
       });
 
       // Add empty datasources array to match expected type for generateTypes
-      const spaceDataWithDatasources: ComponentsData & { datasources: [] } = {
-        ...spaceData,
-        datasources: [],
+      const spaceDataWithComponentsAndDatasources: ComponentsData & SpaceDatasourcesData = {
+        ...componentsData,
+        ...dataSourceData,
       };
 
-      const typedefString = await generateTypes(spaceDataWithDatasources, {
+      const typedefString = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
         path,
       });

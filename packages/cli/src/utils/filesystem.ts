@@ -138,3 +138,10 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
 export function importModule(filePath: string) {
   return import(`file://${filePath}`);
 }
+
+export function getLogsPath(logFileDir: string, space?: string, baseDir?: string) {
+  if (space) {
+    return resolvePath(baseDir, join(logFileDir, space));
+  }
+  return resolvePath(baseDir, logFileDir);
+}

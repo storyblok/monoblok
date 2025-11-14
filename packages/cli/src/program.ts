@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { __dirname, handleError } from './utils';
 import type { NormalizedPackageJson } from 'read-package-up';
 import { readPackageUp } from 'read-package-up';
+import { loadConfig } from 'c12';
 
 let packageJson: NormalizedPackageJson;
 // Read package.json for metadata
@@ -46,4 +47,12 @@ export function getProgram(): Command {
     });
   }
   return programInstance;
+}
+
+export async function getConfigDefaults(): Promise<Record<string, any>> {
+  const { config } = await loadConfig({
+    name: 'storyblok',
+    defaults: {},
+  });
+  return config || {};
 }

@@ -7,18 +7,24 @@ import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
+import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram();
 
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
+  .option(
+    '--sf, --separate-files [boolean]',
+    'Generate one .d.ts file per component instead of a single combined file',
+    parseOptionalBoolean,
+    false,
+  )
   .option(
     '--filename <name>',
     'Base file name for all component types when generating a single declarations file (e.g. components.d.ts). Ignored when using --separate-files.',
   )
-  .option('--strict', 'strict mode, no loose typing')
+  .option('--strict [boolean]', 'strict mode, no loose typing', parseOptionalBoolean, false)
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
   .option('--suffix <suffix>', 'Components suffix')

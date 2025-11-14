@@ -3,6 +3,7 @@ import type { GraphBuildingContext, PushResults } from './types';
 
 import { buildDependencyGraph, validateGraph } from './dependency-graph';
 import { processAllResources } from './resource-processor';
+import { getActiveConfig } from '../../../../config';
 
 // Re-export commonly used utilities
 export type { PushResults } from './types';
@@ -28,7 +29,8 @@ export type { PushResults } from './types';
 export async function pushWithDependencyGraph(
   space: string,
   spaceState: SpaceComponentsDataState,
-  maxConcurrency: number = 5,
+
+  maxConcurrency: number = getActiveConfig().api.maxConcurrency,
 ): Promise<PushResults> {
   // Build and validate the dependency graph with colocated target data
   const context: GraphBuildingContext = { spaceState };

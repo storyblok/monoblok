@@ -388,17 +388,19 @@ export const generateTypes = async (
       };
       return datasourceSchema;
     });
+    const resolvedComponentsSchema = await Promise.all(componentsSchema);
+    const resolvedDatasourcesSchema = await Promise.all(datasourcesSchema);
     const contentTypeSchema: JSONSchema = {
       $id: `#/ContentType`,
       title: 'ContentType',
       type: 'string',
       tsType: `${Array.from(contentTypeBloks).join(' | ')}`,
     };
-    const schemas = await Promise.all([
-      ...componentsSchema,
-      ...datasourcesSchema,
+    const schemas = [
+      ...resolvedComponentsSchema,
+      ...resolvedDatasourcesSchema,
       contentTypeSchema,
-    ]);
+    ];
 
     const result = await Promise.all(schemas.map(async (schema) => {
     // Use the title as the interface name

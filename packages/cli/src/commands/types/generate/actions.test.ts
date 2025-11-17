@@ -747,6 +747,73 @@ describe('component property type annotations', () => {
     expect(result).toContain('colorPicker?:');
     expect(result).toContain('color: string');
   });
+  it('should handle datasource property type', async () => {
+    // Create a component with boolean property type
+    const componentWithDatasourceeType: SpaceComponent = {
+      name: 'test_component',
+      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema: {
+        sex: {
+          type: 'option',
+          pos: 1,
+          use_uuid: true,
+          source: 'internal',
+          datasource_slug: 'garden-325',
+          id: '679gCtyCRbKrTlUkXBHw7w',
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    // Create a space data with this component
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithDatasourceeType],
+      datasources: [{
+        id: 109556769159015,
+        name: 'Garden-325',
+        slug: 'garden-325',
+        dimensions: [],
+        created_at: '2025-11-06T13:47:38.095Z',
+        updated_at: '2025-11-06T13:47:38.095Z',
+        entries: [
+          {
+            id: 109556771421284,
+            datasource_id: 109556769159015,
+            name: 'deform-206',
+            value: 'deform-206',
+            dimension_value: '',
+          },
+          {
+            id: 109556773588069,
+            datasource_id: 109556769159015,
+            name: 'because-854',
+            value: 'because-854',
+            dimension_value: '',
+          },
+          {
+            id: 109556775738470,
+            datasource_id: 109556769159015,
+            name: 'even-218',
+            value: 'even-218',
+            dimension_value: '',
+          },
+        ],
+      }],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    // Generate types
+    const result = await generateTypes(spaceData, { strict: false });
+    // Verify that the result contains the expected property type
+    expect(result).toContain('sex?: Garden325DataSource');
+    expect(result).toContain('export type Garden325DataSource = "deform-206" | "because-854" | "even-218";');
+  });
 });
 
 describe('generateStoryblokTypes', () => {

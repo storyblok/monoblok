@@ -194,11 +194,16 @@ const getComponentPropertiesTypeAnnotations = async (
       propertyTypeAnnotation[key].tsType = `Storyblok${componentType}`;
     }
     if (spaceData.datasources.length > 0 && schema.source === 'internal' && schema?.datasource_slug) {
-      const type = getDatasourceTypeTitle(schema.datasource_slug);
-
-      // Assign type based on whether it's single or multiple selection
-      propertyTypeAnnotation[key].tsType
-          = propertyType === 'options' ? `${type}[]` : type;
+      // Check if the datasource actually exists in spaceData.datasources
+      const datasourceExists = spaceData.datasources.some(ds => ds.slug === schema.datasource_slug);
+      if (datasourceExists) {
+        const type = getDatasourceTypeTitle(schema.datasource_slug);
+        // Assign type based on whether it's single or multiple selection
+        propertyTypeAnnotation[key].tsType
+            = propertyType === 'options' ? `${type}[]` : type;
+      }
+      // If datasource doesn't exist, fall back to default number | string union type
+      // The type annotation already has the correct fallback from getPropertyTypeAnnotation
     }
     if (propertyType === 'multilink') {
       const excludedLinktypes: string[] = [

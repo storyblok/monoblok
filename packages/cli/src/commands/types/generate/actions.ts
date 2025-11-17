@@ -394,7 +394,7 @@ export const generateTypes = async (
       $id: `#/ContentType`,
       title: 'ContentType',
       type: 'string',
-      tsType: `${Array.from(contentTypeBloks).join(' | ')}`,
+      tsType: contentTypeBloks.size > 0 ? `${Array.from(contentTypeBloks).join(' | ')}` : 'never',
     };
     const schemas = [
       ...resolvedComponentsSchema,

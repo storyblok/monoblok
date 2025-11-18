@@ -1,5 +1,5 @@
 import { colorPalette, commands } from '../../../constants';
-import { handleError, isVitest, konsola } from '../../../utils';
+import { FileSystemError, handleError, isVitest, konsola } from '../../../utils';
 import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
@@ -55,9 +55,14 @@ typesCommand
           path,
         });
       }
-      catch {
-        // If no datasources found, use empty array
-        dataSourceData = { datasources: [] };
+      catch (error) {
+      // Only catch the specific case where datasources don't exist
+        if (error instanceof FileSystemError && error.errorId === 'file_not_found') {
+          dataSourceData = { datasources: [] };
+        }
+        else {
+          throw error;
+        }
       }
       await generateStoryblokTypes({
         path,

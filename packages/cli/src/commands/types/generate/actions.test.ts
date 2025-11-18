@@ -749,7 +749,7 @@ describe('component property type annotations', () => {
   });
   it('should handle datasource property type', async () => {
     // Create a component with boolean property type
-    const componentWithDatasourceeType: SpaceComponent = {
+    const componentWithDatasourceType: SpaceComponent = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -771,7 +771,7 @@ describe('component property type annotations', () => {
 
     // Create a space data with this component
     const spaceData: SpaceComponentsData = {
-      components: [componentWithDatasourceeType],
+      components: [componentWithDatasourceType],
       datasources: [{
         id: 109556769159015,
         name: 'Garden-325',

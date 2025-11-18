@@ -385,9 +385,14 @@ export const generateTypes = async (
       const enumValues: string[] | undefined = datasource.entries
         ?.filter(d => d.value)
         .map(d => d.value!);
+      const type = getDatasourceTypeTitle(datasource.slug);
+      // Check for conflicts with existing component types
+      if (storyblokPropertyTypes.has(type)) {
+        console.warn(`Warning: Datasource type "${type}" conflicts with existing component type`);
+      }
       const datasourceSchema: JSONSchema = {
         $id: `#/${datasource.slug}`,
-        title: getDatasourceTypeTitle(datasource.slug),
+        title: type,
         type: 'string',
         enum: enumValues,
       };

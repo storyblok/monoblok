@@ -1,6 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import { importModule, resolvePath } from '../../../utils/filesystem';
-import { FileSystemError } from '../../../utils/error';
+import { FileSystemError, toError } from '../../../utils/error';
 import { join } from 'node:path';
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from './constants';
 import { createRegexFromGlob } from '../../../utils';
@@ -72,12 +72,12 @@ export async function getMigrationFunction(fileName: string, space: string, base
     });
     return null;
   }
-  catch (error) {
-    const errorMessage = (error as Error).message;
-    getUI().error(`Error loading migration function from "${fileName}": ${errorMessage}`);
+  catch (maybeError) {
+    const error = toError(maybeError);
+    getUI().error(`Error loading migration function from "${fileName}": ${error.message}`);
     getLogger().error('Couldn\'t load migration function', {
       fileName,
-      errorMessage,
+      error,
       errorCode: ERROR_CODES.MIGRATION_LOAD_ERROR,
     });
     return null;

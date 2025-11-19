@@ -5,6 +5,7 @@ import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../utils/logger';
 import { ERROR_CODES } from '../constants';
+import { toError } from '../../../../utils/error';
 
 export interface UpdateStreamOptions {
   space: string;
@@ -112,16 +113,18 @@ export class UpdateStream extends Writable {
         });
       }
     }
-    catch (error) {
+    catch (maybeError) {
+      const error = toError(maybeError);
       this.results.failed.push({
         storyId,
         name: storyName,
-        error: error as Error,
+        error,
       });
       this.results.totalProcessed++;
       this.options.onProgress?.(this.results.totalProcessed);
-      getLogger().error((error as Error).message, {
+      getLogger().error(error.message, {
         storyId,
+        error,
         errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
       });
     }

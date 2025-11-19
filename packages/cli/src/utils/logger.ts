@@ -6,6 +6,7 @@ export type LogContextValue =
   | boolean
   | null
   | undefined
+  | Error
   | LogContextValue[]
   | { [key: string]: LogContextValue };
 
@@ -45,9 +46,9 @@ export class Logger {
 
   public log(level: LogLevel, message: string, context?: LogContext): void {
     const timestamp = new Date();
-    const mergedContext = structuredClone(context
+    const mergedContext = context
       ? { ...this.context, ...context }
-      : this.context);
+      : this.context;
 
     const record: LogRecord = {
       timestamp,

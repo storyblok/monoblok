@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import { FileTransport } from './logger-transport-file';
+import { APIError } from './error';
+import { FetchError } from './fetch';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -26,6 +28,17 @@ it('should only log level equal or more severe to the specified level', () => {
   transportLevelInfo.log({ level: 'info', message: 'Info' });
   transportLevelInfo.log({ level: 'debug', message: 'Debug' });
   expect(Object.values(vol.toJSON())[0]?.trim()).toMatch(/^\{"timestamp":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","level":"ERROR","message":"Error!"\}\n\{"timestamp":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","level":"WARN","message":"Warn!"\}\n\{"timestamp":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","level":"INFO","message":"Info"\}$/);
+});
+
+it('should format errors correctly', () => {
+  const transport = new FileTransport();
+  const apiError = new APIError('network_error', 'get_user', new FetchError('foo error', {
+    status: 418,
+    statusText: 'foo',
+  }));
+  transport.log({ level: 'error', message: 'Error!', context: { apiError } });
+  expect(JSON.parse(Object.values(vol.toJSON())[0]?.trim() as string).context.apiError).toMatchObject({ name: 'API Error', message: 'No response from server, please check if you are correctly connected to internet', httpCode: 418, httpStatusText: 'foo', stack: expect.any(String) },
+  );
 });
 
 it('should only keep n number of log files', () => {

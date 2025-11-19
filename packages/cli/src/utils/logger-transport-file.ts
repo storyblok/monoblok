@@ -1,7 +1,8 @@
-import type { LogLevel, LogRecord, LogTransport } from './logger';
+import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
 import { appendToFileSync } from './filesystem';
 import { existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
+import { APIError } from './error/api-error';
 
 export interface FileTransportOptions {
   filePath?: string;
@@ -112,6 +113,35 @@ export class FileTransport implements LogTransport {
     const timestamp = (record.timestamp ?? new Date()).toISOString();
     const level = record.level.toUpperCase();
     const message = record.message.replaceAll('\n', '\\n');
-    return JSON.stringify({ timestamp, level, message, context: record.context });
+    const contextNormalized = record.context && this.formatContext(record.context);
+
+    return JSON.stringify({ timestamp, level, message, context: contextNormalized });
+  }
+
+  private formatContext(context: LogContext) {
+    const contextNormalized: LogContext = {};
+    for (const [key, value] of Object.entries(context)) {
+      if (value instanceof APIError) {
+        contextNormalized[key] = {
+          name: value.name,
+          message: value.message,
+          httpCode: value.code,
+          httpStatusText: value.error?.response.statusText,
+          stack: value.stack,
+        };
+        continue;
+      }
+      if (value instanceof Error) {
+        contextNormalized[key] = {
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+        };
+        continue;
+      }
+      contextNormalized[key] = value;
+    }
+
+    return contextNormalized;
   }
 }

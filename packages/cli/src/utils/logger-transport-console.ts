@@ -1,4 +1,5 @@
-import type { LogLevel, LogRecord, LogTransport } from './logger';
+import { APIError } from './error';
+import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
 
 export interface ConsoleTransportOptions {
   level?: LogLevel;
@@ -56,7 +57,7 @@ export class ConsoleTransport implements LogTransport {
     const timestamp = this.formatTimestamp(record.timestamp ?? new Date());
     const level = record.level.toUpperCase().padEnd(5, ' ');
     const message = record.message.replaceAll('\n', '\\n');
-    const context = record.context ? this.formatContext(record.context as Record<string, unknown>) : '';
+    const context = record.context ? this.formatContext(record.context) : '';
     return `[${timestamp}]  ${level}  ${message}${context}`;
   }
 
@@ -70,27 +71,35 @@ export class ConsoleTransport implements LogTransport {
     return `${h}:${m}:${s}.${ms}`;
   }
 
-  private formatContext(ctx: Record<string, unknown>): string {
-    const entries = Object.entries(ctx);
+  private formatContext(context: LogContext): string {
+    const entries = Object.entries(context);
     if (entries.length === 0) { return ''; }
     const parts = entries.map(([k, v]) => `${k}: ${this.stringify(v)}`);
     return `  (${parts.join(', ')})`;
   }
 
   private stringify(value: unknown): string {
-    if (value === null) { return 'null'; }
-    const valueType = typeof value;
-
-    if (valueType === 'string') { return value as string; }
-    if (valueType === 'number' || valueType === 'boolean' || valueType === 'bigint') { return String(value); }
-    if (valueType === 'undefined') { return 'undefined'; }
-
-    if (value && valueType === 'object') {
-      return JSON.stringify(value);
-    }
-
-    // Fallback for functions/symbols/etc.
     try {
+      if (value instanceof APIError) {
+        return JSON.stringify({
+          name: value.name,
+          message: value.message,
+          httpCode: value.code,
+          httpStatusText: value.error?.response.statusText,
+          stack: value.stack,
+        });
+      }
+      if (value instanceof Error) {
+        return JSON.stringify({
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+        });
+      }
+      if (value && typeof value === 'object') {
+        return JSON.stringify(value);
+      }
+
       return String(value);
     }
     catch {

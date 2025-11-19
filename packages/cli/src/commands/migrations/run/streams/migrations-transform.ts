@@ -6,6 +6,7 @@ import { getComponentNameFromFilename } from '../../../../utils/filesystem';
 import { hash } from 'ohash';
 import { saveRollbackData } from '../../rollback/actions';
 import { getLogger } from '../../../../utils/logger';
+import { toError } from '../../../../utils/error';
 
 export interface MigrationStreamOptions {
   migrationFiles: MigrationFile[];
@@ -207,15 +208,17 @@ export class MigrationStream extends Transform {
         return null;
       }
     }
-    catch (error) {
+    catch (maybeError) {
+      const error = toError(maybeError);
       this.results.failed.push({
         storyId: story.id,
         migrationNames,
         error,
       });
-      getLogger().error((error as Error).message, {
+      getLogger().error(error.message, {
         storyId: story.id,
         migrationNames,
+        error,
         errorCode: ERROR_CODES.MIGRATION_APPLY_TO_STORY_ERROR,
       });
       return null;

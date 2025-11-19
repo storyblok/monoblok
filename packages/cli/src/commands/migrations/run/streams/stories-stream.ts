@@ -3,7 +3,7 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams } from '../../../stories/constants';
-import { handleAPIError } from '../../../../utils/error';
+import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../utils/logger';
 import { ERROR_CODES } from '../constants';
 
@@ -99,17 +99,22 @@ class StoriesStream extends Transform {
   }
 
   async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
-    await this.semaphore.acquire();
-
-    fetchStory(this.spaceId, chunk.id.toString()).then((story) => {
+    try {
+      await this.semaphore.acquire();
+      const story = await fetchStory(this.spaceId, chunk.id.toString());
       this.push(story);
       this.onProgress?.();
-    }).finally(() => {
-      this.semaphore.release();
       getLogger().info('Fetched story', { storyId: chunk.id });
-    });
-
-    callback();
+      callback();
+    }
+    catch (maybeError) {
+      const error = toError(maybeError);
+      getLogger().error(error.message, { storyId: chunk.id, error, errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR });
+      callback(error);
+    }
+    finally {
+      this.semaphore.release();
+    }
   }
 
   _flush(callback: (error?: Error | null) => void) {

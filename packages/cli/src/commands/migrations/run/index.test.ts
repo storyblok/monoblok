@@ -197,7 +197,7 @@ describe('migrations run command', () => {
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--log-console']);
 
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}ERROR\s{2}No directory found for space "12345". Please make sure you have pulled the migrations first by running:\\n\\n\s{2}storyblok migrations pull --space 12345 {2}\(runId: \d+/),
+      expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}ERROR\s{2}No directory found for space "12345". Please make sure you have generated migrations first by running:\\n\\n\s{2}storyblok migrations generate YOUR_COMPONENT_NAME --space 12345 {2}\(runId: \d+/),
     );
     const logFile = Object.entries(vol.toJSON())
       .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];

@@ -37,7 +37,7 @@ export async function readMigrationFiles(options: ReadMigrationFilesOptions): Pr
     return migrationFiles;
   }
   catch (error) {
-    const message = `No directory found for space "${space}". Please make sure you have pulled the migrations first by running:\n\n  storyblok migrations pull --space ${space}`;
+    const message = `No directory found for space "${space}". Please make sure you have generated migrations first by running:\n\n  storyblok migrations generate YOUR_COMPONENT_NAME --space ${space}`;
     throw new FileSystemError(
       'file_not_found',
       'read',

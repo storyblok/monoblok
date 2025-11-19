@@ -126,12 +126,9 @@ export class UI {
 
 let uiInstance: UI | null = null;
 
-export function getUI(options?: { enabled: boolean }) {
-  if (!uiInstance && options) {
-    uiInstance = new UI({ enabled: options.enabled });
-  }
-  else if (!uiInstance) {
-    throw new Error('UI not initialized. Call getUI with options first.');
+export function getUI(options: { enabled: boolean } = { enabled: false }) {
+  if (!uiInstance) {
+    uiInstance = new UI(options);
   }
 
   return uiInstance;

@@ -81,11 +81,8 @@ export class Logger {
 let loggerInstance: Logger | null = null;
 
 export function getLogger(options?: LoggerOptions) {
-  if (!loggerInstance && options) {
+  if (!loggerInstance) {
     loggerInstance = new Logger(options);
-  }
-  else if (!loggerInstance) {
-    throw new Error('Logger not initialized. Call getLogger with options first.');
   }
 
   return loggerInstance;

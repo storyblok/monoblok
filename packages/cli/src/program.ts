@@ -73,7 +73,7 @@ export function getProgram(): Command {
           transports,
         });
 
-        getUI({ enabled: options.ui });
+        getUI({ enabled: options.ui === undefined || options.ui });
       });
 
     // Global error handling

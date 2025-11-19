@@ -29,19 +29,16 @@ export interface LogTransport {
 
 export interface LoggerOptions {
   context?: LogContext;
-  level?: LogLevel;
   transports?: LogTransport[];
 }
 
 export class Logger {
   public transports: LogTransport[] = [];
   public context: LogContext = {};
-  public level: LogLevel = 'info';
 
   constructor(options?: LoggerOptions) {
     if (options?.transports) { this.transports = options.transports; }
     if (options?.context) { this.context = options.context; }
-    if (options?.level) { this.level = options.level; }
   }
 
   public log(level: LogLevel, message: string, context?: LogContext): void {

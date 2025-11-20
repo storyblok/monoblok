@@ -1,4 +1,3 @@
-import throttledQueue from './throttlePromise';
 import {
   asyncMap,
   delay,
@@ -13,6 +12,8 @@ import SbFetch from './sbFetch';
 import type Method from './constants';
 import type { StoryblokContentVersionKeys } from './constants';
 import { STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT, StoryblokContentVersion } from './constants';
+import { createRateLimitConfig, determineRateLimit, MANAGEMENT_API_DEFAULT_RATE_LIMIT, parseRateLimitHeaders, type RateLimitConfig } from './rateLimit';
+import { ThrottleQueueManager } from './throttleQueueManager';
 
 import type {
   ICacheProvider,
@@ -70,13 +71,14 @@ export class Storyblok {
   private client: SbFetch;
   private maxRetries: number;
   private retriesDelay: number;
-  private throttle: ReturnType<typeof throttledQueue>;
+  private throttleManager: ThrottleQueueManager;
   private accessToken: string;
   private cache: ISbCache;
   private resolveCounter: number;
   public relations: RelationsType;
   public links: LinksType;
   public version: StoryblokContentVersionKeys | undefined;
+  private rateLimitConfig: RateLimitConfig;
   /**
    * @deprecated This property is deprecated. Use the standalone `richTextResolver` from `@storyblok/richtext` instead.
    * @see https://github.com/storyblok/richtext
@@ -129,22 +131,20 @@ export class Storyblok {
       );
     }
 
-    let rateLimit = 5; // per second for cdn api
-
     if (config.oauthToken) {
       headers.set('Authorization', config.oauthToken);
-      rateLimit = 3; // per second for management api
     }
 
-    if (config.rateLimit) {
-      rateLimit = config.rateLimit;
-    }
+    // Create rate limit config - user's rateLimit applies only to uncached requests
+    // Pass isManagementApi flag to handle Management API default rate limit
+    this.rateLimitConfig = createRateLimitConfig(config.rateLimit, !!config.oauthToken);
 
     this.maxRetries = config.maxRetries || 10;
     this.retriesDelay = 300;
-    this.throttle = throttledQueue(
+
+    // Initialize throttle queue manager
+    this.throttleManager = new ThrottleQueueManager(
       this.throttledRequest.bind(this),
-      rateLimit,
       1000,
     );
 
@@ -284,7 +284,8 @@ export class Storyblok {
   ): Promise<ISbResponseData> {
     const url = `/${slug}`;
 
-    return this.throttle('post', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+    return this.throttleManager.execute(rateLimit, 'post', url, params, fetchOptions) as Promise<ISbResponseData>;
   }
 
   public put(
@@ -294,7 +295,8 @@ export class Storyblok {
   ): Promise<ISbResponseData> {
     const url = `/${slug}`;
 
-    return this.throttle('put', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+    return this.throttleManager.execute(rateLimit, 'put', url, params, fetchOptions) as Promise<ISbResponseData>;
   }
 
   public delete(
@@ -307,7 +309,8 @@ export class Storyblok {
     }
     const url = `/${slug}`;
 
-    return this.throttle('delete', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+    return this.throttleManager.execute(rateLimit, 'delete', url, params, fetchOptions) as Promise<ISbResponseData>;
   }
 
   public getStories(
@@ -671,6 +674,8 @@ export class Storyblok {
     const cacheKey = stringify({ url, params });
     const provider = this.cacheProvider();
 
+    // Check in-memory cache first for published content
+    // If cached, skip API call and rate limiting entirely
     if (params.version === 'published' && url !== '/cdn/spaces/me') {
       const cache = await provider.get(cacheKey);
       if (cache) {
@@ -678,9 +683,14 @@ export class Storyblok {
       }
     }
 
+    // Calculate appropriate rate limit for this request
+    const rateLimit = determineRateLimit(url, params, this.rateLimitConfig);
+
     return new Promise(async (resolve, reject) => {
       try {
-        const res = (await this.throttle(
+        // Execute through the appropriate throttle queue based on rate limit
+        const res = (await this.throttleManager.execute(
+          rateLimit,
           'get',
           url,
           params,
@@ -691,6 +701,13 @@ export class Storyblok {
         }
 
         let response = { data: res.data, headers: res.headers } as ISbResult;
+
+        // Parse rate limit headers and update config if present
+        const rateLimitHeaders = parseRateLimitHeaders(res.headers);
+        if (rateLimitHeaders?.max !== undefined) {
+          // Update server rate limit for subsequent requests
+          this.rateLimitConfig.serverHeadersRateLimit = rateLimitHeaders.max;
+        }
 
         if (res.headers?.['per-page']) {
           response = Object.assign({}, response, {

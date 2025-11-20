@@ -143,7 +143,7 @@ We added retro-compatibility when using `resolve_assets: 1` parameter under V2. 
   - (`responseInterceptor` Function, optional - You can pass a function and return the result. For security reasons, Storyblok client will deal only with the response interceptor.)
   - (`region` String, optional)
   - (`https` Boolean, optional)
-  - (`rateLimit` Integer, optional, defaults to 3 for management api and 5 for cdn api)
+  - (`rateLimit` Integer, optional - Custom rate limit for **uncached requests only** (requests with `version=draft`). When not provided, the client automatically uses optimal rate limits based on the request type: 50 req/s for single entries or small listings (≤25 items), 15 req/s for medium listings (25-50 items), 10 req/s for large listings (50-75 items), and 6 req/s for very large listings (75-100 items). Cached requests (version=published) always use 1000 req/s. The maximum rate limit is capped at 1000 req/s. For Management API with `oauthToken`, defaults to 3 req/s for backward compatibility.)
   - (`timeout` Integer, optional)
   - (`maxRetries` Integer, optional, defaults to 5)
   - (`resolveNestedRelations` Boolean, optional - By default is true)
@@ -167,6 +167,52 @@ let Storyblok = new StoryblokClient({
   },
 });
 ```
+
+### Rate Limiting
+
+The Storyblok client implements intelligent, dynamic rate limiting that automatically adjusts based on the type of request being made. This ensures optimal performance while respecting Storyblok's API rate limits.
+
+#### How Rate Limiting Works
+
+**Cached Requests (version=published or default)**
+- Rate limit: **1000 requests/second**
+- These requests benefit from Storyblok's CDN caching and have higher rate limits
+- Requests from the in-memory cache skip rate limiting entirely
+
+**Uncached Requests (version=draft)**
+
+The rate limit automatically adjusts based on the number of items requested:
+
+- **Single entries or small listings (≤25 items)**: 50 requests/second
+- **Medium listings (26-50 items)**: 15 requests/second
+- **Large listings (51-75 items)**: 10 requests/second
+- **Very large listings (76-100 items)**: 6 requests/second
+
+#### Custom Rate Limiting
+
+You can override the automatic rate limiting for uncached requests:
+
+```javascript
+const Storyblok = new StoryblokClient({
+  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+  rateLimit: 25, // Applies only to version=draft requests
+});
+```
+
+**Important Notes:**
+- The `rateLimit` option only affects **uncached requests** (version=draft)
+- Cached requests (version=published) always use 1000 req/s
+- The maximum rate limit is capped at 1000 req/s
+- The client automatically respects `X-RateLimit-Policy` headers from the API
+
+#### Server-Side Rate Limiting
+
+The client automatically parses and respects rate limit headers returned by the Storyblok API:
+
+- `X-RateLimit`: Contains remaining requests (r=N)
+- `X-RateLimit-Policy`: Contains maximum allowed requests (q=N)
+
+When these headers are present, the client dynamically adjusts its rate limiting to match the server's requirements.
 
 ### Passing response interceptor
 

@@ -1,31 +1,37 @@
-import { Spinner } from '@topcli/spinner';
 import chalk from 'chalk';
 
 import type { MigrationsGenerateOptions } from './constants';
 import { colorPalette, commands } from '../../../constants';
 import { getProgram } from '../../../program';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { fetchComponent } from '../../../commands/components';
 import { migrationsCommand } from '../command';
 import { generateMigration } from './actions';
 import { mapiClient } from '../../../api';
-
-const program = getProgram();
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../utils/logger';
 
 migrationsCommand
   .command('generate [componentName]')
   .description('Generate a migration file')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. {component-name}.<suffix>.js)')
   .action(async (componentName: string | undefined, options: MigrationsGenerateOptions) => {
-    konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Generating migration for component ${componentName}...` : 'Generating migrations...');
-    // Global options
+    const program = getProgram();
+    const ui = getUI();
+    const logger = getLogger();
+
+    ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Generating migration for component ${componentName}...` : 'Generating migrations...');
+
     const verbose = program.opts().verbose;
-
-    // Command options
     const { space, path } = migrationsCommand.opts();
-
     const { suffix } = options;
+
+    logger.info('Migration generation started', {
+      componentName,
+      space,
+      suffix,
+    });
 
     if (!componentName) {
       handleError(new CommandError(`Please provide the component name as argument ${chalk.hex(colorPalette.MIGRATIONS)('storyblok migrations generate YOUR_COMPONENT_NAME.')}`), verbose);
@@ -52,9 +58,7 @@ migrationsCommand
       region,
     });
 
-    const spinner = new Spinner({
-      verbose: !isVitest,
-    }).start(`Generating migration for component ${componentName}...`);
+    const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {
       const component = await fetchComponent(space, componentName);
 
@@ -66,11 +70,19 @@ migrationsCommand
 
       await generateMigration(space, path, component, suffix);
 
-      spinner.succeed(`Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
+      const elapsedTime = spinner.elapsedTime.toFixed(2);
+      spinner.succeed(`Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${elapsedTime}ms`);
 
       const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
       const migrationPath = path ? `${path}/migrations/${space}/${fileName}` : `.storyblok/migrations/${space}/${fileName}`;
-      konsola.ok(`You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(migrationPath)}`);
+      ui.ok(`You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(migrationPath)}`);
+
+      logger.info('Migration generation finished', {
+        componentName: component.name,
+        migrationPath,
+        space,
+        suffix,
+      });
     }
     catch (error) {
       spinner.failed(`Failed to generate migration for component ${componentName}`);

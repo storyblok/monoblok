@@ -10,9 +10,18 @@ const noopProgressBar = {
   setTotal: (_n: number) => {},
   stop: () => {},
 };
-const noopSpinner = {
+export interface UISpinner {
+  failed: (title: string) => void;
+  succeed: (title: string) => void;
+  stop: () => void;
+  readonly elapsedTime: number;
+}
+
+const noopSpinner: UISpinner = {
   failed: (_title: string) => {},
   succeed: (_title: string) => {},
+  stop: () => {},
+  elapsedTime: 0,
 };
 
 export class UI {
@@ -114,13 +123,33 @@ export class UI {
     this.multiBar?.stop();
   }
 
-  createSpinner(title: string) {
-    if (this.enabled) {
-      return new Spinner({
-        verbose: !isVitest,
-      }).start(title);
+  createSpinner(title: string): UISpinner {
+    if (!this.enabled) {
+      return noopSpinner;
     }
-    return noopSpinner;
+
+    const spinner = new Spinner({
+      verbose: !isVitest,
+    }).start(title) as Spinner & { elapsedTime?: number };
+    const startedAt = Date.now();
+
+    return {
+      failed: (message: string) => {
+        spinner.failed(message);
+      },
+      succeed: (message: string) => {
+        spinner.succeed(message);
+      },
+      stop: () => {
+        spinner.stop();
+      },
+      get elapsedTime() {
+        if (typeof spinner.elapsedTime === 'number') {
+          return spinner.elapsedTime;
+        }
+        return Date.now() - startedAt;
+      },
+    };
   }
 }
 

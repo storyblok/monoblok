@@ -74,6 +74,12 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => ({
 const mockStory = createMockStory();
 
 const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-component.js';
+const LOG_PREFIX = 'storyblok-migrations-run-';
+
+const getLogFileContents = () => {
+  return Object.entries(vol.toJSON())
+    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
+};
 
 const preconditions = {
   canFetchStories() {
@@ -142,8 +148,7 @@ describe('migrations run command', () => {
     );
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
     // Logging
-    const logFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
+    const logFile = getLogFileContents();
     expect(logFile).toContain('Migration finished');
     expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
     expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
@@ -163,8 +168,7 @@ describe('migrations run command', () => {
 
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
-    const logFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
+    const logFile = getLogFileContents();
     expect(logFile).toContain('Couldn\'t load migration function');
     expect(logFile).toContain('MIGRATION_LOAD_ERROR');
     // UI
@@ -181,8 +185,7 @@ describe('migrations run command', () => {
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
-    const logFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
+    const logFile = getLogFileContents();
     expect(logFile).toContain('No directory found for space \\"12345\\".');
   });
 
@@ -203,8 +206,7 @@ describe('migrations run command', () => {
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
-    const logFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('storyblok-migrations-run-'))?.[1];
+    const logFile = getLogFileContents();
     expect(logFile).toContain('Dry run mode enabled');
     expect(logFile).toContain('Migration finished');
     // UI

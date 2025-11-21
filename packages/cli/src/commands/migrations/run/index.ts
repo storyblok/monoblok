@@ -20,21 +20,6 @@ migrationsCommand.command('run [componentName]')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
-  .option('--ui [enable]', 'Enable or disable pretty console output (enabled by default)', true)
-  .option('--no-ui', 'Disable pretty console output', false)
-  // Logging options
-  .option('--log-console [enable]', 'Enable console logging', false)
-  .option('--no-log-console', 'Disable console logging', false)
-  .option('--log-console-level <level>', 'Console log level', 'info')
-  .option('--log-file [enable]', 'Enable file logging (enabled by default)', true)
-  .option('--no-log-file', 'Disable file logging', false)
-  .option('--log-file-level <level>', 'File log level', 'info')
-  .option(
-    '--log-file-dir <dir>',
-    'Directory for log files',
-    'logs',
-  )
-  .option('--log-file-max-files <number>', 'Max number of log files to keep', Number.parseInt, 10)
   .action(async (componentName: string | undefined, options: MigrationsRunOptions) => {
     const program = getProgram();
     const ui = getUI();

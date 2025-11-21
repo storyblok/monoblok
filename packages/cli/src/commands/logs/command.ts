@@ -8,9 +8,4 @@ export const logsCommand = program
   .alias('lg')
   .description(`Inspect and manage logs.`)
   .option('-s, --space <space>', 'The space ID.')
-  .option('-p, --path <path>', 'Path to the directory containing the logs directory. Defaults to \'.storyblok\'.')
-  .option(
-    '--log-file-dir <dir>',
-    'Directory for log files',
-    'logs',
-  );
+  .option('-p, --path <path>', 'Path to the directory containing the logs directory. Defaults to \'.storyblok\'.');

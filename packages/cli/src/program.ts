@@ -9,6 +9,7 @@ import { getLogger } from './utils/logger';
 import { getUI } from './utils/ui';
 import { FileTransport } from './utils/logger-transport-file';
 import { getLogsPath } from './utils/filesystem';
+import { directories } from './constants';
 
 let packageJson: NormalizedPackageJson;
 // Read package.json for metadata
@@ -55,25 +56,19 @@ export function getProgram(): Command {
 
         const runId = Date.now();
         const transports: LogTransport[] = [];
-        if (options.logConsole) {
-          transports.push(new ConsoleTransport({ level: options.logConsoleLevel }));
-        }
-        if (options.logFile) {
-          const logsPath = getLogsPath(options.logFileDir, options.space, options.path);
-          const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
-          const filePath = path.join(logsPath, logFilename);
-          transports.push(new FileTransport({
-            filePath,
-            level: options.logFileLevel,
-            maxFiles: options.logFileMaxFiles,
-          }));
-        }
+        const logsPath = getLogsPath(directories.log, options.space, options.path);
+        const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+        const filePath = path.join(logsPath, logFilename);
+        transports.push(new FileTransport({
+          filePath,
+          maxFiles: 10,
+        }));
         getLogger({
           context: { runId, command, options, cliVersion: packageJson.version },
           transports,
         });
 
-        getUI({ enabled: options.ui === undefined || options.ui });
+        getUI({ enabled: true });
       });
 
     // Global error handling

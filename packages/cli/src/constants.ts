@@ -85,3 +85,7 @@ export const DEFAULT_AGENT = {
 export interface SpaceOptions {
   spaceId: string;
 }
+
+export const directories = {
+  log: 'logs',
+} as const;

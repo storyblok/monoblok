@@ -1,4 +1,3 @@
-import type { LogLevel } from '../../../utils/logger';
 import type { CommandOptions } from '../../../types';
 import type { StoryContent } from '../../stories/constants';
 
@@ -8,12 +7,6 @@ export interface MigrationsRunOptions extends CommandOptions {
   query?: string;
   startsWith?: string;
   publish?: 'all' | 'published' | 'published-with-changes';
-  ui: boolean;
-  logConsole: boolean;
-  logConsoleLevel: LogLevel;
-  logFile: boolean;
-  logFileDir: string;
-  logFileMaxFiles: number;
 }
 
 export interface ReadMigrationFilesOptions {

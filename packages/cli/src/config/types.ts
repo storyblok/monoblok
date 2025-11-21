@@ -42,10 +42,10 @@ export interface GlobalConfig {
   api: ApiConfig;
   log: LogConfig;
   report: ReportConfig;
+  verbose: boolean;
 }
 
 export interface ResolvedCliConfig extends GlobalConfig {
-  verbose: boolean;
   [key: string]: any;
 }
 

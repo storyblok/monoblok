@@ -20,7 +20,20 @@ export function parseNumber(value: string): number {
   return parsed;
 }
 
+export function parseOptionalBoolean(value?: string): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  return parseBoolean(value);
+}
+
 export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
+  {
+    flags: '--verbose [boolean]',
+    description: 'Enable verbose output',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.verbose,
+    parser: parseOptionalBoolean,
+  },
   {
     flags: '--region <region>',
     description: 'Storyblok region used for API requests',
@@ -39,10 +52,10 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     parser: parseNumber,
   },
   {
-    flags: '--log.console.enabled <boolean>',
+    flags: '--log.console.enabled [boolean]',
     description: 'Enable console logging output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.console.enabled,
-    parser: parseBoolean,
+    parser: parseOptionalBoolean,
   },
   {
     flags: '--log.console.level <level>',
@@ -50,10 +63,10 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.console.level,
   },
   {
-    flags: '--log.file.enabled <boolean>',
+    flags: '--log.file.enabled [boolean]',
     description: 'Enable file logging output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.file.enabled,
-    parser: parseBoolean,
+    parser: parseOptionalBoolean,
   },
   {
     flags: '--log.file.level <level>',
@@ -67,10 +80,10 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     parser: parseNumber,
   },
   {
-    flags: '--report.enabled <boolean>',
+    flags: '--report.enabled [boolean]',
     description: 'Enable report generation after command execution',
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.enabled,
-    parser: parseBoolean,
+    parser: parseOptionalBoolean,
   },
   {
     flags: '--report.max-files <number>',

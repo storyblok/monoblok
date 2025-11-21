@@ -11,13 +11,14 @@ import chalk from 'chalk';
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { join } from 'pathe';
 import { DEFAULT_STORAGE_DIR } from '../../../utils/filesystem';
+import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram();
 
 datasourcesCommand
   .command('pull [datasourceName]')
   .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id', 'datasources')
-  .option('--sf, --separate-files', 'Argument to create a single file for each datasource', false)
+  .option('--sf, --separate-files [boolean]', 'Argument to create a single file for each datasource', parseOptionalBoolean, false)
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. datasources.<suffix>.json)')
   .description('Pull datasources from your space')
   .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions) => {

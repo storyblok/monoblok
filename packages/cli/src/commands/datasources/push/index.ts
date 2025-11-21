@@ -10,6 +10,7 @@ import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
 import { Spinner } from '@topcli/spinner';
+import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -18,7 +19,7 @@ datasourcesCommand
   .description(`Push your space's datasources schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the datasources before pushing')
-  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
+  .option('--sf, --separate-files [boolean]', 'Read from separate files instead of consolidated files', parseOptionalBoolean, false)
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions) => {
     konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');

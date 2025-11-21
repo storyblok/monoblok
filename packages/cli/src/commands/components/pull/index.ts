@@ -11,13 +11,14 @@ import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
 import { join } from 'pathe';
 import { DEFAULT_STORAGE_DIR } from '../../../utils/filesystem';
+import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram();
 
 componentsCommand
   .command('pull [componentName]')
   .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id', 'components')
-  .option('--sf, --separate-files', 'Argument to create a single file for each component', false)
+  .option('--sf, --separate-files [boolean]', 'Argument to create a single file for each component', parseOptionalBoolean, false)
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`)
   .action(async (componentName: string | undefined, options: PullComponentsOptions) => {

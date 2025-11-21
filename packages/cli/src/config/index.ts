@@ -5,7 +5,7 @@ export {
   loadConfigLayers,
   logActiveConfig,
 } from './helpers';
-export { GLOBAL_OPTION_DEFINITIONS, parseBoolean, parseNumber } from './options';
+export { GLOBAL_OPTION_DEFINITIONS, parseBoolean, parseNumber, parseOptionalBoolean } from './options';
 export { resolveConfig } from './resolver';
 export { getActiveConfig, resetActiveConfig, setActiveConfig } from './store';
 export * from './types';

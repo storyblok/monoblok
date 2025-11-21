@@ -29,10 +29,10 @@ konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
 // Set all the global config options
 for (const option of GLOBAL_OPTION_DEFINITIONS) {
   if (option.parser) {
-    program.option(option.flags, option.description, option.parser, option.defaultValue);
+    program.option(option.flags, option.description, option.parser as (value: string, previous: unknown) => unknown, option.defaultValue as string | boolean | number);
   }
   else {
-    program.option(option.flags, option.description, option.defaultValue);
+    program.option(option.flags, option.description, option.defaultValue as string | boolean | string[]);
   }
 }
 

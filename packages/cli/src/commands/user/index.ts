@@ -5,7 +5,6 @@ import { handleError, isVitest, konsola, requireAuthentication } from '../../uti
 import { getUser } from './actions';
 import { session } from '../../session';
 import { Spinner } from '@topcli/spinner';
-import { resolveConfig } from '../../utils/config';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -14,7 +13,6 @@ export const userCommand = program
   .description('Get the current user')
   .option('--sf, --separate-files', 'Argument to create a single file for each component')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
-  .hook('preAction', resolveConfig)
   .action(async () => {
     konsola.title(`${commands.USER}`, colorPalette.USER);
 

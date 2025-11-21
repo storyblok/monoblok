@@ -4,7 +4,6 @@ import { readPackageUp } from 'read-package-up';
 import path from 'node:path';
 import { __dirname, handleError } from './utils';
 import type { LogTransport } from './utils/logger';
-import { ConsoleTransport } from './utils/logger-transport-console';
 import { getLogger } from './utils/logger';
 import { getUI } from './utils/ui';
 import { FileTransport } from './utils/logger-transport-file';

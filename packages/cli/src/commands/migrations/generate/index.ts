@@ -70,8 +70,7 @@ migrationsCommand
 
       await generateMigration(space, path, component, suffix);
 
-      const elapsedTime = spinner.elapsedTime.toFixed(2);
-      spinner.succeed(`Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${elapsedTime}ms`);
+      spinner.succeed(`Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
 
       const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
       const migrationPath = path ? `${path}/migrations/${space}/${fileName}` : `.storyblok/migrations/${space}/${fileName}`;

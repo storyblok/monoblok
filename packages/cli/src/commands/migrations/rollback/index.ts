@@ -1,5 +1,5 @@
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { getProgram } from '../../../program';
 import { migrationsCommand } from '../command';
 import { session } from '../../../session';
@@ -12,7 +12,7 @@ import chalk from 'chalk';
 
 migrationsCommand.command('rollback [migrationFile]')
   .description('Rollback a migration')
-  .action(async (migrationFile: string | undefined) => {
+  .action(async (migrationFile: string) => {
     const program = getProgram();
     const ui = getUI();
     const logger = getLogger();
@@ -103,7 +103,8 @@ migrationsCommand.command('rollback [migrationFile]')
             space,
           });
         }
-        catch (error) {
+        catch (maybeError) {
+          const error = toError(maybeError);
           rollbackSummary.failed += 1;
           spinner.failed(`Failed to restore story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}: ${(error as Error).message}`);
           logger.error('Failed to restore story', {

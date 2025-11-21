@@ -3,21 +3,19 @@
 export default {
   // Global options
   verbose: true,
-  /*  globalFlag: 'config', */
+  space: 288585436127774,
 
   // Command-specific options
   modules: {
-    test: {
-      localFlag: 'config',
-      region: 'eu',
-    },
-    deep: {
-      localFlag: 'config',
+    components: {
       region: 'eu',
       pull: {
         localFlag: 'config',
         region: 'eu',
       },
+    },
+    migrations: {
+      // space: 1111, # will override space for migrations commands
     },
   },
 };

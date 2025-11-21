@@ -143,32 +143,8 @@ export async function loadConfigLayers(): Promise<Record<string, any>[]> {
   return layers;
 }
 
-function pickLocalOptions(command: CommanderCommand): Record<string, unknown> {
-  const snapshot: Record<string, unknown> = {};
-  for (const option of command.options) {
-    const attrName = option.attributeName();
-    snapshot[attrName] = command.getOptionValue(attrName);
-  }
-  return snapshot;
-}
-
-export function formatConfigForDisplay(config: ResolvedCliConfig, ancestry: CommanderCommand[]): string {
-  const [, ...commands] = ancestry;
-  const localBag: Record<string, unknown> = {};
-  for (const command of commands) {
-    localBag[command.name()] = pickLocalOptions(command);
-  }
-  const payload = {
-    global: {
-      region: config.region,
-      api: config.api,
-      log: config.log,
-      report: config.report,
-      verbose: config.verbose,
-    },
-    local: localBag,
-  };
-  return JSON.stringify(payload, null, 2);
+export function formatConfigForDisplay(config: ResolvedCliConfig): string {
+  return JSON.stringify(config, null, 2);
 }
 
 export function logActiveConfig(config: ResolvedCliConfig, ancestry: CommanderCommand[], verbose: boolean): void {
@@ -176,6 +152,5 @@ export function logActiveConfig(config: ResolvedCliConfig, ancestry: CommanderCo
     return;
   }
   const layerName = ancestry.map(cmd => cmd.name()).join(' ');
-  const formattedConfig = formatConfigForDisplay(config, ancestry);
-  konsola.info(`Active config for "${layerName}":\n${formattedConfig}`, { margin: false });
+  konsola.info(`Active config for "${layerName}":\n${JSON.stringify(config)}`, { margin: false });
 }

@@ -70,11 +70,12 @@ componentsCommand
     });
 
     try {
-      // Read components data
+      // Read components data from source space (from option or target space)
+      const sourceSpace = options.from || space;
       const componentsData = await readComponentsFiles({
         ...options,
         path,
-        space,
+        space: sourceSpace,
       });
 
       // Combine into the expected structure

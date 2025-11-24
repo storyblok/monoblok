@@ -60,11 +60,13 @@ datasourcesCommand
     });
 
     try {
+      // Read datasources data from source space (from option or target space)
+      const sourceSpace = options.from || space;
       const spaceState: SpaceDatasourcesDataState = {
         local: await readDatasourcesFiles({
           ...options,
           path,
-          space,
+          space: sourceSpace,
         }),
         target: {
           datasources: new Map(),

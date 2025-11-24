@@ -29,7 +29,8 @@ componentsCommand
     const verbose = program.opts().verbose;
     const { space, path } = componentsCommand.opts();
 
-    const { from, filter } = options;
+    const { filter } = options;
+    const fromSpace = options.from || space;
 
     // Check if the user is logged in
     const { state, initializeSession } = session();
@@ -44,13 +45,7 @@ componentsCommand
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
-
-    if (!from) {
-      // If no source space is provided, use the target space as source
-      options.from = space;
-    }
-
-    konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(options.from)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
+    konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
     konsola.br();
 
     const { password, region } = state;
@@ -71,11 +66,10 @@ componentsCommand
 
     try {
       // Read components data from source space (from option or target space)
-      const sourceSpace = options.from || space;
       const componentsData = await readComponentsFiles({
         ...options,
         path,
-        space: sourceSpace,
+        space: fromSpace,
       });
 
       // Combine into the expected structure

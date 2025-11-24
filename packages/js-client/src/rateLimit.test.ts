@@ -148,7 +148,7 @@ describe('rateLimit', () => {
     });
 
     describe('cached requests', () => {
-      it('should use 1000 req/s for published version', () => {
+      it('should use 1000 req/s for published version when no config provided', () => {
         const params: ISbStoriesParams = {
           version: StoryblokContentVersion.PUBLISHED,
         };
@@ -160,6 +160,40 @@ describe('rateLimit', () => {
         const params: ISbStoriesParams = {};
         const result = determineRateLimit('/cdn/stories', params);
         expect(result).toBe(1000);
+      });
+
+      it('should apply user rate limit to published version', () => {
+        const params: ISbStoriesParams = {
+          version: StoryblokContentVersion.PUBLISHED,
+        };
+        const config = {
+          userRateLimit: 50,
+        };
+        const result = determineRateLimit('/cdn/stories', params, config);
+        expect(result).toBe(50);
+      });
+
+      it('should apply server rate limit to published version when no user limit', () => {
+        const params: ISbStoriesParams = {
+          version: StoryblokContentVersion.PUBLISHED,
+        };
+        const config = {
+          serverHeadersRateLimit: 75,
+        };
+        const result = determineRateLimit('/cdn/stories', params, config);
+        expect(result).toBe(75);
+      });
+
+      it('should prefer user rate limit over default 1000 for published', () => {
+        const params: ISbStoriesParams = {
+          version: StoryblokContentVersion.PUBLISHED,
+        };
+        const config = {
+          userRateLimit: 10,
+          serverHeadersRateLimit: 100,
+        };
+        const result = determineRateLimit('/cdn/stories', params, config);
+        expect(result).toBe(10);
       });
     });
 

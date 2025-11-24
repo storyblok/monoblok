@@ -1626,7 +1626,7 @@ describe('storyblokClient', () => {
       expect(queues.has(15)).toBe(true); // First request queue still exists
     });
 
-    it('should apply user rate limit only to uncached requests', async () => {
+    it('should apply user rate limit to all requests', async () => {
       // Override the global sbFetch mock for this test
       const mockData = {
         data: { stories: [] },
@@ -1659,18 +1659,15 @@ describe('storyblokClient', () => {
       expect(queues.has(20)).toBe(true);
       expect(queues.has(6)).toBe(false);
 
-      // Now test that cached requests ignore user rate limit
       await client.get('cdn/stories', { version: 'published', per_page: 100 });
-
-      // Should now have two queues:
-      // - 20 req/s for draft (user limit applies)
-      // - 1000 req/s for cached (user limit doesn't apply, uses automatic)
+      // Should still have only one queue:
+      // - 20 req/s for both draft and published (user limit applies to all)
       // @ts-expect-error - accessing private property for testing
       queues = client.throttleManager.queues;
 
-      expect(queues.size).toBe(2);
+      expect(queues.size).toBe(1);
       expect(queues.has(20)).toBe(true);
-      expect(queues.has(1000)).toBe(true);
+      expect(queues.has(1000)).toBe(false); // Should NOT use automatic 1000 req/s
       expect(queues.has(6)).toBe(false); // Should never use automatic 6 req/s
     });
   });

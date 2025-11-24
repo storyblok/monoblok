@@ -143,7 +143,7 @@ We added retro-compatibility when using `resolve_assets: 1` parameter under V2. 
   - (`responseInterceptor` Function, optional - You can pass a function and return the result. For security reasons, Storyblok client will deal only with the response interceptor.)
   - (`region` String, optional)
   - (`https` Boolean, optional)
-  - (`rateLimit` Integer, optional - Custom rate limit for **uncached requests only** (requests with `version=draft`). When not provided, the client automatically uses optimal rate limits based on the request type: 50 req/s for single entries or small listings (≤25 items), 15 req/s for medium listings (26-50 items), 10 req/s for large listings (51-75 items), and 6 req/s for very large listings (76-100 items). Cached requests (version=published) always use 1000 req/s. The maximum rate limit is capped at 1000 req/s. For Management API with `oauthToken`, defaults to 3 req/s for backward compatibility.)
+  - (`rateLimit` Integer, optional - Custom rate limit for **all requests**. When set, this overrides all automatic rate limiting. When not provided, the client automatically uses optimal rate limits based on the request type: for uncached requests (version=draft), it uses 50 req/s for single entries or small listings (≤25 items), 15 req/s for medium listings (26-50 items), 10 req/s for large listings (51-75 items), and 6 req/s for very large listings (76-100 items); for cached requests (version=published), it uses 1000 req/s. The maximum rate limit is capped at 1000 req/s. For Management API with `oauthToken`, defaults to 3 req/s.)
   - (`timeout` Integer, optional)
   - (`maxRetries` Integer, optional, defaults to 5)
   - (`resolveNestedRelations` Boolean, optional - By default is true)

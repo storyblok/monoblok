@@ -95,7 +95,7 @@ describe('push datasources actions', () => {
           expect(error).toBeInstanceOf(FileSystemError);
           expect((error as FileSystemError).message).toContain('No local datasources found for space source-space');
           expect((error as FileSystemError).message).toContain('storyblok datasources pull --space source-space');
-          expect((error as FileSystemError).message).toContain('storyblok datasources push --space target-space --from source-space');
+          expect((error as FileSystemError).message).toContain('storyblok datasources push --space <target_space> --from source-space');
         }
       });
     });

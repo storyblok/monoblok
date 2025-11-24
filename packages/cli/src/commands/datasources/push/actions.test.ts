@@ -372,6 +372,25 @@ describe('push datasources actions', () => {
         expect(result.datasources).toContainEqual(mockDatasource1);
         expect(result.datasources).toContainEqual(mockDatasource2);
       });
+
+      it('should use the target space as from space if from option is omitted', async () => {
+        // When from is not specified, it should use the target space
+        vol.fromJSON({
+          '/mock/path/datasources/target-space/datasources.json': JSON.stringify([mockDatasource1, mockDatasource2]),
+        });
+
+        const result = await readDatasourcesFiles({
+          from: undefined,
+          path: '/mock/path',
+          space: 'target-space',
+          separateFiles: false,
+          verbose: false,
+        });
+
+        expect(result.datasources).toHaveLength(2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
+      });
     });
   });
 });

@@ -139,20 +139,21 @@ export const upsertDatasourceEntry = async (
 
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
   const { from, path, separateFiles = false, suffix, space } = options;
-  const resolvedPath = resolvePath(path, `datasources/${from}`);
+  const sourceSpace = from ?? space;
+  const resolvedPath = resolvePath(path, `datasources/${sourceSpace}`);
 
   // Check if directory exists first
   try {
     await readdir(resolvedPath);
   }
   catch (error) {
-    const message = `No local datasources found for space ${chalk.bold(from)}. To push datasources, you need to pull them first:
+    const message = `No local datasources found for space ${chalk.bold(sourceSpace)}. To push datasources, you need to pull them first:
 
 1. Pull the datasources from your source space:
-   ${chalk.cyan(`storyblok datasources pull --space ${from}`)}
+   ${chalk.cyan(`storyblok datasources pull --space ${sourceSpace}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok datasources push --space ${space} --from ${from}`)}`;
+   ${chalk.cyan(`storyblok datasources push --space <target_space> --from ${sourceSpace}`)}`;
 
     throw new FileSystemError(
       'file_not_found',

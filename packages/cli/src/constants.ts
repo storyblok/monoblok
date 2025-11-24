@@ -10,6 +10,7 @@ export const commands = {
   TYPES: 'types',
   DATASOURCES: 'datasources',
   CREATE: 'create',
+  LOGS: 'logs',
 } as const;
 
 export const colorPalette = {
@@ -27,6 +28,7 @@ export const colorPalette = {
   TAGS: '#fbbf24',
   PRESETS: '#a855f7',
   DATASOURCES: '#4ade80',
+  LOGS: '#4ade80',
 } as const;
 
 export interface ReadonlyArray<T> {
@@ -83,3 +85,7 @@ export const DEFAULT_AGENT = {
 export interface SpaceOptions {
   spaceId: string;
 }
+
+export const directories = {
+  log: 'logs',
+} as const;

@@ -1,8 +1,37 @@
+import { getLogger } from '../../utils/logger';
 import { konsola } from '..';
 import type { FetchError } from '../fetch';
 import { APIError } from './api-error';
 import { CommandError } from './command-error';
 import { FileSystemError } from './filesystem-error';
+
+interface ErrorWithMessage {
+  message: string;
+}
+
+function hasMessage(error: unknown): error is ErrorWithMessage {
+  return (
+    typeof error === 'object'
+    && error !== null
+    && 'message' in error
+    && typeof (error as Record<string, unknown>).message === 'string'
+  );
+}
+
+export function toError(maybeError: unknown) {
+  if (maybeError instanceof Error) { return maybeError; }
+  if (typeof maybeError === 'string') { return new Error(maybeError); }
+  if (hasMessage(maybeError)) { return new Error(maybeError.message); }
+
+  try {
+    return new Error(JSON.stringify(maybeError));
+  }
+  catch {
+    // fallback in case there's an error stringifying the maybeError
+    // like with circular references for example.
+    return new Error(String(maybeError));
+  }
+}
 
 function handleVerboseError(error: unknown): void {
   if (error instanceof CommandError || error instanceof APIError || error instanceof FileSystemError) {
@@ -51,6 +80,6 @@ export function handleError(error: Error | FetchError, verbose = false): void {
 
   if (!process.env.VITEST) {
     console.log(''); // Add a line break for readability
-    // process.exit(1) // Exit process if not in a test environment
   }
+  getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR' });
 }

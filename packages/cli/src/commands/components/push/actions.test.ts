@@ -454,6 +454,24 @@ describe('push components actions', () => {
         expect(result.components[0]).toEqual(mockComponent1);
       });
 
+      it('should use the target space as from space if from option is omitted', async () => {
+        // When from is not specified, it should use the target space
+        vol.fromJSON({
+          '/mock/path/components/target-space/components.json': JSON.stringify([mockComponent1, mockComponent2]),
+        });
+
+        const result = await readComponentsFiles({
+          from: undefined,
+          path: '/mock/path',
+          space: 'target-space',
+          separateFiles: false,
+          verbose: false,
+        });
+        expect(result.components).toHaveLength(2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
+      });
+
       it('should read from different source space than target space', async () => {
         // Simulate cross-space migration scenario
         vol.fromJSON({

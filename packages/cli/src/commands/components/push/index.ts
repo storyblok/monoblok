@@ -69,7 +69,7 @@ componentsCommand
       const componentsData = await readComponentsFiles({
         ...options,
         path,
-        space: fromSpace,
+        space,
       });
 
       // Combine into the expected structure

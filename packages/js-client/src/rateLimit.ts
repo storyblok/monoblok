@@ -1,5 +1,5 @@
 import type { ISbStoriesParams } from './interfaces';
-import { StoryblokContentVersion } from './constants';
+import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS, StoryblokContentVersion } from './constants';
 
 export interface RateLimitConfig {
   // User-provided rate limit (applies only to uncached requests)
@@ -20,9 +20,9 @@ export interface RateLimitHeaders {
  */
 const UNCACHED_RATE_LIMITS = {
   SINGLE_OR_SMALL: 50, // Single entries or listings ≤25 entries
-  MEDIUM: 15, // 25-50 entries
-  LARGE: 10, // 50-75 entries
-  VERY_LARGE: 6, // 75-100 entries
+  MEDIUM: 15, // 26-50 entries
+  LARGE: 10, // 51-75 entries
+  VERY_LARGE: 6, // 76-100 entries
 } as const;
 
 /**
@@ -61,13 +61,13 @@ function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
  * based on the number of entries requested (per_page parameter)
  */
 function getUncachedRateLimitTier(perPage: number): number {
-  if (perPage <= 25) {
+  if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
     return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
   }
-  else if (perPage <= 50) {
+  else if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
     return UNCACHED_RATE_LIMITS.MEDIUM;
   }
-  else if (perPage <= 75) {
+  else if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
     return UNCACHED_RATE_LIMITS.LARGE;
   }
   else {
@@ -123,7 +123,7 @@ export function determineRateLimit(
   }
 
   // For listings, determine tier based on per_page
-  const perPage = params!.per_page || 25; // Default per_page is 25
+  const perPage = params!.per_page || DEFAULT_PER_PAGE;
   return getUncachedRateLimitTier(perPage);
 }
 

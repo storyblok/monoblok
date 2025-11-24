@@ -60,7 +60,7 @@ datasourcesCommand
         local: await readDatasourcesFiles({
           ...options,
           path,
-          space,
+          from: fromSpace,
         }),
         target: {
           datasources: new Map(),

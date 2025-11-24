@@ -250,22 +250,21 @@ export const upsertComponentInternalTag = async (
 
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<ComponentsData> => {
-  const { from, path, space, separateFiles = false, suffix } = options;
-  const sourceSpace = from ?? space;
-  const resolvedPath = resolvePath(path, `components/${sourceSpace}`);
+  const { from, path, separateFiles = false, suffix } = options;
+  const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
   try {
     await readdir(resolvedPath);
   }
   catch (error) {
-    const message = `No local components found for space ${chalk.bold(sourceSpace)}. To push components, you need to pull them first:
+    const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:
 
 1. Pull the components from your source space:
-   ${chalk.cyan(`storyblok components pull --space ${sourceSpace}`)}
+   ${chalk.cyan(`storyblok components pull --space ${from}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok components push --space <target_space> --from ${sourceSpace}`)}`;
+   ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
 
     throw new FileSystemError(
       'file_not_found',

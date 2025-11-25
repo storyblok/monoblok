@@ -97,21 +97,20 @@ const preconditions = {
   canUpdateStory() {
     vi.mocked(updateStory).mockResolvedValue(mockStory);
   },
-  canLoadMigrationFunction(filePath = MIGRATION_FUNCTION_FILE_PATH) {
+  canLoadMigrationFunction(mockMigrationFn = (block: any) => ({ ...block, migrated: true })) {
     vol.fromJSON({
-      [filePath]: 'only the filename matters!',
+      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
     });
-    const mockMigrationFn = (block: any) => ({ ...block, migrated: true });
     const importModuleSpy = vi.spyOn(filesystem, 'importModule');
     importModuleSpy.mockImplementation(() => Promise.resolve({ default: mockMigrationFn }));
   },
-  canNotLoadMigrationFunction(filePath = MIGRATION_FUNCTION_FILE_PATH) {
+  canNotLoadMigrationFunction() {
     this.canFetchStories();
     this.canFetchStory();
     vol.fromJSON({
-      [filePath]: 'only the filename matters!',
+      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
     });
-    vi.doMock(resolve(filePath), () => {
+    vi.doMock(resolve(MIGRATION_FUNCTION_FILE_PATH), () => {
       throw new Error('Cannot find module');
     });
   },
@@ -123,6 +122,12 @@ const preconditions = {
     this.canFetchStory();
     this.canUpdateStory();
     this.canLoadMigrationFunction();
+  },
+  canMigrateNoChange() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canUpdateStory();
+    this.canLoadMigrationFunction((block: any) => block);
   },
 };
 
@@ -190,6 +195,32 @@ describe('migrations run command', () => {
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Update Results: 1 stories updated.'),
     );
+  });
+
+  it('should report a run with only skipped migrations as success', async () => {
+    preconditions.canMigrateNoChange();
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+
+    const reportFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
+    expect(JSON.parse(reportFile || '{}')).toMatchObject({
+      status: 'SUCCESS',
+      meta: expect.any(Object),
+      summary: {
+        migrationResults: {
+          failed: 0,
+          skipped: 1,
+          succeeded: 0,
+          total: 1,
+        },
+        updateResults: {
+          failed: 0,
+          succeeded: 0,
+          total: 0,
+        },
+      },
+    });
   });
 
   it('should gracefully handle error while loading migration', async () => {

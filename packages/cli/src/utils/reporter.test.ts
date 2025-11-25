@@ -14,6 +14,10 @@ it('should compute status and write report when enabled', () => {
   reporterSuccess.addSummary('jobs', { total: 3, succeeded: 3, failed: 0 });
   reporterSuccess.finalize();
 
+  const reporterSuccessSkipped = new Reporter({ enabled: true, filePath: './success-skipped.json' });
+  reporterSuccessSkipped.addSummary('jobs', { total: 3, succeeded: 0, skipped: 3, failed: 0 });
+  reporterSuccessSkipped.finalize();
+
   const reporterPartial = new Reporter({ enabled: true, filePath: './partial.json' });
   reporterPartial.addSummary('jobs', { total: 3, succeeded: 2, failed: 1 });
   reporterPartial.finalize();
@@ -28,6 +32,11 @@ it('should compute status and write report when enabled', () => {
   const success = JSON.parse(files[Object.keys(files).find(k => k.includes('success.json'))!] as string);
   expect(success.status).toBe(REPORT_STATUS.success);
   expect(success.summary.jobs).toEqual({ total: 3, succeeded: 3, failed: 0 });
+
+  // Success (all skipped)
+  const successSkipped = JSON.parse(files[Object.keys(files).find(k => k.includes('success-skipped.json'))!] as string);
+  expect(successSkipped.status).toBe(REPORT_STATUS.success);
+  expect(successSkipped.summary.jobs).toEqual({ total: 3, succeeded: 0, skipped: 3, failed: 0 });
 
   // Partial success
   const partial = JSON.parse(files[Object.keys(files).find(k => k.includes('partial.json'))!] as string);

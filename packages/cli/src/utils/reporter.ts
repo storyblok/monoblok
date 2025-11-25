@@ -80,19 +80,23 @@ export class Reporter {
   }
 
   private updateStatus() {
-    const succeededTotal = Object.values(this.report.summary).reduce((acc, curr) => acc + curr.succeeded, 0);
-    const failedTotal = Object.values(this.report.summary).reduce((acc, curr) => acc + curr.failed, 0);
+    let succeededTotal = 0;
+    let failedTotal = 0;
 
-    if (succeededTotal > 0 && failedTotal > 0) {
-      this.report.status = REPORT_STATUS.partialSuccess;
-      return;
+    for (const item of Object.values(this.report.summary)) {
+      succeededTotal += item.succeeded;
+      failedTotal += item.failed;
+    }
+
+    if (failedTotal === 0) {
+      this.report.status = REPORT_STATUS.success;
     }
     else if (succeededTotal > 0) {
-      this.report.status = REPORT_STATUS.success;
-      return;
+      this.report.status = REPORT_STATUS.partialSuccess;
     }
-
-    this.report.status = REPORT_STATUS.failure;
+    else {
+      this.report.status = REPORT_STATUS.failure;
+    }
   }
 
   private pruneOldFiles(): void {

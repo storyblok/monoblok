@@ -132,6 +132,31 @@ const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser =
 });
 
 describe('createCommand', () => {
+  describe('--key option', () => {
+    it('should use provided key, skip space creation, and update env', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--key', 'my-access-token']);
+
+      // Should generate project
+      expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
+      // Should create .env file with provided key
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), 'my-access-token');
+      // Should NOT create space or open browser
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(openSpaceInBrowser).not.toHaveBeenCalled();
+      // Should show success message
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Your react project is ready 🎉 !'),
+      );
+      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+    });
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();

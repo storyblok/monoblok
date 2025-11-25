@@ -39,6 +39,8 @@ export interface StoryblokUser {
     name: string;
   };
   has_partner: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StoryblokLoginResponse {

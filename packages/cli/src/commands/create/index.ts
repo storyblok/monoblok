@@ -1,5 +1,5 @@
 import { handleError, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
-import { colorPalette, commands } from '../../constants';
+import { colorPalette, commands, regions } from '../../constants';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
@@ -46,13 +46,13 @@ export const createCommand = program
   .option('-t, --template <template>', 'technology starter template')
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
   .option('--skip-space', 'skip space creation')
-  .option('--key <key>', 'Storyblok access token (skip space creation and use this token)')
+  .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
     // Command options - handle backward compatibility
-    const { template, blueprint, key } = options;
+    const { template, blueprint, token } = options;
 
     // Handle deprecated blueprint option
     let selectedTemplate = template;
@@ -157,12 +157,12 @@ export const createCommand = program
       await generateProject(technologyTemplate!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
-      // If key is provided, use it as the access token, skip space creation, and update env
+      // If token is provided, use it as the access token, skip space creation, and update env
       let createdSpace;
       let userData: User;
       let whereToCreateSpace = 'personal';
-      if (key) {
-        await handleEnvFileCreation(resolvedPath, key);
+      if (token) {
+        await handleEnvFileCreation(resolvedPath, token);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
@@ -195,16 +195,16 @@ export const createCommand = program
           choices.push({ name: 'Partner Portal', value: 'partner' });
         }
 
-        if (region === 'eu' && (userData.has_partner || userData.has_org)) {
+        if (region === regions.EU && (userData.has_partner || userData.has_org)) {
           whereToCreateSpace = await select({
             message: `Where would you like to create this space?`,
             choices,
           });
         }
-        if (region !== 'eu' && userData.has_org) {
+        if (region !== regions.EU && userData.has_org) {
           whereToCreateSpace = 'org';
         }
-        if (region !== 'eu' && !userData.has_org) {
+        if (region !== regions.EU && !userData.has_org) {
           konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
           konsola.br();
           return;

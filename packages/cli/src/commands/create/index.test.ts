@@ -132,8 +132,8 @@ const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser =
 });
 
 describe('createCommand', () => {
-  describe('--key option', () => {
-    it('should use provided key, skip space creation, and update env', async () => {
+  describe('--token option', () => {
+    it('should use provided token, skip space creation, and update env', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createEnvFile).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -141,11 +141,11 @@ describe('createCommand', () => {
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
       ]);
 
-      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--key', 'my-access-token']);
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token']);
 
       // Should generate project
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
-      // Should create .env file with provided key
+      // Should create .env file with provided token
       expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), 'my-access-token');
       // Should NOT create space or open browser
       expect(createSpace).not.toHaveBeenCalled();

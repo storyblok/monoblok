@@ -13,6 +13,29 @@ import { mapiClient } from '../../api';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
 
+// Helper to show next steps and project ready message
+function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
+  konsola.br();
+  konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
+  konsola.br();
+  konsola.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
+  konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+}
+
+// Helper to create .env file and handle errors
+async function handleEnvFileCreation(resolvedPath: string, token: string) {
+  try {
+    await createEnvFile(resolvedPath, token);
+    konsola.ok(`Created .env file with Storyblok access token`, true);
+    return true;
+  }
+  catch (error) {
+    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+    konsola.info(`You can manually add this token to your .env file: ${token}`);
+    return false;
+  }
+}
+
 const program = getProgram(); // Get the shared singleton instance
 
 // Create root command
@@ -23,12 +46,13 @@ export const createCommand = program
   .option('-t, --template <template>', 'technology starter template')
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
   .option('--skip-space', 'skip space creation')
+  .option('--key <key>', 'Storyblok access token (skip space creation and use this token)')
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
     // Command options - handle backward compatibility
-    const { template, blueprint } = options;
+    const { template, blueprint, key } = options;
 
     // Handle deprecated blueprint option
     let selectedTemplate = template;
@@ -133,10 +157,15 @@ export const createCommand = program
       await generateProject(technologyTemplate!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
-      // Only fetch user info and create space if skipSpace is not set
+      // If key is provided, use it as the access token, skip space creation, and update env
       let createdSpace;
       let userData: User;
       let whereToCreateSpace = 'personal';
+      if (key) {
+        await handleEnvFileCreation(resolvedPath, key);
+        showNextSteps(technologyTemplate!, finalProjectPath);
+        return;
+      }
       if (!options.skipSpace) {
         try {
           try {
@@ -199,14 +228,7 @@ export const createCommand = program
 
           // Create .env file with the Storyblok token
           if (createdSpace?.first_token) {
-            try {
-              await createEnvFile(resolvedPath, createdSpace.first_token);
-              konsola.ok(`Created .env file with Storyblok access token`, true);
-            }
-            catch (error) {
-              konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
-              konsola.info(`You can manually add this token to your .env file: ${createdSpace.first_token}`);
-            }
+            await handleEnvFileCreation(resolvedPath, createdSpace.first_token);
           }
 
           // Open the space in the browser
@@ -222,9 +244,8 @@ export const createCommand = program
             }
           }
 
-          // Show next steps
-          konsola.br();
-          konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
+          // Show next steps and space info
+          showNextSteps(technologyTemplate!, finalProjectPath);
           if (createdSpace?.first_token) {
             if (whereToCreateSpace === 'org') {
               konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
@@ -246,17 +267,10 @@ export const createCommand = program
       }
       else {
         // If skipSpace, just show next steps for the project
-        konsola.br();
-        konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
+        showNextSteps(technologyTemplate!, finalProjectPath);
       }
 
-      konsola.br();
-      konsola.info(`Next steps:
-  cd ${finalProjectPath}
-  npm install
-  npm run dev
-        `);
-      konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+      // showNextSteps is already called in each relevant branch above; do not call it again here.
     }
     catch (error) {
       spinnerSpace.failed();

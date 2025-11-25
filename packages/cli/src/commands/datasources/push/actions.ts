@@ -138,7 +138,7 @@ export const upsertDatasourceEntry = async (
 };
 
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
-  const { from, path, separateFiles = false, suffix, space } = options;
+  const { from, path, separateFiles = false, suffix } = options;
   const resolvedPath = resolvePath(path, `datasources/${from}`);
 
   // Check if directory exists first
@@ -152,7 +152,7 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
    ${chalk.cyan(`storyblok datasources pull --space ${from}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok datasources push --space ${space} --from ${from}`)}`;
+   ${chalk.cyan(`storyblok datasources push --space <target_space> --from ${from}`)}`;
 
     throw new FileSystemError(
       'file_not_found',

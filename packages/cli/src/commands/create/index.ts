@@ -64,21 +64,6 @@ export const createCommand = program
       verbose: !isVitest,
     });
 
-    let userData: User;
-
-    try {
-      const user = await getUser(password, region);
-      if (!user) {
-        throw new Error('User data is undefined');
-      }
-      userData = user;
-    }
-    catch (error) {
-      konsola.error('Failed to fetch user info. Please login again.', error);
-      konsola.br();
-      return;
-    }
-
     try {
       spinnerBlueprints.start('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
@@ -148,34 +133,51 @@ export const createCommand = program
       await generateProject(technologyTemplate!, projectName, targetDirectory);
       konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
+      // Only fetch user info and create space if skipSpace is not set
       let createdSpace;
-      const choices = [
-        { name: 'My personal account', value: 'personal' },
-      ];
-      if (userData.has_org) {
-        choices.push({ name: `Organization (${userData?.org?.name})`, value: 'org' });
-      }
-      if (userData.has_partner) {
-        choices.push({ name: 'Partner Portal', value: 'partner' });
-      }
+      let userData: User;
       let whereToCreateSpace = 'personal';
-      if (region === 'eu' && (userData.has_partner || userData.has_org)) {
-        whereToCreateSpace = await select({
-          message: `Where would you like to create this space?`,
-          choices,
-        });
-      }
-      if (region !== 'eu' && userData.has_org) {
-        whereToCreateSpace = 'org';
-      }
-      if (region !== 'eu' && !userData.has_org) {
-        konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
-        konsola.br();
-        return;
-      }
-
       if (!options.skipSpace) {
         try {
+          try {
+            const user = await getUser(password, region);
+            if (!user) {
+              throw new Error('User data is undefined');
+            }
+            userData = user;
+          }
+          catch (error) {
+            konsola.error('Failed to fetch user info. Please login again.', error);
+            konsola.br();
+            return;
+          }
+
+          // Prepare choices for space creation
+          const choices = [
+            { name: 'My personal account', value: 'personal' },
+          ];
+          if (userData.has_org) {
+            choices.push({ name: `Organization (${userData?.org?.name})`, value: 'org' });
+          }
+          if (userData.has_partner) {
+            choices.push({ name: 'Partner Portal', value: 'partner' });
+          }
+
+          if (region === 'eu' && (userData.has_partner || userData.has_org)) {
+            whereToCreateSpace = await select({
+              message: `Where would you like to create this space?`,
+              choices,
+            });
+          }
+          if (region !== 'eu' && userData.has_org) {
+            whereToCreateSpace = 'org';
+          }
+          if (region !== 'eu' && !userData.has_org) {
+            konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+            konsola.br();
+            return;
+          }
+
           spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
 
           // Find the selected blueprint from the dynamic blueprints array
@@ -194,6 +196,46 @@ export const createCommand = program
           }
           createdSpace = await createSpace(spaceToCreate);
           spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+
+          // Create .env file with the Storyblok token
+          if (createdSpace?.first_token) {
+            try {
+              await createEnvFile(resolvedPath, createdSpace.first_token);
+              konsola.ok(`Created .env file with Storyblok access token`, true);
+            }
+            catch (error) {
+              konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+              konsola.info(`You can manually add this token to your .env file: ${createdSpace.first_token}`);
+            }
+          }
+
+          // Open the space in the browser
+          if (createdSpace?.id) {
+            try {
+              await openSpaceInBrowser(createdSpace.id, region);
+              konsola.info(`Opened space in your browser`);
+            }
+            catch (error) {
+              konsola.warn(`Failed to open browser: ${(error as Error).message}`);
+              const spaceUrl = generateSpaceUrl(createdSpace.id, region);
+              konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
+            }
+          }
+
+          // Show next steps
+          konsola.br();
+          konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
+          if (createdSpace?.first_token) {
+            if (whereToCreateSpace === 'org') {
+              konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            }
+            else if (whereToCreateSpace === 'partner') {
+              konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            }
+            else {
+              konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            }
+          }
         }
         catch (error) {
           spinnerSpace.failed();
@@ -202,46 +244,12 @@ export const createCommand = program
           return;
         }
       }
-
-      // Create .env file with the Storyblok token
-      if (createdSpace?.first_token) {
-        try {
-          await createEnvFile(resolvedPath, createdSpace.first_token);
-          konsola.ok(`Created .env file with Storyblok access token`, true);
-        }
-        catch (error) {
-          konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
-          konsola.info(`You can manually add this token to your .env file: ${createdSpace.first_token}`);
-        }
+      else {
+        // If skipSpace, just show next steps for the project
+        konsola.br();
+        konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
       }
 
-      // Open the space in the browser
-      if (createdSpace?.id) {
-        try {
-          await openSpaceInBrowser(createdSpace.id, region);
-          konsola.info(`Opened space in your browser`);
-        }
-        catch (error) {
-          konsola.warn(`Failed to open browser: ${(error as Error).message}`);
-          const spaceUrl = generateSpaceUrl(createdSpace.id, region);
-          konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
-        }
-      }
-
-      // Show next steps
-      konsola.br();
-      konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
-      if (createdSpace?.first_token) {
-        if (whereToCreateSpace === 'org') {
-          konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
-        }
-        else if (whereToCreateSpace === 'partner') {
-          konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
-        }
-        else {
-          konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
-        }
-      }
       konsola.br();
       konsola.info(`Next steps:
   cd ${finalProjectPath}

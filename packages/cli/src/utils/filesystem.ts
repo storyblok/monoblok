@@ -3,7 +3,7 @@ import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 
 export interface FileOptions {
   mode?: number;
@@ -33,6 +33,28 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   // Write the file
   try {
     await writeFile(filePath, data, options);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
+export const saveToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Only attempt to create a directory if there's a directory part
+  if (resolvedPath) {
+    try {
+      mkdirSync(resolvedPath, { recursive: true });
+    }
+    catch (mkdirError) {
+      handleFileSystemError('mkdir', mkdirError as Error);
+      return; // Exit early if the directory creation fails
+    }
+  }
+
+  try {
+    writeFileSync(filePath, data, options as any);
   }
   catch (writeError) {
     handleFileSystemError('write', writeError as Error);
@@ -100,6 +122,23 @@ export const resolvePath = (path: string | undefined, folder: string) => {
 };
 
 /**
+ * Resolves the absolute path for a specific command directory.
+ *
+ * If a `space` is provided, it is appended to the `commandPath` before resolution.
+ *
+ * @param commandPath - The relative path or name of the command category.
+ * @param space - (Optional).
+ * @param baseDir - (Optional) The base directory to resolve against.
+ * @returns The fully resolved absolute path string.
+ */
+export function resolveCommandPath(commandPath: string, space?: string, baseDir?: string) {
+  if (space) {
+    return resolvePath(baseDir, join(commandPath, space));
+  }
+  return resolvePath(baseDir, commandPath);
+}
+
+/**
  * Extracts the component name from a migration filename
  * @param filename - The migration filename (e.g., "simple_component.js")
  * @returns The component name (e.g., "simple_component")
@@ -137,11 +176,4 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
 
 export function importModule(filePath: string) {
   return import(`file://${filePath}`);
-}
-
-export function getLogsPath(logFileDir: string, space?: string, baseDir?: string) {
-  if (space) {
-    return resolvePath(baseDir, join(logFileDir, space));
-  }
-  return resolvePath(baseDir, logFileDir);
 }

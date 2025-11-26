@@ -14,7 +14,7 @@ import './commands/types';
 import './commands/datasources';
 import './commands/create';
 import './commands/logs';
-import pkg from '../package.json';
+import './commands/reports';
 
 import { colorPalette } from './constants';
 
@@ -26,10 +26,6 @@ const program = getProgram();
 konsola.br();
 konsola.br();
 konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
-
-program.option('--verbose', 'Enable verbose output');
-program.version(pkg.version, '-v, --vers', 'Output the current version');
-program.helpOption('-h, --help', 'Display help for command');
 
 program.on('command:*', () => {
   console.error(`Invalid command: ${program.args.join(' ')}`);

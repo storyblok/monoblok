@@ -7,7 +7,7 @@ import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
 import { mapiClient } from '../../../api';
 import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../utils/logger';
+import { getLogger } from '../../../lib/logger/logger';
 import chalk from 'chalk';
 
 migrationsCommand.command('rollback [migrationFile]')

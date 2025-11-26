@@ -4,7 +4,7 @@ import path from 'node:path';
 // Import the main components module first to ensure proper initialization
 import '../index';
 import { logsCommand } from '../command';
-import { getLogsPath } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -12,7 +12,7 @@ vi.mock('node:fs/promises');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'log');
 
-const LOGS_FILE_DIR = getLogsPath('logs', '12345');
+const LOGS_FILE_DIR = resolveCommandPath('logs', '12345');
 
 const preconditions = {
   hasLogFiles() {

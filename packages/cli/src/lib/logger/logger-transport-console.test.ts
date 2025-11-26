@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { ConsoleTransport } from './logger-transport-console';
-import { APIError } from './error';
-import { FetchError } from './fetch';
+import { APIError } from '../../utils/error';
+import { FetchError } from '../../utils/fetch';
 
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'warn');

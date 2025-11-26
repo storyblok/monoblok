@@ -1,4 +1,4 @@
-import { APIError } from './error';
+import { APIError } from '../../utils/error';
 import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
 
 export interface ConsoleTransportOptions {

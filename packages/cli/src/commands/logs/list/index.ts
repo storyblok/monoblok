@@ -1,7 +1,7 @@
-import { getLogsPath } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { logsCommand } from '../command';
-import { FileTransport } from '../../../utils/logger-transport-file';
+import { FileTransport } from '../../../lib/logger/logger-transport-file';
 import { directories } from '../../../constants';
 
 logsCommand.command('list')
@@ -9,7 +9,7 @@ logsCommand.command('list')
   .action(async () => {
     const { space, path } = logsCommand.opts();
     const ui = getUI();
-    const logsPath = getLogsPath(directories.log, space, path);
+    const logsPath = resolveCommandPath(directories.log, space, path);
     const logFiles = FileTransport.listLogFiles(logsPath);
 
     if (logFiles.length === 0) {

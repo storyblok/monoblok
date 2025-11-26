@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import { FileTransport } from './logger-transport-file';
-import { APIError } from './error';
-import { FetchError } from './fetch';
+import { APIError } from '../../utils/error';
+import { FetchError } from '../../utils/fetch';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');

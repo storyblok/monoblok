@@ -1,6 +1,7 @@
 import { getProgram } from '../../../program';
 import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../utils/logger';
+import { getLogger } from '../../../lib/logger/logger';
+import { getReporter } from '../../../lib/reporter/reporter';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
@@ -24,6 +25,7 @@ migrationsCommand.command('run [componentName]')
     const program = getProgram();
     const ui = getUI();
     const logger = getLogger();
+    const reporter = getReporter();
 
     ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Running migrations for component ${componentName}...` : 'Running migrations...');
     logger.info('Migration started');
@@ -150,22 +152,27 @@ migrationsCommand.command('run [componentName]')
       const updateSummary = updateStream.getSummary();
       ui.info(updateSummary);
 
-      const migrationResults = migrationStream.getResults();
-      const updateResults = updateStream.getResults();
+      const migrationStreamResults = migrationStream.getResults();
+      const migrationResults = {
+        total: migrationStreamResults.totalProcessed,
+        succeeded: migrationStreamResults.successful.length,
+        skipped: migrationStreamResults.skipped.length,
+        failed: migrationStreamResults.failed.length,
+      };
+      const updateStreamResults = updateStream.getResults();
+      const updateResults = {
+        total: updateStreamResults.totalProcessed,
+        succeeded: updateStreamResults.successful.length,
+        failed: updateStreamResults.failed.length,
+      };
 
       logger.info('Migration finished', {
-        migrationResults: {
-          total: migrationResults.totalProcessed,
-          succeeded: migrationResults.successful.length,
-          skipped: migrationResults.skipped.length,
-          failed: migrationResults.failed.length,
-        },
-        updateResults: {
-          total: updateResults.totalProcessed,
-          succeeded: updateResults.successful.length,
-          failed: updateResults.failed.length,
-        },
+        migrationResults,
+        updateResults,
       });
+      reporter.addSummary('migrationResults', migrationResults);
+      reporter.addSummary('updateResults', updateResults);
+      reporter.finalize();
     }
     catch (error) {
       handleError(error as Error, verbose);

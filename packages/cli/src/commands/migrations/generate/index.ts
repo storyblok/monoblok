@@ -10,7 +10,7 @@ import { migrationsCommand } from '../command';
 import { generateMigration } from './actions';
 import { mapiClient } from '../../../api';
 import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../utils/logger';
+import { getLogger } from '../../../lib/logger/logger';
 
 migrationsCommand
   .command('generate [componentName]')

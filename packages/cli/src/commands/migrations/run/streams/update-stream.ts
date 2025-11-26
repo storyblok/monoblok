@@ -3,7 +3,7 @@ import { Sema } from 'async-sema';
 import type { Story, StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
-import { getLogger } from '../../../../utils/logger';
+import { getLogger } from '../../../../lib/logger/logger';
 import { ERROR_CODES } from '../constants';
 import { toError } from '../../../../utils/error';
 

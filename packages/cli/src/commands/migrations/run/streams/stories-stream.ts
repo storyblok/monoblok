@@ -4,7 +4,7 @@ import { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams } from '../../../stories/constants';
 import { handleAPIError, toError } from '../../../../utils/error';
-import { getLogger } from '../../../../utils/logger';
+import { getLogger } from '../../../../lib/logger/logger';
 import { ERROR_CODES } from '../constants';
 
 /**

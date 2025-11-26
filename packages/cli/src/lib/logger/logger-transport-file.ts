@@ -1,8 +1,8 @@
 import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
-import { appendToFileSync } from './filesystem';
+import { appendToFileSync } from '../../utils/filesystem';
 import { existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
-import { APIError } from './error/api-error';
+import { APIError } from '../../utils/error/api-error';
 
 export interface FileTransportOptions {
   filePath?: string;

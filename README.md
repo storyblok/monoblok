@@ -4,7 +4,7 @@
   </a>
   <h1 align="center">Monoblok</h1>
   <p align="center">
-    A monorepo that consolidates all open source projects from the Storyblok organization. This project aims to centralize the development, maintenance, and contribution to Storyblok's ecosystem of SDKs and tools.
+    A monorepo that consolidates all JavaScript projects from the Storyblok organization. This project aims to centralize the development, maintenance, and contribution to Storyblok's ecosystem of SDKs and tools.
   </p>
 </div>
 
@@ -22,7 +22,7 @@
 
 ## 📦  Packages
 
-This monorepo contains all official Storyblok SDKs and integrations:
+This monorepo contains the following official Storyblok SDKs and integrations:
 
 ### Core SDKs
 

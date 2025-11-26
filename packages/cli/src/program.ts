@@ -3,11 +3,11 @@ import type { NormalizedPackageJson } from 'read-package-up';
 import { readPackageUp } from 'read-package-up';
 import path from 'node:path';
 import { __dirname, handleError } from './utils';
-import type { LogTransport } from './utils/logger';
-import { getLogger } from './utils/logger';
+import type { LogTransport } from './lib/logger/logger';
+import { getLogger } from './lib/logger/logger';
 import { getUI } from './utils/ui';
-import { getReporter } from './utils/reporter';
-import { FileTransport } from './utils/logger-transport-file';
+import { getReporter } from './lib/reporter/reporter';
+import { FileTransport } from './lib/logger/logger-transport-file';
 import { resolveCommandPath } from './utils/filesystem';
 import { directories } from './constants';
 

@@ -5,7 +5,7 @@ import { applyMigrationToAllBlocks, getMigrationFunction } from '../actions';
 import { getComponentNameFromFilename } from '../../../../utils/filesystem';
 import { hash } from 'ohash';
 import { saveRollbackData } from '../../rollback/actions';
-import { getLogger } from '../../../../utils/logger';
+import { getLogger } from '../../../../lib/logger/logger';
 import { toError } from '../../../../utils/error';
 
 export interface MigrationStreamOptions {

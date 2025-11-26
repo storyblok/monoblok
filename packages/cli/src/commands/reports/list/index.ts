@@ -1,6 +1,6 @@
 import { directories } from '../../../constants';
 import { resolveCommandPath } from '../../../utils/filesystem';
-import { Reporter } from '../../../utils/reporter';
+import { Reporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { reportsCommand } from '../command';
 

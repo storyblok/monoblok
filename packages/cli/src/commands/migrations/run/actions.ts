@@ -6,7 +6,7 @@ import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from 
 import { createRegexFromGlob } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';
 import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../utils/logger';
+import { getLogger } from '../../../lib/logger/logger';
 
 export async function readMigrationFiles(options: ReadMigrationFilesOptions): Promise<MigrationFile[]> {
   const { space, path, filter } = options;

@@ -1,7 +1,7 @@
 import { getProgram } from '../../../program';
 import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../utils/logger';
-import { getReporter } from '../../../utils/reporter';
+import { getLogger } from '../../../lib/logger/logger';
+import { getReporter } from '../../../lib/reporter/reporter';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';

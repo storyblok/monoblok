@@ -1,4 +1,4 @@
-import { getLogger } from '../../utils/logger';
+import { getLogger } from '../../lib/logger/logger';
 import { konsola } from '..';
 import type { FetchError } from '../fetch';
 import { APIError } from './api-error';

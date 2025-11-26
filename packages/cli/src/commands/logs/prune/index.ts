@@ -1,7 +1,7 @@
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { logsCommand } from '../command';
-import { FileTransport } from '../../../utils/logger-transport-file';
+import { FileTransport } from '../../../lib/logger/logger-transport-file';
 import { directories } from '../../../constants';
 
 logsCommand.command('prune')

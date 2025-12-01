@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { markdownToStoryblokRichtext } from './markdown-parser';
+import Heading from '@tiptap/extension-heading';
+import Paragraph from '@tiptap/extension-paragraph';
 
 describe('markdownToStoryblokRichtext', () => {
   it('parses headings', () => {
@@ -61,10 +63,10 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'bullet_list',
+          type: 'bulletList',
           content: [
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -73,7 +75,7 @@ describe('markdownToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -94,10 +96,10 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'ordered_list',
+          type: 'orderedList',
           content: [
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -106,7 +108,7 @@ describe('markdownToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'list_item',
+              type: 'listItem',
               content: [
                 {
                   type: 'paragraph',
@@ -128,16 +130,16 @@ describe('markdownToStoryblokRichtext', () => {
       content: [
         {
           type: 'paragraph',
-          content: [
-            {
-              type: 'image',
-              attrs: {
-                src: 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg',
-                alt: 'Alt text for image',
-                title: 'Image Title',
-              },
-            },
-          ],
+        },
+        {
+          type: 'image',
+          attrs: {
+            src: 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg',
+            alt: 'Alt text for image',
+            title: 'Image Title',
+            height: null,
+            width: null,
+          },
         },
       ],
     });
@@ -156,7 +158,7 @@ describe('markdownToStoryblokRichtext', () => {
               type: 'tableRow',
               content: [
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -166,7 +168,7 @@ describe('markdownToStoryblokRichtext', () => {
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -176,7 +178,7 @@ describe('markdownToStoryblokRichtext', () => {
                   attrs: { colspan: 1, rowspan: 1, colwidth: null },
                 },
                 {
-                  type: 'tableCell',
+                  type: 'tableHeader',
                   content: [
                     {
                       type: 'paragraph',
@@ -364,7 +366,7 @@ describe('markdownToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'This is ' },
-            { type: 'code', text: 'inline code', marks: [{ type: 'code' }] },
+            { type: 'text', text: 'inline code', marks: [{ type: 'code' }] },
             { type: 'text', text: '.' },
           ],
         },
@@ -379,7 +381,7 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'code_block',
+          type: 'codeBlock',
           attrs: { language: 'js' },
           content: [
             { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);\n' },
@@ -425,38 +427,50 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'paragraph',
           content: [
-            { type: 'text', text: 'This is a ' },
             {
+              text: 'This is a ',
               type: 'text',
-              text: 'Storyblok ',
-              marks: [
-                {
-                  type: 'link',
-                  attrs: {
-                    href: 'https://www.storyblok.com/',
-                  },
-                },
-              ],
             },
             {
-              type: 'text',
-              text: 'link',
               marks: [
+                {
+                  attrs: {
+                    class: null,
+                    href: 'https://www.storyblok.com/',
+                    rel: null,
+                    target: null,
+                  },
+                  type: 'link',
+                },
+              ],
+              text: 'Storyblok ',
+              type: 'text',
+            },
+            {
+              marks: [
+                {
+                  attrs: {
+                    class: null,
+                    href: 'https://www.storyblok.com/',
+                    rel: null,
+                    target: null,
+                  },
+                  type: 'link',
+                },
                 {
                   type: 'italic',
                 },
-                {
-                  type: 'link',
-                  attrs: {
-                    href: 'https://www.storyblok.com/',
-                  },
-                },
               ],
+              text: 'link',
+              type: 'text',
             },
-            { type: 'text', text: '.' },
+            {
+              text: '.',
+              type: 'text',
+            },
           ],
+          type: 'paragraph',
         },
       ],
     });
@@ -475,7 +489,7 @@ describe('markdownToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontal_rule',
+          type: 'horizontalRule',
         },
         {
           type: 'paragraph',
@@ -515,7 +529,7 @@ describe('markdownToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'Line with a hard break here.' },
-            { type: 'hard_break' },
+            { type: 'hardBreak' },
             { type: 'text', text: 'Next line after break.' },
           ],
         },
@@ -561,8 +575,8 @@ describe('markdownToStoryblokRichtext', () => {
               type: 'text',
               text: 'italic',
               marks: [
-                { type: 'italic' },
                 { type: 'bold' },
+                { type: 'italic' },
               ],
             },
           ],
@@ -633,10 +647,10 @@ describe('markdownToStoryblokRichtext', () => {
                   },
                 },
                 {
-                  type: 'italic',
+                  type: 'bold',
                 },
                 {
-                  type: 'bold',
+                  type: 'italic',
                 },
               ],
               text: 'bold and italic link',
@@ -647,14 +661,21 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
-  it('uses a custom heading resolver', () => {
-    const md = '# Custom Heading';
-    const result = markdownToStoryblokRichtext(md, {
-      resolvers: {
-        heading_open: (node, children) => ({
-          type: 'heading',
-          attrs: { level: 99, custom: true }, // Custom level and attribute
-          content: children,
+  it('allows using custom Tiptap extensions', () => {
+    const markdown = '## Custom Heading';
+    const result = markdownToStoryblokRichtext(markdown, {
+      tiptapExtensions: {
+        heading: Heading.extend({
+          addAttributes() {
+            return {
+              ...this.parent?.(),
+              level: {
+                parseHTML: () => {
+                  return 99;
+                },
+              },
+            };
+          },
         }),
       },
     });
@@ -663,21 +684,30 @@ describe('markdownToStoryblokRichtext', () => {
       content: [
         {
           type: 'heading',
-          attrs: { level: 99, custom: true },
-          content: [{ type: 'text', text: 'Custom Heading' }],
+          attrs: { level: 99 },
+          content: [
+            { type: 'text', text: 'Custom Heading' },
+          ],
         },
       ],
     });
   });
 
-  it('uses a custom paragraph resolver', () => {
+  it('uses a custom paragraph Tiptap extension', () => {
     const md = 'Paragraph with custom attr.';
     const result = markdownToStoryblokRichtext(md, {
-      resolvers: {
-        paragraph_open: (node, children) => ({
-          type: 'paragraph',
-          attrs: { custom: 'yes' },
-          content: children,
+      tiptapExtensions: {
+        paragraph: Paragraph.extend({
+          addAttributes() {
+            return {
+              ...this.parent?.(),
+              custom: {
+                parseHTML: () => {
+                  return 'yes';
+                },
+              },
+            };
+          },
         }),
       },
     });
@@ -692,8 +722,4 @@ describe('markdownToStoryblokRichtext', () => {
       ],
     });
   });
-
-  // Add more tests as new features are supported
 });
-
-// Inline comments explain the purpose of each test and expected output structure.

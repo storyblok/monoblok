@@ -9,7 +9,7 @@ storyblok create [project-path]
 ```
 
 This will start an interactive process where you can choose your technology stack and project path. The command will:
-1. Scaffold a new project using your selected blueprint
+1. Scaffold a new project using your selected template
 2. Create a new Storyblok space for your project
 3. Generate a `.env` file with your space's access token
 4. Open your new space in the browser
@@ -18,12 +18,13 @@ This will start an interactive process where you can choose your technology stac
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-b, --blueprint <blueprint>` | Technology starter blueprint (react, vue, svelte, astro, nuxt, next, eleventy) | Interactive selection |
+| `-t, --template <template>` | Technology starter template (react, vue, svelte, astro, nuxt, next, eleventy) | Interactive selection |
 | `--skip-space` | Skip space creation and only generate the project | `false` |
+| `--token` | Skip space creation and generate the project with this `token` | `false` |
 
-## Available Blueprints
+## Available Templates
 
-| Blueprint | Technology |
+| Template | Technology |
 |-----------|------------|
 | `react` | React with TypeScript |
 | `vue` | Vue 3 with TypeScript |
@@ -43,31 +44,31 @@ This will prompt you to:
 - Select your preferred technology
 - Choose a project path
 
-2. **Create with a specific blueprint**:
+2. **Create with a specific template**:
 ```bash
-storyblok create my-project --blueprint react
+storyblok create my-project --template react
 ```
 
 3. **Create without a Storyblok space** (project only):
 ```bash
-storyblok create my-project --blueprint vue --skip-space
+storyblok create my-project --template vue --skip-space
 ```
 
 4. **Create with a custom path**:
 ```bash
-storyblok create ./projects/my-awesome-app --blueprint astro
+storyblok create ./projects/my-awesome-app --template astro
 ```
 
 5. **Create with absolute path**:
 ```bash
-storyblok create /Users/john/projects/my-app --blueprint eleventy
+storyblok create /Users/john/projects/my-app --template eleventy
 ```
 
 ## Interactive Mode
 
-When you don't specify a blueprint or project path, the CLI will guide you through the process:
+When you don't specify a template or project path, the CLI will guide you through the process:
 
-### Blueprint Selection
+### Template Selection
 ```
 ? Please select the technology you would like to use: (Use arrow keys)
 ❯ React
@@ -84,12 +85,12 @@ When you don't specify a blueprint or project path, the CLI will guide you throu
 ? What is the path for your project? (./my-react-project)
 ```
 
-The default project path will be `./my-{technology}-project` based on your blueprint selection.
+The default project path will be `./my-{technology}-project` based on your template selection.
 
 ## What Gets Created
 
 ### Project Structure
-The command generates a complete project structure based on your chosen blueprint, including:
+The command generates a complete project structure based on your chosen template, including:
 - Project scaffolding with the selected technology
 - TypeScript configuration
 - Storyblok integration setup
@@ -154,17 +155,17 @@ The command handles various error scenarios gracefully:
 - **Directory Check**: The command will warn you if the target directory already exists and is not empty
 - **Space Names**: Spaces are created with human-readable names (e.g., "my-project" becomes "My Project")
 - **Region Support**: The space will be created in the same region as your logged-in account
-- **Technology Validation**: Invalid blueprint names will trigger interactive selection
+- **Technology Validation**: Invalid template names will trigger interactive selection
 - **Graceful Degradation**: If space creation fails, you'll still have your project files
 - **Manual Fallbacks**: If automated steps fail (like opening browser), manual instructions are provided
 
 ## Troubleshooting
 
-### "Invalid blueprint" Warning
-If you specify an invalid blueprint name, the CLI will show available options and switch to interactive mode:
+### "Invalid template" Warning
+If you specify an invalid template name, the CLI will show available options and switch to interactive mode:
 ```bash
-storyblok create my-project --blueprint invalid-name
-# ⚠ Invalid blueprint "invalid-name". Valid options are: react, vue, svelte, astro, nuxt, next, eleventy
+storyblok create my-project --template invalid-name
+# ⚠ Invalid template "invalid-name". Valid options are: react, vue, svelte, astro, nuxt, next, eleventy
 ```
 
 ### Directory Already Exists

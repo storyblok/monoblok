@@ -9,7 +9,7 @@ logsCommand.command('list')
   .action(async () => {
     const { space, path } = logsCommand.opts();
     const ui = getUI();
-    const logsPath = resolveCommandPath(directories.log, space, path);
+    const logsPath = resolveCommandPath(directories.logs, space, path);
     const logFiles = FileTransport.listLogFiles(logsPath);
 
     if (logFiles.length === 0) {

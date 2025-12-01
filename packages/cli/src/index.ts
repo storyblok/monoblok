@@ -15,6 +15,7 @@ import './commands/datasources';
 import './commands/create';
 import './commands/logs';
 import './commands/reports';
+import './commands/stories';
 
 import { colorPalette } from './constants';
 

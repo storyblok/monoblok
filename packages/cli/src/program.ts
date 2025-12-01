@@ -100,7 +100,7 @@ export function getProgram(): Command {
       // Add file transport if enabled
       if (resolvedConfig.log.file.enabled) {
         const logsPath = resolveCommandPath(
-          directories.log,
+          directories.logs,
           options.space,
           options.path,
         );
@@ -132,7 +132,7 @@ export function getProgram(): Command {
       // Initialize reporter based on config
       if (resolvedConfig.report.enabled) {
         const reportPath = resolveCommandPath(
-          directories.report,
+          directories.reports,
           options.space,
           options.path,
         );

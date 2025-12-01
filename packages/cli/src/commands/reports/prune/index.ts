@@ -10,7 +10,7 @@ reportsCommand.command('prune')
   .action(async ({ keep }: { keep: number }) => {
     const { space, path } = reportsCommand.opts();
     const ui = getUI();
-    const reportsPath = resolveCommandPath(directories.report, space, path);
+    const reportsPath = resolveCommandPath(directories.reports, space, path);
     const deletedFilesCount = Reporter.pruneReportFiles(reportsPath, keep, '.jsonl');
 
     ui.info(`Deleted ${deletedFilesCount} report file${deletedFilesCount === 1 ? '' : 's'}`);

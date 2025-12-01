@@ -16,11 +16,13 @@ function log(message, color = RESET) {
 
 function execCommand(command, options = {}) {
   try {
-    return execSync(command, {
+    const result = execSync(command, {
       encoding: 'utf-8',
       stdio: options.silent ? 'pipe' : 'inherit',
       ...options,
-    }).trim();
+    });
+
+    return result ? result.trim() : '';
   } catch (error) {
     if (options.ignoreError) {
       return null;

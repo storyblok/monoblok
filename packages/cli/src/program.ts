@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import path from 'node:path';
 import { getPackageJson, handleError } from './utils';
-import { loadConfig } from './lib/config/loader';
+
 import type { LogTransport } from './lib/logger/logger';
 import { getLogger } from './lib/logger/logger';
 import { getUI } from './utils/ui';
@@ -72,12 +72,4 @@ export function getProgram(): Command {
     });
   }
   return programInstance;
-}
-
-export async function getConfigDefaults(): Promise<Record<string, any>> {
-  const { config } = await loadConfig({
-    name: 'storyblok',
-    defaults: {},
-  });
-  return config || {};
 }

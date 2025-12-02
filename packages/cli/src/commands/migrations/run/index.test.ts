@@ -167,6 +167,7 @@ describe('migrations run command', () => {
         logPath: expect.any(String),
         config: {
           space: '12345',
+          dryRun: false,
         },
       },
       summary: {

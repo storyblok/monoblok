@@ -16,7 +16,6 @@ const mockDatasource1: SpaceDatasource = {
   dimensions: [
     {
       name: 'United States',
-      type: 'option',
       entry_value: 'us',
       datasource_id: 1,
       created_at: '2021-08-09T12:00:00Z',
@@ -24,7 +23,6 @@ const mockDatasource1: SpaceDatasource = {
     },
     {
       name: 'Canada',
-      type: 'option',
       entry_value: 'ca',
       datasource_id: 1,
       created_at: '2021-08-09T12:00:00Z',
@@ -34,8 +32,8 @@ const mockDatasource1: SpaceDatasource = {
   created_at: '2021-08-09T12:00:00Z',
   updated_at: '2021-08-09T12:00:00Z',
   entries: [
-    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '' },
-    { id: 102, name: 'red', value: '#ff0000', dimension_value: '' },
+    { id: 101, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+    { id: 102, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
   ],
 };
 
@@ -46,7 +44,6 @@ const mockDatasource2: SpaceDatasource = {
   dimensions: [
     {
       name: 'Technology',
-      type: 'option',
       entry_value: 'tech',
       datasource_id: 2,
       created_at: '2021-08-09T12:00:00Z',
@@ -56,8 +53,8 @@ const mockDatasource2: SpaceDatasource = {
   created_at: '2021-08-09T12:00:00Z',
   updated_at: '2021-08-09T12:00:00Z',
   entries: [
-    { id: 201, name: 'tech', value: 'Technology', dimension_value: '' },
-    { id: 202, name: 'business', value: 'Business', dimension_value: '' },
+    { id: 201, name: 'tech', value: 'Technology', dimension_value: '', datasource_id: 2 },
+    { id: 202, name: 'business', value: 'Business', dimension_value: '', datasource_id: 2 },
   ],
 };
 
@@ -98,7 +95,7 @@ describe('push datasources actions', () => {
           expect(error).toBeInstanceOf(FileSystemError);
           expect((error as FileSystemError).message).toContain('No local datasources found for space source-space');
           expect((error as FileSystemError).message).toContain('storyblok datasources pull --space source-space');
-          expect((error as FileSystemError).message).toContain('storyblok datasources push --space target-space --from source-space');
+          expect((error as FileSystemError).message).toContain('storyblok datasources push --space <target_space> --from source-space');
         }
       });
     });
@@ -353,6 +350,27 @@ describe('push datasources actions', () => {
 
         expect(result.datasources).toHaveLength(1);
         expect(result.datasources[0]).toEqual(mockDatasource1);
+      });
+
+      it('should read from different source space than target space', async () => {
+        // Simulate cross-space migration scenario
+        vol.fromJSON({
+          '/mock/path/datasources/production-space/datasources.json': JSON.stringify([mockDatasource1, mockDatasource2]),
+          '/mock/path/datasources/staging-space/datasources.json': JSON.stringify([mockDatasource1]), // Different content
+        });
+
+        // Reading from production-space (from) to push to staging-space (space)
+        const result = await readDatasourcesFiles({
+          from: 'production-space',
+          path: '/mock/path',
+          space: 'staging-space',
+          separateFiles: false,
+          verbose: false,
+        });
+
+        expect(result.datasources).toHaveLength(2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
       });
     });
   });

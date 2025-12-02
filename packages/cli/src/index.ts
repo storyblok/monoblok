@@ -13,6 +13,8 @@ import './commands/migrations';
 import './commands/types';
 import './commands/datasources';
 import './commands/create';
+import './commands/logs';
+import './commands/reports';
 
 import { colorPalette } from './constants';
 import { applyConfigToCommander, getCommandAncestry, GLOBAL_OPTION_DEFINITIONS, logActiveConfig, resolveConfig, setActiveConfig } from './lib/config';

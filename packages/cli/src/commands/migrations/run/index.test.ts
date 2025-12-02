@@ -1,37 +1,15 @@
+import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { session } from '../../../session';
-import { konsola } from '../../../utils';
-
+import { vol } from 'memfs';
 // Import the main components module first to ensure proper initialization
 import '../index';
 import { migrationsCommand } from '../command';
-import { getMigrationFunction, readMigrationFiles } from './actions';
 import { fetchStories, fetchStory, updateStory } from '../../stories/actions';
 import type { Story } from '../../stories/constants';
+import * as filesystem from '../../../utils/filesystem';
 
-// Mock the utils
-vi.mock('../../../utils', async () => {
-  const actualUtils = await vi.importActual('../../../utils');
-  return {
-    ...actualUtils,
-    konsola: {
-      title: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    },
-  };
-});
-
-// Mock actions
-vi.mock('./actions', async () => {
-  const actual = await vi.importActual<typeof import('./actions')>('./actions');
-  return {
-    applyMigrationToAllBlocks: actual.applyMigrationToAllBlocks,
-    readMigrationFiles: vi.fn(),
-    getMigrationFunction: vi.fn(),
-  };
-});
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
 
 vi.mock('../../stories/actions', () => ({
   fetchStories: vi.fn(),
@@ -39,7 +17,6 @@ vi.mock('../../stories/actions', () => ({
   updateStory: vi.fn(),
 }));
 
-// Mock session
 vi.mock('../../../session', () => ({
   session: vi.fn(() => ({
     state: {
@@ -50,6 +27,11 @@ vi.mock('../../../session', () => ({
     initializeSession: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
+vi.spyOn(console, 'debug');
+vi.spyOn(console, 'error');
+vi.spyOn(console, 'info');
+vi.spyOn(console, 'warn');
 
 // Helper function to create mock story
 const createMockStory = (overrides: Partial<Story> = {}): Story => ({
@@ -79,62 +61,28 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => ({
   is_startpage: false,
   is_folder: false,
   pinned: false,
-  parent_id: null,
   group_id: 'group-1',
-  parent: null,
-  path: null,
   position: 0,
-  sort_by_date: null,
   tag_list: [],
   disable_fe_editor: false,
-  default_root: null,
-  preview_token: null,
-  meta_data: null,
-  release_id: null,
-  last_author: null,
-  last_author_id: null,
   alternates: [],
-  translated_slugs: null,
-  translated_slugs_attributes: null,
-  localized_paths: null,
   breadcrumbs: [],
-  scheduled_dates: null,
   favourite_for_user_ids: [],
-  imported_at: null,
-  deleted_at: null,
   ...overrides,
 });
 
 const mockStory = createMockStory();
 
-describe('migrations run command - streaming approach', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.clearAllMocks();
-  });
+const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-component.js';
+const LOG_PREFIX = 'storyblok-migrations-run-';
 
-  it('should run migrations successfully', async () => {
-    // Setup session
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
+const getLogFileContents = () => {
+  return Object.entries(vol.toJSON())
+    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
+};
 
-    // Mock migration files
-    const mockMigrationFiles = [
-      {
-        name: 'migration-component.js',
-        content: 'export default function (block) {\n'
-          + '  block.unchanged = \'modified\';\n'
-          + '  return block;\n'
-          + '}\n',
-      },
-    ];
-
-    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-
-    // Mock fetchStories to return stories
+const preconditions = {
+  canFetchStories() {
     vi.mocked(fetchStories).mockResolvedValue({
       stories: [mockStory],
       headers: new Headers({
@@ -142,23 +90,59 @@ describe('migrations run command - streaming approach', () => {
         'Per-Page': '100',
       }),
     });
-
-    // Mock fetchStory to return full story content
+  },
+  canFetchStory() {
     vi.mocked(fetchStory).mockResolvedValue(mockStory);
-
-    // Mock getMigrationFunction to return a function that modifies content
-    vi.mocked(getMigrationFunction).mockResolvedValue((block: any) => {
-      block.unchanged = 'modified';
-      return block;
-    });
-
-    // Mock updateStory to return updated story
+  },
+  canUpdateStory() {
     vi.mocked(updateStory).mockResolvedValue(mockStory);
+  },
+  canLoadMigrationFunction(mockMigrationFn = (block: any) => ({ ...block, migrated: true })) {
+    vol.fromJSON({
+      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
+    });
+    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
+    importModuleSpy.mockImplementation(() => Promise.resolve({ default: mockMigrationFn }));
+  },
+  canNotLoadMigrationFunction() {
+    this.canFetchStories();
+    this.canFetchStory();
+    vol.fromJSON({
+      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
+    });
+    vi.doMock(resolve(MIGRATION_FUNCTION_FILE_PATH), () => {
+      throw new Error('Cannot find module');
+    });
+  },
+  migrationDirectoryDoesNotExist() {
+    vol.reset();
+  },
+  canMigrate() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canUpdateStory();
+    this.canLoadMigrationFunction();
+  },
+  canMigrateNoChange() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canUpdateStory();
+    this.canLoadMigrationFunction((block: any) => block);
+  },
+};
 
-    // Run the command
+describe('migrations run command', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.clearAllMocks();
+    vol.reset();
+  });
+
+  it('should run migrations successfully', async () => {
+    preconditions.canMigrate();
+
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
-    // Verify that fetchStories was called
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
@@ -167,133 +151,131 @@ describe('migrations run command - streaming approach', () => {
         story_only: true,
       }),
     );
-
-    // Verify that fetchStory was called for individual story content
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
-
-    // Verify that getMigrationFunction was called
-    expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
-
-    // Verify that progress bars were displayed (konsola.info should be called for summaries)
-    expect(konsola.info).toHaveBeenCalledWith(
+    // Report
+    const reportFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
+    expect(JSON.parse(reportFile || '{}')).toEqual({
+      status: 'SUCCESS',
+      meta: {
+        runId: expect.any(String),
+        command: 'storyblok migrations run',
+        cliVersion: expect.any(String),
+        startedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+        endedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+        durationMs: expect.any(Number),
+        logPath: expect.any(String),
+        config: {
+          space: '12345',
+        },
+      },
+      summary: {
+        migrationResults: {
+          failed: 0,
+          skipped: 0,
+          succeeded: 1,
+          total: 1,
+        },
+        updateResults: {
+          failed: 0,
+          succeeded: 1,
+          total: 1,
+        },
+      },
+    });
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Migration finished');
+    expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
+    expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
+    // UI
+    expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
-    expect(konsola.info).toHaveBeenCalledWith(
+    expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Update Results: 1 stories updated.'),
     );
   });
 
-  it('should handle migrations that fail gracefully', async () => {
-    // Setup session
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
+  it('should report a run with only skipped migrations as success', async () => {
+    preconditions.canMigrateNoChange();
 
-    // Mock migration files
-    const mockMigrationFiles = [
-      {
-        name: 'migration-component.js',
-        content: 'export default function (block) {\n'
-          + '  throw new Error(\'Migration failed\');\n'
-          + '}\n',
-      },
-    ];
-
-    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-
-    // Mock fetchStories to return stories
-    vi.mocked(fetchStories).mockResolvedValue({
-      stories: [mockStory],
-      headers: new Headers({
-        'Total': '1',
-        'Per-Page': '100',
-      }),
-    });
-
-    // Mock fetchStory to return full story content
-    vi.mocked(fetchStory).mockResolvedValue(mockStory);
-
-    // Mock getMigrationFunction to return a function that throws an error
-    vi.mocked(getMigrationFunction).mockResolvedValue(() => {
-      throw new Error('Migration failed');
-    });
-
-    // Run the command
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
-    // Verify that fetchStories was called
-    expect(fetchStories).toHaveBeenCalledWith(
-      '12345',
-      expect.objectContaining({
-        per_page: 500,
-        page: 1,
-        story_only: true,
-      }),
-    );
+    const reportFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
+    expect(JSON.parse(reportFile || '{}')).toMatchObject({
+      status: 'SUCCESS',
+      meta: expect.any(Object),
+      summary: {
+        migrationResults: {
+          failed: 0,
+          skipped: 1,
+          succeeded: 0,
+          total: 1,
+        },
+        updateResults: {
+          failed: 0,
+          succeeded: 0,
+          total: 0,
+        },
+      },
+    });
+  });
 
-    // Verify that fetchStory was called
-    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+  it('should gracefully handle error while loading migration', async () => {
+    preconditions.canNotLoadMigrationFunction();
 
-    // Verify that getMigrationFunction was called
-    expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
-    // Verify that updateStory was NOT called (since migration failed)
     expect(updateStory).not.toHaveBeenCalled();
-
-    // Verify that error summary was displayed
-    expect(konsola.info).toHaveBeenCalledWith(
+    // Report
+    const reportFile = Object.entries(vol.toJSON())
+      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
+    expect(JSON.parse(reportFile || '{}')).toEqual({
+      status: 'FAILURE',
+      meta: expect.any(Object),
+      summary: {
+        migrationResults: {
+          failed: 1,
+          skipped: 0,
+          succeeded: 0,
+          total: 1,
+        },
+        updateResults: {
+          failed: 0,
+          succeeded: 0,
+          total: 0,
+        },
+      },
+    });
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Couldn\'t load migration function');
+    expect(logFile).toContain('MIGRATION_LOAD_ERROR');
+    // UI
+    expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
-    expect(konsola.info).toHaveBeenCalledWith(
+    expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('No stories required updates'),
     );
   });
 
+  it('should gracefully handle non-existing migrations directory', async () => {
+    preconditions.migrationDirectoryDoesNotExist();
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('No directory found for space \\"12345\\".');
+  });
+
   it('should handle dry run mode correctly', async () => {
-    // Setup session
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
+    preconditions.canMigrate();
 
-    // Mock migration files
-    const mockMigrationFiles = [
-      {
-        name: 'migration-component.js',
-        content: 'export default function (block) {\n'
-          + '  block.unchanged = \'modified\';\n'
-          + '  return block;\n'
-          + '}\n',
-      },
-    ];
-
-    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-
-    // Mock fetchStories to return stories
-    vi.mocked(fetchStories).mockResolvedValue({
-      stories: [mockStory],
-      headers: new Headers({
-        'Total': '1',
-        'Per-Page': '100',
-      }),
-    });
-
-    // Mock fetchStory to return full story content
-    vi.mocked(fetchStory).mockResolvedValue(mockStory);
-
-    // Mock getMigrationFunction to return a function that modifies content
-    vi.mocked(getMigrationFunction).mockResolvedValue((block: any) => {
-      block.unchanged = 'modified';
-      return block;
-    });
-
-    // Run the command with dry run
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--dry-run']);
 
-    // Verify that fetchStories was called
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
@@ -302,71 +284,28 @@ describe('migrations run command - streaming approach', () => {
         story_only: true,
       }),
     );
-
-    // Verify that fetchStory was called
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
-
-    // Verify that getMigrationFunction was called
-    expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
-
-    expect(konsola.warn).toHaveBeenCalledWith(
-      expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
-    );
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
-
-    // Verify that dry run summary was displayed
-    expect(konsola.info).toHaveBeenCalledWith(
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Dry run mode enabled');
+    expect(logFile).toContain('Migration finished');
+    // UI
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
+    );
+    expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
   });
 
   it('should handle component filtering correctly', async () => {
-    // Setup session
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
-
-    // Mock migration files
-    const mockMigrationFiles = [
-      {
-        name: 'migration-component.js',
-        content: 'export default function (block) {\n'
-          + '  block.unchanged = \'modified\';\n'
-          + '  return block;\n'
-          + '}\n',
-      },
-    ];
-
-    vi.mocked(readMigrationFiles).mockResolvedValue(mockMigrationFiles);
-
-    // Mock fetchStories to return stories
-    vi.mocked(fetchStories).mockResolvedValue({
-      stories: [mockStory],
-      headers: new Headers({
-        'Total': '1',
-        'Per-Page': '100',
-      }),
-    });
-
-    // Mock fetchStory to return full story content
-    vi.mocked(fetchStory).mockResolvedValue(mockStory);
-
-    // Mock getMigrationFunction to return a function that modifies content
-    vi.mocked(getMigrationFunction).mockResolvedValue((block: any) => {
-      block.unchanged = 'modified';
-      return block;
-    });
-
-    // Mock updateStory to return updated story
-    vi.mocked(updateStory).mockResolvedValue(mockStory);
+    preconditions.canMigrate();
 
     // Run the command with component filter
     await migrationsCommand.parseAsync(['node', 'test', 'run', 'migration-component', '--space', '12345']);
 
-    // Verify that fetchStories was called with component filter
     expect(fetchStories).toHaveBeenCalledWith(
       '12345',
       expect.objectContaining({
@@ -376,11 +315,6 @@ describe('migrations run command - streaming approach', () => {
         story_only: true,
       }),
     );
-
-    // Verify that fetchStory was called
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
-
-    // Verify that getMigrationFunction was called
-    expect(getMigrationFunction).toHaveBeenCalledWith('migration-component.js', '12345', undefined);
   });
 });

@@ -126,10 +126,37 @@ const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser =
     name: 'Test Organization',
   },
   has_partner: false,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
   ...overrides,
 });
 
 describe('createCommand', () => {
+  describe('--token option', () => {
+    it('should use provided token, skip space creation, and update env', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token']);
+
+      // Should generate project
+      expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
+      // Should create .env file with provided token
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), 'my-access-token');
+      // Should NOT create space or open browser
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(openSpaceInBrowser).not.toHaveBeenCalled();
+      // Should show success message
+      expect(konsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Your react project is ready 🎉 !'),
+      );
+      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+    });
+  });
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
@@ -672,6 +699,23 @@ describe('createCommand', () => {
       expect(createEnvFile).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
     });
+
+    it('should NOT prompt for space creation when --skip-space is provided', async () => {
+      vi.mocked(select).mockResolvedValue('vue');
+      vi.mocked(input).mockResolvedValue('./my-vue-project');
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
+
+      // Should NOT prompt for space creation location
+      expect(select).not.toHaveBeenCalledWith(expect.objectContaining({
+        message: 'Where would you like to create this space?',
+      }));
+    });
   });
 
   describe('space creation choices and location', () => {
@@ -997,7 +1041,7 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
         expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Please login again.', userError);
-        expect(generateProject).not.toHaveBeenCalled();
+        expect(generateProject).toHaveBeenCalled();
         expect(createSpace).not.toHaveBeenCalled();
       });
 

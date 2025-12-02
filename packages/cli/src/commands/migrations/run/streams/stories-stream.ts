@@ -1,9 +1,11 @@
-import { fetchStories, fetchStory } from '../../../stories/actions';
-import type { StoriesQueryParams } from '../../../stories/constants';
 import { pipeline, Readable, Transform } from 'node:stream';
-import { handleAPIError } from '../../../../utils/error';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { Sema } from 'async-sema';
+import { fetchStories, fetchStory } from '../../../stories/actions';
+import type { StoriesQueryParams } from '../../../stories/constants';
+import { handleAPIError, toError } from '../../../../utils/error';
+import { getLogger } from '../../../../lib/logger/logger';
+import { ERROR_CODES } from '../constants';
 
 /**
  * Iterator that fetches stories
@@ -42,6 +44,7 @@ export async function* storiesIterator(
       page: 1,
       story_only: true,
     });
+    getLogger().info(`Fetched stories page 1 of ${perPage}`);
 
     if (!result) {
       return;
@@ -63,6 +66,7 @@ export async function* storiesIterator(
         page,
         story_only: true,
       });
+      getLogger().info(`Fetched stories page ${page} of ${perPage}`);
 
       if (!result) {
         return;
@@ -95,16 +99,22 @@ class StoriesStream extends Transform {
   }
 
   async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
-    await this.semaphore.acquire();
-
-    fetchStory(this.spaceId, chunk.id.toString()).then((story) => {
+    try {
+      await this.semaphore.acquire();
+      const story = await fetchStory(this.spaceId, chunk.id.toString());
       this.push(story);
       this.onProgress?.();
-    }).finally(() => {
+      getLogger().info('Fetched story', { storyId: chunk.id });
+      callback();
+    }
+    catch (maybeError) {
+      const error = toError(maybeError);
+      getLogger().error(error.message, { storyId: chunk.id, error, errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR });
+      callback(error);
+    }
+    finally {
       this.semaphore.release();
-    });
-
-    callback();
+    }
   }
 
   _flush(callback: (error?: Error | null) => void) {
@@ -136,6 +146,7 @@ export const createStoriesStream = async ({
   return pipeline(listStoriesStream, new StoriesStream(spaceId, batchSize, onProgress), (err) => {
     if (err) {
       console.error(err);
+      getLogger().error(err.message, { errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });
     }
   });
 };

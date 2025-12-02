@@ -1,7 +1,14 @@
-// program.ts
 import { Command } from 'commander';
+import path from 'node:path';
 import { getPackageJson, handleError } from './utils';
 import { loadConfig } from './lib/config/loader';
+import type { LogTransport } from './lib/logger/logger';
+import { getLogger } from './lib/logger/logger';
+import { getUI } from './utils/ui';
+import { getReporter } from './lib/reporter/reporter';
+import { FileTransport } from './lib/logger/logger-transport-file';
+import { resolveCommandPath } from './utils/filesystem';
+import { directories } from './constants';
 
 const packageJson = getPackageJson();
 
@@ -21,7 +28,43 @@ export function getProgram(): Command {
     programInstance
       .name(packageJson.name)
       .description(packageJson.description || '')
-      .version(packageJson.version);
+      .version(packageJson.version, '-v, --vers', 'Output the current version')
+      .helpOption('-h, --help', 'Display help for command')
+      .option('--verbose', 'Enable verbose output')
+      .hook('preAction', (_, actionCmd) => {
+        const options = actionCmd.optsWithGlobals();
+        const commandPieces: string[] = [];
+        for (let c: Command | null = actionCmd; c; c = c.parent as Command | null) {
+          commandPieces.unshift(c.name());
+        }
+        const command = commandPieces.join(' ');
+
+        const runId = Date.now();
+        const transports: LogTransport[] = [];
+        const logsPath = resolveCommandPath(directories.log, options.space, options.path);
+        const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+        const filePath = path.join(logsPath, logFilename);
+        transports.push(new FileTransport({
+          filePath,
+          maxFiles: 10,
+        }));
+        getLogger({
+          context: { runId, command, options, cliVersion: packageJson.version },
+          transports,
+        });
+
+        getUI({ enabled: true });
+
+        const reportPath = resolveCommandPath(directories.report, options.space, options.path);
+        const reportFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+        const reportFilePath = path.join(reportPath, reportFilename);
+        getReporter({ enabled: true, filePath: reportFilePath })
+          .addMeta('command', command)
+          .addMeta('cliVersion', packageJson.version)
+          .addMeta('runId', String(runId))
+          .addMeta('logPath', filePath)
+          .addMeta('config', options);
+      });
 
     // Global error handling
     programInstance.configureOutput({

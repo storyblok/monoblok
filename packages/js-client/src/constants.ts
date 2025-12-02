@@ -29,3 +29,17 @@ export type StoryblokContentVersionKeys =
 export const StoryblokContentVersionValues = Object.values(
   StoryblokContentVersion,
 ) as StoryblokContentVersionKeys[];
+
+/**
+ * Default per_page value for Storyblok API requests
+ */
+export const DEFAULT_PER_PAGE = 25;
+
+/**
+ * Per-page tier thresholds for rate limiting
+ */
+export const PER_PAGE_THRESHOLDS = {
+  SMALL: 25,
+  MEDIUM: 50,
+  LARGE: 75,
+} as const;

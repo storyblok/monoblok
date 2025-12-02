@@ -1,25 +1,40 @@
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { getProgram } from '../../../program';
 import { migrationsCommand } from '../command';
 import { session } from '../../../session';
 import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
 import { mapiClient } from '../../../api';
-import { Spinner } from '@topcli/spinner';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 import chalk from 'chalk';
-
-const program = getProgram();
 
 migrationsCommand.command('rollback [migrationFile]')
   .description('Rollback a migration')
   .action(async (migrationFile: string) => {
-    konsola.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, `Rolling back migration ${chalk.hex(colorPalette.MIGRATIONS)(migrationFile)}...`);
+    const program = getProgram();
+    const ui = getUI();
+    const logger = getLogger();
+
+    ui.title(
+      `${commands.MIGRATIONS}`,
+      colorPalette.MIGRATIONS,
+      migrationFile
+        ? `Rolling back migration ${chalk.hex(colorPalette.MIGRATIONS)(migrationFile)}...`
+        : 'Rolling back migration...',
+    );
 
     const verbose = program.opts().verbose;
 
     // Command options
     const { space, path } = migrationsCommand.opts();
+
+    logger.info('Migration rollback started', {
+      migrationFile,
+      space,
+      path,
+    });
 
     const { state, initializeSession } = session();
     await initializeSession();
@@ -49,9 +64,15 @@ migrationsCommand.command('rollback [migrationFile]')
         migrationFile,
       });
 
+      const rollbackSummary = {
+        total: rollbackData.stories.length,
+        succeeded: 0,
+        failed: 0,
+      };
+
       // Restore each story to its original state
       for (const story of rollbackData.stories) {
-        const spinner = new Spinner({ verbose }).start(`Restoring story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}...`);
+        const spinner = ui.createSpinner(`Restoring story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}...`);
         try {
           const payload: any = {
             story: {
@@ -73,12 +94,33 @@ migrationsCommand.command('rollback [migrationFile]')
           }
 
           await updateStory(space, story.storyId, payload);
-          spinner.succeed(`Restored story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}`);
+          rollbackSummary.succeeded += 1;
+          spinner.succeed(`Restored story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
+
+          logger.info('Story restored', {
+            storyId: story.storyId,
+            migrationFile,
+            space,
+          });
         }
-        catch (error) {
+        catch (maybeError) {
+          const error = toError(maybeError);
+          rollbackSummary.failed += 1;
           spinner.failed(`Failed to restore story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}: ${(error as Error).message}`);
+          logger.error('Failed to restore story', {
+            storyId: story.storyId,
+            migrationFile,
+            space,
+            error,
+          });
         }
       }
+
+      logger.info('Migration rollback finished', {
+        migrationFile,
+        space,
+        results: rollbackSummary,
+      });
     }
     catch (error) {
       handleError(new CommandError(`Failed to rollback migration: ${(error as Error).message}`), verbose);

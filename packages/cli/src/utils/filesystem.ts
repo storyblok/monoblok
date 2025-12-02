@@ -3,6 +3,7 @@ import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 
 // Default working folder for commands that do not pass --path explicitly.
 export const DEFAULT_STORAGE_DIR = '.storyblok';
@@ -41,6 +42,28 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   }
 };
 
+export const saveToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Only attempt to create a directory if there's a directory part
+  if (resolvedPath) {
+    try {
+      mkdirSync(resolvedPath, { recursive: true });
+    }
+    catch (mkdirError) {
+      handleFileSystemError('mkdir', mkdirError as Error);
+      return; // Exit early if the directory creation fails
+    }
+  }
+
+  try {
+    writeFileSync(filePath, data, options as any);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
 export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
   const resolvedPath = parse(filePath).dir;
 
@@ -55,6 +78,27 @@ export const appendToFile = async (filePath: string, data: string, options?: Fil
   try {
     const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
     await appendFile(filePath, dataWithNewline, options);
+  }
+  catch (writeError) {
+    handleFileSystemError('write', writeError as Error);
+  }
+};
+
+export const appendToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+  const resolvedPath = parse(filePath).dir;
+
+  // Ensure the directory exists
+  try {
+    mkdirSync(resolvedPath, { recursive: true });
+  }
+  catch (mkdirError) {
+    handleFileSystemError('mkdir', mkdirError as Error);
+    return;
+  }
+
+  try {
+    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+    appendFileSync(filePath, dataWithNewline, options);
   }
   catch (writeError) {
     handleFileSystemError('write', writeError as Error);
@@ -76,6 +120,23 @@ export const resolvePath = (path: string | undefined, folder: string) => {
   // Keeps honoring relative paths by anchoring everything on the current workspace root.
   return resolve(process.cwd(), basePath, folder);
 };
+
+/**
+ * Resolves the absolute path for a specific command directory.
+ *
+ * If a `space` is provided, it is appended to the `commandPath` before resolution.
+ *
+ * @param commandPath - The relative path or name of the command category.
+ * @param space - (Optional).
+ * @param baseDir - (Optional) The base directory to resolve against.
+ * @returns The fully resolved absolute path string.
+ */
+export function resolveCommandPath(commandPath: string, space?: string, baseDir?: string) {
+  if (space) {
+    return resolvePath(baseDir, join(commandPath, space));
+  }
+  return resolvePath(baseDir, commandPath);
+}
 
 /**
  * Extracts the component name from a migration filename
@@ -111,4 +172,8 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
   catch (error) {
     return { data: [], error: error as Error };
   }
+}
+
+export function importModule(filePath: string) {
+  return import(`file://${filePath}`);
 }

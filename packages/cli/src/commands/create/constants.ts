@@ -2,6 +2,7 @@ export interface CreateOptions {
   template?: string;
   blueprint?: string; // Deprecated, use template instead
   skipSpace?: boolean;
+  token?: string; // Access token for Storyblok
 }
 
 export const templates = {

@@ -1,10 +1,10 @@
 import type { CommanderCommand, PlainObject, ResolvedCliConfig } from './types';
 import { getOptionPath, getValueAtPath, setValueAtPath } from './helpers';
 
-// Commander-related helpers that translate CLI option metadata into our config shape.
-
+// Sets defaults. If, at Commander flag-level, some options has defauls, they'll override
+// the ones from the config file defaults
 export function collectGlobalDefaults(root: CommanderCommand, baseDefaults: PlainObject): PlainObject {
-  const defaults = structuredClone(baseDefaults) as PlainObject;
+  const defaults = baseDefaults;
   for (const option of root.options) {
     if (option.defaultValue === undefined) {
       continue;

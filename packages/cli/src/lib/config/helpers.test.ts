@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Command } from 'commander';
 import { resolve as resolvePath } from 'pathe';
-import { CONFIG_FILE_NAME, formatConfigForDisplay, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
+import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
 import type { ResolvedCliConfig } from './types';
-import { parseOptionalBoolean } from './options';
 
 const existsSyncMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
 const konsolaInfoMock = vi.hoisted(() => vi.fn());
-const supportedExtensions = vi.hoisted(() => ['.json', '.yaml', '.ts']);
+const supportedExtensions = vi.hoisted(() => ['.json', '.json5', '.jsonc', '.yaml', '.yml', '.toml', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs']);
 
 vi.mock('node:os', () => ({
   homedir: () => '/home/tester',
@@ -18,12 +17,12 @@ vi.mock('node:fs', () => ({
   existsSync: existsSyncMock,
 }));
 
-vi.mock('c12', () => ({
+vi.mock('./loader', () => ({
   SUPPORTED_EXTENSIONS: supportedExtensions,
   loadConfig: (options: any) => loadConfigMock(options),
 }));
 
-vi.mock('../utils/konsola', () => ({
+vi.mock('../../utils/konsola', () => ({
   konsola: {
     info: konsolaInfoMock,
   },
@@ -147,7 +146,7 @@ function buildCommandChain() {
   const root = new Command('storyblok');
   root
     .exitOverride()
-    .option('--verbose [boolean]', '', parseOptionalBoolean, false);
+    .option('--verbose', '', false);
 
   const components = root
     .command('components')
@@ -156,7 +155,7 @@ function buildCommandChain() {
 
   const pull = components
     .command('pull')
-    .option('--separate-files [boolean]', '', parseOptionalBoolean, false)
+    .option('--separate-files', '', false)
     .option('--filename <filename>');
 
   root.setOptionValueWithSource('verbose', true, 'config');
@@ -192,17 +191,14 @@ const mockConfig: ResolvedCliConfig = {
 };
 
 describe('config inspector helpers', () => {
-  it('serializes global and local config for display', () => {
-    const ancestry = buildCommandChain();
-    const formatted = formatConfigForDisplay(mockConfig, ancestry);
+  it('serializes config for display', () => {
+    const formatted = formatConfigForDisplay(mockConfig);
     const parsed = JSON.parse(formatted);
 
-    expect(parsed.global.region).toBe('us');
-    expect(parsed.global.api.maxRetries).toBe(5);
-    expect(parsed.global.log.file.level).toBe('warn');
-    expect(parsed.local.components.space).toBe('123');
-    expect(parsed.local.components.path).toBe('.storyblok');
-    expect(parsed.local.pull.filename).toBe('components');
+    expect(parsed.region).toBe('us');
+    expect(parsed.api.maxRetries).toBe(5);
+    expect(parsed.log.file.level).toBe('warn');
+    expect(parsed.verbose).toBe(true);
   });
 
   it('logs the active config only when verbose mode is enabled', () => {
@@ -214,5 +210,123 @@ describe('config inspector helpers', () => {
     logActiveConfig(mockConfig, ancestry, true);
     expect(konsolaInfoMock).toHaveBeenCalledTimes(1);
     expect(konsolaInfoMock.mock.calls[0][0]).toContain('Active config for "storyblok components pull"');
+  });
+});
+
+describe('getOptionPath', () => {
+  it('parses hyphenated flags into camelCase path segments', () => {
+    const prog = new Command();
+    prog.option('--api-max-retries <number>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    expect(path).toEqual(['api', 'maxRetries']);
+  });
+
+  it('handles deeply nested paths with hyphens', () => {
+    const prog = new Command();
+    prog.option('--log-file-max-files <number>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    expect(path).toEqual(['log', 'file', 'maxFiles']);
+  });
+
+  it('strips --no- prefix from negated boolean flags', () => {
+    const prog = new Command();
+    prog.option('--no-log-console-enabled', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    expect(path).toEqual(['log', 'console', 'enabled']);
+  });
+
+  it('handles single segment flags', () => {
+    const prog = new Command();
+    prog.option('--verbose', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    expect(path).toEqual(['verbose']);
+  });
+
+  it('handles --no- prefix on single segment flags', () => {
+    const prog = new Command();
+    prog.option('--no-verbose', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    expect(path).toEqual(['verbose']);
+  });
+
+  it('dynamically detects path vs property: log is object, console is object, enabled is property', () => {
+    const prog = new Command();
+    prog.option('--log-console-enabled', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // log is object, console is object under log, enabled is property
+    expect(path).toEqual(['log', 'console', 'enabled']);
+  });
+
+  it('dynamically detects path vs property: log is object, file is object, maxFiles is property', () => {
+    const prog = new Command();
+    prog.option('--log-file-max-files <number>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // log is object, file is object under log, max-files becomes maxFiles property
+    expect(path).toEqual(['log', 'file', 'maxFiles']);
+  });
+
+  it('dynamically detects path vs property: api is object, maxRetries is property', () => {
+    const prog = new Command();
+    prog.option('--api-max-retries <number>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // api is object, max-retries becomes maxRetries property
+    expect(path).toEqual(['api', 'maxRetries']);
+  });
+
+  it('dynamically detects path vs property: report is object, maxFiles is property', () => {
+    const prog = new Command();
+    prog.option('--report-max-files <number>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // report is object, max-files becomes maxFiles property
+    expect(path).toEqual(['report', 'maxFiles']);
+  });
+
+  it('handles flags with --no- prefix using dynamic detection', () => {
+    const prog = new Command();
+    prog.option('--no-log-file-enabled', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // Strips --no-, then: log is object, file is object, enabled is property
+    expect(path).toEqual(['log', 'file', 'enabled']);
+  });
+
+  it('treats unknown top-level keys as properties', () => {
+    const prog = new Command();
+    prog.option('--custom-option <value>', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // custom is not in DEFAULT_GLOBAL_CONFIG, so entire thing becomes camelCase property
+    expect(path).toEqual(['customOption']);
   });
 });

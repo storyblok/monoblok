@@ -9,7 +9,6 @@ import type { DeleteDatasourceOptions } from './constants';
 import { mapiClient } from '../../../api';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
-import { parseOptionalBoolean } from '../../../config';
 
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
@@ -17,7 +16,7 @@ datasourcesCommand
   .command('delete [name]')
   .description('Delete a datasource from your space by name or id')
   .option('--id <id>', 'Delete by datasource id instead of name')
-  .option('--force [boolean]', 'Skip confirmation prompt for deletion (useful for CI)', parseOptionalBoolean, false)
+  .option('--force', 'Skip confirmation prompt for deletion (useful for CI)', false)
   .action(async (name: string, options: DeleteDatasourceOptions) => {
     konsola.title(
       `${commands.DATASOURCES}`,

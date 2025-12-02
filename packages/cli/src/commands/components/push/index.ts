@@ -12,7 +12,6 @@ import chalk from 'chalk';
 import { mapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
-import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -21,7 +20,7 @@ componentsCommand
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('--sf, --separate-files [boolean]', 'Read from separate files instead of consolidated files', parseOptionalBoolean, false)
+  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
 
   .action(async (componentName: string | undefined, options: PushComponentsOptions) => {

@@ -1,17 +1,26 @@
 import { resolve as resolvePath } from 'pathe';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { loadConfig, SUPPORTED_EXTENSIONS } from 'c12';
-import { toCamelCase } from '../utils/format';
-import { isPlainObject } from '../utils/object';
-import { konsola } from '../utils/konsola';
+import { isPlainObject } from '../../utils/object';
+import { konsola } from '../../utils/konsola';
+import { createDefaultResolvedConfig } from './defaults';
+import { loadConfig, SUPPORTED_EXTENSIONS } from './loader';
 import type {
+  ApiConfig,
   CommanderCommand,
   CommanderOption,
   ConfigLocation,
+  GlobalConfig,
+  LogConfig,
+  LogConsoleConfig,
+  LogFileConfig,
   PlainObject,
+  ReportConfig,
   ResolvedCliConfig,
 } from './types';
+
+// Type representing any level of the config hierarchy during path traversal
+type ConfigLevel = GlobalConfig | ApiConfig | LogConfig | LogConsoleConfig | LogFileConfig | ReportConfig | Record<string, unknown>;
 
 export const CONFIG_FILE_NAME = 'storyblok.config';
 export const HIDDEN_CONFIG_DIR = '.storyblok';
@@ -73,11 +82,50 @@ export function getOptionPath(option: CommanderOption): string[] {
   if (!longFlag) {
     return [option.attributeName()];
   }
-  const normalized = longFlag.replace(/^--/, '');
-  return normalized
-    .split('.')
-    // Commander flags use kebab/dot case; convert segments to the camelCase keys in config.
-    .map(segment => toCamelCase(segment));
+
+  // Remove the -- prefix and check for --no-* negation prefix
+  let normalized = longFlag.replace(/^--/, '');
+  const isNegated = normalized.startsWith('no-');
+
+  // Remove the no- prefix if present (Commander uses --no-* for boolean negation)
+  if (isNegated) {
+    normalized = normalized.replace(/^no-/, '');
+  }
+
+  // Split on hyphens to get all segments
+  const segments = normalized.split('-');
+  const path: string[] = [];
+
+  // Dynamically determine path vs property by checking if partial path is an object in DEFAULT_GLOBAL_CONFIG
+  // For example, for --log-file-max-files:
+  // - Check if 'log' is an object → yes, add to path
+  // - Check if 'log.file' is an object → yes, add to path
+  // - Check if 'log.file.max' is an object → no, so 'max-files' becomes property 'maxFiles'
+  let currentConfig: ConfigLevel = createDefaultResolvedConfig();
+  let i = 0;
+
+  while (i < segments.length) {
+    const segment = segments[i];
+
+    // Check if this segment exists as an object in the current config level
+    const currentAsRecord = currentConfig as Record<string, unknown>;
+    if (currentConfig && isPlainObject(currentAsRecord[segment])) {
+      path.push(segment);
+      currentConfig = currentAsRecord[segment] as ConfigLevel;
+      i++;
+    }
+    else {
+      // Remaining segments form the property name - convert to camelCase
+      const remainingSegments = segments.slice(i);
+      const camelCased = remainingSegments
+        .map((seg, idx) => idx === 0 ? seg : seg.charAt(0).toUpperCase() + seg.slice(1))
+        .join('');
+      path.push(camelCased);
+      break;
+    }
+  }
+
+  return path;
 }
 
 function resolveConfigFilePath(cwd: string, configFile: string): string | null {
@@ -103,10 +151,6 @@ async function loadConfigLayer({ cwd, configFile }: ConfigLocation): Promise<Rec
     name: 'storyblok',
     cwd,
     configFile,
-    rcFile: false,
-    globalRc: false,
-    dotenv: false,
-    packageJson: false,
   });
   return config ?? null;
 }

@@ -1,4 +1,4 @@
-import { getActiveConfig } from '../config';
+import { getActiveConfig } from '../lib/config';
 
 export class FetchError extends Error {
   response: {

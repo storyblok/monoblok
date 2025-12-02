@@ -8,6 +8,8 @@ export * from './error/';
 export * from './format';
 export * from './konsola';
 export * from './object';
+export * from './package';
+export * from './types';
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);

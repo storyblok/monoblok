@@ -1,27 +1,9 @@
 // program.ts
 import { Command } from 'commander';
-import { __dirname, handleError } from './utils';
-import type { NormalizedPackageJson } from 'read-package-up';
-import { readPackageUp } from 'read-package-up';
-import { loadConfig } from 'c12';
+import { getPackageJson, handleError } from './utils';
+import { loadConfig } from './lib/config/loader';
 
-let packageJson: NormalizedPackageJson;
-// Read package.json for metadata
-const result = await readPackageUp({
-  cwd: __dirname,
-});
-
-if (!result) {
-  console.debug('Metadata not found');
-  packageJson = {
-    name: 'storyblok',
-    description: 'Storyblok CLI',
-    version: '0.0.0',
-  } as NormalizedPackageJson;
-}
-else {
-  packageJson = result.packageJson;
-}
+const packageJson = getPackageJson();
 
 // Declare a variable to hold the singleton instance
 let programInstance: Command | null = null;

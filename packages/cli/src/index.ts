@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'dotenv/config';
 
-import { handleError, konsola } from './utils';
+import { handleError, konsola, pkg } from './utils';
 import { getProgram } from './program';
 import './commands/login';
 import './commands/logout';
@@ -13,10 +13,9 @@ import './commands/migrations';
 import './commands/types';
 import './commands/datasources';
 import './commands/create';
-import pkg from '../package.json';
 
 import { colorPalette } from './constants';
-import { applyConfigToCommander, getCommandAncestry, GLOBAL_OPTION_DEFINITIONS, logActiveConfig, resolveConfig, setActiveConfig } from './config';
+import { applyConfigToCommander, getCommandAncestry, GLOBAL_OPTION_DEFINITIONS, logActiveConfig, resolveConfig, setActiveConfig } from './lib/config';
 
 export * from './types/storyblok';
 

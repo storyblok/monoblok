@@ -1,6 +1,6 @@
 import type { GlobalConfig, ResolvedCliConfig } from './types';
 
-export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
+const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   region: 'eu',
   api: {
     maxRetries: 3,
@@ -24,6 +24,12 @@ export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   verbose: false,
 };
 
+/**
+ * Create a new resolved config with default values
+ *
+ * @export
+ * @return {ResolvedCliConfig}
+ */
 export function createDefaultResolvedConfig(): ResolvedCliConfig {
   return structuredClone(DEFAULT_GLOBAL_CONFIG) as ResolvedCliConfig;
 }

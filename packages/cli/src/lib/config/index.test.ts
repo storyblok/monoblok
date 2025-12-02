@@ -2,10 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Command } from 'commander';
 import { resolveConfig } from './resolver';
 import { applyConfigToCommander } from './commander';
-import { DEFAULT_GLOBAL_CONFIG } from './defaults';
+import { createDefaultResolvedConfig } from './defaults';
 import { defineConfig } from './types';
 import * as helpers from './helpers';
-import { GLOBAL_OPTION_DEFINITIONS, parseOptionalBoolean } from './options';
+import { GLOBAL_OPTION_DEFINITIONS } from './options';
+
+vi.mock('./loader', () => ({
+  loadConfig: vi.fn(),
+  SUPPORTED_EXTENSIONS: ['.json', '.json5', '.jsonc', '.yaml', '.yml', '.toml', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'],
+}));
 
 interface CommandHierarchy {
   root: Command;
@@ -37,13 +42,13 @@ function createCommandHierarchy(): CommandHierarchy {
 
   const pull = components
     .command('pull')
-    .option('--separate-files [boolean]', 'Separate output per component', parseOptionalBoolean, false)
+    .option('--separate-files', 'Separate output per component', false)
     .option('--filename <filename>', 'Filename used for exports', 'components')
     .option('--suffix <suffix>', 'Optional filename suffix');
 
   const push = components
     .command('push')
-    .option('--dry-run [boolean]', 'Preview component push', parseOptionalBoolean, false);
+    .option('--dry-run', 'Preview component push', false);
 
   return { root, components, pull, push };
 }
@@ -63,9 +68,10 @@ describe('config resolver', () => {
     const { root, components, pull } = createCommandHierarchy();
     const resolved = await resolveConfig(pull, [root, components, pull]);
 
-    expect(resolved.region).toBe(DEFAULT_GLOBAL_CONFIG.region);
-    expect(resolved.api.maxRetries).toBe(DEFAULT_GLOBAL_CONFIG.api.maxRetries);
-    expect(resolved.log.console.level).toBe(DEFAULT_GLOBAL_CONFIG.log.console.level);
+    const defaultConfig = createDefaultResolvedConfig();
+    expect(resolved.region).toBe(defaultConfig.region);
+    expect(resolved.api.maxRetries).toBe(defaultConfig.api.maxRetries);
+    expect(resolved.log.console.level).toBe(defaultConfig.log.console.level);
     expect(resolved.filename).toBe('components');
     expect(resolved.separateFiles).toBe(false);
     expect(resolved.path).toBeUndefined();
@@ -190,7 +196,8 @@ describe('config resolver', () => {
     const ancestry = [root, components, pull];
     const resolved = await resolveConfig(pull, ancestry);
 
-    expect(root.getOptionValue('region')).toBe(DEFAULT_GLOBAL_CONFIG.region);
+    const defaultConfig = createDefaultResolvedConfig();
+    expect(root.getOptionValue('region')).toBe(defaultConfig.region);
     expect(components.getOptionValue('path')).toBeUndefined();
     expect(pull.getOptionValue('suffix')).toBeUndefined();
 
@@ -234,9 +241,153 @@ describe('global option definitions', () => {
     expect(program.opts().verbose).toBe(true);
   });
 
-  it('accepts explicit false for verbose flag', () => {
+  it('does not support --no-verbose since verbose defaults to false', () => {
     const program = buildProgram();
-    program.parse(['node', 'cli', '--verbose', 'false']);
+    // verbose defaults to false, so only --verbose is available to enable it
+    program.parse(['node', 'cli']);
     expect(program.opts().verbose).toBe(false);
+
+    const program2 = buildProgram();
+    program2.parse(['node', 'cli', '--verbose']);
+    expect(program2.opts().verbose).toBe(true);
+  });
+
+  it('supports both positive and negative forms for log-console-enabled', () => {
+    const program = buildProgram();
+    // Default is true
+    program.parse(['node', 'cli']);
+    expect(program.opts().logConsoleEnabled).toBe(true);
+
+    const program2 = buildProgram();
+    program2.parse(['node', 'cli', '--no-log-console-enabled']);
+    expect(program2.opts().logConsoleEnabled).toBe(false);
+
+    const program3 = buildProgram();
+    program3.parse(['node', 'cli', '--log-console-enabled']);
+    expect(program3.opts().logConsoleEnabled).toBe(true);
+  });
+
+  it('supports both positive and negative forms for log-file-enabled', () => {
+    const program = buildProgram();
+    program.parse(['node', 'cli', '--no-log-file-enabled']);
+    expect(program.opts().logFileEnabled).toBe(false);
+
+    const program2 = buildProgram();
+    program2.parse(['node', 'cli', '--log-file-enabled']);
+    expect(program2.opts().logFileEnabled).toBe(true);
+  });
+
+  it('supports both positive and negative forms for report-enabled', () => {
+    const program = buildProgram();
+    program.parse(['node', 'cli', '--no-report-enabled']);
+    expect(program.opts().reportEnabled).toBe(false);
+
+    const program2 = buildProgram();
+    program2.parse(['node', 'cli', '--report-enabled']);
+    expect(program2.opts().reportEnabled).toBe(true);
+
+    const program3 = buildProgram();
+    // Defaults to true when neither flag is provided
+    program3.parse(['node', 'cli']);
+    expect(program3.opts().reportEnabled).toBe(true);
+  });
+
+  it('allows overriding config file boolean values with both positive and negative flags', () => {
+    const program = buildProgram();
+    // User can explicitly enable a feature that might be disabled in config
+    program.parse(['node', 'cli', '--log-file-enabled']);
+    expect(program.opts().logFileEnabled).toBe(true);
+
+    const program2 = buildProgram();
+    // User can explicitly disable a feature that might be enabled in config
+    program2.parse(['node', 'cli', '--no-log-file-enabled']);
+    expect(program2.opts().logFileEnabled).toBe(false);
+  });
+});
+
+describe('deeply nested command structures', () => {
+  it('supports arbitrary command depth in module config', async () => {
+    const loadConfigLayersSpy = vi.spyOn(helpers, 'loadConfigLayers').mockResolvedValue([
+      {
+        modules: {
+          components: {
+            pull: {
+              show: {
+                deepOption: 'deep-value',
+                nestedFlag: true,
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    const root = new Command('storyblok');
+    root.exitOverride();
+    registerGlobalOptions(root);
+
+    const components = root
+      .command('components')
+      .option('--path <path>', 'Components working directory');
+
+    const pull = components
+      .command('pull')
+      .option('--filename <filename>', 'Filename', 'components');
+
+    const show = pull
+      .command('show')
+      .option('--deep-option <value>', 'Deep option')
+      .option('--nested-flag', 'Nested flag', false);
+
+    const resolved = await resolveConfig(show, [root, components, pull, show]);
+
+    expect(resolved.deepOption).toBe('deep-value');
+    expect(resolved.nestedFlag).toBe(true);
+    expect(resolved.filename).toBe('components');
+
+    loadConfigLayersSpy.mockRestore();
+  });
+
+  it('extracts direct values at each nesting level correctly', async () => {
+    const loadConfigLayersSpy = vi.spyOn(helpers, 'loadConfigLayers').mockResolvedValue([
+      {
+        modules: {
+          components: {
+            sharedOption: 'shared-at-components',
+            pull: {
+              pullOption: 'pull-level',
+              show: {
+                showOption: 'show-level',
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    const root = new Command('storyblok');
+    root.exitOverride();
+    registerGlobalOptions(root);
+
+    const components = root
+      .command('components')
+      .option('--shared-option <value>', 'Shared option');
+
+    const pull = components
+      .command('pull')
+      .option('--pull-option <value>', 'Pull option');
+
+    const show = pull
+      .command('show')
+      .option('--show-option <value>', 'Show option');
+
+    const resolved = await resolveConfig(show, [root, components, pull, show]);
+
+    // All options from the hierarchy should be present
+    expect(resolved.sharedOption).toBe('shared-at-components');
+    expect(resolved.pullOption).toBe('pull-level');
+    expect(resolved.showOption).toBe('show-level');
+
+    loadConfigLayersSpy.mockRestore();
   });
 });

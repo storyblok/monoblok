@@ -3,7 +3,7 @@ import type { GraphBuildingContext, PushResults } from './types';
 
 import { buildDependencyGraph, validateGraph } from './dependency-graph';
 import { processAllResources } from './resource-processor';
-import { getActiveConfig } from '../../../../config';
+import { getActiveConfig } from '../../../../lib/config';
 
 // Re-export commonly used utilities
 export type { PushResults } from './types';

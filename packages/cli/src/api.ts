@@ -1,6 +1,6 @@
 import { ManagementApiClient, type ManagementApiClientConfig } from '@storyblok/management-api-client';
 import { RateLimit } from 'async-sema';
-import { getActiveConfig } from './config';
+import { getActiveConfig } from './lib/config';
 
 let instance: ManagementApiClient | null = null;
 let storedConfig: ManagementApiClientConfig | null = null;

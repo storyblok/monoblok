@@ -1,13 +1,14 @@
-import type { RegionCode } from '../constants';
+import type { RegionCode } from '../../constants';
 import type { Command, Option } from 'commander';
-import type { CommandOptions } from '../types';
-import type { PullComponentsOptions } from '../commands/components/pull/constants';
-import type { PushComponentsOptions } from '../commands/components/push/constants';
-import type { PullDatasourcesOptions } from '../commands/datasources/pull/constants';
-import type { PushDatasourcesOptions } from '../commands/datasources/push/constants';
-import type { MigrationsGenerateOptions } from '../commands/migrations/generate/constants';
-import type { MigrationsRunOptions } from '../commands/migrations/run/constants';
-import type { GenerateTypesOptions } from '../commands/types/generate/constants';
+import type { CommandOptions } from '../../types';
+import type { PullComponentsOptions } from '../../commands/components/pull/constants';
+import type { PushComponentsOptions } from '../../commands/components/push/constants';
+import type { PullDatasourcesOptions } from '../../commands/datasources/pull/constants';
+import type { PushDatasourcesOptions } from '../../commands/datasources/push/constants';
+import type { MigrationsGenerateOptions } from '../../commands/migrations/generate/constants';
+import type { MigrationsRunOptions } from '../../commands/migrations/run/constants';
+import type { GenerateTypesOptions } from '../../commands/types/generate/constants';
+import type { DeepPartial } from '../../utils/types';
 
 export type PlainObject = Record<string, any>;
 
@@ -84,14 +85,6 @@ export type ModulesConfig = Record<string, PlainObject> & {
   datasources?: DatasourcesModuleConfig;
   migrations?: MigrationsModuleConfig;
   types?: TypesModuleConfig;
-};
-
-export type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends (...args: any[]) => any
-    ? T[K]
-    : T[K] extends object
-      ? DeepPartial<T[K]>
-      : T[K];
 };
 
 export interface StoryblokConfig extends DeepPartial<GlobalConfig> {

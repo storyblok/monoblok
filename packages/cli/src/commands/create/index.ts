@@ -12,7 +12,6 @@ import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import { parseOptionalBoolean } from '../../config';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -23,7 +22,7 @@ export const createCommand = program
   .description(`Scaffold a new project using Storyblok`)
   .option('-t, --template <template>', 'technology starter template')
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
-  .option('--skip-space [boolean]', 'skip space creation', parseOptionalBoolean, false)
+  .option('--skip-space', 'skip space creation', false)
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options

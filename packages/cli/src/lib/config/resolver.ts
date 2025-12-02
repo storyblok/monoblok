@@ -1,5 +1,5 @@
 import type { CommanderCommand, PlainObject, ResolvedCliConfig } from './types';
-import { createDefaultResolvedConfig, DEFAULT_GLOBAL_CONFIG } from './defaults';
+import { createDefaultResolvedConfig } from './defaults';
 import {
   applyCliOverrides,
   collectGlobalDefaults,
@@ -10,7 +10,7 @@ import {
   getCommandAncestry,
   loadConfigLayers,
 } from './helpers';
-import { isPlainObject, mergeDeep } from '../utils/object';
+import { isPlainObject, mergeDeep } from '../../utils/object';
 
 // Walks the command chain (excluding root) and applies module-specific overrides at each level.
 function mergeModuleConfig(target: PlainObject, modulesConfig: Record<string, any>, commands: CommanderCommand[]): void {
@@ -39,18 +39,20 @@ export async function resolveConfig(
   ancestry?: CommanderCommand[] | CommanderCommand,
 ): Promise<ResolvedCliConfig> {
   // Build the command hierarchy so we can split global vs local defaults and apply overrides in order.
-  const commandChain = Array.isArray(ancestry)
-    ? ancestry
-    : ancestry
-      ? getCommandAncestry(ancestry)
-      : getCommandAncestry(thisCommand);
+  let commandChain: CommanderCommand[];
+  if (Array.isArray(ancestry)) {
+    commandChain = ancestry;
+  }
+  else if (ancestry) {
+    commandChain = getCommandAncestry(ancestry);
+  }
+  else {
+    commandChain = getCommandAncestry(thisCommand);
+  }
   const [root, ...rest] = commandChain;
 
-  const globalDefaults = collectGlobalDefaults(root, structuredClone(DEFAULT_GLOBAL_CONFIG) as PlainObject);
-  const localDefaults = collectLocalDefaults(rest);
-
-  const globalResolved = structuredClone(globalDefaults);
-  const localResolved = structuredClone(localDefaults);
+  const globalResolved = collectGlobalDefaults(root, createDefaultResolvedConfig());
+  const localResolved = collectLocalDefaults(rest);
 
   const layers = await loadConfigLayers();
   for (const layer of layers) {

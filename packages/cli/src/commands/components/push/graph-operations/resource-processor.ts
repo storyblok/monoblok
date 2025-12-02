@@ -5,7 +5,7 @@ import { progressDisplay } from '../progress-display';
 import { pushComponent } from '../actions';
 import type { SpaceComponent } from '../../constants';
 import chalk from 'chalk';
-import { getActiveConfig } from '../../../../config';
+import { getActiveConfig } from '../../../../lib/config';
 
 // =============================================================================
 // RESOURCE PROCESSING

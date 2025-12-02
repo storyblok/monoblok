@@ -13,14 +13,13 @@ import { mapiClient } from '../../../api';
 import { MultiBar, Presets } from 'cli-progress';
 import { pipeline } from 'node:stream';
 import chalk from 'chalk';
-import { parseOptionalBoolean } from '../../../config';
 
 const program = getProgram();
 
 migrationsCommand.command('run [componentName]')
   .description('Run migrations')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('-d, --dry-run [boolean]', 'Preview changes without applying them to Storyblok', parseOptionalBoolean, false)
+  .option('-d, --dry-run', 'Preview changes without applying them to Storyblok', false)
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')

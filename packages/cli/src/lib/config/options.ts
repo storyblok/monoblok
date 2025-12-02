@@ -1,16 +1,7 @@
-import { DEFAULT_GLOBAL_CONFIG } from './defaults';
+import { createDefaultResolvedConfig } from './defaults';
 import type { GlobalOptionDefinition } from './types';
 
-export function parseBoolean(value: string): boolean {
-  const normalized = value.trim().toLowerCase();
-  if (['true', '1', 'yes', 'y'].includes(normalized)) {
-    return true;
-  }
-  if (['false', '0', 'no', 'n'].includes(normalized)) {
-    return false;
-  }
-  throw new Error(`Invalid boolean value "${value}". Use true/false.`);
-}
+const DEFAULT_GLOBAL_CONFIG = createDefaultResolvedConfig();
 
 export function parseNumber(value: string): number {
   const parsed = Number.parseInt(value, 10);
@@ -20,19 +11,11 @@ export function parseNumber(value: string): number {
   return parsed;
 }
 
-export function parseOptionalBoolean(value?: string): boolean {
-  if (value === undefined) {
-    return true;
-  }
-  return parseBoolean(value);
-}
-
 export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
   {
-    flags: '--verbose [boolean]',
+    flags: '--verbose',
     description: 'Enable verbose output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.verbose,
-    parser: parseOptionalBoolean,
   },
   {
     flags: '--region <region>',
@@ -40,53 +23,66 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     defaultValue: DEFAULT_GLOBAL_CONFIG.region,
   },
   {
-    flags: '--api.max-retries <number>',
+    flags: '--api-max-retries <number>',
     description: 'Maximum retry attempts for HTTP requests',
     defaultValue: DEFAULT_GLOBAL_CONFIG.api.maxRetries,
     parser: parseNumber,
   },
   {
-    flags: '--api.max-concurrency <number>',
+    flags: '--api-max-concurrency <number>',
     description: 'Maximum concurrent API requests executed by the CLI',
     defaultValue: DEFAULT_GLOBAL_CONFIG.api.maxConcurrency,
     parser: parseNumber,
   },
+  // Boolean flags that default to true need both positive and negative forms
   {
-    flags: '--log.console.enabled [boolean]',
+    flags: '--log-console-enabled',
     description: 'Enable console logging output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.console.enabled,
-    parser: parseOptionalBoolean,
   },
   {
-    flags: '--log.console.level <level>',
+    flags: '--no-log-console-enabled',
+    description: 'Disable console logging output',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.log.console.enabled,
+  },
+  {
+    flags: '--log-console-level <level>',
     description: 'Console log level threshold',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.console.level,
   },
   {
-    flags: '--log.file.enabled [boolean]',
+    flags: '--log-file-enabled',
     description: 'Enable file logging output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.file.enabled,
-    parser: parseOptionalBoolean,
   },
   {
-    flags: '--log.file.level <level>',
+    flags: '--no-log-file-enabled',
+    description: 'Disable file logging output',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.log.file.enabled,
+  },
+  {
+    flags: '--log-file-level <level>',
     description: 'File log level threshold',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.file.level,
   },
   {
-    flags: '--log.file.max-files <number>',
+    flags: '--log-file-max-files <number>',
     description: 'Maximum amount of log files to keep on disk',
     defaultValue: DEFAULT_GLOBAL_CONFIG.log.file.maxFiles,
     parser: parseNumber,
   },
   {
-    flags: '--report.enabled [boolean]',
+    flags: '--report-enabled',
     description: 'Enable report generation after command execution',
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.enabled,
-    parser: parseOptionalBoolean,
   },
   {
-    flags: '--report.max-files <number>',
+    flags: '--no-report-enabled',
+    description: 'Disable report generation after command execution',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.report.enabled,
+  },
+  {
+    flags: '--report-max-files <number>',
     description: 'Maximum number of report files to keep',
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.maxFiles,
     parser: parseNumber,

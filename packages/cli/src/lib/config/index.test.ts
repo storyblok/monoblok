@@ -22,10 +22,10 @@ interface CommandHierarchy {
 function registerGlobalOptions(command: Command): void {
   for (const option of GLOBAL_OPTION_DEFINITIONS) {
     if (option.parser) {
-      command.option(option.flags, option.description, option.parser, option.defaultValue);
+      command.option(option.flags, option.description, option.parser as (value: string, previous: unknown) => unknown, option.defaultValue as string | boolean | number);
     }
     else {
-      command.option(option.flags, option.description, option.defaultValue);
+      command.option(option.flags, option.description, option.defaultValue as string | boolean | string[]);
     }
   }
 }

@@ -128,6 +128,11 @@ export default defineConfig({
   region: 'eu', // Storyblok region: 'eu', 'us', 'ap', 'ca', 'cn'
   verbose: false, // Enable verbose output
 
+  // UI configuration
+  ui: {
+    enabled: true, // Enable UI output
+  },
+
   // API configuration
   api: {
     maxRetries: 3, // Maximum retry attempts for failed requests
@@ -137,7 +142,7 @@ export default defineConfig({
   // Logging configuration
   log: {
     console: {
-      enabled: true, // Enable console logging
+      enabled: false, // Enable console logging
       level: 'info', // Log level: 'info', 'warn', 'error', 'debug'
     },
     file: {
@@ -196,7 +201,8 @@ export default defineConfig({
 | `--region <region>` | `region` | Storyblok region used for API requests | `eu` |
 | `--api-max-retries <number>` | `api.maxRetries` | Maximum retry attempts for HTTP requests | `3` |
 | `--api-max-concurrency <number>` | `api.maxConcurrency` | Maximum concurrent API requests | `6` |
-| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output | `true` |
+| `--ui-enabled` / `--no-ui-enabled` | `ui.enabled` | Enable/disable UI output | `true` |
+| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output | `false` |
 | `--log-console-level <level>` | `log.console.level` | Console log level | `info` |
 | `--log-file-enabled` / `--no-log-file-enabled` | `log.file.enabled` | Enable/disable file logging output | `true` |
 | `--log-file-level <level>` | `log.file.level` | File log level | `info` |

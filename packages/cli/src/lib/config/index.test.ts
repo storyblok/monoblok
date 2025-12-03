@@ -254,9 +254,9 @@ describe('global option definitions', () => {
 
   it('supports both positive and negative forms for log-console-enabled', () => {
     const program = buildProgram();
-    // Default is true
+    // Default is false
     program.parse(['node', 'cli']);
-    expect(program.opts().logConsoleEnabled).toBe(true);
+    expect(program.opts().logConsoleEnabled).toBe(false);
 
     const program2 = buildProgram();
     program2.parse(['node', 'cli', '--no-log-console-enabled']);
@@ -265,6 +265,21 @@ describe('global option definitions', () => {
     const program3 = buildProgram();
     program3.parse(['node', 'cli', '--log-console-enabled']);
     expect(program3.opts().logConsoleEnabled).toBe(true);
+  });
+
+  it('supports both positive and negative forms for ui-enabled', () => {
+    const program = buildProgram();
+    program.parse(['node', 'cli', '--no-ui-enabled']);
+    expect(program.opts().uiEnabled).toBe(false);
+
+    const program2 = buildProgram();
+    program2.parse(['node', 'cli', '--ui-enabled']);
+    expect(program2.opts().uiEnabled).toBe(true);
+
+    const program3 = buildProgram();
+    // Defaults to true when neither flag is provided
+    program3.parse(['node', 'cli']);
+    expect(program3.opts().uiEnabled).toBe(true);
   });
 
   it('supports both positive and negative forms for log-file-enabled', () => {

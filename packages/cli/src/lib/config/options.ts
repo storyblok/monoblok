@@ -72,6 +72,16 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     parser: parseNumber,
   },
   {
+    flags: '--ui-enabled',
+    description: 'Enable UI output',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.ui.enabled,
+  },
+  {
+    flags: '--no-ui-enabled',
+    description: 'Disable UI output',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.ui.enabled,
+  },
+  {
     flags: '--report-enabled',
     description: 'Enable report generation after command execution',
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.enabled,

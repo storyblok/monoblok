@@ -2,7 +2,8 @@ import { resolve as resolvePath } from 'pathe';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isPlainObject } from '../../utils/object';
-import { konsola } from '../../utils/konsola';
+import { getUI } from '../../utils/ui';
+import { getLogger } from '../logger/logger';
 import { createDefaultResolvedConfig } from './defaults';
 import { loadConfig, SUPPORTED_EXTENSIONS } from './loader';
 import type {
@@ -146,7 +147,13 @@ async function loadConfigLayer({ cwd, configFile }: ConfigLocation): Promise<Rec
   if (!filePath) {
     return null;
   }
-  konsola.info(`Loaded Storyblok config: ${filePath}`, { margin: false });
+
+  const ui = getUI();
+  ui.info(`Loaded Storyblok config: ${filePath}`, { margin: false });
+
+  const logger = getLogger();
+  logger.info('Config file loaded', { filePath, cwd, configFile });
+
   const { config } = await loadConfig({
     name: 'storyblok',
     cwd,
@@ -182,7 +189,11 @@ export async function loadConfigLayers(): Promise<Record<string, any>[]> {
     }
   }
   if (!layers.length) {
-    konsola.info('No Storyblok config files found. Falling back to defaults.');
+    const ui = getUI();
+    ui.info('No Storyblok config files found. Falling back to defaults.');
+
+    const logger = getLogger();
+    logger.info('No config files found, using defaults');
   }
   return layers;
 }
@@ -196,5 +207,14 @@ export function logActiveConfig(config: ResolvedCliConfig, ancestry: CommanderCo
     return;
   }
   const layerName = ancestry.map(cmd => cmd.name()).join(' ');
-  konsola.info(`Active config for "${layerName}":\n${JSON.stringify(config)}`, { margin: false });
+
+  // Use UI for verbose output
+  const ui = getUI();
+  ui.info(`Active config for "${layerName}":\n${JSON.stringify(config)}`, {
+    margin: false,
+  });
+
+  // Use logger for structured logging
+  const logger = getLogger();
+  logger.debug('Active configuration', { command: layerName, config });
 }

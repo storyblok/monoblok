@@ -38,11 +38,16 @@ export interface ReportConfig {
   maxFiles: number;
 }
 
+export interface UiConfig {
+  enabled: boolean;
+}
+
 export interface GlobalConfig {
   region: RegionCode;
   api: ApiConfig;
   log: LogConfig;
   report: ReportConfig;
+  ui: UiConfig;
   verbose: boolean;
 }
 

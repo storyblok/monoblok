@@ -86,6 +86,8 @@ export function getProgram(): Command {
       const runId = Date.now();
 
       // Initialize logger with transports based on config
+      let logFilePath: string | undefined;
+
       const transports: LogTransport[] = [];
 
       // Add console transport if enabled
@@ -105,10 +107,10 @@ export function getProgram(): Command {
           options.path,
         );
         const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
-        const filePath = path.join(logsPath, logFilename);
+        logFilePath = path.join(logsPath, logFilename);
         transports.push(
           new FileTransport({
-            filePath,
+            filePath: logFilePath,
             level: resolvedConfig.log.file.level as LogLevel,
             maxFiles: resolvedConfig.log.file.maxFiles,
           }),
@@ -122,7 +124,7 @@ export function getProgram(): Command {
       });
 
       // Initialize UI
-      getUI({ enabled: true });
+      getUI({ enabled: resolvedConfig.ui.enabled });
 
       // Initialize reporter based on config
       if (resolvedConfig.report.enabled) {
@@ -145,6 +147,11 @@ export function getProgram(): Command {
           .addMeta('cliVersion', packageJson.version)
           .addMeta('runId', String(runId))
           .addMeta('config', options);
+
+        // Add logPath if file logging is enabled
+        if (logFilePath) {
+          reporter.addMeta('logPath', logFilePath);
+        }
       }
     });
 

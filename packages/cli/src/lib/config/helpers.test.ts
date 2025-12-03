@@ -5,8 +5,10 @@ import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_
 import type { ResolvedCliConfig } from './types';
 
 const existsSyncMock = vi.hoisted(() => vi.fn());
+const loggerInfoMock = vi.hoisted(() => vi.fn());
+const loggerDebugMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
-const konsolaInfoMock = vi.hoisted(() => vi.fn());
+const uiInfoMock = vi.hoisted(() => vi.fn());
 const supportedExtensions = vi.hoisted(() => ['.json', '.json5', '.jsonc', '.yaml', '.yml', '.toml', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs']);
 
 vi.mock('node:os', () => ({
@@ -22,10 +24,17 @@ vi.mock('./loader', () => ({
   loadConfig: (options: any) => loadConfigMock(options),
 }));
 
-vi.mock('../../utils/konsola', () => ({
-  konsola: {
-    info: konsolaInfoMock,
-  },
+vi.mock('../../utils/ui', () => ({
+  getUI: () => ({
+    info: uiInfoMock,
+  }),
+}));
+
+vi.mock('../logger/logger', () => ({
+  getLogger: () => ({
+    info: loggerInfoMock,
+    debug: loggerDebugMock,
+  }),
 }));
 
 const HOME_DIR = '/home/tester';
@@ -66,9 +75,11 @@ beforeEach(() => {
 
 afterEach(() => {
   cwdSpy?.mockRestore();
+  loggerInfoMock.mockReset();
+  loggerDebugMock.mockReset();
   loadConfigMock.mockReset();
   existsSyncMock.mockReset();
-  konsolaInfoMock.mockReset();
+  uiInfoMock.mockReset();
 });
 
 describe('loadConfigLayers', () => {
@@ -95,8 +106,8 @@ describe('loadConfigLayers', () => {
       `${LOCAL_CONFIG_DIR}:${HIDDEN_CONFIG_FILE_NAME}`,
       `${WORKSPACE_DIR}:${CONFIG_FILE_NAME}`,
     ]);
-    expect(konsolaInfoMock).toHaveBeenCalledTimes(3);
-    expect(konsolaInfoMock.mock.calls.map(([message]: [string]) => message)).toEqual([
+    expect(uiInfoMock).toHaveBeenCalledTimes(3);
+    expect(uiInfoMock.mock.calls.map(([message]: [string]) => message)).toEqual([
       `Loaded Storyblok config: ${resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`)}`,
       `Loaded Storyblok config: ${resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.yaml`)}`,
       `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
@@ -127,8 +138,8 @@ describe('loadConfigLayers', () => {
       cwd: WORKSPACE_DIR,
       configFile: CONFIG_FILE_NAME,
     }));
-    expect(konsolaInfoMock).toHaveBeenCalledTimes(1);
-    expect(konsolaInfoMock).toHaveBeenCalledWith(
+    expect(uiInfoMock).toHaveBeenCalledTimes(1);
+    expect(uiInfoMock).toHaveBeenCalledWith(
       `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
       expect.any(Object),
     );
@@ -138,7 +149,7 @@ describe('loadConfigLayers', () => {
     const layers = await loadConfigLayers();
 
     expect(layers).toEqual([]);
-    expect(konsolaInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
+    expect(uiInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
   });
 });
 
@@ -205,11 +216,11 @@ describe('config inspector helpers', () => {
     const ancestry = buildCommandChain();
 
     logActiveConfig(mockConfig, ancestry, false);
-    expect(konsolaInfoMock).not.toHaveBeenCalled();
+    expect(uiInfoMock).not.toHaveBeenCalled();
 
     logActiveConfig(mockConfig, ancestry, true);
-    expect(konsolaInfoMock).toHaveBeenCalledTimes(1);
-    expect(konsolaInfoMock.mock.calls[0][0]).toContain('Active config for "storyblok components pull"');
+    expect(uiInfoMock).toHaveBeenCalledTimes(1);
+    expect(uiInfoMock.mock.calls[0][0]).toContain('Active config for "storyblok components pull"');
   });
 });
 
@@ -295,6 +306,17 @@ describe('getOptionPath', () => {
 
     // api is object, max-retries becomes maxRetries property
     expect(path).toEqual(['api', 'maxRetries']);
+  });
+
+  it('dynamically detects path vs property: ui is object, enabled is property', () => {
+    const prog = new Command();
+    prog.option('--ui-enabled', 'desc');
+
+    const option = prog.options[0];
+    const path = getOptionPath(option);
+
+    // ui is object, enabled is property
+    expect(path).toEqual(['ui', 'enabled']);
   });
 
   it('dynamically detects path vs property: report is object, maxFiles is property', () => {

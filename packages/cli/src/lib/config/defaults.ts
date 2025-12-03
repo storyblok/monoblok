@@ -8,7 +8,7 @@ const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   },
   log: {
     console: {
-      enabled: true,
+      enabled: false,
       level: 'info',
     },
     file: {
@@ -20,6 +20,9 @@ const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
   report: {
     enabled: true,
     maxFiles: 10,
+  },
+  ui: {
+    enabled: true,
   },
   verbose: false,
 };

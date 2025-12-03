@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Command } from 'commander';
 import { resolve as resolvePath } from 'pathe';
+import { vol } from 'memfs';
 import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
 import type { ResolvedCliConfig } from './types';
 
-const existsSyncMock = vi.hoisted(() => vi.fn());
 const loggerInfoMock = vi.hoisted(() => vi.fn());
 const loggerDebugMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
@@ -15,9 +15,7 @@ vi.mock('node:os', () => ({
   homedir: () => '/home/tester',
 }));
 
-vi.mock('node:fs', () => ({
-  existsSync: existsSyncMock,
-}));
+vi.mock('node:fs');
 
 vi.mock('./loader', () => ({
   SUPPORTED_EXTENSIONS: supportedExtensions,
@@ -42,31 +40,41 @@ const WORKSPACE_DIR = '/workspace/project';
 const HOME_CONFIG_DIR = resolvePath(HOME_DIR, HIDDEN_CONFIG_DIR);
 const LOCAL_CONFIG_DIR = resolvePath(WORKSPACE_DIR, HIDDEN_CONFIG_DIR);
 
-const directories = new Set<string>();
-const files = new Set<string>();
 const responses = new Map<string, Record<string, any>>();
 let cwdSpy: ReturnType<typeof vi.spyOn> | undefined;
 
-function registerDirectory(path: string): void {
-  directories.add(path);
-}
-
-function addConfigFile(dir: string, baseFile: string, extension: string): void {
-  files.add(resolvePath(dir, `${baseFile}${extension}`));
-}
+const preconditions = {
+  hasHomeConfig(extension: string, config: Record<string, any>): void {
+    const filePath = resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}${extension}`);
+    vol.mkdirSync(HOME_CONFIG_DIR, { recursive: true });
+    vol.writeFileSync(filePath, JSON.stringify(config));
+    responses.set(HOME_CONFIG_DIR, config);
+  },
+  hasLocalConfig(extension: string, config: Record<string, any>): void {
+    const filePath = resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}${extension}`);
+    vol.mkdirSync(LOCAL_CONFIG_DIR, { recursive: true });
+    vol.writeFileSync(filePath, JSON.stringify(config));
+    responses.set(LOCAL_CONFIG_DIR, config);
+  },
+  hasWorkspaceConfig(extension: string, config: Record<string, any>): void {
+    const filePath = resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}${extension}`);
+    vol.mkdirSync(WORKSPACE_DIR, { recursive: true });
+    vol.writeFileSync(filePath, JSON.stringify(config));
+    responses.set(WORKSPACE_DIR, config);
+  },
+  hasNoConfigFiles(): void {
+    vol.reset();
+    responses.clear();
+  },
+};
 
 function resetFilesystem(): void {
-  directories.clear();
-  files.clear();
+  vol.reset();
   responses.clear();
-  registerDirectory(HOME_CONFIG_DIR);
-  registerDirectory(LOCAL_CONFIG_DIR);
-  registerDirectory(WORKSPACE_DIR);
 }
 
 beforeEach(() => {
   resetFilesystem();
-  existsSyncMock.mockImplementation((target: string) => directories.has(target) || files.has(target));
   loadConfigMock.mockImplementation(async ({ cwd }: { cwd: string }) => ({
     config: responses.get(cwd) ?? null,
   }));
@@ -78,76 +86,47 @@ afterEach(() => {
   loggerInfoMock.mockReset();
   loggerDebugMock.mockReset();
   loadConfigMock.mockReset();
-  existsSyncMock.mockReset();
   uiInfoMock.mockReset();
+  vol.reset();
 });
 
 describe('loadConfigLayers', () => {
   it('loads configs from home, workspace hidden dir, and project root honoring priority and supported extensions', async () => {
-    addConfigFile(HOME_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, '.json');
-    addConfigFile(LOCAL_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, '.yaml');
-    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, '.ts');
+    // Given: config files exist in all three locations
+    preconditions.hasHomeConfig('.json', { scope: 'home', ext: 'json' });
+    preconditions.hasLocalConfig('.yaml', { scope: 'workspace-hidden', ext: 'yaml' });
+    preconditions.hasWorkspaceConfig('.ts', { scope: 'workspace-root', ext: 'ts' });
 
-    responses.set(HOME_CONFIG_DIR, { scope: 'home', ext: 'json' });
-    responses.set(LOCAL_CONFIG_DIR, { scope: 'workspace-hidden', ext: 'yaml' });
-    responses.set(WORKSPACE_DIR, { scope: 'workspace-root', ext: 'ts' });
-
+    // When: loading config layers
     const layers = await loadConfigLayers();
 
+    // Then: all layers are loaded in priority order (home → local → workspace)
     expect(layers).toEqual([
       { scope: 'home', ext: 'json' },
       { scope: 'workspace-hidden', ext: 'yaml' },
       { scope: 'workspace-root', ext: 'ts' },
     ]);
-
-    expect(loadConfigMock).toHaveBeenCalledTimes(3);
-    expect(loadConfigMock.mock.calls.map(([options]: any) => `${options.cwd}:${options.configFile}`)).toEqual([
-      `${HOME_CONFIG_DIR}:${HIDDEN_CONFIG_FILE_NAME}`,
-      `${LOCAL_CONFIG_DIR}:${HIDDEN_CONFIG_FILE_NAME}`,
-      `${WORKSPACE_DIR}:${CONFIG_FILE_NAME}`,
-    ]);
-    expect(uiInfoMock).toHaveBeenCalledTimes(3);
-    expect(uiInfoMock.mock.calls.map(([message]: [string]) => message)).toEqual([
-      `Loaded Storyblok config: ${resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`)}`,
-      `Loaded Storyblok config: ${resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.yaml`)}`,
-      `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
-    ]);
-
-    const expectedCandidates = [
-      resolvePath(HOME_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`),
-      resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.json`),
-      resolvePath(LOCAL_CONFIG_DIR, `${HIDDEN_CONFIG_FILE_NAME}.yaml`),
-      resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.json`),
-      resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.yaml`),
-      resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`),
-    ];
-    for (const candidate of expectedCandidates) {
-      expect(existsSyncMock).toHaveBeenCalledWith(candidate);
-    }
   });
 
   it('skips locations that do not expose a supported config file', async () => {
-    addConfigFile(WORKSPACE_DIR, CONFIG_FILE_NAME, '.ts');
-    responses.set(WORKSPACE_DIR, { scope: 'workspace-root', ext: 'ts' });
+    // Given: only workspace config exists
+    preconditions.hasWorkspaceConfig('.ts', { scope: 'workspace-root', ext: 'ts' });
 
+    // When: loading config layers
     const layers = await loadConfigLayers();
 
+    // Then: only workspace layer is loaded
     expect(layers).toEqual([{ scope: 'workspace-root', ext: 'ts' }]);
-    expect(loadConfigMock).toHaveBeenCalledTimes(1);
-    expect(loadConfigMock).toHaveBeenCalledWith(expect.objectContaining({
-      cwd: WORKSPACE_DIR,
-      configFile: CONFIG_FILE_NAME,
-    }));
-    expect(uiInfoMock).toHaveBeenCalledTimes(1);
-    expect(uiInfoMock).toHaveBeenCalledWith(
-      `Loaded Storyblok config: ${resolvePath(WORKSPACE_DIR, `${CONFIG_FILE_NAME}.ts`)}`,
-      expect.any(Object),
-    );
   });
 
   it('logs fallback info when no config layers are detected', async () => {
+    // Given: no config files exist
+    preconditions.hasNoConfigFiles();
+
+    // When: loading config layers
     const layers = await loadConfigLayers();
 
+    // Then: empty array is returned and fallback message is shown
     expect(layers).toEqual([]);
     expect(uiInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
   });

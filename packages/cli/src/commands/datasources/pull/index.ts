@@ -1,5 +1,5 @@
 import { Spinner } from '@topcli/spinner';
-import { colorPalette, commands } from '../../../constants';
+import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 
 import { getProgram } from '../../../program';
@@ -10,7 +10,7 @@ import { CommandError, handleError, isVitest, konsola, requireAuthentication } f
 import chalk from 'chalk';
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { join } from 'pathe';
-import { DEFAULT_STORAGE_DIR } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 
 const program = getProgram();
 
@@ -34,8 +34,7 @@ datasourcesCommand
       filename = 'datasources',
     } = options;
     // Keep writing under .storyblok unless a command-level --path explicitly overrides it.
-    const resolvedBaseDir = path ?? DEFAULT_STORAGE_DIR;
-    const datasourcesOutputDir = join(resolvedBaseDir, 'datasources', space);
+    const datasourcesOutputDir = resolveCommandPath(directories.datasources, space, path);
 
     const { state, initializeSession } = session();
     await initializeSession();

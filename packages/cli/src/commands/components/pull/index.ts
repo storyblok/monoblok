@@ -1,7 +1,7 @@
 import type { PullComponentsOptions } from './constants';
 
 import { Spinner } from '@topcli/spinner';
-import { colorPalette, commands } from '../../../constants';
+import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents, saveComponentsToFiles } from '../actions';
@@ -10,7 +10,7 @@ import chalk from 'chalk';
 import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
 import { join } from 'pathe';
-import { DEFAULT_STORAGE_DIR } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 
 const program = getProgram();
 
@@ -33,8 +33,7 @@ componentsCommand
       filename = 'components',
     } = options;
     // `--path` overrides remain command-scoped; fallback keeps the historic .storyblok output.
-    const resolvedBaseDir = path ?? DEFAULT_STORAGE_DIR;
-    const componentsOutputDir = join(resolvedBaseDir, 'components', space);
+    const componentsOutputDir = resolveCommandPath(directories.components, space, path);
 
     const { state, initializeSession } = session();
     await initializeSession();

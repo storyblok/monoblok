@@ -16,14 +16,14 @@ interface ErrorOptions {
 }
 
 const noopProgressBar = {
-  increment: () => { },
-  setTotal: (_n: number) => { },
-  stop: () => { },
+  increment: () => {},
+  setTotal: (_n: number) => {},
+  stop: () => {},
 };
 
 const noopSpinner = {
-  failed: (_title: string) => { },
-  succeed: (_title: string) => { },
+  failed: (_title: string) => {},
+  succeed: (_title: string) => {},
   elapsedTime: 0,
 };
 

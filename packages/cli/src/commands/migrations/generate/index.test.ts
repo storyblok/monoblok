@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import { generateMigration } from './actions';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { migrationsCommand } from '../command';
 import { fetchComponent } from '../../../commands/components';

@@ -12,7 +12,7 @@ export async function loadConfig(options: {
   configFile?: string;
   defaults?: Record<string, any>;
 }): Promise<{ config: Record<string, any> | null }> {
-  return await c12LoadConfig({
+  return c12LoadConfig({
     name: options.name,
     cwd: options.cwd,
     configFile: options.configFile,

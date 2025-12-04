@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resolve } from 'node:path';
 import { vol } from 'memfs';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { migrationsCommand } from '../command';
 import { fetchStories, fetchStory, updateStory } from '../../stories/actions';

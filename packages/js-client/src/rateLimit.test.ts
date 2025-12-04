@@ -386,5 +386,32 @@ describe('rateLimit', () => {
         serverHeadersRateLimit: 25,
       }, MANAGEMENT_API_DEFAULT_RATE_LIMIT)).toBe(10);
     });
+
+    it('should use default rate limit of 3 for MAPI requests with params (regression test)', () => {
+      // This tests the bug fix where MAPI requests with params were incorrectly
+      // getting rate limit 1000 instead of 3 because they were treated as "cached" requests
+      const params: ISbStoriesParams = {};
+      const config = {
+        isManagementApi: true,
+      };
+
+      // MAPI request with empty params should use default rate limit (3)
+      const result = determineRateLimit(undefined, params, config, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+      expect(result).toBe(MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+      expect(result).toBe(3);
+    });
+
+    it('should use default rate limit of 3 for MAPI single story request', () => {
+      // Simulates: mapiClient.get(`spaces/{SPACE_ID}/stories/{STORY_ID}`)
+      const url = '/spaces/123/stories/456';
+      const params: ISbStoriesParams = {};
+      const config = {
+        isManagementApi: true,
+      };
+
+      // Should use MAPI default (3), not CDN cached rate limit (1000)
+      const result = determineRateLimit(url, params, config, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+      expect(result).toBe(3);
+    });
   });
 });

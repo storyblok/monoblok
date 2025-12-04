@@ -684,7 +684,10 @@ export class Storyblok {
     }
 
     // Calculate appropriate rate limit for this request
-    const rateLimit = determineRateLimit(url, params, this.rateLimitConfig);
+    // For Management API requests (non-CDN URLs), use the MAPI rate limit
+    const isMapi = !isCDNUrl(url) && this.rateLimitConfig.isManagementApi;
+    const defaultLimit = isMapi ? MANAGEMENT_API_DEFAULT_RATE_LIMIT : undefined;
+    const rateLimit = determineRateLimit(url, params, this.rateLimitConfig, defaultLimit);
 
     return new Promise(async (resolve, reject) => {
       try {

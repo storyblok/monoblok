@@ -1771,5 +1771,97 @@ describe('storyblokClient', () => {
       expect(queues.has(1000)).toBe(false); // Should NOT use automatic 1000 req/s
       expect(queues.has(6)).toBe(false); // Should never use automatic 6 req/s
     });
+
+    it('should use rate limit of 3 req/s for Management API requests', async () => {
+      vi.useFakeTimers();
+
+      const mockData = {
+        data: { story: { name: 'Test Story', id: 123 } },
+        headers: {},
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockData);
+
+      const client = new StoryblokClient({
+        oauthToken: 'test-oauth-token',
+      });
+
+      // Override the client's internal get method with our mock
+      // @ts-expect-error - accessing private property for testing
+      client.client.get = mockGet;
+
+      // Make 9 Management API requests (should take ~3 seconds at 3 req/s)
+      for (let i = 0; i < 9; i++) {
+        client.get(`spaces/123/stories/${i}`).catch(() => {});
+      }
+
+      // After 999ms: exactly 3 requests should have started (3 req/s)
+      await vi.advanceTimersByTimeAsync(999);
+      expect(mockGet).toHaveBeenCalledTimes(3);
+
+      // After another 1000ms (total 1999ms): 6 requests total
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mockGet).toHaveBeenCalledTimes(6);
+
+      // After another 1000ms (total 2999ms): all 9 requests complete
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mockGet).toHaveBeenCalledTimes(9);
+
+      // Verify the queue was created with rate limit of 3
+      // @ts-expect-error - accessing private property for testing
+      const queues = client.throttleManager.queues;
+      expect(queues.size).toBe(1);
+      expect(queues.has(3)).toBe(true); // Management API default rate limit
+      expect(queues.has(1000)).toBe(false); // Should NOT use CDN cached rate limit
+
+      vi.useRealTimers();
+    });
+
+    it('should use different queues for CDN and Management API requests', async () => {
+      vi.useFakeTimers();
+
+      const mockData = {
+        data: { stories: [], story: { name: 'Test' } },
+        headers: {},
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockData);
+
+      const client = new StoryblokClient({
+        accessToken: 'test-token',
+        oauthToken: 'test-oauth-token',
+      });
+
+      // Override the client's internal get method with our mock
+      // @ts-expect-error - accessing private property for testing
+      client.client.get = mockGet;
+
+      // Make simultaneous CDN (50 req/s for draft) and MAPI (3 req/s) requests
+      for (let i = 0; i < 6; i++) {
+        client.get('cdn/stories', { version: 'draft' }).catch(() => { });
+      }
+      for (let i = 0; i < 6; i++) {
+        client.get('spaces/123/stories/456').catch(() => {});
+      }
+
+      // After 999ms:
+      // - CDN queue (50 req/s): all 6 requests should complete
+      // - MAPI queue (3 req/s): only 3 requests should complete
+      await vi.advanceTimersByTimeAsync(999);
+      expect(mockGet).toHaveBeenCalledTimes(9); // 6 CDN + 3 MAPI
+
+      // After another 1000ms: remaining 3 MAPI requests complete
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mockGet).toHaveBeenCalledTimes(12); // All 12 requests
+
+      // Verify separate queues were created
+      // @ts-expect-error - accessing private property for testing
+      const queues = client.throttleManager.queues;
+      expect(queues.size).toBe(2);
+      expect(queues.has(50)).toBe(true); // CDN draft rate limit
+      expect(queues.has(3)).toBe(true); // Management API rate limit
+
+      vi.useRealTimers();
+    });
   });
 });

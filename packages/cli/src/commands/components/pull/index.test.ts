@@ -3,7 +3,7 @@ import { CommandError, konsola } from '../../../utils';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
 

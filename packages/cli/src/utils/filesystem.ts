@@ -5,6 +5,9 @@ import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 
+// Default working folder for commands that do not pass --path explicitly.
+export const DEFAULT_STORAGE_DIR = '.storyblok';
+
 export interface FileOptions {
   mode?: number;
 }
@@ -113,12 +116,9 @@ export const readFile = async (filePath: string) => {
 };
 
 export const resolvePath = (path: string | undefined, folder: string) => {
-  // If a custom path is provided, append the folder structure to it
-  if (path) {
-    return resolve(process.cwd(), path, folder);
-  }
-  // Otherwise use the default .storyblok path
-  return resolve(resolve(process.cwd(), '.storyblok'), folder);
+  const basePath = path ?? DEFAULT_STORAGE_DIR;
+  // Keeps honoring relative paths by anchoring everything on the current workspace root.
+  return resolve(process.cwd(), basePath, folder);
 };
 
 /**

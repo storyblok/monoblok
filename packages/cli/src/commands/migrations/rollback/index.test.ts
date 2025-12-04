@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { migrationsCommand } from '../command';
 import { readRollbackFile } from './actions';

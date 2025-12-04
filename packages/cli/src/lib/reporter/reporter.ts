@@ -159,3 +159,7 @@ export function getReporter(options?: ReporterOptions) {
 
   return reporterInstance;
 }
+
+export function resetReporter() {
+  reporterInstance = null;
+}

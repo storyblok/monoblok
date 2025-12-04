@@ -3,7 +3,7 @@ import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
 import { vol } from 'memfs';
 import type { SpaceComponent } from '../constants';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
 

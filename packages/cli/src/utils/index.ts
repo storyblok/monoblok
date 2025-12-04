@@ -7,16 +7,15 @@ export * from './auth';
 export * from './error/';
 export * from './format';
 export * from './konsola';
+export * from './object';
+export * from './package';
+export * from './types';
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
 
 export function isRegion(value: RegionCode): value is RegionCode {
   return Object.values(regions).includes(value);
-}
-
-export function isEmptyObject(obj: object): boolean {
-  return Object.keys(obj).length === 0;
 }
 
 export const isVitest = process.env.VITEST === 'true';

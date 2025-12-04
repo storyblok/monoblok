@@ -1,7 +1,7 @@
 import type { PullComponentsOptions } from './constants';
 
 import { Spinner } from '@topcli/spinner';
-import { colorPalette, commands } from '../../../constants';
+import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents, saveComponentsToFiles } from '../actions';
@@ -9,6 +9,9 @@ import { componentsCommand } from '../command';
 import chalk from 'chalk';
 import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
+import { isAbsolute, join, relative } from 'pathe';
+import { resolveCommandPath } from '../../../utils/filesystem';
+import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
 
 const program = getProgram();
 
@@ -25,7 +28,16 @@ componentsCommand
 
     // Command options
     const { space, path } = componentsCommand.opts();
-    const { separateFiles, suffix, filename = 'components' } = options;
+    const {
+      separateFiles = false,
+      suffix,
+      filename,
+    } = options;
+
+    // Use default filename when not provided
+    const actualFilename = filename ?? DEFAULT_COMPONENTS_FILENAME;
+    // `--path` overrides remain command-scoped; fallback keeps the historic .storyblok output.
+    const componentsOutputDir = resolveCommandPath(directories.components, space, path);
 
     const { state, initializeSession } = session();
     await initializeSession();
@@ -106,23 +118,29 @@ componentsCommand
       );
       konsola.br();
       if (separateFiles) {
-        if (filename !== 'components') {
+        if (filename && filename !== DEFAULT_COMPONENTS_FILENAME) {
           konsola.warn(`The --filename option is ignored when using --separate-files`);
         }
-        const filePath = path ? `${path}/components/${space}/` : `.storyblok/components/${space}/`;
+        const filePath = `${componentsOutputDir}/`;
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), componentsOutputDir)}/`;
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else if (componentName) {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${componentName}.json`;
-        const filePath = path ? `${path}/components/${space}/${fileName}` : `.storyblok/components/${space}/${fileName}`;
-        konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${componentName}.json`;
+        const filePath = join(componentsOutputDir, fileName);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
-        const filePath = path ? `${path}/components/${space}/${fileName}` : `.storyblok/components/${space}/${fileName}`;
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
+        const filePath = join(componentsOutputDir, fileName);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       konsola.br();
     }

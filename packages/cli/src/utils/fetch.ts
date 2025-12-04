@@ -1,3 +1,5 @@
+import { getActiveConfig } from '../lib/config';
+
 export class FetchError extends Error {
   response: {
     status: number;
@@ -23,7 +25,8 @@ export interface FetchOptions {
 }
 
 export async function customFetch<T>(url: string, options: FetchOptions = {}): Promise<T & { perPage: number; total: number }> {
-  const maxRetries = options.maxRetries ?? 3;
+  const { api } = getActiveConfig(); // live config includes CLI overrides (maxRetries, maxConcurrency, etc.)
+  const maxRetries = options.maxRetries ?? api.maxRetries;
   const baseDelay = options.baseDelay ?? 500; // 500ms base delay
   let attempt = 0;
 

@@ -1,5 +1,6 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
@@ -301,7 +302,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   for (const file of filteredFiles) {
     const filePath = join(resolvedPath, file);
 
-    if (file === 'groups.json' || file === `groups.${suffix}.json`) {
+    if (file === `${DEFAULT_GROUPS_FILENAME}.json` || file === `${DEFAULT_GROUPS_FILENAME}.${suffix}.json`) {
       const result = await readJsonFile<SpaceComponentFolder>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
@@ -309,7 +310,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       }
       groups = result.data;
     }
-    else if (file === 'tags.json' || file === `tags.${suffix}.json`) {
+    else if (file === `${DEFAULT_TAGS_FILENAME}.json` || file === `${DEFAULT_TAGS_FILENAME}.${suffix}.json`) {
       const result = await readJsonFile<SpaceComponentInternalTag>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
@@ -317,7 +318,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       }
       internalTags = result.data;
     }
-    else if (file.endsWith('.presets.json') || file.endsWith(`.presets.${suffix}.json`)) {
+    else if (file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.json`) || file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.${suffix}.json`)) {
       const result = await readJsonFile<SpaceComponentPreset>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
@@ -326,7 +327,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       presets.push(...result.data);
     }
     else if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
-      if (file === 'components.json' || file === `components.${suffix}.json`) {
+      if (file === `${DEFAULT_COMPONENTS_FILENAME}.json` || file === `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`) {
         continue;
       }
       const result = await readJsonFile<SpaceComponent>(filePath);
@@ -348,7 +349,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 
 async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   // Read required components file
-  const componentsPath = join(resolvedPath, suffix ? `components.${suffix}.json` : 'components.json');
+  const componentsPath = join(resolvedPath, suffix ? `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json` : `${DEFAULT_COMPONENTS_FILENAME}.json`);
   const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);
 
   if (componentsResult.error || !componentsResult.data.length) {
@@ -362,9 +363,9 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Pro
 
   // Read optional files
   const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<SpaceComponentFolder>(join(resolvedPath, suffix ? `groups.${suffix}.json` : 'groups.json')),
-    readJsonFile<SpaceComponentPreset>(join(resolvedPath, suffix ? `presets.${suffix}.json` : 'presets.json')),
-    readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `tags.${suffix}.json` : 'tags.json')),
+    readJsonFile<SpaceComponentFolder>(join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`)),
+    readJsonFile<SpaceComponentPreset>(join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`)),
+    readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`)),
   ]);
 
   return {

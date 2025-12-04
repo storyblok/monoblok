@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import path from 'node:path';
-// Import the main reports module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { reportsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';

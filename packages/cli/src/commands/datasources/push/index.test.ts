@@ -3,7 +3,7 @@ import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
 import { vol } from 'memfs';
 import type { SpaceDatasource } from '../constants';
-// Import the main datasources module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { datasourcesCommand } from '../command';
 

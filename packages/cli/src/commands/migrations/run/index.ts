@@ -68,8 +68,8 @@ migrationsCommand.command('run [componentName]')
       });
       const filteredMigrations = componentName
         ? migrationFiles.filter((file) => {
-            // Match any migration file that starts with the component name and is followed by either
-            // the end of the filename or a dot
+          // Match any migration file that starts with the component name and is followed by either
+          // the end of the filename or a dot
             return file.name.match(new RegExp(`^${componentName}(\\..*)?\.js$`));
           })
         : migrationFiles;

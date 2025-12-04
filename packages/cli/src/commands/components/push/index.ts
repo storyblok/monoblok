@@ -20,7 +20,7 @@ componentsCommand
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
+  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
 
   .action(async (componentName: string | undefined, options: PushComponentsOptions) => {
@@ -160,7 +160,7 @@ componentsCommand
 
       // Use optimized graph-based dependency resolution with colocated target data
       konsola.info('Using graph-based dependency resolution');
-      const graphResults = await pushWithDependencyGraph(space, spaceState, 5);
+      const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
 

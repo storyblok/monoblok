@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import path from 'node:path';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { logsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
+import { resetLogger } from '../../../lib/logger/logger';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -29,6 +30,8 @@ describe('logs prune command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
+    // Reset logger to prevent test log files from being created
+    resetLogger();
   });
 
   it('should delete all logs when keep is 0 (default)', async () => {

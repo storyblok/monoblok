@@ -1,5 +1,6 @@
 import { join, resolve } from 'node:path';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
+import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { SaveComponentsOptions } from './constants';
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
@@ -107,7 +108,7 @@ export const saveComponentsToFiles = async (
   options: SaveComponentsOptions,
 ) => {
   const { components = [], groups = [], presets = [], internalTags = [] } = spaceData;
-  const { filename = 'components', suffix, path, separateFiles } = options;
+  const { filename = DEFAULT_COMPONENTS_FILENAME, suffix, path, separateFiles } = options;
   // Ensure we always include the components/space folder structure regardless of custom path
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'components', space)
@@ -124,15 +125,15 @@ export const saveComponentsToFiles = async (
         // Find and save associated presets
         const componentPresets = presets.filter(preset => preset.component_id === component.id);
         if (componentPresets.length > 0) {
-          const presetsFilePath = join(resolvedPath, suffix ? `${sanitizedName}.presets.${suffix}.json` : `${sanitizedName}.presets.json`);
+          const presetsFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${sanitizedName}.${DEFAULT_PRESETS_FILENAME}.json`);
           await saveToFile(presetsFilePath, JSON.stringify(componentPresets, null, 2));
         }
         // Always save groups in a consolidated file
-        const groupsFilePath = join(resolvedPath, suffix ? `groups.${suffix}.json` : `groups.json`);
+        const groupsFilePath = join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`);
         await saveToFile(groupsFilePath, JSON.stringify(groups, null, 2));
 
         // Always save internal tags in a consolidated file
-        const internalTagsFilePath = join(resolvedPath, suffix ? `tags.${suffix}.json` : `tags.json`);
+        const internalTagsFilePath = join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`);
         await saveToFile(internalTagsFilePath, JSON.stringify(internalTags, null, 2));
       }
       return;
@@ -143,17 +144,17 @@ export const saveComponentsToFiles = async (
     await saveToFile(componentsFilePath, JSON.stringify(components, null, 2));
 
     if (groups.length > 0) {
-      const groupsFilePath = join(resolvedPath, suffix ? `groups.${suffix}.json` : `groups.json`);
+      const groupsFilePath = join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`);
       await saveToFile(groupsFilePath, JSON.stringify(groups, null, 2));
     }
 
     if (presets.length > 0) {
-      const presetsFilePath = join(resolvedPath, suffix ? `presets.${suffix}.json` : `presets.json`);
+      const presetsFilePath = join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`);
       await saveToFile(presetsFilePath, JSON.stringify(presets, null, 2));
     }
 
     if (internalTags.length > 0) {
-      const internalTagsFilePath = join(resolvedPath, suffix ? `tags.${suffix}.json` : `tags.json`);
+      const internalTagsFilePath = join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`);
       await saveToFile(internalTagsFilePath, JSON.stringify(internalTags, null, 2));
     }
   }

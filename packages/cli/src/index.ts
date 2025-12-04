@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
 import { handleError, konsola } from './utils';
 import { getProgram } from './program';
@@ -20,13 +20,13 @@ import { colorPalette } from './constants';
 
 export * from './types/storyblok';
 
-dotenv.config(); // This will load variables from .env into process.env
 const program = getProgram();
 
 konsola.br();
 konsola.br();
 konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
 
+// Handle invalid commands
 program.on('command:*', () => {
   console.error(`Invalid command: ${program.args.join(' ')}`);
   konsola.br();

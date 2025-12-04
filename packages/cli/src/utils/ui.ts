@@ -5,6 +5,16 @@ import { colorPalette } from '../constants';
 import { capitalize } from './format';
 import { isVitest } from './';
 
+interface InfoOptions {
+  header?: boolean;
+  margin?: boolean;
+}
+
+interface ErrorOptions {
+  header?: boolean;
+  margin?: boolean;
+}
+
 const noopProgressBar = {
   increment: () => {},
   setTotal: (_n: number) => {},
@@ -60,18 +70,16 @@ export class UI {
     this.console?.log(message ? `${chalk.green('✔')} ${message}` : '');
   }
 
-  info(message: string, options = {
-    header: false,
-    margin: true,
-  }) {
-    if (options.header) {
+  info(message: string, options: InfoOptions = {}) {
+    const { header = false, margin = true } = options;
+    if (header) {
       this.br();
       const infoHeader = chalk.bgBlue.bold.white(` Info `);
       this.console?.info(infoHeader);
     }
 
     this.console?.info(message ? `${chalk.blue('ℹ')} ${message}` : '');
-    if (options.margin) {
+    if (margin) {
       this.br();
     }
   }
@@ -86,18 +94,16 @@ export class UI {
     this.console?.warn(message ? `${chalk.yellow('⚠️ ')} ${message}` : '');
   }
 
-  error(message: string, info?: unknown, options = {
-    header: false,
-    margin: false,
-  }) {
-    if (options.header) {
+  error(message: string, info?: unknown, options: ErrorOptions = {}) {
+    const { header = false, margin = false } = options;
+    if (header) {
       const errorHeader = chalk.bgRed.bold.white(` Error `);
       this.console?.error(errorHeader);
       this.br();
     }
 
     this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info || '');
-    if (options.margin) {
+    if (margin) {
       this.br();
     }
   }

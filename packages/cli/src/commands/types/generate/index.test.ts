@@ -4,7 +4,7 @@ import { konsola } from '../../../utils';
 import { generateStoryblokTypes, generateTypes } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { typesCommand } from '../command';
 import { readComponentsFiles } from '../../components/push/actions';

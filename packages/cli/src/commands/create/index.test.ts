@@ -419,7 +419,7 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
-      expect(handleError).toHaveBeenCalledWith(generateError, undefined);
+      expect(handleError).toHaveBeenCalledWith(generateError, false);
     });
 
     it('should handle space creation failure', async () => {
@@ -435,7 +435,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       expect(generateProject).toHaveBeenCalled();
-      expect(handleError).toHaveBeenCalledWith(spaceError, undefined);
+      expect(handleError).toHaveBeenCalledWith(spaceError, false);
     });
 
     it('should handle .env file creation failure gracefully', async () => {
@@ -692,7 +692,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
 
       // Should still handle the error properly
-      expect(handleError).toHaveBeenCalledWith(generateError, undefined);
+      expect(handleError).toHaveBeenCalledWith(generateError, false);
 
       // Should not attempt space operations
       expect(createSpace).not.toHaveBeenCalled();

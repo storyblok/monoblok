@@ -1,5 +1,7 @@
 import type { CommandOptions } from '../../types';
 
+export const DEFAULT_LANGUAGES_FILENAME = 'languages';
+
 /**
  * Interface representing the options for the `pull-languages` command.
  */
@@ -17,8 +19,8 @@ export interface PullLanguagesOptions extends CommandOptions {
   space: string;
   /**
    * The filename to save the file as.
-   * Defaults to `languages`. The file will be saved as `<filename>.<space>.json`.
-   * @default `languages
+   * Defaults to `DEFAULT_LANGUAGES_FILENAME`. The file will be saved as `<filename>.<space>.json`.
+   * @default DEFAULT_LANGUAGES_FILENAME
    */
   filename?: string;
   /**

@@ -1,5 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
+import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
@@ -188,7 +189,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 
     if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
       // Skip consolidated files - any file matching datasources.json or datasources.*.json pattern
-      if (file === 'datasources.json' || /^datasources\.\w+\.json$/.test(file)) {
+      if (file === `${DEFAULT_DATASOURCES_FILENAME}.json` || new RegExp(`^${DEFAULT_DATASOURCES_FILENAME}\\.\\w+\\.json$`).test(file)) {
         continue;
       }
       const result = await readJsonFile<SpaceDatasource>(filePath);
@@ -206,7 +207,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 }
 
 async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
-  const datasourcesPath = join(resolvedPath, suffix ? `datasources.${suffix}.json` : 'datasources.json');
+  const datasourcesPath = join(resolvedPath, suffix ? `${DEFAULT_DATASOURCES_FILENAME}.${suffix}.json` : `${DEFAULT_DATASOURCES_FILENAME}.json`);
   const datasourcesResult = await readJsonFile<SpaceDatasource>(datasourcesPath);
 
   if (datasourcesResult.error || !datasourcesResult.data.length) {

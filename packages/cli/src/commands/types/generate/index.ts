@@ -16,11 +16,12 @@ const program = getProgram();
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
   .option(
     '--filename <name>',
     'Base file name for all component types when generating a single declarations file (e.g. components.d.ts). Ignored when using --separate-files.',
   )
+
+  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
@@ -56,7 +57,7 @@ typesCommand
         });
       }
       catch (error) {
-      // Only catch the specific case where datasources don't exist
+        // Only catch the specific case where datasources don't exist
         if (error instanceof FileSystemError && error.errorId === 'file_not_found') {
           dataSourceData = { datasources: [] };
         }

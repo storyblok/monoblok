@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isPlainObject } from '../../utils/object';
 
-import { createDefaultResolvedConfig } from './defaults';
+import { DEFAULT_GLOBAL_CONFIG } from './defaults';
 import { loadConfig, SUPPORTED_EXTENSIONS } from './loader';
 import type {
   ApiConfig,
@@ -101,7 +101,7 @@ export function getOptionPath(option: CommanderOption): string[] {
   // - Check if 'log' is an object → yes, add to path
   // - Check if 'log.file' is an object → yes, add to path
   // - Check if 'log.file.max' is an object → no, so 'max-files' becomes property 'maxFiles'
-  let currentConfig: ConfigLevel = createDefaultResolvedConfig();
+  let currentConfig: ConfigLevel = DEFAULT_GLOBAL_CONFIG as ConfigLevel;
   let i = 0;
 
   while (i < segments.length) {

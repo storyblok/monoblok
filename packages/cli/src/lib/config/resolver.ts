@@ -51,7 +51,9 @@ export async function resolveConfig(
   }
   const [root, ...rest] = commandChain;
 
-  const globalResolved = collectGlobalDefaults(root, createDefaultResolvedConfig());
+  // Create default config once and reuse it
+  const defaultConfig = createDefaultResolvedConfig();
+  const globalResolved = collectGlobalDefaults(root, defaultConfig);
   const localResolved = collectLocalDefaults(rest);
 
   const layers = await loadConfigLayers();
@@ -66,7 +68,7 @@ export async function resolveConfig(
 
   applyCliOverrides(commandChain, globalResolved, localResolved);
 
-  const resolved = createDefaultResolvedConfig();
+  const resolved = structuredClone(defaultConfig);
   mergeDeep(resolved as PlainObject, globalResolved);
   Object.assign(resolved, localResolved);
 

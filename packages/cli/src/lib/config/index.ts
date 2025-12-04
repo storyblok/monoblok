@@ -1,5 +1,5 @@
 export { applyCliOverrides, applyConfigToCommander, collectGlobalDefaults, collectLocalDefaults } from './commander';
-export { createDefaultResolvedConfig } from './defaults';
+export { createDefaultResolvedConfig, DEFAULT_GLOBAL_CONFIG } from './defaults';
 export {
   getCommandAncestry,
   loadConfigLayers,

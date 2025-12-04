@@ -1,7 +1,5 @@
-import { createDefaultResolvedConfig } from './defaults';
+import { DEFAULT_GLOBAL_CONFIG } from './defaults';
 import type { GlobalOptionDefinition } from './types';
-
-const DEFAULT_GLOBAL_CONFIG = createDefaultResolvedConfig();
 
 export function parseNumber(value: string): number {
   const parsed = Number.parseInt(value, 10);

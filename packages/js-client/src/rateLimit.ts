@@ -95,8 +95,9 @@ export function determineRateLimit(
   // Priority order for all requests:
   // 1. User-provided rate limit (highest priority, applies to all requests)
   // 2. Server-provided rate limit (from response headers)
-  // 3. For cached requests (published), use the maximum rate limit
-  // 4. Automatic tier calculation (CDN) or default (Management API)
+  // 3. Default rate limit (Management API)
+  // 4. For cached requests (published), use the maximum rate limit
+  // 5. Automatic tier calculation (CDN)
 
   if (config.userRateLimit !== undefined) {
     return Math.min(config.userRateLimit, MAX_RATE_LIMIT);
@@ -106,14 +107,14 @@ export function determineRateLimit(
     return Math.min(config.serverHeadersRateLimit, MAX_RATE_LIMIT);
   }
 
-  // For cached requests, use the maximum rate limit
-  if (params && !isUncachedRequest(params)) {
-    return MAX_RATE_LIMIT;
-  }
-
   // If a default rate limit is provided (Management API), use it
   if (defaultRateLimit !== undefined) {
     return defaultRateLimit;
+  }
+
+  // For cached requests, use the maximum rate limit
+  if (params && !isUncachedRequest(params)) {
+    return MAX_RATE_LIMIT;
   }
 
   // For CDN API, calculate based on request type

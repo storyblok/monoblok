@@ -177,6 +177,9 @@ const mockConfig: ResolvedCliConfig = {
     enabled: true,
     maxFiles: 5,
   },
+  ui: {
+    enabled: true,
+  },
   verbose: true,
 };
 

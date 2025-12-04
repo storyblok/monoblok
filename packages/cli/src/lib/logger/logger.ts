@@ -85,3 +85,13 @@ export function getLogger(options?: LoggerOptions) {
 
   return loggerInstance;
 }
+
+export function setLoggerTransports(transports: LogTransport[]) {
+  if (loggerInstance) {
+    loggerInstance.transports = transports;
+  }
+}
+
+export function resetLogger() {
+  loggerInstance = null;
+}

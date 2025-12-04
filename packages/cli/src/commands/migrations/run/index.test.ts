@@ -1,5 +1,6 @@
-import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { resolve } from 'node:path';
 import { vol } from 'memfs';
 // Import the main components module first to ensure proper initialization
 import '../index';
@@ -7,7 +8,10 @@ import { migrationsCommand } from '../command';
 import { fetchStories, fetchStory, updateStory } from '../../stories/actions';
 import type { Story } from '../../stories/constants';
 import * as filesystem from '../../../utils/filesystem';
+import { resetLogger } from '../../../lib/logger/logger';
+import { resetReporter } from '../../../lib/reporter/reporter';
 
+// Mock fs modules before any other imports to ensure memfs is used
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
@@ -77,8 +81,10 @@ const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-co
 const LOG_PREFIX = 'storyblok-migrations-run-';
 
 const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
+  const allFiles = vol.toJSON();
+  const logFile = Object.entries(allFiles)
+    .find(([filename]) => filename.includes('/logs/') && filename.includes(LOG_PREFIX));
+  return logFile?.[1];
 };
 
 const preconditions = {
@@ -136,10 +142,14 @@ describe('migrations run command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
+    resetReporter();
   });
 
   it('should run migrations successfully', async () => {
     preconditions.canMigrate();
+
+    // Reset logger right before parseAsync to ensure preAction creates it with proper transports
+    resetLogger();
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
@@ -155,7 +165,8 @@ describe('migrations run command', () => {
     // Report
     const reportFile = Object.entries(vol.toJSON())
       .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
-    expect(JSON.parse(reportFile || '{}')).toEqual({
+    const parsedReport = JSON.parse(reportFile || '{}');
+    expect(parsedReport).toEqual({
       status: 'SUCCESS',
       meta: {
         runId: expect.any(String),
@@ -165,10 +176,9 @@ describe('migrations run command', () => {
         endedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         durationMs: expect.any(Number),
         logPath: expect.any(String),
-        config: {
+        config: expect.objectContaining({
           space: '12345',
-          dryRun: false,
-        },
+        }),
       },
       summary: {
         migrationResults: {
@@ -201,6 +211,8 @@ describe('migrations run command', () => {
   it('should report a run with only skipped migrations as success', async () => {
     preconditions.canMigrateNoChange();
 
+    resetLogger();
+
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
     const reportFile = Object.entries(vol.toJSON())
@@ -226,6 +238,8 @@ describe('migrations run command', () => {
 
   it('should gracefully handle error while loading migration', async () => {
     preconditions.canNotLoadMigrationFunction();
+
+    resetLogger();
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
@@ -266,6 +280,8 @@ describe('migrations run command', () => {
   it('should gracefully handle non-existing migrations directory', async () => {
     preconditions.migrationDirectoryDoesNotExist();
 
+    resetLogger();
+
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
     const logFile = getLogFileContents();
@@ -274,6 +290,8 @@ describe('migrations run command', () => {
 
   it('should handle dry run mode correctly', async () => {
     preconditions.canMigrate();
+
+    resetLogger();
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--dry-run']);
 

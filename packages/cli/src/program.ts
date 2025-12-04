@@ -3,7 +3,7 @@ import path from 'node:path';
 import { getPackageJson, handleError } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
-import { getLogger } from './lib/logger/logger';
+import { getLogger, setLoggerTransports } from './lib/logger/logger';
 import { getUI } from './utils/ui';
 import { getReporter } from './lib/reporter/reporter';
 import { FileTransport } from './lib/logger/logger-transport-file';
@@ -118,10 +118,15 @@ export function getProgram(): Command {
       }
 
       // Initialize logger with configured transports
-      getLogger({
+      const logger = getLogger({
         context: { runId, command, options, cliVersion: packageJson.version },
         transports,
       });
+
+      // If logger already existed (created before preAction), update its transports
+      if (logger.transports.length === 0 && transports.length > 0) {
+        setLoggerTransports(transports);
+      }
 
       // Initialize UI
       getUI({ enabled: resolvedConfig.ui.enabled });

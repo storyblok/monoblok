@@ -59,28 +59,28 @@ type StripCommandOption<T> = T extends CommandOptions ? Omit<T, keyof CommandOpt
 type CommandConfig<T> = Partial<StripCommandOption<T>>;
 
 export interface ComponentsModuleConfig extends Record<string, unknown> {
-  space?: string;
+  space?: number;
   path?: string;
   pull?: CommandConfig<PullComponentsOptions>;
   push?: CommandConfig<PushComponentsOptions>;
 }
 
 export interface DatasourcesModuleConfig extends Record<string, unknown> {
-  space?: string;
+  space?: number;
   path?: string;
   pull?: CommandConfig<PullDatasourcesOptions>;
   push?: CommandConfig<PushDatasourcesOptions>;
 }
 
 export interface MigrationsModuleConfig extends Record<string, unknown> {
-  space?: string;
+  space?: number;
   path?: string;
   generate?: CommandConfig<MigrationsGenerateOptions>;
   run?: CommandConfig<MigrationsRunOptions>;
 }
 
 export interface TypesModuleConfig extends Record<string, unknown> {
-  space?: string;
+  space?: number;
   path?: string;
   generate?: CommandConfig<GenerateTypesOptions>;
 }
@@ -93,6 +93,8 @@ export type ModulesConfig = Record<string, PlainObject> & {
 };
 
 export interface StoryblokConfig extends DeepPartial<GlobalConfig> {
+  space?: number;
+  path?: string;
   modules?: ModulesConfig;
 }
 

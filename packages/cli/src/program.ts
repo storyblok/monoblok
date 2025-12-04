@@ -14,7 +14,6 @@ import {
   applyConfigToCommander,
   getCommandAncestry,
   GLOBAL_OPTION_DEFINITIONS,
-  logActiveConfig,
   resolveConfig,
   setActiveConfig,
 } from './lib/config';
@@ -69,7 +68,6 @@ export function getProgram(): Command {
       const resolvedConfig = await resolveConfig(targetCommand, ancestry);
       applyConfigToCommander(ancestry, resolvedConfig);
       setActiveConfig(resolvedConfig);
-      logActiveConfig(resolvedConfig, ancestry, resolvedConfig.verbose);
 
       // Step 2: Setup logging, UI, and reporting with resolved config
       const options = targetCommand.optsWithGlobals();

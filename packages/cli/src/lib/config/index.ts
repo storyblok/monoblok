@@ -3,7 +3,6 @@ export { createDefaultResolvedConfig } from './defaults';
 export {
   getCommandAncestry,
   loadConfigLayers,
-  logActiveConfig,
 } from './helpers';
 export { loadConfig, SUPPORTED_EXTENSIONS } from './loader';
 export { GLOBAL_OPTION_DEFINITIONS, parseNumber } from './options';

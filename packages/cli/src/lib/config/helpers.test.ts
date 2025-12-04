@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Command } from 'commander';
 import { resolve as resolvePath } from 'pathe';
 import { vol } from 'memfs';
-import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers, logActiveConfig } from './helpers';
+import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers } from './helpers';
 import type { ResolvedCliConfig } from './types';
 
 const loggerInfoMock = vi.hoisted(() => vi.fn());
@@ -119,42 +119,18 @@ describe('loadConfigLayers', () => {
     expect(layers).toEqual([{ scope: 'workspace-root', ext: 'ts' }]);
   });
 
-  it('logs fallback info when no config layers are detected', async () => {
+  it('returns empty array when no config layers are detected', async () => {
     // Given: no config files exist
     preconditions.hasNoConfigFiles();
 
     // When: loading config layers
     const layers = await loadConfigLayers();
 
-    // Then: empty array is returned and fallback message is logged
+    // Then: empty array is returned
+    // Note: Logger is not initialized during config loading, so no logging occurs
     expect(layers).toEqual([]);
-    expect(loggerInfoMock).toHaveBeenCalledWith('No config files found, using defaults');
   });
 });
-
-function buildCommandChain() {
-  const root = new Command('storyblok');
-  root
-    .exitOverride()
-    .option('--verbose', '', false);
-
-  const components = root
-    .command('components')
-    .option('-s, --space <space>')
-    .option('-p, --path <path>');
-
-  const pull = components
-    .command('pull')
-    .option('--separate-files', '', false)
-    .option('--filename <filename>');
-
-  root.setOptionValueWithSource('verbose', true, 'config');
-  components.setOptionValueWithSource('space', '123', 'config');
-  components.setOptionValueWithSource('path', '.storyblok', 'config');
-  pull.setOptionValueWithSource('separateFiles', true, 'config');
-  pull.setOptionValueWithSource('filename', 'components', 'config');
-  return [root, components, pull];
-}
 
 const mockConfig: ResolvedCliConfig = {
   region: 'us',
@@ -192,19 +168,6 @@ describe('config inspector helpers', () => {
     expect(parsed.api.maxRetries).toBe(5);
     expect(parsed.log.file.level).toBe('warn');
     expect(parsed.verbose).toBe(true);
-  });
-
-  it('logs the active config only when verbose mode is enabled', () => {
-    const ancestry = buildCommandChain();
-
-    logActiveConfig(mockConfig, ancestry, false);
-    expect(loggerDebugMock).not.toHaveBeenCalled();
-
-    logActiveConfig(mockConfig, ancestry, true);
-    expect(loggerDebugMock).toHaveBeenCalledTimes(1);
-    expect(loggerDebugMock.mock.calls[0][0]).toBe('Active configuration');
-    expect(loggerDebugMock.mock.calls[0][1]).toHaveProperty('command', 'storyblok components pull');
-    expect(loggerDebugMock.mock.calls[0][1]).toHaveProperty('config', mockConfig);
   });
 });
 

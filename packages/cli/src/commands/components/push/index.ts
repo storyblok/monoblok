@@ -160,7 +160,7 @@ componentsCommand
 
       // Use optimized graph-based dependency resolution with colocated target data
       konsola.info('Using graph-based dependency resolution');
-      const graphResults = await pushWithDependencyGraph(space, spaceState, 5);
+      const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
 

@@ -2,7 +2,7 @@ import { resolve as resolvePath } from 'pathe';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isPlainObject } from '../../utils/object';
-import { getLogger } from '../logger/logger';
+
 import { createDefaultResolvedConfig } from './defaults';
 import { loadConfig, SUPPORTED_EXTENSIONS } from './loader';
 import type {
@@ -147,8 +147,8 @@ async function loadConfigLayer({ cwd, configFile }: ConfigLocation): Promise<Rec
     return null;
   }
 
-  const logger = getLogger();
-  logger.info('Config file loaded', { filePath, cwd, configFile });
+  // Config loading happens before logger initialization, so we skip logging here
+  // The resolved config will be logged later in the process
 
   const { config } = await loadConfig({
     name: 'storyblok',
@@ -184,24 +184,11 @@ export async function loadConfigLayers(): Promise<Record<string, any>[]> {
       layers.push(layer);
     }
   }
-  if (!layers.length) {
-    const logger = getLogger();
-    logger.info('No config files found, using defaults');
-  }
+  // Config loading happens before logger initialization, so we skip logging here
+  // The resolved config will be logged later in the process
   return layers;
 }
 
 export function formatConfigForDisplay(config: ResolvedCliConfig): string {
   return JSON.stringify(config, null, 2);
-}
-
-export function logActiveConfig(config: ResolvedCliConfig, ancestry: CommanderCommand[], verbose: boolean): void {
-  if (!verbose) {
-    return;
-  }
-  const layerName = ancestry.map(cmd => cmd.name()).join(' ');
-
-  // Use logger for structured logging
-  const logger = getLogger();
-  logger.debug('Active configuration', { command: layerName, config });
 }

@@ -3,6 +3,7 @@ import { mapiClient } from '../../../api';
 import { join, resolve } from 'node:path';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
+import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
 
 /**
@@ -27,7 +28,7 @@ async function fetchAllPages<T, R>(
   const allItems = [...collectedItems, ...fetchedItems];
 
   if (!totalHeader || Number.isNaN(total)) {
-  // No valid 'total' header — assume not paginated, return all collected items plus current page
+    // No valid 'total' header — assume not paginated, return all collected items plus current page
     return allItems;
   }
 
@@ -131,7 +132,7 @@ export const saveDatasourcesToFiles = async (
   datasources: SpaceDatasource[],
   options: SaveDatasourcesOptions,
 ) => {
-  const { filename = 'datasources', suffix, path, separateFiles } = options;
+  const { filename = DEFAULT_DATASOURCES_FILENAME, suffix, path, separateFiles } = options;
   // Ensure we always include the datasources/space folder structure regardless of custom path
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'datasources', space)

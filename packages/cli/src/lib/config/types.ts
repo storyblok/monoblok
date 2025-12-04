@@ -43,7 +43,7 @@ export interface UiConfig {
 }
 
 export interface GlobalConfig {
-  region: RegionCode;
+  region?: RegionCode;
   api: ApiConfig;
   log: LogConfig;
   report: ReportConfig;
@@ -105,7 +105,7 @@ export type OptionParser<T> = (value: string, previous?: T) => T;
 export interface GlobalOptionDefinition<T = unknown> {
   flags: string;
   description: string;
-  defaultValue: T;
+  defaultValue?: T;
   parser?: OptionParser<T>;
 }
 

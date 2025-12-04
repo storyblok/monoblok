@@ -1,7 +1,7 @@
 import type { GlobalConfig, ResolvedCliConfig } from './types';
 
 const DEFAULT_GLOBAL_CONFIG: GlobalConfig = {
-  region: 'eu',
+  region: undefined,
   api: {
     maxRetries: 3,
     maxConcurrency: 6,

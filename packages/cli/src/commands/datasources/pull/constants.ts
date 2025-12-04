@@ -7,8 +7,8 @@ export interface PullDatasourcesOptions extends CommandOptions {
 
   /**
    * The filename to save the file as.
-   * Defaults to `datasources`. The file will be saved as `<filename>.<space>.json`.
-   * @default `datasources
+   * Defaults to `DEFAULT_DATASOURCES_FILENAME`. The file will be saved as `<filename>.<space>.json`.
+   * @default DEFAULT_DATASOURCES_FILENAME
    */
   filename?: string;
   /**

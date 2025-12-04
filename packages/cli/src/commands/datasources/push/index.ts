@@ -18,7 +18,7 @@ datasourcesCommand
   .description(`Push your space's datasources schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the datasources before pushing')
-  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
+  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions) => {
     konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');

@@ -45,7 +45,7 @@ export const createCommand = program
   .description(`Scaffold a new project using Storyblok`)
   .option('-t, --template <template>', 'technology starter template')
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
-  .option('--skip-space', 'skip space creation', false)
+  .option('--skip-space', 'skip space creation')
   .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);

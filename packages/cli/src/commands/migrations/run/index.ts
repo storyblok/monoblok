@@ -17,7 +17,7 @@ import { pipeline } from 'node:stream';
 migrationsCommand.command('run [componentName]')
   .description('Run migrations')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('-d, --dry-run', 'Preview changes without applying them to Storyblok', false)
+  .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
@@ -68,8 +68,8 @@ migrationsCommand.command('run [componentName]')
       });
       const filteredMigrations = componentName
         ? migrationFiles.filter((file) => {
-            // Match any migration file that starts with the component name and is followed by either
-            // the end of the filename or a dot
+          // Match any migration file that starts with the component name and is followed by either
+          // the end of the filename or a dot
             return file.name.match(new RegExp(`^${componentName}(\\..*)?\.js$`));
           })
         : migrationFiles;

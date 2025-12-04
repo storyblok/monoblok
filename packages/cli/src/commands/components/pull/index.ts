@@ -9,15 +9,16 @@ import { componentsCommand } from '../command';
 import chalk from 'chalk';
 import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
-import { join } from 'pathe';
+import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
+import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
 
 const program = getProgram();
 
 componentsCommand
   .command('pull [componentName]')
-  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id', 'components')
-  .option('--sf, --separate-files', 'Argument to create a single file for each component', false)
+  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
+  .option('--sf, --separate-files', 'Argument to create a single file for each component')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`)
   .action(async (componentName: string | undefined, options: PullComponentsOptions) => {
@@ -30,8 +31,11 @@ componentsCommand
     const {
       separateFiles = false,
       suffix,
-      filename = 'components',
+      filename,
     } = options;
+
+    // Use default filename when not provided
+    const actualFilename = filename ?? DEFAULT_COMPONENTS_FILENAME;
     // `--path` overrides remain command-scoped; fallback keeps the historic .storyblok output.
     const componentsOutputDir = resolveCommandPath(directories.components, space, path);
 
@@ -114,23 +118,29 @@ componentsCommand
       );
       konsola.br();
       if (separateFiles) {
-        if (filename !== 'components') {
+        if (filename && filename !== DEFAULT_COMPONENTS_FILENAME) {
           konsola.warn(`The --filename option is ignored when using --separate-files`);
         }
         const filePath = `${componentsOutputDir}/`;
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), componentsOutputDir)}/`;
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else if (componentName) {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${componentName}.json`;
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${componentName}.json`;
         const filePath = join(componentsOutputDir, fileName);
-        konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
         const filePath = join(componentsOutputDir, fileName);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       konsola.br();
     }

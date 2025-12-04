@@ -126,9 +126,9 @@ describe('loadConfigLayers', () => {
     // When: loading config layers
     const layers = await loadConfigLayers();
 
-    // Then: empty array is returned and fallback message is shown
+    // Then: empty array is returned and fallback message is logged
     expect(layers).toEqual([]);
-    expect(uiInfoMock).toHaveBeenCalledWith('No Storyblok config files found. Falling back to defaults.');
+    expect(loggerInfoMock).toHaveBeenCalledWith('No config files found, using defaults');
   });
 });
 
@@ -195,11 +195,13 @@ describe('config inspector helpers', () => {
     const ancestry = buildCommandChain();
 
     logActiveConfig(mockConfig, ancestry, false);
-    expect(uiInfoMock).not.toHaveBeenCalled();
+    expect(loggerDebugMock).not.toHaveBeenCalled();
 
     logActiveConfig(mockConfig, ancestry, true);
-    expect(uiInfoMock).toHaveBeenCalledTimes(1);
-    expect(uiInfoMock.mock.calls[0][0]).toContain('Active config for "storyblok components pull"');
+    expect(loggerDebugMock).toHaveBeenCalledTimes(1);
+    expect(loggerDebugMock.mock.calls[0][0]).toBe('Active configuration');
+    expect(loggerDebugMock.mock.calls[0][1]).toHaveProperty('command', 'storyblok components pull');
+    expect(loggerDebugMock.mock.calls[0][1]).toHaveProperty('config', mockConfig);
   });
 });
 

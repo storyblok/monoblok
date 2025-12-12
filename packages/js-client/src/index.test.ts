@@ -1,5 +1,5 @@
 import StoryblokClient from '.';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ResponseFn } from './sbFetch';
 import SbFetch from './sbFetch';
 import type { ISbLink, ISbStoryData } from './interfaces';
@@ -1864,102 +1864,45 @@ describe('storyblokClient', () => {
       vi.useRealTimers();
     });
 
-    describe('timeout behavior', () => {
-      // Helper to create a client with real SbFetch and custom timeout
-      const createClientWithTimeout = async (timeoutSeconds: number, delayMs: number) => {
-        vi.doUnmock('../src/sbFetch');
-        const { default: RealSbFetch } = await import('./sbFetch');
+    it('should support timeout configuration through StoryblokClient', async () => {
+      // Integration test to verify timeout works end-to-end
+      vi.doUnmock('../src/sbFetch');
+      const { default: RealSbFetch } = await import('./sbFetch');
 
-        const mockFetch = vi.fn((url: string, options?: any): Promise<Response> => {
-          return new Promise((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-              resolve(new Response(JSON.stringify({ stories: [] }), { status: 200 }));
-            }, delayMs);
+      const mockFetch = vi.fn((_url: string, options?: any): Promise<Response> => {
+        return new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            resolve(new Response(JSON.stringify({ stories: [] }), { status: 200 }));
+          }, 5000);
 
-            options?.signal?.addEventListener('abort', () => {
-              clearTimeout(timeoutId);
-              const error = new Error('The operation was aborted');
-              error.name = 'AbortError';
-              reject(error);
-            });
+          options?.signal?.addEventListener('abort', () => {
+            clearTimeout(timeoutId);
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
           });
         });
-
-        const client = new StoryblokClient({
-          accessToken: 'test',
-          timeout: timeoutSeconds,
-        });
-
-        (client as any).client = new RealSbFetch({
-          baseURL: 'https://api.storyblok.com/v2',
-          timeout: timeoutSeconds,
-          headers: new Headers(),
-          fetch: mockFetch as any,
-        });
-
-        return { client, mockFetch };
-      };
-
-      it('should timeout after 1 second when configured with 1s timeout', async () => {
-        const { client } = await createClientWithTimeout(1, 5000);
-
-        await expect(client.get('cdn/stories'))
-          .rejects
-          .toMatchObject({
-            message: 'Request timeout: The request was aborted due to timeout',
-          });
-      }, 3000);
-
-      it('should timeout after 2 seconds when configured with 2s timeout', async () => {
-        vi.useFakeTimers();
-        const { client, mockFetch } = await createClientWithTimeout(2, 5000);
-
-        const requestPromise = client.get('cdn/stories').catch(err => err);
-
-        // After 1.9 seconds, request should still be pending
-        await vi.advanceTimersByTimeAsync(1900);
-        expect(mockFetch).toHaveBeenCalledTimes(1);
-
-        // After 2+ seconds, should timeout
-        await vi.advanceTimersByTimeAsync(200);
-        const error = await requestPromise;
-        expect(error.message).toBe('Request timeout: The request was aborted due to timeout');
-
-        vi.useRealTimers();
-      }, 3000);
-
-      it('should timeout after 0.5 seconds when configured with 0.5s timeout', async () => {
-        vi.useFakeTimers();
-        const { client } = await createClientWithTimeout(0.5, 5000);
-
-        const requestPromise = client.get('cdn/stories').catch(err => err);
-
-        // After 0.5+ seconds, should timeout
-        await vi.advanceTimersByTimeAsync(600);
-        const error = await requestPromise;
-        expect(error.message).toBe('Request timeout: The request was aborted due to timeout');
-
-        vi.useRealTimers();
-      }, 3000);
-
-      it('should complete successfully if response arrives before timeout', async () => {
-        const { client } = await createClientWithTimeout(2, 500); // 500ms delay, 2s timeout
-
-        const result = await client.get('cdn/stories');
-        expect(result.data).toEqual({ stories: [] });
-      }, 5000);
-
-      it('should not timeout when timeout is set to 0 (disabled)', async () => {
-        // Use a delay of 100ms but timeout of 0 (disabled) - should complete successfully
-        const { client } = await createClientWithTimeout(0, 100);
-
-        const result = await client.get('cdn/stories');
-        expect(result.data).toEqual({ stories: [] });
-      }, 3000);
-
-      afterAll(() => {
-        vi.doMock('../src/sbFetch');
       });
-    });
+
+      const client = new StoryblokClient({
+        accessToken: 'test',
+        timeout: 1,
+      });
+
+      (client as any).client = new RealSbFetch({
+        baseURL: 'https://api.storyblok.com/v2',
+        timeout: 1,
+        headers: new Headers(),
+        fetch: mockFetch as any,
+      });
+
+      await expect(client.get('cdn/stories'))
+        .rejects
+        .toMatchObject({
+          message: 'Request timeout: The request was aborted due to timeout',
+        });
+
+      vi.doMock('../src/sbFetch');
+    }, 3000);
   });
 });

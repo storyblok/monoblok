@@ -1,6 +1,8 @@
-import type { FetchStoriesResult, StoriesQueryParams, Story } from './constants';
-import { handleAPIError } from '../../utils/error';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { FetchStoriesResult, StoriesQueryParams } from './constants';
 import { mapiClient } from '../../api';
+import { handleAPIError } from '../../utils/error/api-error';
+import { toError } from '../../utils/error/error';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -51,10 +53,38 @@ export const fetchStory = async (
       throwOnError: true,
     });
 
-    return data?.story;
+    return data.story;
   }
   catch (error) {
     handleAPIError('pull_story', error as Error);
+  }
+};
+
+export const createStory = async (
+  spaceId: string,
+  payload: {
+    story: Omit<Story, 'id' | 'uuid'>;
+    publish?: number;
+  },
+): Promise<Story | void> => {
+  try {
+    const client = mapiClient();
+
+    const { data } = await client.stories.create({
+      path: {
+        space_id: spaceId,
+      },
+      body: {
+        story: payload.story as Story,
+        publish: payload.publish,
+      },
+      throwOnError: true,
+    });
+
+    return data?.story;
+  }
+  catch (maybeError) {
+    handleAPIError('create_story', toError(maybeError));
   }
 };
 

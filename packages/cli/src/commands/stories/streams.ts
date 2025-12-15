@@ -1,12 +1,19 @@
-import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { basename, extname, join, resolve } from 'node:path';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import { fetchStories, fetchStory } from './actions';
-import type { StoriesQueryParams, Story } from './constants';
-import { saveToFile } from '../../utils/filesystem';
-import { toError } from '../../utils';
+import type { Component } from '@storyblok/management-api-client/resources/components';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import { createStory, fetchStories, fetchStory, updateStory } from './actions';
+import type { StoriesQueryParams } from './constants';
+import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
+import { handleAPIError } from '../../utils/error/api-error';
+import { toError } from '../../utils/error/error';
+import { FetchError } from '../../utils/fetch';
+import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
+import { mapiClient } from '../../api';
 
-export const makeStoryPagesStream = ({
+export const fetchStoriesStream = ({
   spaceId,
   params = {},
   setTotalStories,
@@ -23,7 +30,7 @@ export const makeStoryPagesStream = ({
   onIncrement?: () => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
-}): Readable => {
+}) => {
   const listGenerator = async function* storyListIterator() {
     let perPage = 100;
     let page = 1;
@@ -70,7 +77,7 @@ export const makeStoryPagesStream = ({
   return Readable.from(listGenerator());
 };
 
-export const makeStoriesStream = ({
+export const fetchStoryStream = ({
   spaceId,
   batchSize = 12,
   onIncrement,
@@ -82,23 +89,26 @@ export const makeStoriesStream = ({
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
-}): Transform => {
+}) => {
   const readLock = new Sema(batchSize);
   const processing = new Set<Promise<void>>();
 
   return new Transform({
     objectMode: true,
-    async transform(story: Story, _encoding, callback) {
+    async transform(listStory: Story, _encoding, callback) {
       // Wait for a slot
       await readLock.acquire();
 
-      const task = fetchStory(spaceId, story.id.toString())
-        .then(() => {
+      const task = fetchStory(spaceId, listStory.id.toString())
+        .then((story) => {
+          if (typeof story === 'undefined') {
+            throw new TypeError('Invalid story!');
+          }
           onStorySuccess?.(story);
           this.push(story);
         })
         .catch((maybeError) => {
-          onStoryError?.(toError(maybeError), story);
+          onStoryError?.(toError(maybeError), listStory);
         })
         .finally(() => {
           onIncrement?.();
@@ -118,38 +128,270 @@ export const makeStoriesStream = ({
   });
 };
 
-export interface StorySaveStreamTransport {
-  save: (story: Story) => Promise<void>;
+const getUUIDFromFilename = (filename: string) => {
+  const uuid = basename(filename, extname(filename)).split('_').at(-1);
+  if (!uuid) {
+    throw new Error(`Unable to extract UUID from local story "${filename}"`);
+  }
+  return uuid;
+};
+
+export const readLocalStoriesStream = ({
+  directoryPath,
+  fileFilter = () => true,
+  setTotalStories,
+  onIncrement,
+  onStorySuccess,
+  onStoryError,
+}: {
+  directoryPath: string;
+  fileFilter?: (options: { uuid: string }) => boolean;
+  setTotalStories?: (total: number) => void;
+  onIncrement?: () => void;
+  onStorySuccess?: (story: Story) => void;
+  onStoryError?: (error: Error, filename: string) => void;
+}) => {
+  const listGenerator = async function* localStoryIterator() {
+    const files = (await readDirectory(directoryPath))
+      .filter(f => extname(f) === '.json' && fileFilter({ uuid: getUUIDFromFilename(f) }));
+    setTotalStories?.(files.length);
+
+    for (const file of files) {
+      try {
+        const filePath = join(directoryPath, file);
+        const fileContent = await readFile(filePath, 'utf-8');
+        const story = JSON.parse(fileContent) as Story;
+
+        onStorySuccess?.(story);
+        yield story;
+      }
+      catch (maybeError) {
+        onStoryError?.(toError(maybeError), file);
+      }
+      finally {
+        onIncrement?.();
+      }
+    }
+  };
+
+  return Readable.from(listGenerator());
+};
+
+export const mapReferencesStream = ({
+  schemas,
+  maps,
+  onIncrement,
+  onStorySuccess,
+  onStoryError,
+}: {
+  schemas: ComponentSchemas;
+  maps: RefMaps;
+  onIncrement?: () => void;
+  onStorySuccess?: (localStory: Story, processedFields: Set<Component['schema']>, missingSchemas: Set<Component['name']>) => void;
+  onStoryError?: (error: Error, story: Story) => void;
+}) => {
+  return new Transform({
+    objectMode: true,
+    transform(localStory: Story, _encoding, callback) {
+      try {
+        const { mappedStory, processedFields, missingSchemas } = storyRefMapper(localStory, { schemas, maps });
+        // @ts-expect-error Our types are wrong.
+        onStorySuccess?.(mappedStory, processedFields, missingSchemas);
+        this.push(mappedStory);
+      }
+      catch (maybeError) {
+        onStoryError?.(toError(maybeError), localStory);
+      }
+      finally {
+        onIncrement?.();
+        callback();
+      }
+    },
+  });
+};
+
+const getRemoteStory = async ({ spaceId, storyId }: {
+  spaceId: string;
+  storyId: number;
+}) => {
+  const { data, response } = await mapiClient().stories.get({
+    path: {
+      space_id: spaceId,
+      story_id: storyId,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    handleAPIError('pull_story', new FetchError(response.statusText, response));
+  }
+
+  if (data?.story?.deleted_at) {
+    return undefined;
+  }
+
+  return data?.story;
+};
+
+export interface CreateStoryTransport {
+  create: (story: Story) => Promise<Story>;
 }
 
-export const makeStorySaveFSTransport = ({ directoryPath }: {
-  directoryPath: string;
-}) => ({
-  save: async (story: Story) => {
-    await saveToFile(resolve(directoryPath, `${story.slug}_${story.uuid}.json`), JSON.stringify(story, null, 2));
+export const makeCreateStoryAPITransport = ({ spaceId }: {
+  maps: RefMaps;
+  spaceId: string;
+}): CreateStoryTransport => ({
+  create: async (localStory) => {
+    const { id: _id, uuid: _uuid, content, parent_id: _p, ...newStoryData } = localStory;
+    const remoteStory = await createStory(spaceId, {
+      story: {
+        ...newStoryData,
+        content: {
+          // @ts-expect-error Our types are wrong.
+          component: content?.component,
+        },
+      },
+      publish: 0,
+    });
+    if (!remoteStory) {
+      throw new Error('No response!');
+    }
+
+    return remoteStory;
   },
 });
 
-export const makeStorySaveStream = ({
+export interface AppendToManifestTransport {
+  append: (localStory: Story, remoteStory: Story) => Promise<void>;
+}
+
+export const makeAppendToManifestFSTransport = ({ manifestFile }: {
+  manifestFile: string;
+}): AppendToManifestTransport => ({
+  append: async (localStory, remoteStory) => {
+    const createdAt = new Date().toISOString();
+    await appendToFile(manifestFile, JSON.stringify({
+      old_id: localStory.uuid,
+      new_id: remoteStory.uuid,
+      created_at: createdAt,
+    }));
+    await appendToFile(manifestFile, JSON.stringify({
+      old_id: localStory.id,
+      new_id: remoteStory.id,
+      created_at: createdAt,
+    }));
+  },
+});
+
+export const createStoryPlaceholderStream = ({
+  maps,
+  spaceId,
+  storyTransport,
+  manifestTransport,
+  onIncrement,
+  onStorySuccess,
+  onStorySkipped,
+  onStoryError,
+}: {
+  maps: RefMaps;
+  spaceId: string;
+  storyTransport: CreateStoryTransport;
+  manifestTransport: AppendToManifestTransport;
+  onIncrement?: () => void;
+  onStorySuccess?: (localStory: Story, remoteStory: Story) => void;
+  onStorySkipped?: (localStory: Story, remoteStory: Story) => void;
+  onStoryError?: (error: Error, story: Story) => void;
+}) => {
+  return new Writable({
+    objectMode: true,
+    async write(localStory: Story, _encoding, callback) {
+      try {
+        // If a mapped remote story already exists, we must not create a new placeholder.
+        // This can happen when the user resumes a failed push or runs push multiple times.
+        const mappedStoryId = maps.stories.get(localStory.id);
+        const mappedRemoteStory = mappedStoryId && await getRemoteStory({ spaceId, storyId: Number(mappedStoryId) });
+        // We check the UUID to make sure it is the exact same story and not just a
+        // story with the same numeric ID in a different space.
+        if (mappedRemoteStory) {
+          onStorySkipped?.(localStory, mappedRemoteStory);
+          // The story was already mapped so we can stop here.
+          return;
+        }
+
+        // A user might want to push to the same space they pulled from. In this
+        // case, we don't want to create a new placeholder story.
+        const existingRemoteStory = await getRemoteStory({ spaceId, storyId: localStory.id });
+        // We check the UUID to make sure it is the exact same story and not just a
+        // story with the same numeric ID in a different space.
+        if (existingRemoteStory && existingRemoteStory.uuid === localStory.uuid) {
+          await manifestTransport.append(localStory, existingRemoteStory);
+          onStorySkipped?.(localStory, existingRemoteStory);
+          return;
+        }
+
+        const newRemoteStory = await storyTransport.create(localStory);
+        await manifestTransport.append(localStory, newRemoteStory);
+        onStorySuccess?.(localStory, newRemoteStory);
+      }
+      catch (maybeError) {
+        onStoryError?.(toError(maybeError), localStory);
+      }
+      finally {
+        onIncrement?.();
+        callback();
+      }
+    },
+  });
+};
+
+export interface WriteStoryTransport {
+  write: (story: Story) => Promise<Story>;
+}
+
+export const makeWriteStoryFSTransport = ({ directoryPath }: {
+  directoryPath: string;
+}): WriteStoryTransport => ({
+  write: async (story) => {
+    await saveToFile(resolve(directoryPath, `${story.slug}_${story.uuid}.json`), JSON.stringify(story, null, 2));
+    return story;
+  },
+});
+
+export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
+  spaceId: string;
+  publish?: boolean;
+}) => ({
+  write: async (mappedLocalStory: Story) => {
+    const remoteStory = await updateStory(spaceId, mappedLocalStory.id, {
+      story: mappedLocalStory,
+      publish: publish ? 1 : undefined,
+    });
+    if (!remoteStory) {
+      throw new Error('No response!');
+    }
+    return remoteStory;
+  },
+});
+
+export const writeStoryStream = ({
   transport,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
-  transport: StorySaveStreamTransport;
+  transport: WriteStoryTransport;
   onIncrement?: () => void;
-  onStorySuccess?: (story: Story) => void;
+  onStorySuccess?: (mappedLocalStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
   return new Writable({
     objectMode: true,
-    write: async (story: Story, _encoding, callback) => {
+    async write(mappedLocalStory: Story, _encoding, callback) {
       try {
-        await transport.save(story);
-        onStorySuccess?.(story);
+        const remoteStory = await transport.write(mappedLocalStory);
+        onStorySuccess?.(mappedLocalStory, remoteStory);
       }
       catch (maybeError) {
-        onStoryError?.(toError(maybeError), story);
+        onStoryError?.(toError(maybeError), mappedLocalStory);
       }
       finally {
         onIncrement?.();

@@ -91,9 +91,9 @@ export interface SpaceOptions {
 }
 
 export const directories = {
+  components: 'components',
+  datasources: 'datasources',
   logs: 'logs',
   reports: 'reports',
   stories: 'stories',
-  components: 'components',
-  datasources: 'datasources',
 } as const;

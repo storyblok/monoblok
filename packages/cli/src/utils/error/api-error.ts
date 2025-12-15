@@ -21,6 +21,7 @@ export const API_ACTIONS = {
   update_component_preset: 'Failed to update component preset',
   pull_stories: 'Failed to pull stories',
   pull_story: 'Failed to pull story',
+  create_story: 'Failed to create story',
   update_story: 'Failed to update story',
   pull_datasources: 'Failed to pull datasources',
   push_datasource: 'Failed to push datasource',

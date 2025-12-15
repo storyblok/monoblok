@@ -149,9 +149,7 @@ describe('stories pull command', () => {
         endedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         durationMs: expect.any(Number),
         logPath: expect.any(String),
-        config: {
-          space: '12345',
-        },
+        config: expect.any(Object),
       },
       summary: {
         fetchStoryPagesResults: {

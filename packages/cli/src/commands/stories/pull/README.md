@@ -23,6 +23,7 @@ This will download all stories as `{slug}_{UUID}.json` files:
 | Option | Description | Default |
 |--------|-------------|---------|
 | `-s, --space <space>` | (Required) The ID of the space to pull stories from | - |
+| `-p, --path <path>` | Base path where stories are saved (stories are written to `<path>/stories/<space>`) | `.storyblok` |
 | `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
 | `-q, --query <query>` | Filter stories by content attributes using Storyblok filter query syntax | - |
 | `--starts-with <path>` | Filter stories by path | - |

@@ -1,6 +1,4 @@
-import type { Stories } from '@storyblok/management-api-client';
-
-export type Story = Stories.Story;
+import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 export interface StoryAlternate {
   id: number;

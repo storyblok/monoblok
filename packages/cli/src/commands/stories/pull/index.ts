@@ -1,6 +1,6 @@
 import { pipeline } from 'node:stream/promises';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { colorPalette, commands, directories } from '../../../constants';
-import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
 import { getProgram } from '../../../program';
@@ -9,15 +9,15 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { makeStoriesStream, makeStoryPagesStream, makeStorySaveFSTransport, makeStorySaveStream } from '../streams';
-
-const storySaveDryRunTransport = {
-  save: () => Promise.resolve(),
-};
+import { fetchStoriesStream, fetchStoryStream, makeWriteStoryFSTransport, writeStoryStream } from '../streams';
+import { requireAuthentication } from '../../../utils/auth';
+import { handleError, toError } from '../../../utils/error/error';
+import { CommandError } from '../../../utils/error/command-error';
 
 storiesCommand
   .command('pull')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
+  .option('-p, --path <path>', 'base path to store stories (default .storyblok)')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .description(`Download your space's stories as separate json files.`)
@@ -36,6 +36,7 @@ storiesCommand
     }
 
     const { space } = storiesCommand.opts();
+    const basePath = options.path as string | undefined;
     const verbose = program.opts().verbose;
     const { state, initializeSession } = session();
     await initializeSession();
@@ -63,11 +64,11 @@ storiesCommand
       save: { total: 0, succeeded: 0, failed: 0 },
     };
     try {
-      const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(19) });
-      const fetchStoriesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(19) });
-      const saveProgress = ui.createProgressBar({ title: 'Saving Stories...'.padEnd(19) });
+      const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(23) });
+      const fetchStoriesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(23) });
+      const saveProgress = ui.createProgressBar({ title: 'Saving Stories...'.padEnd(23) });
       await pipeline(
-        makeStoryPagesStream({
+        fetchStoriesStream({
           spaceId: space,
           params: {
             filter_query: options.query,
@@ -96,7 +97,7 @@ storiesCommand
             handleError(error);
           },
         }),
-        makeStoriesStream({
+        fetchStoryStream({
           spaceId: space,
           onIncrement: () => {
             fetchStoriesProgress.increment();
@@ -113,10 +114,10 @@ storiesCommand
             handleError(error);
           },
         }),
-        makeStorySaveStream({
+        writeStoryStream({
           transport: options.dryRun
-            ? storySaveDryRunTransport
-            : makeStorySaveFSTransport({ directoryPath: resolveCommandPath(directories.stories, space) }),
+            ? { write: (story: Story) => Promise.resolve(story) }
+            : makeWriteStoryFSTransport({ directoryPath: resolveCommandPath(directories.stories, space, basePath) }),
           onIncrement: () => {
             saveProgress.increment();
           },

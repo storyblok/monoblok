@@ -1,13 +1,13 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { fetchStories } from './actions';
-import { handleAPIError } from '../../utils/error';
-import type { Story } from './constants';
 import { mapiClient } from '../../api';
+import { handleAPIError } from '../../utils/error/api-error';
 
 // Mock dependencies
-vi.mock('../../utils/error', () => ({
+vi.mock('../../utils/error/api-error', () => ({
   handleAPIError: vi.fn(),
 }));
 

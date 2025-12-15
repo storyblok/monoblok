@@ -1,9 +1,11 @@
 import { join, parse, resolve } from 'node:path';
-import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { Sema } from 'async-sema';
+import { toError } from './error';
 
 // Default working folder for commands that do not pass --path explicitly.
 export const DEFAULT_STORAGE_DIR = '.storyblok';
@@ -64,23 +66,40 @@ export const saveToFileSync = (filePath: string, data: string, options?: FileOpt
   }
 };
 
-export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
-  const resolvedPath = parse(filePath).dir;
+const writeLocks = new Map<string, Sema>();
+const getWriteLock = (fullPath: string) => {
+  const writeLock = writeLocks.get(fullPath);
+  if (writeLock) {
+    return writeLock;
+  }
+  const newWriteLock = new Sema(1);
+  writeLocks.set(fullPath, newWriteLock);
+  return newWriteLock;
+};
+const acquireWriteLock = (fullPath: string) => {
+  return getWriteLock(fullPath).acquire();
+};
+const releaseWriteLock = (fullPath: string) => {
+  return getWriteLock(fullPath).release();
+};
 
-  // Ensure the directory exists
+export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
   try {
+    await acquireWriteLock(filePath);
+    const resolvedPath = parse(filePath).dir;
     await mkdir(resolvedPath, { recursive: true });
-  }
-  catch (mkdirError) {
-    handleFileSystemError('mkdir', mkdirError as Error);
-    return;
-  }
-  try {
     const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
     await appendFile(filePath, dataWithNewline, options);
   }
-  catch (writeError) {
-    handleFileSystemError('write', writeError as Error);
+  catch (maybeError) {
+    const error = toError(maybeError);
+    handleFileSystemError(
+      'syscall' in error && error.syscall === 'mkdir' ? 'mkdir' : 'write',
+      error,
+    );
+  }
+  finally {
+    await releaseWriteLock(filePath);
   }
 };
 
@@ -159,6 +178,17 @@ export const sanitizeFilename = (filename: string): string => {
     replacement: '_',
   });
 };
+
+export async function readDirectory(directoryPath: string) {
+  try {
+    const files = await readdir(directoryPath);
+    return files;
+  }
+  catch (maybeError) {
+    handleFileSystemError('read', toError(maybeError));
+    return [];
+  }
+}
 
 export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
   try {

@@ -12,6 +12,7 @@ export const commands = {
   CREATE: 'create',
   LOGS: 'logs',
   REPORTS: 'reports',
+  ASSETS: 'assets',
   STORIES: 'stories',
 } as const;
 
@@ -32,6 +33,7 @@ export const colorPalette = {
   DATASOURCES: '#4ade80',
   LOGS: '#4ade80',
   REPORTS: '#4ade80',
+  ASSETS: '#f97316',
   STORIES: '#a185ff',
 } as const;
 
@@ -91,6 +93,7 @@ export interface SpaceOptions {
 }
 
 export const directories = {
+  assets: 'assets',
   components: 'components',
   datasources: 'datasources',
   logs: 'logs',

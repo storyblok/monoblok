@@ -16,10 +16,9 @@ import {
   createAssetFolderStream,
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
+  makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
-  makeFinishAssetUploadTransport,
-  makeRequestAssetUploadTransport,
-  makeUploadAssetTransport,
+  makeUpdateAssetAPITransport,
   readLocalAssetFoldersStream,
   readLocalAssetsStream,
   uploadAssetStream,
@@ -139,24 +138,26 @@ assetsCommand
           },
         }),
         uploadAssetStream({
-          requestTransport: options.dryRun
+          createTransport: options.dryRun
             ? {
-                create: async asset => ({
+                create: async ({ asset }) => ({
+                  ...asset,
                   id: Number(maps.assets.get(asset.id)) || asset.id,
-                  post_url: '',
-                  fields: {},
                 }),
               }
-            : makeRequestAssetUploadTransport({
-                spaceId: space,
-                maps,
-              }),
-          uploadTransport: options.dryRun
-            ? { upload: async () => Promise.resolve() }
-            : makeUploadAssetTransport(),
-          finishTransport: options.dryRun
-            ? { finish: async ({ assetId }) => ({ id: assetId, filename: '' } as Asset) }
-            : makeFinishAssetUploadTransport({ spaceId: space }),
+            : makeCreateAssetAPITransport({ spaceId: space }),
+          updateTransport: options.dryRun
+            ? {
+                update: async ({ assetId, assetFolderId }) => {
+                  const normalizedFolderId = assetFolderId == null ? undefined : assetFolderId;
+                  return {
+                    id: Number(assetId),
+                    filename: '',
+                    asset_folder_id: normalizedFolderId,
+                  } as Asset;
+                },
+              }
+            : makeUpdateAssetAPITransport({ spaceId: space }),
           manifestTransport: options.dryRun
             ? { append: async () => Promise.resolve() }
             : makeAppendAssetManifestFSTransport({ manifestFile }),

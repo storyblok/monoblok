@@ -6,8 +6,8 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolder, AssetsQueryParams, FetchAssetsResult, SignedAssetUpload } from './actions';
-import { createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, finishAssetUpload, requestAssetUpload, uploadAssetToS3 } from './actions';
+import type { Asset, AssetFolder, AssetsQueryParams, FetchAssetsResult } from './actions';
+import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset } from './actions';
 
 const getAssetNameAndExt = (asset: Asset) => {
   const nameWithExt = asset.short_filename || basename(asset.filename);
@@ -401,69 +401,41 @@ export const readLocalAssetsStream = ({
   return Readable.from(iterator());
 };
 
-export interface RequestAssetUploadTransport {
-  create: (asset: Asset, assetFolderId?: number | null) => Promise<SignedAssetUpload>;
-}
-
-export interface UploadAssetTransport {
-  upload: (payload: { signed: SignedAssetUpload; asset: Asset; fileBuffer: ArrayBuffer }) => Promise<void>;
-}
-
-export interface FinishAssetUploadTransport {
-  finish: (payload: { assetId: number | string }) => Promise<Asset>;
-}
-
 export interface AppendAssetManifestTransport {
   append: (localAsset: Asset, remoteAsset: Asset) => Promise<void>;
 }
 
-export const makeRequestAssetUploadTransport = ({ spaceId, maps }: {
-  spaceId: string;
-  maps: { assetFolders: Map<number, number> };
-}): RequestAssetUploadTransport => ({
-  create: async (asset, assetFolderId) => {
-    const targetFolderId = assetFolderId ?? (asset.asset_folder_id ? maps.assetFolders.get(asset.asset_folder_id) ?? asset.asset_folder_id : undefined);
-    const signed = await requestAssetUpload(spaceId, {
-      asset: {
-        filename: asset.name || basename(asset.filename),
-        asset_folder_id: targetFolderId ?? undefined,
-        // TODO NOW remove because it's optional
-        size: (asset.filename.match(/\/(\d+x\d+)\//) || [])[1],
-        validate_upload: 1,
-      },
-    });
-    if (!signed) {
-      throw new Error('Failed to request asset upload');
+export interface CreateAssetTransport {
+  create: (payload: {
+    asset: Asset;
+    fileBuffer: ArrayBuffer;
+  }) => Promise<Asset>;
+}
+
+export interface UpdateAssetTransport {
+  update: (payload: {
+    assetId: number | string;
+    assetFolderId?: number | null;
+  }) => Promise<Asset>;
+}
+
+export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport => ({
+  create: async ({ asset, fileBuffer }) => {
+    const remoteAsset = await createAsset(spaceId, { asset, fileBuffer });
+    if (!remoteAsset) {
+      throw new Error('Failed to create asset');
     }
-    return signed;
+    return remoteAsset;
   },
 });
 
-export const makeUploadAssetTransport = (): UploadAssetTransport => ({
-  upload: async ({ signed, asset, fileBuffer }) => {
-    const response = await uploadAssetToS3({
-      signedUpload: signed,
-      fileBuffer,
-      filename: asset.name || basename(asset.filename),
-    });
-    if (!response || !response.ok) {
-      throw new Error('Failed to upload asset to storage');
+export const makeUpdateAssetAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetTransport => ({
+  update: async ({ assetId, assetFolderId }) => {
+    const updatedAsset = await updateAsset(spaceId, { assetId, asset: { asset_folder_id: assetFolderId ?? undefined } });
+    if (!updatedAsset) {
+      throw new Error('Failed to update asset');
     }
-  },
-});
-
-export const makeFinishAssetUploadTransport = ({ spaceId }: {
-  spaceId: string;
-}): FinishAssetUploadTransport => ({
-  finish: async ({ assetId }) => {
-    const asset = await finishAssetUpload({
-      spaceId,
-      assetId,
-    });
-    if (!asset) {
-      throw new Error('Failed to finish asset upload');
-    }
-    return asset;
+    return updatedAsset;
   },
 });
 
@@ -494,18 +466,16 @@ export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { man
 });
 
 export const uploadAssetStream = ({
-  requestTransport,
-  uploadTransport,
-  finishTransport,
+  createTransport,
+  updateTransport,
   manifestTransport,
   maps,
   onIncrement,
   onAssetSuccess,
   onAssetError,
 }: {
-  requestTransport: RequestAssetUploadTransport;
-  uploadTransport: UploadAssetTransport;
-  finishTransport: FinishAssetUploadTransport;
+  createTransport: CreateAssetTransport;
+  updateTransport: UpdateAssetTransport;
   manifestTransport: AppendAssetManifestTransport;
   maps: { assets: Map<number, number>; assetFolders: Map<number, number> };
   onIncrement?: () => void;
@@ -516,10 +486,21 @@ export const uploadAssetStream = ({
     objectMode: true,
     async write(payload: LocalAssetPayload, _encoding, callback) {
       try {
-        const signed = await requestTransport.create(payload.asset);
-        await uploadTransport.upload({ signed, asset: payload.asset, fileBuffer: payload.fileBuffer });
-        const remoteAsset = await finishTransport.finish({ assetId: signed.id });
-        await manifestTransport.append(payload.asset, remoteAsset);
+        const mappedFolderId = payload.asset.asset_folder_id
+          && (maps.assetFolders.get(payload.asset.asset_folder_id) || payload.asset.asset_folder_id);
+        const existingRemoteId = maps.assets.get(payload.asset.id);
+
+        const remoteAsset = existingRemoteId
+          ? await updateTransport.update({ assetId: existingRemoteId, assetFolderId: mappedFolderId })
+          : await createTransport.create({
+            asset: { ...payload.asset, asset_folder_id: mappedFolderId },
+            fileBuffer: payload.fileBuffer,
+          });
+
+        if (!existingRemoteId) {
+          await manifestTransport.append(payload.asset, remoteAsset);
+        }
+
         maps.assets.set(payload.asset.id, remoteAsset.id);
         onAssetSuccess?.(payload.asset, remoteAsset);
       }

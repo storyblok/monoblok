@@ -28,7 +28,7 @@ async function handleEnvFileCreation(resolvedPath: string, token: string, region
   try {
     await createEnvFile(resolvedPath, {
       STORYBLOK_DELIVERY_API_TOKEN: token,
-      STORYBLOK_REGION: region || regions.EU,
+      ...(region && { STORYBLOK_REGION: region }),
     });
     konsola.ok(`Created .env file with Storyblok access token`, true);
     return true;

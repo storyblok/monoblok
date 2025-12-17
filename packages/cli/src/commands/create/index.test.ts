@@ -10,6 +10,7 @@ import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpa
 import { getUser } from '../user/actions';
 import type { StoryblokUser } from '../../types';
 import { templates } from './constants';
+import { regionCodes } from '../../constants';
 
 // Mock all dependencies
 vi.mock('./actions', () => ({
@@ -1070,6 +1071,116 @@ describe('createCommand', () => {
 
         expect(getUser).toHaveBeenCalledWith('test-token', 'eu');
       });
+    });
+  });
+
+  describe('--region flag', () => {
+    it('should include region in .env file when --region is provided with --token', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token', '--region', 'us']);
+
+      // Should create .env file with provided token and region
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
+        STORYBLOK_REGION: 'us',
+      });
+    });
+
+    it('should validate region and show error for invalid region', async () => {
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token', '--region', 'invalid']);
+
+      // Should call handleError with invalid region error
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('The provided region: invalid is not valid'),
+        }),
+      );
+
+      // Should not attempt project generation
+      expect(generateProject).not.toHaveBeenCalled();
+    });
+
+    it('should accept valid regions: eu, us, cn, ca, ap', async () => {
+      const validRegions = regionCodes;
+
+      for (const region of validRegions) {
+        vi.clearAllMocks();
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'token', '--region', region]);
+
+        expect(handleError).not.toHaveBeenCalled();
+        expect(generateProject).toHaveBeenCalled();
+        expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+          STORYBLOK_DELIVERY_API_TOKEN: 'token',
+          STORYBLOK_REGION: region,
+        });
+      }
+    });
+
+    it('should include region in .env when creating a space with custom region', async () => {
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createSpace).mockResolvedValue(mockSpace);
+      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
+
+      // Should create .env file with space token and session region (eu by default in tests)
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
+        STORYBLOK_REGION: 'eu',
+      });
+    });
+
+    it('should not include region in .env when --token is provided without --region', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token']);
+
+      // Should create .env file without region when not specified
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
+      });
+    });
+
+    it('should work with --region and --skip-space flags together', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space', '--region', 'ca']);
+
+      // Should generate project successfully
+      expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
+
+      // Should not create space or env file
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(createEnvFile).not.toHaveBeenCalled();
     });
   });
 });

@@ -226,6 +226,39 @@ describe('create actions', () => {
       expect(content).toMatch(/# Additional Configuration/);
       expect(content).toMatch(/CUSTOM=value/);
     });
+
+    it('should create .env file with region in storyblokVars', async () => {
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      await createEnvFile('/test/project', {
+        STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123',
+        STORYBLOK_REGION: 'us',
+      });
+
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-123'),
+      );
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.stringContaining('STORYBLOK_REGION=us'),
+      );
+    });
+
+    it('should create .env file with multiple storyblok variables including region', async () => {
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      await createEnvFile('/test/project', {
+        STORYBLOK_DELIVERY_API_TOKEN: 'test-token-456',
+        STORYBLOK_REGION: 'ap',
+      });
+
+      const [[, content]] = mockedSaveToFile.mock.calls;
+
+      expect(content).toMatch(/# Storyblok Configuration/);
+      expect(content).toMatch(/STORYBLOK_DELIVERY_API_TOKEN=test-token-456/);
+      expect(content).toMatch(/STORYBLOK_REGION=ap/);
+    });
   });
 
   describe('generateSpaceUrl', () => {

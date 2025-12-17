@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import type { Mock } from 'vitest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import '../index';
 import { assetsCommand } from '../command';
 import { directories } from '../../../constants';
-import { resolveCommandPath, sanitizeFilename } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetReporter } from '../../../lib/reporter/reporter';
 import { loadManifest } from '../../stories/push/actions';
 import * as actions from '../actions';
@@ -34,13 +35,14 @@ vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
-vi.spyOn(actions, 'requestAssetUpload');
+vi.spyOn(actions, 'createAsset');
 
 interface MockAsset {
   id: number;
   filename: string;
   name: string;
   asset_folder_id?: number | null;
+  meta_data?: Record<string, unknown>;
 }
 
 interface MockFolder {
@@ -88,7 +90,10 @@ const server = setupServer(
 );
 
 const preconditions = {
-  canLoadAssets(assets: MockAsset[], space = DEFAULT_SPACE, basePath?: string) {
+  canLoadAssets(assets: MockAsset[], {
+    space = DEFAULT_SPACE,
+    basePath,
+  }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     const files = assets.map((asset) => {
       const ext = path.extname(asset.name) || '.png';
@@ -104,11 +109,14 @@ const preconditions = {
     ] as const);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
   },
-  canLoadFolders(folders: MockFolder[], space = DEFAULT_SPACE, basePath?: string) {
+  canLoadFolders(folders: MockFolder[], {
+    space = DEFAULT_SPACE,
+    basePath,
+  }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
+    vol.mkdirSync(path.join(assetsDir, 'folders'), { recursive: true });
     const folderFiles = folders.map((folder) => {
-      const safeName = sanitizeFilename(folder.name || '');
-      const filename = `${safeName || folder.uuid}_${folder.uuid}.json`;
+      const filename = `${folder.name}_${folder.uuid}.json`;
       return [
         path.join(assetsDir, 'folders', filename),
         JSON.stringify(folder),
@@ -116,7 +124,9 @@ const preconditions = {
     });
     vol.fromJSON(Object.fromEntries(folderFiles));
   },
-  canCreateRemoteFolders(folders: MockFolder[], space = DEFAULT_SPACE) {
+  canCreateRemoteFolders(folders: MockFolder[], {
+    space = DEFAULT_SPACE,
+  }: { space?: string } = {}) {
     const remoteFolders = folders.map(folder => ({
       ...folder,
       id: getID(),
@@ -137,7 +147,11 @@ const preconditions = {
     );
     return remoteFolders;
   },
-  canUploadRemoteAssets(assets: MockAsset[], folderMap: Map<number, number>, space = DEFAULT_SPACE) {
+  canUploadAssets(assets: MockAsset[], {
+    folderMap = new Map(),
+    space = DEFAULT_SPACE,
+    updateSpy = vi.fn(),
+ }: { folderMap?: Map<number, number>; space?: string; updateSpy?: Mock } = {}) {
     const remoteAssets = assets.map(asset => ({
       ...asset,
       id: getID(),
@@ -159,13 +173,6 @@ const preconditions = {
           post_url: 'https://s3.amazonaws.com/a.storyblok.com',
           fields: {
             key,
-            'policy': 'mock-policy',
-            'x-amz-credential': 'mock-credential',
-            'x-amz-algorithm': 'AWS4-HMAC-SHA256',
-            'x-amz-date': '20250101T000000Z',
-            'x-amz-signature': 'mock-signature',
-            'acl': 'public-read',
-            'Content-Type': 'image/png',
           },
           id: match.id,
         });
@@ -198,6 +205,15 @@ const preconditions = {
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
         }
+        return HttpResponse.json(match);
+      }),
+      // Optional: update asset metadata/folder/etc.
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params }) => {
+        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
+        }
+        updateSpy(match);
         return HttpResponse.json(match);
       }),
     );
@@ -248,12 +264,12 @@ describe('assets push command', () => {
 
     const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
     folderMap.set(folder.id, remoteFolder.id);
-    const [remoteAsset] = preconditions.canUploadRemoteAssets([asset], folderMap);
+    const [remoteAsset] = preconditions.canUploadAssets([asset], { folderMap });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    // Check if folder reference was mapped correctly before requesting the asset upload.
-    expect(actions.requestAssetUpload).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
+    // Check if folder reference was mapped correctly before uploading the asset.
+    expect(actions.createAsset).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
       asset: expect.objectContaining({
         asset_folder_id: remoteFolder.id,
       }),
@@ -303,5 +319,25 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should update asset meta_data after upload when present locally', async () => {
+    const asset = makeMockAsset({
+      meta_data: {
+        alt: 'Alt text',
+        title: 'Title',
+        custom: 'Custom field',
+      },
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    const updateSpy = vi.fn();
+    preconditions.canUploadAssets([asset], { updateSpy });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      meta_data: asset.meta_data,
+    }));
   });
 });

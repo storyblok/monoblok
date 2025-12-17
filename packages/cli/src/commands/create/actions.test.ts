@@ -173,7 +173,7 @@ describe('create actions', () => {
     it('should create .env file successfully with access token only', async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', 'test-token-123');
+      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' });
 
       expect(mockedSaveToFile).toHaveBeenCalledWith(
         '/test/project/.env',
@@ -189,7 +189,7 @@ describe('create actions', () => {
         ANOTHER_VAR: 'another-value',
       };
 
-      await createEnvFile('/test/project', 'test-token-123', additionalVars);
+      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' }, additionalVars);
 
       expect(mockedSaveToFile).toHaveBeenCalledWith(
         '/test/project/.env',
@@ -209,7 +209,7 @@ describe('create actions', () => {
       const saveError = new Error('Permission denied');
       mockedSaveToFile.mockRejectedValue(saveError);
 
-      await expect(createEnvFile('/test/project', 'test-token')).rejects.toThrow(
+      await expect(createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' })).rejects.toThrow(
         'Failed to create .env file: Permission denied',
       );
     });
@@ -217,7 +217,7 @@ describe('create actions', () => {
     it('should create proper .env file content structure', async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', 'test-token-123', { CUSTOM: 'value' });
+      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' }, { CUSTOM: 'value' });
 
       const [[, content]] = mockedSaveToFile.mock.calls;
 

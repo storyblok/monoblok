@@ -146,7 +146,9 @@ describe('createCommand', () => {
       // Should generate project
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
       // Should create .env file with provided token
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), 'my-access-token');
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
+      });
       // Should NOT create space or open browser
       expect(createSpace).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
@@ -395,7 +397,10 @@ describe('createCommand', () => {
       });
 
       // Verify .env file creation
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), 'space-token-123');
+      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
+        STORYBLOK_REGION: 'eu',
+      });
       expect(konsola.ok).toHaveBeenCalledWith('Created .env file with Storyblok access token', true);
 
       // Verify browser opening
@@ -575,7 +580,10 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', './projects/my-project', '--template', 'react']);
 
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.stringContaining('projects'));
-      expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my-project'), 'space-token-123');
+      expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my-project'), {
+        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
+        STORYBLOK_REGION: 'eu',
+      });
     });
 
     it('should handle absolute paths correctly', async () => {

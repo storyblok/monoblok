@@ -1,0 +1,307 @@
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { vol } from 'memfs';
+import '../index';
+import { assetsCommand } from '../command';
+import { directories } from '../../../constants';
+import { resolveCommandPath, sanitizeFilename } from '../../../utils/filesystem';
+import { resetReporter } from '../../../lib/reporter/reporter';
+import { loadManifest } from '../../stories/push/actions';
+import * as actions from '../actions';
+
+const DEFAULT_SPACE = '12345';
+
+vi.mock('node:fs');
+vi.mock('node:fs/promises');
+
+vi.mock('../../../session', () => ({
+  session: vi.fn(() => ({
+    state: {
+      isLoggedIn: true,
+      password: 'valid-token',
+      region: 'eu',
+    },
+    initializeSession: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.spyOn(console, 'log');
+vi.spyOn(console, 'debug');
+vi.spyOn(console, 'error');
+vi.spyOn(console, 'info');
+vi.spyOn(console, 'warn');
+
+vi.spyOn(actions, 'requestAssetUpload');
+
+interface MockAsset {
+  id: number;
+  filename: string;
+  name: string;
+  asset_folder_id?: number | null;
+}
+
+interface MockFolder {
+  id: number;
+  uuid: string;
+  name: string;
+  parent_id: number | null;
+  parent_uuid: string | null;
+}
+
+let id = 0;
+const getID = () => {
+  id += 1;
+  return id;
+};
+const makeMockAsset = (overrides: Partial<MockAsset> = {}): MockAsset => {
+  const assetId = overrides.id ?? getID();
+  const name = overrides.name || `asset-${assetId}.png`;
+  return {
+    id: assetId,
+    filename: overrides.filename || `https://a.storyblok.com/f/12345/500x500/${name}`,
+    name,
+    asset_folder_id: null,
+    ...overrides,
+  };
+};
+
+const makeMockFolder = (overrides: Partial<MockFolder> = {}): MockFolder => {
+  const folderId = overrides.id ?? getID();
+  return {
+    id: folderId,
+    uuid: randomUUID(),
+    name: overrides.name || `Folder-${folderId}`,
+    parent_id: null,
+    parent_uuid: null,
+    ...overrides,
+  };
+};
+
+const server = setupServer(
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId', () => HttpResponse.json(
+    { message: 'Not Found' },
+    { status: 404 },
+  )),
+);
+
+const preconditions = {
+  canLoadAssets(assets: MockAsset[], space = DEFAULT_SPACE, basePath?: string) {
+    const assetsDir = resolveCommandPath(directories.assets, space, basePath);
+    const files = assets.map((asset) => {
+      const ext = path.extname(asset.name) || '.png';
+      const basename = asset.name.replace(ext, '');
+      return [
+        path.join(assetsDir, `${basename}_${asset.id}${ext}`),
+        'binary-content',
+      ] as const;
+    });
+    const metadataFiles = assets.map(asset => [
+      path.join(assetsDir, `${asset.name.replace(path.extname(asset.name) || '.png', '')}_${asset.id}.json`),
+      JSON.stringify(asset),
+    ] as const);
+    vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
+  },
+  canLoadFolders(folders: MockFolder[], space = DEFAULT_SPACE, basePath?: string) {
+    const assetsDir = resolveCommandPath(directories.assets, space, basePath);
+    const folderFiles = folders.map((folder) => {
+      const safeName = sanitizeFilename(folder.name || '');
+      const filename = `${safeName || folder.uuid}_${folder.uuid}.json`;
+      return [
+        path.join(assetsDir, 'folders', filename),
+        JSON.stringify(folder),
+      ] as const;
+    });
+    vol.fromJSON(Object.fromEntries(folderFiles));
+  },
+  canCreateRemoteFolders(folders: MockFolder[], space = DEFAULT_SPACE) {
+    const remoteFolders = folders.map(folder => ({
+      ...folder,
+      id: getID(),
+      uuid: randomUUID(),
+    }));
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders`, async ({ request }) => {
+        const body = await request.json();
+        const match = body
+          && typeof body === 'object'
+          && 'asset_folder' in body
+          && remoteFolders.find(f => f.name === body.asset_folder?.name);
+        if (!match) {
+          return HttpResponse.json({ message: 'Folder not found' }, { status: 500 });
+        }
+        return HttpResponse.json({ asset_folder: match });
+      }),
+    );
+    return remoteFolders;
+  },
+  canUploadRemoteAssets(assets: MockAsset[], folderMap: Map<number, number>, space = DEFAULT_SPACE) {
+    const remoteAssets = assets.map(asset => ({
+      ...asset,
+      id: getID(),
+      filename: asset.filename.replace('/f/12345/', `/f/${space}/`),
+      asset_folder_id: asset.asset_folder_id && folderMap.get(asset.asset_folder_id),
+    }));
+    server.use(
+      // Step 1: get signed response
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
+        const body = await request.json() as { filename?: string; size?: string; validate_upload?: number };
+        const requestedFilename = body?.filename;
+        const match = remoteAssets
+          .find(a => a.name === requestedFilename || a.filename.endsWith(requestedFilename || ''));
+        if (!match) {
+          return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
+        }
+        const key = `f/${space}/${match.id}/${match.name}`;
+        return HttpResponse.json({
+          post_url: 'https://s3.amazonaws.com/a.storyblok.com',
+          fields: {
+            key,
+            'policy': 'mock-policy',
+            'x-amz-credential': 'mock-credential',
+            'x-amz-algorithm': 'AWS4-HMAC-SHA256',
+            'x-amz-date': '20250101T000000Z',
+            'x-amz-signature': 'mock-signature',
+            'acl': 'public-read',
+            'Content-Type': 'image/png',
+          },
+          id: match.id,
+        });
+      }),
+      // Step 2: upload to S3
+      http.post('https://s3.amazonaws.com/a.storyblok.com', async ({ request }) => {
+        const form = await request.formData();
+        const fileField = form.get('file') as unknown;
+        const filename = typeof fileField === 'object' && fileField !== null && 'name' in fileField
+          ? (fileField as { name?: string }).name || undefined
+          : undefined;
+        const key = form.get('key') as string | null;
+        const match = remoteAssets.find(asset => asset.name === filename || key?.includes(asset.name));
+        if (!match) {
+          return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
+        }
+        return HttpResponse.json({ key: key ?? `f/${space}/${match.id}/${match.name}` });
+      }),
+      // Step 3: finish upload
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId/finish_upload`, ({ params }) => {
+        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
+        }
+        return HttpResponse.json({ message: 'Upload finalized' });
+      }),
+      // Step 4: retrieve asset
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, ({ params }) => {
+        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
+        }
+        return HttpResponse.json(match);
+      }),
+    );
+    return remoteAssets;
+  },
+};
+
+const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
+  const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+  return loadManifest(manifestPath);
+};
+
+const parseFoldersManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
+  const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'folders', 'manifest.jsonl');
+  return loadManifest(manifestPath);
+};
+
+const getReport = (space = DEFAULT_SPACE) => {
+  const reportFile = Object.entries(vol.toJSON())
+    .find(([filename]) => filename.includes(`reports/${space}/storyblok-assets-push-`))?.[1];
+
+  return reportFile ? JSON.parse(reportFile) : undefined;
+};
+
+const LOG_PREFIX = 'storyblok-assets-push-';
+const getLogFileContents = () => {
+  return Object.entries(vol.toJSON())
+    .find(([filename]) => filename.includes(LOG_PREFIX) && filename.includes('/logs/'))?.[1];
+};
+
+describe('assets push command', () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  afterEach(() => {
+    vi.resetAllMocks();
+    vi.clearAllMocks();
+    vol.reset();
+    server.resetHandlers();
+    resetReporter();
+  });
+  afterAll(() => server.close());
+
+  it('should push assets and asset folders and map to new asset folder IDs', async () => {
+    const folderMap = new Map<number, number>();
+    const folder = makeMockFolder();
+    const asset = makeMockAsset({ asset_folder_id: folder.id });
+    preconditions.canLoadFolders([folder]);
+    preconditions.canLoadAssets([asset]);
+
+    const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
+    folderMap.set(folder.id, remoteFolder.id);
+    const [remoteAsset] = preconditions.canUploadRemoteAssets([asset], folderMap);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // Check if folder reference was mapped correctly before requesting the asset upload.
+    expect(actions.requestAssetUpload).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
+      asset: expect.objectContaining({
+        asset_folder_id: remoteFolder.id,
+      }),
+    }));
+    // Manifest
+    expect(await parseFoldersManifest()).toEqual([
+      { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
+    ]);
+    expect(await parseManifest()).toEqual([
+      { old_id: asset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+    ]);
+    // Report
+    const report = getReport();
+    expect(report).toEqual({
+      status: 'SUCCESS',
+      meta: {
+        runId: expect.any(String),
+        command: 'storyblok assets push',
+        cliVersion: expect.any(String),
+        startedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+        endedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+        durationMs: expect.any(Number),
+        logPath: expect.any(String),
+        config: expect.any(Object),
+      },
+      summary: {
+        folderResults: {
+          total: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+        assetResults: {
+          total: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+      },
+    });
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toMatch(/Created asset folder/);
+    expect(logFile).toMatch(/Uploaded asset/);
+    expect(logFile).toContain('Pushing assets finished');
+    expect(logFile).toContain('"folderResults":{"total":1,"succeeded":1,"failed":0}');
+    expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
+    // UI
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+});

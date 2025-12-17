@@ -90,8 +90,8 @@ export const createEnvFile = async (
 
     // Build the .env content
     let envContent = `# Storyblok Configuration
-    ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\n')}
-    `;
+${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\n')}
+`;
 
     // Add any additional environment variables
     if (additionalVars && Object.keys(additionalVars).length > 0) {

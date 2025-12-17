@@ -29,6 +29,7 @@ export const API_ACTIONS = {
   push_asset_sign: 'Failed to sign asset upload',
   push_asset_upload: 'Failed to upload asset',
   push_asset_finish: 'Failed to finish asset upload',
+  push_asset_update: 'Failed to update asset',
   pull_datasources: 'Failed to pull datasources',
   push_datasource: 'Failed to push datasource',
   update_datasource: 'Failed to update datasource',

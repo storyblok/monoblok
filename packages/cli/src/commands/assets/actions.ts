@@ -1,11 +1,12 @@
 import { Buffer } from 'node:buffer';
+import { basename } from 'node:path';
 import type { Asset as MapiAsset } from '@storyblok/management-api-client/resources/assets';
 import type { RegionCode } from '../../constants';
 import { managementApiRegions } from '../../constants';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 
-export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset & { name?: string };
+export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset;
 
 export interface AssetsQueryParams {
   page?: number;
@@ -141,7 +142,7 @@ export const createAssetFolder = async ({
   }
 };
 
-export interface RequestAssetUploadPayload {
+interface RequestAssetUploadPayload {
   asset: {
     filename: string;
     size?: string;
@@ -150,9 +151,7 @@ export interface RequestAssetUploadPayload {
   };
 }
 
-// TODO NOW make the individual steps for uploading "private" (non exported) functions in here
-// and expose/export only "updateAsset" and "createAsset" functions, update the streams accordingly
-export const requestAssetUpload = async (
+const requestAssetUpload = async (
   spaceId: string,
   payload: RequestAssetUploadPayload,
 ): Promise<SignedAssetUpload | undefined> => {
@@ -190,7 +189,7 @@ export const requestAssetUpload = async (
   }
 };
 
-export const uploadAssetToS3 = async ({
+const uploadAssetToS3 = async ({
   signedUpload,
   fileBuffer,
   filename,
@@ -217,7 +216,7 @@ export const uploadAssetToS3 = async ({
   return response;
 };
 
-export const finishAssetUpload = async ({
+const finishAssetUpload = async ({
   spaceId,
   assetId,
 }: {
@@ -248,4 +247,89 @@ export const finishAssetUpload = async ({
   catch (error) {
     handleAPIError('push_asset_finish', error as Error);
   }
+};
+
+export const updateAsset = async (
+  spaceId: string,
+  payload: {
+    assetId: number | string;
+    asset: {
+      asset_folder_id?: number | null;
+      is_private?: boolean;
+      meta_data?: Record<string, unknown>;
+    };
+  },
+): Promise<Asset | undefined> => {
+  try {
+    const client = mapiClient();
+    const { data } = await client.assets.update({
+      path: {
+        space_id: spaceId,
+        asset_id: payload.assetId,
+      },
+      body: {
+        asset: {
+          asset_folder_id: payload.asset.asset_folder_id ?? undefined,
+          is_private: payload.asset.is_private ?? undefined,
+          meta_data: payload.asset.meta_data ?? undefined,
+        },
+      },
+      throwOnError: true,
+    });
+
+    return data as Asset;
+  }
+  catch (error) {
+    handleAPIError('push_asset_update', error as Error);
+  }
+};
+
+export const createAsset = async (
+  spaceId: string,
+  payload: {
+    asset: Asset;
+    fileBuffer: ArrayBuffer;
+  },
+): Promise<Asset | undefined> => {
+  const filename = payload.asset.short_filename || basename(payload.asset.filename);
+  const signed = await requestAssetUpload(spaceId, {
+    asset: {
+      filename,
+      asset_folder_id: payload.asset.asset_folder_id ?? undefined,
+      validate_upload: 1,
+    },
+  });
+  if (!signed) {
+    return;
+  }
+
+  const uploadResponse = await uploadAssetToS3({
+    signedUpload: signed,
+    fileBuffer: payload.fileBuffer,
+    filename,
+  });
+  if (!uploadResponse?.ok) {
+    return;
+  }
+
+  const createdAsset = await finishAssetUpload({
+    spaceId,
+    assetId: signed.id,
+  });
+
+  if (!createdAsset) {
+    return;
+  }
+
+  if (payload.asset.meta_data) {
+    const updatedAsset = await updateAsset(spaceId, {
+      assetId: createdAsset.id,
+      asset: {
+        meta_data: payload.asset.meta_data,
+      },
+    });
+    return updatedAsset ?? createdAsset;
+  }
+
+  return createdAsset;
 };

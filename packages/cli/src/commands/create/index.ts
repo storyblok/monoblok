@@ -53,7 +53,7 @@ export const createCommand = program
   .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
   .option(
     '-r, --region <region>',
-    `The region to configure for your SDK. This flag is used for space creation when applicable and is also applied to the generated project template.`,
+    `The region to apply to the generated project template (does not affect space creation).`,
   )
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
@@ -243,7 +243,7 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, options.region);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region);
         }
 
         // Open the space in the browser

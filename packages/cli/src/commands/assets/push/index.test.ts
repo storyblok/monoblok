@@ -36,13 +36,14 @@ vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 vi.spyOn(actions, 'createAsset');
+vi.spyOn(actions, 'updateAsset');
 
 interface MockAsset {
   id: number;
   filename: string;
-  name: string;
   asset_folder_id?: number | null;
   meta_data?: Record<string, unknown>;
+  short_filename?: string;
 }
 
 interface MockFolder {
@@ -60,11 +61,10 @@ const getID = () => {
 };
 const makeMockAsset = (overrides: Partial<MockAsset> = {}): MockAsset => {
   const assetId = overrides.id ?? getID();
-  const name = overrides.name || `asset-${assetId}.png`;
+  const name = overrides.short_filename || `asset-${assetId}.png`;
   return {
     id: assetId,
     filename: overrides.filename || `https://a.storyblok.com/f/12345/500x500/${name}`,
-    name,
     asset_folder_id: null,
     ...overrides,
   };
@@ -95,19 +95,29 @@ const preconditions = {
     basePath,
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
-    const files = assets.map((asset) => {
-      const ext = path.extname(asset.name) || '.png';
-      const basename = asset.name.replace(ext, '');
-      return [
-        path.join(assetsDir, `${basename}_${asset.id}${ext}`),
-        'binary-content',
-      ] as const;
-    });
+    const getFilename = (asset: MockAsset, newExt?: string) => {
+      const ext = path.extname(asset.filename);
+      return `${path.basename(asset.filename, ext)}_${asset.id}${newExt || ext}`;
+    };
+    const files = assets.map(asset => [
+      path.join(assetsDir, getFilename(asset)),
+      'binary-content',
+    ]);
     const metadataFiles = assets.map(asset => [
-      path.join(assetsDir, `${asset.name.replace(path.extname(asset.name) || '.png', '')}_${asset.id}.json`),
+      path.join(assetsDir, getFilename(asset, '.json')),
       JSON.stringify(asset),
-    ] as const);
+    ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
+  },
+  canLoadAssetsManifest(manifestEntries: Record<number | string, number | string>[], {
+    space = DEFAULT_SPACE,
+    basePath,
+  }: { space?: string; basePath?: string } = {}) {
+    const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+    const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
+    vol.fromJSON({
+      [manifestPath]: content,
+    });
   },
   canLoadFolders(folders: MockFolder[], {
     space = DEFAULT_SPACE,
@@ -135,6 +145,7 @@ const preconditions = {
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders`, async ({ request }) => {
         const body = await request.json();
+
         const match = body
           && typeof body === 'object'
           && 'asset_folder' in body
@@ -147,11 +158,21 @@ const preconditions = {
     );
     return remoteFolders;
   },
-  canUploadAssets(assets: MockAsset[], {
+  canFetchRemoteAssets(assets: MockAsset[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    for (const asset of assets) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/${asset.id}`, () => {
+          return HttpResponse.json({ asset });
+        }),
+      );
+    }
+  },
+  canUpsertRemoteAssets(assets: MockAsset[], {
     folderMap = new Map(),
     space = DEFAULT_SPACE,
+    finishUploadSpy = vi.fn(),
     updateSpy = vi.fn(),
- }: { folderMap?: Map<number, number>; space?: string; updateSpy?: Mock } = {}) {
+ }: { folderMap?: Map<number, number>; space?: string; finishUploadSpy?: Mock; updateSpy?: Mock } = {}) {
     const remoteAssets = assets.map(asset => ({
       ...asset,
       id: getID(),
@@ -161,14 +182,15 @@ const preconditions = {
     server.use(
       // Step 1: get signed response
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
-        const body = await request.json() as { filename?: string; size?: string; validate_upload?: number };
+        const body = await request.json() as { filename?: string };
         const requestedFilename = body?.filename;
-        const match = remoteAssets
-          .find(a => a.name === requestedFilename || a.filename.endsWith(requestedFilename || ''));
+
+        const match = remoteAssets.find(a => path.basename(a.filename) === requestedFilename);
         if (!match) {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
-        const key = `f/${space}/${match.id}/${match.name}`;
+
+        const key = `f/${space}/${match.id}/${requestedFilename}`;
         return HttpResponse.json({
           post_url: 'https://s3.amazonaws.com/a.storyblok.com',
           fields: {
@@ -180,16 +202,15 @@ const preconditions = {
       // Step 2: upload to S3
       http.post('https://s3.amazonaws.com/a.storyblok.com', async ({ request }) => {
         const form = await request.formData();
-        const fileField = form.get('file') as unknown;
-        const filename = typeof fileField === 'object' && fileField !== null && 'name' in fileField
-          ? (fileField as { name?: string }).name || undefined
-          : undefined;
-        const key = form.get('key') as string | null;
-        const match = remoteAssets.find(asset => asset.name === filename || key?.includes(asset.name));
+        const filename = (form.get('file') as { name?: string }).name;
+
+        const match = remoteAssets.find(a => path.basename(a.filename) === filename);
         if (!match) {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
-        return HttpResponse.json({ key: key ?? `f/${space}/${match.id}/${match.name}` });
+
+        const key = form.get('key');
+        return HttpResponse.json({ key });
       }),
       // Step 3: finish upload
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId/finish_upload`, ({ params }) => {
@@ -197,6 +218,7 @@ const preconditions = {
         if (!match) {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
+        finishUploadSpy(match);
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Step 4: retrieve asset
@@ -218,6 +240,11 @@ const preconditions = {
       }),
     );
     return remoteAssets;
+  },
+  canDownloadAssets(assets: MockAsset[], { content = 'binary-conent' }: { content?: string } = {}) {
+    for (const asset of assets) {
+      server.use(http.get(asset.filename, () => HttpResponse.text(content)));
+    }
   },
 };
 
@@ -264,7 +291,7 @@ describe('assets push command', () => {
 
     const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
     folderMap.set(folder.id, remoteFolder.id);
-    const [remoteAsset] = preconditions.canUploadAssets([asset], { folderMap });
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
@@ -332,7 +359,7 @@ describe('assets push command', () => {
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
     const updateSpy = vi.fn();
-    preconditions.canUploadAssets([asset], { updateSpy });
+    preconditions.canUpsertRemoteAssets([asset], { updateSpy });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 

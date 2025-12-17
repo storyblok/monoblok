@@ -106,7 +106,7 @@ export const fetchAssetFile = async (asset: Asset): Promise<ArrayBuffer | undefi
 export interface SignedAssetUpload {
   id: string | number;
   post_url: string;
-  fields: Record<string, string>;
+  fields: Record<string, unknown>;
 }
 
 // TODO implement in mapi client
@@ -146,8 +146,8 @@ interface RequestAssetUploadPayload {
   asset: {
     filename: string;
     size?: string;
-    validate_upload?: 1;
-    asset_folder_id?: number | null;
+    validate_upload?: 0 | 1;
+    asset_folder_id?: number;
   };
 }
 
@@ -163,25 +163,24 @@ const requestAssetUpload = async (
       },
       body: {
         filename: payload.asset.filename,
-        size: payload.asset.size || '0x0',
-        validate_upload: payload.asset.validate_upload ?? 1,
+        // @ts-expect-error Our types are wrong, size is optional.
+        size: payload.asset.size,
+        // @ts-expect-error Our types are wrong, 0 is the default.
+        validate_upload: payload.asset.validate_upload ?? 0,
         asset_folder_id: payload.asset.asset_folder_id ?? undefined,
       },
       throwOnError: true,
     });
-    const signedUpload = data as { id?: string | number; post_url?: string; fields?: Record<string, unknown> } | undefined;
+
+    const signedUpload = data;
     if (!signedUpload?.id || !signedUpload?.post_url || !signedUpload?.fields) {
       throw new Error('Failed to request signed upload');
     }
-    const fields = Object.entries(signedUpload.fields)
-      .reduce<Record<string, string>>((acc, [key, value]) => {
-        acc[key] = String(value);
-        return acc;
-      }, {});
+
     return {
       id: signedUpload.id,
       post_url: signedUpload.post_url,
-      fields,
+      fields: signedUpload.fields,
     };
   }
   catch (error) {
@@ -200,9 +199,9 @@ const uploadAssetToS3 = async ({
 }) => {
   const formData = new FormData();
   for (const [key, value] of Object.entries(signedUpload.fields)) {
-    formData.append(key, value);
+    formData.append(key, value as string | Blob);
   }
-  const contentType = signedUpload.fields['Content-Type'] || 'application/octet-stream';
+  const contentType = signedUpload.fields['Content-Type'] as string || 'application/octet-stream';
   formData.append('file', new File([Buffer.from(fileBuffer)], filename, { type: contentType }));
 
   const response = await fetch(signedUpload.post_url, {

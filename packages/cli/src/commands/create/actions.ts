@@ -76,13 +76,13 @@ export const generateProject = async (
 /**
  * Creates a .env file in the project directory with Storyblok configuration
  * @param projectPath - The absolute path to the project directory
- * @param accessToken - The Storyblok access token to include in the .env file
+ * @param storyblokVars - The Storyblok environment variables to include in the .env file
  * @param additionalVars - Optional additional environment variables to include
  * @returns Promise<void>
  */
 export const createEnvFile = async (
   projectPath: string,
-  accessToken: string,
+  storyblokVars: Record<string, string>,
   additionalVars?: Record<string, string>,
 ): Promise<void> => {
   try {
@@ -90,8 +90,8 @@ export const createEnvFile = async (
 
     // Build the .env content
     let envContent = `# Storyblok Configuration
-STORYBLOK_DELIVERY_API_TOKEN=${accessToken}
-`;
+    ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\n')}
+    `;
 
     // Add any additional environment variables
     if (additionalVars && Object.keys(additionalVars).length > 0) {

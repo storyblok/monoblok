@@ -1,4 +1,4 @@
-import { handleError, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands, regions } from '../../constants';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
@@ -12,6 +12,7 @@ import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
+import type { RegionCode } from '../../constants';
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
@@ -23,9 +24,12 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 }
 
 // Helper to create .env file and handle errors
-async function handleEnvFileCreation(resolvedPath: string, token: string) {
+async function handleEnvFileCreation(resolvedPath: string, token: string, region?: RegionCode): Promise<boolean> {
   try {
-    await createEnvFile(resolvedPath, token);
+    await createEnvFile(resolvedPath, {
+      STORYBLOK_DELIVERY_API_TOKEN: token,
+      STORYBLOK_REGION: region || regions.EU,
+    });
     konsola.ok(`Created .env file with Storyblok access token`, true);
     return true;
   }
@@ -47,6 +51,10 @@ export const createCommand = program
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
   .option('--skip-space', 'skip space creation')
   .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
+  .option(
+    '-r, --region <region>',
+    `The region to configure for your SDK. This flag is used for space creation when applicable and is also applied to the generated project template.`,
+  )
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
@@ -54,6 +62,10 @@ export const createCommand = program
     // Command options - handle backward compatibility
     const { template, blueprint, token } = options;
 
+    if (options.region && !isRegion(options.region)) {
+      handleError(new CommandError(`The provided region: ${options.region} is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`));
+      return;
+    }
     // Handle deprecated blueprint option
     let selectedTemplate = template;
     if (blueprint && !template) {
@@ -162,7 +174,7 @@ export const createCommand = program
       let userData: User;
       let whereToCreateSpace = 'personal';
       if (token) {
-        await handleEnvFileCreation(resolvedPath, token);
+        await handleEnvFileCreation(resolvedPath, token, options.region);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
@@ -231,7 +243,7 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, options.region);
         }
 
         // Open the space in the browser

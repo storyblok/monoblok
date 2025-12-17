@@ -42,7 +42,7 @@ export const templates = {
   NEXT: {
     name: 'Next',
     value: 'next',
-    template: 'https://github.com/storyblok/blueprint-core-next',
+    template: 'https://github.com/storyblok/blueprint-core-nextjs',
     location: 'https://localhost:3000/',
   },
   ELEVENTY: {

@@ -21,10 +21,10 @@ import {
   makeUpdateAssetAPITransport,
   readLocalAssetFoldersStream,
   readLocalAssetsStream,
-  uploadAssetStream,
+  upsertAssetStream,
 } from '../streams';
 import { loadManifest } from './actions';
-import type { Asset } from '../actions';
+import type { Asset } from '../types';
 
 assetsCommand
   .command('push')
@@ -75,8 +75,8 @@ assetsCommand
       assetResults: { total: 0, succeeded: 0, failed: 0 },
     };
 
-    const manifestFile = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
-    const folderManifestFile = join(resolveCommandPath(directories.stories, space, basePath), 'folders', 'manifest.jsonl');
+    const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+    const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
     const manifest = await loadManifest(manifestFile);
     const folderManifest = await loadManifest(folderManifestFile);
     const maps = {
@@ -110,10 +110,11 @@ assetsCommand
             maps,
           }),
           manifestTransport: options.dryRun
-            ? { append: async () => Promise.resolve() }
+            ? { append: () => Promise.resolve() }
             : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile }),
           onIncrement: () => folderProgress.increment(),
           onFolderSuccess: (localFolder, remoteFolder) => {
+            maps.assetFolders.set(localFolder.id, remoteFolder.id);
             summary.folderResults.succeeded += 1;
             logger.info('Created asset folder', { folderId: remoteFolder.id });
             maps.assetFolders.set(localFolder.id, remoteFolder.id);
@@ -137,38 +138,23 @@ assetsCommand
             summary.assetResults.failed += 1;
           },
         }),
-        uploadAssetStream({
+        upsertAssetStream({
           createTransport: options.dryRun
-            ? {
-                create: async ({ asset }) => ({
-                  ...asset,
-                  id: Number(maps.assets.get(asset.id)) || asset.id,
-                }),
-              }
+            ? { create: async asset => asset }
             : makeCreateAssetAPITransport({ spaceId: space }),
           updateTransport: options.dryRun
-            ? {
-                update: async ({ assetId, assetFolderId }) => {
-                  const normalizedFolderId = assetFolderId == null ? undefined : assetFolderId;
-                  return {
-                    id: Number(assetId),
-                    filename: '',
-                    asset_folder_id: normalizedFolderId,
-                  } as Asset;
-                },
-              }
+            ? { update: async asset => asset }
             : makeUpdateAssetAPITransport({ spaceId: space }),
           manifestTransport: options.dryRun
-            ? { append: async () => Promise.resolve() }
+            ? { append: () => Promise.resolve() }
             : makeAppendAssetManifestFSTransport({ manifestFile }),
           maps,
+          spaceId: space,
           onIncrement: () => assetProgress.increment(),
           onAssetSuccess: (localAsset, remoteAsset) => {
+            maps.assets.set(localAsset.id, remoteAsset.id);
             summary.assetResults.succeeded += 1;
             logger.info('Uploaded asset', { assetId: remoteAsset.id });
-            if (!maps.assets.get(localAsset.id)) {
-              maps.assets.set(localAsset.id, remoteAsset.id);
-            }
           },
           onAssetError: (error) => {
             summary.assetResults.failed += 1;

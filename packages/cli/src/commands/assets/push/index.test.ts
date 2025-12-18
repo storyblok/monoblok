@@ -268,17 +268,21 @@ const preconditions = {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
         finishUploadSpy(match);
+
+        server.use(
+          // Step 4: retrieve asset
+          http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, ({ params }) => {
+            const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+            if (!match) {
+              return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
+            }
+            return HttpResponse.json(match);
+          }),
+        );
+
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
-      // Step 4: retrieve asset
-      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, ({ params }) => {
-        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
-        if (!match) {
-          return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
-        }
-        return HttpResponse.json(match);
-      }),
-      // Optional: update asset metadata/folder/etc.
+      // Update asset metadata/folder/etc.
       http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
@@ -395,6 +399,28 @@ describe('assets push command', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
 
+  it('should read assets and asset folders from a custom path', async () => {
+    const customPath = '.custom-storyblok';
+    const folder = makeMockFolder();
+    const asset = makeMockAsset({ asset_folder_id: folder.id });
+    preconditions.canLoadFolders([folder], { basePath: customPath });
+    preconditions.canLoadAssets([asset], { basePath: customPath });
+    const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
+    const folderMap = new Map<number, number>([[folder.id, remoteFolder.id]]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--path', customPath]);
+
+    expect(actions.createAssetFolder).toHaveBeenCalled();
+    expect(actions.createAsset).toHaveBeenCalled();
+    expect(await parseFoldersManifest(DEFAULT_SPACE, customPath)).toEqual([
+      { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
+    ]);
+    expect(await parseManifest(DEFAULT_SPACE, customPath)).toEqual([
+      { old_id: asset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+    ]);
+  });
+
   it('should update asset folders that already exist instead of creating them again', async () => {
     const localFolder = makeMockFolder({ name: 'Existing Folder' });
     preconditions.canLoadFolders([localFolder]);
@@ -492,7 +518,7 @@ describe('assets push command', () => {
     expect(finishUploadSpy).toHaveBeenCalled();
   });
 
-  it('should update remote assets when no manifest exists', async () => {
+  it('should update existing remote assets even when no manifest exists', async () => {
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);

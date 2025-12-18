@@ -10,7 +10,7 @@ import { assetsCommand } from '../command';
 import { directories } from '../../../constants';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetReporter } from '../../../lib/reporter/reporter';
-import { loadManifest } from '../../stories/push/actions';
+import { loadManifest } from '../../assets/push/actions';
 import * as actions from '../actions';
 
 const DEFAULT_SPACE = '12345';
@@ -113,7 +113,7 @@ const preconditions = {
     space = DEFAULT_SPACE,
     basePath,
   }: { space?: string; basePath?: string } = {}) {
-    const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
@@ -162,7 +162,7 @@ const preconditions = {
     for (const asset of assets) {
       server.use(
         http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/${asset.id}`, () => {
-          return HttpResponse.json({ asset });
+          return HttpResponse.json(asset);
         }),
       );
     }
@@ -236,12 +236,12 @@ const preconditions = {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
         }
         updateSpy(match);
-        return HttpResponse.json(match);
+        return HttpResponse.json({});
       }),
     );
     return remoteAssets;
   },
-  canDownloadAssets(assets: MockAsset[], { content = 'binary-conent' }: { content?: string } = {}) {
+  canDownloadAssets(assets: MockAsset[], { content = 'binary-content' }: { content?: string } = {}) {
     for (const asset of assets) {
       server.use(http.get(asset.filename, () => HttpResponse.text(content)));
     }
@@ -249,12 +249,12 @@ const preconditions = {
 };
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
-  const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+  const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
 const parseFoldersManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
-  const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'folders', 'manifest.jsonl');
+  const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
@@ -288,7 +288,6 @@ describe('assets push command', () => {
     const asset = makeMockAsset({ asset_folder_id: folder.id });
     preconditions.canLoadFolders([folder]);
     preconditions.canLoadAssets([asset]);
-
     const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
     folderMap.set(folder.id, remoteFolder.id);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
@@ -296,11 +295,9 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     // Check if folder reference was mapped correctly before uploading the asset.
-    expect(actions.createAsset).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
-      asset: expect.objectContaining({
-        asset_folder_id: remoteFolder.id,
-      }),
-    }));
+    expect(actions.createAsset).toHaveBeenCalledWith(expect.objectContaining({
+      asset_folder_id: remoteFolder.id,
+    }), expect.anything(), expect.anything());
     // Manifest
     expect(await parseFoldersManifest()).toEqual([
       { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
@@ -348,7 +345,7 @@ describe('assets push command', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
 
-  it('should update asset meta_data after upload when present locally', async () => {
+  it('should createa new asset with meta_data when present locally', async () => {
     const asset = makeMockAsset({
       meta_data: {
         alt: 'Alt text',
@@ -366,5 +363,38 @@ describe('assets push command', () => {
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
       meta_data: asset.meta_data,
     }));
+  });
+
+  it('should only update the asset (not the file) when updating an existing asset with a matching binary hash', async () => {
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const finishUploadSpy = vi.fn();
+    const updateSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset]);
+    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(finishUploadSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalled();
+  });
+
+  it('should upload a new asset file when updating an existing asset with a different binary hash', async () => {
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const finishUploadSpy = vi.fn();
+    const updateSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
+    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(finishUploadSpy).toHaveBeenCalled();
   });
 });

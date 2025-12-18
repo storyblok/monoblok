@@ -1,46 +1,21 @@
 import { Buffer } from 'node:buffer';
 import { basename } from 'node:path';
-import type { Asset as MapiAsset } from '@storyblok/management-api-client/resources/assets';
 import type { RegionCode } from '../../constants';
 import { managementApiRegions } from '../../constants';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
-
-export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset;
-
-export interface AssetsQueryParams {
-  page?: number;
-  per_page?: number;
-  filter_query?: string;
-  starts_with?: string;
-  [key: string]: string | number | boolean | undefined;
-}
-
-export interface FetchAssetsResult {
-  assets: Asset[];
-  headers: Headers;
-}
-
-export interface AssetFolder {
-  id: number;
-  uuid: string;
-  name: string;
-  parent_id: number | null;
-  parent_uuid: string | null;
-}
-
-export interface FetchAssetFoldersResult {
-  asset_folders: AssetFolder[];
-  headers: Headers;
-}
+import { toError } from '../../utils/error/error';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { SignedResponseObject } from '@storyblok/management-api-client/resources/assets';
+import { createHash } from 'node:crypto';
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
  */
-export const fetchAssets = async (
-  spaceId: string,
-  params?: AssetsQueryParams,
-): Promise<FetchAssetsResult | undefined> => {
+export const fetchAssets = async ({ spaceId, params }: {
+  spaceId: string;
+  params?: AssetsQueryParams;
+}) => {
   try {
     const client = mapiClient();
     const { data, response } = await client.assets.list({
@@ -54,25 +29,33 @@ export const fetchAssets = async (
       },
       throwOnError: true,
     });
-
-    const assets = (data?.assets || []).filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
+    const assets = (data?.assets || [])
+      .filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
 
     return {
       assets,
       headers: response.headers,
     };
   }
-  catch (error) {
-    handleAPIError('pull_assets', error as Error);
+  catch (maybeError) {
+    handleAPIError('pull_assets', toError(maybeError));
   }
 };
 
+export const fetchAssetFile = async (filename: Asset['filename']): Promise<ArrayBuffer | undefined> => {
+  const response = await fetch(filename);
+  if (!response.ok) {
+    throw new Error(`Failed to download ${filename}`);
+  }
+  return response.arrayBuffer();
+};
+
 // TODO implement in mapi client
-export const fetchAssetFolders = async (
-  spaceId: string,
-  token: string,
-  region?: RegionCode,
-): Promise<FetchAssetFoldersResult | undefined> => {
+export const fetchAssetFolders = async ({ spaceId, token, region }: {
+  spaceId: string;
+  token: string;
+  region?: RegionCode;
+}) => {
   const apiHost = managementApiRegions[region || 'eu'];
   try {
     const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders`);
@@ -86,40 +69,24 @@ export const fetchAssetFolders = async (
     }
     const data = await response.json() as { asset_folders: AssetFolder[] };
     return {
-      asset_folders: data.asset_folders || [],
+      asset_folders: data.asset_folders,
       headers: response.headers,
     };
   }
-  catch (error) {
-    handleAPIError('pull_asset_folders', error as Error);
+  catch (maybeError) {
+    handleAPIError('pull_asset_folders', toError(maybeError));
   }
 };
-
-export const fetchAssetFile = async (asset: Asset): Promise<ArrayBuffer | undefined> => {
-  const response = await fetch(asset.filename);
-  if (!response.ok) {
-    throw new Error(`Failed to download asset ${asset.id}`);
-  }
-  return response.arrayBuffer();
-};
-
-export interface SignedAssetUpload {
-  id: string | number;
-  post_url: string;
-  fields: Record<string, unknown>;
-}
 
 // TODO implement in mapi client
-export const createAssetFolder = async ({
+export const createAssetFolder = async (folder: AssetFolderCreate, {
   spaceId,
   token,
   region,
-  folder,
 }: {
   spaceId: string;
   token: string;
   region?: RegionCode;
-  folder: Pick<AssetFolder, 'name' | 'parent_id'>;
 }) => {
   try {
     const apiHost = managementApiRegions[region || 'eu'];
@@ -142,19 +109,9 @@ export const createAssetFolder = async ({
   }
 };
 
-interface RequestAssetUploadPayload {
-  asset: {
-    filename: string;
-    size?: string;
-    validate_upload?: 0 | 1;
-    asset_folder_id?: number;
-  };
-}
-
-const requestAssetUpload = async (
-  spaceId: string,
-  payload: RequestAssetUploadPayload,
-): Promise<SignedAssetUpload | undefined> => {
+const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
+  spaceId: string;
+}) => {
   try {
     const client = mapiClient();
     const { data } = await client.assets.upload({
@@ -162,47 +119,42 @@ const requestAssetUpload = async (
         space_id: spaceId,
       },
       body: {
-        filename: payload.asset.filename,
-        // @ts-expect-error Our types are wrong, size is optional.
-        size: payload.asset.size,
-        // @ts-expect-error Our types are wrong, 0 is the default.
-        validate_upload: payload.asset.validate_upload ?? 0,
-        asset_folder_id: payload.asset.asset_folder_id ?? undefined,
+        // TODO NOW reflect this in tests, making sure it is there when it should be and not when it should not
+        // @ts-expect-error Our types are wrong, id is optional but allowed.
+        id: asset.id,
+        filename: asset.short_filename,
+        asset_folder_id: asset.asset_folder_id,
       },
       throwOnError: true,
     });
 
     const signedUpload = data;
     if (!signedUpload?.id || !signedUpload?.post_url || !signedUpload?.fields) {
-      throw new Error('Failed to request signed upload');
+      throw new Error('Failed to request signed upload!');
     }
 
-    return {
-      id: signedUpload.id,
-      post_url: signedUpload.post_url,
-      fields: signedUpload.fields,
-    };
+    return signedUpload;
   }
-  catch (error) {
-    handleAPIError('push_asset_sign', error as Error);
+  catch (maybeError) {
+    handleAPIError('push_asset_sign', toError(maybeError));
   }
 };
 
-const uploadAssetToS3 = async ({
+const uploadAssetToS3 = async (asset: AssetUpload, fileBuffer: ArrayBuffer, {
   signedUpload,
-  fileBuffer,
-  filename,
 }: {
-  signedUpload: SignedAssetUpload;
-  fileBuffer: ArrayBuffer;
-  filename: string;
+  signedUpload: SignedResponseObject;
 }) => {
+  if (!signedUpload?.id || !signedUpload?.post_url || !signedUpload?.fields) {
+    throw new Error('Invalid signed upload!');
+  }
+
   const formData = new FormData();
   for (const [key, value] of Object.entries(signedUpload.fields)) {
     formData.append(key, value as string | Blob);
   }
   const contentType = signedUpload.fields['Content-Type'] as string || 'application/octet-stream';
-  formData.append('file', new File([Buffer.from(fileBuffer)], filename, { type: contentType }));
+  formData.append('file', new File([Buffer.from(fileBuffer)], asset.short_filename, { type: contentType }));
 
   const response = await fetch(signedUpload.post_url, {
     method: 'POST',
@@ -215,14 +167,10 @@ const uploadAssetToS3 = async ({
   return response;
 };
 
-const finishAssetUpload = async ({
+const finishAssetUpload = async (assetId: number, {
   spaceId,
-  assetId,
 }: {
   spaceId: string;
-  token?: string;
-  region?: RegionCode;
-  assetId: number | string;
 }) => {
   try {
     const client = mapiClient();
@@ -243,91 +191,98 @@ const finishAssetUpload = async ({
 
     return data as Asset;
   }
-  catch (error) {
-    handleAPIError('push_asset_finish', error as Error);
+  catch (maybeError) {
+    handleAPIError('push_asset_finish', toError(maybeError));
   }
 };
 
-export const updateAsset = async (
-  spaceId: string,
-  payload: {
-    assetId: number | string;
-    asset: {
-      asset_folder_id?: number | null;
-      is_private?: boolean;
-      meta_data?: Record<string, unknown>;
-    };
-  },
-): Promise<Asset | undefined> => {
-  try {
-    const client = mapiClient();
-    const { data } = await client.assets.update({
-      path: {
-        space_id: spaceId,
-        asset_id: payload.assetId,
-      },
-      body: {
-        asset: {
-          asset_folder_id: payload.asset.asset_folder_id ?? undefined,
-          is_private: payload.asset.is_private ?? undefined,
-          meta_data: payload.asset.meta_data ?? undefined,
-        },
-      },
-      throwOnError: true,
-    });
-
-    return data as Asset;
-  }
-  catch (error) {
-    handleAPIError('push_asset_update', error as Error);
-  }
-};
-
-export const createAsset = async (
-  spaceId: string,
-  payload: {
-    asset: Asset;
-    fileBuffer: ArrayBuffer;
-  },
-): Promise<Asset | undefined> => {
-  const filename = payload.asset.short_filename || basename(payload.asset.filename);
-  const signed = await requestAssetUpload(spaceId, {
-    asset: {
-      filename,
-      asset_folder_id: payload.asset.asset_folder_id ?? undefined,
-      validate_upload: 1,
-    },
+const uploadAsset = async (asset: AssetUpload, fileBuffer: ArrayBuffer, { spaceId }: { spaceId: string }) => {
+  const signed = await requestAssetUpload(asset, {
+    spaceId,
   });
   if (!signed) {
-    return;
+    throw new Error('Requesting an asset upload failed!');
   }
 
-  const uploadResponse = await uploadAssetToS3({
+  const uploadResponse = await uploadAssetToS3(asset, fileBuffer, {
     signedUpload: signed,
-    fileBuffer: payload.fileBuffer,
-    filename,
   });
   if (!uploadResponse?.ok) {
     return;
   }
 
-  const createdAsset = await finishAssetUpload({
+  return finishAssetUpload(Number(signed.id), {
     spaceId,
-    assetId: signed.id,
   });
+};
+
+const sha256 = (data: ArrayBuffer | Buffer) => {
+  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  return createHash('sha256').update(buffer).digest('hex');
+};
+
+export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, { spaceId }: {
+  spaceId: string;
+}) => {
+  try {
+    const assetWithNewFilename = { ...asset };
+    const remoteFileBuffer = fileBuffer && await fetchAssetFile(asset.filename);
+    const hasNewFile = remoteFileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
+    if (hasNewFile) {
+      // TODO check if this automatically updates the filename
+      const uploadedAsset = await uploadAsset({
+        id: asset.id,
+        asset_folder_id: asset.asset_folder_id,
+        short_filename: asset.short_filename || basename(asset.filename),
+      }, fileBuffer, { spaceId });
+      if (!uploadedAsset) {
+        throw new Error('Uploading the asset failed!');
+      }
+
+      assetWithNewFilename.filename = uploadedAsset.filename;
+      assetWithNewFilename.short_filename = uploadedAsset.short_filename;
+    }
+
+    const client = mapiClient();
+    await client.assets.update({
+      path: {
+        space_id: spaceId,
+        asset_id: assetWithNewFilename.id,
+      },
+      body: {
+        asset: assetWithNewFilename,
+      },
+      throwOnError: true,
+    });
+
+    // The assets endpoint does not return the updated asset.
+    return assetWithNewFilename;
+  }
+  catch (maybeError) {
+    handleAPIError('push_asset_update', toError(maybeError));
+  }
+};
+
+export const createAsset = async (asset: AssetCreate, fileBuffer: ArrayBuffer, { spaceId }: {
+  spaceId: string;
+}) => {
+  const createdAsset = await uploadAsset({
+    asset_folder_id: asset.asset_folder_id,
+    short_filename: asset.short_filename || basename(asset.filename),
+  }, fileBuffer, { spaceId });
 
   if (!createdAsset) {
-    return;
+    throw new Error('Creating the asset failed!');
   }
 
-  if (payload.asset.meta_data) {
-    const updatedAsset = await updateAsset(spaceId, {
-      assetId: createdAsset.id,
-      asset: {
-        meta_data: payload.asset.meta_data,
-      },
+  if (asset.meta_data && Object.values(asset.meta_data).length > 0) {
+    const updatedAsset = await updateAsset(createdAsset, null, {
+      spaceId,
     });
-    return updatedAsset ?? createdAsset;
+    if (!updatedAsset) {
+      throw new Error('Updating the created asset failed!');
+    }
+    return updatedAsset;
   }
 
   return createdAsset;

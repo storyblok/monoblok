@@ -78,7 +78,13 @@ assetsCommand
     const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
     const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
     const manifest = await loadManifest(manifestFile);
+    if (manifest.length === 0) {
+      logger.info('No existing manifest found');
+    }
     const folderManifest = await loadManifest(folderManifestFile);
+    if (folderManifest.length === 0) {
+      logger.info('No existing manifest found');
+    }
     const maps = {
       assets: new Map<number, number>(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
       assetFolders: new Map<number, number>(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),

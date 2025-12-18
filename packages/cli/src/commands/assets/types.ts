@@ -1,0 +1,32 @@
+import type { Asset as MapiAsset } from '@storyblok/management-api-client/resources/assets';
+
+export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset;
+
+export type AssetCreate = Omit<Asset, 'id'>;
+
+export type AssetUpdate = Required<Pick<Asset, 'id' | 'filename'>> & Partial<Asset>;
+
+export interface AssetUpload {
+  id?: number;
+  asset_folder_id?: number;
+  short_filename: string;
+}
+
+export interface AssetFolder {
+  id: number;
+  uuid: string;
+  name: string;
+  parent_id: number | null;
+  parent_uuid: string | null;
+}
+
+export interface AssetFolderCreate {
+  name: string;
+  parent_id?: number;
+}
+
+export interface AssetsQueryParams {
+  page?: number;
+  per_page?: number;
+  [key: string]: string | number | boolean | undefined;
+}

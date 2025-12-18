@@ -120,6 +120,7 @@ assetsCommand
         fetchAssetsStream({
           spaceId: space,
           params: {
+            // TODO NOW allow search and others acording to spec
             filter_query: options.query,
           },
           setTotalAssets: (total) => {

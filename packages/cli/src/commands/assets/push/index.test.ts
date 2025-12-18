@@ -187,11 +187,13 @@ const preconditions = {
   canUpdateRemoteFolders(folders: MockAssetFolder[], {
     space = DEFAULT_SPACE,
   }: { space?: string } = {}) {
-    const remoteFolders = folders.map(folder => ({
-      ...folder,
-      id: getID(),
-      uuid: randomUUID(),
-    }));
+    const remoteFolders = space === DEFAULT_SPACE
+      ? folders
+      : folders.map(folder => ({
+          ...folder,
+          id: getID(),
+          uuid: randomUUID(),
+        }));
     server.use(
       http.put(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders/:folderId`, async ({ params }) => {
         const match = remoteFolders.find(folder => String(folder.id) === String(params.folderId));
@@ -218,12 +220,14 @@ const preconditions = {
     finishUploadSpy = vi.fn(),
     updateSpy = vi.fn(),
  }: { folderMap?: Map<number, number>; space?: string; finishUploadSpy?: Mock; updateSpy?: Mock } = {}) {
-    const remoteAssets = assets.map(asset => ({
-      ...asset,
-      id: getID(),
-      filename: asset.filename.replace('/f/12345/', `/f/${space}/`),
-      asset_folder_id: asset.asset_folder_id && folderMap.get(asset.asset_folder_id),
-    }));
+    const remoteAssets = space === DEFAULT_SPACE
+      ? assets
+      : assets.map(asset => ({
+          ...asset,
+          id: getID(),
+          filename: asset.filename.replace('/f/12345/', `/f/${space}/`),
+          asset_folder_id: asset.asset_folder_id && folderMap.get(asset.asset_folder_id),
+        }));
     server.use(
       // Step 1: get signed response
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
@@ -328,30 +332,31 @@ describe('assets push command', () => {
   afterAll(() => server.close());
 
   it('should push assets and asset folders and map to new asset folder IDs', async () => {
+    const targetSpace = '54321';
     const folderMap = new Map<number, number>();
     const folder = makeMockFolder();
     const asset = makeMockAsset({ asset_folder_id: folder.id });
     preconditions.canLoadFolders([folder]);
     preconditions.canLoadAssets([asset]);
-    const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
+    const [remoteFolder] = preconditions.canCreateRemoteFolders([folder], { space: targetSpace });
     folderMap.set(folder.id, remoteFolder.id);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap, space: targetSpace });
 
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     // Check if folder reference was mapped correctly before uploading the asset.
     expect(actions.createAsset).toHaveBeenCalledWith(expect.objectContaining({
       asset_folder_id: remoteFolder.id,
     }), expect.anything(), expect.anything());
     // Manifest
-    expect(await parseFoldersManifest()).toEqual([
+    expect(await parseFoldersManifest(targetSpace)).toEqual([
       { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
     ]);
-    expect(await parseManifest()).toEqual([
+    expect(await parseManifest(targetSpace)).toEqual([
       { old_id: asset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
     ]);
     // Report
-    const report = getReport();
+    const report = getReport(targetSpace);
     expect(report).toEqual({
       status: 'SUCCESS',
       meta: {
@@ -415,7 +420,26 @@ describe('assets push command', () => {
     }]);
   });
 
+  it('should update remote asset folders when no manifest exists', async () => {
+    const localFolder = makeMockFolder();
+    preconditions.canLoadFolders([localFolder]);
+    const [remoteFolder] = preconditions.canUpdateRemoteFolders([localFolder]);
+    preconditions.canFetchRemoteFolders([remoteFolder]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAssetFolder).not.toHaveBeenCalled();
+    expect(actions.updateAssetFolder).toHaveBeenCalledWith(expect.objectContaining({
+      id: remoteFolder.id,
+      name: remoteFolder.name,
+    }), expect.anything());
+    expect(await parseFoldersManifest()).toEqual([
+      { old_id: localFolder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
+    ]);
+  });
+
   it('should createa new asset with meta_data when present locally', async () => {
+    const targetSpace = '54321';
     const asset = makeMockAsset({
       meta_data: {
         alt: 'Alt text',
@@ -426,9 +450,9 @@ describe('assets push command', () => {
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
     const updateSpy = vi.fn();
-    preconditions.canUpsertRemoteAssets([asset], { updateSpy });
+    preconditions.canUpsertRemoteAssets([asset], { updateSpy, space: targetSpace });
 
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
       meta_data: asset.meta_data,
@@ -466,5 +490,24 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(finishUploadSpy).toHaveBeenCalled();
+  });
+
+  it('should update remote assets when no manifest exists', async () => {
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).not.toHaveBeenCalled();
+    expect(actions.updateAsset).toHaveBeenCalledWith(expect.objectContaining({
+      id: remoteAsset.id,
+    }), expect.anything(), expect.anything());
+    expect(await parseManifest()).toEqual([
+      { old_id: localAsset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+    ]);
   });
 });

@@ -13,18 +13,18 @@ import { handleError, toError } from '../../../utils/error/error';
 import { mapiClient } from '../../../api';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import {
-  createAssetFolderStream,
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
   makeUpdateAssetAPITransport,
+  makeUpdateAssetFolderAPITransport,
   readLocalAssetFoldersStream,
   readLocalAssetsStream,
+  upsertAssetFolderStream,
   upsertAssetStream,
 } from '../streams';
 import { loadManifest } from './actions';
-import type { Asset } from '../types';
 
 assetsCommand
   .command('push')
@@ -102,13 +102,25 @@ assetsCommand
             summary.folderResults.failed += 1;
           },
         }),
-        createAssetFolderStream({
-          transport: makeCreateAssetFolderAPITransport({
-            spaceId: space,
-            token: password,
-            region,
-            maps,
-          }),
+        upsertAssetFolderStream({
+          createTransport: options.dryRun
+            ? { create: async folder => folder }
+            : makeCreateAssetFolderAPITransport({
+                spaceId: space,
+                token: password,
+                region,
+              }),
+          updateTransport: options.dryRun
+            ? { update: async folder => folder }
+            : makeUpdateAssetFolderAPITransport({
+                spaceId: space,
+                token: password,
+                region,
+              }),
+          spaceId: space,
+          token: password,
+          region,
+          maps,
           manifestTransport: options.dryRun
             ? { append: () => Promise.resolve() }
             : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile }),

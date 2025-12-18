@@ -25,6 +25,10 @@ export interface AssetFolderCreate {
   parent_id?: number;
 }
 
+export interface AssetFolderUpdate extends AssetFolderCreate {
+  id: number;
+}
+
 export interface AssetsQueryParams {
   page?: number;
   per_page?: number;

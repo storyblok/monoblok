@@ -37,6 +37,8 @@ vi.spyOn(console, 'warn');
 
 vi.spyOn(actions, 'createAsset');
 vi.spyOn(actions, 'updateAsset');
+vi.spyOn(actions, 'createAssetFolder');
+vi.spyOn(actions, 'updateAssetFolder');
 
 interface MockAsset {
   id: number;
@@ -46,7 +48,7 @@ interface MockAsset {
   short_filename?: string;
 }
 
-interface MockFolder {
+interface MockAssetFolder {
   id: number;
   uuid: string;
   name: string;
@@ -70,7 +72,7 @@ const makeMockAsset = (overrides: Partial<MockAsset> = {}): MockAsset => {
   };
 };
 
-const makeMockFolder = (overrides: Partial<MockFolder> = {}): MockFolder => {
+const makeMockFolder = (overrides: Partial<MockAssetFolder> = {}): MockAssetFolder => {
   const folderId = overrides.id ?? getID();
   return {
     id: folderId,
@@ -84,6 +86,10 @@ const makeMockFolder = (overrides: Partial<MockFolder> = {}): MockFolder => {
 
 const server = setupServer(
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId', () => HttpResponse.json(
+    { message: 'Not Found' },
+    { status: 404 },
+  )),
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/asset_folders/:folderId', () => HttpResponse.json(
     { message: 'Not Found' },
     { status: 404 },
   )),
@@ -114,12 +120,24 @@ const preconditions = {
     basePath,
   }: { space?: string; basePath?: string } = {}) {
     const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+    vol.mkdirSync(path.dirname(manifestPath), { recursive: true });
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
     });
   },
-  canLoadFolders(folders: MockFolder[], {
+  canLoadFoldersManifest(manifestEntries: Record<number | string, number | string>[], {
+    space = DEFAULT_SPACE,
+    basePath,
+  }: { space?: string; basePath?: string } = {}) {
+    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
+    vol.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
+    vol.fromJSON({
+      [manifestPath]: content,
+    });
+  },
+  canLoadFolders(folders: MockAssetFolder[], {
     space = DEFAULT_SPACE,
     basePath,
   }: { space?: string; basePath?: string } = {}) {
@@ -134,7 +152,7 @@ const preconditions = {
     });
     vol.fromJSON(Object.fromEntries(folderFiles));
   },
-  canCreateRemoteFolders(folders: MockFolder[], {
+  canCreateRemoteFolders(folders: MockAssetFolder[], {
     space = DEFAULT_SPACE,
   }: { space?: string } = {}) {
     const remoteFolders = folders.map(folder => ({
@@ -145,7 +163,6 @@ const preconditions = {
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders`, async ({ request }) => {
         const body = await request.json();
-
         const match = body
           && typeof body === 'object'
           && 'asset_folder' in body
@@ -154,6 +171,34 @@ const preconditions = {
           return HttpResponse.json({ message: 'Folder not found' }, { status: 500 });
         }
         return HttpResponse.json({ asset_folder: match });
+      }),
+    );
+    return remoteFolders;
+  },
+  canFetchRemoteFolders(folders: MockAssetFolder[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    for (const folder of folders) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders/${folder.id}`, () => {
+          return HttpResponse.json({ asset_folder: folder });
+        }),
+      );
+    }
+  },
+  canUpdateRemoteFolders(folders: MockAssetFolder[], {
+    space = DEFAULT_SPACE,
+  }: { space?: string } = {}) {
+    const remoteFolders = folders.map(folder => ({
+      ...folder,
+      id: getID(),
+      uuid: randomUUID(),
+    }));
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders/:folderId`, async ({ params }) => {
+        const match = remoteFolders.find(folder => String(folder.id) === String(params.folderId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Folder not found' }, { status: 404 });
+        }
+        return HttpResponse.json({});
       }),
     );
     return remoteFolders;
@@ -343,6 +388,31 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should update asset folders that already exist instead of creating them again', async () => {
+    const localFolder = makeMockFolder({ name: 'Existing Folder' });
+    preconditions.canLoadFolders([localFolder]);
+    const [remoteFolder] = preconditions.canUpdateRemoteFolders([localFolder]);
+    preconditions.canFetchRemoteFolders([remoteFolder]);
+    preconditions.canLoadFoldersManifest([{
+      old_id: localFolder.id,
+      new_id: remoteFolder.id,
+      created_at: '2024-01-01T00:00:00.000Z',
+    }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAssetFolder).not.toHaveBeenCalled();
+    expect(actions.updateAssetFolder).toHaveBeenCalledWith(expect.objectContaining({
+      id: remoteFolder.id,
+      name: localFolder.name,
+    }), expect.anything());
+    expect(await parseFoldersManifest()).toEqual([{
+      old_id: localFolder.id,
+      new_id: remoteFolder.id,
+      created_at: '2024-01-01T00:00:00.000Z',
+    }]);
   });
 
   it('should createa new asset with meta_data when present locally', async () => {

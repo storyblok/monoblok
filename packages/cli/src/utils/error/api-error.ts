@@ -25,6 +25,7 @@ export const API_ACTIONS = {
   update_story: 'Failed to update story',
   pull_asset: 'Failed to pull asset',
   pull_assets: 'Failed to pull assets',
+  pull_asset_folder: 'Failed to pull asset folder',
   pull_asset_folders: 'Failed to pull asset folders',
   push_asset_folder: 'Failed to push asset folder',
   push_asset_sign: 'Failed to sign asset upload',

@@ -5,9 +5,9 @@ import { Sema } from 'async-sema';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
-import type { RegionCode } from '../../constants';
-import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset } from './actions';
-import type { Asset, AssetFolder, AssetsQueryParams, AssetUpdate } from './types';
+import { managementApiRegions, type RegionCode } from '../../constants';
+import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
+import type { Asset, AssetFolder, AssetFolderUpdate, AssetsQueryParams, AssetUpdate } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
@@ -190,7 +190,7 @@ export const fetchAssetFoldersStream = ({
 }: {
   spaceId: string;
   token: string;
-  region?: RegionCode;
+  region: RegionCode;
   setTotalFolders?: (total: number) => void;
   onSuccess?: (folders: AssetFolder[]) => void;
   onError?: (error: Error) => void;
@@ -300,17 +300,15 @@ export interface CreateAssetFolderTransport {
   create: (folder: AssetFolder) => Promise<AssetFolder>;
 }
 
-export const makeCreateAssetFolderAPITransport = ({ spaceId, token, region, maps }: {
+export const makeCreateAssetFolderAPITransport = ({ spaceId, token, region }: {
   spaceId: string;
   token: string;
-  region?: RegionCode;
-  maps: { assetFolders: Map<number, number> };
+  region: RegionCode;
 }): CreateAssetFolderTransport => ({
   create: async (folder) => {
-    const parentId = folder.parent_id ? (maps.assetFolders.get(folder.parent_id) || folder.parent_id) : undefined;
     const remoteFolder = await createAssetFolder({
       name: folder.name,
-      parent_id: parentId,
+      parent_id: folder.parent_id ?? undefined,
     }, {
       spaceId,
       token,
@@ -323,28 +321,92 @@ export const makeCreateAssetFolderAPITransport = ({ spaceId, token, region, maps
   },
 });
 
-export const createAssetFolderStream = ({
-  transport,
+export interface UpdateAssetFolderTransport {
+  update: (folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
+}
+
+export const makeUpdateAssetFolderAPITransport = ({ spaceId, token, region }: {
+  spaceId: string;
+  token: string;
+  region: RegionCode;
+}): UpdateAssetFolderTransport => ({
+  update: async (folder) => {
+    const remoteFolder = await updateAssetFolder(folder, { spaceId, token, region });
+    if (!remoteFolder) {
+      throw new Error('Failed to update asset folder');
+    }
+    return remoteFolder;
+  },
+});
+
+const getRemoteAssetFolder = async (folderId: number, { spaceId, token, region }: {
+  spaceId: string;
+  token: string;
+  region: RegionCode;
+}) => {
+  const apiHost = managementApiRegions[region];
+  const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folderId}`);
+  const response = await fetch(url, {
+    headers: {
+      Authorization: token,
+    },
+  });
+  if (!response.ok && response.status !== 404) {
+    handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
+  }
+  const data = await response.json() as { asset_folder: AssetFolder } | undefined;
+
+  return data?.asset_folder;
+};
+
+export const upsertAssetFolderStream = ({
+  createTransport,
+  updateTransport,
   manifestTransport,
+  spaceId,
+  token,
+  region,
+  maps,
   onIncrement,
   onFolderSuccess,
   onFolderError,
 }: {
-  transport: CreateAssetFolderTransport;
-  manifestTransport?: AppendAssetFolderManifestTransport;
+  createTransport: CreateAssetFolderTransport;
+  updateTransport: UpdateAssetFolderTransport;
+  manifestTransport: AppendAssetFolderManifestTransport;
+  spaceId: string;
+  token: string;
+  region: RegionCode;
+  maps: { assetFolders: Map<number, number> };
   onIncrement?: () => void;
-  onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder) => void;
+  onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => void;
   onFolderError?: (error: Error, folder: AssetFolder) => void;
 }) => {
   return new Writable({
     objectMode: true,
     async write(folder: AssetFolder, _encoding, callback) {
       try {
-        const remoteFolder = await transport.create(folder);
-        if (manifestTransport) {
-          await manifestTransport.append(folder, remoteFolder);
+        // TODO add tests for both assets and folders when no manifest exists but remote exists
+        const remoteParentId = folder.parent_id && (maps.assetFolders.get(folder.parent_id) || folder.parent_id);
+        const remoteFolderId = maps.assetFolders.get(folder.id) || folder.id;
+        const upsertFolder = {
+          ...folder,
+          id: remoteFolderId,
+          parent_id: remoteParentId,
+        };
+        // If a remote folder already exists, we must not create a new folder.
+        // This can happen when the user resumes a failed push or runs push multiple times.
+        const existingRemoteFolder = await getRemoteAssetFolder(remoteFolderId, { spaceId, token, region });
+        const newRemoteFolder = existingRemoteFolder
+          ? await updateTransport.update({ ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined })
+          : await createTransport.create(upsertFolder);
+
+        // If folder is already mapped it must also be in the manifest already.
+        if (!maps.assetFolders.get(folder.id)) {
+          await manifestTransport.append(folder, newRemoteFolder);
         }
-        onFolderSuccess?.(folder, remoteFolder);
+
+        onFolderSuccess?.(folder, newRemoteFolder);
       }
       catch (maybeError) {
         onFolderError?.(toError(maybeError), folder);
@@ -449,7 +511,7 @@ export const makeAppendAssetManifestFSTransport = ({ manifestFile }: { manifestF
 });
 
 export interface AppendAssetFolderManifestTransport {
-  append: (localFolder: AssetFolder, remoteFolder: AssetFolder) => Promise<void>;
+  append: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => Promise<void>;
 }
 
 export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetFolderManifestTransport => ({
@@ -506,34 +568,29 @@ export const upsertAssetStream = ({
 }) => {
   return new Writable({
     objectMode: true,
-    // TODO naming
     async write({ asset, fileBuffer }: LocalAssetPayload, _encoding, callback) {
       try {
-        // TODO also only create folders that do not exist yet!
-        const mappedFolderId = asset.asset_folder_id
+        const remoteFolderId = asset.asset_folder_id
           && (maps.assetFolders.get(asset.asset_folder_id) || asset.asset_folder_id);
-        const mappedAssetId = maps.assets.get(asset.id) || asset.id;
-        const mappedAsset = {
+        const remoteAssetId = maps.assets.get(asset.id) || asset.id;
+        const upsertAsset = {
           ...asset,
-          id: mappedAssetId,
-          asset_folder_id: mappedFolderId,
+          id: remoteAssetId,
+          asset_folder_id: remoteFolderId,
         };
         // If a remote asset already exists, we must not create a new asset.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        let remoteAsset = await getRemoteAsset(mappedAsset.id, { spaceId });
-        if (remoteAsset) {
-          remoteAsset = await updateTransport.update(mappedAsset, fileBuffer);
-        }
-        else {
-          remoteAsset = await createTransport.create(mappedAsset, fileBuffer);
-        }
+        const existingRemoteAsset = await getRemoteAsset(upsertAsset.id, { spaceId });
+        const newRemoteAsset = existingRemoteAsset
+          ? await updateTransport.update(upsertAsset, fileBuffer)
+          : await createTransport.create(upsertAsset, fileBuffer);
 
         // If asset is already mapped it must also be in the manifest already.
         if (!maps.assets.get(asset.id)) {
-          await manifestTransport.append(asset, remoteAsset);
+          await manifestTransport.append(asset, newRemoteAsset);
         }
 
-        onAssetSuccess?.(asset, remoteAsset);
+        onAssetSuccess?.(asset, newRemoteAsset);
       }
       catch (maybeError) {
         onAssetError?.(toError(maybeError), asset);

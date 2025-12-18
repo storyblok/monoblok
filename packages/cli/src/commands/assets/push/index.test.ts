@@ -464,6 +464,29 @@ describe('assets push command', () => {
     ]);
   });
 
+  it('should log an info when an assets folder manifest file does not exist', async () => {
+    const folder = makeMockFolder();
+    preconditions.canLoadFolders([folder]);
+    preconditions.canCreateRemoteFolders([folder]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('No existing manifest found');
+  });
+
+  it('should log an info when a manifest file does not exist', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('No existing manifest found');
+  });
+
   it('should createa new asset with meta_data when present locally', async () => {
     const targetSpace = '54321';
     const asset = makeMockAsset({

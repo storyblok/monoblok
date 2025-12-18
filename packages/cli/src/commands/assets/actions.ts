@@ -5,7 +5,7 @@ import { managementApiRegions } from '../../constants';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import type { SignedResponseObject } from '@storyblok/management-api-client/resources/assets';
 import { createHash } from 'node:crypto';
 
@@ -42,7 +42,7 @@ export const fetchAssets = async ({ spaceId, params }: {
   }
 };
 
-export const fetchAssetFile = async (filename: Asset['filename']): Promise<ArrayBuffer | undefined> => {
+export const fetchAssetFile = async (filename: Asset['filename']) => {
   const response = await fetch(filename);
   if (!response.ok) {
     throw new Error(`Failed to download ${filename}`);
@@ -54,10 +54,10 @@ export const fetchAssetFile = async (filename: Asset['filename']): Promise<Array
 export const fetchAssetFolders = async ({ spaceId, token, region }: {
   spaceId: string;
   token: string;
-  region?: RegionCode;
+  region: RegionCode;
 }) => {
-  const apiHost = managementApiRegions[region || 'eu'];
   try {
+    const apiHost = managementApiRegions[region];
     const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders`);
     const response = await fetch(url, {
       headers: {
@@ -86,10 +86,10 @@ export const createAssetFolder = async (folder: AssetFolderCreate, {
 }: {
   spaceId: string;
   token: string;
-  region?: RegionCode;
+  region: RegionCode;
 }) => {
   try {
-    const apiHost = managementApiRegions[region || 'eu'];
+    const apiHost = managementApiRegions[region];
     const response = await fetch(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders`, {
       method: 'POST',
       headers: {
@@ -109,6 +109,38 @@ export const createAssetFolder = async (folder: AssetFolderCreate, {
   }
 };
 
+// TODO implement in mapi client
+export const updateAssetFolder = async (folder: AssetFolderUpdate, {
+  spaceId,
+  token,
+  region,
+}: {
+  spaceId: string;
+  token: string;
+  region: RegionCode;
+}) => {
+  try {
+    const apiHost = managementApiRegions[region];
+    const response = await fetch(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folder.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token,
+      },
+      body: JSON.stringify({ asset_folder: folder }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update asset folder');
+    }
+
+    // The asset folders endpoint does not return the updated asset folder.
+    return folder;
+  }
+  catch (error) {
+    handleAPIError('push_asset_folder', error as Error);
+  }
+};
+
 const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
   spaceId: string;
 }) => {
@@ -119,11 +151,10 @@ const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
         space_id: spaceId,
       },
       body: {
-        // TODO NOW reflect this in tests, making sure it is there when it should be and not when it should not
         // @ts-expect-error Our types are wrong, id is optional but allowed.
         id: asset.id,
         filename: asset.short_filename,
-        asset_folder_id: asset.asset_folder_id,
+        asset_folder_id: asset.asset_folder_id ?? undefined,
       },
       throwOnError: true,
     });

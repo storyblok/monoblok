@@ -386,7 +386,6 @@ export const upsertAssetFolderStream = ({
     objectMode: true,
     async write(folder: AssetFolder, _encoding, callback) {
       try {
-        // TODO add tests for both assets and folders when no manifest exists but remote exists
         const remoteParentId = folder.parent_id && (maps.assetFolders.get(folder.parent_id) || folder.parent_id);
         const remoteFolderId = maps.assetFolders.get(folder.id) || folder.id;
         const upsertFolder = {
@@ -448,10 +447,8 @@ export const readLocalAssetsStream = ({
           const metadataContent = await readFile(filePath, 'utf8');
           const asset = JSON.parse(metadataContent) as Asset;
           const baseName = parse(file).name;
-          const extFromMetadata = extname(asset.filename) || '';
-          const assetFilePath = extFromMetadata
-            ? join(directoryPath, `${baseName}${extFromMetadata}`)
-            : join(directoryPath, `${baseName}`);
+          const extFromMetadata = extname(asset.short_filename || asset.filename) || '';
+          const assetFilePath = join(directoryPath, `${baseName}${extFromMetadata}`);
           const fileBuffer = await readFile(assetFilePath);
           yield { asset, fileBuffer };
         }

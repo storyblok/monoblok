@@ -87,7 +87,6 @@ assetsCommand
     try {
       const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(12) });
       const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(12) });
-
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
 
       await pipeline(

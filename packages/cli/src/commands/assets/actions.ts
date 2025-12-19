@@ -309,7 +309,11 @@ export const createAsset = async (
   }
 
   if (asset.meta_data && Object.values(asset.meta_data).length > 0) {
-    const updatedAsset = await updateAsset(createdAsset, null, {
+    const updatedAsset = await updateAsset({
+      ...asset,
+      id: createdAsset.id,
+      filename: createdAsset.filename,
+    }, null, {
       spaceId,
     });
     if (!updatedAsset) {

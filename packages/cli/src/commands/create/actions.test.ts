@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser, repositoryToTemplate } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
@@ -20,9 +20,14 @@ vi.mock('../../utils/filesystem');
 vi.mock('../../github', () => ({
   createOctokit: vi.fn(),
 }));
-// Mock utils module for error handling
+// Mock utils module for error handling and konsola
 vi.mock('../../utils', () => ({
   handleAPIError: vi.fn(),
+  konsola: {
+    ok: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 const mockedSpawn = vi.mocked(spawn);
@@ -32,9 +37,10 @@ const mockedFsAccess = vi.mocked(fs.access);
 
 // Import the mocked modules
 const { createOctokit } = await import('../../github');
-const { handleAPIError } = await import('../../utils');
+const { handleAPIError, konsola } = await import('../../utils');
 const mockedCreateOctokit = vi.mocked(createOctokit);
 const mockedHandleAPIError = vi.mocked(handleAPIError);
+const mockedKonsola = vi.mocked(konsola);
 
 describe('create actions', () => {
   beforeEach(() => {
@@ -226,15 +232,15 @@ describe('create actions', () => {
       expect(content).toMatch(/# Additional Configuration/);
       expect(content).toMatch(/CUSTOM=value/);
     });
+  });
 
-    it('should create .env file with region in storyblokVars', async () => {
+  describe('handleEnvFileCreation', () => {
+    it('should create .env file with token and region successfully', async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', {
-        STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123',
-        STORYBLOK_REGION: 'us',
-      });
+      const result = await handleEnvFileCreation('/test/project', 'test-token-123', 'us');
 
+      expect(result).toBe(true);
       expect(mockedSaveToFile).toHaveBeenCalledWith(
         '/test/project/.env',
         expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-123'),
@@ -243,21 +249,104 @@ describe('create actions', () => {
         '/test/project/.env',
         expect.stringContaining('STORYBLOK_REGION=us'),
       );
+      expect(mockedKonsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Created .env file with'),
+        true,
+      );
     });
 
-    it('should create .env file with multiple storyblok variables including region', async () => {
+    it('should create .env file with only token', async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', {
-        STORYBLOK_DELIVERY_API_TOKEN: 'test-token-456',
-        STORYBLOK_REGION: 'ap',
-      });
+      const result = await handleEnvFileCreation('/test/project', 'test-token-456');
 
-      const [[, content]] = mockedSaveToFile.mock.calls;
+      expect(result).toBe(true);
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-456'),
+      );
+      expect(mockedKonsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Created .env file with'),
+        true,
+      );
+    });
 
-      expect(content).toMatch(/# Storyblok Configuration/);
-      expect(content).toMatch(/STORYBLOK_DELIVERY_API_TOKEN=test-token-456/);
-      expect(content).toMatch(/STORYBLOK_REGION=ap/);
+    it('should create .env file with only region', async () => {
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      const result = await handleEnvFileCreation('/test/project', undefined, 'ap');
+
+      expect(result).toBe(true);
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.stringContaining('STORYBLOK_REGION=ap'),
+      );
+      expect(mockedKonsola.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Created .env file with'),
+        true,
+      );
+    });
+
+    it('should return true and log info when no environment variables provided', async () => {
+      const result = await handleEnvFileCreation('/test/project');
+
+      expect(result).toBe(true);
+      expect(mockedKonsola.info).toHaveBeenCalledWith('No environment variables to write');
+      expect(mockedSaveToFile).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully and return false', async () => {
+      const saveError = new Error('Permission denied');
+      mockedSaveToFile.mockRejectedValue(saveError);
+
+      const result = await handleEnvFileCreation('/test/project', 'test-token-789', 'eu');
+
+      expect(result).toBe(false);
+      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to create .env file: Permission denied'),
+      );
+      expect(mockedKonsola.info).toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+      );
+      expect(mockedKonsola.info).toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+      );
+    });
+
+    it('should show only token message when only token fails', async () => {
+      const saveError = new Error('Disk full');
+      mockedSaveToFile.mockRejectedValue(saveError);
+
+      const result = await handleEnvFileCreation('/test/project', 'test-token');
+
+      expect(result).toBe(false);
+      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to create .env file'),
+      );
+      expect(mockedKonsola.info).toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+      );
+      expect(mockedKonsola.info).not.toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+      );
+    });
+
+    it('should show only region message when only region fails', async () => {
+      const saveError = new Error('Access denied');
+      mockedSaveToFile.mockRejectedValue(saveError);
+
+      const result = await handleEnvFileCreation('/test/project', undefined, 'ca');
+
+      expect(result).toBe(false);
+      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to create .env file'),
+      );
+      expect(mockedKonsola.info).not.toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+      );
+      expect(mockedKonsola.info).toHaveBeenCalledWith(
+        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+      );
     });
   });
 

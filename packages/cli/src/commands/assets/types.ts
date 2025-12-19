@@ -2,7 +2,7 @@ import type { Asset as MapiAsset } from '@storyblok/management-api-client/resour
 
 export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset;
 
-export type AssetCreate = Omit<Asset, 'id'>;
+export type AssetCreate = Required<Pick<Asset, 'short_filename'>> & Omit<Asset, 'id' | 'filename'>;
 
 export type AssetUpdate = Required<Pick<Asset, 'id' | 'filename'>> & Partial<Asset>;
 

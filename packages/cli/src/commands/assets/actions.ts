@@ -294,12 +294,14 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
   }
 };
 
-export const createAsset = async (asset: AssetCreate, fileBuffer: ArrayBuffer, { spaceId }: {
-  spaceId: string;
-}) => {
+export const createAsset = async (
+  asset: AssetCreate,
+  fileBuffer: ArrayBuffer,
+  { spaceId }: { spaceId: string },
+) => {
   const createdAsset = await uploadAsset({
     asset_folder_id: asset.asset_folder_id,
-    short_filename: asset.short_filename || basename(asset.filename),
+    short_filename: asset.short_filename,
   }, fileBuffer, { spaceId });
 
   if (!createdAsset) {

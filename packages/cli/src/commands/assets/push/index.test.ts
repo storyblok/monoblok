@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { Buffer } from 'node:buffer';
 import * as fsPromises from 'node:fs/promises';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -83,6 +85,15 @@ const makeMockFolder = (overrides: Partial<MockAssetFolder> = {}): MockAssetFold
     parent_uuid: null,
     ...overrides,
   };
+};
+
+const makePngBuffer = (width: number, height: number) => {
+  const signature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  const ihdr = Buffer.from([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52]);
+  const dimensions = Buffer.alloc(8);
+  dimensions.writeUInt32BE(width, 0);
+  dimensions.writeUInt32BE(height, 4);
+  return Buffer.concat([signature, ihdr, dimensions]);
 };
 
 const server = setupServer(
@@ -347,6 +358,12 @@ const preconditions = {
         { status: 500 },
       )),
     );
+  },
+  canDownloadExternalAsset(url: string) {
+    server.use(http.get(url, () => {
+      const content = makePngBuffer(10, 20);
+      return HttpResponse.arrayBuffer(content.buffer as ArrayBuffer);
+    }));
   },
   canDownloadAssets(assets: MockAsset[], { content = 'binary-content' }: { content?: string } = {}) {
     for (const asset of assets) {
@@ -858,5 +875,78 @@ describe('assets push command', () => {
     expect(await parseManifest()).toEqual([
       { old_id: localAsset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
     ]);
+  });
+
+  it('should push a single local asset with inline overrides', async () => {
+    const assetPath = '/tmp/local-asset.png';
+    const pngBuffer = makePngBuffer(200, 300);
+    vol.fromJSON({
+      [assetPath]: pngBuffer,
+    });
+    const asset = makeMockAsset({ short_filename: 'override.png' });
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'push',
+      '--space',
+      DEFAULT_SPACE,
+      '--data',
+      '{"meta_data":{"alt":"Alt text","alt__i18n__de":"Alt DE"}}',
+      '--filename',
+      'override.png',
+      '--folder',
+      '99',
+      assetPath,
+    ]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(expect.objectContaining({
+      short_filename: 'override.png',
+      asset_folder_id: 99,
+      meta_data: {
+        alt: 'Alt text',
+        alt__i18n__de: 'Alt DE',
+      },
+    }), expect.anything(), expect.anything());
+  });
+
+  it('should download an external asset and clean up the temp file after upload', async () => {
+    const externalUrl = 'https://example.com/assets/external.png';
+    preconditions.canDownloadExternalAsset(externalUrl);
+    const asset = makeMockAsset({ short_filename: path.basename(externalUrl) });
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup', externalUrl]);
+
+    const tempRoot = path.join(tmpdir(), 'storyblok-assets');
+    const tempFiles = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${tempRoot}/`));
+    expect(tempFiles).toEqual([]);
+  });
+
+  it('should delete local asset files and json metadata when cleanup is enabled', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    const ext = path.extname(asset.filename);
+    const baseName = `${path.basename(asset.filename, ext)}_${asset.id}`;
+    const assetFilePath = path.join(assetsDir, `${baseName}${ext}`);
+    const metadataFilePath = path.join(assetsDir, `${baseName}.json`);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
+
+    const files = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${assetsDir}${path.sep}`));
+    const cleanedFiles = files.filter((filename) => {
+      if (filename.startsWith(path.join(assetsDir, 'folders'))) {
+        return false;
+      }
+      return filename.endsWith('.json') || filename.endsWith('.png');
+    });
+
+    expect(files).not.toContain(assetFilePath);
+    expect(files).not.toContain(metadataFilePath);
+    expect(cleanedFiles).toEqual([]);
   });
 });

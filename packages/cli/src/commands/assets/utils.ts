@@ -1,3 +1,5 @@
+import { basename, dirname, extname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
 import type { Asset } from './types';
 
@@ -18,9 +20,29 @@ export const parseAssetData = (raw?: string) => {
   }
 };
 
-export const isRemoteSource = (source: string) => {
+export const loadSidecarAssetData = async (assetSource: string) => {
+  const sidecarPath = join(dirname(assetSource), `${basename(assetSource, extname(assetSource))}.json`);
   try {
-    const url = new URL(source);
+    const sidecarRaw = await readFile(sidecarPath, 'utf8');
+    try {
+      return parseAssetData(sidecarRaw);
+    }
+    catch (maybeError) {
+      throw new Error(`Invalid sidecar JSON: ${toError(maybeError).message}`);
+    }
+  }
+  catch (maybeError) {
+    const error = toError(maybeError) as NodeJS.ErrnoException;
+    if (error.code === 'ENOENT') {
+      return {};
+    }
+    throw new Error(`Failed to read sidecar asset data: ${error.message}`);
+  }
+};
+
+export const isRemoteSource = (assetSource: string) => {
+  try {
+    const url = new URL(assetSource);
     return url.protocol === 'http:' || url.protocol === 'https:';
   }
   catch {

@@ -176,6 +176,7 @@ storiesCommand
             summary.creationResults.skipped += 1;
           },
           onStoryError(error) {
+            // TODO handleError with for verbose error handling
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;

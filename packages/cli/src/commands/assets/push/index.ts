@@ -75,22 +75,22 @@ assetsCommand
       assetResults: { total: 0, succeeded: 0, failed: 0 },
     };
 
-    const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
-    const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
-    const manifest = await loadManifest(manifestFile);
-    if (manifest.length === 0) {
-      logger.info('No existing manifest found');
-    }
-    const folderManifest = await loadManifest(folderManifestFile);
-    if (folderManifest.length === 0) {
-      logger.info('No existing manifest found');
-    }
-    const maps = {
-      assets: new Map<number, number>(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
-      assetFolders: new Map<number, number>(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
-    };
-
     try {
+      const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+      const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
+      const manifest = await loadManifest(manifestFile);
+      if (manifest.length === 0) {
+        logger.info('No existing manifest found');
+      }
+      const folderManifest = await loadManifest(folderManifestFile);
+      if (folderManifest.length === 0) {
+        logger.info('No existing manifest found');
+      }
+      const maps = {
+        assets: new Map<number, number>(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
+        assetFolders: new Map<number, number>(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
+      };
+
       const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(12) });
       const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(12) });
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
@@ -103,8 +103,8 @@ assetsCommand
             folderProgress.setTotal(total);
           },
           onFolderError: (error) => {
-            handleError(error);
             summary.folderResults.failed += 1;
+            handleError(error, verbose);
           },
         }),
         upsertAssetFolderStream({
@@ -131,14 +131,13 @@ assetsCommand
             : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile }),
           onIncrement: () => folderProgress.increment(),
           onFolderSuccess: (localFolder, remoteFolder) => {
-            maps.assetFolders.set(localFolder.id, remoteFolder.id);
             summary.folderResults.succeeded += 1;
-            logger.info('Created asset folder', { folderId: remoteFolder.id });
             maps.assetFolders.set(localFolder.id, remoteFolder.id);
+            logger.info('Created asset folder', { folderId: remoteFolder.id });
           },
-          onFolderError: (error) => {
+          onFolderError: (error, folder) => {
             summary.folderResults.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { folderId: folder.id });
           },
         }),
       );
@@ -151,8 +150,9 @@ assetsCommand
             assetProgress.setTotal(total);
           },
           onAssetError: (error) => {
-            handleError(error);
             summary.assetResults.failed += 1;
+            assetProgress.increment();
+            handleError(error, verbose);
           },
         }),
         upsertAssetStream({
@@ -173,15 +173,15 @@ assetsCommand
             summary.assetResults.succeeded += 1;
             logger.info('Uploaded asset', { assetId: remoteAsset.id });
           },
-          onAssetError: (error) => {
+          onAssetError: (error, asset) => {
             summary.assetResults.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { assetId: asset.id });
           },
         }),
       );
     }
     catch (maybeError) {
-      handleError(toError(maybeError));
+      handleError(toError(maybeError), verbose);
     }
     finally {
       ui.stopAllProgressBars();

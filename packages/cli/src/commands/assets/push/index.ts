@@ -1,4 +1,5 @@
-import { basename, join } from 'node:path';
+import { basename, dirname, extname, join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
@@ -27,7 +28,7 @@ import {
 } from '../streams';
 import { loadManifest } from './actions';
 import type { Asset, AssetCreate, AssetUpdate, AssetUpload } from '../types';
-import { isRemoteSource, parseAssetData } from '../utils';
+import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
 
 assetsCommand
   .command('push')
@@ -154,11 +155,16 @@ assetsCommand
       const assetSource = typeof assetInput === 'string' && assetInput.trim().length > 0
         ? assetInput
         : undefined;
+      // Use the asset provided via the CLI.
       if (assetSource) {
         summary.assetResults.total = 1;
         assetProgress.setTotal(1);
 
-        const assetData = parseAssetData(options.data);
+        const assetData = options.data
+          ? parseAssetData(options.data)
+          : !isRemoteSource(assetSource)
+              ? await loadSidecarAssetData(assetSource)
+              : {};
         const sourceBasename = isRemoteSource(assetSource)
           ? basename(new URL(assetSource).pathname)
           : basename(assetSource);
@@ -180,6 +186,7 @@ assetsCommand
           },
         }));
       }
+      // Read assets from the local file system.
       else {
         steps.push(readLocalAssetsStream({
           directoryPath: assetsDirectoryPath,

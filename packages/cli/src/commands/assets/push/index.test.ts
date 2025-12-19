@@ -877,6 +877,30 @@ describe('assets push command', () => {
     ]);
   });
 
+  it('should use sidecar json data when pushing a single local asset without --data', async () => {
+    const assetPath = '/tmp/local-asset.png';
+    const assetJsonPath = '/tmp/local-asset.json';
+    const pngBuffer = makePngBuffer(120, 80);
+    vol.fromJSON({
+      [assetPath]: pngBuffer,
+      [assetJsonPath]: JSON.stringify({
+        meta_data: {
+          alt: 'Alt text',
+        },
+      }),
+    });
+    const asset = makeMockAsset({ short_filename: 'local-asset.png' });
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, assetPath]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(expect.objectContaining({
+      meta_data: {
+        alt: 'Alt text',
+      },
+    }), expect.anything(), expect.anything());
+  });
+
   it('should push a single local asset with inline overrides', async () => {
     const assetPath = '/tmp/local-asset.png';
     const pngBuffer = makePngBuffer(200, 300);

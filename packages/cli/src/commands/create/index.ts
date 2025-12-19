@@ -168,7 +168,10 @@ export const createCommand = program
         return;
       }
       if (options.skipSpace) {
-        await handleEnvFileCreation(resolvedPath, token, options.region);
+        // Only create .env file if region is provided (useful for configuring SDK)
+        if (options.region) {
+          await handleEnvFileCreation(resolvedPath, undefined, options.region);
+        }
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }

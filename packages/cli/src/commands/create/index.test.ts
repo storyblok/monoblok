@@ -615,8 +615,8 @@ describe('createCommand', () => {
 
       // Verify space creation is skipped
       expect(createSpace).not.toHaveBeenCalled();
-      // handleEnvFileCreation IS called with undefined token and undefined region
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, undefined);
+      // handleEnvFileCreation should NOT be called when no region is provided
+      expect(handleEnvFileCreation).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
 
       // Verify success message still shows
@@ -648,9 +648,9 @@ describe('createCommand', () => {
       // Verify project generation happens
       expect(generateProject).toHaveBeenCalled();
 
-      // Verify space-related operations are skipped but handleEnvFileCreation is called
+      // Verify space-related operations are skipped
       expect(createSpace).not.toHaveBeenCalled();
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, undefined);
+      expect(handleEnvFileCreation).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
     });
 
@@ -1160,7 +1160,7 @@ describe('createCommand', () => {
       // Should generate project successfully
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
 
-      // Should not create space but should call handleEnvFileCreation with the region
+      // Should not create space but should call handleEnvFileCreation with only the region (no token)
       expect(createSpace).not.toHaveBeenCalled();
       expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
     });

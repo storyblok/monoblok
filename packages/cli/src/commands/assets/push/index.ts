@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
@@ -21,18 +21,26 @@ import {
   makeUpdateAssetFolderAPITransport,
   readLocalAssetFoldersStream,
   readLocalAssetsStream,
+  readSingleAssetStream,
   upsertAssetFolderStream,
   upsertAssetStream,
 } from '../streams';
 import { loadManifest } from './actions';
+import type { Asset, AssetCreate, AssetUpdate, AssetUpload } from '../types';
+import { isRemoteSource, parseAssetData } from '../utils';
 
 assetsCommand
   .command('push')
+  .argument('[asset]', 'path or URL of a single asset to push')
   .option('-f, --from <from>', 'source space id')
   .option('-p, --path <path>', 'base path for assets (default .storyblok)')
+  .option('--data <data>', 'inline asset data as JSON')
+  .option('--filename <filename>', 'override the asset filename')
+  .option('--folder <folderId>', 'destination asset folder ID')
+  .option('--cleanup', 'delete local assets and metadata after a successful push')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`)
-  .action(async (options) => {
+  .action(async (assetInput, options) => {
     const program = getProgram();
     const ui = getUI();
     const logger = getLogger();
@@ -142,8 +150,38 @@ assetsCommand
         }),
       );
 
-      await pipeline(
-        readLocalAssetsStream({
+      const steps = [];
+      const assetSource = typeof assetInput === 'string' && assetInput.trim().length > 0
+        ? assetInput
+        : undefined;
+      if (assetSource) {
+        summary.assetResults.total = 1;
+        assetProgress.setTotal(1);
+
+        const assetData = parseAssetData(options.data);
+        const sourceBasename = isRemoteSource(assetSource)
+          ? basename(new URL(assetSource).pathname)
+          : basename(assetSource);
+        const shortFilename = options.filename || assetData.short_filename || sourceBasename;
+        const folderId = options.folder ? Number(options.folder) : undefined;
+        const assetUpload: AssetUpload = {
+          ...assetData,
+          short_filename: shortFilename,
+          asset_folder_id: folderId,
+        };
+
+        steps.push(readSingleAssetStream({
+          asset: assetUpload,
+          assetSource,
+          onAssetError: (error) => {
+            summary.assetResults.failed += 1;
+            assetProgress.increment();
+            handleError(error, verbose);
+          },
+        }));
+      }
+      else {
+        steps.push(readLocalAssetsStream({
           directoryPath: assetsDirectoryPath,
           setTotalAssets: (total) => {
             summary.assetResults.total = total;
@@ -154,31 +192,39 @@ assetsCommand
             assetProgress.increment();
             handleError(error, verbose);
           },
-        }),
-        upsertAssetStream({
-          createTransport: options.dryRun
-            ? { create: async asset => asset }
-            : makeCreateAssetAPITransport({ spaceId: space }),
-          updateTransport: options.dryRun
-            ? { update: async asset => asset }
-            : makeUpdateAssetAPITransport({ spaceId: space }),
-          manifestTransport: options.dryRun
-            ? { append: () => Promise.resolve() }
-            : makeAppendAssetManifestFSTransport({ manifestFile }),
-          maps,
-          spaceId: space,
-          onIncrement: () => assetProgress.increment(),
-          onAssetSuccess: (localAsset, remoteAsset) => {
-            maps.assets.set(localAsset.id, remoteAsset.id);
-            summary.assetResults.succeeded += 1;
-            logger.info('Uploaded asset', { assetId: remoteAsset.id });
-          },
-          onAssetError: (error, asset) => {
-            summary.assetResults.failed += 1;
-            handleError(error, verbose, { assetId: asset.id });
-          },
-        }),
-      );
+        }));
+      }
+
+      const createTransport = options.dryRun
+        ? { create: async (asset: AssetCreate) => asset as Asset }
+        : makeCreateAssetAPITransport({ spaceId: space });
+      const updateTransport = options.dryRun
+        ? { update: async (asset: AssetUpdate) => asset as Asset }
+        : makeUpdateAssetAPITransport({ spaceId: space });
+
+      steps.push(upsertAssetStream({
+        createTransport,
+        updateTransport,
+        manifestTransport: options.dryRun
+          ? { append: () => Promise.resolve() }
+          : makeAppendAssetManifestFSTransport({ manifestFile }),
+        maps,
+        spaceId: space,
+        cleanup: options.cleanup && !options.dryRun,
+        onIncrement: () => assetProgress.increment(),
+        onAssetSuccess: (localAssetResult, remoteAsset) => {
+          if (localAssetResult.id) {
+            maps.assets.set(localAssetResult.id, remoteAsset.id);
+          }
+          summary.assetResults.succeeded += 1;
+          logger.info('Uploaded asset', { assetId: remoteAsset.id });
+        },
+        onAssetError: (error, asset) => {
+          summary.assetResults.failed += 1;
+          handleError(error, verbose, { assetId: asset.id });
+        },
+      }));
+      await pipeline(steps);
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);

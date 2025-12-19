@@ -405,7 +405,7 @@ export const upsertAssetFolderStream = ({
 
         // If folder is already mapped it must also be in the manifest already.
         if (!maps.assetFolders.get(folder.id)) {
-          await manifestTransport.append(folder.id, newRemoteFolder.id);
+          await manifestTransport.append(folder, newRemoteFolder);
         }
 
         onFolderSuccess?.(folder, newRemoteFolder);
@@ -557,30 +557,32 @@ export const makeUpdateAssetAPITransport = ({ spaceId }: { spaceId: string }): U
 });
 
 export interface AppendAssetManifestTransport {
-  append: (localAsset: Asset['id'], remoteAsset: Asset['id']) => Promise<void>;
+  append: (localAsset: { id: Asset['id']; filename?: string }, remoteAsset: { id: Asset['id']; filename?: string }) => Promise<void>;
 }
 
 export const makeAppendAssetManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetManifestTransport => ({
   append: async (localAsset, remoteAsset) => {
     const createdAt = new Date().toISOString();
     await appendToFile(manifestFile, JSON.stringify({
-      old_id: localAsset,
-      new_id: remoteAsset,
+      old_id: localAsset.id,
+      new_id: remoteAsset.id,
+      old_filename: localAsset.filename,
+      new_filename: remoteAsset.filename,
       created_at: createdAt,
     }));
   },
 });
 
 export interface AppendAssetFolderManifestTransport {
-  append: (localFolder: AssetFolder['id'], remoteFolder: AssetFolder['id']) => Promise<void>;
+  append: (localFolder: { id: AssetFolder['id'] }, remoteFolder: { id: AssetFolder['id'] }) => Promise<void>;
 }
 
 export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetFolderManifestTransport => ({
   append: async (localFolder, remoteFolder) => {
     const createdAt = new Date().toISOString();
     await appendToFile(manifestFile, JSON.stringify({
-      old_id: localFolder,
-      new_id: remoteFolder,
+      old_id: localFolder.id,
+      new_id: remoteFolder.id,
       created_at: createdAt,
     }));
   },
@@ -677,9 +679,8 @@ export const upsertAssetStream = ({
           throw new Error('Could neither create nor update the asset!');
         }
 
-        // If asset is already mapped it must also be in the manifest already.
-        if (hasId(asset) && !maps.assets.get(asset.id)) {
-          await manifestTransport.append(asset.id, newRemoteAsset.id);
+        if (hasId(asset)) {
+          await manifestTransport.append(asset, newRemoteAsset);
         }
 
         if (cleanup) {

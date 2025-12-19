@@ -62,5 +62,6 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 
 ## Notes
 
+- Asset manifest files can contain multiple entries for the same asset; use the latest entry as the source of truth.
 - External URL uploads are downloaded temporarily and removed after a successful push.
 - When pushing from disk, ensure asset `.json` metadata files sit next to their binaries in `<path>/assets/<space>`.

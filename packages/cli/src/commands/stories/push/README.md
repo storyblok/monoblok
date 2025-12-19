@@ -29,3 +29,4 @@ storyblok stories push --space YOUR_SPACE_ID
 ## Notes
 
 - Component schemas are required to map story references correctly. Always run `storyblok components pull` to fetch the latest schemas before running `storyblok stories push`.
+- Story manifest files can contain multiple entries for the same story; use the latest entry as the source of truth.

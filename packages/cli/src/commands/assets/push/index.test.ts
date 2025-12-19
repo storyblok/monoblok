@@ -428,7 +428,13 @@ describe('assets push command', () => {
       { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
     ]);
     expect(await parseManifest(targetSpace)).toEqual([
-      { old_id: asset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+      {
+        old_id: asset.id,
+        old_filename: asset.filename,
+        new_id: remoteAsset.id,
+        new_filename: remoteAsset.filename,
+        created_at: expect.any(String),
+      },
     ]);
     // Report
     const report = getReport(targetSpace);
@@ -488,7 +494,13 @@ describe('assets push command', () => {
       { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
     ]);
     expect(await parseManifest(DEFAULT_SPACE, customPath)).toEqual([
-      { old_id: asset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+      {
+        old_id: asset.id,
+        old_filename: asset.filename,
+        new_id: remoteAsset.id,
+        new_filename: remoteAsset.filename,
+        created_at: expect.any(String),
+      },
     ]);
   });
 
@@ -851,11 +863,47 @@ describe('assets push command', () => {
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
-    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(finishUploadSpy).toHaveBeenCalled();
+    expect(await parseManifest()).toEqual([
+      {
+        old_id: localAsset.id,
+        old_filename: localAsset.filename,
+        new_id: remoteAsset.id,
+        new_filename: remoteAsset.filename,
+        created_at: expect.any(String),
+      },
+    ]);
+  });
+
+  it('should upload a new asset file when updating an existing asset with a different binary hash when resuming from manifest', async () => {
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const finishUploadSpy = vi.fn();
+    const updateSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
+    preconditions.canLoadAssetsManifest([{
+      old_id: localAsset.id,
+      old_filename: localAsset.filename,
+      new_id: remoteAsset.id,
+      new_filename: 'https://a.storyblok.com/f/12345/500x500/old-new-filename.png',
+    }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(finishUploadSpy).toHaveBeenCalled();
+    expect((await parseManifest())[1]).toEqual({
+      old_id: localAsset.id,
+      old_filename: localAsset.filename,
+      new_id: remoteAsset.id,
+      new_filename: remoteAsset.filename,
+      created_at: expect.any(String),
+    });
   });
 
   it('should update existing remote assets even when no manifest exists', async () => {
@@ -873,7 +921,13 @@ describe('assets push command', () => {
       id: remoteAsset.id,
     }), expect.anything(), expect.anything());
     expect(await parseManifest()).toEqual([
-      { old_id: localAsset.id, new_id: remoteAsset.id, created_at: expect.any(String) },
+      {
+        old_id: localAsset.id,
+        new_id: remoteAsset.id,
+        old_filename: localAsset.filename,
+        new_filename: remoteAsset.filename,
+        created_at: expect.any(String),
+      },
     ]);
   });
 

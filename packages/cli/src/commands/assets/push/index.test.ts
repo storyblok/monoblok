@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import * as fsPromises from 'node:fs/promises';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import type { Mock } from 'vitest';
@@ -115,6 +116,15 @@ const preconditions = {
     ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
   },
+  failsToLoadAssets({
+    space = DEFAULT_SPACE,
+    basePath,
+  }: { space?: string; basePath?: string } = {}) {
+    const assetsDir = resolveCommandPath(directories.assets, space, basePath);
+    vol.fromJSON({
+      [path.join(assetsDir, 'broken.json')]: '{invalid json',
+    });
+  },
   canLoadAssetsManifest(manifestEntries: Record<number | string, number | string>[], {
     space = DEFAULT_SPACE,
     basePath,
@@ -125,6 +135,10 @@ const preconditions = {
     vol.fromJSON({
       [manifestPath]: content,
     });
+  },
+  failsToAppendAssetsManifest() {
+    const appendFileError = Object.assign(new Error('Manifest append failed'), { code: 'EACCES' });
+    vi.spyOn(fsPromises, 'appendFile').mockRejectedValue(appendFileError);
   },
   canLoadFoldersManifest(manifestEntries: Record<number | string, number | string>[], {
     space = DEFAULT_SPACE,
@@ -175,6 +189,14 @@ const preconditions = {
     );
     return remoteFolders;
   },
+  failsToCreateRemoteFolders({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders`, () => HttpResponse.json(
+        { message: 'Creation failed' },
+        { status: 500 },
+      )),
+    );
+  },
   canFetchRemoteFolders(folders: MockAssetFolder[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
     for (const folder of folders) {
       server.use(
@@ -204,6 +226,14 @@ const preconditions = {
       }),
     );
     return remoteFolders;
+  },
+  failsToUpdateRemoteFolders({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders/:folderId`, () => HttpResponse.json(
+        { message: 'Update failed' },
+        { status: 500 },
+      )),
+    );
   },
   canFetchRemoteAssets(assets: MockAsset[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
     for (const asset of assets) {
@@ -293,6 +323,30 @@ const preconditions = {
       }),
     );
     return remoteAssets;
+  },
+  failsToCreateRemoteAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, () => HttpResponse.json(
+        { message: 'Creation failed' },
+        { status: 500 },
+      )),
+    );
+  },
+  failsToUpdateRemoteAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
+        { message: 'Update failed' },
+        { status: 500 },
+      )),
+    );
+  },
+  failsToUploadAssets() {
+    server.use(
+      http.post('https://s3.amazonaws.com/a.storyblok.com', () => HttpResponse.json(
+        { message: 'Upload failed' },
+        { status: 500 },
+      )),
+    );
   },
   canDownloadAssets(assets: MockAsset[], { content = 'binary-content' }: { content?: string } = {}) {
     for (const asset of assets) {
@@ -446,7 +500,7 @@ describe('assets push command', () => {
     }]);
   });
 
-  it('should update remote asset folders when no manifest exists', async () => {
+  it('should update existing remote asset folders even when no manifest exists', async () => {
     const localFolder = makeMockFolder();
     preconditions.canLoadFolders([localFolder]);
     const [remoteFolder] = preconditions.canUpdateRemoteFolders([localFolder]);
@@ -475,6 +529,22 @@ describe('assets push command', () => {
     expect(logFile).toContain('No existing manifest found');
   });
 
+  it('should log an error and stop when manifest loading fails', async () => {
+    const manifestPath = path.join(resolveCommandPath(directories.assets, DEFAULT_SPACE), 'manifest.jsonl');
+    vol.fromJSON({
+      [manifestPath]: 'not-json',
+    });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAssetFolder).not.toHaveBeenCalled();
+    expect(actions.updateAssetFolder).not.toHaveBeenCalled();
+    expect(actions.createAsset).not.toHaveBeenCalled();
+    expect(actions.updateAsset).not.toHaveBeenCalled();
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Unexpected token');
+  });
+
   it('should log an info when a manifest file does not exist', async () => {
     const asset = makeMockAsset();
     preconditions.canLoadFolders([]);
@@ -485,6 +555,236 @@ describe('assets push command', () => {
 
     const logFile = getLogFileContents();
     expect(logFile).toContain('No existing manifest found');
+  });
+
+  it('should handle errors when writing to the manifest fails', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+    preconditions.failsToAppendAssetsManifest();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(await parseManifest()).toEqual([]);
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('File System Error: Permission denied');
+    // UI
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should not make any updates in dry run mode', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--dry-run']);
+
+    expect(actions.createAsset).not.toHaveBeenCalled();
+    expect(actions.updateAsset).not.toHaveBeenCalled();
+    expect(await parseManifest()).toHaveLength(0);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
+    );
+  });
+
+  it('should handle errors when reading local assets fails', async () => {
+    preconditions.canLoadFolders([]);
+    preconditions.failsToLoadAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).not.toHaveBeenCalled();
+    expect(actions.updateAsset).not.toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Expected property name or \'}\' in JSON');
+    // UI
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should handle errors when creating asset folders fails', async () => {
+    const folder = makeMockFolder();
+    preconditions.canLoadFolders([folder]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.failsToCreateRemoteFolders();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAssetFolder).toHaveBeenCalled();
+    expect(actions.updateAssetFolder).not.toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Error fetching data from the API');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error fetching data from the API'),
+      expect.anything(),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should handle errors when updating asset folders fails', async () => {
+    const folder = makeMockFolder({ name: 'Existing Folder' });
+    preconditions.canLoadFolders([folder]);
+    const [remoteFolder] = preconditions.canUpdateRemoteFolders([folder]);
+    preconditions.canFetchRemoteFolders([remoteFolder]);
+    preconditions.canLoadFoldersManifest([{
+      old_id: folder.id,
+      new_id: remoteFolder.id,
+      created_at: '2024-01-01T00:00:00.000Z',
+    }]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.failsToUpdateRemoteFolders();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAssetFolder).not.toHaveBeenCalled();
+    expect(actions.updateAssetFolder).toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('API Error: Error fetching data from the API');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to push asset folder'),
+      expect.anything(),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should handle errors when creating assets fails', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+    preconditions.failsToCreateRemoteAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalled();
+    expect(actions.updateAsset).not.toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('API Error: Error fetching data from the API');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to sign asset upload'),
+      expect.anything(),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should handle errors when updating assets fails', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset]);
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset]);
+    preconditions.canLoadAssetsManifest([{ old_id: asset.id, new_id: remoteAsset.id }]);
+    preconditions.failsToUpdateRemoteAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).not.toHaveBeenCalled();
+    expect(actions.updateAsset).toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Error fetching data from the API');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error fetching data from the API'),
+      expect.anything(),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+    );
+  });
+
+  it('should handle errors when uploading assets fails', async () => {
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset]);
+    preconditions.failsToUploadAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalled();
+    // Reporting
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    // Logging
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('Error fetching data from the API');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error fetching data from the API'),
+      expect.anything(),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+    );
   });
 
   it('should createa new asset with meta_data when present locally', async () => {

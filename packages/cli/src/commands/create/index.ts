@@ -4,7 +4,7 @@ import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
 import { input, select } from '@inquirer/prompts';
-import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate } from '../spaces';
@@ -12,7 +12,6 @@ import { Spinner } from '@topcli/spinner';
 import { mapiClient } from '../../api';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import type { RegionCode } from '../../constants';
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
@@ -21,23 +20,6 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
   konsola.br();
   konsola.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
   konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
-}
-
-// Helper to create .env file and handle errors
-async function handleEnvFileCreation(resolvedPath: string, token: string, region?: RegionCode): Promise<boolean> {
-  try {
-    await createEnvFile(resolvedPath, {
-      STORYBLOK_DELIVERY_API_TOKEN: token,
-      ...(region && { STORYBLOK_REGION: region }),
-    });
-    konsola.ok(`Created .env file with Storyblok access token`, true);
-    return true;
-  }
-  catch (error) {
-    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
-    konsola.info(`You can manually add this token to your .env file: ${token}`);
-    return false;
-  }
 }
 
 const program = getProgram(); // Get the shared singleton instance
@@ -84,6 +66,13 @@ export const createCommand = program
     }
 
     const { password, region } = state;
+
+    // Validate that user-provided region matches their account region when creating a space
+    // This check happens early before any project scaffolding
+    if (options.region && options.region !== region && !options.skipSpace && !token) {
+      handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
+      return;
+    }
 
     mapiClient({
       token: {
@@ -179,6 +168,7 @@ export const createCommand = program
         return;
       }
       if (options.skipSpace) {
+        await handleEnvFileCreation(resolvedPath, token, options.region);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }

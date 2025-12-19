@@ -6,7 +6,7 @@ import { appDomains, type RegionCode } from '../../constants';
 import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
 import open from 'open';
 import { createOctokit } from '../../github';
-import { handleAPIError } from '../../utils';
+import { handleAPIError, konsola } from '../../utils';
 import type { DynamicTemplate } from './constants';
 /**
  * Generates a new project from a Storyblok blueprint template
@@ -108,6 +108,41 @@ ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\
     throw new Error(`Failed to create .env file: ${(error as Error).message}`);
   }
 };
+
+// Helper to create .env file and handle errors
+export async function handleEnvFileCreation(resolvedPath: string, token?: string, region?: RegionCode): Promise<boolean> {
+  const envVars: Record<string, string> = {};
+  if (token) {
+    envVars.STORYBLOK_DELIVERY_API_TOKEN = token;
+  }
+  if (region) {
+    envVars.STORYBLOK_REGION = region;
+  }
+  if (Object.keys(envVars).length === 0) {
+    konsola.info('No environment variables to write');
+    return true;
+  }
+  try {
+    await createEnvFile(resolvedPath, envVars);
+    const writtenKeys = Object.keys(envVars).join(', ');
+    konsola.ok(`Created .env file with: ${writtenKeys}`, true);
+    return true;
+  }
+  catch (error) {
+    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+    if (token) {
+      konsola.info(
+        `You can manually add STORYBLOK_DELIVERY_API_TOKEN to your .env file.`,
+      );
+    }
+    if (region) {
+      konsola.info(
+        `You can manually add STORYBLOK_REGION to your .env file.`,
+      );
+    }
+    return false;
+  }
+}
 
 /**
  * Generates the Storyblok app URL for a specific space based on region

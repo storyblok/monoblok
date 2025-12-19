@@ -6,7 +6,7 @@ import { input, select } from '@inquirer/prompts';
 import { createSpace } from '../spaces';
 import type { Space } from '../spaces/actions';
 import { mapiClient } from '../../api';
-import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import { getUser } from '../user/actions';
 import type { StoryblokUser } from '../../types';
 import { templates } from './constants';
@@ -15,7 +15,7 @@ import { regionCodes } from '../../constants';
 // Mock all dependencies
 vi.mock('./actions', () => ({
   generateProject: vi.fn(),
-  createEnvFile: vi.fn(),
+  handleEnvFileCreation: vi.fn(),
   generateSpaceUrl: vi.fn(),
   openSpaceInBrowser: vi.fn(),
   fetchBlueprintRepositories: vi.fn(),
@@ -136,7 +136,7 @@ describe('createCommand', () => {
   describe('--token option', () => {
     it('should use provided token, skip space creation, and update env', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -147,9 +147,7 @@ describe('createCommand', () => {
       // Should generate project
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
       // Should create .env file with provided token
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
-      });
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', undefined);
       // Should NOT create space or open browser
       expect(createSpace).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
@@ -179,7 +177,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -206,7 +204,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -228,7 +226,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -246,7 +244,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -267,7 +265,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -295,7 +293,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -321,7 +319,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -350,7 +348,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -379,7 +377,7 @@ describe('createCommand', () => {
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
       ]);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
@@ -398,11 +396,7 @@ describe('createCommand', () => {
       });
 
       // Verify .env file creation
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
-        STORYBLOK_REGION: 'eu',
-      });
-      expect(konsola.ok).toHaveBeenCalledWith('Created .env file with Storyblok access token', true);
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
 
       // Verify browser opening
       expect(openSpaceInBrowser).toHaveBeenCalledWith(12345, 'eu');
@@ -448,10 +442,10 @@ describe('createCommand', () => {
       // Use createMockSpace to ensure the mock matches the Space type
       const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
 
-      const envError = new Error('Permission denied');
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockRejectedValue(envError);
+      // Mock handleEnvFileCreation to return false (indicating failure)
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(false);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -460,11 +454,9 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
-      expect(konsola.warn).toHaveBeenCalledWith('Failed to create .env file: Permission denied');
-      expect(konsola.info).toHaveBeenCalledWith(
-        'You can manually add this token to your .env file: space-token-123',
-      );
-      // Should continue with browser opening
+      // Should call handleEnvFileCreation
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+      // Should continue with browser opening even if .env creation fails
       expect(openSpaceInBrowser).toHaveBeenCalled();
     });
 
@@ -479,7 +471,7 @@ describe('createCommand', () => {
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
       ]);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockRejectedValue(browserError);
       vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
 
@@ -513,7 +505,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -544,7 +536,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -571,7 +563,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -581,10 +573,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', './projects/my-project', '--template', 'react']);
 
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.stringContaining('projects'));
-      expect(createEnvFile).toHaveBeenCalledWith(expect.stringContaining('my-project'), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
-        STORYBLOK_REGION: 'eu',
-      });
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.stringContaining('my-project'), 'space-token-123', 'eu');
     });
 
     it('should handle absolute paths correctly', async () => {
@@ -593,7 +582,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -609,6 +598,7 @@ describe('createCommand', () => {
   describe('skip space functionality', () => {
     it('should skip space creation when --skip-space flag is provided', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -625,7 +615,8 @@ describe('createCommand', () => {
 
       // Verify space creation is skipped
       expect(createSpace).not.toHaveBeenCalled();
-      expect(createEnvFile).not.toHaveBeenCalled();
+      // handleEnvFileCreation IS called with undefined token and undefined region
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, undefined);
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
 
       // Verify success message still shows
@@ -638,6 +629,7 @@ describe('createCommand', () => {
       vi.mocked(select).mockResolvedValue('vue');
       vi.mocked(input).mockResolvedValue('./my-vue-project');
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -656,9 +648,9 @@ describe('createCommand', () => {
       // Verify project generation happens
       expect(generateProject).toHaveBeenCalled();
 
-      // Verify space-related operations are skipped
+      // Verify space-related operations are skipped but handleEnvFileCreation is called
       expect(createSpace).not.toHaveBeenCalled();
-      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, undefined);
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
     });
 
@@ -705,7 +697,7 @@ describe('createCommand', () => {
 
       // Should not attempt space operations
       expect(createSpace).not.toHaveBeenCalled();
-      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(handleEnvFileCreation).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
     });
 
@@ -739,7 +731,7 @@ describe('createCommand', () => {
         vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -773,7 +765,7 @@ describe('createCommand', () => {
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -812,7 +804,7 @@ describe('createCommand', () => {
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -851,7 +843,7 @@ describe('createCommand', () => {
           .mockResolvedValueOnce('react'); // Blueprint choice if needed
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -903,7 +895,7 @@ describe('createCommand', () => {
         vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -946,7 +938,7 @@ describe('createCommand', () => {
 
         // Should not attempt to create space
         expect(createSpace).not.toHaveBeenCalled();
-        expect(createEnvFile).not.toHaveBeenCalled();
+        expect(handleEnvFileCreation).not.toHaveBeenCalled();
         expect(openSpaceInBrowser).not.toHaveBeenCalled();
       });
     });
@@ -964,7 +956,7 @@ describe('createCommand', () => {
         vi.mocked(select).mockResolvedValueOnce('org'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -990,7 +982,7 @@ describe('createCommand', () => {
         vi.mocked(select).mockResolvedValueOnce('partner'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -1017,7 +1009,7 @@ describe('createCommand', () => {
         vi.mocked(select).mockResolvedValueOnce('personal'); // Space creation choice
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(generateSpaceUrl).mockReturnValue('https://app.storyblok.com/#/me/spaces/12345/dashboard');
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -1061,7 +1053,7 @@ describe('createCommand', () => {
         vi.mocked(getUser).mockResolvedValue(mockUser);
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(createSpace).mockResolvedValue(mockSpace);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -1077,7 +1069,7 @@ describe('createCommand', () => {
   describe('--region flag', () => {
     it('should include region in .env file when --region is provided with --token', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -1086,10 +1078,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token', '--region', 'us']);
 
       // Should create .env file with provided token and region
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
-        STORYBLOK_REGION: 'us',
-      });
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us');
     });
 
     it('should validate region and show error for invalid region', async () => {
@@ -1116,7 +1105,7 @@ describe('createCommand', () => {
       for (const region of validRegions) {
         vi.clearAllMocks();
         vi.mocked(generateProject).mockResolvedValue(undefined);
-        vi.mocked(createEnvFile).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
           { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         ]);
@@ -1125,10 +1114,7 @@ describe('createCommand', () => {
 
         expect(handleError).not.toHaveBeenCalled();
         expect(generateProject).toHaveBeenCalled();
-        expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-          STORYBLOK_DELIVERY_API_TOKEN: 'token',
-          STORYBLOK_REGION: region,
-        });
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'token', region);
       }
     });
 
@@ -1137,7 +1123,7 @@ describe('createCommand', () => {
 
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -1146,15 +1132,12 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       // Should create .env file with space token and session region (eu by default in tests)
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'space-token-123',
-        STORYBLOK_REGION: 'eu',
-      });
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
     });
 
     it('should not include region in .env when --token is provided without --region', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
-      vi.mocked(createEnvFile).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
       ]);
@@ -1162,13 +1145,12 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token']);
 
       // Should create .env file without region when not specified
-      expect(createEnvFile).toHaveBeenCalledWith(expect.any(String), {
-        STORYBLOK_DELIVERY_API_TOKEN: 'my-access-token',
-      });
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', undefined);
     });
 
     it('should work with --region and --skip-space flags together', async () => {
       vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
       ]);
@@ -1178,9 +1160,88 @@ describe('createCommand', () => {
       // Should generate project successfully
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
 
-      // Should not create space or env file
+      // Should not create space but should call handleEnvFileCreation with the region
       expect(createSpace).not.toHaveBeenCalled();
-      expect(createEnvFile).not.toHaveBeenCalled();
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
+    });
+
+    it('should throw error when provided region does not match user account region during space creation', async () => {
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      // User's session region is 'eu' (from mock), but they provide 'us'
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--region', 'us']);
+
+      // Should call handleError with region mismatch error
+      expect(handleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Cannot create space in region "us". Your account is configured for region "eu"'),
+        }),
+      );
+
+      // Should not generate project or create space
+      expect(generateProject).not.toHaveBeenCalled();
+      expect(createSpace).not.toHaveBeenCalled();
+    });
+
+    it('should allow region flag when it matches user account region during space creation', async () => {
+      const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
+
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(createSpace).mockResolvedValue(mockSpace);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+      vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      // User's session region is 'eu' (from mock), and they provide 'eu'
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--region', 'eu']);
+
+      // Should proceed normally
+      expect(handleError).not.toHaveBeenCalled();
+      expect(generateProject).toHaveBeenCalled();
+      expect(createSpace).toHaveBeenCalled();
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+    });
+
+    it('should not throw region mismatch error when --token is provided with different region', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      // User's session region is 'eu', but they provide 'us' with --token (no space creation)
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token', '--region', 'us']);
+
+      // Should proceed without region mismatch error
+      expect(handleError).not.toHaveBeenCalled();
+      expect(generateProject).toHaveBeenCalled();
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us');
+
+      // Should not create space
+      expect(createSpace).not.toHaveBeenCalled();
+    });
+
+    it('should not throw region mismatch error when --skip-space is provided with different region', async () => {
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      // User's session region is 'eu', but they provide 'us' with --skip-space (no space creation)
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space', '--region', 'us']);
+
+      // Should proceed without region mismatch error
+      expect(handleError).not.toHaveBeenCalled();
+      expect(generateProject).toHaveBeenCalled();
+
+      // Should not create space but should call handleEnvFileCreation with undefined token and region
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'us');
     });
   });
 });

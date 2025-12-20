@@ -1,12 +1,10 @@
-import { basename, dirname, extname, join } from 'node:path';
-import { readFile } from 'node:fs/promises';
-import { pipeline } from 'node:stream/promises';
+import { basename, join } from 'node:path';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getProgram } from '../../../program';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
-import { getReporter } from '../../../lib/reporter/reporter';
+import { getReporter, type Report } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
@@ -18,17 +16,18 @@ import {
   makeAppendAssetManifestFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
+  makeGetAssetAPITransport,
+  makeGetAssetFolderAPITransport,
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
-  readLocalAssetFoldersStream,
-  readLocalAssetsStream,
-  readSingleAssetStream,
-  upsertAssetFolderStream,
-  upsertAssetStream,
 } from '../streams';
 import { loadManifest } from './actions';
-import type { Asset, AssetCreate, AssetUpdate, AssetUpload } from '../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetUpdate, AssetUpload } from '../types';
 import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
+import { findComponentSchemas } from '../../stories/utils';
+import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import { makeWriteStoryAPITransport } from '../../stories/streams';
 
 assetsCommand
   .command('push')
@@ -39,6 +38,8 @@ assetsCommand
   .option('--filename <filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
   .option('--cleanup', 'delete local assets and metadata after a successful push')
+  // TODO false good default?
+  .option('--update-stories', 'update file references in stories if necessary', false)
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`)
   .action(async (assetInput, options) => {
@@ -79,88 +80,64 @@ assetsCommand
       region,
     });
 
-    const summary = {
-      folderResults: { total: 0, succeeded: 0, failed: 0 },
-      assetResults: { total: 0, succeeded: 0, failed: 0 },
-    };
+    const summaries: [string, Report['summary'][string]][] = [];
 
     try {
       const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
-      const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
       const manifest = await loadManifest(manifestFile);
       if (manifest.length === 0) {
         logger.info('No existing manifest found');
       }
+      const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
       const folderManifest = await loadManifest(folderManifestFile);
       if (folderManifest.length === 0) {
         logger.info('No existing manifest found');
       }
+
       const maps = {
         assets: new Map<number, number>(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
         assetFolders: new Map<number, number>(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
+        stories: new Map(),
       };
-
-      const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(12) });
-      const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(12) });
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
 
-      await pipeline(
-        readLocalAssetFoldersStream({
-          directoryPath: assetsDirectoryPath,
-          setTotalFolders: (total) => {
-            summary.folderResults.total = total;
-            folderProgress.setTotal(total);
-          },
-          onFolderError: (error) => {
-            summary.folderResults.failed += 1;
-            handleError(error, verbose);
-          },
-        }),
-        upsertAssetFolderStream({
-          createTransport: options.dryRun
-            ? { create: async folder => folder }
-            : makeCreateAssetFolderAPITransport({
-                spaceId: space,
-                token: password,
-                region,
-              }),
-          updateTransport: options.dryRun
-            ? { update: async folder => folder }
-            : makeUpdateAssetFolderAPITransport({
-                spaceId: space,
-                token: password,
-                region,
-              }),
-          spaceId: space,
-          token: password,
-          region,
-          maps,
-          manifestTransport: options.dryRun
-            ? { append: () => Promise.resolve() }
-            : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile }),
-          onIncrement: () => folderProgress.increment(),
-          onFolderSuccess: (localFolder, remoteFolder) => {
-            summary.folderResults.succeeded += 1;
-            maps.assetFolders.set(localFolder.id, remoteFolder.id);
-            logger.info('Created asset folder', { folderId: remoteFolder.id });
-          },
-          onFolderError: (error, folder) => {
-            summary.folderResults.failed += 1;
-            handleError(error, verbose, { folderId: folder.id });
-          },
-        }),
-      );
+      /**
+       * Upsert Asset Folders
+       */
+      const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: space, token: password, region });
+      const assetFolderCreateTransport = options.dryRun
+        ? { create: async (folder: AssetFolderCreate) => folder as AssetFolder }
+        : makeCreateAssetFolderAPITransport({ spaceId: space, token: password, region });
+      const assetFolderUpdateTransport = options.dryRun
+        ? { update: async (folder: AssetFolderUpdate) => folder }
+        : makeUpdateAssetFolderAPITransport({ spaceId: space, token: password, region });
+      const assetFolderManifestTransport = options.dryRun
+        ? { append: () => Promise.resolve() }
+        : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile });
 
-      const steps = [];
+      summaries.push(...await upsertAssetFoldersPipeline({
+        directoryPath: join(assetsDirectoryPath, 'folders'),
+        logger,
+        maps,
+        transports: {
+          get: assetFolderGetTransport,
+          create: assetFolderCreateTransport,
+          update: assetFolderUpdateTransport,
+          manifest: assetFolderManifestTransport,
+        },
+        ui,
+        verbose,
+      }));
+
+      /**
+       * Upsert Assets
+       */
       const assetSource = typeof assetInput === 'string' && assetInput.trim().length > 0
         ? assetInput
         : undefined;
-      // Use the asset provided via the CLI.
+      let assetData: AssetUpload | undefined;
       if (assetSource) {
-        summary.assetResults.total = 1;
-        assetProgress.setTotal(1);
-
-        const assetData = options.data
+        const assetDataPartial = options.data
           ? parseAssetData(options.data)
           : !isRemoteSource(assetSource)
               ? await loadSidecarAssetData(assetSource)
@@ -168,87 +145,87 @@ assetsCommand
         const sourceBasename = isRemoteSource(assetSource)
           ? basename(new URL(assetSource).pathname)
           : basename(assetSource);
-        const shortFilename = options.filename || assetData.short_filename || sourceBasename;
+        const shortFilename = options.filename || assetDataPartial.short_filename || sourceBasename;
         const folderId = options.folder ? Number(options.folder) : undefined;
-        const assetUpload: AssetUpload = {
-          ...assetData,
+        assetData = {
+          ...assetDataPartial,
           short_filename: shortFilename,
           asset_folder_id: folderId,
-        };
-
-        steps.push(readSingleAssetStream({
-          asset: assetUpload,
-          assetSource,
-          onAssetError: (error) => {
-            summary.assetResults.failed += 1;
-            assetProgress.increment();
-            handleError(error, verbose);
-          },
-        }));
-      }
-      // Read assets from the local file system.
-      else {
-        steps.push(readLocalAssetsStream({
-          directoryPath: assetsDirectoryPath,
-          setTotalAssets: (total) => {
-            summary.assetResults.total = total;
-            assetProgress.setTotal(total);
-          },
-          onAssetError: (error) => {
-            summary.assetResults.failed += 1;
-            assetProgress.increment();
-            handleError(error, verbose);
-          },
-        }));
+        } satisfies AssetUpload;
       }
 
-      const createTransport = options.dryRun
+      const getAssetTransport = makeGetAssetAPITransport({ spaceId: space });
+      const createAssetTransport = options.dryRun
         ? { create: async (asset: AssetCreate) => asset as Asset }
         : makeCreateAssetAPITransport({ spaceId: space });
-      const updateTransport = options.dryRun
+      const updateAssetTransport = options.dryRun
         ? { update: async (asset: AssetUpdate) => asset as Asset }
         : makeUpdateAssetAPITransport({ spaceId: space });
+      const assetManifestTransport = options.dryRun
+        ? { append: () => Promise.resolve() }
+        : makeAppendAssetManifestFSTransport({ manifestFile });
 
-      steps.push(upsertAssetStream({
-        createTransport,
-        updateTransport,
-        manifestTransport: options.dryRun
-          ? { append: () => Promise.resolve() }
-          : makeAppendAssetManifestFSTransport({ manifestFile }),
-        maps,
-        spaceId: space,
+      summaries.push(...await upsertAssetsPipeline({
+        assetSource,
+        assetData,
         cleanup: options.cleanup && !options.dryRun,
-        onIncrement: () => assetProgress.increment(),
-        onAssetSuccess: (localAssetResult, remoteAsset) => {
-          if (localAssetResult.id) {
-            maps.assets.set(localAssetResult.id, remoteAsset.id);
-          }
-          summary.assetResults.succeeded += 1;
-          logger.info('Uploaded asset', { assetId: remoteAsset.id });
+        directoryPath: assetsDirectoryPath,
+        logger,
+        maps,
+        transports: {
+          get: getAssetTransport,
+          create: createAssetTransport,
+          update: updateAssetTransport,
+          manifest: assetManifestTransport,
         },
-        onAssetError: (error, asset) => {
-          summary.assetResults.failed += 1;
-          handleError(error, verbose, { assetId: asset.id });
-        },
+        ui,
+        verbose,
       }));
-      await pipeline(steps);
+
+      /**
+       * Map Asset References in Stories
+       */
+      // TODO test
+      const hasNewFileReferences = maps.assets.entries().some(([k, v]) => k !== v);
+      if (hasNewFileReferences && options.updateStories) {
+        const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
+
+        const writeStoryTransport = options.dryRun
+          ? { write: async (story: Story) => story }
+          // TODO publish if it already was published
+          : makeWriteStoryAPITransport({ spaceId: space, publish: false });
+
+        summaries.push(...await mapAssetReferencesInStoriesPipeline({
+          logger,
+          maps,
+          schemas,
+          space,
+          transports: {
+            write: writeStoryTransport,
+          },
+          ui,
+        }));
+      }
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);
     }
     finally {
       ui.stopAllProgressBars();
-      logger.info('Pushing assets finished', summary);
-      const pushedLabel = summary.assetResults.total === 1 ? 'asset' : 'assets';
-      const failedLabel = summary.assetResults.failed === 1 ? 'asset' : 'assets';
-      ui.info(`Push results: ${summary.assetResults.total} ${pushedLabel} pushed, ${summary.assetResults.failed} ${failedLabel} failed`);
+      const summary = Object.fromEntries(summaries);
+      logger.info('Pushing assets finished', { summary });
+      const assetsPushed = summary.assetResults?.total ?? 0;
+      const assetsFailed = summary.assetResults?.failed ?? 0;
+      const pushedLabel = assetsPushed === 1 ? 'asset' : 'assets';
+      const failedLabel = assetsFailed === 1 ? 'asset' : 'assets';
+      ui.info(`Push results: ${assetsPushed} ${pushedLabel} pushed, ${assetsFailed} ${failedLabel} failed`);
       ui.list([
-        `Folders: ${summary.folderResults.succeeded}/${summary.folderResults.total} succeeded, ${summary.folderResults.failed} failed.`,
-        `Assets: ${summary.assetResults.succeeded}/${summary.assetResults.total} succeeded, ${summary.assetResults.failed} failed.`,
+        `Folders: ${summary.folderResults?.succeeded ?? 0}/${summary.folderResults?.total ?? 0} succeeded, ${summary.folderResults?.failed ?? 0} failed.`,
+        `Assets: ${summary.assetResults?.succeeded ?? 0}/${assetsPushed} succeeded, ${assetsFailed} failed.`,
       ]);
-
-      reporter.addSummary('folderResults', summary.folderResults);
-      reporter.addSummary('assetResults', summary.assetResults);
+      for (const [name, reportSummary] of summaries) {
+        reporter.addSummary(name, reportSummary);
+      }
       reporter.finalize();
     }
   });

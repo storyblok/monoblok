@@ -100,6 +100,8 @@ storiesCommand
         logger.info('No existing manifest found');
       }
       const maps = {
+        // TODO prefill with asset manifest if it exists
+        assets: new Map(),
         stories: new Map<unknown, string | number>(manifest.map(e => [e.old_id, e.new_id])),
       };
 
@@ -176,7 +178,7 @@ storiesCommand
             summary.creationResults.skipped += 1;
           },
           onStoryError(error) {
-            // TODO handleError with for verbose error handling
+            // TODO handleError with for verbose error handling like in asset push streams
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;

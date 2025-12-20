@@ -15,6 +15,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetReporter } from '../../../lib/reporter/reporter';
 import { loadManifest } from '../../assets/push/actions';
 import * as actions from '../actions';
+import * as storyActions from '../../stories/actions';
 
 const DEFAULT_SPACE = '12345';
 
@@ -42,6 +43,7 @@ vi.spyOn(actions, 'createAsset');
 vi.spyOn(actions, 'updateAsset');
 vi.spyOn(actions, 'createAssetFolder');
 vi.spyOn(actions, 'updateAssetFolder');
+vi.spyOn(storyActions, 'updateStory');
 
 interface MockAsset {
   id: number;
@@ -59,6 +61,17 @@ interface MockAssetFolder {
   parent_uuid: string | null;
 }
 
+interface MockStory {
+  id: number;
+  uuid: string;
+  name: string;
+  slug: string;
+  full_slug: string;
+  content: Record<string, unknown>;
+  is_folder: boolean;
+  parent_id: number | null;
+}
+
 let id = 0;
 const getID = () => {
   id += 1;
@@ -71,6 +84,26 @@ const makeMockAsset = (overrides: Partial<MockAsset> = {}): MockAsset => {
     id: assetId,
     filename: overrides.filename || `https://a.storyblok.com/f/12345/500x500/${name}`,
     asset_folder_id: null,
+    ...overrides,
+  };
+};
+
+let storyId = 0;
+const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => {
+  storyId += 1;
+  const slug = overrides.slug || `story-${storyId}`;
+  return {
+    id: overrides.id ?? storyId,
+    uuid: randomUUID(),
+    name: 'Story',
+    slug,
+    full_slug: slug,
+    content: {
+      _uid: randomUUID(),
+      component: 'page',
+    },
+    is_folder: false,
+    parent_id: null,
     ...overrides,
   };
 };
@@ -96,6 +129,21 @@ const makePngBuffer = (width: number, height: number) => {
   return Buffer.concat([signature, ihdr, dimensions]);
 };
 
+interface MockComponent {
+  name: string;
+  schema: Record<string, unknown>;
+  component_group_uuid: string | null;
+}
+
+const makeMockComponent = (overrides: Partial<MockComponent>): MockComponent => {
+  return {
+    name: 'component',
+    schema: {},
+    component_group_uuid: null,
+    ...overrides,
+  };
+};
+
 const server = setupServer(
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId', () => HttpResponse.json(
     { message: 'Not Found' },
@@ -108,6 +156,13 @@ const server = setupServer(
 );
 
 const preconditions = {
+  canLoadComponents(components: MockComponent[], space = DEFAULT_SPACE, basePath?: string) {
+    const componentsDir = resolveCommandPath(directories.components, space, basePath);
+    vol.fromJSON(Object.fromEntries(components.map(c => [
+      path.join(componentsDir, `${c.name}.json`),
+      JSON.stringify(c),
+    ])));
+  },
   canLoadAssets(assets: MockAsset[], {
     space = DEFAULT_SPACE,
     basePath,
@@ -370,6 +425,47 @@ const preconditions = {
       server.use(http.get(asset.filename, () => HttpResponse.text(content)));
     }
   },
+  canFetchRemoteStoryPages(storyPages: MockStory[][]) {
+    server.use(
+      http.get(
+        'https://mapi.storyblok.com/v1/spaces/:spaceId/stories',
+        ({ request }) => {
+          const url = new URL(request.url);
+          const page = Number(url.searchParams.get('page') ?? 1);
+          const perPage = storyPages.length > 1 ? storyPages[0].length : 100;
+          const total = storyPages.flat().length;
+          const stories = storyPages[page - 1] || [];
+          return HttpResponse.json(
+            { stories },
+            {
+              headers: {
+                'Total': String(total),
+                'Per-Page': String(perPage),
+              },
+            },
+          );
+        },
+      ),
+    );
+  },
+  canFetchStories(stories: MockStory[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    for (const story of stories) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories/${story.id}`, () => HttpResponse.json({
+          story,
+        })),
+      );
+    }
+  },
+  canUpdateStories(stories: MockStory[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    for (const story of stories) {
+      server.use(
+        http.put(`https://mapi.storyblok.com/v1/spaces/${space}/stories/${story.id}`, () => HttpResponse.json({
+          story,
+        })),
+      );
+    }
+  },
 };
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
@@ -474,6 +570,54 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should update stories referencing the old asset filename when it changes after upload', async () => {
+    const targetSpace = '54321';
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { space: targetSpace });
+    const pageComponent = makeMockComponent({
+      name: 'page',
+      schema: {
+        asset: {
+          type: 'asset',
+        },
+      },
+    });
+    preconditions.canLoadComponents([pageComponent]);
+    const story = makeMockStory({
+      content: {
+        _uid: randomUUID(),
+        component: 'page',
+        asset: {
+          id: localAsset.id,
+          filename: localAsset.filename,
+        },
+      },
+    });
+    preconditions.canFetchRemoteStoryPages([[story]]);
+    preconditions.canFetchStories([story], { space: targetSpace });
+    preconditions.canUpdateStories([story], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace, '--update-stories']);
+
+    expect(storyActions.updateStory).toHaveBeenCalledWith(
+      targetSpace,
+      story.id,
+      expect.objectContaining({
+        story: expect.objectContaining({
+          content: expect.objectContaining({
+            asset: expect.objectContaining({
+              id: remoteAsset.id,
+              filename: remoteAsset.filename,
+            }),
+          }),
+        }),
+      }),
+    );
+    // TODO add reporter and UI tets
   });
 
   it('should read assets and asset folders from a custom path', async () => {

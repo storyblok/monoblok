@@ -9,7 +9,7 @@ import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesyst
 import { toError } from '../../utils/error/error';
 import { managementApiRegions, type RegionCode } from '../../constants';
 import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
@@ -277,13 +277,12 @@ export const readLocalAssetFoldersStream = ({
 }: ReadLocalAssetFolderOptions) => {
   const iterator = async function* readFolders() {
     try {
-      const folderDir = join(directoryPath, 'folders');
-      const files = await readdir(folderDir);
+      const files = await readdir(directoryPath);
       const jsonFiles = files.filter(file => file.endsWith('.json'));
       setTotalFolders?.(jsonFiles.length);
       for (const file of jsonFiles) {
         try {
-          const content = await readFile(join(folderDir, file), 'utf8');
+          const content = await readFile(join(directoryPath, file), 'utf8');
           const folder = JSON.parse(content) as AssetFolder;
           yield folder;
         }
@@ -300,7 +299,7 @@ export const readLocalAssetFoldersStream = ({
 };
 
 export interface CreateAssetFolderTransport {
-  create: (folder: AssetFolder) => Promise<AssetFolder>;
+  create: (folder: AssetFolderCreate) => Promise<AssetFolder>;
 }
 
 export const makeCreateAssetFolderAPITransport = ({ spaceId, token, region }: {
@@ -342,44 +341,46 @@ export const makeUpdateAssetFolderAPITransport = ({ spaceId, token, region }: {
   },
 });
 
-const getRemoteAssetFolder = async (folderId: number, { spaceId, token, region }: {
+export interface GetAssetFolderTransport {
+  get: (folderId: number) => Promise<AssetFolder | undefined>;
+}
+
+export const makeGetAssetFolderAPITransport = ({ spaceId, token, region }: {
   spaceId: string;
   token: string;
   region: RegionCode;
-}) => {
-  const apiHost = managementApiRegions[region];
-  const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folderId}`);
-  const response = await fetch(url, {
-    headers: {
-      Authorization: token,
-    },
-  });
-  if (!response.ok && response.status !== 404) {
-    handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
-  }
-  const data = await response.json() as { asset_folder: AssetFolder } | undefined;
+}): GetAssetFolderTransport => ({
+  get: async (folderId) => {
+    const apiHost = managementApiRegions[region];
+    const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folderId}`);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: token,
+      },
+    });
+    if (!response.ok && response.status !== 404) {
+      handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
+    }
+    const data = await response.json() as { asset_folder: AssetFolder } | undefined;
 
-  return data?.asset_folder;
-};
+    return data?.asset_folder;
+  },
+});
 
 export const upsertAssetFolderStream = ({
+  getTransport,
   createTransport,
   updateTransport,
   manifestTransport,
-  spaceId,
-  token,
-  region,
   maps,
   onIncrement,
   onFolderSuccess,
   onFolderError,
 }: {
+  getTransport: GetAssetFolderTransport;
   createTransport: CreateAssetFolderTransport;
   updateTransport: UpdateAssetFolderTransport;
   manifestTransport: AppendAssetFolderManifestTransport;
-  spaceId: string;
-  token: string;
-  region: RegionCode;
   maps: { assetFolders: Map<number, number> };
   onIncrement?: () => void;
   onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => void;
@@ -398,7 +399,7 @@ export const upsertAssetFolderStream = ({
         };
         // If a remote folder already exists, we must not create a new folder.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        const existingRemoteFolder = await getRemoteAssetFolder(remoteFolderId, { spaceId, token, region });
+        const existingRemoteFolder = await getTransport.get(remoteFolderId);
         const newRemoteFolder = existingRemoteFolder
           ? await updateTransport.update({ ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined })
           : await createTransport.create(upsertFolder);
@@ -588,27 +589,31 @@ export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { man
   },
 });
 
-const getRemoteAsset = async (assetId: number, { spaceId }: {
-  spaceId: string;
-}) => {
-  const { data, response } = await mapiClient().assets.get({
-    path: {
-      space_id: spaceId,
-      asset_id: assetId,
-    },
-  });
+export interface GetAssetTransport {
+  get: (assetId: number) => Promise<Asset | undefined>;
+}
 
-  if (!response.ok && response.status !== 404) {
-    handleAPIError('pull_asset', new FetchError(response.statusText, response));
-  }
+export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport => ({
+  get: async (assetId: number) => {
+    const { data, response } = await mapiClient().assets.get({
+      path: {
+        space_id: spaceId,
+        asset_id: assetId,
+      },
+    });
 
-  // @ts-expect-error Our types are wrong
-  if (data?.deleted_at) {
-    return undefined;
-  }
+    if (!response.ok && response.status !== 404) {
+      handleAPIError('pull_asset', new FetchError(response.statusText, response));
+    }
 
-  return data as Asset;
-};
+    // @ts-expect-error Our types are wrong
+    if (data?.deleted_at) {
+      return undefined;
+    }
+
+    return data as Asset;
+  },
+});
 
 const cleanupAssets = async ({ assetFilePath, metadataFilePath }: { assetFilePath: string; metadataFilePath?: string }) => {
   await unlink(assetFilePath);
@@ -628,21 +633,21 @@ const hasShortFilename = (a: unknown): a is { short_filename: string } => {
 };
 
 export const upsertAssetStream = ({
+  getTransport,
   createTransport,
   updateTransport,
   manifestTransport,
   maps,
-  spaceId,
   cleanup,
   onIncrement,
   onAssetSuccess,
   onAssetError,
 }: {
+  getTransport: GetAssetTransport;
   createTransport: CreateAssetTransport;
   updateTransport: UpdateAssetTransport;
   manifestTransport: AppendAssetManifestTransport;
   maps: { assets: Map<number, number>; assetFolders: Map<number, number> };
-  spaceId: string;
   cleanup: boolean;
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
@@ -667,7 +672,7 @@ export const upsertAssetStream = ({
         // This can happen when the user resumes a failed push or runs push multiple times.
         const canUpdate = hasId(upsertAsset)
           && hasFilename(upsertAsset)
-          && Boolean(await getRemoteAsset(upsertAsset.id, { spaceId }));
+          && Boolean(await getTransport.get(upsertAsset.id));
         const canCreate = hasShortFilename(upsertAsset);
         const newRemoteAsset = canUpdate
           ? await updateTransport.update(upsertAsset, fileBuffer)

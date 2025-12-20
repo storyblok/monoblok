@@ -34,10 +34,16 @@ interface MockStory {
   id: number;
 }
 
+let id = 0;
+const getID = () => {
+  id += 1;
+  return id;
+};
+
 const makeMockStory = (): MockStory => ({
   slug: 'test-slug',
   uuid: randomUUID(),
-  id: Math.floor(Math.random() * 1000),
+  id: getID(),
 });
 
 const server = setupServer();

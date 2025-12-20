@@ -2,6 +2,7 @@ import type { Component } from '@storyblok/management-api-client/resources/compo
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 export interface RefMaps {
+  assets: Map<unknown, string | number>;
   stories: Map<unknown, string | number>;
 }
 
@@ -178,6 +179,26 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, 
 };
 
 /**
+ * Asset field reference mapper.
+ */
+const assetFieldRefMapper: RefMapper = (data, { maps }) => ({
+  ...data,
+  id: maps.assets.get(data.id),
+  filename: maps.assets.get(data.filename),
+});
+
+/**
+ * Multi asset field reference mapper.
+ */
+const multiassetFieldRefMapper: RefMapper = (data, options) => {
+  if (!Array.isArray(data)) {
+    throw new TypeError('Invalid data!');
+  }
+
+  return data.map((d: any) => assetFieldRefMapper(d, options)) as any;
+};
+
+/**
  * Options field reference mapper.
  */
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
@@ -189,7 +210,9 @@ const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
 };
 
 const fieldRefMappers = {
+  asset: assetFieldRefMapper,
   bloks: bloksFieldRefMapper,
+  multiasset: multiassetFieldRefMapper,
   multilink: multilinkFieldRefMapper,
   options: optionsFieldRefMapper,
   richtext: richtextFieldRefMapper,

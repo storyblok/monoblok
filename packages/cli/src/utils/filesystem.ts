@@ -22,7 +22,7 @@ export const getStoryblokGlobalPath = () => {
   return join(homeDirectory, '.storyblok');
 };
 
-export const saveToFile = async (filePath: string, data: string, options?: FileOptions) => {
+export const saveToFile = async (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
   // Get the directory path
   const resolvedPath = parse(filePath).dir;
 
@@ -44,7 +44,7 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   }
 };
 
-export const saveToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+export const saveToFileSync = (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
   const resolvedPath = parse(filePath).dir;
 
   // Only attempt to create a directory if there's a directory part

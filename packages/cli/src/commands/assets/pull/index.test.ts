@@ -6,8 +6,8 @@ import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
 import '../index';
 import { assetsCommand } from '../command';
-import type { AssetsQueryParams } from '../actions';
 import { sanitizeFilename } from '../../../utils/filesystem';
+import type { AssetsQueryParams } from '../types';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');

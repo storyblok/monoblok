@@ -1244,5 +1244,68 @@ describe('createCommand', () => {
       expect(createSpace).not.toHaveBeenCalled();
       expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'us');
     });
+
+    describe('session region fallback behavior', () => {
+      it('should use US session region as fallback when no --region provided with --token', async () => {
+        // Mock session to return US region
+        const { session } = await import('../../session');
+        const mockSession = session();
+        mockSession.state.region = 'us';
+
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token']);
+
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us');
+
+        // Reset to EU for other tests
+        mockSession.state.region = 'eu';
+      });
+
+      it('should use CA session region as fallback when no --region provided with --skip-space', async () => {
+        // Mock session to return CA region
+        const { session } = await import('../../session');
+        const mockSession = session();
+        mockSession.state.region = 'ca';
+
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
+
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
+
+        // Reset to EU for other tests
+        mockSession.state.region = 'eu';
+      });
+
+      it('should prioritize user-provided --region over session region', async () => {
+        // Mock session to return US region
+        const { session } = await import('../../session');
+        const mockSession = session();
+        mockSession.state.region = 'us';
+
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+        ]);
+
+        // User provides 'ap' region, should use that instead of 'us' session region
+        await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token', '--region', 'ap']);
+
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'ap');
+
+        // Reset to EU for other tests
+        mockSession.state.region = 'eu';
+      });
+    });
   });
 });

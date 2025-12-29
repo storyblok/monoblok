@@ -163,14 +163,14 @@ export const createCommand = program
       let userData: User;
       let whereToCreateSpace = 'personal';
       if (token) {
-        await handleEnvFileCreation(resolvedPath, token, options.region);
+        await handleEnvFileCreation(resolvedPath, token, options.region || region);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
       if (options.skipSpace) {
-        // Only create .env file if region is provided (useful for configuring SDK)
-        if (options.region) {
-          await handleEnvFileCreation(resolvedPath, undefined, options.region);
+        // Only create .env file if region is available (useful for configuring SDK)
+        if (options.region || region) {
+          await handleEnvFileCreation(resolvedPath, undefined, options.region || region);
         }
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;

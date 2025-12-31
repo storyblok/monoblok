@@ -1,10 +1,10 @@
-import { handleError, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands, regions } from '../../constants';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
 import { input, select } from '@inquirer/prompts';
-import { createEnvFile, fetchBlueprintRepositories, generateProject, generateSpaceUrl, openSpaceInBrowser } from './actions';
+import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate } from '../spaces';
@@ -22,20 +22,6 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
   konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
 }
 
-// Helper to create .env file and handle errors
-async function handleEnvFileCreation(resolvedPath: string, token: string) {
-  try {
-    await createEnvFile(resolvedPath, token);
-    konsola.ok(`Created .env file with Storyblok access token`, true);
-    return true;
-  }
-  catch (error) {
-    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
-    konsola.info(`You can manually add this token to your .env file: ${token}`);
-    return false;
-  }
-}
-
 const program = getProgram(); // Get the shared singleton instance
 
 // Create root command
@@ -47,6 +33,10 @@ export const createCommand = program
   .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
   .option('--skip-space', 'skip space creation')
   .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
+  .option(
+    '-r, --region <region>',
+    `The region to apply to the generated project template (does not affect space creation).`,
+  )
   .action(async (projectPath: string, options: CreateOptions) => {
     konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
@@ -54,6 +44,10 @@ export const createCommand = program
     // Command options - handle backward compatibility
     const { template, blueprint, token } = options;
 
+    if (options.region && !isRegion(options.region)) {
+      handleError(new CommandError(`The provided region: ${options.region} is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`));
+      return;
+    }
     // Handle deprecated blueprint option
     let selectedTemplate = template;
     if (blueprint && !template) {
@@ -72,6 +66,13 @@ export const createCommand = program
     }
 
     const { password, region } = state;
+
+    // Validate that user-provided region matches their account region when creating a space
+    // This check happens early before any project scaffolding
+    if (options.region && options.region !== region && !options.skipSpace && !token) {
+      handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
+      return;
+    }
 
     mapiClient({
       token: {
@@ -162,11 +163,15 @@ export const createCommand = program
       let userData: User;
       let whereToCreateSpace = 'personal';
       if (token) {
-        await handleEnvFileCreation(resolvedPath, token);
+        await handleEnvFileCreation(resolvedPath, token, options.region || region);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
       if (options.skipSpace) {
+        // Only create .env file if region is available (useful for configuring SDK)
+        if (options.region || region) {
+          await handleEnvFileCreation(resolvedPath, undefined, options.region || region);
+        }
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
@@ -231,7 +236,7 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region);
         }
 
         // Open the space in the browser

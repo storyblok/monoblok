@@ -1,8 +1,11 @@
+import type { RegionCode } from '../../constants';
+
 export interface CreateOptions {
   template?: string;
   blueprint?: string; // Deprecated, use template instead
   skipSpace?: boolean;
   token?: string; // Access token for Storyblok
+  region?: RegionCode;
 }
 
 export const templates = {
@@ -39,7 +42,7 @@ export const templates = {
   NEXT: {
     name: 'Next',
     value: 'next',
-    template: 'https://github.com/storyblok/blueprint-core-next',
+    template: 'https://github.com/storyblok/blueprint-core-nextjs',
     location: 'https://localhost:3000/',
   },
   ELEVENTY: {

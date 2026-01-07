@@ -104,13 +104,13 @@ assetsCommand
       /**
        * Upsert Asset Folders
        */
-      const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: space, token: password, region });
+      const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: space });
       const assetFolderCreateTransport = options.dryRun
         ? { create: async (folder: AssetFolderCreate) => folder as AssetFolder }
-        : makeCreateAssetFolderAPITransport({ spaceId: space, token: password, region });
+        : makeCreateAssetFolderAPITransport({ spaceId: space });
       const assetFolderUpdateTransport = options.dryRun
         ? { update: async (folder: AssetFolderUpdate) => folder }
-        : makeUpdateAssetFolderAPITransport({ spaceId: space, token: password, region });
+        : makeUpdateAssetFolderAPITransport({ spaceId: space });
       const assetFolderManifestTransport = options.dryRun
         ? { append: () => Promise.resolve() }
         : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile });

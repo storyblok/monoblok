@@ -16,8 +16,8 @@ export interface AssetFolder {
   id: number;
   uuid: string;
   name: string;
-  parent_id: number | null;
-  parent_uuid: string | null;
+  parent_id?: number;
+  parent_uuid?: string;
 }
 
 export interface AssetFolderCreate {

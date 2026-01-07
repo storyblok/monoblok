@@ -7,7 +7,6 @@ import { Sema } from 'async-sema';
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
-import { managementApiRegions, type RegionCode } from '../../constants';
 import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
@@ -61,9 +60,6 @@ export const fetchAssetsStream = ({
             page,
           },
         });
-        if (!result) {
-          break;
-        }
 
         const { headers, assets } = result;
         const total = Number(headers.get('Total'));
@@ -185,25 +181,18 @@ export const writeAssetStream = ({
 
 export const fetchAssetFoldersStream = ({
   spaceId,
-  token,
-  region,
   setTotalFolders,
   onSuccess,
   onError,
 }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
   setTotalFolders?: (total: number) => void;
   onSuccess?: (folders: AssetFolder[]) => void;
   onError?: (error: Error) => void;
 }) => {
   const listGenerator = async function* folderListIterator() {
     try {
-      const result = await fetchAssetFolders({ spaceId, token, region });
-      if (!result) {
-        return;
-      }
+      const result = await fetchAssetFolders({ spaceId });
       const { asset_folders } = result;
       const total = asset_folders.length;
       setTotalFolders?.(total);
@@ -302,66 +291,45 @@ export interface CreateAssetFolderTransport {
   create: (folder: AssetFolderCreate) => Promise<AssetFolder>;
 }
 
-export const makeCreateAssetFolderAPITransport = ({ spaceId, token, region }: {
+export const makeCreateAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }): CreateAssetFolderTransport => ({
-  create: async (folder) => {
-    const remoteFolder = await createAssetFolder({
-      name: folder.name,
-      parent_id: folder.parent_id ?? undefined,
-    }, {
-      spaceId,
-      token,
-      region,
-    });
-    if (!remoteFolder) {
-      throw new Error('Failed to create asset folder');
-    }
-    return remoteFolder;
-  },
+  create: folder => createAssetFolder({
+    name: folder.name,
+    parent_id: folder.parent_id ?? undefined,
+  }, {
+    spaceId,
+  }),
 });
 
 export interface UpdateAssetFolderTransport {
   update: (folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
 }
 
-export const makeUpdateAssetFolderAPITransport = ({ spaceId, token, region }: {
+export const makeUpdateAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }): UpdateAssetFolderTransport => ({
-  update: async (folder) => {
-    const remoteFolder = await updateAssetFolder(folder, { spaceId, token, region });
-    if (!remoteFolder) {
-      throw new Error('Failed to update asset folder');
-    }
-    return remoteFolder;
-  },
+  update: folder => updateAssetFolder(folder, { spaceId }),
 });
 
 export interface GetAssetFolderTransport {
   get: (folderId: number) => Promise<AssetFolder | undefined>;
 }
 
-export const makeGetAssetFolderAPITransport = ({ spaceId, token, region }: {
+export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }): GetAssetFolderTransport => ({
   get: async (folderId) => {
-    const apiHost = managementApiRegions[region];
-    const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folderId}`);
-    const response = await fetch(url, {
-      headers: {
-        Authorization: token,
+    const { data, response } = await mapiClient().assetFolders.get({
+      path: {
+        asset_folder_id: folderId,
+        space_id: spaceId,
       },
     });
+
     if (!response.ok && response.status !== 404) {
       handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
     }
-    const data = await response.json() as { asset_folder: AssetFolder } | undefined;
 
     return data?.asset_folder;
   },
@@ -534,13 +502,7 @@ export interface CreateAssetTransport {
 }
 
 export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport => ({
-  create: async (asset, fileBuffer) => {
-    const remoteAsset = await createAsset(asset, fileBuffer, { spaceId });
-    if (!remoteAsset) {
-      throw new Error('Failed to create asset');
-    }
-    return remoteAsset;
-  },
+  create: (asset, fileBuffer) => createAsset(asset, fileBuffer, { spaceId }),
 });
 
 export interface UpdateAssetTransport {
@@ -548,13 +510,7 @@ export interface UpdateAssetTransport {
 }
 
 export const makeUpdateAssetAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetTransport => ({
-  update: async (asset, fileBuffer) => {
-    const updatedAsset = await updateAsset(asset, fileBuffer, { spaceId });
-    if (!updatedAsset) {
-      throw new Error('Failed to update asset');
-    }
-    return updatedAsset;
-  },
+  update: (asset, fileBuffer) => updateAsset(asset, fileBuffer, { spaceId }),
 });
 
 export interface AppendAssetManifestTransport {

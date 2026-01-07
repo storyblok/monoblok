@@ -1,11 +1,9 @@
 import { Buffer } from 'node:buffer';
 import { basename } from 'node:path';
-import type { RegionCode } from '../../constants';
-import { managementApiRegions } from '../../constants';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetCreate, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import type { SignedResponseObject } from '@storyblok/management-api-client/resources/assets';
 import { createHash } from 'node:crypto';
 
@@ -39,6 +37,7 @@ export const fetchAssets = async ({ spaceId, params }: {
   }
   catch (maybeError) {
     handleAPIError('pull_assets', toError(maybeError));
+    throw maybeError;
   }
 };
 
@@ -50,94 +49,78 @@ export const fetchAssetFile = async (filename: Asset['filename']) => {
   return response.arrayBuffer();
 };
 
-// TODO implement in mapi client
-export const fetchAssetFolders = async ({ spaceId, token, region }: {
+export const fetchAssetFolders = async ({ spaceId }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }) => {
   try {
-    const apiHost = managementApiRegions[region];
-    const url = new URL(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders`);
-    const response = await fetch(url, {
-      headers: {
-        Authorization: token,
+    const client = mapiClient();
+    const { data, response } = await client.assetFolders.list({
+      path: {
+        space_id: spaceId,
       },
+      throwOnError: true,
     });
-    if (!response.ok) {
-      handleAPIError('pull_asset_folders', new Error(response.statusText));
-    }
-    const data = await response.json() as { asset_folders: AssetFolder[] };
+
     return {
-      asset_folders: data.asset_folders,
+      asset_folders: data.asset_folders || [],
       headers: response.headers,
     };
   }
   catch (maybeError) {
     handleAPIError('pull_asset_folders', toError(maybeError));
+    throw maybeError;
   }
 };
 
-// TODO implement in mapi client
 export const createAssetFolder = async (folder: AssetFolderCreate, {
   spaceId,
-  token,
-  region,
 }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }) => {
   try {
-    const apiHost = managementApiRegions[region];
-    const response = await fetch(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
+    const client = mapiClient();
+    const { data } = await client.assetFolders.create({
+      path: {
+        space_id: spaceId,
       },
-      body: JSON.stringify({ asset_folder: folder }),
+      body: { asset_folder: folder },
+      throwOnError: true,
     });
-    if (!response.ok) {
+
+    const { asset_folder } = data;
+    if (!asset_folder) {
       throw new Error('Failed to create asset folder');
     }
-    const data = await response.json() as { asset_folder: AssetFolder };
-    return data.asset_folder;
+
+    return asset_folder;
   }
-  catch (error) {
-    handleAPIError('push_asset_folder', error as Error);
+  catch (maybeError) {
+    handleAPIError('push_asset_folder', toError(maybeError));
+    throw maybeError;
   }
 };
 
-// TODO implement in mapi client
 export const updateAssetFolder = async (folder: AssetFolderUpdate, {
   spaceId,
-  token,
-  region,
 }: {
   spaceId: string;
-  token: string;
-  region: RegionCode;
 }) => {
   try {
-    const apiHost = managementApiRegions[region];
-    const response = await fetch(`https://${apiHost}/v1/spaces/${spaceId}/asset_folders/${folder.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
+    const client = mapiClient();
+    await client.assetFolders.update({
+      path: {
+        asset_folder_id: folder.id,
+        space_id: spaceId,
       },
-      body: JSON.stringify({ asset_folder: folder }),
+      body: { asset_folder: folder },
+      throwOnError: true,
     });
-    if (!response.ok) {
-      throw new Error('Failed to update asset folder');
-    }
 
-    // The asset folders endpoint does not return the updated asset folder.
     return folder;
   }
-  catch (error) {
-    handleAPIError('push_asset_folder', error as Error);
+  catch (maybeError) {
+    handleAPIError('push_asset_folder', toError(maybeError));
+    throw maybeError;
   }
 };
 
@@ -168,6 +151,7 @@ const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
   }
   catch (maybeError) {
     handleAPIError('push_asset_sign', toError(maybeError));
+    throw maybeError;
   }
 };
 
@@ -224,6 +208,7 @@ const finishAssetUpload = async (assetId: number, {
   }
   catch (maybeError) {
     handleAPIError('push_asset_finish', toError(maybeError));
+    throw maybeError;
   }
 };
 
@@ -231,15 +216,12 @@ const uploadAsset = async (asset: AssetUpload, fileBuffer: ArrayBuffer, { spaceI
   const signed = await requestAssetUpload(asset, {
     spaceId,
   });
-  if (!signed) {
-    throw new Error('Requesting an asset upload failed!');
-  }
 
   const uploadResponse = await uploadAssetToS3(asset, fileBuffer, {
     signedUpload: signed,
   });
   if (!uploadResponse?.ok) {
-    return;
+    throw new Error('Error uploading asset to S3!');
   }
 
   return finishAssetUpload(Number(signed.id), {
@@ -266,9 +248,6 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
         asset_folder_id: asset.asset_folder_id,
         short_filename: asset.short_filename || basename(asset.filename),
       }, fileBuffer, { spaceId });
-      if (!uploadedAsset) {
-        throw new Error('Uploading the asset failed!');
-      }
 
       assetWithNewFilename.filename = uploadedAsset.filename;
       assetWithNewFilename.short_filename = uploadedAsset.short_filename;
@@ -291,6 +270,7 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
   }
   catch (maybeError) {
     handleAPIError('push_asset_update', toError(maybeError));
+    throw maybeError;
   }
 };
 
@@ -303,10 +283,6 @@ export const createAsset = async (
     asset_folder_id: asset.asset_folder_id,
     short_filename: asset.short_filename,
   }, fileBuffer, { spaceId });
-
-  if (!createdAsset) {
-    throw new Error('Creating the asset failed!');
-  }
 
   if (asset.meta_data && Object.values(asset.meta_data).length > 0) {
     const updatedAsset = await updateAsset({

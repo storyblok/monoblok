@@ -78,8 +78,6 @@ assetsCommand
       await pipeline(
         fetchAssetFoldersStream({
           spaceId: space,
-          token: password,
-          region,
           setTotalFolders: (total) => {
             summary.folderResults.total = total;
             folderProgress.setTotal(total);

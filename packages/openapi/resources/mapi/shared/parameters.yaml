@@ -57,3 +57,13 @@ asset_id:
       - type: integer
       - type: string
     description: The ID of the asset (can be integer or string)
+
+asset_folder_id:
+  name: asset_folder_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+      - type: string
+    description: The ID of the asset folder (can be integer or string)

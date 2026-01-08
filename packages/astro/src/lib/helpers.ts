@@ -47,13 +47,13 @@ export function useStoryblokApi(): StoryblokClient {
  */
 interface Payload<T = unknown> {
   story: ISbStoryData | null;
-  extraData?: T;
+  serverData?: T;
 }
 
 export async function getLiveStory<T = unknown>({ locals }: { locals: App.Locals }): Promise<Payload<T> | null> {
   if (locals && locals._storyblok_preview_data) {
-    const { story, extraData } = locals._storyblok_preview_data;
-    return { story: story || null, extraData: extraData as T | undefined };
+    const { story, serverData } = locals._storyblok_preview_data;
+    return { story: story || null, serverData: serverData as T | undefined };
   }
   return null;
 }

@@ -2,6 +2,7 @@ import storyblokIntegration from './lib/storyblok-integration';
 
 export { getLiveStory, useStoryblokApi } from './lib/helpers';
 
+export { sanitizeJSON } from './lib/sanitizeJSON';
 export type { IntegrationOptions } from './lib/storyblok-integration';
 export { handleStoryblokMessage } from './live-preview/handleStoryblokMessage';
 export * from './types';

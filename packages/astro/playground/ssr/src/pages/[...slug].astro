@@ -5,14 +5,14 @@ import BaseLayout from '@shared/components/BaseLayout.astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 import StoryblokServerData from '@storyblok/astro/StoryblokServerData.astro';
 import LivePreviewSpinner from '@shared/components/LivePreviewSpinner.astro';
-import { getUsers } from 'src/lib/getUsers';
+import { getUsers, type User } from 'src/lib/getUsers';
 
-interface ExtraData {
-  users?: Array<unknown>;
+interface ServerData {
+  users?: User[];
 }
 
 const { slug } = Astro.params;
-const liveStory = await getLiveStory<ExtraData>({ locals: Astro.locals });
+const liveStory = await getLiveStory<ServerData>({ locals: Astro.locals });
 
 // Use live preview data or fetch fresh data
 const story =
@@ -24,7 +24,7 @@ const story =
     })
   ).data.story;
 
-const users = liveStory?.extraData?.users ?? (await getUsers());
+const users = liveStory?.serverData?.users ?? (await getUsers());
 ---
 
 <BaseLayout>

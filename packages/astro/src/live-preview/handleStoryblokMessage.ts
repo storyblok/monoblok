@@ -18,8 +18,18 @@ export async function handleStoryblokMessage(event: {
     const debouncedGetNewHTMLBody = async () => {
       dispatchStoryblokEvent('storyblok-live-preview-updating', { story });
 
-      const newBody = await getNewHTMLBody(story);
       const currentBody = document.body;
+      let extraData = null;
+      const serverData = currentBody.querySelector('#__STORYBLOK_SERVERDATA__');
+      if (serverData) {
+        try {
+          extraData = JSON.parse(serverData.textContent || '{}');
+        }
+        catch (e) {
+          console.error('Failed to parse server-data:', e);
+        }
+      }
+      const newBody = await getNewHTMLBody(story, extraData);
       if (newBody.outerHTML === currentBody.outerHTML) {
         return;
       }
@@ -64,13 +74,16 @@ function updateDOMWithNewBody(
   }
 }
 
-async function getNewHTMLBody(story: ISbStoryData) {
+async function getNewHTMLBody(story: ISbStoryData, extraData?: unknown) {
   // TODO How to handel (50x, 405, etc.)
   const result = await fetch(location.href, {
     method: 'POST',
     body: JSON.stringify({
-      ...story,
-      is_storyblok_preview: true,
+      story: {
+        ...story,
+        is_storyblok_preview: true,
+      },
+      ...(extraData && typeof extraData === 'object' ? { extraData } : {}),
     }),
     headers: {
       'Content-Type': 'application/json',

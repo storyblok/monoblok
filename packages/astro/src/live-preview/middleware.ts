@@ -12,7 +12,7 @@ export const onRequest = defineMiddleware(async ({ locals, request }, next) => {
       try {
         // Create a copy of the request
         const requestBody = await request.clone().json();
-        if (requestBody && requestBody.is_storyblok_preview) {
+        if (requestBody?.story?.is_storyblok_preview) {
           locals._storyblok_preview_data = requestBody;
         }
       }

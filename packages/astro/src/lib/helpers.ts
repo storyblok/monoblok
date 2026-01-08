@@ -3,7 +3,6 @@ import type {
   StoryblokBridgeConfigV2,
   StoryblokClient,
 } from '../types';
-import type { AstroGlobal } from 'astro';
 
 /**
  * Returns the Storyblok API client instance.
@@ -46,14 +45,17 @@ export function useStoryblokApi(): StoryblokClient {
  * }
  * ```
  */
-export async function getLiveStory(
-  Astro: Readonly<AstroGlobal>,
-): Promise<ISbStoryData | null> {
-  let story: ISbStoryData | null = null;
-  if (Astro && Astro.locals._storyblok_preview_data) {
-    story = Astro.locals._storyblok_preview_data;
+interface Payload<T = unknown> {
+  story: ISbStoryData | null;
+  extraData?: T;
+}
+
+export async function getLiveStory<T = unknown>({ locals }: { locals: App.Locals }): Promise<Payload<T> | null> {
+  if (locals && locals._storyblok_preview_data) {
+    const { story, extraData } = locals._storyblok_preview_data;
+    return { story: story || null, extraData: extraData as T | undefined };
   }
-  return story;
+  return null;
 }
 
 export function initStoryblokBridge(

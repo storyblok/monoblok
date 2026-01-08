@@ -10,7 +10,10 @@ declare namespace App {
   import type { ISbStoryData } from '@storyblok/js';
 
   interface Locals {
-    _storyblok_preview_data?: ISbStoryData;
+    _storyblok_preview_data?: {
+      story: ISbStoryData;
+      extraData?: unknown;
+    };
   }
 }
 

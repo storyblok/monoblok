@@ -68,7 +68,7 @@ export const upsertAssetFoldersPipeline = async ({
     }),
   );
 
-  return [['folderResults', summary]];
+  return [['assetFolderResults', summary]];
 };
 
 export const upsertAssetsPipeline = async ({
@@ -168,6 +168,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   space,
   transports,
   ui,
+  verbose,
 }: {
   logger: Logger;
   maps: { assets: Map<number, number> };
@@ -177,6 +178,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     write: WriteStoryTransport;
   };
   ui: UI;
+  verbose: boolean;
 }): Promise<Summaries> => {
   // TODO check how this behaves if it is rendered conditionally only
   const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(PROGRESS_BAR_PADDING) });
@@ -187,8 +189,8 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   const summaries = {
     fetchStoryPages: { total: 0, succeeded: 0, failed: 0 },
     fetchStories: { total: 0, succeeded: 0, failed: 0 },
-    processResults: { total: 0, succeeded: 0, failed: 0 },
-    updateResults: { total: 0, succeeded: 0, failed: 0 },
+    storyProcessResults: { total: 0, succeeded: 0, failed: 0 },
+    storyUpdateResults: { total: 0, succeeded: 0, failed: 0 },
   };
 
   if (Object.keys(schemas).length === 0) {
@@ -207,10 +209,9 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       },
       setTotalStories: (total) => {
         summaries.fetchStories.total = total;
-        // TODO set correct totals according to summaries
-        // summaries.save.total = total;
+        summaries.storyProcessResults.total = total;
+        summaries.storyUpdateResults.total = total;
         fetchStoriesProgress.setTotal(total);
-        // saveProgress.setTotal(total);
       },
       onIncrement: () => fetchStoryPagesProgress.increment(),
       onPageSuccess: (page, total) => {
@@ -218,10 +219,8 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         summaries.fetchStoryPages.succeeded += 1;
       },
       onPageError: (error, page, total) => {
-        // TODO handleError()
-        logger.error(`Error fetching page ${page} of ${total}`);
         summaries.fetchStoryPages.failed += 1;
-        handleError(error);
+        handleError(error, verbose, { page, total });
       },
     }),
     fetchStoryStream({
@@ -235,11 +234,11 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       },
       onStoryError: (error, story) => {
         summaries.fetchStories.failed += 1;
-        // TODO
-        // summaries.save.total -= 1;
-        // saveProgress.setTotal(summaries.save.total);
-        // logger.error('Error fetching story', { storyId: story.id });
-        handleError(error);
+        summaries.storyProcessResults.total -= 1;
+        summaries.storyUpdateResults.total -= 1;
+        processProgress.setTotal(summaries.storyProcessResults.total);
+        updateProgress.setTotal(summaries.storyProcessResults.total);
+        handleError(error, verbose, { storyId: story.id });
       },
     }),
     // Map all references to numeric ids and uuids.
@@ -253,15 +252,13 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         // TODO
         // warnAboutMissingSchemas(missingSchemas, localStory);
         logger.info('Processed story', { storyId: localStory.uuid });
-        summaries.processResults.succeeded += 1;
+        summaries.storyProcessResults.succeeded += 1;
       },
       onStoryError(error, localStory) {
-        summaries.processResults.failed += 1;
-        summaries.updateResults.total -= 1;
-        const message = 'Failed to map story references';
-        ui.error(message, error);
-        logger.error(message, { error, storyId: localStory.uuid });
-        updateProgress.setTotal(summaries.updateResults.total);
+        summaries.storyProcessResults.failed += 1;
+        summaries.storyUpdateResults.total -= 1;
+        updateProgress.setTotal(summaries.storyUpdateResults.total);
+        handleError(error, verbose, { storyId: localStory.id });
       },
     }),
     // Update remote stories with correct references.
@@ -272,13 +269,11 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       },
       onStorySuccess(localStory) {
         logger.info('Updated story', { storyId: localStory.uuid });
-        summaries.updateResults.succeeded += 1;
+        summaries.storyUpdateResults.succeeded += 1;
       },
       onStoryError(error, localStory) {
-        summaries.updateResults.failed += 1;
-        const message = 'Failed to update story';
-        ui.error(message, error);
-        logger.error(message, { error, storyId: localStory.uuid }); // TODO handle error
+        summaries.storyUpdateResults.failed += 1;
+        handleError(error, verbose, { storyId: localStory.id });
       },
     }),
   );

@@ -547,7 +547,7 @@ describe('assets push command', () => {
         config: expect.any(Object),
       },
       summary: {
-        folderResults: {
+        assetFolderResults: {
           total: 1,
           succeeded: 1,
           failed: 0,
@@ -564,7 +564,7 @@ describe('assets push command', () => {
     expect(logFile).toMatch(/Created asset folder/);
     expect(logFile).toMatch(/Uploaded asset/);
     expect(logFile).toContain('Pushing assets finished');
-    expect(logFile).toContain('"folderResults":{"total":1,"succeeded":1,"failed":0}');
+    expect(logFile).toContain('"assetFolderResults":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
     // UI
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
@@ -617,7 +617,49 @@ describe('assets push command', () => {
         }),
       }),
     );
-    // TODO add reporter and UI tets
+    // Report
+    const report = getReport(targetSpace);
+    expect(report).toEqual({
+      status: 'SUCCESS',
+      meta: expect.any(Object),
+      summary: {
+        assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, failed: 0 },
+        fetchStoryPages: { total: 1, succeeded: 1, failed: 0 },
+        fetchStories: { total: 1, succeeded: 1, failed: 0 },
+        storyProcessResults: { total: 1, succeeded: 1, failed: 0 },
+        storyUpdateResults: { total: 1, succeeded: 1, failed: 0 },
+      },
+    });
+    // UI
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should not update stories if no asset references have changed', async () => {
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    preconditions.canUpsertRemoteAssets([localAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', DEFAULT_SPACE, '--update-stories']);
+
+    // Report
+    const report = getReport();
+    expect(report).toEqual({
+      status: 'SUCCESS',
+      meta: expect.any(Object),
+      summary: {
+        assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, failed: 0 },
+      },
+    });
+    // UI
+    expect(console.error).not.toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
 
   it('should read assets and asset folders from a custom path', async () => {

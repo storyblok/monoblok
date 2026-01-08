@@ -38,7 +38,6 @@ assetsCommand
   .option('--filename <filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
   .option('--cleanup', 'delete local assets and metadata after a successful push')
-  // TODO false good default?
   .option('--update-stories', 'update file references in stories if necessary', false)
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`)
@@ -185,11 +184,9 @@ assetsCommand
       /**
        * Map Asset References in Stories
        */
-      // TODO test
       const hasNewFileReferences = maps.assets.entries().some(([k, v]) => k !== v);
       if (hasNewFileReferences && options.updateStories) {
         const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
-
         const writeStoryTransport = options.dryRun
           ? { write: async (story: Story) => story }
           // TODO publish if it already was published
@@ -204,6 +201,7 @@ assetsCommand
             write: writeStoryTransport,
           },
           ui,
+          verbose,
         }));
       }
     }
@@ -220,7 +218,7 @@ assetsCommand
       const failedLabel = assetsFailed === 1 ? 'asset' : 'assets';
       ui.info(`Push results: ${assetsPushed} ${pushedLabel} pushed, ${assetsFailed} ${failedLabel} failed`);
       ui.list([
-        `Folders: ${summary.folderResults?.succeeded ?? 0}/${summary.folderResults?.total ?? 0} succeeded, ${summary.folderResults?.failed ?? 0} failed.`,
+        `Folders: ${summary.assetFolderResults?.succeeded ?? 0}/${summary.assetFolderResults?.total ?? 0} succeeded, ${summary.assetFolderResults?.failed ?? 0} failed.`,
         `Assets: ${summary.assetResults?.succeeded ?? 0}/${assetsPushed} succeeded, ${assetsFailed} failed.`,
       ]);
       for (const [name, reportSummary] of summaries) {

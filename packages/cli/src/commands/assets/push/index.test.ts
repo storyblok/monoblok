@@ -70,6 +70,7 @@ interface MockStory {
   content: Record<string, unknown>;
   is_folder: boolean;
   parent_id: number | null;
+  published: 1 | 0;
 }
 
 let id = 0;
@@ -104,6 +105,7 @@ const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => {
     },
     is_folder: false,
     parent_id: null,
+    published: 1,
     ...overrides,
   };
 };
@@ -635,6 +637,67 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should publish only published stories', async () => {
+    const targetSpace = '54321';
+    const localAsset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    preconditions.canUpsertRemoteAssets([localAsset], { space: targetSpace });
+    const pageComponent = makeMockComponent({
+      name: 'page',
+      schema: {
+        asset: {
+          type: 'asset',
+        },
+      },
+    });
+    preconditions.canLoadComponents([pageComponent]);
+    const storyPublished = makeMockStory({
+      content: {
+        _uid: randomUUID(),
+        component: 'page',
+        asset: {
+          id: localAsset.id,
+          filename: localAsset.filename,
+        },
+      },
+      published: 1,
+    });
+    const storyUnpublished = makeMockStory({
+      content: {
+        _uid: randomUUID(),
+        component: 'page',
+        asset: {
+          id: localAsset.id,
+          filename: localAsset.filename,
+        },
+      },
+      published: 0,
+    });
+    preconditions.canFetchRemoteStoryPages([[storyPublished, storyUnpublished]]);
+    preconditions.canFetchStories([storyPublished, storyUnpublished], { space: targetSpace });
+    preconditions.canUpdateStories([storyPublished, storyUnpublished], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace, '--update-stories']);
+
+    expect(storyActions.updateStory).toHaveBeenCalledWith(
+      targetSpace,
+      storyPublished.id,
+      expect.objectContaining({
+        story: expect.any(Object),
+        publish: 1,
+      }),
+    );
+    expect(storyActions.updateStory).toHaveBeenCalledWith(
+      targetSpace,
+      storyUnpublished.id,
+      expect.objectContaining({
+        story: expect.any(Object),
+        publish: 0,
+      }),
+    );
   });
 
   it('should not update stories if no asset references have changed', async () => {

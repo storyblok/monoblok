@@ -356,20 +356,13 @@ export const makeWriteStoryFSTransport = ({ directoryPath }: {
   },
 });
 
-export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
+export const makeWriteStoryAPITransport = ({ spaceId }: {
   spaceId: string;
-  publish?: boolean;
 }) => ({
-  write: async (mappedLocalStory: Story) => {
-    const remoteStory = await updateStory(spaceId, mappedLocalStory.id, {
-      story: mappedLocalStory,
-      publish: publish ? 1 : undefined,
-    });
-    if (!remoteStory) {
-      throw new Error('No response!');
-    }
-    return remoteStory;
-  },
+  write: (mappedLocalStory: Story) => updateStory(spaceId, mappedLocalStory.id, {
+    story: mappedLocalStory,
+    publish: mappedLocalStory.published ? 1 : 0,
+  }),
 });
 
 export const writeStoryStream = ({

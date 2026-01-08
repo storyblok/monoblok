@@ -189,8 +189,7 @@ assetsCommand
         const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
         const writeStoryTransport = options.dryRun
           ? { write: async (story: Story) => story }
-          // TODO publish if it already was published
-          : makeWriteStoryAPITransport({ spaceId: space, publish: false });
+          : makeWriteStoryAPITransport({ spaceId: space });
 
         summaries.push(...await mapAssetReferencesInStoriesPipeline({
           logger,

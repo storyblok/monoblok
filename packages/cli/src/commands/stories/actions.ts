@@ -96,7 +96,7 @@ export const createStory = async (
  * @param payload.story - The story data to update
  * @param payload.force_update - Whether to force the update (optional)
  * @param payload.publish - Whether to publish the story (optional)
- * @returns Promise with the updated story or undefined if error occurs
+ * @returns Promise with the updated story
  */
 export const updateStory = async (
   spaceId: string,
@@ -106,10 +106,9 @@ export const updateStory = async (
     force_update?: string;
     publish?: number;
   },
-): Promise<Story | undefined> => {
+) => {
   try {
     const client = mapiClient();
-
     const { data } = await client.stories.updateStory({
       path: {
         space_id: spaceId,
@@ -123,9 +122,15 @@ export const updateStory = async (
       throwOnError: true,
     });
 
-    return data?.story;
+    const { story } = data;
+    if (!story) {
+      throw new Error('Failed to update story');
+    }
+
+    return story;
   }
-  catch (error) {
-    handleAPIError('update_story', error as Error);
+  catch (maybeError) {
+    handleAPIError('update_story', toError(maybeError));
+    throw maybeError;
   }
 };

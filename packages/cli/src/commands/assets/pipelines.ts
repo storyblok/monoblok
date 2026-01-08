@@ -9,6 +9,7 @@ import { handleError } from '../../utils/error/error';
 import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
 import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const PROGRESS_BAR_PADDING = 23;
 
@@ -198,6 +199,19 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     return [];
   }
 
+  const warnAboutMissingSchemas = (missingSchemas: Set<Component['name']>, story: Story) => {
+    const missingSchemaWarnings = new Set<string>();
+    for (const schemaName of missingSchemas) {
+      if (missingSchemaWarnings.has(schemaName)) {
+        continue;
+      }
+      const message = `The component "${schemaName}" was not found. Please run \`storyblok components pull\` to fetch the latest components.`;
+      ui.warn(message);
+      logger.warn(message, { storyId: story.uuid });
+      missingSchemaWarnings.add(schemaName);
+    }
+  };
+
   await pipeline(
     fetchStoriesStream({
       spaceId: space,
@@ -248,9 +262,8 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       onIncrement() {
         processProgress.increment();
       },
-      onStorySuccess(localStory, processedFields, missingSchemas) {
-        // TODO
-        // warnAboutMissingSchemas(missingSchemas, localStory);
+      onStorySuccess(localStory, _, missingSchemas) {
+        warnAboutMissingSchemas(missingSchemas, localStory);
         logger.info('Processed story', { storyId: localStory.uuid });
         summaries.storyProcessResults.succeeded += 1;
       },

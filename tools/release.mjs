@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 import { exit } from 'process';
 
 const MAIN_BRANCH = 'main';
+const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
 const RED = '\x1b[31m';
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -79,20 +80,22 @@ function main() {
     exit(1);
   }
 
-  // Check 2: Are we on the main branch?
+  // Check 2: Are we on a release branch?
   const currentBranch = getCurrentBranch();
-  if (currentBranch !== MAIN_BRANCH) {
-    log(`❌ Error: You must be on the '${MAIN_BRANCH}' branch to release`, RED);
+  if (!RELEASE_BRANCHES.includes(currentBranch)) {
+    log(`❌ Error: You must be on a release branch to release`, RED);
     log(`\nCurrent branch: ${currentBranch}`, YELLOW);
+    log(`Allowed branches: ${RELEASE_BRANCHES.join(', ')}`, YELLOW);
     log('\n📋 Instructions:', BLUE);
     log(`  1. Commit or stash your current changes`);
-    log(`  2. Switch to the ${MAIN_BRANCH} branch: ${YELLOW}git checkout ${MAIN_BRANCH}${RESET}`);
+    log(`  2. Switch to a release branch: ${YELLOW}git checkout ${MAIN_BRANCH}${RESET}`);
     log(`  3. Pull the latest changes: ${YELLOW}git pull origin ${MAIN_BRANCH}${RESET}`);
     log(`  4. Run the release script again: ${YELLOW}pnpm release${RESET}\n`);
     exit(1);
   }
 
-  log(`✅ On ${MAIN_BRANCH} branch`, GREEN);
+  const isPrerelease = currentBranch !== MAIN_BRANCH;
+  log(`✅ On ${currentBranch} branch${isPrerelease ? ' (pre-release)' : ''}`, GREEN);
 
   // Check 3: Do we have uncommitted changes?
   if (hasUncommittedChanges()) {
@@ -110,16 +113,16 @@ function main() {
   // Check 4: Fetch from remote and check if we're up to date
   fetchFromRemote();
 
-  if (!isUpToDateWithRemote(MAIN_BRANCH)) {
-    log(`❌ Error: Your ${MAIN_BRANCH} branch is not up to date with origin/${MAIN_BRANCH}`, RED);
+  if (!isUpToDateWithRemote(currentBranch)) {
+    log(`❌ Error: Your ${currentBranch} branch is not up to date with origin/${currentBranch}`, RED);
     log('\n📋 Instructions:', BLUE);
-    log(`  1. Pull the latest changes: ${YELLOW}git pull origin ${MAIN_BRANCH}${RESET}`);
+    log(`  1. Pull the latest changes: ${YELLOW}git pull origin ${currentBranch}${RESET}`);
     log(`  2. Resolve any conflicts if they occur`);
     log(`  3. Run the release script again: ${YELLOW}pnpm release${RESET}\n`);
     exit(1);
   }
 
-  log(`✅ Up to date with origin/${MAIN_BRANCH}`, GREEN);
+  log(`✅ Up to date with origin/${currentBranch}`, GREEN);
 
   // All checks passed, run the release command
   log('\n✨ All checks passed! Running release command...\n', GREEN);
@@ -132,8 +135,8 @@ function main() {
     log('\n📋 Next steps:', BLUE);
     log('  1. Go to the GitHub Actions tab');
     log('  2. Select the "Publish" workflow');
-    log('  3. Click "Run workflow" and select the main branch');
-    log('  4. Click "Run workflow" to publish to npm\n');
+    log(`  3. Click "Run workflow" and select the ${YELLOW}${currentBranch}${RESET} branch`);
+    log(`  4. Click "Run workflow" to publish to npm${isPrerelease ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
   } catch (error) {
     log('\n━'.repeat(50), BLUE);
     log('\n❌ Release command failed', RED);

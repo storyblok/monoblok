@@ -619,16 +619,16 @@ export const upsertAssetStream = ({
         const remoteFolderId = asset.asset_folder_id
           && (maps.assetFolders.get(asset.asset_folder_id) || asset.asset_folder_id);
         const remoteAssetId = hasId(asset) ? (maps.assets.get(asset.id) || asset.id) : undefined;
+        const remoteAsset = remoteAssetId ? await getTransport.get(remoteAssetId) : null;
         const upsertAsset = {
+          ...remoteAsset,
           ...asset,
           id: remoteAssetId,
           asset_folder_id: remoteFolderId,
         };
         // If a remote asset already exists, we must not create a new asset.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        const canUpdate = hasId(upsertAsset)
-          && hasFilename(upsertAsset)
-          && Boolean(await getTransport.get(upsertAsset.id));
+        const canUpdate = remoteAsset && hasId(upsertAsset) && hasFilename(upsertAsset);
         const canCreate = hasShortFilename(upsertAsset);
         const newRemoteAsset = canUpdate
           ? await updateTransport.update(upsertAsset, fileBuffer)

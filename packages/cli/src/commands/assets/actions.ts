@@ -242,13 +242,11 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
     const remoteFileBuffer = fileBuffer && await fetchAssetFile(asset.filename);
     const hasNewFile = remoteFileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
     if (hasNewFile) {
-      // TODO check if this automatically updates the filename
       const uploadedAsset = await uploadAsset({
         id: asset.id,
         asset_folder_id: asset.asset_folder_id,
         short_filename: asset.short_filename || basename(asset.filename),
       }, fileBuffer, { spaceId });
-
       assetWithNewFilename.filename = uploadedAsset.filename;
       assetWithNewFilename.short_filename = uploadedAsset.short_filename;
     }

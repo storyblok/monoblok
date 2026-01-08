@@ -25,7 +25,7 @@ assetsCommand
   .command('pull')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-p, --path <path>', 'base path to store assets (default .storyblok)')
-  .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="[in_folder][eq]=123"')
+  .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .description(`Download your space's assets as local files.`)
   .action(async (options) => {
     const program = getProgram();
@@ -117,10 +117,7 @@ assetsCommand
       await pipeline(
         fetchAssetsStream({
           spaceId: space,
-          params: {
-            // TODO NOW allow search and others acording to spec
-            filter_query: options.query,
-          },
+          params: options.query ? Object.fromEntries(new URLSearchParams(options.query)) : {},
           setTotalAssets: (total) => {
             summary.fetchAssets.total = total;
             summary.save.total = total;

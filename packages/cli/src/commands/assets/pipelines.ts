@@ -179,7 +179,6 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   ui: UI;
   verbose: boolean;
 }): Promise<Summaries> => {
-  // TODO check how this behaves if it is rendered conditionally only
   const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(PROGRESS_BAR_PADDING) });
   const fetchStoriesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(PROGRESS_BAR_PADDING) });
   const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(PROGRESS_BAR_PADDING) });
@@ -211,6 +210,8 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         summaries.storyProcessResults.total = total;
         summaries.storyUpdateResults.total = total;
         fetchStoriesProgress.setTotal(total);
+        processProgress.setTotal(total);
+        updateProgress.setTotal(total);
       },
       onIncrement: () => fetchStoryPagesProgress.increment(),
       onPageSuccess: (page, total) => {

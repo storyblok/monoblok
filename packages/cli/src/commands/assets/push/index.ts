@@ -94,11 +94,13 @@ assetsCommand
       }
 
       const maps = {
-        // TODO filenames
-        assets: new Map(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])) as AssetMap,
-        assetFolders: new Map(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])) satisfies AssetFolderMap,
-        // TODO fill?!
-        stories: new Map() satisfies StoryMap,
+        assets: new Map<number | string, number | string>([
+          ...manifest.map(e => [Number(e.old_id), Number(e.new_id)]) satisfies [number, number][],
+          ...manifest.filter((e): e is typeof e & { old_filename: string; new_filename: string } =>
+            !!e.old_filename && !!e.new_filename,
+          ).map(e => [e.old_filename, e.new_filename]) satisfies [string, string][],
+        ]) as AssetMap,
+        assetFolders: new Map(folderManifest.map(e => [Number(e.old_id), Number(e.new_id)])) satisfies AssetFolderMap,
       };
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
 

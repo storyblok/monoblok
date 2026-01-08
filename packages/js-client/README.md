@@ -218,17 +218,7 @@ const Storyblok = new StoryblokClient({
 The client determines rate limits in this order:
 
 1. **Custom `rateLimit`** - Your explicitly set rate limit (highest priority)
-2. **Server headers** - `X-RateLimit-Policy` header from API responses
-3. **Automatic** - Smart tier-based limits based on request type (default)
-
-#### Server-Provided Rate Limits
-
-The client automatically parses and respects rate limit headers from Storyblok API responses:
-
-- `X-RateLimit` - Remaining requests in current window (e.g., `r=29`)
-- `X-RateLimit-Policy` - Maximum requests allowed (e.g., `q=30`)
-
-When these headers are present, the client dynamically adjusts rate limiting for subsequent requests.
+2. **Automatic** - Smart tier-based limits based on request type (default)
 
 ### Passing response interceptor
 

@@ -12,6 +12,14 @@ export interface AssetUpload {
   short_filename: string;
 }
 
+/**
+ * Maps local with remote asset ids and filenames.
+ */
+export interface AssetMap extends Map<string | number, string | number> {
+  get: ((key: number) => number | undefined) & ((key: string) => string | undefined);
+  set: ((key: number, value: number) => this) & ((key: string, value: string) => this);
+}
+
 export interface AssetFolder {
   id: number;
   uuid: string;
@@ -29,8 +37,21 @@ export interface AssetFolderUpdate extends AssetFolderCreate {
   id: number;
 }
 
+/**
+ * Maps local with remote asset folder ids.
+ */
+export type AssetFolderMap = Map<number, number>;
+
 export interface AssetsQueryParams {
   page?: number;
   per_page?: number;
   [key: string]: string | number | boolean | undefined;
+}
+
+/**
+ * Maps local with remote story ids and UUIDs.
+ */
+export interface StoryMap extends Map<string | number, string | number> {
+  get: ((key: number) => number | undefined) & ((key: string) => string | undefined);
+  set: ((key: number, value: number) => this) & ((key: string, value: string) => this);
 }

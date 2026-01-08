@@ -22,7 +22,7 @@ import {
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
 import { loadManifest } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetUpdate, AssetUpload } from '../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetUpdate, AssetUpload, StoryMap } from '../types';
 import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
@@ -94,9 +94,11 @@ assetsCommand
       }
 
       const maps = {
-        assets: new Map<number, number>(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
-        assetFolders: new Map<number, number>(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])),
-        stories: new Map(),
+        // TODO filenames
+        assets: new Map(manifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])) as AssetMap,
+        assetFolders: new Map(folderManifest.map(entry => [Number(entry.old_id), Number(entry.new_id)])) satisfies AssetFolderMap,
+        // TODO fill?!
+        stories: new Map() satisfies StoryMap,
       };
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
 

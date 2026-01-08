@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promi
 import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
@@ -349,7 +349,7 @@ export const upsertAssetFolderStream = ({
   createTransport: CreateAssetFolderTransport;
   updateTransport: UpdateAssetFolderTransport;
   manifestTransport: AppendAssetFolderManifestTransport;
-  maps: { assetFolders: Map<number, number> };
+  maps: { assetFolders: AssetFolderMap };
   onIncrement?: () => void;
   onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => void;
   onFolderError?: (error: Error, folder: AssetFolder) => void;
@@ -603,7 +603,7 @@ export const upsertAssetStream = ({
   createTransport: CreateAssetTransport;
   updateTransport: UpdateAssetTransport;
   manifestTransport: AppendAssetManifestTransport;
-  maps: { assets: Map<number, number>; assetFolders: Map<number, number> };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   cleanup: boolean;
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;

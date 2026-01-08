@@ -8,7 +8,7 @@ import type { Report } from '../../lib/reporter/reporter';
 import { handleError } from '../../utils/error/error';
 import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
-import type { AssetUpload } from './types';
+import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
 
 const PROGRESS_BAR_PADDING = 23;
 
@@ -24,7 +24,7 @@ export const upsertAssetFoldersPipeline = async ({
 }: {
   directoryPath: string;
   logger: Logger;
-  maps: { assetFolders: Map<number, number> };
+  maps: { assetFolders: AssetFolderMap };
   transports: {
     get: GetAssetFolderTransport;
     create: CreateAssetFolderTransport;
@@ -87,7 +87,7 @@ export const upsertAssetsPipeline = async ({
   cleanup: boolean;
   directoryPath: string;
   logger: Logger;
-  maps: { assets: Map<number, number>; assetFolders: Map<number, number> };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   transports: {
     get: GetAssetTransport;
     create: CreateAssetTransport;
@@ -144,8 +144,7 @@ export const upsertAssetsPipeline = async ({
       if (localAssetResult.id) {
         maps.assets.set(localAssetResult.id, remoteAsset.id);
       }
-      // TODO types
-      if (localAssetResult.filename) {
+      if ('filename' in localAssetResult) {
         maps.assets.set(localAssetResult.filename, remoteAsset.filename);
       }
       summary.succeeded += 1;
@@ -171,7 +170,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   verbose,
 }: {
   logger: Logger;
-  maps: { assets: Map<number, number> };
+  maps: { assets: AssetMap };
   schemas: Record<Component['name'], Component['schema']>;
   space: string;
   transports: {

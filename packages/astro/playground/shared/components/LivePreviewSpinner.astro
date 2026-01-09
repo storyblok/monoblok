@@ -44,17 +44,25 @@
 </div>
 <style>
   .spinner {
-    width: 50px;
-    height: 50px;
-    position: fixed;
-    bottom: 0;
+    width: 30px;
+    height: 30px;
   }
 </style>
 <script>
   const spinner = document.getElementById('spinner');
 
-  document.addEventListener('storyblok-live-preview-updating', () => {
-    if (spinner) spinner.style.display = 'block'; // show spinner
+  document.addEventListener('storyblok-live-preview-updating', (event) => {
+    if (spinner) {
+      spinner.style.display = 'block'; // show spinner
+
+      // If the event is prevented, hide spinner immediately
+      // Use a microtask to check after all event handlers have run
+      queueMicrotask(() => {
+        if (event.defaultPrevented && spinner) {
+          spinner.style.display = 'none';
+        }
+      });
+    }
   });
 
   document.addEventListener('storyblok-live-preview-updated', () => {

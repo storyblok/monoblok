@@ -4,8 +4,8 @@ import { storyblokApi } from '@storyblok/astro/client';
 import BaseLayout from '@shared/components/BaseLayout.astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 import StoryblokServerData from '@storyblok/astro/StoryblokServerData.astro';
-import LivePreviewSpinner from '@shared/components/LivePreviewSpinner.astro';
 import { getUsers, type User } from 'src/lib/getUsers';
+import Widget from '@shared/components/Widget.astro';
 
 interface ServerData {
   users?: User[];
@@ -28,8 +28,9 @@ const users = liveStory?.serverData?.users ?? (await getUsers());
 ---
 
 <BaseLayout>
+  {slug === 'test' && <meta name="storyblok-live-preview" content="disabled" />}
   <p>{users?.length} users loaded.</p>
   <StoryblokComponent blok={story.content} />
-  <LivePreviewSpinner />
+  <Widget />
 </BaseLayout>
 <StoryblokServerData users={users} />

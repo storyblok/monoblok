@@ -1,0 +1,54 @@
+---
+import LivePreviewSpinner from './LivePreviewSpinner.astro';
+---
+
+<div class="widget">
+  <div class="spinner-container">
+    <p>Live preview spinner</p>
+    <LivePreviewSpinner />
+  </div>
+  <h1>Conditional Live Preview</h1>
+  <p>Live preview is controlled via custom logic in this page.</p>
+  <label>
+    <input type="checkbox" id="enableLivePreview" checked />
+    Enable Live Preview
+  </label>
+</div>
+<script>
+  // Example: Conditionally prevent live preview based on user preference
+  const checkbox = document.getElementById('enableLivePreview') as HTMLInputElement;
+
+  document.addEventListener('storyblok-live-preview-updating', (event: Event) => {
+    if (!checkbox?.checked) {
+      // Prevent the live preview update
+      event.preventDefault();
+      console.log('Live preview update prevented by user preference');
+    } else {
+      console.log('Live preview is updating...', (event as CustomEvent).detail);
+    }
+  });
+
+  // Example: Log when updates complete
+  document.addEventListener('storyblok-live-preview-updated', (event: Event) => {
+    console.log('Live preview updated!', (event as CustomEvent).detail);
+  });
+</script>
+<style>
+  .widget {
+    background: #d1ecf1;
+    border: 2px solid #17a2b8;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    position: fixed;
+    bottom: 0;
+  }
+  .spinner-container {
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

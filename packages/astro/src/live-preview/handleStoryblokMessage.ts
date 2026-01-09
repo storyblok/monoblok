@@ -1,6 +1,17 @@
 import type { ISbStoryData } from '@storyblok/js';
 
 let timeout: NodeJS.Timeout;
+
+/**
+ * Checks if live preview is disabled via meta tag
+ */
+function isLivePreviewDisabled(): boolean {
+  const metaTag = document.querySelector<HTMLMetaElement>(
+    'meta[name="storyblok-live-preview"]',
+  );
+  return metaTag?.content === 'disabled' || metaTag?.content === 'false';
+}
+
 /**
  * Our current tests indicate that the post request section
  * is the bottleneck in terms of time consumption.
@@ -14,9 +25,23 @@ export async function handleStoryblokMessage(event: {
   const { action, story } = event || {};
 
   if (action === 'input' && story) {
+    // Check if live preview is disabled via meta tag
+    if (isLivePreviewDisabled()) {
+      return;
+    }
+
     // Debounce the getNewHTMLBody function
     const debouncedGetNewHTMLBody = async () => {
-      dispatchStoryblokEvent('storyblok-live-preview-updating', { story });
+      // Dispatch cancelable event to allow users to prevent the update
+      const updatingEvent = dispatchCancelableStoryblokEvent(
+        'storyblok-live-preview-updating',
+        { story },
+      );
+
+      // If the event was prevented, skip the update
+      if (updatingEvent.defaultPrevented) {
+        return;
+      }
 
       const currentBody = document.body;
       let serverData = null;
@@ -100,4 +125,14 @@ async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
  */
 function dispatchStoryblokEvent<T>(name: string, detail?: T) {
   document.dispatchEvent(new CustomEvent<T>(name, { detail }));
+}
+
+/**
+ * Dispatches a cancelable custom event with optional detail payload.
+ * Returns the event object so the caller can check if preventDefault() was called.
+ */
+function dispatchCancelableStoryblokEvent<T>(name: string, detail?: T) {
+  const event = new CustomEvent<T>(name, { detail, cancelable: true });
+  document.dispatchEvent(event);
+  return event;
 }

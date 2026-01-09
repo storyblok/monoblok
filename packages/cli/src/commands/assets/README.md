@@ -47,3 +47,46 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
   }
 }
 ```
+
+**Example for folders:**
+
+Folders are stored in a flat list with parent references.
+In `.storyblok/assets/<space>/folders/`, you will find one JSON file per folder:
+
+```json
+// wordpress -> Storyblok (.storyblok/assets/123/folders/marketing_100.json)
+{
+  "id": 100, // source WordPress category ID
+  "name": "Marketing Assets",
+  "parent_id": 0,
+  "uuid": "100", // same as the source ID to keep mapping simple
+  "parent_uuid": null
+}
+```
+
+```json
+// drupal -> Storyblok (.storyblok/assets/123/folders/campaigns_200.json)
+{
+  "id": 200, // source Drupal taxonomy term ID
+  "name": "Social Media Campaigns",
+  "parent_id": 100, // References the parent folder ID
+  "uuid": "200", // same as the source ID to keep mapping simple
+  "parent_uuid": "100"
+}
+```
+
+### Programmatically Updating Assets
+
+1. Pull current assets: `storyblok assets pull --space YOUR_SPACE_ID`.
+2. Modify the JSON files via scripts/automation (e.g., run a Node script to adjust metadata).
+3. Push updates back: `storyblok assets push --space YOUR_SPACE_ID` (optionally `--dry-run`).
+
+## Asset Manifest
+
+The CLI maintains a manifest file at `.storyblok/assets/<space>/manifest.jsonl` (and `folders/manifest.jsonl`) to track the mapping between source IDs/filenames and the destination IDs/filenames. This is crucial for:
+
+- **Idempotency:** Preventing duplicate uploads if an asset has already been migrated.
+- **Reference Resolution:** Allowing the `stories` command to update asset references in your content using the new IDs.
+
+> [!NOTE]
+> Asset manifest files can contain multiple entries for the same asset; use the latest entry as the source of truth.

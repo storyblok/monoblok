@@ -35,7 +35,7 @@ assetsCommand
   .option('-f, --from <from>', 'source space id')
   .option('-p, --path <path>', 'base path for assets (default .storyblok)')
   .option('--data <data>', 'inline asset data as JSON')
-  .option('--filename <filename>', 'override the asset filename')
+  .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
   .option('--cleanup', 'delete local assets and metadata after a successful push')
   .option('--update-stories', 'update file references in stories if necessary', false)
@@ -148,7 +148,7 @@ assetsCommand
         const sourceBasename = isRemoteSource(assetSource)
           ? basename(new URL(assetSource).pathname)
           : basename(assetSource);
-        const shortFilename = options.filename || assetDataPartial.short_filename || sourceBasename;
+        const shortFilename = options.shortFilename || assetDataPartial.short_filename || sourceBasename;
         const folderId = options.folder ? Number(options.folder) : undefined;
         assetData = {
           ...assetDataPartial,

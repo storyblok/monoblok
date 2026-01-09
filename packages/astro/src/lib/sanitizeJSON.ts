@@ -23,9 +23,9 @@ export function sanitizeJSON(data: unknown): string {
   const json = JSON.stringify(data);
 
   // JSON.stringify returns undefined for undefined input (not a string)
-  // Handle this edge case
+  // Return null as valid JSON representation
   if (json === undefined) {
-    return 'undefined';
+    return 'null';
   }
 
   // Replace dangerous characters that could break out of script context

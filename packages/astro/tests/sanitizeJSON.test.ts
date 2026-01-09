@@ -247,9 +247,9 @@ describe('sanitizeJSON', () => {
   });
 
   describe('edge Cases', () => {
-    it('should handle undefined input', () => {
-      const result = sanitizeJSON(undefined);
-      expect(result).toBe('undefined');
+    it('should handle null input', () => {
+      const result = sanitizeJSON(null);
+      expect(result).toBe('null');
     });
 
     it('should handle functions (which become undefined in JSON)', () => {

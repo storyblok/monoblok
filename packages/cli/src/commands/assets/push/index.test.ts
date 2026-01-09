@@ -1065,7 +1065,7 @@ describe('assets push command', () => {
     );
   });
 
-  it('should createa new asset with meta_data when present locally', async () => {
+  it('should create a new asset with meta_data when present locally', async () => {
     const targetSpace = '54321';
     const asset = makeMockAsset({
       meta_data: {

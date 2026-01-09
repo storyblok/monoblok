@@ -281,7 +281,11 @@ export const readLocalAssetFoldersStream = ({
       }
     }
     catch (maybeError) {
-      onFolderError?.(toError(maybeError));
+      const error = toError(maybeError);
+      if ('code' in error && error.code === 'ENOENT') {
+        return;
+      }
+      onFolderError?.(error);
     }
   };
   return Readable.from(iterator());

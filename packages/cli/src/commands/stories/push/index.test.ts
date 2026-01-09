@@ -1089,7 +1089,7 @@ describe('stories push command', () => {
     // Logging
     const logFile = getLogFileContents();
     expect(logFile).toContain(
-      "Expected property name or '}' in JSON at position 1"
+      'Expected property name or \'}\' in JSON at position 1',
     );
     // UI
     expect(console.info).toHaveBeenCalledWith(

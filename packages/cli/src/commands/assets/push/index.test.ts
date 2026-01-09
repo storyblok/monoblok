@@ -1276,4 +1276,36 @@ describe('assets push command', () => {
     expect(files).not.toContain(metadataFilePath);
     expect(cleanedFiles).toEqual([]);
   });
+
+  it('should successfully push an external asset when the local directory structure is empty', async () => {
+    const externalUrl = 'https://example.com/image.png';
+
+    preconditions.canDownloadExternalAsset(externalUrl);
+
+    const asset = makeMockAsset({
+      short_filename: 'image.png',
+      asset_folder_id: 123,
+    });
+
+    preconditions.canUpsertRemoteAssets([asset], { space: DEFAULT_SPACE });
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'push',
+      '--space',
+      DEFAULT_SPACE,
+      externalUrl,
+      '--data',
+      '{"meta_data":{"alt":"Hero image","alt__i18n__de":"Hero Bild"}}',
+      '--filename',
+      'image.png',
+      '--folder',
+      '123',
+    ]);
+
+    const logFile = getLogFileContents();
+    expect(logFile).not.toContain('ENOENT');
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed'));
+  });
 });

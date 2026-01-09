@@ -135,10 +135,129 @@ describe('sbFetch', () => {
 
     // Check if the error object format matches your implementation.
     expect(result).toEqual({
-      message: expect.any(Error), // Checks if `message` is an instance of Error
+      message: expect.any(String), // Checks if `message` is a string
     });
 
     // If you want to be more specific and check the message of the error:
-    expect(result.message.message).toEqual('Network Failure'); // This path needs to match the structure you actually use.
+    expect(result.message).toEqual('Network Failure'); // This path needs to match the structure you actually use.
+  });
+
+  describe('timeout behavior', () => {
+    // Helper to create mock fetch with configurable delay
+    const createMockFetch = (delayMs: number) => {
+      return vi.fn((_url: string, options?: any): Promise<Response> => {
+        return new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            resolve(new Response(JSON.stringify({ data: 'test' }), { status: 200 }));
+          }, delayMs);
+
+          options?.signal?.addEventListener('abort', () => {
+            clearTimeout(timeoutId);
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        });
+      });
+    };
+
+    // Helper to create SbFetch instance with timeout
+    const createSbFetchWithTimeout = (timeoutSeconds: number, mockFetch: any) => {
+      return new SbFetch({
+        baseURL: 'https://api.storyblok.com/v2',
+        timeout: timeoutSeconds,
+        headers: new Headers(),
+        fetch: mockFetch as any,
+      });
+    };
+
+    it('should timeout after configured timeout period', async () => {
+      const mockFetch = createMockFetch(5000);
+      const sbFetch = createSbFetchWithTimeout(1, mockFetch);
+
+      const result = await sbFetch.get('cdn/stories', {});
+      expect(result).toEqual({
+        message: 'Request timeout: The request was aborted due to timeout',
+      });
+    }, 3000);
+
+    it('should timeout after 2 seconds when configured with 2s timeout', async () => {
+      vi.useFakeTimers();
+
+      const mockFetch = createMockFetch(5000);
+      const sbFetch = createSbFetchWithTimeout(2, mockFetch);
+
+      const requestPromise = sbFetch.get('cdn/stories', {});
+
+      // After 1.9 seconds, request should still be pending
+      await vi.advanceTimersByTimeAsync(1900);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // After 2+ seconds, should timeout
+      await vi.advanceTimersByTimeAsync(200);
+      const result = await requestPromise;
+      expect(result).toEqual({
+        message: 'Request timeout: The request was aborted due to timeout',
+      });
+
+      vi.useRealTimers();
+    }, 3000);
+
+    it('should timeout after 0.5 seconds when configured with 0.5s timeout', async () => {
+      vi.useFakeTimers();
+
+      const mockFetch = createMockFetch(5000);
+      const sbFetch = createSbFetchWithTimeout(0.5, mockFetch);
+
+      const requestPromise = sbFetch.get('cdn/stories', {});
+
+      // After 0.5+ seconds, should timeout
+      await vi.advanceTimersByTimeAsync(600);
+      const result = await requestPromise;
+      expect(result).toEqual({
+        message: 'Request timeout: The request was aborted due to timeout',
+      });
+
+      vi.useRealTimers();
+    }, 3000);
+
+    it('should complete successfully if response arrives before timeout', async () => {
+      const mockFetch = createMockFetch(500); // 500ms delay
+      const sbFetch = createSbFetchWithTimeout(2, mockFetch);
+
+      const result = await sbFetch.get('cdn/stories', {});
+      expect(result).toHaveProperty('data');
+      expect(result).toHaveProperty('status', 200);
+    }, 3000);
+
+    it('should not timeout when timeout is set to 0 (disabled)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: 'test' }), { status: 200 }),
+      );
+      const sbFetch = createSbFetchWithTimeout(0, mockFetch);
+
+      const result = await sbFetch.get('cdn/stories', {});
+      expect(result).toHaveProperty('data');
+      expect(result).toHaveProperty('status', 200);
+    }, 3000);
+
+    it('should return clear error message for timeout', async () => {
+      const mockFetch = vi.fn((_url: string, options?: any): Promise<Response> => {
+        return new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+          // Immediately abort to test the error message
+          setTimeout(() => options?.signal?.dispatchEvent(new Event('abort')), 10);
+        });
+      });
+
+      const sbFetch = createSbFetchWithTimeout(1, mockFetch);
+
+      const result = await sbFetch.get('cdn/stories', {});
+      expect((result as any).message).toBe('Request timeout: The request was aborted due to timeout');
+    });
   });
 });

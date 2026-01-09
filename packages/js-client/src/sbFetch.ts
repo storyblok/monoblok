@@ -150,8 +150,17 @@ class SbFetch {
       }
     }
     catch (err: any) {
+      // Check if it's a timeout/abort error
+      if (err.name === 'AbortError') {
+        const error: ISbError = {
+          message: 'Request timeout: The request was aborted due to timeout',
+        };
+        return error;
+      }
+
+      // For other errors, try to extract a meaningful message
       const error: ISbError = {
-        message: err,
+        message: err.message || err.toString() || 'An unknown error occurred',
       };
       return error;
     }

@@ -57,6 +57,8 @@ export async function handleStoryblokMessage(event: {
       }
       const newBody = await getNewHTMLBody(story, serverData);
       if (newBody.outerHTML === currentBody.outerHTML) {
+        // No changes detected, but still dispatch updated event to match updating event
+        dispatchStoryblokEvent('storyblok-live-preview-updated', { story });
         return;
       }
       // Get current focused element in Storyblok

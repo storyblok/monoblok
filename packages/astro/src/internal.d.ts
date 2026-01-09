@@ -43,6 +43,7 @@ declare module '@storyblok/astro' {
   /** Converts a string to camelCase (internal helper). */
   export function toCamelCase(input: string): string;
   export function sanitizeJSON(data: unknown): string;
+  export function isEditorRequest(url: URL, options: StoryblokValidationOptions = {}): boolean;
 
   export type { SbBlokData } from '@storyblok/js';
   // add more exports as needed

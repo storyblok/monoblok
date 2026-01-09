@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSanitizedJSON, sanitizeJSON } from './sanitizeJSON';
+import { parseSanitizedJSON, sanitizeJSON } from '../src/lib/sanitizeJSON';
 
 describe('sanitizeJSON', () => {
   describe('xSS Prevention', () => {

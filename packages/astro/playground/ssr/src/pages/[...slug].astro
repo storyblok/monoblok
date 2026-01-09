@@ -1,5 +1,5 @@
 ---
-import { getLiveStory } from '@storyblok/astro';
+import { getLiveStory, isEditorRequest } from '@storyblok/astro';
 import { storyblokApi } from '@storyblok/astro/client';
 import BaseLayout from '@shared/components/BaseLayout.astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
@@ -25,12 +25,13 @@ const story =
   ).data.story;
 
 const users = liveStory?.serverData?.users ?? (await getUsers());
+const inEditor = isEditorRequest(Astro.url);
 ---
 
 <BaseLayout>
   {slug === 'test' && <meta name="storyblok-live-preview" content="disabled" />}
   <p>{users?.length} users loaded.</p>
   <StoryblokComponent blok={story.content} />
-  <Widget />
+  {inEditor && <Widget />}
 </BaseLayout>
 <StoryblokServerData users={users} />

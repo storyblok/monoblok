@@ -33,9 +33,10 @@ export async function handleStoryblokMessage(event: {
     // Debounce the getNewHTMLBody function
     const debouncedGetNewHTMLBody = async () => {
       // Dispatch cancelable event to allow users to prevent the update
-      const updatingEvent = dispatchCancelableStoryblokEvent(
+      const updatingEvent = dispatchStoryblokEvent(
         'storyblok-live-preview-updating',
         { story },
+        true,
       );
 
       // If the event was prevented, skip the update
@@ -122,17 +123,10 @@ async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
 
 /**
  * Dispatches a custom event with optional detail payload.
- */
-function dispatchStoryblokEvent<T>(name: string, detail?: T) {
-  document.dispatchEvent(new CustomEvent<T>(name, { detail }));
-}
-
-/**
- * Dispatches a cancelable custom event with optional detail payload.
  * Returns the event object so the caller can check if preventDefault() was called.
  */
-function dispatchCancelableStoryblokEvent<T>(name: string, detail?: T) {
-  const event = new CustomEvent<T>(name, { detail, cancelable: true });
+function dispatchStoryblokEvent<T>(name: string, detail?: T, cancelable = false) {
+  const event = new CustomEvent<T>(name, { detail, cancelable });
   document.dispatchEvent(event);
   return event;
 }

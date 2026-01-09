@@ -286,7 +286,7 @@ describe('assets pull command', () => {
     const assets = [makeMockAsset(), makeMockAsset(), makeMockAsset()];
     preconditions.canFetchRemoteFolders([]);
     preconditions.canFetchRemoteAssetPages([assets], {
-      filter_query: 'in_folder=-1',
+      in_folder: '-1',
     });
     preconditions.canDownloadAssets(assets);
 
@@ -315,13 +315,13 @@ describe('assets pull command', () => {
     expect(assetFileExists(assets[0])).toBeFalsy();
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toMatch(new RegExp(`Error saving asset.*?"assetId":${assets[0].id}`));
+    expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"save":{"total":1,"succeeded":0,"failed":1}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('error Writing file'),
+      expect.stringContaining('Permission denied while accessing the file'),
       '',
     );
   });
@@ -334,12 +334,12 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Error fetching page 1 of 1');
+    expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to pull assets'),
+      expect.stringContaining('Error fetching data from the API'),
       '',
     );
   });
@@ -354,7 +354,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents();
-    expect(logFile).toMatch(new RegExp(`Error fetching asset.*?"assetId":${assets[1].id}`));
+    expect(logFile).toContain(`Failed to download ${assets[1].filename}`);
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":1,"failed":1}');
     expect(logFile).toContain('"save":{"total":1,"succeeded":1,"failed":0}');
@@ -370,7 +370,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Error fetching asset folders');
+    expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
   });
 
@@ -384,7 +384,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents();
-    expect(logFile).toMatch(new RegExp(`Error saving folder.*?"folderId":${folders[0].id}`));
+    expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
   });
 

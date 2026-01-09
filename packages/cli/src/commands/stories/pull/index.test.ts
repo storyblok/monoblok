@@ -233,15 +233,13 @@ describe('stories pull command', () => {
 
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toMatch(new RegExp(`Error saving story.*?"storyId":${stories[0].id}`));
-    expect(logFile).toMatch(new RegExp(`Error saving story.*?"storyId":${stories[1].id}`));
-    expect(logFile).toMatch(new RegExp(`Error saving story.*?"storyId":${stories[2].id}`));
+    expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":3,"failed":0}');
     expect(logFile).toContain('"save":{"total":3,"succeeded":0,"failed":3}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('error Writing file'),
+      expect.stringContaining('Permission denied while accessing the file'),
       '',
     );
   });
@@ -253,13 +251,13 @@ describe('stories pull command', () => {
 
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Error fetching page 1 of 1');
+    expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchStories":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to pull stories'),
+      expect.stringContaining('Error fetching data from the API'),
       '',
     );
   });
@@ -272,13 +270,13 @@ describe('stories pull command', () => {
 
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toMatch(new RegExp(`Error fetching story.*?"storyId":${stories[1].id}`));
+    expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":2,"failed":1}');
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to pull story'),
+      expect.stringContaining('Error fetching data from the API'),
       '',
     );
   });

@@ -142,8 +142,7 @@ storiesCommand
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
             creationProgress.increment();
-            ui.error('Failed to read local story', error);
-            logger.error('Failed to read local story', { error });
+            handleError(error, verbose);
           },
         }),
         // Create remote stories.
@@ -180,14 +179,12 @@ storiesCommand
             summary.creationResults.skipped += 1;
           },
           onStoryError(error) {
-            // TODO handleError with for verbose error handling like in asset push streams
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            ui.error('Failed to create placeholder story', error);
-            logger.error('Failed to create placeholder story', { error });
+            handleError(error, verbose);
           },
           onIncrement() {
             creationProgress.increment();
@@ -221,8 +218,7 @@ storiesCommand
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            ui.error('Failed to process local story', error);
-            logger.error('Failed to process local story', { error });
+            handleError(error, verbose);
           },
         }),
         // Map all references to numeric ids and uuids.
@@ -241,10 +237,8 @@ storiesCommand
           onStoryError(error, localStory) {
             summary.processResults.failed += 1;
             summary.updateResults.total -= 1;
-            const message = 'Failed to map story references';
-            ui.error(message, error);
-            logger.error(message, { error, storyId: localStory.uuid });
             updateProgress.setTotal(summary.updateResults.total);
+            handleError(error, verbose, { storyId: localStory.uuid });
           },
         }),
         // Update remote stories with correct references.
@@ -264,9 +258,7 @@ storiesCommand
           },
           onStoryError(error, localStory) {
             summary.updateResults.failed += 1;
-            const message = 'Failed to update story';
-            ui.error(message, error);
-            logger.error(message, { error, storyId: localStory.uuid });
+            handleError(error, verbose, { storyId: localStory.uuid });
           },
         }),
       );

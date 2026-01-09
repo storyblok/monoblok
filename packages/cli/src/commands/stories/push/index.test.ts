@@ -922,7 +922,7 @@ describe('stories push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Failed to create placeholder story');
+    expect(logFile).toContain('Permission denied while accessing the file');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1088,7 +1088,9 @@ describe('stories push command', () => {
     expect(report.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Failed to read local story');
+    expect(logFile).toContain(
+      "Expected property name or '}' in JSON at position 1"
+    );
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1124,7 +1126,7 @@ describe('stories push command', () => {
     expect(report.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Failed to create placeholder story');
+    expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1169,11 +1171,11 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Failed to map story references');
+    expect(logFile).toContain('Invalid data!');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to map story references'),
-      expect.any(Error),
+      expect.stringContaining('Invalid data!'),
+      expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1212,11 +1214,11 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents();
-    expect(logFile).toContain('Failed to update story');
+    expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to update story'),
-      expect.any(Error),
+      expect.stringContaining('Error fetching data from the API'),
+      expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),

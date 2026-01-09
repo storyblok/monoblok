@@ -86,11 +86,10 @@ assetsCommand
             logger.info('Fetched asset folders');
           },
           onError: (error) => {
-            logger.error('Error fetching asset folders');
             summary.folderResults.failed += 1;
             summary.folderResults.total = summary.folderResults.total || 1;
             folderProgress.setTotal(summary.folderResults.total);
-            handleError(error);
+            handleError(error, verbose);
           },
         }),
         writeAssetFolderStream({
@@ -107,10 +106,9 @@ assetsCommand
             summary.folderResults.succeeded += 1;
           },
           onFolderError: (error, folder) => {
-            logger.error('Error saving folder', { folderId: folder.id });
             summary.folderResults.failed += 1;
             summary.folderResults.total = Math.max(summary.folderResults.total, summary.folderResults.succeeded + summary.folderResults.failed);
-            handleError(error);
+            handleError(error, verbose, { folderId: folder.id });
           },
         }),
       );
@@ -136,9 +134,8 @@ assetsCommand
             summary.fetchAssetPages.succeeded += 1;
           },
           onPageError: (error, page, totalPages) => {
-            logger.error(`Error fetching page ${page} of ${totalPages}`);
             summary.fetchAssetPages.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { page, totalPages });
           },
         }),
         downloadAssetStream({
@@ -150,11 +147,10 @@ assetsCommand
             summary.fetchAssets.succeeded += 1;
           },
           onAssetError: (error, asset) => {
-            logger.error('Error fetching asset', { assetId: asset.id });
             summary.fetchAssets.failed += 1;
             summary.save.total -= 1;
             saveProgress.setTotal(summary.save.total);
-            handleError(error);
+            handleError(error, verbose, { assetId: asset.id });
           },
         }),
         writeAssetStream({
@@ -171,9 +167,8 @@ assetsCommand
             summary.save.succeeded += 1;
           },
           onAssetError: (error, asset) => {
-            logger.error('Error saving asset', { assetId: asset.id });
             summary.save.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { assetId: asset.id });
           },
         }),
       );

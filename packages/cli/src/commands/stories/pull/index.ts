@@ -92,9 +92,8 @@ storiesCommand
             summary.fetchStoryPages.succeeded += 1;
           },
           onPageError: (error, page, total) => {
-            logger.error(`Error fetching page ${page} of ${total}`);
             summary.fetchStoryPages.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { page, total });
           },
         }),
         fetchStoryStream({
@@ -107,11 +106,10 @@ storiesCommand
             summary.fetchStories.succeeded += 1;
           },
           onStoryError: (error, story) => {
-            logger.error('Error fetching story', { storyId: story.id });
             summary.fetchStories.failed += 1;
             summary.save.total -= 1;
             saveProgress.setTotal(summary.save.total);
-            handleError(error);
+            handleError(error, verbose, { storyId: story.id });
           },
         }),
         writeStoryStream({
@@ -126,9 +124,8 @@ storiesCommand
             summary.save.succeeded += 1;
           },
           onStoryError: (error, story) => {
-            logger.error('Error saving story', { storyId: story.id });
             summary.save.failed += 1;
-            handleError(error);
+            handleError(error, verbose, { storyId: story.id });
           },
         }),
       );

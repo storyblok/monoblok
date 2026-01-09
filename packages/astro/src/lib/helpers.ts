@@ -3,6 +3,7 @@ import type {
   StoryblokBridgeConfigV2,
   StoryblokClient,
 } from '../types';
+import type { AstroGlobal } from 'astro';
 
 /**
  * Returns the Storyblok API client instance.
@@ -33,6 +34,9 @@ export function useStoryblokApi(): StoryblokClient {
  * This function is primarily useful when working with the Storyblok Visual Editor
  * and live preview updates in an Astro project.
  *
+ * @deprecated Use `getPayload()` instead for better type safety and to access both story and serverData.
+ * @see {@link getPayload}
+ *
  * @param {Readonly<AstroGlobal>} Astro - The Astro global object.
  * @returns {Promise<ISbStoryData | null>} The Storyblok story data if available,
  * otherwise `null`.
@@ -45,17 +49,64 @@ export function useStoryblokApi(): StoryblokClient {
  * }
  * ```
  */
-interface Payload<T = unknown> {
-  story: ISbStoryData | null;
-  serverData?: T;
+export async function getLiveStory(
+  Astro: Readonly<AstroGlobal>,
+): Promise<ISbStoryData | null> {
+  let story: ISbStoryData | null = null;
+  if (Astro && Astro.locals._storyblok_preview_data) {
+    story = Astro.locals._storyblok_preview_data.story || null;
+  }
+  return story;
 }
 
-export async function getLiveStory<T = unknown>({ locals }: { locals: App.Locals }): Promise<Payload<T> | null> {
-  if (locals && locals._storyblok_preview_data) {
-    const { story, serverData } = locals._storyblok_preview_data;
-    return { story: story || null, serverData: serverData as T | undefined };
-  }
-  return null;
+/**
+ * Retrieves the live Storyblok story and server data from Astro's `locals` during preview mode.
+ *
+ * This function is primarily useful when working with the Storyblok Visual Editor
+ * and live preview updates in an Astro project.
+ *
+ * @template ServerData - The type of server data, constrained to StoryblokServerData
+ * @template Story - The type of story data, constrained to ISbStoryData
+ * @param {object} params - The function parameters
+ * @param {object} params.locals - The Astro locals object
+ * @returns {Promise<{ story?: Story; serverData?: ServerData }>} An object containing the story and serverData if available
+ *
+ * @example
+ * ```ts
+ * // Basic usage:
+ * const payload = await getPayload({ locals: Astro.locals });
+ * const story = payload.story ?? null;
+ *
+ * // With typed server data:
+ * interface ServerData {
+ *   users?: User[];
+ * }
+ *
+ * interface MyStory extends ISbStoryData {
+ *   content: { myField: string };
+ * }
+ *
+ * const payload = await getPayload<ServerData, MyStory>({ locals: Astro.locals });
+ * const story = payload.story ?? null;
+ * const users = payload.serverData?.users ?? [];
+ * ```
+ */
+
+export async function getPayload<
+  ServerData extends object = object,
+  Story extends ISbStoryData = ISbStoryData,
+>({
+  locals,
+}: {
+  locals: {
+    _storyblok_preview_data?: {
+      serverData?: ServerData;
+      story?: Story;
+    };
+  };
+}): Promise<{ story?: Story; serverData?: ServerData }> {
+  const { story, serverData } = locals._storyblok_preview_data || {};
+  return { story, serverData };
 }
 
 export function initStoryblokBridge(

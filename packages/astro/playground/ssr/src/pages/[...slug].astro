@@ -1,5 +1,5 @@
 ---
-import { getLiveStory, isEditorRequest } from '@storyblok/astro';
+import { getPayload, isEditorRequest, type ISbStoryData } from '@storyblok/astro';
 import { storyblokApi } from '@storyblok/astro/client';
 import BaseLayout from '@shared/components/BaseLayout.astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
@@ -10,13 +10,15 @@ import Widget from '@shared/components/Widget.astro';
 interface ServerData {
   users?: User[];
 }
-
+interface MyStory extends ISbStoryData {
+  content: { myField: string };
+}
 const { slug } = Astro.params;
-const liveStory = await getLiveStory<ServerData>({ locals: Astro.locals });
+const payload = await getPayload<ServerData, MyStory>({ locals: Astro.locals });
 
 // Use live preview data or fetch fresh data
 const story =
-  liveStory?.story ??
+  payload?.story ??
   (
     await storyblokApi.get(`cdn/stories/${slug || 'home'}`, {
       version: 'draft',
@@ -24,7 +26,7 @@ const story =
     })
   ).data.story;
 
-const users = liveStory?.serverData?.users ?? (await getUsers());
+const users = payload?.serverData?.users ?? (await getUsers());
 const inEditor = isEditorRequest(Astro.url);
 ---
 

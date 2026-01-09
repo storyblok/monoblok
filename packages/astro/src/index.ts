@@ -1,6 +1,6 @@
 import storyblokIntegration from './lib/storyblok-integration';
 
-export { getLiveStory, useStoryblokApi } from './lib/helpers';
+export { getLiveStory, getPayload, useStoryblokApi } from './lib/helpers';
 
 export { sanitizeJSON } from './lib/sanitizeJSON';
 export type { IntegrationOptions } from './lib/storyblok-integration';

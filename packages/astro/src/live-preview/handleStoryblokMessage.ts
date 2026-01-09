@@ -1,6 +1,17 @@
 import type { ISbStoryData } from '@storyblok/js';
 
 let timeout: NodeJS.Timeout;
+
+/**
+ * Checks if live preview is disabled via meta tag
+ */
+function isLivePreviewDisabled(): boolean {
+  const metaTag = document.querySelector<HTMLMetaElement>(
+    'meta[name="storyblok-live-preview"]',
+  );
+  return metaTag?.content === 'disabled' || metaTag?.content === 'false';
+}
+
 /**
  * Our current tests indicate that the post request section
  * is the bottleneck in terms of time consumption.
@@ -14,13 +25,40 @@ export async function handleStoryblokMessage(event: {
   const { action, story } = event || {};
 
   if (action === 'input' && story) {
+    // Check if live preview is disabled via meta tag
+    if (isLivePreviewDisabled()) {
+      return;
+    }
+
     // Debounce the getNewHTMLBody function
     const debouncedGetNewHTMLBody = async () => {
-      dispatchStoryblokEvent('storyblok-live-preview-updating', { story });
+      // Dispatch cancelable event to allow users to prevent the update
+      const updatingEvent = dispatchStoryblokEvent(
+        'storyblok-live-preview-updating',
+        { story },
+        true,
+      );
 
-      const newBody = await getNewHTMLBody(story);
+      // If the event was prevented, skip the update
+      if (updatingEvent.defaultPrevented) {
+        return;
+      }
+
       const currentBody = document.body;
+      let serverData = null;
+      const serverDataElement = currentBody.querySelector('#__STORYBLOK_SERVERDATA__');
+      if (serverDataElement) {
+        try {
+          serverData = JSON.parse(serverDataElement.textContent || '{}');
+        }
+        catch (e) {
+          console.error('Failed to parse server-data:', e);
+        }
+      }
+      const newBody = await getNewHTMLBody(story, serverData);
       if (newBody.outerHTML === currentBody.outerHTML) {
+        // No changes detected, but still dispatch updated event to match updating event
+        dispatchStoryblokEvent('storyblok-live-preview-updated', { story });
         return;
       }
       // Get current focused element in Storyblok
@@ -64,13 +102,16 @@ function updateDOMWithNewBody(
   }
 }
 
-async function getNewHTMLBody(story: ISbStoryData) {
+async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
   // TODO How to handel (50x, 405, etc.)
   const result = await fetch(location.href, {
     method: 'POST',
     body: JSON.stringify({
-      ...story,
-      is_storyblok_preview: true,
+      story: {
+        ...story,
+        is_storyblok_preview: true,
+      },
+      ...(serverData && typeof serverData === 'object' ? { serverData } : {}),
     }),
     headers: {
       'Content-Type': 'application/json',
@@ -84,7 +125,10 @@ async function getNewHTMLBody(story: ISbStoryData) {
 
 /**
  * Dispatches a custom event with optional detail payload.
+ * Returns the event object so the caller can check if preventDefault() was called.
  */
-function dispatchStoryblokEvent<T>(name: string, detail?: T) {
-  document.dispatchEvent(new CustomEvent<T>(name, { detail }));
+function dispatchStoryblokEvent<T>(name: string, detail?: T, cancelable = false) {
+  const event = new CustomEvent<T>(name, { detail, cancelable });
+  document.dispatchEvent(event);
+  return event;
 }

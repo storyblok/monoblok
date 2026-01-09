@@ -67,10 +67,10 @@ pnpm release
 ```
 
 This script will:
-- Check that you're on the `main` branch
+- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
-- Verify you're up to date with `origin/main`
+- Verify you're up to date with the remote branch
 - Run `nx release --skip-publish` to:
   - Analyze conventional commits since the last release
   - Determine appropriate version bumps
@@ -81,6 +81,57 @@ This script will:
   - Create a GitHub release
 
 **Important**: The script enforces these prerequisites automatically. If any check fails, it will provide clear instructions on how to fix the issue before proceeding.
+
+### Pre-release Versions (alpha, beta, next)
+
+To release a pre-release version (e.g., for testing before stable release):
+
+1. **Create or switch to a pre-release branch**:
+   ```bash
+   git checkout -b alpha   # or beta, next
+   # Or if branch exists:
+   git checkout alpha
+   ```
+
+2. **Make your changes and commit** using conventional commits:
+   ```bash
+   git add .
+   git commit -m "feat(astro): add new feature"
+   git push origin alpha
+   ```
+
+3. **Run the release script**:
+   ```bash
+   pnpm release
+   ```
+   This will bump versions with the pre-release suffix (e.g., `1.0.0-alpha.0`).
+
+4. **Publish via GitHub Actions**:
+   - Go to **Actions** → **Publish** workflow
+   - Click **Run workflow** and select your pre-release branch
+   - Packages will be published with the branch name as the npm tag
+
+#### Supported Pre-release Channels by Package
+
+Not all packages have pre-release channels configured. Check the `release.branches` field in each package's `package.json`:
+
+| Package | Channels |
+|---------|----------|
+| `@storyblok/astro` | `alpha`, `next` |
+| `@storyblok/nuxt` | `next` |
+| `storyblok-js-client` | `beta`, `next` |
+
+#### Promoting Pre-release to Stable
+
+Once a pre-release is ready:
+
+```bash
+git checkout main
+git merge alpha   # or beta, next
+git push origin main
+pnpm release
+# Then run Publish workflow on main
+```
 
 ### Silent Versioning (without GitHub Release)
 
@@ -168,7 +219,7 @@ Each branch corresponds to a specific npm distribution tag, ensuring users can i
 
 ## Best Practices
 
-1. Always use `pnpm release` to ensure you're on the `main` branch with the latest changes
+1. Always use `pnpm release` to ensure you're on a release branch with the latest changes
 2. Review version commits before pushing
 3. Ensure all tests pass before publishing
 4. Use conventional commits for automatic versioning
@@ -287,6 +338,7 @@ git push origin main
 
 ### Common Error Messages
 
+- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, or `next` branch
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
 - **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials

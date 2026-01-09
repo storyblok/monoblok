@@ -16,6 +16,14 @@ declare module '@storyblok/astro/StoryblokComponent.astro' {
   /** Renders a dynamic Storyblok component */
   export default StoryblokComponent;
 }
+declare module '@storyblok/astro/StoryblokServerData.astro' {
+  function StoryblokServerData(
+    _props: Record<string, unknown>
+  ): any;
+
+  /** Renders a dynamic Storyblok component */
+  export default StoryblokServerData;
+}
 declare module '@storyblok/astro/client' {
   import type {
     StoryblokClient,

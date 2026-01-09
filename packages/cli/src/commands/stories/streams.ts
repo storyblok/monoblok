@@ -356,12 +356,13 @@ export const makeWriteStoryFSTransport = ({ directoryPath }: {
   },
 });
 
-export const makeWriteStoryAPITransport = ({ spaceId }: {
+export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   spaceId: string;
+  publish?: number;
 }) => ({
   write: (mappedLocalStory: Story) => updateStory(spaceId, mappedLocalStory.id, {
     story: mappedLocalStory,
-    publish: mappedLocalStory.published ? 1 : 0,
+    publish: publish ?? (mappedLocalStory.published ? 1 : 0),
   }),
 });
 

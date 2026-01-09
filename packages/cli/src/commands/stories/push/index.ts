@@ -13,6 +13,7 @@ import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
+import { loadAssetMap } from '../../assets/utils';
 import { loadManifest } from './actions';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
@@ -99,9 +100,10 @@ storiesCommand
       if (manifest.length === 0) {
         logger.info('No existing manifest found');
       }
+
+      const assetManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
       const maps = {
-        // TODO prefill with asset manifest if it exists
-        assets: new Map(),
+        assets: await loadAssetMap(assetManifestFile),
         stories: new Map<unknown, string | number>(manifest.map(e => [e.old_id, e.new_id])),
       };
 
@@ -251,7 +253,7 @@ storiesCommand
             ? { write: (story: Story) => Promise.resolve(story) }
             : makeWriteStoryAPITransport({
                 spaceId: space,
-                publish: options.publish,
+                publish: options.publish ? 1 : undefined,
               }),
           onIncrement() {
             updateProgress.increment();

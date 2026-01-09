@@ -22,7 +22,7 @@ import {
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
 import { loadManifest } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetUpdate, AssetUpload, StoryMap } from '../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetUpdate, AssetUpload } from '../types';
 import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';

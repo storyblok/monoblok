@@ -1,7 +1,8 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
-import type { Asset } from './types';
+import { loadManifest, type ManifestEntry } from '../stories/push/actions';
+import type { Asset, AssetMap } from './types';
 
 export const parseAssetData = (raw?: string) => {
   if (!raw) {
@@ -48,4 +49,17 @@ export const isRemoteSource = (assetSource: string) => {
   catch {
     return false;
   }
+};
+
+export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {
+  const assetManifest = await loadManifest(manifestFile);
+
+  return new Map<number | string, number | string>([
+    ...assetManifest
+      .map(e => [Number(e.old_id), Number(e.new_id)] as const)
+      .filter(([oldId, newId]) => !Number.isNaN(oldId) && !Number.isNaN(newId)),
+    ...assetManifest.filter((e): e is ManifestEntry & { old_filename: string; new_filename: string } =>
+      !!e.old_filename && !!e.new_filename,
+    ).map(e => [e.old_filename, e.new_filename] as const),
+  ]) as AssetMap;
 };

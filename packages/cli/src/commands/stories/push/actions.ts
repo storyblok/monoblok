@@ -1,6 +1,12 @@
 import { readFile } from 'node:fs/promises';
 
-export interface ManifestEntry { old_id: string | number; new_id: string | number; created_at?: string }
+export interface ManifestEntry {
+  old_id: string | number;
+  new_id: string | number;
+  old_filename?: string;
+  new_filename?: string;
+  created_at?: string;
+}
 
 export const loadManifest = async (
   manifestFile: string,

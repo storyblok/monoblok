@@ -142,6 +142,13 @@ const preconditions = {
       [manifestPath]: content,
     });
   },
+  canLoadAssetManifest(manifestEntries: Record<string, unknown>[], space = DEFAULT_SPACE, basePath?: string) {
+    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+    const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
+    vol.fromJSON({
+      [manifestPath]: content,
+    });
+  },
   canFetchStories(stories: MockStory[], space = DEFAULT_SPACE) {
     for (const story of stories) {
       server.use(
@@ -401,6 +408,84 @@ describe('stories push command', () => {
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Updating stories: 5/5 succeeded, 0 failed.'),
+    );
+  });
+
+  it('should push stories with mapped asset references', async () => {
+    const assetOldId = 123;
+    const assetNewId = 456;
+    const assetOldFilename = 'https://a.com/old.jpg';
+    const assetNewFilename = 'https://b.com/new.jpg';
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {
+        component: 'page',
+        hero_image: {
+          id: assetOldId,
+          filename: assetOldFilename,
+          fieldtype: 'asset',
+        },
+        gallery: [
+          {
+            id: assetOldId,
+            filename: assetOldFilename,
+            fieldtype: 'asset',
+          },
+        ],
+      },
+    });
+    const localStories = [storyA];
+    preconditions.canLoadStories(localStories);
+    const pageComponent = makeMockComponent({
+      name: 'page',
+      schema: {
+        hero_image: {
+          type: 'asset',
+        },
+        gallery: {
+          type: 'multiasset',
+        },
+      },
+    });
+    preconditions.canLoadComponents([pageComponent]);
+    const remoteStories = preconditions.canCreateStories(localStories);
+    preconditions.canUpdateStories(remoteStories);
+    preconditions.canLoadAssetManifest([
+      {
+        old_id: assetOldId,
+        new_id: assetNewId,
+        old_filename: assetOldFilename,
+        new_filename: assetNewFilename,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const [storyARemote] = remoteStories;
+    expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyARemote.id, expect.objectContaining({
+      story: {
+        ...storyARemote,
+        content: {
+          ...storyARemote.content,
+          hero_image: {
+            id: assetNewId,
+            filename: assetNewFilename,
+            fieldtype: 'asset',
+          },
+          gallery: [
+            {
+              id: assetNewId,
+              filename: assetNewFilename,
+              fieldtype: 'asset',
+            },
+          ],
+        },
+      },
+    }));
+    // UI
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 story pushed, 0 stories failed'),
     );
   });
 

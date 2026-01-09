@@ -59,6 +59,7 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 | `--filename <filename>` | Override the asset filename (defaults to the source filename) | - |
 | `--folder <folderId>` | Destination asset folder ID | - |
 | `--cleanup` | Delete local assets and metadata after a successful push | `false` |
+| `--update-stories` | Update file references in stories if necessary | `false` |
 
 ## Notes
 

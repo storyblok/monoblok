@@ -6,15 +6,13 @@ runs:
     - uses: ./.github/actions/cache-monorepo
 
     - name: Install pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 10
-    
+      uses: pnpm/action-setup@v4 # no need to specify version, it reads from package.json -> packageManager
+
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version-file: '.nvmrc'
-        cache: 'pnpm'
+        node-version-file: ".nvmrc"
+        cache: "pnpm"
 
     - name: Install dependencies
       shell: bash

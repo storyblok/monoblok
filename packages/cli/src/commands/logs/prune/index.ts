@@ -10,7 +10,7 @@ logsCommand.command('prune')
   .action(async ({ keep }: { keep: number }) => {
     const { space, path } = logsCommand.opts();
     const ui = getUI();
-    const logsPath = resolveCommandPath(directories.log, space, path);
+    const logsPath = resolveCommandPath(directories.logs, space, path);
     const deletedFilesCount = FileTransport.pruneLogFiles(logsPath, keep);
 
     ui.info(`Deleted ${deletedFilesCount} log file${deletedFilesCount === 1 ? '' : 's'}`);

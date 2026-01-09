@@ -1,6 +1,7 @@
 import { Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import type { Story, StoryContent } from '../../../stories/constants';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../lib/logger/logger';

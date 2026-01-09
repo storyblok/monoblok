@@ -85,7 +85,7 @@ export class ConsoleTransport implements LogTransport {
           name: value.name,
           message: value.message,
           httpCode: value.code,
-          httpStatusText: value.error?.response.statusText,
+          httpStatusText: value.error?.response?.statusText,
           stack: value.stack,
         });
       }

@@ -21,8 +21,9 @@ import {
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
+import type { ManifestEntry } from './actions';
 import { loadManifest } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetUpdate, AssetUpload } from '../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetMapped, AssetUpdate, AssetUpload } from '../types';
 import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
@@ -93,12 +94,21 @@ assetsCommand
         logger.info('No existing manifest found');
       }
 
+      const isValidManifestEntry = (entry: ManifestEntry) =>
+        Boolean(typeof entry.old_id === 'number'
+          && typeof entry.new_id === 'number'
+          && entry.old_filename
+          && entry.new_filename);
       const maps = {
-        assets: new Map<number | string, number | string>([
-          ...manifest.map(e => [Number(e.old_id), Number(e.new_id)]) satisfies [number, number][],
-          ...manifest.filter((e): e is typeof e & { old_filename: string; new_filename: string } =>
-            !!e.old_filename && !!e.new_filename,
-          ).map(e => [e.old_filename, e.new_filename]) satisfies [string, string][],
+        assets: new Map<number, { old: Asset; new: AssetMapped }>([
+          ...manifest.filter(isValidManifestEntry)
+            .map(e => [
+              Number(e.old_id),
+              {
+                old: { id: Number(e.old_id), filename: e.old_filename || '' },
+                new: { id: Number(e.new_id), filename: e.new_filename || '' },
+              },
+            ] as const),
         ]) as AssetMap,
         assetFolders: new Map(folderManifest.map(e => [Number(e.old_id), Number(e.new_id)])) satisfies AssetFolderMap,
       };
@@ -188,8 +198,12 @@ assetsCommand
       /**
        * Map Asset References in Stories
        */
-      const hasNewFileReferences = maps.assets.entries().some(([k, v]) => k !== v);
-      if (hasNewFileReferences && options.updateStories) {
+      const hasUpdatedFilename = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+        'filename' in entry.old && entry.old.filename !== entry.new.filename;
+      const hasMetadata = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+        'meta_data' in entry.new && entry.new.meta_data;
+      const hasUpdatedAssets = maps.assets.values().some(v => hasUpdatedFilename(v) || hasMetadata(v));
+      if (hasUpdatedAssets && options.updateStories) {
         const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
         const writeStoryTransport = options.dryRun
           ? { write: async (story: Story) => story }

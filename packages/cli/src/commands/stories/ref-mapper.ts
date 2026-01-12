@@ -1,9 +1,11 @@
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
+import type { AssetMap } from '../assets/types';
+
 export interface RefMaps {
-  assets: Map<unknown, string | number>;
-  stories: Map<unknown, string | number>;
+  assets?: AssetMap;
+  stories?: Map<unknown, string | number>;
 }
 
 export type ComponentSchemas = Record<Component['name'], Component['schema']>;
@@ -100,7 +102,7 @@ const traverseAndMapRichtextDoc = (
         ...data,
         attrs: {
           ...data.attrs,
-          uuid: maps.stories.get(data.attrs.uuid) || data.attrs.uuid,
+          uuid: maps.stories?.get(data.attrs.uuid) || data.attrs.uuid,
         },
       };
     }
@@ -157,7 +159,7 @@ const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
 
   return {
     ...data,
-    id: maps.stories.get(data.id) || data.id,
+    id: maps.stories?.get(data.id) || data.id,
   };
 };
 
@@ -181,11 +183,14 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, 
 /**
  * Asset field reference mapper.
  */
-const assetFieldRefMapper: RefMapper = (data, { maps }) => ({
-  ...data,
-  id: maps.assets.get(data.id),
-  filename: maps.assets.get(data.filename),
-});
+const assetFieldRefMapper: RefMapper = (data, { maps }) => {
+  const mappedAsset = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;
+
+  return {
+    ...data,
+    ...mappedAsset?.new,
+  };
+};
 
 /**
  * Multi asset field reference mapper.
@@ -206,7 +211,7 @@ const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
     return data;
   }
 
-  return data.map((d: any) => maps.stories.get(d) || d) as any;
+  return data.map((d: any) => maps.stories?.get(d) || d) as any;
 };
 
 const fieldRefMappers = {
@@ -231,12 +236,12 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
   const alternates = story.alternates
     ? (story.alternates as Required<Story>['alternates']).map((a: any) => ({
         ...a,
-        id: maps.stories.get(a.id) || a.id,
-        parent_id: maps.stories.get(a.parent_id) || a.parent_id,
+        id: maps.stories?.get(a.id) || a.id,
+        parent_id: maps.stories?.get(a.parent_id) || a.parent_id,
       }))
     : story.alternates;
 
-  const parentId = maps.stories.get(story.parent_id) || story.parent_id;
+  const parentId = maps.stories?.get(story.parent_id) || story.parent_id;
   const mappedStory = {
     ...story,
     content: traverseAndMapBySchema(story.content, {
@@ -246,8 +251,8 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
       processedFields,
       missingSchemas,
     }),
-    id: Number(maps.stories.get(story.id) || story.id),
-    uuid: String(maps.stories.get(story.uuid) || story.uuid),
+    id: Number(maps.stories?.get(story.id) || story.id),
+    uuid: String(maps.stories?.get(story.uuid) || story.uuid),
     // @ts-expect-error Our types are wrong.
     parent_id: parentId ? Number(parentId) : null,
     alternates,

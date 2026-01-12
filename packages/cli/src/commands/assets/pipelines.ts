@@ -8,7 +8,7 @@ import type { Report } from '../../lib/reporter/reporter';
 import { handleError } from '../../utils/error/error';
 import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
-import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
+import type { Asset, AssetFolderMap, AssetMap, AssetUpload } from './types';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const PROGRESS_BAR_PADDING = 23;
@@ -142,12 +142,17 @@ export const upsertAssetsPipeline = async ({
     cleanup,
     onIncrement: () => assetProgress.increment(),
     onAssetSuccess: (localAssetResult, remoteAsset) => {
-      if (localAssetResult.id) {
-        maps.assets.set(localAssetResult.id, remoteAsset.id);
+      if ('id' in localAssetResult && localAssetResult.id) {
+        maps.assets.set(localAssetResult.id, {
+          old: localAssetResult,
+          new: {
+            id: remoteAsset.id,
+            filename: remoteAsset.filename,
+            meta_data: remoteAsset.meta_data,
+          },
+        });
       }
-      if ('filename' in localAssetResult) {
-        maps.assets.set(localAssetResult.filename, remoteAsset.filename);
-      }
+
       summary.succeeded += 1;
       logger.info('Uploaded asset', { assetId: remoteAsset.id });
     },
@@ -212,9 +217,16 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     }
   };
 
+  // If we only have one asset map entry, we can filter for stories referencing this asset.
+  const assetMapValues = [...maps.assets.values()];
+  const reference_search = assetMapValues.length === 1 ? assetMapValues[0].new.filename : undefined;
+
   await pipeline(
     fetchStoriesStream({
       spaceId: space,
+      params: {
+        reference_search,
+      },
       setTotalPages: (totalPages) => {
         summaries.fetchStoryPages.total = totalPages;
         fetchStoryPagesProgress.setTotal(totalPages);

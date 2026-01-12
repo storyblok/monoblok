@@ -585,9 +585,6 @@ const cleanupAssets = async ({ assetFilePath, metadataFilePath }: { assetFilePat
 const hasId = (a: unknown): a is { id: number } => {
   return !!a && typeof a === 'object' && 'id' in a && typeof (a as any).id === 'number';
 };
-const hasFilename = (a: unknown): a is { filename: string } => {
-  return !!a && typeof a === 'object' && 'filename' in a && typeof (a as any).filename === 'string';
-};
 const hasShortFilename = (a: unknown): a is { short_filename: string } => {
   return !!a && typeof a === 'object' && 'short_filename' in a && typeof (a as any).short_filename === 'string';
 };
@@ -610,52 +607,58 @@ export const upsertAssetStream = ({
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   cleanup: boolean;
   onIncrement?: () => void;
-  onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
+  onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
   return new Writable({
     objectMode: true,
     async write({
-      asset,
+      asset: localAsset,
       context: { assetFilePath, metadataFilePath, fileBuffer },
     }: LocalAssetPayload, _encoding, callback) {
       try {
-        const remoteFolderId = asset.asset_folder_id
-          && (maps.assetFolders.get(asset.asset_folder_id) || asset.asset_folder_id);
-        const remoteAssetId = hasId(asset) ? (maps.assets.get(asset.id) || asset.id) : undefined;
+        const remoteFolderId = localAsset.asset_folder_id
+          && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
+        const remoteAssetId = hasId(localAsset)
+          ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
+          : undefined;
         const remoteAsset = remoteAssetId ? await getTransport.get(remoteAssetId) : null;
-        const upsertAsset = {
-          ...remoteAsset,
-          ...asset,
-          id: remoteAssetId,
-          asset_folder_id: remoteFolderId,
-        };
+        let newRemoteAsset: Asset | null = null;
         // If a remote asset already exists, we must not create a new asset.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        const canUpdate = remoteAsset && hasId(upsertAsset) && hasFilename(upsertAsset);
-        const canCreate = hasShortFilename(upsertAsset);
-        const newRemoteAsset = canUpdate
-          ? await updateTransport.update(upsertAsset, fileBuffer)
-          : canCreate
-            ? await createTransport.create(upsertAsset, fileBuffer)
-            : undefined;
+        if (remoteAsset) {
+          const updateAsset = {
+            ...remoteAsset,
+            ...localAsset,
+            id: remoteAsset.id,
+            asset_folder_id: remoteFolderId,
+          } satisfies AssetUpdate;
+          newRemoteAsset = await updateTransport.update(updateAsset, fileBuffer);
+        }
+        else if (hasShortFilename(localAsset)) {
+          const createAsset = {
+            ...localAsset,
+            asset_folder_id: remoteFolderId,
+          } satisfies AssetCreate;
+          newRemoteAsset = await createTransport.create(createAsset, fileBuffer);
+        }
 
         if (!newRemoteAsset) {
           throw new Error('Could neither create nor update the asset!');
         }
 
-        if (hasId(asset)) {
-          await manifestTransport.append(asset, newRemoteAsset);
+        if (hasId(localAsset)) {
+          await manifestTransport.append(localAsset, newRemoteAsset);
         }
 
         if (cleanup) {
           await cleanupAssets({ assetFilePath, metadataFilePath });
         }
 
-        onAssetSuccess?.(asset, newRemoteAsset);
+        onAssetSuccess?.(localAsset, newRemoteAsset);
       }
       catch (maybeError) {
-        onAssetError?.(toError(maybeError), asset);
+        onAssetError?.(toError(maybeError), localAsset);
       }
       finally {
         onIncrement?.();

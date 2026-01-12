@@ -12,13 +12,16 @@ export interface AssetUpload {
   short_filename: string;
 }
 
+export interface AssetMapped {
+  id: number;
+  filename: string;
+  meta_data?: Record<string, any>;
+}
+
 /**
  * Maps local with remote asset ids and filenames.
  */
-export interface AssetMap extends Map<string | number, string | number> {
-  get: ((key: number) => number | undefined) & ((key: string) => string | undefined);
-  set: ((key: number, value: number) => this) & ((key: string, value: string) => this);
-}
+export type AssetMap = Map<number, { old: Asset | AssetMapped | AssetUpload; new: AssetMapped }>;
 
 export interface AssetFolder {
   id: number;

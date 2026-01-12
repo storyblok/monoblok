@@ -1,8 +1,8 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
-import { loadManifest, type ManifestEntry } from '../stories/push/actions';
-import type { Asset, AssetMap } from './types';
+import { loadManifest } from '../stories/push/actions';
+import type { Asset, AssetMap, AssetMapped } from './types';
 
 export const parseAssetData = (raw?: string) => {
   if (!raw) {
@@ -54,12 +54,15 @@ export const isRemoteSource = (assetSource: string) => {
 export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {
   const assetManifest = await loadManifest(manifestFile);
 
-  return new Map<number | string, number | string>([
+  return new Map<number, { old: AssetMapped; new: AssetMapped }>([
     ...assetManifest
-      .map(e => [Number(e.old_id), Number(e.new_id)] as const)
-      .filter(([oldId, newId]) => !Number.isNaN(oldId) && !Number.isNaN(newId)),
-    ...assetManifest.filter((e): e is ManifestEntry & { old_filename: string; new_filename: string } =>
-      !!e.old_filename && !!e.new_filename,
-    ).map(e => [e.old_filename, e.new_filename] as const),
+      .map(e => [
+        Number(e.old_id),
+        {
+          old: { id: Number(e.old_id), filename: e.old_filename || '' },
+          new: { id: Number(e.new_id), filename: e.new_filename || '' },
+        },
+      ] as const)
+      .filter(([oldId, map]) => !Number.isNaN(oldId) && !Number.isNaN(map.new.id)),
   ]) as AssetMap;
 };

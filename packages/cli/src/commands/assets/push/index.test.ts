@@ -43,6 +43,7 @@ vi.spyOn(actions, 'createAsset');
 vi.spyOn(actions, 'updateAsset');
 vi.spyOn(actions, 'createAssetFolder');
 vi.spyOn(actions, 'updateAssetFolder');
+vi.spyOn(storyActions, 'fetchStories');
 vi.spyOn(storyActions, 'updateStory');
 
 interface MockAsset {
@@ -468,6 +469,11 @@ const preconditions = {
       );
     }
   },
+  canLoadLocalFile(filePath: string, content: Buffer | string) {
+    vol.fromJSON({
+      [filePath]: content,
+    });
+  },
 };
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
@@ -574,7 +580,7 @@ describe('assets push command', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
 
-  it('should update stories referencing the old asset filename when it changes after upload', async () => {
+  it('should update stories referencing the old asset when the filename changes', async () => {
     const targetSpace = '54321';
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
@@ -639,7 +645,65 @@ describe('assets push command', () => {
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
 
-  it('should publish only published stories', async () => {
+  it('should update stories referencing an asset when the metadata change', async () => {
+    const localAsset = makeMockAsset({
+      meta_data: {
+        alt: 'New alt',
+        title: 'New title',
+        source: 'New source',
+        copyright: 'New copyright',
+      },
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    preconditions.canUpsertRemoteAssets([localAsset]);
+    const pageComponent = makeMockComponent({
+      name: 'page',
+      schema: {
+        asset: {
+          type: 'asset',
+        },
+      },
+    });
+    preconditions.canLoadComponents([pageComponent]);
+    const story = makeMockStory({
+      content: {
+        _uid: randomUUID(),
+        component: 'page',
+        asset: {
+          id: localAsset.id,
+          filename: localAsset.filename,
+          meta_data: {
+            alt: 'Old alt',
+            title: 'Old title',
+            source: 'Old source',
+            copyright: 'Old copyright',
+          },
+        },
+      },
+    });
+    preconditions.canFetchRemoteStoryPages([[story]]);
+    preconditions.canFetchStories([story]);
+    preconditions.canUpdateStories([story]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', DEFAULT_SPACE, '--update-stories']);
+
+    expect(storyActions.updateStory).toHaveBeenCalledWith(
+      DEFAULT_SPACE,
+      story.id,
+      expect.objectContaining({
+        story: expect.objectContaining({
+          content: expect.objectContaining({
+            asset: expect.objectContaining({
+              meta_data: localAsset.meta_data,
+            }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('should publish only already published stories', async () => {
     const targetSpace = '54321';
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
@@ -719,6 +783,7 @@ describe('assets push command', () => {
       },
     });
     // UI
+    expect(storyActions.updateStory).not.toHaveBeenCalled();
     expect(console.error).not.toHaveBeenCalled();
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
@@ -809,9 +874,7 @@ describe('assets push command', () => {
 
   it('should log an error and stop when manifest loading fails', async () => {
     const manifestPath = path.join(resolveCommandPath(directories.assets, DEFAULT_SPACE), 'manifest.jsonl');
-    vol.fromJSON({
-      [manifestPath]: 'not-json',
-    });
+    preconditions.canLoadLocalFile(manifestPath, 'not-json');
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
@@ -1184,14 +1247,12 @@ describe('assets push command', () => {
     const assetPath = '/tmp/local-asset.png';
     const assetJsonPath = '/tmp/local-asset.json';
     const pngBuffer = makePngBuffer(120, 80);
-    vol.fromJSON({
-      [assetPath]: pngBuffer,
-      [assetJsonPath]: JSON.stringify({
-        meta_data: {
-          alt: 'Alt text',
-        },
-      }),
-    });
+    preconditions.canLoadLocalFile(assetPath, pngBuffer);
+    preconditions.canLoadLocalFile(assetJsonPath, JSON.stringify({
+      meta_data: {
+        alt: 'Alt text',
+      },
+    }));
     const asset = makeMockAsset({ short_filename: 'local-asset.png' });
     preconditions.canUpsertRemoteAssets([asset]);
 
@@ -1207,9 +1268,7 @@ describe('assets push command', () => {
   it('should push a single local asset with inline overrides', async () => {
     const assetPath = '/tmp/local-asset.png';
     const pngBuffer = makePngBuffer(200, 300);
-    vol.fromJSON({
-      [assetPath]: pngBuffer,
-    });
+    preconditions.canLoadLocalFile(assetPath, pngBuffer);
     const asset = makeMockAsset({ short_filename: 'override.png' });
     preconditions.canUpsertRemoteAssets([asset]);
 
@@ -1279,15 +1338,12 @@ describe('assets push command', () => {
 
   it('should successfully push an external asset when the local directory structure is empty', async () => {
     const externalUrl = 'https://example.com/image.png';
-
     preconditions.canDownloadExternalAsset(externalUrl);
-
     const asset = makeMockAsset({
       short_filename: 'image.png',
       asset_folder_id: 123,
     });
-
-    preconditions.canUpsertRemoteAssets([asset], { space: DEFAULT_SPACE });
+    preconditions.canUpsertRemoteAssets([asset]);
 
     await assetsCommand.parseAsync([
       'node',
@@ -1307,5 +1363,42 @@ describe('assets push command', () => {
     const logFile = getLogFileContents();
     expect(logFile).not.toContain('ENOENT');
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed'));
+  });
+
+  it('should filter stories using search parameter when updating a single asset', async () => {
+    const localAssetFilename = 'search-me.png';
+    const localAssetPath = path.join(tmpdir(), localAssetFilename);
+    const pngBuffer = makePngBuffer(10, 10);
+    preconditions.canLoadLocalFile(localAssetPath, pngBuffer);
+    const localAsset = makeMockAsset({ short_filename: localAssetFilename });
+    const pageComponent = makeMockComponent({
+      name: 'page',
+      schema: {
+        asset: {
+          type: 'asset',
+        },
+      },
+    });
+    preconditions.canLoadComponents([pageComponent]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
+    preconditions.canDownloadAssets([remoteAsset]);
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canFetchRemoteStoryPages([]);
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'push',
+      '--space',
+      DEFAULT_SPACE,
+      '--data',
+      `{"id":${localAsset.id},"meta_data":{"alt":"new alt"}}`,
+      '--update-stories',
+      localAssetPath,
+    ]);
+
+    expect(storyActions.fetchStories).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
+      reference_search: localAsset.filename,
+    }));
   });
 });

@@ -307,7 +307,7 @@ export const createStoryPlaceholderStream = ({
       try {
         // If a mapped remote story already exists, we must not create a new placeholder.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        const mappedStoryId = maps.stories.get(localStory.id);
+        const mappedStoryId = maps.stories?.get(localStory.id);
         const mappedRemoteStory = mappedStoryId && await getRemoteStory({ spaceId, storyId: Number(mappedStoryId) });
         // We check the UUID to make sure it is the exact same story and not just a
         // story with the same numeric ID in a different space.

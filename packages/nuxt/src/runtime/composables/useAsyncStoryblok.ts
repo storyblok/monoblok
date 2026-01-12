@@ -2,7 +2,6 @@ import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, us
 import { computed, type ComputedRef, type Ref, watch } from 'vue';
 import { useAsyncData } from '#app';
 import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
-import type { DedupeOption } from 'nuxt/app/defaults';
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -16,15 +15,17 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
 }
 
 interface AsyncDataExecuteOptions {
-  dedupe?: DedupeOption;
+  dedupe?: 'cancel' | 'defer';
   cause?: 'initial' | 'refresh:hook' | 'refresh:manual' | 'watch';
 }
 
 export interface UseAsyncStoryblokResult {
   story: ComputedRef<ISbResult['data']['story']>;
-  data: Ref<ISbResult>;
+  /** In Nuxt 3: null when not loaded. In Nuxt 4: undefined when not loaded. */
+  data: Ref<ISbResult | null | undefined>;
   pending: Ref<boolean>;
-  error: Ref<NuxtError<unknown> | null>; // <-- allow null
+  /** In Nuxt 3: null when no error. In Nuxt 4: undefined when no error. */
+  error: Ref<NuxtError<unknown> | null | undefined>;
   refresh: (opts?: AsyncDataExecuteOptions) => Promise<void>;
   execute: (opts?: AsyncDataExecuteOptions) => Promise<void>;
   clear: () => void;
@@ -105,7 +106,17 @@ export async function useAsyncStoryblok(
     watch(result.data, (newData) => {
       if (newData?.data.story && newData.data.story.id) {
         useStoryblokBridge(newData.data.story.id, (evStory) => {
-          newData.data.story = evStory;
+          // In Nuxt 4, data is a shallowRef - we must replace the entire object
+          // to trigger reactivity instead of mutating nested properties
+          if (result.data.value) {
+            result.data.value = {
+              ...result.data.value,
+              data: {
+                ...result.data.value.data,
+                story: evStory,
+              },
+            };
+          }
         }, bridge);
       }
     }, {
@@ -122,4 +133,4 @@ export async function useAsyncStoryblok(
     clear: result.clear,
     story: computed(() => result.data.value?.data.story),
   };
-};
+}

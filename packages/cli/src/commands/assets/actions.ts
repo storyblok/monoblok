@@ -234,6 +234,22 @@ const sha256 = (data: ArrayBuffer | Buffer) => {
   return createHash('sha256').update(buffer).digest('hex');
 };
 
+/**
+ * Updates an existing asset in Storyblok.
+ *
+ * When providing a non-null {@link fileBuffer}, the function will compare the
+ * local file buffer with the remote asset file and, if they differ, upload
+ * the new file before updating the asset metadata.
+ *
+ * When {@link fileBuffer} is `null`, no file upload is performed and only the
+ * asset metadata (e.g. `meta_data`, `asset_folder_id`, etc.) is updated.
+ *
+ * @param asset - The asset fields to update, including its `id`.
+ * @param fileBuffer - The new file contents as an `ArrayBuffer`, or `null` if
+ *   only metadata should be updated without changing the underlying file.
+ * @param options - Additional options.
+ * @param options.spaceId - The ID of the space that owns the asset.
+ */
 export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, { spaceId }: {
   spaceId: string;
 }) => {

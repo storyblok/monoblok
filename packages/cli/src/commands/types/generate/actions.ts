@@ -474,7 +474,6 @@ export const generateTypes = async (
       // Pass contentTypeBloks to properly generate the union type with imports
       const contentTypesFile = createContentTypesFile(
         contentTypeBloks,
-        componentResults,
         typeDefs,
       );
       if (contentTypesFile) {

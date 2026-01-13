@@ -197,7 +197,6 @@ export function createDatasourcesFile(
  */
 export function createContentTypesFile(
   contentTypeBloks: Set<string>,
-  componentResults: TypeResult[],
   typeDefs: string[],
 ): { name: string; content: string } | null {
   if (contentTypeBloks.size === 0) {

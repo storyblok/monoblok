@@ -15,8 +15,7 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
 }
 
 interface AsyncDataExecuteOptions {
-  dedupe?: 'cancel' | 'defer' | boolean;
-  cause?: 'initial' | 'refresh:hook' | 'refresh:manual' | 'watch';
+  dedupe?: 'cancel' | 'defer';
 }
 
 export interface UseAsyncStoryblokResult {

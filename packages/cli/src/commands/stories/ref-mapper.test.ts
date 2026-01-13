@@ -37,7 +37,7 @@ describe('storyRefMapper', () => {
   it('should map all relevant IDs in all of the fields of a story', () => {
     const story = makeStoryWithAllFieldTypes();
     const storyMap = new Map<number | string, number | string>();
-    const assetMap = new Map<number | string, number | string>();
+    const assetMap = new Map<number, any>();
     // Bloks > multilink
     storyMap.set(story.content.bloks[0].link.id, randomUUID());
     // Bloks > richtext > link
@@ -46,8 +46,8 @@ describe('storyRefMapper', () => {
     storyMap.set(story.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0].marks[0].attrs.uuid, randomUUID());
     storyMap.set(story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid, randomUUID());
     // Bloks > bloks > asset
-    assetMap.set(story.content.bloks[0].bloks[0].asset.id, getID());
-    assetMap.set(story.content.bloks[0].bloks[0].asset.filename, 'https://a.storyblok.com/f/12345/500x500/new-filename.png');
+    const asset1New = { id: getID(), filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png' };
+    assetMap.set(story.content.bloks[0].bloks[0].asset.id, { new: asset1New });
     // Richtext
     storyMap.set(story.content.richtext.content[0].content[0].marks[0].attrs.uuid, randomUUID());
     storyMap.set(story.content.richtext.content[1].attrs.body[0].link.id, randomUUID());
@@ -56,11 +56,15 @@ describe('storyRefMapper', () => {
     // Multilink
     storyMap.set(story.content.link.id, randomUUID());
     // Asset
-    assetMap.set(story.content.asset.id, getID());
-    assetMap.set(story.content.asset.filename, 'https://a.storyblok.com/f/12345/500x500/new-filename.png');
+    const asset2New = {
+      id: getID(),
+      filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png',
+      meta_data: { alt: 'New Alt' },
+    };
+    assetMap.set(story.content.asset.id, { new: asset2New });
     // Multiasset
-    assetMap.set(story.content.multi_assets[0].id, getID());
-    assetMap.set(story.content.multi_assets[0].filename, 'https://a.storyblok.com/f/12345/500x500/new-filename.png');
+    const asset3New = { id: getID(), filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png' };
+    assetMap.set(story.content.multi_assets[0].id, { new: asset3New });
     const maps = { assets: assetMap, stories: storyMap };
 
     // @ts-expect-error Our types are wrong.
@@ -75,8 +79,8 @@ describe('storyRefMapper', () => {
     // Bloks > bloks > richtext > link (i18n)
     expect(mappedStory.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid));
     // Bloks > bloks > asset
-    expect(mappedStory.content.bloks[0].bloks[0].asset.id).toBe(assetMap.get(story.content.bloks[0].bloks[0].asset.id));
-    expect(mappedStory.content.bloks[0].bloks[0].asset.filename).toBe(assetMap.get(story.content.bloks[0].bloks[0].asset.filename));
+    expect(mappedStory.content.bloks[0].bloks[0].asset.id).toBe(asset1New.id);
+    expect(mappedStory.content.bloks[0].bloks[0].asset.filename).toBe(asset1New.filename);
     // Richtext
     expect(mappedStory.content.richtext.content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.richtext.content[0].content[0].marks[0].attrs.uuid));
     expect(mappedStory.content.richtext.content[1].attrs.body[0].link.id).toBe(storyMap.get(story.content.richtext.content[1].attrs.body[0].link.id));
@@ -85,11 +89,12 @@ describe('storyRefMapper', () => {
     // Multilink
     expect(mappedStory.content.link.id).toBe(storyMap.get(story.content.link.id));
     // Asset
-    expect(mappedStory.content.asset.id).toBe(assetMap.get(story.content.asset.id));
-    expect(mappedStory.content.asset.filename).toBe(assetMap.get(story.content.asset.filename));
+    expect(mappedStory.content.asset.id).toBe(asset2New.id);
+    expect(mappedStory.content.asset.filename).toBe(asset2New.filename);
+    expect(mappedStory.content.asset.meta_data.alt).toBe(asset2New.meta_data.alt);
     // Multiasset
-    expect(mappedStory.content.multi_assets[0].id).toBe(assetMap.get(story.content.multi_assets[0].id));
-    expect(mappedStory.content.multi_assets[0].filename).toBe(assetMap.get(story.content.multi_assets[0].filename));
+    expect(mappedStory.content.multi_assets[0].id).toBe(asset3New.id);
+    expect(mappedStory.content.multi_assets[0].filename).toBe(asset3New.filename);
   });
 
   it('should track all the components it processed', () => {

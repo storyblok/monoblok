@@ -8,7 +8,7 @@ import type { Report } from '../../lib/reporter/reporter';
 import { handleError } from '../../utils/error/error';
 import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
-import type { Asset, AssetFolderMap, AssetMap, AssetUpload } from './types';
+import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const PROGRESS_BAR_PADDING = 23;

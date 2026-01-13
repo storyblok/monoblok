@@ -8,7 +8,7 @@ export default defineNuxtConfig({
       region: '',
     },
     devtools: true,
-    enableServerClient: true,
+    enableServerClient: false,
     /* componentsDir: '~/components/storyblok', */
     // enableSudoMode: true /* (or legacy) usePlugin: false */
   },

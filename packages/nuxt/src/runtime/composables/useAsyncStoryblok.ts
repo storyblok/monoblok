@@ -1,6 +1,6 @@
 import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
 import { computed, type ComputedRef, type Ref, watch } from 'vue';
-import { useAsyncData } from '#app';
+import { useAsyncData, useRoute } from '#app';
 import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
 import type { DedupeOption } from 'nuxt/app/defaults';
 
@@ -98,8 +98,17 @@ export async function useAsyncStoryblok(
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
+  const route = useRoute();
+  const isInVisualEditor = Boolean(route.query?.['_storyblok_tk[token]']);
 
-  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
+  const result = (await useAsyncData(
+    uniqueKey,
+    () => storyblokApiInstance.get(`cdn/stories/${url}`, api),
+    {
+      ...rest,
+      deep: isInVisualEditor ? true : undefined,
+    },
+  )) as AsyncData<ISbResult, NuxtError<unknown>>;
 
   if (import.meta.client) {
     watch(result.data, (newData) => {

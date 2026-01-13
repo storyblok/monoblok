@@ -16,6 +16,9 @@ export default defineNuxtModule<AllModuleOptions>({
   meta: {
     name: '@storyblok/nuxt',
     configKey: 'storyblok',
+    compatibility: {
+      nuxt: '^3.0.0 || ^4.0.0',
+    },
   },
   defaults: {
     accessToken: '',

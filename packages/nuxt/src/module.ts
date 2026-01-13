@@ -97,7 +97,7 @@ export default defineNuxtModule<AllModuleOptions>({
     addImports({
       name: 'useAsyncStoryblok',
       as: 'useAsyncStoryblok',
-      from: resolver.resolve('runtime/composables/useAsyncStoryblok'),
+      from: resolver.resolve('runtime/composables/useAsyncStoryblok.ts'),
     });
 
     nuxt.options.typescript.hoist.push('@storyblok/vue');

@@ -635,7 +635,7 @@ importers:
         specifier: ^2.0.11
         version: 2.0.12
 
-  packages/nuxt/playground-e2e:
+  packages/nuxt/playground:
     devDependencies:
       '@storyblok/nuxt':
         specifier: workspace:*

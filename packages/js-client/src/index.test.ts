@@ -1863,5 +1863,46 @@ describe('storyblokClient', () => {
 
       vi.useRealTimers();
     });
+
+    it('should support timeout configuration through StoryblokClient', async () => {
+      // Integration test to verify timeout works end-to-end
+      vi.doUnmock('../src/sbFetch');
+      const { default: RealSbFetch } = await import('./sbFetch');
+
+      const mockFetch = vi.fn((_url: string, options?: any): Promise<Response> => {
+        return new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            resolve(new Response(JSON.stringify({ stories: [] }), { status: 200 }));
+          }, 5000);
+
+          options?.signal?.addEventListener('abort', () => {
+            clearTimeout(timeoutId);
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        });
+      });
+
+      const client = new StoryblokClient({
+        accessToken: 'test',
+        timeout: 1,
+      });
+
+      (client as any).client = new RealSbFetch({
+        baseURL: 'https://api.storyblok.com/v2',
+        timeout: 1,
+        headers: new Headers(),
+        fetch: mockFetch as any,
+      });
+
+      await expect(client.get('cdn/stories'))
+        .rejects
+        .toMatchObject({
+          message: 'Request timeout: The request was aborted due to timeout',
+        });
+
+      vi.doMock('../src/sbFetch');
+    }, 3000);
   });
 });

@@ -15,7 +15,7 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
 }
 
 interface AsyncDataExecuteOptions {
-  dedupe?: 'cancel' | 'defer';
+  dedupe?: 'cancel' | 'defer' | boolean;
   cause?: 'initial' | 'refresh:hook' | 'refresh:manual' | 'watch';
 }
 
@@ -97,31 +97,55 @@ export async function useAsyncStoryblok(
   options: UseAsyncStoryblokOptions,
 ): Promise<UseAsyncStoryblokResult> {
   const storyblokApiInstance = useStoryblokApi();
-  const { api, bridge, ...rest } = options;
+  const { api, bridge = {}, ...rest } = options;
   const uniqueKey = `${stableStringify(api)}${url}`;
+
+  // Copy resolve_relations and resolve_links from API options to bridge options
+  // This ensures the bridge resolves the same relations during live preview updates
+  const bridgeOptions: StoryblokBridgeConfigV2 = {
+    ...bridge,
+    resolveRelations: bridge.resolveRelations ?? api.resolve_relations,
+    resolveLinks: bridge.resolveLinks ?? api.resolve_links,
+  };
 
   const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
 
+  // Register bridge for live preview updates (client-side only)
+  // Use watch instead of onMounted because lifecycle hooks must be registered before the first await
+  // in async setup functions, but we can't as we need the story.id
   if (import.meta.client) {
-    watch(result.data, (newData) => {
-      if (newData?.data.story && newData.data.story.id) {
-        useStoryblokBridge(newData.data.story.id, (evStory) => {
-          // In Nuxt 4, data is a shallowRef - we must replace the entire object
-          // to trigger reactivity instead of mutating nested properties
-          if (result.data.value) {
-            result.data.value = {
-              ...result.data.value,
-              data: {
-                ...result.data.value.data,
-                story: evStory,
-              },
-            };
+    const registerBridge = (storyId: number) => {
+      useStoryblokBridge(storyId, (evStory) => {
+        // In Nuxt 4, data is a shallowRef - we must replace the entire object
+        // to trigger reactivity instead of mutating nested properties
+        if (result.data.value) {
+          result.data.value = {
+            ...result.data.value,
+            data: {
+              ...result.data.value.data,
+              story: evStory,
+            },
+          };
+        }
+      }, bridgeOptions);
+    };
+
+    const id = result.data.value?.data?.story?.id;
+    if (id) {
+      registerBridge(id);
+    }
+    else {
+      // Wait for data to become available, then register bridge once
+      const stopWatch = watch(
+        () => result.data.value?.data?.story?.id,
+        (storyId) => {
+          if (storyId) {
+            stopWatch();
+            registerBridge(storyId);
           }
-        }, bridge);
-      }
-    }, {
-      immediate: true,
-    });
+        },
+      );
+    }
   }
 
   return {

@@ -5,5 +5,5 @@ export default storyblokLintConfig({
     'no-console': 'off',
   },
 }, {
-  ignores: ['README.md', 'playground-e2e/plugins/storyblok.js', 'playground'],
+  ignores: ['README.md', 'playground/plugins/storyblok.js'],
 });

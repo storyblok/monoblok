@@ -16,6 +16,7 @@ import { resetReporter } from '../../../lib/reporter/reporter';
 import { loadManifest } from '../../assets/push/actions';
 import * as actions from '../actions';
 import * as storyActions from '../../stories/actions';
+import type { ResolvedCliConfig } from '../../../lib/config/types';
 
 const DEFAULT_SPACE = '12345';
 
@@ -32,6 +33,15 @@ vi.mock('../../../session', () => ({
     initializeSession: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
+vi.mock('../../../lib/config/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
+  return {
+    ...actual,
+    // Speed up tests by disabling `maxConcurrency`.
+    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
+  };
+});
 
 vi.spyOn(console, 'log');
 vi.spyOn(console, 'debug');
@@ -578,6 +588,48 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+  });
+
+  it('should correctly resolve parent IDs even when child folders precede parents', async () => {
+    const targetSpace = '54321';
+    const numPairs = 10;
+    const folders: MockAssetFolder[] = [];
+    // Generate pairs of parent-child folders
+    for (let i = 0; i < numPairs; i++) {
+      const parent = makeMockFolder();
+      const child = makeMockFolder({ parent_id: parent.id });
+
+      if (i % 2 === 0) {
+        // Case 1: Parent before Child
+        folders.push(parent, child);
+      }
+      else {
+        // Case 2: Child before Parent
+        folders.push(child, parent);
+      }
+    }
+    preconditions.canLoadFolders(folders);
+    const remoteFolders = preconditions.canCreateRemoteFolders(folders, { space: targetSpace });
+    preconditions.canFetchRemoteFolders(remoteFolders, { space: targetSpace });
+    // Build a map of Local ID -> Remote ID to verify expectations
+    const localToRemoteId = new Map<number, number>();
+    folders.forEach((local, index) => {
+      localToRemoteId.set(local.id, remoteFolders[index].id);
+    });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    // Verify that every child folder was created with the correct NEW remote parent_id
+    for (const folder of folders) {
+      const expectedRemoteParentId = folder.parent_id ? localToRemoteId.get(folder.parent_id) : undefined;
+      expect(actions.createAssetFolder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: folder.name,
+          parent_id: expectedRemoteParentId,
+        }),
+        expect.anything(),
+      );
+    }
   });
 
   it('should update stories referencing the old asset when the filename changes', async () => {

@@ -25,11 +25,13 @@ function configsAreEqual(config1: ManagementApiClientConfig, config2: Management
 export function mapiClient(options?: ManagementApiClientConfig) {
   if (!instance && options) {
     instance = new ManagementApiClient(options);
-    instance.interceptors.request.use(async (request) => {
-      const limit = resolveLimiter();
-      await limit();
-      return request;
-    });
+    if (getActiveConfig().api.maxConcurrency > 0) {
+      instance.interceptors.request.use(async (request) => {
+        const limit = resolveLimiter();
+        await limit();
+        return request;
+      });
+    }
     storedConfig = options;
   }
   else if (!instance) {
@@ -38,11 +40,13 @@ export function mapiClient(options?: ManagementApiClientConfig) {
   else if (options && storedConfig && !configsAreEqual(options, storedConfig)) {
     // Create new instance if options are different from stored config
     instance = new ManagementApiClient(options);
-    instance.interceptors.request.use(async (request) => {
-      const limit = resolveLimiter();
-      await limit();
-      return request;
-    });
+    if (getActiveConfig().api.maxConcurrency > 0) {
+      instance.interceptors.request.use(async (request) => {
+        const limit = resolveLimiter();
+        await limit();
+        return request;
+      });
+    }
     storedConfig = options;
   }
   return instance;

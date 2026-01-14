@@ -267,16 +267,33 @@ export const readLocalAssetFoldersStream = ({
   const iterator = async function* readFolders() {
     try {
       const files = await readdir(directoryPath);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
-      setTotalFolders?.(jsonFiles.length);
-      for (const file of jsonFiles) {
-        try {
-          const content = await readFile(join(directoryPath, file), 'utf8');
-          const folder = JSON.parse(content) as AssetFolder;
-          yield folder;
-        }
-        catch (maybeError) {
-          onFolderError?.(toError(maybeError));
+      const jsonFiles = new Set(files.filter(file => file.endsWith('.json')));
+      setTotalFolders?.(jsonFiles.size);
+
+      const processed = new Set<number>();
+      while (jsonFiles.size > 0) {
+        for (const file of jsonFiles) {
+          try {
+            const content = await readFile(join(directoryPath, file), 'utf8');
+            const folder = JSON.parse(content) as AssetFolder;
+            jsonFiles.delete(file);
+            // We must ensure the parent folder was already processed before
+            // we can pass it to the next step in the pipeline. Otherwise,
+            // mapping from local to remote parent ID does not work correctly.
+            if (!folder.parent_id || processed.has(folder.parent_id)) {
+              processed.add(folder.id);
+              yield folder;
+            }
+            // If the parent folder has not been processed yet, we postpone
+            // handling of the current folder by moving it to the end of the
+            // queue.
+            else {
+              jsonFiles.add(file);
+            }
+          }
+          catch (maybeError) {
+            onFolderError?.(toError(maybeError));
+          }
         }
       }
     }

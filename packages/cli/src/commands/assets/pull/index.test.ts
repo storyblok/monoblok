@@ -8,6 +8,7 @@ import '../index';
 import { assetsCommand } from '../command';
 import { sanitizeFilename } from '../../../utils/filesystem';
 import type { AssetsQueryParams } from '../types';
+import type { ResolvedCliConfig } from '../../../lib/config/types';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -22,6 +23,15 @@ vi.mock('../../../session', () => ({
     initializeSession: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
+vi.mock('../../../lib/config/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
+  return {
+    ...actual,
+    // Speed up tests by disabling `maxConcurrency`.
+    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
+  };
+});
 
 vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');

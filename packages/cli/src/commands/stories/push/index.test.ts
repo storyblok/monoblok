@@ -13,6 +13,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import * as actions from '../actions';
 import { loadManifest } from './actions';
 import { resetReporter } from '../../../lib/reporter/reporter';
+import type { ResolvedCliConfig } from '../../../lib/config/types';
 
 const DEFAULT_SPACE = '12345';
 
@@ -29,6 +30,15 @@ vi.mock('../../../session', () => ({
     initializeSession: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
+vi.mock('../../../lib/config/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
+  return {
+    ...actual,
+    // Speed up tests by disabling `maxConcurrency`.
+    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
+  };
+});
 
 vi.spyOn(console, 'log');
 vi.spyOn(console, 'debug');

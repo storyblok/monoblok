@@ -1,10 +1,4 @@
 <script setup lang="ts">
-/* import type { SbBlokData } from '@storyblok/vue'; */
-
-// const storyblokApi = useStoryblokApi();
-// // Checking custom Flush method
-// storyblokApi.flushCache();
-
 const { story, error } = await useAsyncStoryblok('vue', {
   api: {
     version: 'draft',
@@ -19,10 +13,9 @@ const { story, error } = await useAsyncStoryblok('vue', {
 if (error.value) {
   throw createError({
     statusCode: error.value.statusCode,
-    statusMessage: error.value.statusMessage
+    statusMessage: error.value.statusMessage,
   });
 }
-
 </script>
 
 <template>

@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// const storyblokApi = useStoryblokApi();
-// // Checking custom Flush method
-// storyblokApi.flushCache();
-
 const { story, error } = await useAsyncStoryblok('vue', {
   api: {
     version: 'draft',
@@ -24,6 +20,7 @@ if (error.value) {
 
 <template>
   <div>
-    <StoryblokComponent v-if="story" :blok="story.content" />
+    <StoryblokComponent v-if="story && !error" :blok="story.content" />
+    <div v-else-if="error">Error: {{ error.message }}</div>
   </div>
 </template>

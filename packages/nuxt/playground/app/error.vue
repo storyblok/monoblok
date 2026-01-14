@@ -1,11 +1,4 @@
 <script setup>
-/* defineProps <
-  {
-    error: { statusCode: number; statusMessage: string };
-  }
->;
-{}; */
-
 defineProps({
   error: {
     type: Object,

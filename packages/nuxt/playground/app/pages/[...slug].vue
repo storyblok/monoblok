@@ -8,6 +8,7 @@ const { story } = await useAsyncStoryblok(
       language: 'en',
       resolve_relations: ['popular-articles.articles'],
     },
+    bridge: {},
   },
 );
 </script>

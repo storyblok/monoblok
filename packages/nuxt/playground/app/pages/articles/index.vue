@@ -6,15 +6,6 @@ const { data: articles } = await storyblokApi.get('cdn/stories/', {
   starts_with: 'vue/articles',
   is_startpage: false,
 });
-/* const storyblokApi = useStoryblokApi()
-
-const { data: articles } = await storyblokApi.get('cdn/stories/vue', {
-  version: 'draft',
-  starts_with: 'articles',
-  is_startpage: false,
-})
-
-console.count('Articles Fetch') */
 </script>
 
 <template>

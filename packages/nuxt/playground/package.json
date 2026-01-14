@@ -1,20 +1,14 @@
 {
-  "name": "@storyblok/playground-nuxt",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
     "dev": "nuxt dev",
     "dev:https": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
-    "demo-ssl": "NODE_TLS_REJECT_UNAUTHORIZED=0 nuxt dev --https",
+    "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
-  },
-  "nx": {
-    "projectType": "application"
+    "start": "nuxt preview"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^1.5.2",
     "@storyblok/nuxt": "workspace:*",
-    "nuxt": "^3.17.6"
+    "nuxt": "^4.2.2"
   }
 }

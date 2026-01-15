@@ -592,12 +592,18 @@ export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetA
   },
 });
 
-const cleanupAssets = async ({ assetFilePath, metadataFilePath }: { assetFilePath: string; metadataFilePath?: string }) => {
-  await unlink(assetFilePath);
-  if (metadataFilePath) {
-    await unlink(metadataFilePath);
-  }
-};
+export interface CleanupAssetTransport {
+  cleanup: (context: { assetFilePath: string; metadataFilePath?: string }) => Promise<void>;
+}
+
+export const makeCleanupAssetFSTransport = (): CleanupAssetTransport => ({
+  cleanup: async ({ assetFilePath, metadataFilePath }) => {
+    await unlink(assetFilePath);
+    if (metadataFilePath) {
+      await unlink(metadataFilePath);
+    }
+  },
+});
 
 const hasId = (a: unknown): a is { id: number } => {
   return !!a && typeof a === 'object' && 'id' in a && typeof (a as any).id === 'number';
@@ -611,8 +617,8 @@ export const upsertAssetStream = ({
   createTransport,
   updateTransport,
   manifestTransport,
+  cleanupTransport,
   maps,
-  cleanup,
   onIncrement,
   onAssetSuccess,
   onAssetError,
@@ -621,8 +627,8 @@ export const upsertAssetStream = ({
   createTransport: CreateAssetTransport;
   updateTransport: UpdateAssetTransport;
   manifestTransport: AppendAssetManifestTransport;
+  cleanupTransport?: CleanupAssetTransport;
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
-  cleanup: boolean;
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
@@ -668,9 +674,7 @@ export const upsertAssetStream = ({
           await manifestTransport.append(localAsset, newRemoteAsset);
         }
 
-        if (cleanup) {
-          await cleanupAssets({ assetFilePath, metadataFilePath });
-        }
+        await cleanupTransport?.cleanup({ assetFilePath, metadataFilePath });
 
         onAssetSuccess?.(localAsset, newRemoteAsset);
       }

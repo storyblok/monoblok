@@ -1243,4 +1243,86 @@ describe('stories push command', () => {
       expect.stringContaining('Updating stories: 0/1 succeeded, 1 failed.'),
     );
   });
+
+  it('should delete local story files when cleanup is enabled', async () => {
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {
+        component: 'page',
+      },
+    });
+    preconditions.canLoadStories([storyA]);
+    preconditions.canLoadComponents([
+      makeMockComponent({
+        name: 'page',
+      }),
+    ]);
+    const remoteStories = preconditions.canCreateStories([storyA]);
+    preconditions.canUpdateStories(remoteStories);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
+
+    const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
+    const storyFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const files = Object.keys(vol.toJSON());
+    expect(files).not.toContain(storyFilePath);
+  });
+
+  it('should not delete local story files when dry-run is enabled', async () => {
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {
+        component: 'page',
+      },
+    });
+    preconditions.canLoadStories([storyA]);
+    preconditions.canLoadComponents([
+      makeMockComponent({
+        name: 'page',
+      }),
+    ]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup', '--dry-run']);
+
+    const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
+    const storyFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const files = Object.keys(vol.toJSON());
+    expect(files).toContain(storyFilePath);
+  });
+
+  it('should only delete stories that were successfully pushed', async () => {
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {
+        component: 'page',
+      },
+    });
+    const storyB = makeMockStory({
+      slug: 'story-b',
+      content: {
+        component: 'page',
+      },
+    });
+    preconditions.canLoadStories([storyA, storyB]);
+    preconditions.canLoadComponents([
+      makeMockComponent({
+        name: 'page',
+      }),
+    ]);
+    const remoteStories = preconditions.canCreateStories([storyA, storyB]);
+    // Only storyA will be updated successfully
+    preconditions.canUpdateStories([remoteStories[0]]);
+    preconditions.failsToUpdateStories([remoteStories[1]]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
+
+    const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
+    const storyAFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const storyBFilePath = path.join(storiesDir, `${storyB.slug}_${storyB.uuid}.json`);
+    const files = Object.keys(vol.toJSON());
+    // storyA should be deleted (successful)
+    expect(files).not.toContain(storyAFilePath);
+    // storyB should remain (failed)
+    expect(files).toContain(storyBFilePath);
+  });
 });

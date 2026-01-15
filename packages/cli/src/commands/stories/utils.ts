@@ -71,3 +71,12 @@ export const findComponentSchemas = async (directoryPath: string) => {
   }
   return schemas;
 };
+
+/**
+ * @method getStoryFilename
+ * @param  {object} story - Story object with slug and uuid
+ * @return {string} Filename in the format {slug}_{uuid}.json
+ */
+export const getStoryFilename = (story: Pick<Story, 'slug' | 'uuid'>) => {
+  return `${story.slug}_${story.uuid}.json`;
+};

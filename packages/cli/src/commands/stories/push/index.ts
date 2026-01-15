@@ -11,7 +11,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
+import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
 import { loadManifest } from './actions';
@@ -23,6 +23,7 @@ storiesCommand
   .option('-p, --path <path>', 'base path for stories and components (default .storyblok)')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('--publish', 'Publish stories after pushing')
+  .option('--cleanup', 'delete local stories after a successful push')
   .description(`Push local stories to a Storyblok space.`)
   .action(async (options) => {
     const program = getProgram();
@@ -243,12 +244,13 @@ storiesCommand
         }),
         // Update remote stories with correct references.
         writeStoryStream({
-          transport: options.dryRun
+          writeTransport: options.dryRun
             ? { write: (story: Story) => Promise.resolve(story) }
             : makeWriteStoryAPITransport({
                 spaceId: space,
                 publish: options.publish ? 1 : undefined,
               }),
+          cleanupTransport: options.cleanup && !options.dryRun && makeCleanupStoryFSTransport({ directoryPath: storiesDirectoryPath, maps }),
           onIncrement() {
             updateProgress.increment();
           },

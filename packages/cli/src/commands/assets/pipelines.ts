@@ -6,7 +6,7 @@ import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStorySt
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
 import { handleError } from '../../utils/error/error';
-import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
+import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CleanupAssetTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
 import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
@@ -75,7 +75,6 @@ export const upsertAssetFoldersPipeline = async ({
 export const upsertAssetsPipeline = async ({
   assetSource,
   assetData,
-  cleanup,
   directoryPath,
   logger,
   maps,
@@ -85,7 +84,6 @@ export const upsertAssetsPipeline = async ({
 }: {
   assetSource?: string;
   assetData?: AssetUpload;
-  cleanup: boolean;
   directoryPath: string;
   logger: Logger;
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
@@ -94,6 +92,7 @@ export const upsertAssetsPipeline = async ({
     create: CreateAssetTransport;
     update: UpdateAssetTransport;
     manifest: AppendAssetManifestTransport;
+    cleanup: CleanupAssetTransport;
   };
   ui: UI;
   verbose: boolean;
@@ -138,8 +137,8 @@ export const upsertAssetsPipeline = async ({
     createTransport: transports.create,
     updateTransport: transports.update,
     manifestTransport: transports.manifest,
+    cleanupTransport: transports.cleanup,
     maps,
-    cleanup,
     onIncrement: () => assetProgress.increment(),
     onAssetSuccess: (localAssetResult, remoteAsset) => {
       if ('id' in localAssetResult && localAssetResult.id) {
@@ -288,7 +287,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     }),
     // Update remote stories with correct references.
     writeStoryStream({
-      transport: transports.write,
+      writeTransport: transports.write,
       onIncrement() {
         updateProgress.increment();
       },

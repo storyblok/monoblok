@@ -24,6 +24,7 @@ storyblok stories push --space YOUR_SPACE_ID
 | `-p, --path <path>` | Base path where stories and components are read from (stories and components live under `<path>/stories` and `<path>/components`) | `.storyblok` |
 | `-f, --from <from>` | Source space ID to read local stories/components from (useful for syncing between spaces) | Same as `--space` |
 | `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
+| `--cleanup` | Delete local story files after a successful push | `false` |
 | `--publish` | Publish stories after pushing (otherwise they remain unpublished/unpublished changes) | `false` |
 
 ## Notes

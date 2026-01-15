@@ -14,6 +14,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
+  makeCleanupAssetFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
   makeGetAssetAPITransport,
@@ -177,11 +178,13 @@ assetsCommand
       const assetManifestTransport = options.dryRun
         ? { append: () => Promise.resolve() }
         : makeAppendAssetManifestFSTransport({ manifestFile });
+      const cleanupAssetTransport = options.cleanup && !options.dryRun
+        ? makeCleanupAssetFSTransport()
+        : { cleanup: () => Promise.resolve() };
 
       summaries.push(...await upsertAssetsPipeline({
         assetSource,
         assetData,
-        cleanup: options.cleanup && !options.dryRun,
         directoryPath: assetsDirectoryPath,
         logger,
         maps,
@@ -190,6 +193,7 @@ assetsCommand
           create: createAssetTransport,
           update: updateAssetTransport,
           manifest: assetManifestTransport,
+          cleanup: cleanupAssetTransport,
         },
         ui,
         verbose,

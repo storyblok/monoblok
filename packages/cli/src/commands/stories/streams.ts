@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, unlink } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
@@ -12,6 +12,7 @@ import { toError } from '../../utils/error/error';
 import { FetchError } from '../../utils/fetch';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { mapiClient } from '../../api';
+import { getStoryFilename } from './utils';
 
 export const fetchStoriesStream = ({
   spaceId,
@@ -351,7 +352,7 @@ export const makeWriteStoryFSTransport = ({ directoryPath }: {
   directoryPath: string;
 }): WriteStoryTransport => ({
   write: async (story) => {
-    await saveToFile(resolve(directoryPath, `${story.slug}_${story.uuid}.json`), JSON.stringify(story, null, 2));
+    await saveToFile(resolve(directoryPath, getStoryFilename(story)), JSON.stringify(story, null, 2));
     return story;
   },
 });
@@ -366,13 +367,35 @@ export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   }),
 });
 
+export interface CleanupStoryTransport {
+  cleanup: (mappedStory: Story) => Promise<void>;
+}
+
+export const makeCleanupStoryFSTransport = ({ directoryPath, maps }: {
+  directoryPath: string;
+  maps: RefMaps;
+}): CleanupStoryTransport => ({
+  cleanup: async (mappedStory: Story) => {
+    const mapEntry = maps.stories?.entries().find(([_, v]) => v === mappedStory.uuid);
+    const originalUuid = mapEntry?.[0] && typeof mapEntry?.[0] === 'string' ? mapEntry?.[0] : mappedStory.uuid;
+    const storyFilename = getStoryFilename({
+      slug: mappedStory.slug,
+      uuid: originalUuid,
+    });
+    const storyFilePath = resolve(directoryPath, storyFilename);
+    await unlink(storyFilePath);
+  },
+});
+
 export const writeStoryStream = ({
-  transport,
+  writeTransport,
+  cleanupTransport,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
-  transport: WriteStoryTransport;
+  writeTransport: WriteStoryTransport;
+  cleanupTransport?: CleanupStoryTransport;
   onIncrement?: () => void;
   onStorySuccess?: (mappedLocalStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
@@ -381,7 +404,9 @@ export const writeStoryStream = ({
     objectMode: true,
     async write(mappedLocalStory: Story, _encoding, callback) {
       try {
-        const remoteStory = await transport.write(mappedLocalStory);
+        const remoteStory = await writeTransport.write(mappedLocalStory);
+        await cleanupTransport?.cleanup(remoteStory);
+
         onStorySuccess?.(mappedLocalStory, remoteStory);
       }
       catch (maybeError) {

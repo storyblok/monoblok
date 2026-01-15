@@ -113,7 +113,7 @@ storiesCommand
           },
         }),
         writeStoryStream({
-          transport: options.dryRun
+          writeTransport: options.dryRun
             ? { write: (story: Story) => Promise.resolve(story) }
             : makeWriteStoryFSTransport({ directoryPath: resolveCommandPath(directories.stories, space, basePath) }),
           onIncrement: () => {

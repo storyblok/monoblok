@@ -7,7 +7,8 @@ import { Sema } from 'async-sema';
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
-import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
+import type { RegionCode } from '../../constants';
+import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, getSignedAssetUrl, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -90,11 +91,15 @@ export const fetchAssetsStream = ({
 
 export const downloadAssetStream = ({
   batchSize = 12,
+  assetToken,
+  region,
   onIncrement,
   onAssetSuccess,
   onAssetError,
 }: {
   batchSize?: number;
+  assetToken?: string;
+  region?: RegionCode;
   onIncrement?: () => void;
   onAssetSuccess?: (asset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset) => void;
@@ -107,7 +112,17 @@ export const downloadAssetStream = ({
     async transform(asset: Asset, _encoding, callback) {
       await readLock.acquire();
 
-      const task = fetchAssetFile(asset.filename)
+      const task = (async () => {
+        let signedUrl: string | undefined;
+        if (asset.is_private) {
+          if (!assetToken) {
+            throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
+          }
+          signedUrl = await getSignedAssetUrl(asset.filename, assetToken, region);
+        }
+
+        return fetchAssetFile(signedUrl || asset.filename);
+      })()
         .then((fileBuffer) => {
           if (!fileBuffer) {
             throw new Error('Invalid asset file!');

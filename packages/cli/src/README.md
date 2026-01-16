@@ -27,6 +27,10 @@ npm install storyblok@<version>
 | [`components pull`](./commands/components/pull/README.md) | ✅ | Replaces previous pull-components |
 | [`components push`](./commands/components/push/README.md) | ✅ | Replaces previous push-components. Also handles dependencies such as groups, tags, presets and whitelists. (Datasources is pending) |
 | `components delete` | 📝 | Will replace delete-component and delete-components |
+| [`assets pull`](./commands/assets/pull/README.md) | ✅ | Download assets and asset folders from your Storyblok space. Supports private assets with `--asset-token` option. |
+| [`assets push`](./commands/assets/push/README.md) | ✅ | Upload assets and asset folders to your Storyblok space |
+| [`stories pull`](./commands/stories/pull/README.md) | ✅ | Download stories from your Storyblok space |
+| [`stories push`](./commands/stories/push/README.md) | ✅ | Upload stories to your Storyblok space |
 | [`migrations generate`](./commands/migrations/generate/README.md) | ✅ | Replaces previous generate-migrations |
 | [`migrations run`](./commands/migrations/run/README.md) | ✅ | Replaces previous run-migrations |
 | [`migrations rollback`](./commands/migrations/rollback/README.md) | ✅ | Replaces previous rollback-migrations |

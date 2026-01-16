@@ -26,6 +26,7 @@ assetsCommand
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-p, --path <path>', 'base path to store assets (default .storyblok)')
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
+  .option('--asset-token <token>', 'Asset token for accessing private assets')
   .description(`Download your space's assets as local files.`)
   .action(async (options) => {
     const program = getProgram();
@@ -42,6 +43,7 @@ assetsCommand
 
     const { space } = assetsCommand.opts();
     const basePath = options.path as string | undefined;
+    const assetToken = options.assetToken as string | undefined;
     const verbose = program.opts().verbose;
     const { state, initializeSession } = session();
     await initializeSession();
@@ -139,6 +141,8 @@ assetsCommand
           },
         }),
         downloadAssetStream({
+          assetToken,
+          region,
           onIncrement: () => {
             fetchAssetsProgress.increment();
           },

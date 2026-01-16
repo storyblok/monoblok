@@ -1,8 +1,10 @@
 import { Buffer } from 'node:buffer';
 import { basename } from 'node:path';
+import Storyblok from 'storyblok-js-client';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
+import type { RegionCode } from '../../constants';
 import type { Asset, AssetCreate, AssetFolderCreate, AssetFolderUpdate, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import type { SignedResponseObject } from '@storyblok/management-api-client/resources/assets';
 import { createHash } from 'node:crypto';
@@ -47,6 +49,32 @@ export const fetchAssetFile = async (filename: Asset['filename']) => {
     throw new Error(`Failed to download ${filename}`);
   }
   return response.arrayBuffer();
+};
+
+/**
+ * Fetches a signed URL for a private asset from the Content Delivery API.
+ */
+export const getSignedAssetUrl = async (
+  filename: Asset['filename'],
+  assetToken: string,
+  region?: RegionCode,
+): Promise<string> => {
+  try {
+    const client = new Storyblok({
+      accessToken: assetToken,
+      region: region || 'eu',
+    });
+
+    const response = await client.get('cdn/assets/me', {
+      filename,
+    });
+
+    return response.data.asset.signed_url;
+  }
+  catch (maybeError) {
+    handleAPIError('pull_asset', toError(maybeError));
+    throw maybeError;
+  }
 };
 
 export const fetchAssetFolders = async ({ spaceId }: {

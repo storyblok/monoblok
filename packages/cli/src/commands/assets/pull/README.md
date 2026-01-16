@@ -30,6 +30,12 @@ Filter assets by query:
 storyblok assets pull --space YOUR_SPACE_ID --query "search=my-file.jpg&with_tags=tag1,tag2"
 ```
 
+Pull private assets (requires asset token):
+
+```bash
+storyblok assets pull --space YOUR_SPACE_ID --asset-token YOUR_ASSET_TOKEN
+```
+
 ## Options
 
 | Option | Description | Default |
@@ -38,8 +44,10 @@ storyblok assets pull --space YOUR_SPACE_ID --query "search=my-file.jpg&with_tag
 | `-p, --path <path>` | Base path where assets are saved (assets are written to `<path>/assets/<space>`) | `.storyblok` |
 | `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
 | `-q, --query <query>` | Filter assets using Storyblok filter query syntax (e.g., `--query="search=my-file.jpg&with_tags=tag1,tag2"`) | - |
+| `--asset-token <token>` | Asset token for downloading private assets (learn more about [private assets](https://www.storyblok.com/docs/concepts/assets#private-assets)) | - |
 
 ## Notes
 
 - The command creates directories as needed.
 - Asset folder metadata is stored under `<path>/assets/<space>/folders`.
+- **Private Assets**: If your space contains [private assets](https://www.storyblok.com/docs/concepts/assets#private-assets), you must provide an `--asset-token` to download them. The asset token can be found in your Storyblok space settings under the "Assets" tab. Private assets without a token will result in an error during the pull operation.

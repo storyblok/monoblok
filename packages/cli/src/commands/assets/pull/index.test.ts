@@ -43,6 +43,7 @@ interface MockAsset {
   filename: string;
   short_filename: string;
   asset_folder_id?: number | null;
+  is_private?: boolean;
 }
 
 interface MockFolder {
@@ -59,11 +60,12 @@ const getID = () => {
   return id;
 };
 
-const makeMockAsset = (): MockAsset => ({
+const makeMockAsset = (overrides?: Partial<MockAsset>): MockAsset => ({
   id: getID(),
   filename: `https://a.storyblok.com/f/12345/500x500/${getID()}_mock.png`,
   short_filename: `${getID()}_mock.png`,
   asset_folder_id: null,
+  ...overrides,
 });
 
 const makeMockFolder = (): MockFolder => ({
@@ -146,6 +148,19 @@ const preconditions = {
     writeError.code = 'EACCES';
     writeError.syscall = 'write';
     vi.spyOn(fs, 'writeFile').mockRejectedValue(writeError);
+  },
+  canFetchSignedUrl(asset: MockAsset, signedUrl: string, assetToken = 'test-asset-token') {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/assets/me', ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('token')).toBe(assetToken);
+        expect(url.searchParams.get('filename')).toBe(asset.filename);
+        return HttpResponse.json({ asset: { signed_url: signedUrl } });
+      }),
+    );
+  },
+  canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
+    server.use(http.get(signedUrl, () => HttpResponse.text(content)));
   },
 };
 
@@ -409,5 +424,70 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+  });
+
+  it('should pull private assets with asset token', async () => {
+    const privateAsset = makeMockAsset({ is_private: true });
+    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/asset.png?signature=xyz';
+    preconditions.canFetchRemoteFolders([]);
+    preconditions.canFetchRemoteAssetPages([[privateAsset]]);
+    preconditions.canFetchSignedUrl(privateAsset, signedUrl);
+    preconditions.canDownloadPrivateAsset(signedUrl);
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'pull',
+      '--space',
+      '12345',
+      '--asset-token',
+      'test-asset-token',
+    ]);
+
+    expect(assetFileExists(privateAsset)).toBeTruthy();
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
+    expect(logFile).toContain('"save":{"total":1,"succeeded":1,"failed":0}');
+  });
+
+  it('should fail to pull private assets without asset token', async () => {
+    const privateAsset = makeMockAsset({ is_private: true });
+    preconditions.canFetchRemoteFolders([]);
+    preconditions.canFetchRemoteAssetPages([[privateAsset]]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
+
+    expect(assetFileExists(privateAsset)).toBeFalsy();
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('is private but no asset token was provided');
+    expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
+    expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+  });
+
+  it('should handle mixed private and public assets', async () => {
+    const publicAsset = makeMockAsset();
+    const privateAsset = makeMockAsset({ is_private: true });
+    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/private-asset.png?signature=xyz';
+    preconditions.canFetchRemoteFolders([]);
+    preconditions.canFetchRemoteAssetPages([[publicAsset, privateAsset]]);
+    preconditions.canDownloadAssets([publicAsset]);
+    preconditions.canFetchSignedUrl(privateAsset, signedUrl);
+    preconditions.canDownloadPrivateAsset(signedUrl);
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'pull',
+      '--space',
+      '12345',
+      '--asset-token',
+      'test-asset-token',
+    ]);
+
+    expect(assetFileExists(publicAsset)).toBeTruthy();
+    expect(assetFileExists(privateAsset)).toBeTruthy();
+    const logFile = getLogFileContents();
+    expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":2,"failed":0}');
+    expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
   });
 });

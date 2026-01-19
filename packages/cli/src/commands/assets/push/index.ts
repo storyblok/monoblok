@@ -35,7 +35,6 @@ assetsCommand
   .command('push')
   .argument('[asset]', 'path or URL of a single asset to push')
   .option('-f, --from <from>', 'source space id')
-  .option('-p, --path <path>', 'base path for assets (default .storyblok)')
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
@@ -57,8 +56,7 @@ assetsCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space } = assetsCommand.opts();
-    const basePath = options.path as string | undefined;
+    const { space, path: basePath } = assetsCommand.opts();
     const fromSpace = (options.from as string | undefined) || space;
     const verbose = program.opts().verbose;
     const { state, initializeSession } = session();

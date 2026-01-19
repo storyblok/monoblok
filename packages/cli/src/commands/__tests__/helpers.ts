@@ -39,7 +39,7 @@ export const makeMockComponent = (overrides: Partial<MockComponent> = {}): MockC
 /**
  * Gets log file contents from the virtual file system.
  * @param logPrefix - The prefix to match (e.g., 'storyblok-assets-pull-')
- * @param options.space - Optional space to filter by
+ * @param options - Optional filter options
  */
 export const getLogFileContents = (
   logPrefix: string,

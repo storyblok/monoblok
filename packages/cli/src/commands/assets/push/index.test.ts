@@ -726,7 +726,7 @@ describe('assets push command', () => {
     const folderMap = new Map<number, number>([[folder.id, remoteFolder.id]]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
 
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--path', customPath]);
+    await assetsCommand.parseAsync(['node', 'test', '--path', customPath, 'push', '--space', DEFAULT_SPACE]);
 
     expect(actions.createAssetFolder).toHaveBeenCalled();
     expect(actions.createAsset).toHaveBeenCalled();

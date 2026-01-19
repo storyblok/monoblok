@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile } from '../../../utils/filesystem';
 
 export interface ManifestEntry {
   old_id: string | number;
@@ -9,7 +9,7 @@ export interface ManifestEntry {
 }
 
 export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[]> => {
-  return readFile(manifestFile, 'utf8')
+  return readFile(manifestFile)
     .then(manifest => manifest.split('\n').filter(Boolean).map(entry => JSON.parse(entry)))
     .catch((error: NodeJS.ErrnoException) => {
       if (error && error.code === 'ENOENT') {

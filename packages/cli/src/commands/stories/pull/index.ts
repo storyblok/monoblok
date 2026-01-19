@@ -3,7 +3,6 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
-import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
@@ -21,8 +20,7 @@ storiesCommand
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .description(`Download your space's stories as separate json files.`)
-  .action(async (options) => {
-    const program = getProgram();
+  .action(async (options, command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -35,9 +33,7 @@ storiesCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space } = storiesCommand.opts();
-    const basePath = options.path as string | undefined;
-    const verbose = program.opts().verbose;
+    const { space, path: basePath, verbose } = command.optsWithGlobals();
     const { state, initializeSession } = session();
     await initializeSession();
 

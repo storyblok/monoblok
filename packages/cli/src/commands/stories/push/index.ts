@@ -5,7 +5,6 @@ import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
-import { getProgram } from '../../../program';
 import { mapiClient } from '../../../api';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
@@ -25,8 +24,7 @@ storiesCommand
   .option('--publish', 'Publish stories after pushing')
   .option('--cleanup', 'delete local stories after a successful push')
   .description(`Push local stories to a Storyblok space.`)
-  .action(async (options) => {
-    const program = getProgram();
+  .action(async (options, command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -39,10 +37,8 @@ storiesCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space } = storiesCommand.opts();
-    const basePath = options.path as string | undefined;
+    const { space, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = options.from || space;
-    const verbose = program.opts().verbose;
     const { state, initializeSession } = session();
     await initializeSession();
 

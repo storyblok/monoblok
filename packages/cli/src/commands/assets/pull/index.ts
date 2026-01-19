@@ -2,7 +2,6 @@ import { pipeline } from 'node:stream/promises';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';
-import { getProgram } from '../../../program';
 import { session } from '../../../session';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getLogger } from '../../../lib/logger/logger';
@@ -27,8 +26,7 @@ assetsCommand
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('--asset-token <token>', 'Asset token for accessing private assets')
   .description(`Download your space's assets as local files.`)
-  .action(async (options) => {
-    const program = getProgram();
+  .action(async (options, command) => {
     const ui = getUI();
     const logger = getLogger();
 
@@ -40,9 +38,8 @@ assetsCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space, path: basePath } = assetsCommand.opts();
+    const { space, path: basePath, verbose } = command.optsWithGlobals();
     const assetToken = options.assetToken as string | undefined;
-    const verbose = program.opts().verbose;
     const { state, initializeSession } = session();
     await initializeSession();
 

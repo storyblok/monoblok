@@ -1,7 +1,6 @@
 import { basename, join } from 'node:path';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getProgram } from '../../../program';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter, type Report } from '../../../lib/reporter/reporter';
@@ -42,8 +41,7 @@ assetsCommand
   .option('--update-stories', 'update file references in stories if necessary', false)
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`)
-  .action(async (assetInput, options) => {
-    const program = getProgram();
+  .action(async (assetInput, options, command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -56,9 +54,8 @@ assetsCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space, path: basePath } = assetsCommand.opts();
+    const { space, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = (options.from as string | undefined) || space;
-    const verbose = program.opts().verbose;
     const { state, initializeSession } = session();
     await initializeSession();
 

@@ -86,32 +86,53 @@ export const createCommand = program
     const { state, initializeSession } = session();
     await initializeSession();
 
-    // Check if user is authenticated, if not, offer to login
-    if (!requireAuthentication(state, verbose)) {
-      const loginResult = await promptForLogin(verbose);
-      if (!loginResult) {
+    // Declare these outside to be used throughout the function
+    let password: string | undefined;
+    let region: RegionCode | undefined;
+
+    // Get region from session for fallback (even when using --token)
+    if (state.region) {
+      region = state.region;
+    }
+
+    // If --token or --skip-space is provided, we don't need full authentication
+    // Otherwise, check if user is authenticated and offer to login if not
+    if (!token && !options.skipSpace) {
+      if (!requireAuthentication(state, verbose)) {
+        const loginResult = await promptForLogin(verbose);
+        if (!loginResult) {
+          return;
+        }
+        // Re-initialize session after login
+        await initializeSession();
+      }
+
+      // After authentication check, password and region are guaranteed to be defined
+      const authenticatedState = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
+      password = authenticatedState.password;
+      region = authenticatedState.region;
+
+      // Validate that user-provided region matches their account region when creating a space
+      // This check happens early before any project scaffolding
+      if (options.region && options.region !== region) {
+        handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
         return;
       }
-      // Re-initialize session after login
-      await initializeSession();
+
+      mapiClient({
+        token: {
+          accessToken: password,
+        },
+        region,
+      });
     }
-
-    // After authentication check, password and region are guaranteed to be defined
-    const { password, region } = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
-
-    // Validate that user-provided region matches their account region when creating a space
-    // This check happens early before any project scaffolding
-    if (options.region && options.region !== region && !options.skipSpace && !token) {
-      handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
-      return;
+    else if (state.isLoggedIn && state.password) {
+      // If using --token or --skip-space but user is logged in, still get their credentials for mapiClient
+      password = state.password;
+      if (state.region) {
+        region = state.region;
+      }
     }
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinnerBlueprints = new Spinner({
       verbose: !isVitest,
@@ -209,7 +230,10 @@ export const createCommand = program
       }
       try {
         try {
-          const user = await getUser(password, region);
+          // At this point, password and region are guaranteed to be defined because:
+          // 1. We're not in the token branch (which returns early)
+          // 2. Authentication was required and completed
+          const user = await getUser(password!, region!);
           if (!user) {
             throw new Error('User data is undefined');
           }
@@ -286,18 +310,18 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region!);
         }
 
         // Open the space in the browser
         if (createdSpace?.id) {
           try {
-            await openSpaceInBrowser(createdSpace.id, region);
+            await openSpaceInBrowser(createdSpace.id, region!);
             konsola.info(`Opened space in your browser`);
           }
           catch (error) {
             konsola.warn(`Failed to open browser: ${(error as Error).message}`);
-            const spaceUrl = generateSpaceUrl(createdSpace.id, region);
+            const spaceUrl = generateSpaceUrl(createdSpace.id, region!);
             konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
           }
         }
@@ -306,13 +330,13 @@ export const createCommand = program
         showNextSteps(technologyTemplate!, finalProjectPath);
         if (createdSpace?.first_token) {
           if (whereToCreateSpace === 'org') {
-            konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else if (whereToCreateSpace === 'partner') {
-            konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else {
-            konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
         }
       }

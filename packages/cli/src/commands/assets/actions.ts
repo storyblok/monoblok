@@ -43,7 +43,7 @@ export const fetchAssets = async ({ spaceId, params }: {
   }
 };
 
-export const fetchAssetFile = async (filename: Asset['filename']) => {
+export const downloadFile = async (filename: string) => {
   const response = await fetch(filename);
   if (!response.ok) {
     throw new Error(`Failed to download ${filename}`);
@@ -283,7 +283,7 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
 }) => {
   try {
     const assetWithNewFilename = { ...asset };
-    const remoteFileBuffer = fileBuffer && await fetchAssetFile(asset.filename);
+    const remoteFileBuffer = fileBuffer && await downloadFile(asset.filename);
     const hasNewFile = remoteFileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
     if (hasNewFile) {
       const uploadedAsset = await uploadAsset({

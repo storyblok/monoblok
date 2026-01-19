@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promi
 import { appendToFile, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
-import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, getSignedAssetUrl, updateAsset, updateAssetFolder } from './actions';
+import { createAsset, createAssetFolder, downloadFile, fetchAssetFolders, fetchAssets, getSignedAssetUrl, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -108,7 +108,7 @@ export const downloadAssetStream = ({
           signedUrl = await getSignedAssetUrl(asset.filename, assetToken, region);
         }
 
-        return fetchAssetFile(signedUrl || asset.filename);
+        return downloadFile(signedUrl || asset.filename);
       })()
         .then((fileBuffer) => {
           if (!fileBuffer) {
@@ -491,7 +491,7 @@ export const readSingleAssetStream = ({
         }
       }
       const fileBuffer = (isRemoteSource(assetSource)
-        ? await fetchAssetFile(assetSource)
+        ? await downloadFile(assetSource)
         : await readFile(assetSource)) as ArrayBuffer;
 
       let assetFilePath: string = assetSource;

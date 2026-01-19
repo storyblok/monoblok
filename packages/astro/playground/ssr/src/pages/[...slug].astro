@@ -28,12 +28,14 @@ const story =
 
 const users = payload?.serverData?.users ?? (await getUsers());
 const inEditor = isEditorRequest(Astro.url);
+const slugs = ['test', 'about-us', 'contact'];
+const disableLivePreview = slugs.includes(slug);
 ---
 
 <BaseLayout>
-  {slug === 'test' && <meta name="storyblok-live-preview" content="disabled" />}
+  {disableLivePreview && <meta name="storyblok-live-preview" content="disabled" />}
   <p>{users?.length} users loaded.</p>
   <StoryblokComponent blok={story.content} />
-  {inEditor && <Widget />}
+  {inEditor && <Widget disableLivePreview={disableLivePreview} />}
 </BaseLayout>
 <StoryblokServerData users={users} />

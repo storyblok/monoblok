@@ -1,5 +1,9 @@
 ---
 import LivePreviewSpinner from './LivePreviewSpinner.astro';
+interface Props {
+  disableLivePreview: boolean;
+}
+const { disableLivePreview } = Astro.props;
 ---
 
 <div class="widget">
@@ -8,9 +12,18 @@ import LivePreviewSpinner from './LivePreviewSpinner.astro';
     <LivePreviewSpinner />
   </div>
   <h1>Conditional Live Preview</h1>
-  <p>Live preview is controlled via custom logic in this page.</p>
+  {
+    disableLivePreview ? (
+      <p>
+        <strong>Live preview is disabled for this page via code. The input will not work. </strong>
+      </p>
+    ) : (
+      <p>Live preview is controlled via custom logic in this page.</p>
+    )
+  }
+
   <label>
-    <input type="checkbox" id="enableLivePreview" checked />
+    <input type="checkbox" id="enableLivePreview" checked={!disableLivePreview} disabled={disableLivePreview} />
     Enable Live Preview
   </label>
 </div>

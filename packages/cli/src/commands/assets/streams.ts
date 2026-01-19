@@ -15,6 +15,8 @@ import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
 import { getAssetFilename, getAssetMetadataFilename, getFolderFilename, isRemoteSource } from './utils';
 
+const apiConcurrencyLock = new Sema(12);
+
 export const fetchAssetsStream = ({
   spaceId,
   params = {},
@@ -77,27 +79,24 @@ export const fetchAssetsStream = ({
 };
 
 export const downloadAssetStream = ({
-  batchSize = 12,
   assetToken,
   region,
   onIncrement,
   onAssetSuccess,
   onAssetError,
 }: {
-  batchSize?: number;
   assetToken?: string;
   region?: RegionCode;
   onIncrement?: () => void;
   onAssetSuccess?: (asset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset) => void;
 }) => {
-  const readLock = new Sema(batchSize);
-  const processing = new Set<Promise<void>>();
+  const processing = new Set<Promise<unknown>>();
 
   return new Transform({
     objectMode: true,
     async transform(asset: Asset, _encoding, callback) {
-      await readLock.acquire();
+      await apiConcurrencyLock.acquire();
 
       const task = (async () => {
         let signedUrl: string | undefined;
@@ -109,7 +108,10 @@ export const downloadAssetStream = ({
         }
 
         return downloadFile(signedUrl || asset.filename);
-      })()
+      })();
+
+      processing.add(task);
+      task
         .then((fileBuffer) => {
           if (!fileBuffer) {
             throw new Error('Invalid asset file!');
@@ -122,10 +124,9 @@ export const downloadAssetStream = ({
         })
         .finally(() => {
           onIncrement?.();
-          readLock.release();
+          apiConcurrencyLock.release();
           processing.delete(task);
         });
-      processing.add(task);
 
       callback();
     },
@@ -162,20 +163,34 @@ export const writeAssetStream = ({
   onAssetSuccess?: (asset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset) => void;
 }) => {
+  const processing = new Set<Promise<void>>();
+
   return new Writable({
     objectMode: true,
     async write(payload: { asset: Asset; fileBuffer: ArrayBuffer }, _encoding, callback) {
-      try {
-        await transport.write(payload.asset, payload.fileBuffer);
-        onAssetSuccess?.(payload.asset);
-      }
-      catch (maybeError) {
-        onAssetError?.(toError(maybeError), payload.asset);
-      }
-      finally {
+      await apiConcurrencyLock.acquire();
+
+      const task = (async () => {
+        try {
+          await transport.write(payload.asset, payload.fileBuffer);
+          onAssetSuccess?.(payload.asset);
+        }
+        catch (maybeError) {
+          onAssetError?.(toError(maybeError), payload.asset);
+        }
+      })();
+
+      processing.add(task);
+      task.finally(() => {
         onIncrement?.();
-        callback();
-      }
+        apiConcurrencyLock.release();
+        processing.delete(task);
+      });
+
+      callback();
+    },
+    final(callback) {
+      Promise.all(processing).finally(() => callback());
     },
   });
 };
@@ -236,20 +251,34 @@ export const writeAssetFolderStream = ({
   onFolderSuccess?: (folder: AssetFolder) => void;
   onFolderError?: (error: Error, folder: AssetFolder) => void;
 }) => {
+  const processing = new Set<Promise<void>>();
+
   return new Writable({
     objectMode: true,
     async write(folder: AssetFolder, _encoding, callback) {
-      try {
-        await transport.write(folder);
-        onFolderSuccess?.(folder);
-      }
-      catch (maybeError) {
-        onFolderError?.(toError(maybeError), folder);
-      }
-      finally {
+      await apiConcurrencyLock.acquire();
+
+      const task = (async () => {
+        try {
+          await transport.write(folder);
+          onFolderSuccess?.(folder);
+        }
+        catch (maybeError) {
+          onFolderError?.(toError(maybeError), folder);
+        }
+      })();
+
+      processing.add(task);
+      task.finally(() => {
         onIncrement?.();
-        callback();
-      }
+        apiConcurrencyLock.release();
+        processing.delete(task);
+      });
+
+      callback();
+    },
+    final(callback) {
+      Promise.all(processing).finally(() => callback());
     },
   });
 };
@@ -634,58 +663,72 @@ export const upsertAssetStream = ({
   onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
+  const processing = new Set<Promise<void>>();
+
   return new Writable({
     objectMode: true,
     async write({
       asset: localAsset,
       context: { assetFilePath, metadataFilePath, fileBuffer },
     }: LocalAssetPayload, _encoding, callback) {
-      try {
-        const remoteFolderId = localAsset.asset_folder_id
-          && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
-        const remoteAssetId = hasId(localAsset)
-          ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
-          : undefined;
-        const remoteAsset = remoteAssetId ? await getTransport.get(remoteAssetId) : null;
-        let newRemoteAsset: Asset | null = null;
-        // If a remote asset already exists, we must not create a new asset.
-        // This can happen when the user resumes a failed push or runs push multiple times.
-        if (remoteAsset) {
-          const updateAsset = {
-            ...remoteAsset,
-            ...localAsset,
-            id: remoteAsset.id,
-            asset_folder_id: remoteFolderId,
-          } satisfies AssetUpdate;
-          newRemoteAsset = await updateTransport.update(updateAsset, fileBuffer);
-        }
-        else if (hasShortFilename(localAsset)) {
-          const createAsset = {
-            ...localAsset,
-            asset_folder_id: remoteFolderId,
-          } satisfies AssetCreate;
-          newRemoteAsset = await createTransport.create(createAsset, fileBuffer);
-        }
+      await apiConcurrencyLock.acquire();
 
-        if (!newRemoteAsset) {
-          throw new Error('Could neither create nor update the asset!');
+      const task = (async () => {
+        try {
+          const remoteFolderId = localAsset.asset_folder_id
+            && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
+          const remoteAssetId = hasId(localAsset)
+            ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
+            : undefined;
+          const remoteAsset = remoteAssetId ? await getTransport.get(remoteAssetId) : null;
+          let newRemoteAsset: Asset | null = null;
+          // If a remote asset already exists, we must not create a new asset.
+          // This can happen when the user resumes a failed push or runs push multiple times.
+          if (remoteAsset) {
+            const updateAsset = {
+              ...remoteAsset,
+              ...localAsset,
+              id: remoteAsset.id,
+              asset_folder_id: remoteFolderId,
+            } satisfies AssetUpdate;
+            newRemoteAsset = await updateTransport.update(updateAsset, fileBuffer);
+          }
+          else if (hasShortFilename(localAsset)) {
+            const createAsset = {
+              ...localAsset,
+              asset_folder_id: remoteFolderId,
+            } satisfies AssetCreate;
+            newRemoteAsset = await createTransport.create(createAsset, fileBuffer);
+          }
+
+          if (!newRemoteAsset) {
+            throw new Error('Could neither create nor update the asset!');
+          }
+
+          if (hasId(localAsset)) {
+            await manifestTransport.append(localAsset, newRemoteAsset);
+          }
+
+          await cleanupTransport?.cleanup({ assetFilePath, metadataFilePath });
+
+          onAssetSuccess?.(localAsset, newRemoteAsset);
         }
-
-        if (hasId(localAsset)) {
-          await manifestTransport.append(localAsset, newRemoteAsset);
+        catch (maybeError) {
+          onAssetError?.(toError(maybeError), localAsset);
         }
+      })();
 
-        await cleanupTransport?.cleanup({ assetFilePath, metadataFilePath });
-
-        onAssetSuccess?.(localAsset, newRemoteAsset);
-      }
-      catch (maybeError) {
-        onAssetError?.(toError(maybeError), localAsset);
-      }
-      finally {
+      processing.add(task);
+      task.finally(() => {
         onIncrement?.();
-        callback();
-      }
+        apiConcurrencyLock.release();
+        processing.delete(task);
+      });
+
+      callback();
+    },
+    final(callback) {
+      Promise.all(processing).finally(() => callback());
     },
   });
 };

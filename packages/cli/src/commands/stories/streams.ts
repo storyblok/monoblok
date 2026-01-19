@@ -14,6 +14,8 @@ import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mappe
 import { mapiClient } from '../../api';
 import { getStoryFilename } from './utils';
 
+const apiConcurrencyLock = new Sema(12);
+
 export const fetchStoriesStream = ({
   spaceId,
   params = {},
@@ -25,7 +27,6 @@ export const fetchStoriesStream = ({
 }: {
   spaceId: string;
   params?: StoriesQueryParams;
-  storyBatchSize?: number;
   setTotalStories?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
   onIncrement?: () => void;
@@ -80,25 +81,22 @@ export const fetchStoriesStream = ({
 
 export const fetchStoryStream = ({
   spaceId,
-  batchSize = 12,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
   spaceId: string;
-  batchSize?: number;
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
-  const readLock = new Sema(batchSize);
   const processing = new Set<Promise<void>>();
 
   return new Transform({
     objectMode: true,
     async transform(listStory: Story, _encoding, callback) {
       // Wait for a slot
-      await readLock.acquire();
+      await apiConcurrencyLock.acquire();
 
       const task = fetchStory(spaceId, listStory.id.toString())
         .then((story) => {
@@ -113,7 +111,7 @@ export const fetchStoryStream = ({
         })
         .finally(() => {
           onIncrement?.();
-          readLock.release();
+          apiConcurrencyLock.release();
           processing.delete(task);
         });
       processing.add(task);
@@ -302,44 +300,58 @@ export const createStoryPlaceholderStream = ({
   onStorySkipped?: (localStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
+  const processing = new Set<Promise<void>>();
+
   return new Writable({
     objectMode: true,
     async write(localStory: Story, _encoding, callback) {
-      try {
-        // If a mapped remote story already exists, we must not create a new placeholder.
-        // This can happen when the user resumes a failed push or runs push multiple times.
-        const mappedStoryId = maps.stories?.get(localStory.id);
-        const mappedRemoteStory = mappedStoryId && await getRemoteStory({ spaceId, storyId: Number(mappedStoryId) });
-        // We check the UUID to make sure it is the exact same story and not just a
-        // story with the same numeric ID in a different space.
-        if (mappedRemoteStory) {
-          onStorySkipped?.(localStory, mappedRemoteStory);
-          // The story was already mapped so we can stop here.
-          return;
-        }
+      await apiConcurrencyLock.acquire();
 
-        // A user might want to push to the same space they pulled from. In this
-        // case, we don't want to create a new placeholder story.
-        const existingRemoteStory = await getRemoteStory({ spaceId, storyId: localStory.id });
-        // We check the UUID to make sure it is the exact same story and not just a
-        // story with the same numeric ID in a different space.
-        if (existingRemoteStory && existingRemoteStory.uuid === localStory.uuid) {
-          await manifestTransport.append(localStory, existingRemoteStory);
-          onStorySkipped?.(localStory, existingRemoteStory);
-          return;
-        }
+      const task = (async () => {
+        try {
+          // If a mapped remote story already exists, we must not create a new placeholder.
+          // This can happen when the user resumes a failed push or runs push multiple times.
+          const mappedStoryId = maps.stories?.get(localStory.id);
+          const mappedRemoteStory = mappedStoryId && await getRemoteStory({ spaceId, storyId: Number(mappedStoryId) });
+          // We check the UUID to make sure it is the exact same story and not just a
+          // story with the same numeric ID in a different space.
+          if (mappedRemoteStory) {
+            onStorySkipped?.(localStory, mappedRemoteStory);
+            // The story was already mapped so we can stop here.
+            return;
+          }
 
-        const newRemoteStory = await storyTransport.create(localStory);
-        await manifestTransport.append(localStory, newRemoteStory);
-        onStorySuccess?.(localStory, newRemoteStory);
-      }
-      catch (maybeError) {
-        onStoryError?.(toError(maybeError), localStory);
-      }
-      finally {
+          // A user might want to push to the same space they pulled from. In this
+          // case, we don't want to create a new placeholder story.
+          const existingRemoteStory = await getRemoteStory({ spaceId, storyId: localStory.id });
+          // We check the UUID to make sure it is the exact same story and not just a
+          // story with the same numeric ID in a different space.
+          if (existingRemoteStory && existingRemoteStory.uuid === localStory.uuid) {
+            await manifestTransport.append(localStory, existingRemoteStory);
+            onStorySkipped?.(localStory, existingRemoteStory);
+            return;
+          }
+
+          const newRemoteStory = await storyTransport.create(localStory);
+          await manifestTransport.append(localStory, newRemoteStory);
+          onStorySuccess?.(localStory, newRemoteStory);
+        }
+        catch (maybeError) {
+          onStoryError?.(toError(maybeError), localStory);
+        }
+      })();
+
+      processing.add(task);
+      task.finally(() => {
         onIncrement?.();
-        callback();
-      }
+        apiConcurrencyLock.release();
+        processing.delete(task);
+      });
+
+      callback();
+    },
+    final(callback) {
+      Promise.all(processing).finally(() => callback());
     },
   });
 };
@@ -400,22 +412,36 @@ export const writeStoryStream = ({
   onStorySuccess?: (mappedLocalStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
+  const processing = new Set<Promise<void>>();
+
   return new Writable({
     objectMode: true,
     async write(mappedLocalStory: Story, _encoding, callback) {
-      try {
-        const remoteStory = await writeTransport.write(mappedLocalStory);
-        await cleanupTransport?.cleanup(remoteStory);
+      await apiConcurrencyLock.acquire();
 
-        onStorySuccess?.(mappedLocalStory, remoteStory);
-      }
-      catch (maybeError) {
-        onStoryError?.(toError(maybeError), mappedLocalStory);
-      }
-      finally {
+      const task = (async () => {
+        try {
+          const remoteStory = await writeTransport.write(mappedLocalStory);
+          await cleanupTransport?.cleanup(remoteStory);
+
+          onStorySuccess?.(mappedLocalStory, remoteStory);
+        }
+        catch (maybeError) {
+          onStoryError?.(toError(maybeError), mappedLocalStory);
+        }
+      })();
+
+      processing.add(task);
+      task.finally(() => {
         onIncrement?.();
-        callback();
-      }
+        apiConcurrencyLock.release();
+        processing.delete(task);
+      });
+
+      callback();
+    },
+    final(callback) {
+      Promise.all(processing).finally(() => callback());
     },
   });
 };

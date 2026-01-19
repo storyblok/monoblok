@@ -5,7 +5,6 @@ import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { Sema } from 'async-sema';
 import { toError } from './error';
 
 // Default working folder for commands that do not pass --path explicitly.
@@ -67,40 +66,26 @@ export const saveToFileSync = (filePath: string, data: string | NodeJS.ArrayBuff
   }
 };
 
-const writeLocks = new Map<string, Sema>();
-const getWriteLock = (fullPath: string) => {
-  const writeLock = writeLocks.get(fullPath);
-  if (writeLock) {
-    return writeLock;
-  }
-  const newWriteLock = new Sema(1);
-  writeLocks.set(fullPath, newWriteLock);
-  return newWriteLock;
-};
-const acquireWriteLock = (fullPath: string) => {
-  return getWriteLock(fullPath).acquire();
-};
-const releaseWriteLock = (fullPath: string) => {
-  return getWriteLock(fullPath).release();
-};
-
-export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
+export const appendToFile = async (filePath: string, data: string, options?: any) => {
+  const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
   try {
-    await acquireWriteLock(filePath);
-    const resolvedPath = parse(filePath).dir;
-    await mkdir(resolvedPath, { recursive: true });
-    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
     await appendFile(filePath, dataWithNewline, options);
   }
   catch (maybeError) {
     const error = toError(maybeError);
-    handleFileSystemError(
-      'syscall' in error && error.syscall === 'mkdir' ? 'mkdir' : 'write',
-      error,
-    );
-  }
-  finally {
-    await releaseWriteLock(filePath);
+    // If the directory doesn't exist, create it and retry
+    if ('code' in error && error.code === 'ENOENT') {
+      const dir = parse(filePath).dir;
+      await mkdir(dir, { recursive: true });
+      // Retry the append
+      await appendFile(filePath, dataWithNewline, options);
+    }
+    else {
+      handleFileSystemError(
+        'syscall' in error && error.syscall === 'mkdir' ? 'mkdir' : 'write',
+        error,
+      );
+    }
   }
 };
 

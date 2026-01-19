@@ -1042,7 +1042,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Please login again.', userError);
+        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Your session may have expired.');
         expect(generateProject).toHaveBeenCalled();
         expect(createSpace).not.toHaveBeenCalled();
       });

@@ -1,9 +1,10 @@
 import { CommandError, handleError, isRegion, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
-import { colorPalette, commands, regions } from '../../constants';
+import { colorPalette, commands, type RegionCode, regions } from '../../constants';
+import { performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
-import { input, select } from '@inquirer/prompts';
+import { confirm, input, select } from '@inquirer/prompts';
 import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
@@ -20,6 +21,30 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
   konsola.br();
   konsola.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
   konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+}
+
+// Helper to handle interactive login prompt
+async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+  try {
+    konsola.br();
+    konsola.info('You need to be logged in to continue.');
+    const shouldLogin = await confirm({
+      message: 'Would you like to login now?',
+      default: true,
+    });
+
+    if (!shouldLogin) {
+      konsola.warn('Login cancelled. You can login later using the "storyblok login" command.');
+      return null;
+    }
+
+    return await performInteractiveLogin({ verbose, showWelcomeMessage: true });
+  }
+  catch (error) {
+    konsola.br();
+    handleError(error as Error, verbose);
+    return null;
+  }
 }
 
 const program = getProgram(); // Get the shared singleton instance
@@ -61,11 +86,18 @@ export const createCommand = program
     const { state, initializeSession } = session();
     await initializeSession();
 
+    // Check if user is authenticated, if not, offer to login
     if (!requireAuthentication(state, verbose)) {
-      return;
+      const loginResult = await promptForLogin(verbose);
+      if (!loginResult) {
+        return;
+      }
+      // Re-initialize session after login
+      await initializeSession();
     }
 
-    const { password, region } = state;
+    // After authentication check, password and region are guaranteed to be defined
+    const { password, region } = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
 
     // Validate that user-provided region matches their account region when creating a space
     // This check happens early before any project scaffolding
@@ -183,10 +215,28 @@ export const createCommand = program
           }
           userData = user;
         }
-        catch (error) {
-          konsola.error('Failed to fetch user info. Please login again.', error);
-          konsola.br();
-          return;
+        catch {
+          konsola.error('Failed to fetch user info. Your session may have expired.');
+          const loginResult = await promptForLogin(verbose);
+          if (!loginResult) {
+            konsola.br();
+            return;
+          }
+          // Re-initialize session and retry fetching user
+          await initializeSession();
+          const { password: newPassword, region: newRegion } = session().state;
+          try {
+            const user = await getUser(newPassword!, newRegion!);
+            if (!user) {
+              throw new Error('User data is undefined');
+            }
+            userData = user;
+          }
+          catch (retryError) {
+            konsola.error('Failed to fetch user info after login.', retryError);
+            konsola.br();
+            return;
+          }
         }
 
         // Prepare choices for space creation

@@ -1,12 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readComponentsFiles } from './actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import { vol } from 'memfs';
 import { FileSystemError } from '../../../utils';
-
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 // Mock components data
 const mockComponent1: SpaceComponent = {

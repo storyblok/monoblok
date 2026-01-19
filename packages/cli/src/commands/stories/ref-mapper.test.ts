@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeStoryWithAllFieldTypes, pageWithEverythingBlok } from './__test__/story-with-all-field-types';
+import { makeStoryWithAllFieldTypes, pageWithEverythingBlok } from './__tests__/story-with-all-field-types';
 import { storyRefMapper } from './ref-mapper';
 
 const componentSchemas = {

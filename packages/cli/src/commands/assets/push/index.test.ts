@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { Buffer } from 'node:buffer';
 import * as fsPromises from 'node:fs/promises';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -14,37 +14,27 @@ import { directories } from '../../../constants';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetReporter } from '../../../lib/reporter/reporter';
 import { loadManifest } from '../../assets/push/actions';
+import { getAssetFilename, getAssetMetadataFilename, getFolderFilename } from '../utils';
 import * as actions from '../actions';
 import * as storyActions from '../../stories/actions';
-import type { ResolvedCliConfig } from '../../../lib/config/types';
-
-const DEFAULT_SPACE = '12345';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.mock('../../../lib/config/store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
-  return {
-    ...actual,
-    // Speed up tests by disabling `maxConcurrency`.
-    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
-  };
-});
+import {
+  DEFAULT_SPACE,
+  getID,
+  getLogFileContents,
+  getReport as getReportHelper,
+  makeMockComponent,
+  type MockComponent,
+} from '../../__tests__/helpers';
+import {
+  makeMockAsset,
+  makeMockFolder,
+  makePngBuffer,
+  type MockAsset,
+  type MockAssetFolder,
+} from '../__tests__/helpers';
+import { makeMockStory, type MockStory } from '../../stories/__tests__/helpers';
 
 vi.spyOn(console, 'log');
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
@@ -56,106 +46,8 @@ vi.spyOn(actions, 'updateAssetFolder');
 vi.spyOn(storyActions, 'fetchStories');
 vi.spyOn(storyActions, 'updateStory');
 
-interface MockAsset {
-  id: number;
-  filename: string;
-  asset_folder_id?: number | null;
-  meta_data?: Record<string, unknown>;
-  short_filename?: string;
-}
-
-interface MockAssetFolder {
-  id: number;
-  uuid: string;
-  name: string;
-  parent_id: number | null;
-  parent_uuid: string | null;
-}
-
-interface MockStory {
-  id: number;
-  uuid: string;
-  name: string;
-  slug: string;
-  full_slug: string;
-  content: Record<string, unknown>;
-  is_folder: boolean;
-  parent_id: number | null;
-  published: 1 | 0;
-}
-
-let id = 0;
-const getID = () => {
-  id += 1;
-  return id;
-};
-const makeMockAsset = (overrides: Partial<MockAsset> = {}): MockAsset => {
-  const assetId = overrides.id ?? getID();
-  const name = overrides.short_filename || `asset-${assetId}.png`;
-  return {
-    id: assetId,
-    filename: overrides.filename || `https://a.storyblok.com/f/12345/500x500/${name}`,
-    asset_folder_id: null,
-    ...overrides,
-  };
-};
-
-let storyId = 0;
-const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => {
-  storyId += 1;
-  const slug = overrides.slug || `story-${storyId}`;
-  return {
-    id: overrides.id ?? storyId,
-    uuid: randomUUID(),
-    name: 'Story',
-    slug,
-    full_slug: slug,
-    content: {
-      _uid: randomUUID(),
-      component: 'page',
-    },
-    is_folder: false,
-    parent_id: null,
-    published: 1,
-    ...overrides,
-  };
-};
-
-const makeMockFolder = (overrides: Partial<MockAssetFolder> = {}): MockAssetFolder => {
-  const folderId = overrides.id ?? getID();
-  return {
-    id: folderId,
-    uuid: randomUUID(),
-    name: overrides.name || `Folder-${folderId}`,
-    parent_id: null,
-    parent_uuid: null,
-    ...overrides,
-  };
-};
-
-const makePngBuffer = (width: number, height: number) => {
-  const signature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-  const ihdr = Buffer.from([0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52]);
-  const dimensions = Buffer.alloc(8);
-  dimensions.writeUInt32BE(width, 0);
-  dimensions.writeUInt32BE(height, 4);
-  return Buffer.concat([signature, ihdr, dimensions]);
-};
-
-interface MockComponent {
-  name: string;
-  schema: Record<string, unknown>;
-  component_group_uuid: string | null;
-}
-
-const makeMockComponent = (overrides: Partial<MockComponent>): MockComponent => {
-  return {
-    name: 'component',
-    schema: {},
-    component_group_uuid: null,
-    ...overrides,
-  };
-};
+const LOG_PREFIX = 'storyblok-assets-push-';
+const getReport = (space = DEFAULT_SPACE) => getReportHelper(LOG_PREFIX, space);
 
 const server = setupServer(
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId', () => HttpResponse.json(
@@ -181,16 +73,12 @@ const preconditions = {
     basePath,
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
-    const getFilename = (asset: MockAsset, newExt?: string) => {
-      const ext = path.extname(asset.filename);
-      return `${path.basename(asset.filename, ext)}_${asset.id}${newExt || ext}`;
-    };
     const files = assets.map(asset => [
-      path.join(assetsDir, getFilename(asset)),
+      path.join(assetsDir, getAssetFilename(asset)),
       'binary-content',
     ]);
     const metadataFiles = assets.map(asset => [
-      path.join(assetsDir, getFilename(asset, '.json')),
+      path.join(assetsDir, getAssetMetadataFilename(asset)),
       JSON.stringify(asset),
     ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
@@ -237,9 +125,8 @@ const preconditions = {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     vol.mkdirSync(path.join(assetsDir, 'folders'), { recursive: true });
     const folderFiles = folders.map((folder) => {
-      const filename = `${folder.name}_${folder.uuid}.json`;
       return [
-        path.join(assetsDir, 'folders', filename),
+        path.join(assetsDir, 'folders', getFolderFilename(folder)),
         JSON.stringify(folder),
       ] as const;
     });
@@ -496,19 +383,6 @@ const parseFoldersManifest = async (space: string = DEFAULT_SPACE, basePath?: st
   return loadManifest(manifestPath);
 };
 
-const getReport = (space = DEFAULT_SPACE) => {
-  const reportFile = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(`reports/${space}/storyblok-assets-push-`))?.[1];
-
-  return reportFile ? JSON.parse(reportFile) : undefined;
-};
-
-const LOG_PREFIX = 'storyblok-assets-push-';
-const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX) && filename.includes('/logs/'))?.[1];
-};
-
 describe('assets push command', () => {
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
   afterEach(() => {
@@ -578,7 +452,7 @@ describe('assets push command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toMatch(/Created asset folder/);
     expect(logFile).toMatch(/Uploaded asset/);
     expect(logFile).toContain('Pushing assets finished');
@@ -920,7 +794,7 @@ describe('assets push command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No existing manifest found');
   });
 
@@ -934,7 +808,7 @@ describe('assets push command', () => {
     expect(actions.updateAssetFolder).not.toHaveBeenCalled();
     expect(actions.createAsset).not.toHaveBeenCalled();
     expect(actions.updateAsset).not.toHaveBeenCalled();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
   });
 
@@ -946,7 +820,7 @@ describe('assets push command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No existing manifest found');
   });
 
@@ -964,7 +838,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('File System Error: Permission denied');
     // UI
     expect(console.info).toHaveBeenCalledWith(
@@ -1006,7 +880,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Expected property name or \'}\' in JSON');
     // UI
     expect(console.info).toHaveBeenCalledWith(
@@ -1034,7 +908,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1067,7 +941,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('API Error: Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1094,7 +968,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('API Error: Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1130,7 +1004,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1162,7 +1036,7 @@ describe('assets push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1412,7 +1286,7 @@ describe('assets push command', () => {
       '123',
     ]);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).not.toContain('ENOENT');
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed'));
   });

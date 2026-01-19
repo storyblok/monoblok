@@ -1,8 +1,9 @@
-// session.test.ts
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from './session';
-
 import { getCredentials } from './creds';
 import type { Mock } from 'vitest';
+
+vi.unmock('./session');
 
 vi.mock('./creds', () => ({
   getCredentials: vi.fn(),

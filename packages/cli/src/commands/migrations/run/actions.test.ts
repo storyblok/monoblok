@@ -4,9 +4,6 @@ import { getMigrationFunction, readMigrationFiles } from './actions';
 import { FileSystemError } from '../../../utils/error';
 import * as filesystem from '../../../utils/filesystem';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('readMigrationFiles', () => {
   it('should read migration files successfully', async () => {
     vol.fromJSON({

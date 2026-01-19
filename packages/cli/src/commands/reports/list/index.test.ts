@@ -6,9 +6,6 @@ import '../index';
 import { reportsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'log');
 
@@ -36,7 +33,6 @@ describe('reports list command', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-    vol.reset();
   });
 
   it('should list available report files', async () => {

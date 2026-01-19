@@ -1,15 +1,8 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { FileTransport } from './logger-transport-file';
 import { APIError } from '../../utils/error';
 import { FetchError } from '../../utils/fetch';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-beforeEach(() => {
-  vol.reset();
-});
 
 it('should only log level equal or more severe to the specified level', () => {
   // Error

@@ -7,49 +7,21 @@ import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
 import type { RollbackData } from './actions';
 import type { StoryContent } from '../../stories/constants';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-vi.mock('../../stories/actions', () => ({
-  updateStory: vi.fn(),
-}));
+import { getLogFileContents } from '../../__tests__/helpers';
+import { session } from '../../../session';
 
 vi.mock('./actions', () => ({
   readRollbackFile: vi.fn(),
 }));
 
-const sessionState = {
-  isLoggedIn: true,
-  password: 'valid-token' as string | undefined,
-  region: 'eu' as string | undefined,
-};
-
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: sessionState,
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
+vi.mock('../../stories/actions', () => ({
+  updateStory: vi.fn(),
 }));
 
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'log');
-vi.spyOn(console, 'warn');
 
 const LOG_PREFIX = 'storyblok-migrations-rollback-';
-
-const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
-};
-
-const resetSessionState = () => {
-  sessionState.isLoggedIn = true;
-  sessionState.password = 'valid-token';
-  sessionState.region = 'eu';
-};
 
 const mockStoryContent: StoryContent = {
   _uid: 'test-uid',
@@ -72,15 +44,8 @@ const mockRollbackData: RollbackData = {
 };
 
 const preconditions = {
-  loggedIn() {
-    resetSessionState();
-  },
-  notLoggedIn() {
-    Object.assign(sessionState, {
-      isLoggedIn: false,
-      password: undefined,
-      region: undefined,
-    });
+  loggedOut() {
+    session().logout();
   },
   canLoadRollbackFile() {
     vi.mocked(readRollbackFile).mockResolvedValue(mockRollbackData);
@@ -105,7 +70,6 @@ describe('migrations rollback command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
-    resetSessionState();
   });
 
   it('should rollback a migration successfully', async () => {
@@ -150,13 +114,13 @@ describe('migrations rollback command', () => {
         force_update: '1',
       },
     );
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration rollback finished');
     expect(logFile).toContain('"succeeded":2');
   });
 
   it('should handle not logged in error', async () => {
-    preconditions.notLoggedIn();
+    await preconditions.loggedOut();
 
     await migrationsCommand.parseAsync([
       'node',
@@ -176,7 +140,7 @@ describe('migrations rollback command', () => {
     );
     expect(readRollbackFile).not.toHaveBeenCalled();
     expect(updateStory).not.toHaveBeenCalled();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('You are currently not logged in');
   });
 
@@ -197,7 +161,7 @@ describe('migrations rollback command', () => {
     );
     expect(readRollbackFile).not.toHaveBeenCalled();
     expect(updateStory).not.toHaveBeenCalled();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Please provide the space as argument');
   });
 
@@ -218,7 +182,7 @@ describe('migrations rollback command', () => {
       '',
     );
     expect(updateStory).not.toHaveBeenCalled();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Failed to rollback migration');
   });
 
@@ -236,7 +200,7 @@ describe('migrations rollback command', () => {
     ]);
 
     expect(updateStory).toHaveBeenCalledTimes(2);
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Failed to restore story');
   });
 

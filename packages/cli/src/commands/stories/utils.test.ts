@@ -1,12 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import { findComponentSchemas, isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from './utils';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
 
 describe('isStoryPublishedWithoutChanges', () => {
   it('should return true for published stories without changes', () => {

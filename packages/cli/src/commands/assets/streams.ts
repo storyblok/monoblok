@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
-import { appendToFile, sanitizeFilename, saveToFile } from '../../utils/filesystem';
+import { appendToFile, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { createAsset, createAssetFolder, fetchAssetFile, fetchAssetFolders, fetchAssets, getSignedAssetUrl, updateAsset, updateAssetFolder } from './actions';
@@ -13,20 +13,7 @@ import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
-import { isRemoteSource } from './utils';
-
-const getAssetNameAndExt = (asset: Asset) => {
-  const nameWithExt = asset.short_filename || basename(asset.filename);
-  const ext = extname(nameWithExt);
-  const name = sanitizeFilename(nameWithExt.replace(ext, '') || String(asset.id));
-  return { name, ext };
-};
-
-const getFolderFilename = (folder: AssetFolder) => {
-  const sanitizedName = sanitizeFilename(folder.name || '');
-  const baseName = sanitizedName || folder.uuid;
-  return `${baseName}_${folder.uuid}.json`;
-};
+import { getAssetFilename, getAssetMetadataFilename, getFolderFilename, isRemoteSource } from './utils';
 
 export const fetchAssetsStream = ({
   spaceId,
@@ -156,9 +143,8 @@ export const makeWriteAssetFSTransport = ({ directoryPath }: {
   directoryPath: string;
 }): WriteAssetTransport => ({
   write: async (asset, fileBuffer) => {
-    const { name, ext } = getAssetNameAndExt(asset);
-    const assetFilePath = join(directoryPath, `${name}_${asset.id}${ext}`);
-    const metadataFilePath = join(directoryPath, `${name}_${asset.id}.json`);
+    const assetFilePath = join(directoryPath, getAssetFilename(asset));
+    const metadataFilePath = join(directoryPath, getAssetMetadataFilename(asset));
     await saveToFile(assetFilePath, Buffer.from(fileBuffer));
     await saveToFile(metadataFilePath, JSON.stringify(asset, null, 2));
     return asset;

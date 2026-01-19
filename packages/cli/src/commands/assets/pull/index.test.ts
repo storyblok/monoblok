@@ -1,80 +1,26 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
 import '../index';
 import { assetsCommand } from '../command';
-import { sanitizeFilename } from '../../../utils/filesystem';
 import type { AssetsQueryParams } from '../types';
-import type { ResolvedCliConfig } from '../../../lib/config/types';
+import { getLogFileContents } from '../../__tests__/helpers';
+import {
+  assetFileExists,
+  folderFileExists,
+  makeMockAsset,
+  makeMockFolder,
+  type MockAsset,
+  type MockAssetFolder,
+} from '../__tests__/helpers';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.mock('../../../lib/config/store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
-  return {
-    ...actual,
-    // Speed up tests by disabling `maxConcurrency`.
-    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
-  };
-});
-
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
-interface MockAsset {
-  id: number;
-  filename: string;
-  short_filename: string;
-  asset_folder_id?: number | null;
-  is_private?: boolean;
-}
-
-interface MockFolder {
-  id: number;
-  uuid: string;
-  name: string;
-  parent_id: number | null;
-  parent_uuid: string | null;
-}
-
-let id = 0;
-const getID = () => {
-  id += 1;
-  return id;
-};
-
-const makeMockAsset = (overrides?: Partial<MockAsset>): MockAsset => ({
-  id: getID(),
-  filename: `https://a.storyblok.com/f/12345/500x500/${getID()}_mock.png`,
-  short_filename: `${getID()}_mock.png`,
-  asset_folder_id: null,
-  ...overrides,
-});
-
-const makeMockFolder = (): MockFolder => ({
-  id: getID(),
-  uuid: randomUUID(),
-  name: 'Mock Folder',
-  parent_id: null,
-  parent_uuid: null,
-});
+const LOG_PREFIX = 'storyblok-assets-pull-';
 
 const server = setupServer();
 const preconditions = {
@@ -110,7 +56,7 @@ const preconditions = {
       { status: 500 },
     )));
   },
-  canFetchRemoteFolders(folders: MockFolder[]) {
+  canFetchRemoteFolders(folders: MockAssetFolder[]) {
     server.use(
       http.get(
         'https://mapi.storyblok.com/v1/spaces/12345/asset_folders',
@@ -162,38 +108,6 @@ const preconditions = {
   canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
     server.use(http.get(signedUrl, () => HttpResponse.text(content)));
   },
-};
-
-const getAssetBasename = ({ id, short_filename, filename }: MockAsset) => {
-  const extMatch = short_filename.match(/(\.[^.]+)$/) || filename.match(/(\.[^.]+)$/);
-  const ext = extMatch ? extMatch[1] : '';
-  const name = short_filename.replace(ext, '');
-  return { name, ext, id };
-};
-
-const assetFileExists = (asset: MockAsset) => {
-  const { name, ext, id } = getAssetBasename(asset);
-  const binary = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.endsWith(`${name}_${id}${ext}`))?.[1];
-  const metadata = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.endsWith(`${name}_${id}.json`))?.[1];
-  return Boolean(binary && metadata);
-};
-
-const getFolderFilename = (folder: MockFolder) => {
-  const sanitizedName = sanitizeFilename(folder.name || '');
-  const baseName = sanitizedName || folder.uuid;
-  return `${baseName}_${folder.uuid}.json`;
-};
-
-const folderFileExists = (folder: MockFolder) => {
-  return Object.keys(vol.toJSON()).some(filename => filename.endsWith(`folders/${getFolderFilename(folder)}`));
-};
-
-const LOG_PREFIX = 'storyblok-assets-pull-';
-const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
 };
 
 describe('assets pull command', () => {
@@ -254,7 +168,7 @@ describe('assets pull command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Fetched assets page 1 of 1');
     expect(logFile).toMatch(new RegExp(`Fetched asset.*?"assetId":${assets[0].id}`));
     expect(logFile).toMatch(new RegExp(`Fetched asset.*?"assetId":${assets[1].id}`));
@@ -339,7 +253,7 @@ describe('assets pull command', () => {
 
     expect(assetFileExists(assets[0])).toBeFalsy();
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
@@ -358,7 +272,7 @@ describe('assets pull command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
@@ -378,7 +292,7 @@ describe('assets pull command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain(`Failed to download ${assets[1].filename}`);
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":1,"failed":1}');
@@ -394,7 +308,7 @@ describe('assets pull command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
   });
@@ -408,7 +322,7 @@ describe('assets pull command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
   });
@@ -420,7 +334,7 @@ describe('assets pull command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
@@ -445,7 +359,7 @@ describe('assets pull command', () => {
     ]);
 
     expect(assetFileExists(privateAsset)).toBeTruthy();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"save":{"total":1,"succeeded":1,"failed":0}');
   });
@@ -458,7 +372,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     expect(assetFileExists(privateAsset)).toBeFalsy();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('is private but no asset token was provided');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
@@ -486,7 +400,7 @@ describe('assets pull command', () => {
 
     expect(assetFileExists(publicAsset)).toBeTruthy();
     expect(assetFileExists(privateAsset)).toBeTruthy();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":2,"failed":0}');
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
   });

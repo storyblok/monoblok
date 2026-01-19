@@ -1,5 +1,4 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -8,53 +7,14 @@ import { vol } from 'memfs';
 import '../index';
 import { storiesCommand } from '../command';
 import type { StoriesQueryParams } from '../index';
-import type { ResolvedCliConfig } from '../../../lib/config/types';
+import { getLogFileContents } from '../../__tests__/helpers';
+import { makeMockStory, type MockStory, storyFileExists } from '../__tests__/helpers';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.mock('../../../lib/config/store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
-  return {
-    ...actual,
-    // Speed up tests by disabling `maxConcurrency`.
-    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
-  };
-});
-
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
-interface MockStory {
-  slug: string;
-  uuid: string;
-  id: number;
-}
-
-let id = 0;
-const getID = () => {
-  id += 1;
-  return id;
-};
-
-const makeMockStory = (): MockStory => ({
-  slug: 'test-slug',
-  uuid: randomUUID(),
-  id: getID(),
-});
+const LOG_PREFIX = 'storyblok-stories-pull-';
 
 const server = setupServer();
 const preconditions = {
@@ -121,19 +81,6 @@ const preconditions = {
   },
 };
 
-const storyFileExists = ({ slug, uuid }: { slug: string; uuid: string }) => {
-  const file = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.endsWith(`${slug}_${uuid}.json`))?.[1];
-  return file ? JSON.parse(file).uuid === uuid : false;
-};
-
-const LOG_PREFIX = 'storyblok-stories-pull-';
-
-const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
-};
-
 describe('stories pull command', () => {
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
   afterEach(() => {
@@ -186,7 +133,7 @@ describe('stories pull command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Fetched stories page 1 of 2');
     expect(logFile).toContain('Fetched stories page 2 of 2');
     expect(logFile).toMatch(new RegExp(`Fetched story.*?"storyId":${stories[0].id}`));
@@ -242,7 +189,7 @@ describe('stories pull command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":3,"failed":0}');
@@ -260,7 +207,7 @@ describe('stories pull command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchStories":{"total":0,"succeeded":0,"failed":0}');
@@ -279,7 +226,7 @@ describe('stories pull command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":2,"failed":1}');

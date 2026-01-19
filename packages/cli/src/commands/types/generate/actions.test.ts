@@ -20,7 +20,6 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn().mockReturnValue(''),
 }));
 
-vi.mock('node:fs/promises');
 vi.mock('node:path', () => ({
   resolve: vi.fn().mockReturnValue('/mocked/path'),
   join: vi.fn().mockReturnValue('/mocked/joined/path'),
@@ -833,7 +832,7 @@ describe('generateStoryblokTypes', () => {
     expect(join).toHaveBeenCalledWith(expect.any(String), 'storyblok.d.ts');
 
     // Verify that saveToFile was called with the correct parameters
-    const savedContent = vi.mocked(saveToFile).mock.calls[0][1];
+    const savedContent = vi.mocked(saveToFile).mock.calls[0][1] as string;
     const lines = savedContent.split('\n');
 
     // Verify the first three lines

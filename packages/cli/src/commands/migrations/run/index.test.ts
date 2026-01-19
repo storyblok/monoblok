@@ -10,10 +10,7 @@ import type { Story } from '../../stories/constants';
 import * as filesystem from '../../../utils/filesystem';
 import { resetLogger } from '../../../lib/logger/logger';
 import { resetReporter } from '../../../lib/reporter/reporter';
-
-// Mock fs modules before any other imports to ensure memfs is used
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+import { getLogFileContents } from '../../__tests__/helpers';
 
 vi.mock('../../stories/actions', () => ({
   fetchStories: vi.fn(),
@@ -21,19 +18,6 @@ vi.mock('../../stories/actions', () => ({
   updateStory: vi.fn(),
 }));
 
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.spyOn(console, 'debug');
-vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
@@ -79,13 +63,6 @@ const mockStory = createMockStory();
 
 const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-component.js';
 const LOG_PREFIX = 'storyblok-migrations-run-';
-
-const getLogFileContents = () => {
-  const allFiles = vol.toJSON();
-  const logFile = Object.entries(allFiles)
-    .find(([filename]) => filename.includes('/logs/') && filename.includes(LOG_PREFIX));
-  return logFile?.[1];
-};
 
 const preconditions = {
   canFetchStories() {
@@ -195,7 +172,7 @@ describe('migrations run command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration finished');
     expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
     expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
@@ -265,7 +242,7 @@ describe('migrations run command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Couldn\'t load migration function');
     expect(logFile).toContain('MIGRATION_LOAD_ERROR');
     // UI
@@ -284,7 +261,7 @@ describe('migrations run command', () => {
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No directory found for space \\"12345\\".');
   });
 
@@ -307,7 +284,7 @@ describe('migrations run command', () => {
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Dry run mode enabled');
     expect(logFile).toContain('Migration finished');
     // UI

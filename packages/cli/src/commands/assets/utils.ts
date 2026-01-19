@@ -1,8 +1,9 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
+import { sanitizeFilename } from '../../utils/filesystem';
 import { loadManifest } from '../stories/push/actions';
-import type { Asset, AssetMap, AssetMapped } from './types';
+import type { Asset, AssetFolder, AssetMap, AssetMapped } from './types';
 
 export const parseAssetData = (raw?: string) => {
   if (!raw) {
@@ -65,4 +66,41 @@ export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {
       ] as const)
       .filter(([oldId, map]) => !Number.isNaN(oldId) && !Number.isNaN(map.new.id)),
   ]) as AssetMap;
+};
+
+/**
+ * Extracts the sanitized name and extension from an asset.
+ * Uses short_filename if available, otherwise falls back to the filename basename.
+ */
+export const getAssetNameAndExt = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
+  const nameWithExt = asset.short_filename || basename(asset.filename);
+  const ext = extname(nameWithExt);
+  const name = sanitizeFilename(nameWithExt.replace(ext, '') || String(asset.id));
+  return { name, ext };
+};
+
+/**
+ * Generates the asset binary filename in the format: `${name}_${id}${ext}`
+ */
+export const getAssetFilename = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
+  const { name, ext } = getAssetNameAndExt(asset);
+  return `${name}_${asset.id}${ext}`;
+};
+
+/**
+ * Generates the asset metadata filename in the format: `${name}_${id}.json`
+ */
+export const getAssetMetadataFilename = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
+  const { name } = getAssetNameAndExt(asset);
+  return `${name}_${asset.id}.json`;
+};
+
+/**
+ * Generates the folder filename in the format: `${sanitizedName}_${uuid}.json`
+ * Falls back to uuid if the sanitized name is empty.
+ */
+export const getFolderFilename = (folder: Pick<AssetFolder, 'name' | 'uuid'>) => {
+  const sanitizedName = sanitizeFilename(folder.name || '');
+  const baseName = sanitizedName || folder.uuid;
+  return `${baseName}_${folder.uuid}.json`;
 };

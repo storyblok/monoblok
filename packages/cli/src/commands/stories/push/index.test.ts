@@ -13,35 +13,17 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import * as actions from '../actions';
 import { loadManifest } from './actions';
 import { resetReporter } from '../../../lib/reporter/reporter';
-import type { ResolvedCliConfig } from '../../../lib/config/types';
-
-const DEFAULT_SPACE = '12345';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.mock('../../../lib/config/store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../lib/config/store')>();
-  return {
-    ...actual,
-    // Speed up tests by disabling `maxConcurrency`.
-    setActiveConfig: (config: ResolvedCliConfig) => actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
-  };
-});
+import {
+  DEFAULT_SPACE,
+  getID,
+  getLogFileContents,
+  getReport as getReportHelper,
+  makeMockComponent,
+  type MockComponent,
+} from '../../__tests__/helpers';
+import { makeMockStory, type MockStory, randomThirdPartyID } from '../__tests__/helpers';
 
 vi.spyOn(console, 'log');
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
@@ -49,73 +31,14 @@ vi.spyOn(console, 'warn');
 vi.spyOn(actions, 'createStory');
 vi.spyOn(actions, 'updateStory');
 
+const LOG_PREFIX = 'storyblok-stories-push-';
+
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
   const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
-const getReport = (space: string = DEFAULT_SPACE) => {
-  const reportFile = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(`reports/${space}/storyblok-stories-push-`))?.[1];
-
-  return reportFile ? JSON.parse(reportFile) : undefined;
-};
-
-const getLogFileContents = (space: string = DEFAULT_SPACE) => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(`logs/${space}/storyblok-stories-push-`))?.[1];
-};
-
-const randomThirdPartyID = () => {
-  return `${randomUUID().substring(0, 10)}-${Math.floor(Math.random() * 9000) + 1000}`;
-};
-
-interface MockComponent {
-  name: string;
-  schema: Record<string, unknown>;
-  component_group_uuid: string | null;
-}
-
-const makeMockComponent = (overrides: Partial<MockComponent>): MockComponent => {
-  return {
-    name: 'component',
-    schema: {},
-    component_group_uuid: null,
-    ...overrides,
-  };
-};
-
-interface MockStory {
-  id: number | string;
-  uuid: string;
-  name: string;
-  slug: string;
-  full_slug: string;
-  content: Record<string, unknown>;
-  is_folder: boolean;
-  parent_id: null | number | string;
-}
-
-let id = 0;
-const makeMockStory = (overrides: Partial<MockStory>): MockStory => {
-  id += 1;
-  const slug = overrides.slug || `story-${id}`;
-  return {
-    id,
-    uuid: randomUUID(),
-    name: 'Story',
-    slug,
-    full_slug: slug,
-    content: {
-      _uid: randomUUID(),
-      component: 'page',
-      references: [],
-    },
-    is_folder: false,
-    parent_id: null,
-    ...overrides,
-  };
-};
+const getReport = (space: string = DEFAULT_SPACE) => getReportHelper(LOG_PREFIX, space);
 
 const server = setupServer(
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories/:storyId', () => HttpResponse.json(
@@ -170,10 +93,9 @@ const preconditions = {
   },
   canCreateStories(stories: MockStory[], space = DEFAULT_SPACE) {
     const remoteStories = stories.map((s) => {
-      id += 1;
       return {
         ...s,
-        id,
+        id: getID(),
         uuid: randomUUID(),
       };
     });
@@ -389,7 +311,7 @@ describe('stories push command', () => {
       },
     });
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toMatch(new RegExp(`Created story.*?"storyId":"${storyARemote.uuid}"`));
     expect(logFile).toMatch(new RegExp(`Created story.*?"storyId":"${storyBRemote.uuid}"`));
     expect(logFile).toMatch(new RegExp(`Created story.*?"storyId":"${storyCRemote.uuid}"`));
@@ -701,7 +623,7 @@ describe('stories push command', () => {
       },
     }));
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toMatch(new RegExp(`Skipped creating story.*?"storyId":"${storyA.uuid}"`));
     // UI
     expect(console.info).toHaveBeenCalledWith(
@@ -752,7 +674,7 @@ describe('stories push command', () => {
       story: storyA,
     }));
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toMatch(new RegExp(`The custom plugin \\\\"my_custom_field\\\\" may contain references that require manual updates.*?"storyId":"${storyA.uuid}"`));
     // UI
     expect(console.warn).toHaveBeenCalledWith(
@@ -881,7 +803,7 @@ describe('stories push command', () => {
 
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No existing manifest found');
   });
 
@@ -904,7 +826,7 @@ describe('stories push command', () => {
 
     expect(actions.createStory).not.toHaveBeenCalled();
     expect(actions.updateStory).not.toHaveBeenCalled();
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
   });
 
@@ -931,7 +853,7 @@ describe('stories push command', () => {
     const report = getReport();
     expect(report?.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Permission denied while accessing the file');
     // UI
     expect(console.info).toHaveBeenCalledWith(
@@ -1097,7 +1019,7 @@ describe('stories push command', () => {
     const report = getReport();
     expect(report.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain(
       'Expected property name or \'}\' in JSON at position 1',
     );
@@ -1135,7 +1057,7 @@ describe('stories push command', () => {
     const report = getReport();
     expect(report.status).toBe('FAILURE');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.info).toHaveBeenCalledWith(
@@ -1180,7 +1102,7 @@ describe('stories push command', () => {
     const report = getReport();
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Invalid data!');
     // UI
     expect(console.error).toHaveBeenCalledWith(
@@ -1223,7 +1145,7 @@ describe('stories push command', () => {
     const report = getReport();
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     // UI
     expect(console.error).toHaveBeenCalledWith(

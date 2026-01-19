@@ -15,39 +15,6 @@ export const getID = () => {
   return id;
 };
 
-/*
- * NOTE: Session and config store mocks cannot be exported and used with vi.mock()
- * because vi.mock() is hoisted to the top of the file and cannot reference imported variables.
- *
- * Instead, copy-paste these mocks directly in your test files:
- *
- * Session mock (preconditions.isLoggedIn):
- * ```
- * vi.mock('../../../session', () => ({
- *   session: vi.fn(() => ({
- *     state: {
- *       isLoggedIn: true,
- *       password: 'valid-token',
- *       region: 'eu',
- *     },
- *     initializeSession: vi.fn().mockResolvedValue(undefined),
- *   })),
- * }));
- * ```
- *
- * Config store mock (disables maxConcurrency for faster tests):
- * ```
- * vi.mock('../../../lib/config/store', async (importOriginal) => {
- *   const actual = await importOriginal<typeof import('../../../lib/config/store')>();
- *   return {
- *     ...actual,
- *     setActiveConfig: (config: import('../../../lib/config/types').ResolvedCliConfig) =>
- *       actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
- *   };
- * });
- * ```
- */
-
 /**
  * MockComponent interface used for component mocking in tests.
  */

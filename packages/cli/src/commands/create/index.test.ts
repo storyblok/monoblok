@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCommand } from './';
 import { handleError, konsola, requireAuthentication, toHumanReadable } from '../../utils';
-import { input, select } from '@inquirer/prompts';
+import { confirm, input, select } from '@inquirer/prompts';
 
 import { createSpace } from '../spaces';
 import type { Space } from '../spaces/actions';
@@ -77,6 +77,7 @@ vi.mock('../../utils', async (importOriginal) => {
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(),
   select: vi.fn(),
+  confirm: vi.fn(),
 }));
 
 // Helper function to create a complete Space mock object
@@ -157,10 +158,41 @@ describe('createCommand', () => {
       );
       expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
     });
+
+    it('should work with --token even when not logged in', async () => {
+      // Mock session to simulate not logged in
+      const { session } = await import('../../session');
+      const mockSession = session();
+      mockSession.state.isLoggedIn = false;
+      mockSession.state.password = undefined;
+
+      vi.mocked(generateProject).mockResolvedValue(undefined);
+      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+        { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
+      ]);
+
+      await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token', '--region', 'us']);
+
+      // Should generate project
+      expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
+      // Should create .env file with provided token and region
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us');
+      // Should NOT create space, require authentication, or prompt for login
+      expect(createSpace).not.toHaveBeenCalled();
+      expect(requireAuthentication).not.toHaveBeenCalled();
+    });
   });
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+
+    // Reset session state to default values
+    const { session } = await import('../../session');
+    const mockSession = session();
+    mockSession.state.isLoggedIn = true;
+    mockSession.state.password = 'test-token';
+    mockSession.state.region = 'eu';
 
     // Set up mock implementations
     vi.mocked(requireAuthentication).mockReturnValue(true);
@@ -489,6 +521,7 @@ describe('createCommand', () => {
     it('should exit early if user is not authenticated', async () => {
       const { requireAuthentication } = await import('../../utils');
       vi.mocked(requireAuthentication).mockReturnValue(false);
+      vi.mocked(confirm).mockResolvedValue(false); // User declines to login
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
         { name: 'React', value: 'react', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
@@ -1042,7 +1075,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Please login again.', userError);
+        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Your session may have expired.');
         expect(generateProject).toHaveBeenCalled();
         expect(createSpace).not.toHaveBeenCalled();
       });

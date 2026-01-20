@@ -1,9 +1,10 @@
 import { CommandError, handleError, isRegion, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
-import { colorPalette, commands, regions } from '../../constants';
+import { colorPalette, commands, type RegionCode, regions } from '../../constants';
+import { performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
-import { input, select } from '@inquirer/prompts';
+import { confirm, input, select } from '@inquirer/prompts';
 import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import path from 'node:path';
 import chalk from 'chalk';
@@ -20,6 +21,29 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
   konsola.br();
   konsola.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
   konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+}
+
+// Helper to handle interactive login prompt
+async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+  try {
+    konsola.br();
+    const shouldLogin = await confirm({
+      message: 'Would you like to login now?',
+      default: true,
+    });
+
+    if (!shouldLogin) {
+      konsola.warn('Login cancelled. You can login later using the "storyblok login" command.');
+      return null;
+    }
+
+    return await performInteractiveLogin({ verbose, showWelcomeMessage: true });
+  }
+  catch (error) {
+    konsola.br();
+    handleError(error as Error, verbose);
+    return null;
+  }
 }
 
 const program = getProgram(); // Get the shared singleton instance
@@ -61,25 +85,53 @@ export const createCommand = program
     const { state, initializeSession } = session();
     await initializeSession();
 
-    if (!requireAuthentication(state, verbose)) {
-      return;
+    // Declare these outside to be used throughout the function
+    let password: string | undefined;
+    let region: RegionCode | undefined;
+
+    // Get region from session for fallback (even when using --token)
+    if (state.region) {
+      region = state.region;
     }
 
-    const { password, region } = state;
+    // If --token or --skip-space is provided, we don't need full authentication
+    // Otherwise, check if user is authenticated and offer to login if not
+    if (!token && !options.skipSpace) {
+      if (!requireAuthentication(state, verbose)) {
+        const loginResult = await promptForLogin(verbose);
+        if (!loginResult) {
+          return;
+        }
+        // Re-initialize session after login
+        await initializeSession();
+      }
 
-    // Validate that user-provided region matches their account region when creating a space
-    // This check happens early before any project scaffolding
-    if (options.region && options.region !== region && !options.skipSpace && !token) {
-      handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
-      return;
+      // After authentication check, password and region are guaranteed to be defined
+      const authenticatedState = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
+      password = authenticatedState.password;
+      region = authenticatedState.region;
+
+      // Validate that user-provided region matches their account region when creating a space
+      // This check happens early before any project scaffolding
+      if (options.region && options.region !== region) {
+        handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
+        return;
+      }
+
+      mapiClient({
+        token: {
+          accessToken: password,
+        },
+        region,
+      });
     }
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
+    else if (state.isLoggedIn && state.password) {
+      // If using --token or --skip-space but user is logged in, still get their credentials for mapiClient
+      password = state.password;
+      if (state.region) {
+        region = state.region;
+      }
+    }
 
     const spinnerBlueprints = new Spinner({
       verbose: !isVitest,
@@ -177,16 +229,37 @@ export const createCommand = program
       }
       try {
         try {
-          const user = await getUser(password, region);
+          // At this point, password and region are guaranteed to be defined because:
+          // 1. We're not in the token branch (which returns early)
+          // 2. Authentication was required and completed
+          const user = await getUser(password!, region!);
           if (!user) {
             throw new Error('User data is undefined');
           }
           userData = user;
         }
-        catch (error) {
-          konsola.error('Failed to fetch user info. Please login again.', error);
-          konsola.br();
-          return;
+        catch {
+          konsola.error('Failed to fetch user info. Your session may have expired.');
+          const loginResult = await promptForLogin(verbose);
+          if (!loginResult) {
+            konsola.br();
+            return;
+          }
+          // Re-initialize session and retry fetching user
+          await initializeSession();
+          const { password: newPassword, region: newRegion } = session().state;
+          try {
+            const user = await getUser(newPassword!, newRegion!);
+            if (!user) {
+              throw new Error('User data is undefined');
+            }
+            userData = user;
+          }
+          catch (retryError) {
+            konsola.error('Failed to fetch user info after login.', retryError);
+            konsola.br();
+            return;
+          }
         }
 
         // Prepare choices for space creation
@@ -236,18 +309,18 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region!);
         }
 
         // Open the space in the browser
         if (createdSpace?.id) {
           try {
-            await openSpaceInBrowser(createdSpace.id, region);
+            await openSpaceInBrowser(createdSpace.id, region!);
             konsola.info(`Opened space in your browser`);
           }
           catch (error) {
             konsola.warn(`Failed to open browser: ${(error as Error).message}`);
-            const spaceUrl = generateSpaceUrl(createdSpace.id, region);
+            const spaceUrl = generateSpaceUrl(createdSpace.id, region!);
             konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
           }
         }
@@ -256,13 +329,13 @@ export const createCommand = program
         showNextSteps(technologyTemplate!, finalProjectPath);
         if (createdSpace?.first_token) {
           if (whereToCreateSpace === 'org') {
-            konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else if (whereToCreateSpace === 'partner') {
-            konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else {
-            konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region))}`);
+            konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
         }
       }

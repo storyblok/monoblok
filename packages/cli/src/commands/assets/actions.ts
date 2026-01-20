@@ -277,6 +277,8 @@ const sha256 = (data: ArrayBuffer | Buffer) => {
  *   only metadata should be updated without changing the underlying file.
  * @param options - Additional options.
  * @param options.spaceId - The ID of the space that owns the asset.
+ * @param options.assetToken - Token for downloading private assets.
+ * @param options.region - Region to use for asset download.
  */
 export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, {
   spaceId,

@@ -27,7 +27,6 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
   try {
     konsola.br();
-    konsola.info('You need to be logged in to continue.');
     const shouldLogin = await confirm({
       message: 'Would you like to login now?',
       default: true,

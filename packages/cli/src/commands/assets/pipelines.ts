@@ -6,7 +6,7 @@ import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStorySt
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
 import { handleError } from '../../utils/error/error';
-import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CleanupAssetTransport, CreateAssetFolderTransport, CreateAssetTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
+import type { AppendAssetFolderManifestTransport, AppendAssetManifestTransport, CleanupAssetTransport, CreateAssetFolderTransport, CreateAssetTransport, DownloadAssetFileTransport, GetAssetFolderTransport, GetAssetTransport, UpdateAssetFolderTransport, UpdateAssetTransport } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
 import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
@@ -91,6 +91,7 @@ export const upsertAssetsPipeline = async ({
     get: GetAssetTransport;
     create: CreateAssetTransport;
     update: UpdateAssetTransport;
+    downloadAssetFile: DownloadAssetFileTransport;
     manifest: AppendAssetManifestTransport;
     cleanup: CleanupAssetTransport;
   };
@@ -98,7 +99,7 @@ export const upsertAssetsPipeline = async ({
   verbose: boolean;
 }): Promise<Summaries> => {
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
-  const summary = { total: 0, succeeded: 0, failed: 0 };
+  const summary = { total: 0, succeeded: 0, failed: 0, skipped: 0 };
 
   const steps = [];
   // Use the asset provided via the CLI.
@@ -136,6 +137,7 @@ export const upsertAssetsPipeline = async ({
     getTransport: transports.get,
     createTransport: transports.create,
     updateTransport: transports.update,
+    downloadAssetFileTransport: transports.downloadAssetFile,
     manifestTransport: transports.manifest,
     cleanupTransport: transports.cleanup,
     maps,
@@ -154,6 +156,21 @@ export const upsertAssetsPipeline = async ({
 
       summary.succeeded += 1;
       logger.info('Uploaded asset', { assetId: remoteAsset.id });
+    },
+    onAssetSkipped: (localAssetResult, remoteAsset) => {
+      if ('id' in localAssetResult && localAssetResult.id) {
+        maps.assets.set(localAssetResult.id, {
+          old: localAssetResult,
+          new: {
+            id: remoteAsset.id,
+            filename: remoteAsset.filename,
+            meta_data: remoteAsset.meta_data,
+          },
+        });
+      }
+
+      summary.skipped += 1;
+      logger.debug('Skipped asset (unchanged)', { assetId: remoteAsset.id });
     },
     onAssetError: (error, asset) => {
       summary.failed += 1;

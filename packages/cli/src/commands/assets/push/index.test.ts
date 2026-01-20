@@ -456,6 +456,7 @@ describe('assets push command', () => {
         assetResults: {
           total: 1,
           succeeded: 1,
+          skipped: 0,
           failed: 0,
         },
       },
@@ -466,9 +467,9 @@ describe('assets push command', () => {
     expect(logFile).toMatch(/Uploaded asset/);
     expect(logFile).toContain('Pushing assets finished');
     expect(logFile).toContain('"assetFolderResults":{"total":1,"succeeded":1,"failed":0}');
-    expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
+    expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0,"skipped":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
@@ -567,7 +568,7 @@ describe('assets push command', () => {
       meta: expect.any(Object),
       summary: {
         assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
-        assetResults: { total: 1, succeeded: 1, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, skipped: 0, failed: 0 },
         fetchStoryPages: { total: 1, succeeded: 1, failed: 0 },
         fetchStories: { total: 1, succeeded: 1, failed: 0 },
         storyProcessResults: { total: 1, succeeded: 1, failed: 0 },
@@ -575,7 +576,7 @@ describe('assets push command', () => {
       },
     });
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
@@ -714,13 +715,13 @@ describe('assets push command', () => {
       meta: expect.any(Object),
       summary: {
         assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
-        assetResults: { total: 1, succeeded: 1, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, skipped: 0, failed: 0 },
       },
     });
     // UI
     expect(storyActions.updateStory).not.toHaveBeenCalled();
     expect(console.error).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed, 0 assets failed'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
   });
@@ -851,7 +852,7 @@ describe('assets push command', () => {
     expect(logFile).toContain('File System Error: Permission denied');
     // UI
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+      expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
@@ -893,7 +894,7 @@ describe('assets push command', () => {
     expect(logFile).toContain('Expected property name or \'}\' in JSON');
     // UI
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+      expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
@@ -985,7 +986,7 @@ describe('assets push command', () => {
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+      expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
@@ -996,13 +997,26 @@ describe('assets push command', () => {
   });
 
   it('should handle errors when updating assets fails', async () => {
-    const asset = makeMockAsset();
+    const localAsset = makeMockAsset({
+      meta_data: {
+        alt: 'New alt',
+        title: 'New title',
+        copyright: 'New copyright',
+      },
+    });
     preconditions.canLoadFolders([]);
-    preconditions.canLoadAssets([asset]);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset]);
+    preconditions.canLoadAssets([localAsset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
+      ...localAsset,
+      meta_data: {
+        alt: 'Old alt',
+        title: 'Old title',
+        copyright: 'Old copyright',
+      },
+    }]);
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canDownloadAssets([remoteAsset]);
-    preconditions.canLoadAssetsManifest([{ old_id: asset.id, new_id: remoteAsset.id }]);
+    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
     preconditions.failsToUpdateRemoteAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
@@ -1021,7 +1035,7 @@ describe('assets push command', () => {
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+      expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
@@ -1053,7 +1067,7 @@ describe('assets push command', () => {
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 asset pushed, 1 asset failed'),
+      expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
@@ -1084,7 +1098,7 @@ describe('assets push command', () => {
     }));
   });
 
-  it('should only update the asset (not the file) when updating an existing asset with a matching binary hash', async () => {
+  it('should skip update when both file and metadata are unchanged', async () => {
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
@@ -1098,7 +1112,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(finishUploadSpy).not.toHaveBeenCalled();
-    expect(updateSpy).toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it('should upload a new asset file when updating an existing asset with a different binary hash', async () => {
@@ -1177,10 +1191,23 @@ describe('assets push command', () => {
   });
 
   it('should update existing remote assets even when no manifest exists', async () => {
-    const localAsset = makeMockAsset();
+    const localAsset = makeMockAsset({
+      meta_data: {
+        alt: 'New alt',
+        title: 'New title',
+        copyright: 'New copyright',
+      },
+    });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
+      ...localAsset,
+      meta_data: {
+        alt: 'Old alt',
+        title: 'Old title',
+        copyright: 'Old copyright',
+      },
+    }]);
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canDownloadAssets([remoteAsset]);
 
@@ -1320,7 +1347,7 @@ describe('assets push command', () => {
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).not.toContain('ENOENT');
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 asset pushed'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
   });
 
   it('should filter stories using search parameter when updating a single asset', async () => {

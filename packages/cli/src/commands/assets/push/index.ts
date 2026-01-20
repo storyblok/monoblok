@@ -16,6 +16,7 @@ import {
   makeCleanupAssetFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
+  makeDownloadAssetFileTransport,
   makeGetAssetAPITransport,
   makeGetAssetFolderAPITransport,
   makeUpdateAssetAPITransport,
@@ -170,11 +171,11 @@ assetsCommand
         : makeCreateAssetAPITransport({ spaceId: space });
       const updateAssetTransport = options.dryRun
         ? { update: async (asset: AssetUpdate) => asset as Asset }
-        : makeUpdateAssetAPITransport({
-            spaceId: space,
-            assetToken,
-            region,
-          });
+        : makeUpdateAssetAPITransport({ spaceId: space });
+      const downloadAssetFileTransport = makeDownloadAssetFileTransport({
+        assetToken,
+        region,
+      });
       const assetManifestTransport = options.dryRun
         ? { append: () => Promise.resolve() }
         : makeAppendAssetManifestFSTransport({ manifestFile });
@@ -192,6 +193,7 @@ assetsCommand
           get: getAssetTransport,
           create: createAssetTransport,
           update: updateAssetTransport,
+          downloadAssetFile: downloadAssetFileTransport,
           manifest: assetManifestTransport,
           cleanup: cleanupAssetTransport,
         },
@@ -233,14 +235,14 @@ assetsCommand
       ui.stopAllProgressBars();
       const summary = Object.fromEntries(summaries);
       logger.info('Pushing assets finished', { summary });
-      const assetsPushed = summary.assetResults?.total ?? 0;
+      const assetsTotal = summary.assetResults?.total ?? 0;
+      const assetsSucceeded = summary.assetResults?.succeeded ?? 0;
       const assetsFailed = summary.assetResults?.failed ?? 0;
-      const pushedLabel = assetsPushed === 1 ? 'asset' : 'assets';
-      const failedLabel = assetsFailed === 1 ? 'asset' : 'assets';
-      ui.info(`Push results: ${assetsPushed} ${pushedLabel} pushed, ${assetsFailed} ${failedLabel} failed`);
+
+      ui.info(`Push results: ${assetsTotal} processed, ${assetsFailed} assets failed`);
       ui.list([
         `Folders: ${summary.assetFolderResults?.succeeded ?? 0}/${summary.assetFolderResults?.total ?? 0} succeeded, ${summary.assetFolderResults?.failed ?? 0} failed.`,
-        `Assets: ${summary.assetResults?.succeeded ?? 0}/${assetsPushed} succeeded, ${assetsFailed} failed.`,
+        `Assets: ${assetsSucceeded}/${assetsTotal} succeeded, ${assetsFailed} failed.`,
       ]);
       for (const [name, reportSummary] of summaries) {
         reporter.addSummary(name, reportSummary);

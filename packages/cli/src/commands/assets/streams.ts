@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promi
 import { appendToFile, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
-import { createAsset, createAssetFolder, downloadFile, fetchAssetFolders, fetchAssets, getSignedAssetUrl, updateAsset, updateAssetFolder } from './actions';
+import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, sha256, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -98,18 +98,7 @@ export const downloadAssetStream = ({
     async transform(asset: Asset, _encoding, callback) {
       await apiConcurrencyLock.acquire();
 
-      const task = (async () => {
-        let signedUrl: string | undefined;
-        if (asset.is_private) {
-          if (!assetToken) {
-            throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
-          }
-          signedUrl = await getSignedAssetUrl(asset.filename, assetToken, region);
-        }
-
-        return downloadFile(signedUrl || asset.filename);
-      })();
-
+      const task = (() => downloadAssetFile(asset, { assetToken, region }))();
       processing.add(task);
       task
         .then((fileBuffer) => {
@@ -562,17 +551,11 @@ export interface UpdateAssetTransport {
 
 export const makeUpdateAssetAPITransport = ({
   spaceId,
-  assetToken,
-  region,
 }: {
   spaceId: string;
-  assetToken?: string;
-  region?: RegionCode;
 }): UpdateAssetTransport => ({
   update: (asset, fileBuffer) => updateAsset(asset, fileBuffer, {
     spaceId,
-    assetToken,
-    region,
   }),
 });
 
@@ -654,76 +637,189 @@ const hasShortFilename = (a: unknown): a is { short_filename: string } => {
   return !!a && typeof a === 'object' && 'short_filename' in a && typeof (a as any).short_filename === 'string';
 };
 
+/**
+ * Compares data (metadata and folder id) between local and remote assets.
+ * Returns true if the data is identical (no update needed).
+ */
+const isDataUnchanged = (localAsset: AssetUpdate, remoteAsset: Asset): boolean => {
+  if (localAsset.asset_folder_id !== remoteAsset.asset_folder_id) {
+    return false;
+  }
+
+  const localAssetMetadataEntries = Object.entries(localAsset.meta_data || {});
+  const remoteAssetMetadataEntries = Object.entries(remoteAsset.meta_data || {});
+  if (localAssetMetadataEntries.length !== remoteAssetMetadataEntries.length) {
+    return false;
+  }
+
+  const hasChanges = localAssetMetadataEntries.some(([k, v]) =>
+    remoteAsset.meta_data && remoteAsset.meta_data[k] !== v);
+
+  return !hasChanges;
+};
+
+/**
+ * Checks if an asset update should be skipped because both file and metadata are unchanged.
+ */
+const isAssetUnchanged = async (
+  localAsset: AssetUpdate,
+  remoteAsset: Asset,
+  localFileBuffer: ArrayBuffer,
+  downloadAssetFileTransport: DownloadAssetFileTransport,
+): Promise<boolean> => {
+  const remoteFileBuffer = await downloadAssetFileTransport.download(remoteAsset);
+  const isFileUnchanged = sha256(localFileBuffer) === sha256(remoteFileBuffer);
+  if (!isFileUnchanged) {
+    return false;
+  }
+
+  return isDataUnchanged(localAsset, remoteAsset);
+};
+
+export interface DownloadAssetFileTransport {
+  download: (asset: { filename: string; is_private?: boolean }) => Promise<ArrayBuffer>;
+}
+
+export const makeDownloadAssetFileTransport = ({
+  assetToken,
+  region,
+}: {
+  assetToken?: string;
+  region?: RegionCode;
+}): DownloadAssetFileTransport => ({
+  download: asset => downloadAssetFile(asset, { assetToken, region }),
+});
+
+const processAsset = async ({
+  localAsset,
+  fileBuffer,
+  assetFilePath,
+  metadataFilePath,
+  transports,
+  maps,
+}: {
+  localAsset: Asset | AssetCreate | AssetUpload;
+  fileBuffer: ArrayBuffer;
+  assetFilePath: string;
+  metadataFilePath?: string;
+  transports: {
+    get: GetAssetTransport;
+    create: CreateAssetTransport;
+    update: UpdateAssetTransport;
+    download: DownloadAssetFileTransport;
+    manifest: AppendAssetManifestTransport;
+    cleanup?: CleanupAssetTransport;
+  };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap };
+}): Promise<{ status: 'skipped' | 'created' | 'updated'; remoteAsset: Asset }> => {
+  const remoteFolderId = localAsset.asset_folder_id
+    && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
+  const remoteAssetId = hasId(localAsset)
+    ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
+    : undefined;
+  const remoteAsset = remoteAssetId ? await transports.get.get(remoteAssetId) : null;
+
+  let newRemoteAsset: Asset;
+  let status: 'skipped' | 'created' | 'updated';
+  if (remoteAsset) {
+    const updatePayload = {
+      ...remoteAsset,
+      ...localAsset,
+      id: remoteAsset.id,
+      asset_folder_id: remoteFolderId,
+    } satisfies AssetUpdate;
+    const canSkip = await isAssetUnchanged(
+      updatePayload,
+      remoteAsset,
+      fileBuffer,
+      transports.download,
+    );
+
+    if (canSkip) {
+      newRemoteAsset = remoteAsset;
+      status = 'skipped';
+    }
+    else {
+      newRemoteAsset = await transports.update.update(updatePayload, fileBuffer);
+      status = 'updated';
+    }
+  }
+  else if (hasShortFilename(localAsset)) {
+    const createPayload = {
+      ...localAsset,
+      asset_folder_id: remoteFolderId,
+    } satisfies AssetCreate;
+    newRemoteAsset = await transports.create.create(createPayload, fileBuffer);
+    status = 'created';
+  }
+  else {
+    throw new Error('Could neither create nor update the asset: Missing ID and Filename');
+  }
+
+  if (hasId(localAsset)) {
+    await transports.manifest.append(localAsset, newRemoteAsset);
+  }
+  await transports.cleanup?.cleanup({ assetFilePath, metadataFilePath });
+
+  return { status, remoteAsset: newRemoteAsset };
+};
+
 export const upsertAssetStream = ({
   getTransport,
   createTransport,
   updateTransport,
+  downloadAssetFileTransport,
   manifestTransport,
   cleanupTransport,
   maps,
   onIncrement,
   onAssetSuccess,
+  onAssetSkipped,
   onAssetError,
 }: {
   getTransport: GetAssetTransport;
   createTransport: CreateAssetTransport;
   updateTransport: UpdateAssetTransport;
+  downloadAssetFileTransport: DownloadAssetFileTransport;
   manifestTransport: AppendAssetManifestTransport;
   cleanupTransport?: CleanupAssetTransport;
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
+  onAssetSkipped?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
   const processing = new Set<Promise<void>>();
+  const transports = {
+    get: getTransport,
+    create: createTransport,
+    update: updateTransport,
+    download: downloadAssetFileTransport,
+    manifest: manifestTransport,
+    cleanup: cleanupTransport,
+  };
 
   return new Writable({
     objectMode: true,
-    async write({
-      asset: localAsset,
-      context: { assetFilePath, metadataFilePath, fileBuffer },
-    }: LocalAssetPayload, _encoding, callback) {
+    async write({ asset: localAsset, context }: LocalAssetPayload, _encoding, callback) {
       await apiConcurrencyLock.acquire();
-
       const task = (async () => {
         try {
-          const remoteFolderId = localAsset.asset_folder_id
-            && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
-          const remoteAssetId = hasId(localAsset)
-            ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
-            : undefined;
-          const remoteAsset = remoteAssetId ? await getTransport.get(remoteAssetId) : null;
-          let newRemoteAsset: Asset | null = null;
-          // If a remote asset already exists, we must not create a new asset.
-          // This can happen when the user resumes a failed push or runs push multiple times.
-          if (remoteAsset) {
-            const updateAsset = {
-              ...remoteAsset,
-              ...localAsset,
-              id: remoteAsset.id,
-              asset_folder_id: remoteFolderId,
-            } satisfies AssetUpdate;
-            newRemoteAsset = await updateTransport.update(updateAsset, fileBuffer);
-          }
-          else if (hasShortFilename(localAsset)) {
-            const createAsset = {
-              ...localAsset,
-              asset_folder_id: remoteFolderId,
-            } satisfies AssetCreate;
-            newRemoteAsset = await createTransport.create(createAsset, fileBuffer);
-          }
+          const { status, remoteAsset } = await processAsset({
+            localAsset,
+            fileBuffer: context.fileBuffer,
+            assetFilePath: context.assetFilePath,
+            metadataFilePath: context.metadataFilePath,
+            transports,
+            maps,
+          });
 
-          if (!newRemoteAsset) {
-            throw new Error('Could neither create nor update the asset!');
+          if (status === 'skipped') {
+            onAssetSkipped?.(localAsset, remoteAsset);
           }
-
-          if (hasId(localAsset)) {
-            await manifestTransport.append(localAsset, newRemoteAsset);
+          else {
+            onAssetSuccess?.(localAsset, remoteAsset);
           }
-
-          await cleanupTransport?.cleanup({ assetFilePath, metadataFilePath });
-
-          onAssetSuccess?.(localAsset, newRemoteAsset);
         }
         catch (maybeError) {
           onAssetError?.(toError(maybeError), localAsset);

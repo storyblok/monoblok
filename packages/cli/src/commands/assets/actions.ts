@@ -257,51 +257,63 @@ const uploadAsset = async (asset: AssetUpload, fileBuffer: ArrayBuffer, { spaceI
   });
 };
 
-const sha256 = (data: ArrayBuffer | Buffer) => {
+/**
+ * Computes the SHA-256 hash of a file buffer.
+ * Used for comparing local and remote file contents.
+ */
+export const sha256 = (data: ArrayBuffer | Buffer) => {
   const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
   return createHash('sha256').update(buffer).digest('hex');
 };
 
 /**
+ * Downloads a remote asset file for comparison purposes.
+ * Handles both public and private assets.
+ */
+export const downloadAssetFile = async (
+  asset: { filename: string; is_private?: boolean },
+  options: { assetToken?: string; region?: RegionCode },
+): Promise<ArrayBuffer> => {
+  let url = asset.filename;
+
+  if (asset.is_private) {
+    if (!options.assetToken) {
+      throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
+    }
+    url = await getSignedAssetUrl(asset.filename, options.assetToken, options.region);
+  }
+
+  return downloadFile(url);
+};
+
+/**
  * Updates an existing asset in Storyblok.
  *
- * When providing a non-null {@link fileBuffer}, the function will compare the
- * local file buffer with the remote asset file and, if they differ, upload
- * the new file before updating the asset metadata.
+ * When providing a non-null {@link fileBuffer}, uploads the new file before
+ * updating the asset metadata.
  *
  * When {@link fileBuffer} is `null`, no file upload is performed and only the
  * asset metadata (e.g. `meta_data`, `asset_folder_id`, etc.) is updated.
+ *
+ * **Note:** This function does NOT perform file hash comparison. The caller
+ * should use {@link downloadAssetFile} and {@link sha256} to compare files
+ * before calling this function if skipping unchanged assets is desired.
  *
  * @param asset - The asset fields to update, including its `id`.
  * @param fileBuffer - The new file contents as an `ArrayBuffer`, or `null` if
  *   only metadata should be updated without changing the underlying file.
  * @param options - Additional options.
  * @param options.spaceId - The ID of the space that owns the asset.
- * @param options.assetToken - Token for downloading private assets.
- * @param options.region - Region to use for asset download.
  */
 export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, {
   spaceId,
-  assetToken,
-  region,
 }: {
   spaceId: string;
-  assetToken?: string;
-  region?: RegionCode;
 }) => {
   try {
     const assetWithNewFilename = { ...asset };
-    let signedUrl: string | undefined;
-    if (asset.is_private) {
-      if (!assetToken) {
-        throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
-      }
-      signedUrl = await getSignedAssetUrl(asset.filename, assetToken, region);
-    }
 
-    const remoteFileBuffer = fileBuffer && await downloadFile(signedUrl || asset.filename);
-    const hasNewFile = remoteFileBuffer && fileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
-    if (hasNewFile) {
+    if (fileBuffer) {
       const uploadedAsset = await uploadAsset({
         id: asset.id,
         asset_folder_id: asset.asset_folder_id,

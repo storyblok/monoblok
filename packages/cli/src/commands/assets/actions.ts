@@ -278,13 +278,27 @@ const sha256 = (data: ArrayBuffer | Buffer) => {
  * @param options - Additional options.
  * @param options.spaceId - The ID of the space that owns the asset.
  */
-export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, { spaceId }: {
+export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | null, {
+  spaceId,
+  assetToken,
+  region,
+}: {
   spaceId: string;
+  assetToken?: string;
+  region?: RegionCode;
 }) => {
   try {
     const assetWithNewFilename = { ...asset };
-    const remoteFileBuffer = fileBuffer && await downloadFile(asset.filename);
-    const hasNewFile = remoteFileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
+    let signedUrl: string | undefined;
+    if (asset.is_private) {
+      if (!assetToken) {
+        throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
+      }
+      signedUrl = await getSignedAssetUrl(asset.filename, assetToken, region);
+    }
+
+    const remoteFileBuffer = fileBuffer && await downloadFile(signedUrl || asset.filename);
+    const hasNewFile = remoteFileBuffer && fileBuffer && sha256(fileBuffer) !== sha256(remoteFileBuffer);
     if (hasNewFile) {
       const uploadedAsset = await uploadAsset({
         id: asset.id,

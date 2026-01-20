@@ -38,6 +38,7 @@ assetsCommand
   .option('--folder <folderId>', 'destination asset folder ID')
   .option('--cleanup', 'delete local assets and metadata after a successful push')
   .option('--update-stories', 'update file references in stories if necessary', false)
+  .option('--asset-token <token>', 'asset token for accessing private assets')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`)
   .action(async (assetInput, options, command) => {
@@ -55,6 +56,7 @@ assetsCommand
 
     const { space, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = (options.from as string | undefined) || space;
+    const assetToken = options.assetToken as string | undefined;
     const { state, initializeSession } = session();
     await initializeSession();
 
@@ -168,7 +170,11 @@ assetsCommand
         : makeCreateAssetAPITransport({ spaceId: space });
       const updateAssetTransport = options.dryRun
         ? { update: async (asset: AssetUpdate) => asset as Asset }
-        : makeUpdateAssetAPITransport({ spaceId: space });
+        : makeUpdateAssetAPITransport({
+            spaceId: space,
+            assetToken,
+            region,
+          });
       const assetManifestTransport = options.dryRun
         ? { append: () => Promise.resolve() }
         : makeAppendAssetManifestFSTransport({ manifestFile });

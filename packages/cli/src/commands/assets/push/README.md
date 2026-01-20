@@ -74,3 +74,4 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 | `--folder <folderId>` | Destination asset folder ID | - |
 | `--cleanup` | Delete local assets and metadata after a successful push | `false` |
 | `--update-stories` | Update file references in stories if necessary | `false` |
+| `--asset-token <token>` | Asset token for accessing private assets | - |

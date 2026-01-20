@@ -560,8 +560,20 @@ export interface UpdateAssetTransport {
   update: (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<Asset>;
 }
 
-export const makeUpdateAssetAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetTransport => ({
-  update: (asset, fileBuffer) => updateAsset(asset, fileBuffer, { spaceId }),
+export const makeUpdateAssetAPITransport = ({
+  spaceId,
+  assetToken,
+  region,
+}: {
+  spaceId: string;
+  assetToken?: string;
+  region?: RegionCode;
+}): UpdateAssetTransport => ({
+  update: (asset, fileBuffer) => updateAsset(asset, fileBuffer, {
+    spaceId,
+    assetToken,
+    region,
+  }),
 });
 
 export interface AppendAssetManifestTransport {

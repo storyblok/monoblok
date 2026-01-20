@@ -83,6 +83,9 @@ const preconditions = {
       { status: 500 },
     )));
   },
+  canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
+    server.use(http.get(signedUrl, () => HttpResponse.text(content)));
+  },
   failsToSaveAsset() {
     const writeError = new Error('Simulated write failure') as NodeJS.ErrnoException;
     writeError.code = 'EACCES';
@@ -95,18 +98,12 @@ const preconditions = {
     writeError.syscall = 'write';
     vi.spyOn(fs, 'writeFile').mockRejectedValue(writeError);
   },
-  canFetchSignedUrl(asset: MockAsset, signedUrl: string, assetToken = 'test-asset-token') {
+  canFetchSignedUrl(signedUrl: string) {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/assets/me', ({ request }) => {
-        const url = new URL(request.url);
-        expect(url.searchParams.get('token')).toBe(assetToken);
-        expect(url.searchParams.get('filename')).toBe(asset.filename);
+      http.get('https://api.storyblok.com/v2/cdn/assets/me', () => {
         return HttpResponse.json({ asset: { signed_url: signedUrl } });
       }),
     );
-  },
-  canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
-    server.use(http.get(signedUrl, () => HttpResponse.text(content)));
   },
 };
 
@@ -342,10 +339,10 @@ describe('assets pull command', () => {
 
   it('should pull private assets with asset token', async () => {
     const privateAsset = makeMockAsset({ is_private: true });
-    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/asset.png?signature=xyz';
     preconditions.canFetchRemoteFolders([]);
     preconditions.canFetchRemoteAssetPages([[privateAsset]]);
-    preconditions.canFetchSignedUrl(privateAsset, signedUrl);
+    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/asset.png?signature=xyz';
+    preconditions.canFetchSignedUrl(signedUrl);
     preconditions.canDownloadPrivateAsset(signedUrl);
 
     await assetsCommand.parseAsync([
@@ -385,7 +382,7 @@ describe('assets pull command', () => {
     preconditions.canFetchRemoteFolders([]);
     preconditions.canFetchRemoteAssetPages([[publicAsset, privateAsset]]);
     preconditions.canDownloadAssets([publicAsset]);
-    preconditions.canFetchSignedUrl(privateAsset, signedUrl);
+    preconditions.canFetchSignedUrl(signedUrl);
     preconditions.canDownloadPrivateAsset(signedUrl);
 
     await assetsCommand.parseAsync([

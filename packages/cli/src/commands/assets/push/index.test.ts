@@ -324,6 +324,16 @@ const preconditions = {
       server.use(http.get(asset.filename, () => HttpResponse.text(content)));
     }
   },
+  canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
+    server.use(http.get(signedUrl, () => HttpResponse.text(content)));
+  },
+  canFetchSignedUrl(signedUrl: string) {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/assets/me', () => {
+        return HttpResponse.json({ asset: { signed_url: signedUrl } });
+      }),
+    );
+  },
   canFetchRemoteStoryPages(storyPages: MockStory[][]) {
     server.use(
       http.get(
@@ -1096,12 +1106,36 @@ describe('assets push command', () => {
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const finishUploadSpy = vi.fn();
-    const updateSpy = vi.fn();
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(finishUploadSpy).toHaveBeenCalled();
+    expect(await parseManifest()).toEqual([
+      {
+        old_id: localAsset.id,
+        old_filename: localAsset.filename,
+        new_id: remoteAsset.id,
+        new_filename: remoteAsset.filename,
+        created_at: expect.any(String),
+      },
+    ]);
+  });
+
+  it('should upload a new private asset file when updating an existing asset with a different binary hash', async () => {
+    const localAsset = makeMockAsset({ is_private: true });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const finishUploadSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/asset.png?signature=xyz';
+    preconditions.canFetchSignedUrl(signedUrl);
+    preconditions.canDownloadPrivateAsset(signedUrl);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--asset-token', 'test-asset-token']);
 
     expect(finishUploadSpy).toHaveBeenCalled();
     expect(await parseManifest()).toEqual([
@@ -1120,8 +1154,7 @@ describe('assets push command', () => {
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const finishUploadSpy = vi.fn();
-    const updateSpy = vi.fn();
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
     preconditions.canLoadAssetsManifest([{

@@ -9,9 +9,8 @@ import { vol } from 'memfs';
 import '../index';
 import { storiesCommand } from '../command';
 import { directories } from '../../../constants';
-import { resolveCommandPath } from '../../../utils/filesystem';
+import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import * as actions from '../actions';
-import { loadManifest } from './actions';
 import { resetReporter } from '../../../lib/reporter/reporter';
 import {
   DEFAULT_SPACE,

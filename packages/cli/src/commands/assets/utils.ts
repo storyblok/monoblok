@@ -1,8 +1,7 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
-import { sanitizeFilename } from '../../utils/filesystem';
-import { loadManifest } from '../stories/push/actions';
+import { loadManifest, sanitizeFilename } from '../../utils/filesystem';
 import type { Asset, AssetFolder, AssetMap, AssetMapped } from './types';
 
 export const parseAssetData = (raw?: string) => {

@@ -6,14 +6,13 @@ import { CommandError, handleError, requireAuthentication, toError } from '../..
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
 import { mapiClient } from '../../../api';
-import { resolveCommandPath } from '../../../utils/filesystem';
+import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
-import { loadManifest } from './actions';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 storiesCommand

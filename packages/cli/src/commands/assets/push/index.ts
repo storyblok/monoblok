@@ -9,7 +9,7 @@ import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, toError } from '../../../utils/error/error';
 import { mapiClient } from '../../../api';
-import { resolveCommandPath } from '../../../utils/filesystem';
+import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
@@ -21,8 +21,7 @@ import {
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
-import type { ManifestEntry } from './actions';
-import { loadManifest } from './actions';
+import type { ManifestEntry } from '../../../utils/filesystem';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetMapped, AssetUpdate, AssetUpload } from '../types';
 import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';

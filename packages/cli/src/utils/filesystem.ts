@@ -120,6 +120,25 @@ export const readFile = async (filePath: string) => {
   }
 };
 
+export interface ManifestEntry {
+  old_id: string | number;
+  new_id: string | number;
+  old_filename?: string;
+  new_filename?: string;
+  created_at?: string;
+}
+
+export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[]> => {
+  return readFileImpl(manifestFile, 'utf8')
+    .then(manifest => manifest.split('\n').filter(Boolean).map(entry => JSON.parse(entry)))
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error && error.code === 'ENOENT') {
+        return [];
+      }
+      throw error;
+    });
+};
+
 export const resolvePath = (path: string | undefined, folder: string) => {
   const basePath = path ?? DEFAULT_STORAGE_DIR;
   // Keeps honoring relative paths by anchoring everything on the current workspace root.

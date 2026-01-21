@@ -90,8 +90,8 @@ assetsCommand
           },
         }),
         writeAssetFolderStream({
-          transport: options.dryRun
-            ? { write: async folder => folder }
+          writeAssetFolder: options.dryRun
+            ? async folder => folder
             : makeWriteAssetFolderFSTransport({
                 directoryPath: resolveCommandPath(directories.assets, space, basePath),
               }),
@@ -153,8 +153,8 @@ assetsCommand
           },
         }),
         writeAssetStream({
-          transport: options.dryRun
-            ? { write: async asset => asset }
+          writeAsset: options.dryRun
+            ? async asset => asset
             : makeWriteAssetFSTransport({
                 directoryPath: resolveCommandPath(directories.assets, space, basePath),
               }),

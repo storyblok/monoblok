@@ -145,17 +145,19 @@ storiesCommand
         createStoryPlaceholderStream({
           maps,
           spaceId: space,
-          storyTransport: options.dryRun
-            ? { create: (story: Story) => Promise.resolve(story) }
-            : makeCreateStoryAPITransport({
-                maps,
-                spaceId: space,
-              }),
-          manifestTransport: options.dryRun
-            ? { append: () => Promise.resolve() }
-            : makeAppendToManifestFSTransport({
-                manifestFile,
-              }),
+          transports: {
+            createStory: options.dryRun
+              ? async (story: Story) => story
+              : makeCreateStoryAPITransport({
+                  maps,
+                  spaceId: space,
+                }),
+            appendStoryManifest: options.dryRun
+              ? () => Promise.resolve()
+              : makeAppendToManifestFSTransport({
+                  manifestFile,
+                }),
+          },
           onStorySuccess(localStory, remoteStory) {
             if (!localStory.uuid || !remoteStory.uuid) {
               throw new Error('Invalid story provided!');
@@ -239,13 +241,17 @@ storiesCommand
         }),
         // Update remote stories with correct references.
         writeStoryStream({
-          writeTransport: options.dryRun
-            ? { write: (story: Story) => Promise.resolve(story) }
-            : makeWriteStoryAPITransport({
-                spaceId: space,
-                publish: options.publish ? 1 : undefined,
-              }),
-          cleanupTransport: options.cleanup && !options.dryRun && makeCleanupStoryFSTransport({ directoryPath: storiesDirectoryPath, maps }),
+          transports: {
+            writeStory: options.dryRun
+              ? async (story: Story) => story
+              : makeWriteStoryAPITransport({
+                  spaceId: space,
+                  publish: options.publish ? 1 : undefined,
+                }),
+            cleanupStory: options.cleanup && !options.dryRun
+              ? makeCleanupStoryFSTransport({ directoryPath: storiesDirectoryPath, maps })
+              : undefined,
+          },
           onIncrement() {
             updateProgress.increment();
           },

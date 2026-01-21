@@ -125,29 +125,25 @@ export const downloadAssetStream = ({
   });
 };
 
-export interface WriteAssetTransport {
-  write: (asset: Asset, fileBuffer: ArrayBuffer) => Promise<Asset>;
-}
+export type WriteAssetTransport = (asset: Asset, fileBuffer: ArrayBuffer) => Promise<Asset>;
 
 export const makeWriteAssetFSTransport = ({ directoryPath }: {
   directoryPath: string;
-}): WriteAssetTransport => ({
-  write: async (asset, fileBuffer) => {
-    const assetFilePath = join(directoryPath, getAssetFilename(asset));
-    const metadataFilePath = join(directoryPath, getAssetMetadataFilename(asset));
-    await saveToFile(assetFilePath, Buffer.from(fileBuffer));
-    await saveToFile(metadataFilePath, JSON.stringify(asset, null, 2));
-    return asset;
-  },
-});
+}): WriteAssetTransport => async (asset, fileBuffer) => {
+  const assetFilePath = join(directoryPath, getAssetFilename(asset));
+  const metadataFilePath = join(directoryPath, getAssetMetadataFilename(asset));
+  await saveToFile(assetFilePath, Buffer.from(fileBuffer));
+  await saveToFile(metadataFilePath, JSON.stringify(asset, null, 2));
+  return asset;
+};
 
 export const writeAssetStream = ({
-  transport,
+  writeAsset,
   onIncrement,
   onAssetSuccess,
   onAssetError,
 }: {
-  transport: WriteAssetTransport;
+  writeAsset: WriteAssetTransport;
   onIncrement?: () => void;
   onAssetSuccess?: (asset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset) => void;
@@ -161,7 +157,7 @@ export const writeAssetStream = ({
 
       const task = (async () => {
         try {
-          await transport.write(payload.asset, payload.fileBuffer);
+          await writeAsset(payload.asset, payload.fileBuffer);
           onAssetSuccess?.(payload.asset);
         }
         catch (maybeError) {
@@ -215,27 +211,23 @@ export const fetchAssetFoldersStream = ({
   return Readable.from(listGenerator());
 };
 
-export interface WriteAssetFolderTransport {
-  write: (folder: AssetFolder) => Promise<AssetFolder>;
-}
+export type WriteAssetFolderTransport = (folder: AssetFolder) => Promise<AssetFolder>;
 
 export const makeWriteAssetFolderFSTransport = ({ directoryPath }: {
   directoryPath: string;
-}): WriteAssetFolderTransport => ({
-  write: async (folder) => {
-    const filename = getFolderFilename(folder);
-    await saveToFile(join(directoryPath, 'folders', filename), JSON.stringify(folder, null, 2));
-    return folder;
-  },
-});
+}): WriteAssetFolderTransport => async (folder) => {
+  const filename = getFolderFilename(folder);
+  await saveToFile(join(directoryPath, 'folders', filename), JSON.stringify(folder, null, 2));
+  return folder;
+};
 
 export const writeAssetFolderStream = ({
-  transport,
+  writeAssetFolder,
   onIncrement,
   onFolderSuccess,
   onFolderError,
 }: {
-  transport: WriteAssetFolderTransport;
+  writeAssetFolder: WriteAssetFolderTransport;
   onIncrement?: () => void;
   onFolderSuccess?: (folder: AssetFolder) => void;
   onFolderError?: (error: Error, folder: AssetFolder) => void;
@@ -249,7 +241,7 @@ export const writeAssetFolderStream = ({
 
       const task = (async () => {
         try {
-          await transport.write(folder);
+          await writeAssetFolder(folder);
           onFolderSuccess?.(folder);
         }
         catch (maybeError) {
@@ -327,68 +319,55 @@ export const readLocalAssetFoldersStream = ({
   return Readable.from(iterator());
 };
 
-export interface CreateAssetFolderTransport {
-  create: (folder: AssetFolderCreate) => Promise<AssetFolder>;
-}
+export type CreateAssetFolderTransport = (folder: AssetFolderCreate) => Promise<AssetFolder>;
 
 export const makeCreateAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-}): CreateAssetFolderTransport => ({
-  create: folder => createAssetFolder({
-    name: folder.name,
-    parent_id: folder.parent_id ?? undefined,
-  }, {
-    spaceId,
-  }),
+}): CreateAssetFolderTransport => folder => createAssetFolder({
+  name: folder.name,
+  parent_id: folder.parent_id ?? undefined,
+}, {
+  spaceId,
 });
 
-export interface UpdateAssetFolderTransport {
-  update: (folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
-}
+export type UpdateAssetFolderTransport = (folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
 
 export const makeUpdateAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-}): UpdateAssetFolderTransport => ({
-  update: folder => updateAssetFolder(folder, { spaceId }),
-});
+}): UpdateAssetFolderTransport => folder => updateAssetFolder(folder, { spaceId });
 
-export interface GetAssetFolderTransport {
-  get: (folderId: number) => Promise<AssetFolder | undefined>;
-}
+export type GetAssetFolderTransport = (folderId: number) => Promise<AssetFolder | undefined>;
 
 export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-}): GetAssetFolderTransport => ({
-  get: async (folderId) => {
-    const { data, response } = await mapiClient().assetFolders.get({
-      path: {
-        asset_folder_id: folderId,
-        space_id: spaceId,
-      },
-    });
+}): GetAssetFolderTransport => async (folderId) => {
+  const { data, response } = await mapiClient().assetFolders.get({
+    path: {
+      asset_folder_id: folderId,
+      space_id: spaceId,
+    },
+  });
 
-    if (!response.ok && response.status !== 404) {
-      handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
-    }
+  if (!response.ok && response.status !== 404) {
+    handleAPIError('pull_asset_folder', new FetchError(response.statusText, response));
+  }
 
-    return data?.asset_folder;
-  },
-});
+  return data?.asset_folder;
+};
 
 export const upsertAssetFolderStream = ({
-  getTransport,
-  createTransport,
-  updateTransport,
-  manifestTransport,
+  transports,
   maps,
   onIncrement,
   onFolderSuccess,
   onFolderError,
 }: {
-  getTransport: GetAssetFolderTransport;
-  createTransport: CreateAssetFolderTransport;
-  updateTransport: UpdateAssetFolderTransport;
-  manifestTransport: AppendAssetFolderManifestTransport;
+  transports: {
+    getAssetFolder: GetAssetFolderTransport;
+    createAssetFolder: CreateAssetFolderTransport;
+    updateAssetFolder: UpdateAssetFolderTransport;
+    appendAssetFolderManifest: AppendAssetFolderManifestTransport;
+  };
   maps: { assetFolders: AssetFolderMap };
   onIncrement?: () => void;
   onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => void;
@@ -407,14 +386,14 @@ export const upsertAssetFolderStream = ({
         };
         // If a remote folder already exists, we must not create a new folder.
         // This can happen when the user resumes a failed push or runs push multiple times.
-        const existingRemoteFolder = await getTransport.get(remoteFolderId);
+        const existingRemoteFolder = await transports.getAssetFolder(remoteFolderId);
         const newRemoteFolder = existingRemoteFolder
-          ? await updateTransport.update({ ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined })
-          : await createTransport.create(upsertFolder);
+          ? await transports.updateAssetFolder({ ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined })
+          : await transports.createAssetFolder(upsertFolder);
 
         // If folder is already mapped it must also be in the manifest already.
         if (!maps.assetFolders.get(folder.id)) {
-          await manifestTransport.append(folder, newRemoteFolder);
+          await transports.appendAssetFolderManifest(folder, newRemoteFolder);
         }
 
         onFolderSuccess?.(folder, newRemoteFolder);
@@ -537,34 +516,29 @@ export const readSingleAssetStream = ({
   return Readable.from(iterator());
 };
 
-export interface CreateAssetTransport {
-  create: (asset: AssetCreate, fileBuffer: ArrayBuffer) => Promise<Asset>;
-}
+export type CreateAssetTransport = (asset: AssetCreate, fileBuffer: ArrayBuffer) => Promise<Asset>;
 
-export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport => ({
-  create: (asset, fileBuffer) => createAsset(asset, fileBuffer, { spaceId }),
-});
+export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport =>
+  (asset, fileBuffer) => createAsset(asset, fileBuffer, { spaceId });
 
-export interface UpdateAssetTransport {
-  update: (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<Asset>;
-}
+export type UpdateAssetTransport = (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<Asset>;
 
 export const makeUpdateAssetAPITransport = ({
   spaceId,
 }: {
   spaceId: string;
-}): UpdateAssetTransport => ({
-  update: (asset, fileBuffer) => updateAsset(asset, fileBuffer, {
+}): UpdateAssetTransport =>
+  (asset, fileBuffer) => updateAsset(asset, fileBuffer, {
     spaceId,
-  }),
-});
+  });
 
-export interface AppendAssetManifestTransport {
-  append: (localAsset: { id: Asset['id']; filename?: string }, remoteAsset: { id: Asset['id']; filename?: string }) => Promise<void>;
-}
+export type AppendAssetManifestTransport = (
+  localAsset: { id: Asset['id']; filename?: string },
+  remoteAsset: { id: Asset['id']; filename?: string },
+) => Promise<void>;
 
-export const makeAppendAssetManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetManifestTransport => ({
-  append: async (localAsset, remoteAsset) => {
+export const makeAppendAssetManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetManifestTransport =>
+  async (localAsset, remoteAsset) => {
     const createdAt = new Date().toISOString();
     await appendToFile(manifestFile, JSON.stringify({
       old_id: localAsset.id,
@@ -573,30 +547,27 @@ export const makeAppendAssetManifestFSTransport = ({ manifestFile }: { manifestF
       new_filename: remoteAsset.filename,
       created_at: createdAt,
     }));
-  },
-});
+  };
 
-export interface AppendAssetFolderManifestTransport {
-  append: (localFolder: { id: AssetFolder['id'] }, remoteFolder: { id: AssetFolder['id'] }) => Promise<void>;
-}
+export type AppendAssetFolderManifestTransport = (
+  localFolder: { id: AssetFolder['id'] },
+  remoteFolder: { id: AssetFolder['id'] },
+) => Promise<void>;
 
-export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetFolderManifestTransport => ({
-  append: async (localFolder, remoteFolder) => {
+export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { manifestFile: string }): AppendAssetFolderManifestTransport =>
+  async (localFolder, remoteFolder) => {
     const createdAt = new Date().toISOString();
     await appendToFile(manifestFile, JSON.stringify({
       old_id: localFolder.id,
       new_id: remoteFolder.id,
       created_at: createdAt,
     }));
-  },
-});
+  };
 
-export interface GetAssetTransport {
-  get: (assetId: number) => Promise<Asset | undefined>;
-}
+export type GetAssetTransport = (assetId: number) => Promise<Asset | undefined>;
 
-export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport => ({
-  get: async (assetId: number) => {
+export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
+  async (assetId: number) => {
     const { data, response } = await mapiClient().assets.get({
       path: {
         space_id: spaceId,
@@ -614,21 +585,17 @@ export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetA
     }
 
     return data as Asset;
-  },
-});
+  };
 
-export interface CleanupAssetTransport {
-  cleanup: (context: { assetFilePath: string; metadataFilePath?: string }) => Promise<void>;
-}
+export type CleanupAssetTransport = (context: { assetFilePath: string; metadataFilePath?: string }) => Promise<void>;
 
-export const makeCleanupAssetFSTransport = (): CleanupAssetTransport => ({
-  cleanup: async ({ assetFilePath, metadataFilePath }) => {
+export const makeCleanupAssetFSTransport = (): CleanupAssetTransport =>
+  async ({ assetFilePath, metadataFilePath }) => {
     await unlink(assetFilePath);
     if (metadataFilePath) {
       await unlink(metadataFilePath);
     }
-  },
-});
+  };
 
 const hasId = (a: unknown): a is { id: number } => {
   return !!a && typeof a === 'object' && 'id' in a && typeof (a as any).id === 'number';
@@ -667,7 +634,7 @@ const isAssetUnchanged = async (
   localFileBuffer: ArrayBuffer,
   downloadAssetFileTransport: DownloadAssetFileTransport,
 ): Promise<boolean> => {
-  const remoteFileBuffer = await downloadAssetFileTransport.download(remoteAsset);
+  const remoteFileBuffer = await downloadAssetFileTransport(remoteAsset);
   const isFileUnchanged = sha256(localFileBuffer) === sha256(remoteFileBuffer);
   if (!isFileUnchanged) {
     return false;
@@ -676,9 +643,7 @@ const isAssetUnchanged = async (
   return isDataUnchanged(localAsset, remoteAsset);
 };
 
-export interface DownloadAssetFileTransport {
-  download: (asset: { filename: string; is_private?: boolean }) => Promise<ArrayBuffer>;
-}
+export type DownloadAssetFileTransport = (asset: { filename: string; is_private?: boolean }) => Promise<ArrayBuffer>;
 
 export const makeDownloadAssetFileTransport = ({
   assetToken,
@@ -686,9 +651,7 @@ export const makeDownloadAssetFileTransport = ({
 }: {
   assetToken?: string;
   region?: RegionCode;
-}): DownloadAssetFileTransport => ({
-  download: asset => downloadAssetFile(asset, { assetToken, region }),
-});
+}): DownloadAssetFileTransport => asset => downloadAssetFile(asset, { assetToken, region });
 
 const processAsset = async ({
   localAsset,
@@ -703,12 +666,12 @@ const processAsset = async ({
   assetFilePath: string;
   metadataFilePath?: string;
   transports: {
-    get: GetAssetTransport;
-    create: CreateAssetTransport;
-    update: UpdateAssetTransport;
-    download: DownloadAssetFileTransport;
-    manifest: AppendAssetManifestTransport;
-    cleanup?: CleanupAssetTransport;
+    getAsset: GetAssetTransport;
+    createAsset: CreateAssetTransport;
+    updateAsset: UpdateAssetTransport;
+    downloadAssetFile: DownloadAssetFileTransport;
+    appendAssetManifest: AppendAssetManifestTransport;
+    cleanupAsset?: CleanupAssetTransport;
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
 }): Promise<{ status: 'skipped' | 'created' | 'updated'; remoteAsset: Asset }> => {
@@ -717,7 +680,7 @@ const processAsset = async ({
   const remoteAssetId = hasId(localAsset)
     ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
     : undefined;
-  const remoteAsset = remoteAssetId ? await transports.get.get(remoteAssetId) : null;
+  const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   let newRemoteAsset: Asset;
   let status: 'skipped' | 'created' | 'updated';
@@ -732,7 +695,7 @@ const processAsset = async ({
       updatePayload,
       remoteAsset,
       fileBuffer,
-      transports.download,
+      transports.downloadAssetFile,
     );
 
     if (canSkip) {
@@ -740,7 +703,7 @@ const processAsset = async ({
       status = 'skipped';
     }
     else {
-      newRemoteAsset = await transports.update.update(updatePayload, fileBuffer);
+      newRemoteAsset = await transports.updateAsset(updatePayload, fileBuffer);
       status = 'updated';
     }
   }
@@ -749,7 +712,7 @@ const processAsset = async ({
       ...localAsset,
       asset_folder_id: remoteFolderId,
     } satisfies AssetCreate;
-    newRemoteAsset = await transports.create.create(createPayload, fileBuffer);
+    newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';
   }
   else {
@@ -757,32 +720,29 @@ const processAsset = async ({
   }
 
   if (hasId(localAsset)) {
-    await transports.manifest.append(localAsset, newRemoteAsset);
+    await transports.appendAssetManifest(localAsset, newRemoteAsset);
   }
-  await transports.cleanup?.cleanup({ assetFilePath, metadataFilePath });
+  await transports.cleanupAsset?.({ assetFilePath, metadataFilePath });
 
   return { status, remoteAsset: newRemoteAsset };
 };
 
 export const upsertAssetStream = ({
-  getTransport,
-  createTransport,
-  updateTransport,
-  downloadAssetFileTransport,
-  manifestTransport,
-  cleanupTransport,
+  transports,
   maps,
   onIncrement,
   onAssetSuccess,
   onAssetSkipped,
   onAssetError,
 }: {
-  getTransport: GetAssetTransport;
-  createTransport: CreateAssetTransport;
-  updateTransport: UpdateAssetTransport;
-  downloadAssetFileTransport: DownloadAssetFileTransport;
-  manifestTransport: AppendAssetManifestTransport;
-  cleanupTransport?: CleanupAssetTransport;
+  transports: {
+    getAsset: GetAssetTransport;
+    createAsset: CreateAssetTransport;
+    updateAsset: UpdateAssetTransport;
+    downloadAssetFile: DownloadAssetFileTransport;
+    appendAssetManifest: AppendAssetManifestTransport;
+    cleanupAsset?: CleanupAssetTransport;
+  };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
@@ -790,14 +750,6 @@ export const upsertAssetStream = ({
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
   const processing = new Set<Promise<void>>();
-  const transports = {
-    get: getTransport,
-    create: createTransport,
-    update: updateTransport,
-    download: downloadAssetFileTransport,
-    manifest: manifestTransport,
-    cleanup: cleanupTransport,
-  };
 
   return new Writable({
     objectMode: true,

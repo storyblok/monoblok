@@ -231,61 +231,52 @@ const getRemoteStory = async ({ spaceId, storyId }: {
   return data?.story;
 };
 
-export interface CreateStoryTransport {
-  create: (story: Story) => Promise<Story>;
-}
+export type CreateStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeCreateStoryAPITransport = ({ spaceId }: {
   maps: RefMaps;
   spaceId: string;
-}): CreateStoryTransport => ({
-  create: async (localStory) => {
-    const { id: _id, uuid: _uuid, content, parent_id: _p, ...newStoryData } = localStory;
-    const remoteStory = await createStory(spaceId, {
-      story: {
-        ...newStoryData,
-        content: {
-          // @ts-expect-error Our types are wrong.
-          component: content?.component,
-        },
+}): CreateStoryTransport => async (localStory) => {
+  const { id: _id, uuid: _uuid, content, parent_id: _p, ...newStoryData } = localStory;
+  const remoteStory = await createStory(spaceId, {
+    story: {
+      ...newStoryData,
+      content: {
+        // @ts-expect-error Our types are wrong.
+        component: content?.component,
       },
-      publish: 0,
-    });
-    if (!remoteStory) {
-      throw new Error('No response!');
-    }
+    },
+    publish: 0,
+  });
+  if (!remoteStory) {
+    throw new Error('No response!');
+  }
 
-    return remoteStory;
-  },
-});
+  return remoteStory;
+};
 
-export interface AppendToManifestTransport {
-  append: (localStory: Story, remoteStory: Story) => Promise<void>;
-}
+export type AppendToManifestTransport = (localStory: Story, remoteStory: Story) => Promise<void>;
 
 export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   manifestFile: string;
-}): AppendToManifestTransport => ({
-  append: async (localStory, remoteStory) => {
-    const createdAt = new Date().toISOString();
-    await appendToFile(manifestFile, JSON.stringify({
-      old_id: localStory.uuid,
-      new_id: remoteStory.uuid,
-      created_at: createdAt,
-    }));
-    await appendToFile(manifestFile, JSON.stringify({
-      old_id: localStory.id,
-      new_id: remoteStory.id,
-      created_at: createdAt,
-    }));
-  },
-});
+}): AppendToManifestTransport => async (localStory, remoteStory) => {
+  const createdAt = new Date().toISOString();
+  await appendToFile(manifestFile, JSON.stringify({
+    old_id: localStory.uuid,
+    new_id: remoteStory.uuid,
+    created_at: createdAt,
+  }));
+  await appendToFile(manifestFile, JSON.stringify({
+    old_id: localStory.id,
+    new_id: remoteStory.id,
+    created_at: createdAt,
+  }));
+};
 
 export const createStoryPlaceholderStream = ({
   maps,
   spaceId,
-  storyTransport,
-  manifestTransport,
+  transports,
   onIncrement,
   onStorySuccess,
   onStorySkipped,
@@ -293,8 +284,10 @@ export const createStoryPlaceholderStream = ({
 }: {
   maps: RefMaps;
   spaceId: string;
-  storyTransport: CreateStoryTransport;
-  manifestTransport: AppendToManifestTransport;
+  transports: {
+    createStory: CreateStoryTransport;
+    appendStoryManifest: AppendToManifestTransport;
+  };
   onIncrement?: () => void;
   onStorySuccess?: (localStory: Story, remoteStory: Story) => void;
   onStorySkipped?: (localStory: Story, remoteStory: Story) => void;
@@ -327,13 +320,13 @@ export const createStoryPlaceholderStream = ({
           // We check the UUID to make sure it is the exact same story and not just a
           // story with the same numeric ID in a different space.
           if (existingRemoteStory && existingRemoteStory.uuid === localStory.uuid) {
-            await manifestTransport.append(localStory, existingRemoteStory);
+            await transports.appendStoryManifest(localStory, existingRemoteStory);
             onStorySkipped?.(localStory, existingRemoteStory);
             return;
           }
 
-          const newRemoteStory = await storyTransport.create(localStory);
-          await manifestTransport.append(localStory, newRemoteStory);
+          const newRemoteStory = await transports.createStory(localStory);
+          await transports.appendStoryManifest(localStory, newRemoteStory);
           onStorySuccess?.(localStory, newRemoteStory);
         }
         catch (maybeError) {
@@ -356,58 +349,49 @@ export const createStoryPlaceholderStream = ({
   });
 };
 
-export interface WriteStoryTransport {
-  write: (story: Story) => Promise<Story>;
-}
+export type WriteStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeWriteStoryFSTransport = ({ directoryPath }: {
   directoryPath: string;
-}): WriteStoryTransport => ({
-  write: async (story) => {
-    await saveToFile(resolve(directoryPath, getStoryFilename(story)), JSON.stringify(story, null, 2));
-    return story;
-  },
-});
+}): WriteStoryTransport => async (story) => {
+  await saveToFile(resolve(directoryPath, getStoryFilename(story)), JSON.stringify(story, null, 2));
+  return story;
+};
 
 export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   spaceId: string;
   publish?: number;
-}) => ({
-  write: (mappedLocalStory: Story) => updateStory(spaceId, mappedLocalStory.id, {
-    story: mappedLocalStory,
-    publish: publish ?? (mappedLocalStory.published ? 1 : 0),
-  }),
+}): WriteStoryTransport => mappedLocalStory => updateStory(spaceId, mappedLocalStory.id, {
+  story: mappedLocalStory,
+  publish: publish ?? (mappedLocalStory.published ? 1 : 0),
 });
 
-export interface CleanupStoryTransport {
-  cleanup: (mappedStory: Story) => Promise<void>;
-}
+export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;
 
 export const makeCleanupStoryFSTransport = ({ directoryPath, maps }: {
   directoryPath: string;
   maps: RefMaps;
-}): CleanupStoryTransport => ({
-  cleanup: async (mappedStory: Story) => {
-    const mapEntry = maps.stories?.entries().find(([_, v]) => v === mappedStory.uuid);
-    const originalUuid = mapEntry?.[0] && typeof mapEntry?.[0] === 'string' ? mapEntry?.[0] : mappedStory.uuid;
-    const storyFilename = getStoryFilename({
-      slug: mappedStory.slug,
-      uuid: originalUuid,
-    });
-    const storyFilePath = resolve(directoryPath, storyFilename);
-    await unlink(storyFilePath);
-  },
-});
+}): CleanupStoryTransport => async (mappedStory: Story) => {
+  const mapEntry = maps.stories?.entries().find(([_, v]) => v === mappedStory.uuid);
+  const originalUuid = mapEntry?.[0] && typeof mapEntry?.[0] === 'string' ? mapEntry?.[0] : mappedStory.uuid;
+  const storyFilename = getStoryFilename({
+    slug: mappedStory.slug,
+    uuid: originalUuid,
+  });
+  const storyFilePath = resolve(directoryPath, storyFilename);
+  await unlink(storyFilePath);
+};
 
 export const writeStoryStream = ({
-  writeTransport,
-  cleanupTransport,
+  transports,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
-  writeTransport: WriteStoryTransport;
-  cleanupTransport?: CleanupStoryTransport;
+  transports: {
+    writeStory: WriteStoryTransport;
+    cleanupStory?: CleanupStoryTransport;
+  };
   onIncrement?: () => void;
   onStorySuccess?: (mappedLocalStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
@@ -421,8 +405,8 @@ export const writeStoryStream = ({
 
       const task = (async () => {
         try {
-          const remoteStory = await writeTransport.write(mappedLocalStory);
-          await cleanupTransport?.cleanup(remoteStory);
+          const remoteStory = await transports.writeStory(mappedLocalStory);
+          await transports.cleanupStory?.(remoteStory);
 
           onStorySuccess?.(mappedLocalStory, remoteStory);
         }

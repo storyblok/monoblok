@@ -117,13 +117,13 @@ assetsCommand
        */
       const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: space });
       const assetFolderCreateTransport = options.dryRun
-        ? { create: async (folder: AssetFolderCreate) => folder as AssetFolder }
+        ? async (folder: AssetFolderCreate) => folder as AssetFolder
         : makeCreateAssetFolderAPITransport({ spaceId: space });
       const assetFolderUpdateTransport = options.dryRun
-        ? { update: async (folder: AssetFolderUpdate) => folder }
+        ? async (folder: AssetFolderUpdate) => folder
         : makeUpdateAssetFolderAPITransport({ spaceId: space });
       const assetFolderManifestTransport = options.dryRun
-        ? { append: () => Promise.resolve() }
+        ? () => Promise.resolve()
         : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile });
 
       summaries.push(...await upsertAssetFoldersPipeline({
@@ -131,10 +131,10 @@ assetsCommand
         logger,
         maps,
         transports: {
-          get: assetFolderGetTransport,
-          create: assetFolderCreateTransport,
-          update: assetFolderUpdateTransport,
-          manifest: assetFolderManifestTransport,
+          getAssetFolder: assetFolderGetTransport,
+          createAssetFolder: assetFolderCreateTransport,
+          updateAssetFolder: assetFolderUpdateTransport,
+          appendAssetFolderManifest: assetFolderManifestTransport,
         },
         ui,
         verbose,
@@ -167,21 +167,21 @@ assetsCommand
 
       const getAssetTransport = makeGetAssetAPITransport({ spaceId: space });
       const createAssetTransport = options.dryRun
-        ? { create: async (asset: AssetCreate) => asset as Asset }
+        ? async (asset: AssetCreate) => asset as Asset
         : makeCreateAssetAPITransport({ spaceId: space });
       const updateAssetTransport = options.dryRun
-        ? { update: async (asset: AssetUpdate) => asset as Asset }
+        ? async (asset: AssetUpdate) => asset as Asset
         : makeUpdateAssetAPITransport({ spaceId: space });
       const downloadAssetFileTransport = makeDownloadAssetFileTransport({
         assetToken,
         region,
       });
       const assetManifestTransport = options.dryRun
-        ? { append: () => Promise.resolve() }
+        ? () => Promise.resolve()
         : makeAppendAssetManifestFSTransport({ manifestFile });
       const cleanupAssetTransport = options.cleanup && !options.dryRun
         ? makeCleanupAssetFSTransport()
-        : { cleanup: () => Promise.resolve() };
+        : () => Promise.resolve();
 
       summaries.push(...await upsertAssetsPipeline({
         assetSource,
@@ -190,12 +190,12 @@ assetsCommand
         logger,
         maps,
         transports: {
-          get: getAssetTransport,
-          create: createAssetTransport,
-          update: updateAssetTransport,
+          getAsset: getAssetTransport,
+          createAsset: createAssetTransport,
+          updateAsset: updateAssetTransport,
           downloadAssetFile: downloadAssetFileTransport,
-          manifest: assetManifestTransport,
-          cleanup: cleanupAssetTransport,
+          appendAssetManifest: assetManifestTransport,
+          cleanupAsset: cleanupAssetTransport,
         },
         ui,
         verbose,
@@ -212,7 +212,7 @@ assetsCommand
       if (hasUpdatedAssets && options.updateStories) {
         const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
         const writeStoryTransport = options.dryRun
-          ? { write: async (story: Story) => story }
+          ? async (story: Story) => story
           : makeWriteStoryAPITransport({ spaceId: space });
 
         summaries.push(...await mapAssetReferencesInStoriesPipeline({
@@ -221,7 +221,7 @@ assetsCommand
           schemas,
           space,
           transports: {
-            write: writeStoryTransport,
+            writeStory: writeStoryTransport,
           },
           ui,
           verbose,

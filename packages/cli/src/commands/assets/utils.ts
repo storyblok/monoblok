@@ -1,8 +1,9 @@
 import { basename, dirname, extname, join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
+import type { ManifestEntry } from '../../utils/filesystem';
 import { loadManifest, sanitizeFilename } from '../../utils/filesystem';
-import type { Asset, AssetFolder, AssetMap, AssetMapped } from './types';
+import type { Asset, AssetFolder, AssetFolderMap, AssetMap, AssetMapped } from './types';
 
 export const parseAssetData = (raw?: string) => {
   if (!raw) {
@@ -51,20 +52,29 @@ export const isRemoteSource = (assetSource: string) => {
   }
 };
 
-export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {
-  const assetManifest = await loadManifest(manifestFile);
+const isValidManifestEntry = (entry: ManifestEntry) =>
+  Boolean(typeof entry.old_id === 'number'
+    && typeof entry.new_id === 'number'
+    && entry.old_filename
+    && entry.new_filename);
 
-  return new Map<number, { old: AssetMapped; new: AssetMapped }>([
-    ...assetManifest
+export const loadAssetMap = async (manifestFile: string) => {
+  const manifest = await loadManifest(manifestFile);
+  return new Map<number, { old: Asset; new: AssetMapped }>([
+    ...manifest.filter(isValidManifestEntry)
       .map(e => [
         Number(e.old_id),
         {
           old: { id: Number(e.old_id), filename: e.old_filename || '' },
           new: { id: Number(e.new_id), filename: e.new_filename || '' },
         },
-      ] as const)
-      .filter(([oldId, map]) => !Number.isNaN(oldId) && !Number.isNaN(map.new.id)),
+      ] as const),
   ]) as AssetMap;
+};
+
+export const loadAssetFolderMap = async (manifestFile: string) => {
+  const manifest = await loadManifest(manifestFile);
+  return new Map(manifest.map(e => [Number(e.old_id), Number(e.new_id)])) satisfies AssetFolderMap;
 };
 
 /**

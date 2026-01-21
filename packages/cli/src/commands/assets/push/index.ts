@@ -9,7 +9,7 @@ import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, toError } from '../../../utils/error/error';
 import { mapiClient } from '../../../api';
-import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
+import { resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
@@ -22,9 +22,8 @@ import {
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
-import type { ManifestEntry } from '../../../utils/filesystem';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetMapped, AssetUpdate, AssetUpload } from '../types';
-import { isRemoteSource, loadSidecarAssetData, parseAssetData } from '../utils';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpdate, AssetUpload } from '../types';
+import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
@@ -82,34 +81,12 @@ assetsCommand
 
     try {
       const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
-      const manifest = await loadManifest(manifestFile);
-      if (manifest.length === 0) {
-        logger.info('No existing manifest found');
-      }
       const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
-      const folderManifest = await loadManifest(folderManifestFile);
-      if (folderManifest.length === 0) {
-        logger.info('No existing manifest found');
-      }
-
-      const isValidManifestEntry = (entry: ManifestEntry) =>
-        Boolean(typeof entry.old_id === 'number'
-          && typeof entry.new_id === 'number'
-          && entry.old_filename
-          && entry.new_filename);
-      const maps = {
-        assets: new Map<number, { old: Asset; new: AssetMapped }>([
-          ...manifest.filter(isValidManifestEntry)
-            .map(e => [
-              Number(e.old_id),
-              {
-                old: { id: Number(e.old_id), filename: e.old_filename || '' },
-                new: { id: Number(e.new_id), filename: e.new_filename || '' },
-              },
-            ] as const),
-        ]) as AssetMap,
-        assetFolders: new Map(folderManifest.map(e => [Number(e.old_id), Number(e.new_id)])) satisfies AssetFolderMap,
-      };
+      const [assetMap, assetFolderMap] = await Promise.all([
+        loadAssetMap(manifestFile),
+        loadAssetFolderMap(folderManifestFile),
+      ]);
+      const maps = { assets: assetMap, assetFolders: assetFolderMap };
       const assetsDirectoryPath = resolveCommandPath(directories.assets, fromSpace, basePath);
 
       /**

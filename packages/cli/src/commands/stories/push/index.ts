@@ -93,10 +93,6 @@ storiesCommand
     try {
       const manifestFile = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
       const manifest = await loadManifest(manifestFile);
-      if (manifest.length === 0) {
-        logger.info('No existing manifest found');
-      }
-
       const assetManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
       const maps = {
         assets: await loadAssetMap(assetManifestFile),

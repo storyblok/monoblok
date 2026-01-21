@@ -797,17 +797,6 @@ describe('assets push command', () => {
     ]);
   });
 
-  it('should log an info when an assets folder manifest file does not exist', async () => {
-    const folder = makeMockFolder();
-    preconditions.canLoadFolders([folder]);
-    preconditions.canCreateRemoteFolders([folder]);
-
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-    const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('No existing manifest found');
-  });
-
   it('should log an error and stop when manifest loading fails', async () => {
     const manifestPath = path.join(resolveCommandPath(directories.assets, DEFAULT_SPACE), 'manifest.jsonl');
     preconditions.canLoadLocalFile(manifestPath, 'not-json');
@@ -820,18 +809,6 @@ describe('assets push command', () => {
     expect(actions.updateAsset).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
-  });
-
-  it('should log an info when a manifest file does not exist', async () => {
-    const asset = makeMockAsset();
-    preconditions.canLoadFolders([]);
-    preconditions.canLoadAssets([asset]);
-    preconditions.canUpsertRemoteAssets([asset]);
-
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-    const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('No existing manifest found');
   });
 
   it('should handle errors when writing to the manifest fails', async () => {

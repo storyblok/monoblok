@@ -78,6 +78,23 @@ export async function handleStoryblokMessage(event: {
   }
 }
 
+/**
+ * Preserves interactive state attributes from current element to new element
+ * Only preserves state if content is similar (same component, just edited)
+ */
+function preserveElementAttributes(fromEl: Element, toEl: Element) {
+  // Same content - copy all attributes from current element to new element
+  // This preserves interactive state like 'open', 'checked', 'value', etc.
+  Array.from(fromEl.attributes).forEach((attr) => {
+    const currentValue = attr.value;
+    const newValue = toEl.getAttribute(attr.name);
+    // Add or update attribute if it doesn't exist in toEl or has a different value
+    if (!toEl.hasAttribute(attr.name) || newValue !== currentValue) {
+      toEl.setAttribute(attr.name, currentValue);
+    }
+  });
+}
+
 function updateDOMWithNewBody(
   currentBody: HTMLElement,
   newBody: HTMLElement,
@@ -93,17 +110,27 @@ function updateDOMWithNewBody(
     if (newDomFocusElem) {
       // Add the [data-blok-focused] attribute to the above element
       newDomFocusElem.setAttribute('data-blok-focused', 'true');
-      focusedElem.replaceWith(newDomFocusElem);
+      // Use morphdom to update the focused element while preserving state
+      morphdom(focusedElem, newDomFocusElem, {
+        onBeforeElUpdated: (fromEl, toEl) => {
+          // Don't check data-preserve-state here - user is editing this component
+          // and wants to see their changes reflected
+          preserveElementAttributes(fromEl, toEl);
+          return true;
+        },
+      });
     }
   }
   else {
     // Use morphdom to efficiently morph the DOM while preserving state
     morphdom(currentBody, newBody, {
-      onBeforeElUpdated: (fromEl) => {
+      onBeforeElUpdated: (fromEl, toEl) => {
         // Preserve elements with data-preserve-state
         if (fromEl.hasAttribute('data-preserve-state')) {
           return false; // Skip this element
         }
+
+        preserveElementAttributes(fromEl, toEl);
         return true;
       },
     });

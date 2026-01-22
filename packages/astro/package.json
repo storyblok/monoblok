@@ -74,7 +74,8 @@
   },
   "dependencies": {
     "@storyblok/js": "workspace:*",
-    "camelcase": "^8.0.0"
+    "camelcase": "^8.0.0",
+    "morphdom": "^2.7.8"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^6.0.3",

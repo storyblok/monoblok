@@ -6,7 +6,7 @@ interface Props {
 const { disableLivePreview } = Astro.props;
 ---
 
-<div class="widget">
+<div class="widget" data-preserve-state>
   <div class="spinner-container">
     <p>Live preview spinner</p>
     <LivePreviewSpinner />
@@ -26,12 +26,16 @@ const { disableLivePreview } = Astro.props;
     <input type="checkbox" id="enableLivePreview" checked={!disableLivePreview} disabled={disableLivePreview} />
     Enable Live Preview
   </label>
+  <slot />
 </div>
 <script>
   // Example: Conditionally prevent live preview based on user preference
   const checkbox = document.getElementById('enableLivePreview') as HTMLInputElement;
+  let updateStartTime: number;
 
   document.addEventListener('storyblok-live-preview-updating', (event: Event) => {
+    updateStartTime = performance.now();
+
     if (!checkbox?.checked) {
       // Prevent the live preview update
       event.preventDefault();
@@ -43,7 +47,9 @@ const { disableLivePreview } = Astro.props;
 
   // Example: Log when updates complete
   document.addEventListener('storyblok-live-preview-updated', (event: Event) => {
-    console.log('Live preview updated!', (event as CustomEvent).detail);
+    const updateEndTime = performance.now();
+    const duration = updateEndTime - updateStartTime;
+    console.log(`Live preview updated! Time taken: ${duration.toFixed(2)}ms`);
   });
 </script>
 <style>

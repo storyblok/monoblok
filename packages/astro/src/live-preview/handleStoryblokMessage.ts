@@ -1,4 +1,5 @@
 import type { ISbStoryData } from '@storyblok/js';
+import morphdom from 'morphdom';
 
 let timeout: NodeJS.Timeout;
 
@@ -92,13 +93,20 @@ function updateDOMWithNewBody(
     if (newDomFocusElem) {
       // Add the [data-blok-focused] attribute to the above element
       newDomFocusElem.setAttribute('data-blok-focused', 'true');
-      // console.log("Doing partial replace");
       focusedElem.replaceWith(newDomFocusElem);
     }
   }
   else {
-    // console.log("Doing full replace");
-    currentBody.replaceWith(newBody);
+    // Use morphdom to efficiently morph the DOM while preserving state
+    morphdom(currentBody, newBody, {
+      onBeforeElUpdated: (fromEl) => {
+        // Preserve elements with data-preserve-state
+        if (fromEl.hasAttribute('data-preserve-state')) {
+          return false; // Skip this element
+        }
+        return true;
+      },
+    });
   }
 }
 

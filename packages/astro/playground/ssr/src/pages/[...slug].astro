@@ -6,6 +6,7 @@ import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 import StoryblokServerData from '@storyblok/astro/StoryblokServerData.astro';
 import { getUsers, type User } from 'src/lib/getUsers';
 import Widget from '@shared/components/Widget.astro';
+import UserModal from '../components/UserModal';
 
 interface ServerData {
   users?: User[];
@@ -36,6 +37,12 @@ const disableLivePreview = slugs.includes(slug);
   {disableLivePreview && <meta name="storyblok-live-preview" content="disabled" />}
   <p>{users?.length} users loaded.</p>
   <StoryblokComponent blok={story.content} />
-  {inEditor && <Widget disableLivePreview={disableLivePreview} />}
+  {
+    inEditor && (
+      <Widget disableLivePreview={disableLivePreview}>
+        <UserModal client:load />
+      </Widget>
+    )
+  }
 </BaseLayout>
 <StoryblokServerData users={users} />

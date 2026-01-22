@@ -13,7 +13,7 @@ import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap
 import { mapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
-import { getAssetFilename, getAssetMetadataFilename, getFolderFilename, isRemoteSource } from './utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, isRemoteSource } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
 
@@ -130,10 +130,10 @@ export type WriteAssetTransport = (asset: Asset, fileBuffer: ArrayBuffer) => Pro
 export const makeWriteAssetFSTransport = ({ directoryPath }: {
   directoryPath: string;
 }): WriteAssetTransport => async (asset, fileBuffer) => {
-  const assetFilePath = join(directoryPath, getAssetFilename(asset));
-  const metadataFilePath = join(directoryPath, getAssetMetadataFilename(asset));
-  await saveToFile(assetFilePath, Buffer.from(fileBuffer));
-  await saveToFile(metadataFilePath, JSON.stringify(asset, null, 2));
+  const assetBinaryPath = join(directoryPath, getAssetBinaryFilename(asset));
+  const assetPath = join(directoryPath, getAssetFilename(asset));
+  await saveToFile(assetBinaryPath, Buffer.from(fileBuffer));
+  await saveToFile(assetPath, JSON.stringify(asset, null, 2));
   return asset;
 };
 
@@ -413,7 +413,7 @@ export interface LocalAssetPayload {
   asset: Asset | AssetCreate | AssetUpload;
   context: {
     fileBuffer: ArrayBuffer;
-    assetFilePath: string;
+    assetBinaryPath: string;
     metadataFilePath?: string;
   };
 }
@@ -447,13 +447,13 @@ export const readLocalAssetsStream = ({
           } satisfies AssetUpload;
           const baseName = parse(file).name;
           const extFromMetadata = extname(asset.short_filename || asset.filename) || '';
-          const assetFilePath = join(directoryPath, `${baseName}${extFromMetadata}`);
-          const fileBuffer = await readFile(assetFilePath) as unknown as ArrayBuffer;
+          const assetBinaryPath = join(directoryPath, `${baseName}${extFromMetadata}`);
+          const fileBuffer = await readFile(assetBinaryPath) as unknown as ArrayBuffer;
           yield {
             asset,
             context: {
               fileBuffer,
-              assetFilePath,
+              assetBinaryPath,
               metadataFilePath: filePath,
             },
           } satisfies LocalAssetPayload;
@@ -491,21 +491,21 @@ export const readSingleAssetStream = ({
         ? await downloadFile(assetSource)
         : await readFile(assetSource)) as ArrayBuffer;
 
-      let assetFilePath: string = assetSource;
+      let assetBinaryPath: string = assetSource;
       if (isRemoteSource(assetSource)) {
         const tempDir = join(tmpdir(), 'storyblok-assets');
         await mkdir(tempDir, { recursive: true });
         const shortName = asset.short_filename || basename(assetSource);
-        assetFilePath = join(tempDir, `${randomUUID()}-${shortName}`);
+        assetBinaryPath = join(tempDir, `${randomUUID()}-${shortName}`);
         const tempBuffer = Buffer.isBuffer(fileBuffer) ? fileBuffer : Buffer.from(fileBuffer);
-        await writeFile(assetFilePath, tempBuffer);
+        await writeFile(assetBinaryPath, tempBuffer);
       }
 
       yield {
         asset,
         context: {
           fileBuffer,
-          assetFilePath,
+          assetBinaryPath,
         },
       } satisfies LocalAssetPayload;
     }
@@ -587,11 +587,11 @@ export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetA
     return data as Asset;
   };
 
-export type CleanupAssetTransport = (context: { assetFilePath: string; metadataFilePath?: string }) => Promise<void>;
+export type CleanupAssetTransport = (context: { assetBinaryPath: string; metadataFilePath?: string }) => Promise<void>;
 
 export const makeCleanupAssetFSTransport = (): CleanupAssetTransport =>
-  async ({ assetFilePath, metadataFilePath }) => {
-    await unlink(assetFilePath);
+  async ({ assetBinaryPath, metadataFilePath }) => {
+    await unlink(assetBinaryPath);
     if (metadataFilePath) {
       await unlink(metadataFilePath);
     }
@@ -656,14 +656,14 @@ export const makeDownloadAssetFileTransport = ({
 const processAsset = async ({
   localAsset,
   fileBuffer,
-  assetFilePath,
+  assetBinaryPath,
   metadataFilePath,
   transports,
   maps,
 }: {
   localAsset: Asset | AssetCreate | AssetUpload;
   fileBuffer: ArrayBuffer;
-  assetFilePath: string;
+  assetBinaryPath: string;
   metadataFilePath?: string;
   transports: {
     getAsset: GetAssetTransport;
@@ -722,7 +722,7 @@ const processAsset = async ({
   if (hasId(localAsset)) {
     await transports.appendAssetManifest(localAsset, newRemoteAsset);
   }
-  await transports.cleanupAsset?.({ assetFilePath, metadataFilePath });
+  await transports.cleanupAsset?.({ assetBinaryPath, metadataFilePath });
 
   return { status, remoteAsset: newRemoteAsset };
 };
@@ -760,7 +760,7 @@ export const upsertAssetStream = ({
           const { status, remoteAsset } = await processAsset({
             localAsset,
             fileBuffer: context.fileBuffer,
-            assetFilePath: context.assetFilePath,
+            assetBinaryPath: context.assetBinaryPath,
             metadataFilePath: context.metadataFilePath,
             transports,
             maps,

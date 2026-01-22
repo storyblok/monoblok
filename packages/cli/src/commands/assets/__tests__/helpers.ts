@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import { vol } from 'memfs';
 import { DEFAULT_SPACE, getID } from '../../__tests__/helpers';
-import { getAssetFilename, getAssetMetadataFilename, getFolderFilename } from '../utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename } from '../utils';
 
 /**
  * MockAsset interface - unified interface for asset mocking in tests.
@@ -63,9 +63,9 @@ export const makeMockFolder = (overrides: Partial<MockAssetFolder> = {}): MockAs
  * Checks if an asset file exists in the virtual file system.
  */
 export const assetFileExists = (asset: MockAsset) => {
-  // Type assertion needed because getAssetFilename expects short_filename but it handles undefined safely
-  const binaryFilename = getAssetFilename(asset as Parameters<typeof getAssetFilename>[0]);
-  const metadataFilename = getAssetMetadataFilename(asset as Parameters<typeof getAssetMetadataFilename>[0]);
+  // Type assertion needed because getAssetBinaryFilename expects short_filename but it handles undefined safely
+  const binaryFilename = getAssetBinaryFilename(asset as Parameters<typeof getAssetBinaryFilename>[0]);
+  const metadataFilename = getAssetFilename(asset as Parameters<typeof getAssetFilename>[0]);
   const binary = Object.entries(vol.toJSON())
     .find(([filename]) => filename.endsWith(binaryFilename))?.[1];
   const metadata = Object.entries(vol.toJSON())

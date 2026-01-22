@@ -13,7 +13,7 @@ import { assetsCommand } from '../command';
 import { directories } from '../../../constants';
 import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import { resetReporter } from '../../../lib/reporter/reporter';
-import { getAssetFilename, getAssetMetadataFilename, getFolderFilename } from '../utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename } from '../utils';
 import * as actions from '../actions';
 import * as storyActions from '../../stories/actions';
 import {
@@ -73,11 +73,11 @@ const preconditions = {
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     const files = assets.map(asset => [
-      path.join(assetsDir, getAssetFilename(asset)),
+      path.join(assetsDir, getAssetBinaryFilename(asset)),
       'binary-content',
     ]);
     const metadataFiles = assets.map(asset => [
-      path.join(assetsDir, getAssetMetadataFilename(asset)),
+      path.join(assetsDir, getAssetFilename(asset)),
       JSON.stringify(asset),
     ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
@@ -122,7 +122,6 @@ const preconditions = {
     basePath,
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
-    vol.mkdirSync(path.join(assetsDir, 'folders'), { recursive: true });
     const folderFiles = folders.map((folder) => {
       return [
         path.join(assetsDir, 'folders', getFolderFilename(folder)),

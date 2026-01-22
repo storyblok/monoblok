@@ -81,27 +81,31 @@ export const loadAssetFolderMap = async (manifestFile: string) => {
  * Extracts the sanitized name and extension from an asset.
  * Uses short_filename if available, otherwise falls back to the filename basename.
  */
-export const getAssetNameAndExt = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
-  const nameWithExt = asset.short_filename || basename(asset.filename);
-  const ext = extname(nameWithExt);
-  const name = sanitizeFilename(nameWithExt.replace(ext, '') || String(asset.id));
+export const getAssetNameAndExt = (asset: Partial<Asset> & Required<Pick<Asset, 'id'>>) => {
+  const filename = asset.short_filename || (asset.filename ? basename(asset.filename) : undefined);
+  if (!filename) {
+    throw new Error(`Filename for asset with id ${asset.id} could not be determined!`);
+  }
+
+  const ext = extname(filename);
+  const name = sanitizeFilename(filename.replace(ext, ''));
   return { name, ext };
+};
+
+/**
+ * Generates the asset filename in the format: `${name}_${id}.json`
+ */
+export const getAssetFilename = (asset: Partial<Asset> & Required<Pick<Asset, 'id'>>) => {
+  const { name } = getAssetNameAndExt(asset);
+  return `${name}_${asset.id}.json`;
 };
 
 /**
  * Generates the asset binary filename in the format: `${name}_${id}${ext}`
  */
-export const getAssetFilename = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
+export const getAssetBinaryFilename = (asset: Partial<Asset> & Required<Pick<Asset, 'id'>>) => {
   const { name, ext } = getAssetNameAndExt(asset);
   return `${name}_${asset.id}${ext}`;
-};
-
-/**
- * Generates the asset metadata filename in the format: `${name}_${id}.json`
- */
-export const getAssetMetadataFilename = (asset: Pick<Asset, 'id' | 'filename' | 'short_filename'>) => {
-  const { name } = getAssetNameAndExt(asset);
-  return `${name}_${asset.id}.json`;
 };
 
 /**

@@ -98,9 +98,7 @@ export const downloadAssetStream = ({
     async transform(asset: Asset, _encoding, callback) {
       await apiConcurrencyLock.acquire();
 
-      const task = (() => downloadAssetFile(asset, { assetToken, region }))();
-      processing.add(task);
-      task
+      const task = downloadAssetFile(asset, { assetToken, region })
         .then((fileBuffer) => {
           if (!fileBuffer) {
             throw new Error('Invalid asset file!');
@@ -116,11 +114,12 @@ export const downloadAssetStream = ({
           apiConcurrencyLock.release();
           processing.delete(task);
         });
+      processing.add(task);
 
       callback();
     },
     flush(callback) {
-      Promise.all(processing).finally(() => callback());
+      Promise.allSettled(processing).finally(() => callback());
     },
   });
 };

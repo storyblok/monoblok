@@ -105,6 +105,13 @@ const preconditions = {
       }),
     );
   },
+  failsToFetchSignedUrl() {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/assets/me', () => {
+        return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }),
+    );
+  },
 };
 
 describe('assets pull command', () => {
@@ -371,6 +378,29 @@ describe('assets pull command', () => {
     expect(assetFileExists(privateAsset)).toBeFalsy();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('is private but no asset token was provided');
+    expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
+    expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+  });
+
+  it('should handle invalid asset token for private assets', async () => {
+    const privateAsset = makeMockAsset({ is_private: true });
+    preconditions.canFetchRemoteFolders([]);
+    preconditions.canFetchRemoteAssetPages([[privateAsset]]);
+    preconditions.failsToFetchSignedUrl();
+
+    await assetsCommand.parseAsync([
+      'node',
+      'test',
+      'pull',
+      '--space',
+      '12345',
+      '--asset-token',
+      'invalid-token',
+    ]);
+
+    expect(assetFileExists(privateAsset)).toBeFalsy();
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
   });

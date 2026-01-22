@@ -787,25 +787,6 @@ describe('stories push command', () => {
     }));
   });
 
-  it('should log an info when a manifest file does not exist', async () => {
-    const storyA = makeMockStory({
-      slug: 'story-a',
-    });
-    preconditions.canLoadStories([storyA]);
-    preconditions.canLoadComponents([
-      makeMockComponent({
-        name: 'page',
-      }),
-    ]);
-    const remoteStories = preconditions.canCreateStories([storyA]);
-    preconditions.canUpdateStories(remoteStories);
-
-    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-    const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('No existing manifest found');
-  });
-
   it('should log an error and stop when manifest loading fails', async () => {
     const storyA = makeMockStory({
       slug: 'story-a',

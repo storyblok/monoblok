@@ -5,7 +5,7 @@ import type { WriteStoryTransport } from '../stories/streams';
 import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStoryStream } from '../stories/streams';
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
-import { handleError } from '../../utils/error/error';
+import { logOnlyError } from '../../utils/error/error';
 import type {
   AppendAssetFolderManifestTransport,
   AppendAssetManifestTransport,
@@ -32,7 +32,6 @@ export const upsertAssetFoldersPipeline = async ({
   maps,
   transports,
   ui,
-  verbose,
 }: {
   directoryPath: string;
   logger: Logger;
@@ -44,7 +43,6 @@ export const upsertAssetFoldersPipeline = async ({
     appendAssetFolderManifest: AppendAssetFolderManifestTransport;
   };
   ui: UI;
-  verbose: boolean;
 }): Promise<Summaries> => {
   const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
@@ -58,7 +56,7 @@ export const upsertAssetFoldersPipeline = async ({
       },
       onFolderError: (error) => {
         summary.failed += 1;
-        handleError(error, verbose);
+        logOnlyError(error);
       },
     }),
     upsertAssetFolderStream({
@@ -72,7 +70,7 @@ export const upsertAssetFoldersPipeline = async ({
       },
       onFolderError: (error, folder) => {
         summary.failed += 1;
-        handleError(error, verbose, { folderId: folder.id });
+        logOnlyError(error, { folderId: folder.id });
       },
     }),
   );
@@ -88,7 +86,6 @@ export const upsertAssetsPipeline = async ({
   maps,
   transports,
   ui,
-  verbose,
 }: {
   assetSource?: string;
   assetData?: AssetUpload;
@@ -104,7 +101,6 @@ export const upsertAssetsPipeline = async ({
     cleanupAsset: CleanupAssetTransport;
   };
   ui: UI;
-  verbose: boolean;
 }): Promise<Summaries> => {
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0, skipped: 0 };
@@ -121,7 +117,7 @@ export const upsertAssetsPipeline = async ({
       onAssetError: (error) => {
         summary.failed += 1;
         assetProgress.increment();
-        handleError(error, verbose);
+        logOnlyError(error);
       },
     }));
   }
@@ -136,7 +132,7 @@ export const upsertAssetsPipeline = async ({
       onAssetError: (error) => {
         summary.failed += 1;
         assetProgress.increment();
-        handleError(error, verbose);
+        logOnlyError(error);
       },
     }));
   }
@@ -177,7 +173,7 @@ export const upsertAssetsPipeline = async ({
     },
     onAssetError: (error, asset) => {
       summary.failed += 1;
-      handleError(error, verbose, { assetId: asset.id });
+      logOnlyError(error, { assetId: asset.id });
     },
   }));
   await pipeline(steps);
@@ -192,7 +188,6 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   space,
   transports,
   ui,
-  verbose,
 }: {
   logger: Logger;
   maps: { assets: AssetMap };
@@ -202,8 +197,14 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     writeStory: WriteStoryTransport;
   };
   ui: UI;
-  verbose: boolean;
 }): Promise<Summaries> => {
+  if (Object.keys(schemas).length === 0) {
+    const message = 'No components found. Please run `storyblok components pull` to fetch the latest components.';
+    ui.error(message);
+    logger.error(message);
+    return [];
+  }
+
   const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(PROGRESS_BAR_PADDING) });
   const fetchStoriesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(PROGRESS_BAR_PADDING) });
   const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(PROGRESS_BAR_PADDING) });
@@ -216,13 +217,6 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     storyUpdateResults: { total: 0, succeeded: 0, failed: 0 },
   };
 
-  if (Object.keys(schemas).length === 0) {
-    const message = 'No components found. Please run `storyblok components pull` to fetch the latest components.';
-    ui.error(message);
-    logger.error(message);
-    return [];
-  }
-
   const warnAboutMissingSchemas = (missingSchemas: Set<Component['name']>, story: Story) => {
     const missingSchemaWarnings = new Set<string>();
     for (const schemaName of missingSchemas) {
@@ -230,7 +224,6 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         continue;
       }
       const message = `The component "${schemaName}" was not found. Please run \`storyblok components pull\` to fetch the latest components.`;
-      ui.warn(message);
       logger.warn(message, { storyId: story.uuid });
       missingSchemaWarnings.add(schemaName);
     }
@@ -265,7 +258,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       },
       onPageError: (error, page, total) => {
         summaries.fetchStoryPages.failed += 1;
-        handleError(error, verbose, { page, total });
+        logOnlyError(error, { page, total });
       },
     }),
     fetchStoryStream({
@@ -283,7 +276,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         summaries.storyUpdateResults.total -= 1;
         processProgress.setTotal(summaries.storyProcessResults.total);
         updateProgress.setTotal(summaries.storyProcessResults.total);
-        handleError(error, verbose, { storyId: story.id });
+        logOnlyError(error, { storyId: story.id });
       },
     }),
     // Map all references to numeric ids and uuids.
@@ -302,7 +295,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         summaries.storyProcessResults.failed += 1;
         summaries.storyUpdateResults.total -= 1;
         updateProgress.setTotal(summaries.storyUpdateResults.total);
-        handleError(error, verbose, { storyId: localStory.id });
+        logOnlyError(error, { storyId: localStory.id });
       },
     }),
     // Update remote stories with correct references.
@@ -319,7 +312,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       },
       onStoryError(error, localStory) {
         summaries.storyUpdateResults.failed += 1;
-        handleError(error, verbose, { storyId: localStory.id });
+        logOnlyError(error, { storyId: localStory.id });
       },
     }),
   );

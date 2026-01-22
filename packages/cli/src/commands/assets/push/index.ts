@@ -61,10 +61,12 @@ assetsCommand
     await initializeSession();
 
     if (!requireAuthentication(state, verbose)) {
+      process.exitCode = 2;
       return;
     }
     if (!space) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
+      process.exitCode = 2;
       return;
     }
 
@@ -78,6 +80,8 @@ assetsCommand
     });
 
     const summaries: [string, Report['summary'][string]][] = [];
+
+    let fatalError = false;
 
     try {
       const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
@@ -114,7 +118,6 @@ assetsCommand
           appendAssetFolderManifest: assetFolderManifestTransport,
         },
         ui,
-        verbose,
       }));
 
       /**
@@ -175,7 +178,6 @@ assetsCommand
           cleanupAsset: cleanupAssetTransport,
         },
         ui,
-        verbose,
       }));
 
       /**
@@ -201,11 +203,11 @@ assetsCommand
             writeStory: writeStoryTransport,
           },
           ui,
-          verbose,
         }));
       }
     }
     catch (maybeError) {
+      fatalError = true;
       handleError(toError(maybeError), verbose);
     }
     finally {
@@ -214,16 +216,25 @@ assetsCommand
       logger.info('Pushing assets finished', { summary });
       const assetsTotal = summary.assetResults?.total ?? 0;
       const assetsSucceeded = summary.assetResults?.succeeded ?? 0;
+      const assetsSkipped = summary.assetResults?.skipped ?? 0;
       const assetsFailed = summary.assetResults?.failed ?? 0;
 
       ui.info(`Push results: ${assetsTotal} processed, ${assetsFailed} assets failed`);
       ui.list([
         `Folders: ${summary.assetFolderResults?.succeeded ?? 0}/${summary.assetFolderResults?.total ?? 0} succeeded, ${summary.assetFolderResults?.failed ?? 0} failed.`,
-        `Assets: ${assetsSucceeded}/${assetsTotal} succeeded, ${assetsFailed} failed.`,
+        `Assets: ${assetsSucceeded}/${assetsTotal} succeeded, ${assetsSkipped} skipped, ${assetsFailed} failed.`,
       ]);
       for (const [name, reportSummary] of summaries) {
         reporter.addSummary(name, reportSummary);
       }
       reporter.finalize();
+
+      const failedTotal = Object.values(summary).reduce((total, entry) => {
+        if (!entry || typeof entry.failed !== 'number') {
+          return total;
+        }
+        return total + entry.failed;
+      }, 0);
+      process.exitCode = fatalError ? 2 : failedTotal > 0 ? 1 : 0;
     }
   });

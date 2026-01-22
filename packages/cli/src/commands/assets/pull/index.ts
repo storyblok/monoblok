@@ -8,7 +8,7 @@ import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
-import { handleError, toError } from '../../../utils/error/error';
+import { handleError, logOnlyError, toError } from '../../../utils/error/error';
 import { mapiClient } from '../../../api';
 import {
   downloadAssetStream,
@@ -44,10 +44,12 @@ assetsCommand
     await initializeSession();
 
     if (!requireAuthentication(state, verbose)) {
+      process.exitCode = 2;
       return;
     }
     if (!space) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
+      process.exitCode = 2;
       return;
     }
 
@@ -66,6 +68,8 @@ assetsCommand
       fetchAssets: { total: 0, succeeded: 0, failed: 0 },
       save: { total: 0, succeeded: 0, failed: 0 },
     };
+
+    let fatalError = false;
 
     try {
       const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(25) });
@@ -86,7 +90,7 @@ assetsCommand
             summary.folderResults.failed += 1;
             summary.folderResults.total = summary.folderResults.total || 1;
             folderProgress.setTotal(summary.folderResults.total);
-            handleError(error, verbose);
+            logOnlyError(error);
           },
         }),
         writeAssetFolderStream({
@@ -105,7 +109,7 @@ assetsCommand
           onFolderError: (error, folder) => {
             summary.folderResults.failed += 1;
             summary.folderResults.total = Math.max(summary.folderResults.total, summary.folderResults.succeeded + summary.folderResults.failed);
-            handleError(error, verbose, { folderId: folder.id });
+            logOnlyError(error, { folderId: folder.id });
           },
         }),
       );
@@ -132,7 +136,7 @@ assetsCommand
           },
           onPageError: (error, page, totalPages) => {
             summary.fetchAssetPages.failed += 1;
-            handleError(error, verbose, { page, totalPages });
+            logOnlyError(error, { page, totalPages });
           },
         }),
         downloadAssetStream({
@@ -149,7 +153,7 @@ assetsCommand
             summary.fetchAssets.failed += 1;
             summary.save.total -= 1;
             saveProgress.setTotal(summary.save.total);
-            handleError(error, verbose, { assetId: asset.id });
+            logOnlyError(error, { assetId: asset.id });
           },
         }),
         writeAssetStream({
@@ -167,12 +171,13 @@ assetsCommand
           },
           onAssetError: (error, asset) => {
             summary.save.failed += 1;
-            handleError(error, verbose, { assetId: asset.id });
+            logOnlyError(error, { assetId: asset.id });
           },
         }),
       );
     }
     catch (maybeError) {
+      fatalError = true;
       handleError(toError(maybeError));
     }
     finally {
@@ -198,5 +203,11 @@ assetsCommand
       reporter.addSummary('fetchAssetsResults', summary.fetchAssets);
       reporter.addSummary('saveResults', summary.save);
       reporter.finalize();
+
+      const failedTotal = summary.folderResults.failed
+        + summary.fetchAssetPages.failed
+        + summary.fetchAssets.failed
+        + summary.save.failed;
+      process.exitCode = fatalError ? 2 : failedTotal > 0 ? 1 : 0;
     }
   });

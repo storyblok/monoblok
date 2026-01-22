@@ -399,6 +399,7 @@ describe('assets push command', () => {
     vol.reset();
     server.resetHandlers();
     resetReporter();
+    process.exitCode = undefined;
   });
   afterAll(() => server.close());
 
@@ -470,7 +471,8 @@ describe('assets push command', () => {
     // UI
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(process.exitCode).toBe(0);
   });
 
   it('should correctly resolve parent IDs even when child folders precede parents', async () => {
@@ -577,7 +579,8 @@ describe('assets push command', () => {
     // UI
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(process.exitCode).toBe(0);
   });
 
   it('should update stories referencing an asset when the metadata change', async () => {
@@ -722,7 +725,8 @@ describe('assets push command', () => {
     expect(console.error).not.toHaveBeenCalled();
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(process.exitCode).toBe(0);
   });
 
   it('should read assets and asset folders from a custom path', async () => {
@@ -808,6 +812,7 @@ describe('assets push command', () => {
     expect(actions.updateAsset).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
+    expect(process.exitCode).toBe(2);
   });
 
   it('should handle errors when writing to the manifest fails', async () => {
@@ -834,8 +839,9 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should not make any updates in dry run mode', async () => {
@@ -852,6 +858,7 @@ describe('assets push command', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
     );
+    expect(process.exitCode).toBe(0);
   });
 
   it('should handle errors when reading local assets fails', async () => {
@@ -876,8 +883,9 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when creating asset folders fails', async () => {
@@ -896,14 +904,10 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
-      expect.anything(),
-    );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when updating asset folders fails', async () => {
@@ -929,14 +933,10 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('API Error: Error fetching data from the API');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to push asset folder'),
-      expect.anything(),
-    );
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when creating assets fails', async () => {
@@ -956,11 +956,6 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('API Error: Error fetching data from the API');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to sign asset upload'),
-      expect.anything(),
-    );
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -968,8 +963,9 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when updating assets fails', async () => {
@@ -1005,11 +1001,6 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
-      expect.anything(),
-    );
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -1017,8 +1008,9 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when uploading assets fails', async () => {
@@ -1037,11 +1029,6 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
-      expect.anything(),
-    );
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -1049,8 +1036,9 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
     );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should create a new asset with meta_data when present locally', async () => {

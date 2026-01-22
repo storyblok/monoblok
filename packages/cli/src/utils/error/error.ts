@@ -84,3 +84,7 @@ export function handleError(error: Error | FetchError, verbose = false, context?
   }
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 }
+
+export function logOnlyError(error: Error | FetchError, context?: LogContext): void {
+  getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
+}

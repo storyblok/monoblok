@@ -121,6 +121,7 @@ describe('assets pull command', () => {
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
+    process.exitCode = undefined;
   });
   afterAll(() => server.close());
 
@@ -188,6 +189,7 @@ describe('assets pull command', () => {
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 assets pulled'),
     );
+    expect(process.exitCode).toBe(0);
   });
 
   it('should pull asset folders', async () => {
@@ -223,6 +225,7 @@ describe('assets pull command', () => {
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 2 assets pulled'),
     );
+    expect(process.exitCode).toBe(0);
   });
 
   it('should only pull assets matching the given filters', async () => {
@@ -262,11 +265,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"save":{"total":1,"succeeded":0,"failed":1}');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Permission denied while accessing the file'),
-      '',
-    );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle error fetching the remote assets list', async () => {
@@ -281,10 +280,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
-      '',
-    );
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle error downloading an asset', async () => {
@@ -303,6 +299,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"save":{"total":1,"succeeded":1,"failed":0}');
     expect(assetFileExists(assets[0])).toBeTruthy();
     expect(assetFileExists(assets[1])).toBeFalsy();
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle error fetching folders', async () => {
@@ -315,6 +312,7 @@ describe('assets pull command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle error saving folders', async () => {
@@ -329,6 +327,7 @@ describe('assets pull command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Permission denied while accessing the file');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle pulling zero assets', async () => {
@@ -342,6 +341,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+    expect(process.exitCode).toBe(0);
   });
 
   it('should pull private assets with asset token', async () => {
@@ -366,6 +366,7 @@ describe('assets pull command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"save":{"total":1,"succeeded":1,"failed":0}');
+    expect(process.exitCode).toBe(0);
   });
 
   it('should fail to pull private assets without asset token', async () => {
@@ -380,6 +381,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('is private but no asset token was provided');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle invalid asset token for private assets', async () => {
@@ -403,6 +405,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('Error fetching data from the API');
     expect(logFile).toContain('"fetchAssets":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle mixed private and public assets', async () => {
@@ -430,5 +433,6 @@ describe('assets pull command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":2,"failed":0}');
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
+    expect(process.exitCode).toBe(0);
   });
 });

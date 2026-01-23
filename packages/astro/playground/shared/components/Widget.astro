@@ -41,7 +41,7 @@ const { disableLivePreview } = Astro.props;
       event.preventDefault();
       console.log('Live preview update prevented by user preference');
     } else {
-      console.log('Live preview is updating...', (event as CustomEvent).detail);
+      console.log('Live preview is updating...');
     }
   });
 

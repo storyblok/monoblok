@@ -105,19 +105,6 @@ async function updateLivePreview(story: ISbStoryData): Promise<void> {
   // Dispatch success event
   dispatchStoryblokEvent(LIVE_PREVIEW_UPDATED_EVENT, { story });
 }
-/**
- * Returns a unique key for an element based on its data-blok-uid attribute
- * Used by morphdom to match elements between old and new DOM trees
- */
-function getNodeKey(node: Node) {
-  if (node.nodeType === 1) { // Element node
-    const uid = (node as Element).getAttribute(STORYBLOK_UID_ATTRIBUTE);
-    if (uid) {
-      return uid;
-    }
-  }
-  return undefined;
-}
 
 /**
  * Preserves interactive state attributes from current element to new element
@@ -153,6 +140,7 @@ function updateDOMWithNewBody(
   newBody: HTMLElement,
   focusedElem: Element | null,
 ) {
+  let shouldUpdateFullBody = true;
   if (focusedElem) {
     // Get the [data-blok-uid] of the focused element in storyblok
     const focusedElementID = focusedElem.getAttribute(STORYBLOK_UID_ATTRIBUTE);
@@ -165,33 +153,43 @@ function updateDOMWithNewBody(
       // Add the [data-blok-focused] attribute to the above element
       newDomFocusElem.setAttribute(STORYBLOK_FOCUSED_ATTRIBUTE, 'true');
       // Use morphdom to update the focused element while preserving state
-      morphdom(focusedElem, newDomFocusElem, {
-        getNodeKey,
-        onBeforeElUpdated: (fromEl, toEl) => {
-          // Don't check data-preserve-state here - user is editing this component
-          // and wants to see their changes reflected
-          preserveElementAttributes(fromEl, toEl);
-          return true;
-        },
-      });
+      updateWithMorphdom(focusedElem, newDomFocusElem);
+      shouldUpdateFullBody = false;
     }
+    // If focused element not found in new DOM, fall back to full body update
   }
-  else {
+  if (shouldUpdateFullBody) {
     // Use morphdom to efficiently morph the DOM while preserving state
-    morphdom(currentBody, newBody, {
-      getNodeKey,
-      onBeforeElUpdated: (fromEl, toEl) => {
-        // Preserve elements with data-preserve-state
-        if (fromEl.hasAttribute(PRESERVE_STATE_ATTRIBUTE)) {
-          return false; // Skip this element
-        }
-
-        preserveElementAttributes(fromEl, toEl);
-        return true;
-      },
-    });
+    updateWithMorphdom(currentBody, newBody);
   }
 }
+/**
+ * Returns a unique key for an element based on its data-blok-uid attribute
+ * Used by morphdom to match elements between old and new DOM trees
+ */
+function getNodeKey(node: Node) {
+  if (node.nodeType === 1) { // Element node
+    const uid = (node as Element).getAttribute(STORYBLOK_UID_ATTRIBUTE);
+    if (uid) {
+      return uid;
+    }
+  }
+  return undefined;
+}
+function updateWithMorphdom(currentNode: Node, newNode: Node) {
+  morphdom(currentNode, newNode, {
+    getNodeKey,
+    onBeforeElUpdated: (fromEl, toEl) => {
+      // Preserve elements with data-preserve-state
+      if (fromEl.hasAttribute(PRESERVE_STATE_ATTRIBUTE)) {
+        return false; // Skip this element
+      }
+      preserveElementAttributes(fromEl, toEl);
+      return true;
+    },
+  });
+}
+
 const isPlainObject = (v: unknown): v is Record<string, unknown> => {
   if (v === null || typeof v !== 'object') {
     return false;

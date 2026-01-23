@@ -5,7 +5,7 @@ import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 const { blok } = Astro.props;
 ---
 
-<div {...storyblokEditable(blok)} data-preserve-state>
+<div {...storyblokEditable(blok)}>
   <h2 class="heading">{blok.title}</h2>
   <div class="grid">
     {

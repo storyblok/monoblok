@@ -2,6 +2,7 @@ import type { ISbStoryData } from '@storyblok/js';
 import morphdom from 'morphdom';
 
 let timeout: NodeJS.Timeout;
+let abortController: AbortController | null = null;
 
 const DEBOUNCE_DELAY_MS = 500;
 const SERVER_DATA_ELEMENT_ID = '__STORYBLOK_SERVERDATA__';
@@ -44,6 +45,10 @@ export async function handleStoryblokMessage(event: {
     if (isLivePreviewDisabled()) {
       return;
     }
+    // Abort any in-flight request to prevent race conditions
+    if (abortController) {
+      abortController.abort();
+    }
     // Clear existing debounce timeout
     if (timeout) {
       clearTimeout(timeout);
@@ -55,6 +60,10 @@ export async function handleStoryblokMessage(event: {
         await updateLivePreview(story);
       }
       catch (error) {
+        // Ignore abort errors - they're expected when cancelling requests
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         console.error('Failed to update live preview:', error);
       }
     }, DEBOUNCE_DELAY_MS);
@@ -120,7 +129,8 @@ function preserveElementAttributes(fromEl: Element, toEl: Element) {
 
   // Same content - copy all attributes from current element to new element
   // This preserves interactive state like 'open', 'checked', 'value', etc.
-  if (fromUid && fromUid !== toUid) {
+  // Only preserve if both have the same UID or both lack UIDs
+  if (fromUid !== toUid) {
     return;
   }
 
@@ -194,6 +204,8 @@ const isPlainObject = (v: unknown): v is Record<string, unknown> => {
   return proto === Object.prototype || proto === null;
 };
 async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
+  // Create new AbortController for this request
+  abortController = new AbortController();
   // TODO How to handel (50x, 405, etc.)
   const payload = {
     story: {
@@ -209,6 +221,7 @@ async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
     headers: {
       'Content-Type': 'application/json',
     },
+    signal: abortController.signal,
   });
     // Handle HTTP errors
   if (!response.ok) {

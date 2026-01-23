@@ -13,6 +13,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
+  makeCleanupAssetFolderFSTransport,
   makeCleanupAssetFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
@@ -106,6 +107,9 @@ assetsCommand
       const assetFolderManifestTransport = options.dryRun
         ? () => Promise.resolve()
         : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile });
+      const cleanupAssetFolderTransport = options.cleanup && !options.dryRun
+        ? makeCleanupAssetFolderFSTransport()
+        : () => Promise.resolve();
 
       summaries.push(...await upsertAssetFoldersPipeline({
         directoryPath: join(assetsDirectoryPath, 'folders'),
@@ -116,6 +120,7 @@ assetsCommand
           createAssetFolder: assetFolderCreateTransport,
           updateAssetFolder: assetFolderUpdateTransport,
           appendAssetFolderManifest: assetFolderManifestTransport,
+          cleanupAssetFolder: cleanupAssetFolderTransport,
         },
         ui,
       }));

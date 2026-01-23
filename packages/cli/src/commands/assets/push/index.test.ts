@@ -1259,11 +1259,14 @@ describe('assets push command', () => {
     expect(tempFiles).toEqual([]);
   });
 
-  it('should delete local asset files and json metadata when cleanup is enabled', async () => {
+  it('should delete local assets and asset folders when cleanup is enabled', async () => {
     const asset = makeMockAsset();
-    preconditions.canLoadFolders([]);
+    const folder = makeMockFolder();
+    preconditions.canLoadFolders([folder]);
     preconditions.canLoadAssets([asset]);
     preconditions.canUpsertRemoteAssets([asset]);
+    const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
+    preconditions.canFetchRemoteFolders([remoteFolder]);
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
     const ext = path.extname(asset.filename);
     const baseName = `${path.basename(asset.filename, ext)}_${asset.id}`;
@@ -1274,9 +1277,6 @@ describe('assets push command', () => {
 
     const files = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${assetsDir}${path.sep}`));
     const cleanedFiles = files.filter((filename) => {
-      if (filename.startsWith(path.join(assetsDir, 'folders'))) {
-        return false;
-      }
       return filename.endsWith('.json') || filename.endsWith('.png');
     });
 

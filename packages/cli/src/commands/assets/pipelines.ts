@@ -9,6 +9,7 @@ import { logOnlyError } from '../../utils/error/error';
 import type {
   AppendAssetFolderManifestTransport,
   AppendAssetManifestTransport,
+  CleanupAssetFolderTransport,
   CleanupAssetTransport,
   CreateAssetFolderTransport,
   CreateAssetTransport,
@@ -41,9 +42,11 @@ export const upsertAssetFoldersPipeline = async ({
     createAssetFolder: CreateAssetFolderTransport;
     updateAssetFolder: UpdateAssetFolderTransport;
     appendAssetFolderManifest: AppendAssetFolderManifestTransport;
+    cleanupAssetFolder?: CleanupAssetFolderTransport;
   };
   ui: UI;
 }): Promise<Summaries> => {
+
   const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 

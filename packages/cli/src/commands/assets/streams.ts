@@ -269,6 +269,13 @@ export interface ReadLocalAssetFolderOptions {
   onFolderError?: (error: Error) => void;
 }
 
+export interface LocalAssetFolderPayload {
+  folder: AssetFolder;
+  context: {
+    localFilePath: string;
+  };
+}
+
 export const readLocalAssetFoldersStream = ({
   directoryPath,
   setTotalFolders,
@@ -284,7 +291,8 @@ export const readLocalAssetFoldersStream = ({
       while (jsonFiles.size > 0) {
         for (const file of jsonFiles) {
           try {
-            const content = await readFile(join(directoryPath, file), 'utf8');
+            const filePath = join(directoryPath, file);
+            const content = await readFile(filePath, 'utf8');
             const folder = JSON.parse(content) as AssetFolder;
             jsonFiles.delete(file);
             // We must ensure the parent folder was already processed before
@@ -292,7 +300,12 @@ export const readLocalAssetFoldersStream = ({
             // mapping from local to remote parent ID does not work correctly.
             if (!folder.parent_id || processed.has(folder.parent_id)) {
               processed.add(folder.id);
-              yield folder;
+              yield {
+                folder,
+                context: {
+                  localFilePath: filePath,
+                },
+              } satisfies LocalAssetFolderPayload;
             }
             // If the parent folder has not been processed yet, we postpone
             // handling of the current folder by moving it to the end of the
@@ -354,6 +367,11 @@ export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   return data?.asset_folder;
 };
 
+export type CleanupAssetFolderTransport = (context: { localFilePath: string }) => Promise<void>;
+
+export const makeCleanupAssetFolderFSTransport = (): CleanupAssetFolderTransport =>
+  async ({ localFilePath }) => await unlink(localFilePath);
+
 export const upsertAssetFolderStream = ({
   transports,
   maps,
@@ -366,6 +384,7 @@ export const upsertAssetFolderStream = ({
     createAssetFolder: CreateAssetFolderTransport;
     updateAssetFolder: UpdateAssetFolderTransport;
     appendAssetFolderManifest: AppendAssetFolderManifestTransport;
+    cleanupAssetFolder?: CleanupAssetFolderTransport;
   };
   maps: { assetFolders: AssetFolderMap };
   onIncrement?: () => void;
@@ -374,7 +393,7 @@ export const upsertAssetFolderStream = ({
 }) => {
   return new Writable({
     objectMode: true,
-    async write(folder: AssetFolder, _encoding, callback) {
+    async write({ folder, context }: LocalAssetFolderPayload, _encoding, callback) {
       try {
         const remoteParentId = folder.parent_id && (maps.assetFolders.get(folder.parent_id) || folder.parent_id);
         const remoteFolderId = maps.assetFolders.get(folder.id) || folder.id;
@@ -394,6 +413,8 @@ export const upsertAssetFolderStream = ({
         if (!maps.assetFolders.get(folder.id)) {
           await transports.appendAssetFolderManifest(folder, newRemoteFolder);
         }
+
+        await transports.cleanupAssetFolder?.({ localFilePath: context.localFilePath });
 
         onFolderSuccess?.(folder, newRemoteFolder);
       }

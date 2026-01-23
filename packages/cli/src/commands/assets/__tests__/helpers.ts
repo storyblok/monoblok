@@ -13,6 +13,10 @@ export interface MockAsset {
   short_filename?: string;
   asset_folder_id?: number | null;
   is_private?: boolean;
+  alt?: string;
+  title?: string;
+  copyright?: string;
+  source?: string;
   meta_data?: Record<string, unknown>;
 }
 

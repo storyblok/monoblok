@@ -10,11 +10,21 @@ export interface AssetUpload {
   id?: number;
   asset_folder_id?: number;
   short_filename: string;
+  alt?: string;
+  title?: string;
+  copyright?: string;
+  source?: string;
+  is_private?: boolean;
 }
 
 export interface AssetMapped {
   id: number;
   filename: string;
+  alt?: string;
+  title?: string;
+  copyright?: string;
+  source?: string;
+  is_private?: boolean;
   meta_data?: Record<string, any>;
 }
 

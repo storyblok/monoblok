@@ -46,7 +46,6 @@ export const upsertAssetFoldersPipeline = async ({
   };
   ui: UI;
 }): Promise<Summaries> => {
-
   const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 

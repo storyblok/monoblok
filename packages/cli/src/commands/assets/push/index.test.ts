@@ -1192,6 +1192,27 @@ describe('assets push command', () => {
     ]);
   });
 
+  it('should not skip update when top-level metadata changed but meta_data object is empty', async () => {
+    const localAsset = makeMockAsset({
+      alt: 'New alt',
+      meta_data: {},
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
+      ...localAsset,
+      alt: 'Old alt',
+      meta_data: {},
+    }]);
+    preconditions.canFetchRemoteAssets([remoteAsset]);
+    preconditions.canDownloadAssets([remoteAsset]);
+    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.updateAsset).toHaveBeenCalled();
+  });
+
   it('should use sidecar json data when pushing a single local asset without --data', async () => {
     const assetPath = '/tmp/local-asset.png';
     const assetJsonPath = '/tmp/local-asset.json';

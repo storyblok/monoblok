@@ -166,6 +166,7 @@ const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
         id: asset.id,
         filename: asset.short_filename,
         asset_folder_id: asset.asset_folder_id ?? undefined,
+        is_private: asset.is_private,
       },
       throwOnError: true,
     });
@@ -352,9 +353,23 @@ export const createAsset = async (
   const createdAsset = await uploadAsset({
     asset_folder_id: asset.asset_folder_id,
     short_filename: asset.short_filename,
+    alt: asset.alt,
+    title: asset.title,
+    copyright: asset.copyright,
+    source: asset.source,
+    is_private: asset.is_private,
   }, fileBuffer, { spaceId });
 
-  if (asset.meta_data && Object.values(asset.meta_data).length > 0) {
+  const hasUpdatableMetadata = Boolean(
+    asset.alt
+    || asset.title
+    || asset.copyright
+    || asset.source
+    || asset.is_private
+    || (asset.meta_data && Object.keys(asset.meta_data).length > 0),
+  );
+
+  if (hasUpdatableMetadata) {
     const updatedAsset = await updateAsset({
       ...asset,
       id: createdAsset.id,

@@ -633,6 +633,16 @@ const isDataUnchanged = (localAsset: AssetUpdate, remoteAsset: Asset): boolean =
     return false;
   }
 
+  if (
+    localAsset.alt !== remoteAsset.alt
+    || localAsset.title !== remoteAsset.title
+    || localAsset.copyright !== remoteAsset.copyright
+    || localAsset.source !== remoteAsset.source
+    || localAsset.is_private !== remoteAsset.is_private
+  ) {
+    return false;
+  }
+
   const localAssetMetadataEntries = Object.entries(localAsset.meta_data || {});
   const remoteAssetMetadataEntries = Object.entries(remoteAsset.meta_data || {});
   if (localAssetMetadataEntries.length !== remoteAssetMetadataEntries.length) {

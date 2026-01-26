@@ -1145,13 +1145,13 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(finishUploadSpy).toHaveBeenCalled();
-    expect((await parseManifest())[1]).toEqual({
+    expect(await parseManifest()).toEqual([{
       old_id: localAsset.id,
       old_filename: localAsset.filename,
       new_id: remoteAsset.id,
       new_filename: remoteAsset.filename,
       created_at: expect.any(String),
-    });
+    }]);
   });
 
   it('should update existing remote assets even when no manifest exists', async () => {
@@ -1278,6 +1278,21 @@ describe('assets push command', () => {
     const tempRoot = path.join(tmpdir(), 'storyblok-assets');
     const tempFiles = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${tempRoot}/`));
     expect(tempFiles).toEqual([]);
+  });
+
+  it('should not end up with duplicate entries in the manifest after multiple runs', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+    preconditions.canFetchRemoteAssets([remoteAsset], { space: targetSpace });
+    preconditions.canDownloadAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(await parseManifest()).toHaveLength(1);
   });
 
   it('should delete local assets and asset folders when cleanup is enabled', async () => {

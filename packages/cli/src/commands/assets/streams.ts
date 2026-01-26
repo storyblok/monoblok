@@ -749,6 +749,10 @@ const processAsset = async ({
     throw new Error('Could neither create nor update the asset: Missing ID and Filename');
   }
 
+  // This leads to (temporary) duplicate entries of mappings with the same IDs.
+  // We can't check the map for existing entries and skip if we find one,
+  // because the asset might have a new filename which must be reflected in the
+  // map.
   if (hasId(localAsset)) {
     await transports.appendAssetManifest(localAsset, newRemoteAsset);
   }

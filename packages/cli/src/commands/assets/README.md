@@ -87,6 +87,3 @@ The CLI maintains a manifest file at `.storyblok/assets/<space>/manifest.jsonl` 
 
 - **Idempotency:** Preventing duplicate uploads if an asset has already been migrated.
 - **Reference Resolution:** Allowing the `stories` command to update asset references in your content using the new IDs.
-
-> [!NOTE]
-> Asset manifest files can contain multiple entries for the same asset; use the latest entry as the source of truth.

@@ -787,6 +787,21 @@ describe('stories push command', () => {
     }));
   });
 
+  it('should not end up with duplicate entries in the manifest after multiple runs', async () => {
+    const storyA = makeMockStory();
+    preconditions.canLoadStories([storyA]);
+    preconditions.canLoadComponents([makeMockComponent()]);
+    const remoteStories = preconditions.canCreateStories([storyA]);
+    preconditions.canFetchStories(remoteStories);
+    preconditions.canUpdateStories(remoteStories);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // Two entries because one entry for the UUID and one for the numeric ID.
+    expect(await parseManifest()).toHaveLength(2);
+  });
+
   it('should log an error and stop when manifest loading fails', async () => {
     const storyA = makeMockStory({
       slug: 'story-a',

@@ -9,7 +9,7 @@ import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, toError } from '../../../utils/error/error';
 import { mapiClient } from '../../../api';
-import { resolveCommandPath } from '../../../utils/filesystem';
+import { deduplicateManifest, resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
   makeAppendAssetManifestFSTransport,
@@ -81,12 +81,12 @@ assetsCommand
     });
 
     const summaries: [string, Report['summary'][string]][] = [];
-
     let fatalError = false;
 
+    const manifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'manifest.jsonl');
+    const folderManifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'folders', 'manifest.jsonl');
+
     try {
-      const manifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'manifest.jsonl');
-      const folderManifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'folders', 'manifest.jsonl');
       const [assetMap, assetFolderMap] = await Promise.all([
         loadAssetMap(manifestFile),
         loadAssetFolderMap(folderManifestFile),
@@ -210,6 +210,10 @@ assetsCommand
           ui,
         }));
       }
+
+      if (!options.dryRun) {
+        await deduplicateManifest(manifestFile);
+      }
     }
     catch (maybeError) {
       fatalError = true;
@@ -217,6 +221,7 @@ assetsCommand
     }
     finally {
       ui.stopAllProgressBars();
+
       const summary = Object.fromEntries(summaries);
       logger.info('Pushing assets finished', { summary });
       const assetsTotal = summary.assetResults?.total ?? 0;

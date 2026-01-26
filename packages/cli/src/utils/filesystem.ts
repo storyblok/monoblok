@@ -139,6 +139,31 @@ export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[
     });
 };
 
+/**
+ * Saves an array of manifest entries to a JSONL file.
+ */
+export const saveManifest = async (manifestFile: string, entries: ManifestEntry[]): Promise<void> => {
+  const content = entries.map(entry => JSON.stringify(entry)).join('\n');
+  await saveToFile(manifestFile, content ? `${content}\n` : '');
+};
+
+/**
+ * Deduplicates a manifest file by keeping only the latest entry for each `old_id`.
+ */
+export const deduplicateManifest = async (manifestFile: string): Promise<void> => {
+  const entries = await loadManifest(manifestFile);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const uniqueEntries = new Map<string | number, ManifestEntry>();
+  for (const entry of entries) {
+    uniqueEntries.set(entry.old_id, entry);
+  }
+
+  await saveManifest(manifestFile, Array.from(uniqueEntries.values()));
+};
+
 export const resolvePath = (path: string | undefined, folder: string) => {
   const basePath = path ?? DEFAULT_STORAGE_DIR;
   // Keeps honoring relative paths by anchoring everything on the current workspace root.

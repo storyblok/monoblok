@@ -91,7 +91,7 @@ storiesCommand
       updateResults: { total: 0, succeeded: 0, failed: 0 },
     };
     try {
-      const manifestFile = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+      const manifestFile = join(resolveCommandPath(directories.stories, fromSpace, basePath), 'manifest.jsonl');
       const manifest = await loadManifest(manifestFile);
       const assetManifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'manifest.jsonl');
       const maps = {

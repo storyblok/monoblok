@@ -21,7 +21,7 @@ storiesCommand
   .option('-p, --path <path>', 'base path for stories and components (default .storyblok)')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('--publish', 'Publish stories after pushing')
-   .option('--cleanup', 'delete local stories after a successful push (note: does not cleanup manifests)')
+  .option('--cleanup', 'delete local stories after a successful push (note: does not cleanup manifests)')
   .description(`Push local stories to a Storyblok space.`)
   .action(async (options, command) => {
     const ui = getUI();

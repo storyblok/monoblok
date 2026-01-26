@@ -421,10 +421,10 @@ describe('assets push command', () => {
       asset_folder_id: remoteFolder.id,
     }), expect.anything(), expect.anything());
     // Manifest
-    expect(await parseFoldersManifest(targetSpace)).toEqual([
+    expect(await parseFoldersManifest()).toEqual([
       { old_id: folder.id, new_id: remoteFolder.id, created_at: expect.any(String) },
     ]);
-    expect(await parseManifest(targetSpace)).toEqual([
+    expect(await parseManifest()).toEqual([
       {
         old_id: asset.id,
         old_filename: asset.filename,

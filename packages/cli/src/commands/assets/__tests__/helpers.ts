@@ -11,7 +11,7 @@ export interface MockAsset {
   id: number;
   filename: string;
   short_filename?: string;
-  asset_folder_id?: number | null;
+  asset_folder_id?: number;
   is_private?: boolean;
   alt?: string;
   title?: string;
@@ -42,7 +42,7 @@ export const makeMockAsset = (overrides: Partial<MockAsset> = {}, space = DEFAUL
     id: assetId,
     filename: overrides.filename || `https://a.storyblok.com/f/${space}/500x500/${shortFilename}`,
     short_filename: shortFilename,
-    asset_folder_id: null,
+    asset_folder_id: undefined,
     ...overrides,
   };
 };

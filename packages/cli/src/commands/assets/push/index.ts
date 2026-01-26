@@ -55,8 +55,8 @@ assetsCommand
       logger.warn('Dry run mode enabled');
     }
 
-    const { space, path: basePath, verbose } = command.optsWithGlobals();
-    const fromSpace = (options.from as string | undefined) || space;
+    const { space: targetSpace, path: basePath, verbose } = command.optsWithGlobals();
+    const fromSpace = (options.from as string | undefined) || targetSpace;
     const assetToken = options.assetToken as string | undefined;
     const { state, initializeSession } = session();
     await initializeSession();
@@ -65,7 +65,7 @@ assetsCommand
       process.exitCode = 2;
       return;
     }
-    if (!space) {
+    if (!targetSpace) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       process.exitCode = 2;
       return;
@@ -85,8 +85,8 @@ assetsCommand
     let fatalError = false;
 
     try {
-      const manifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
-      const folderManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
+      const manifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'manifest.jsonl');
+      const folderManifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'folders', 'manifest.jsonl');
       const [assetMap, assetFolderMap] = await Promise.all([
         loadAssetMap(manifestFile),
         loadAssetFolderMap(folderManifestFile),
@@ -97,13 +97,13 @@ assetsCommand
       /**
        * Upsert Asset Folders
        */
-      const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: space });
+      const assetFolderGetTransport = makeGetAssetFolderAPITransport({ spaceId: targetSpace });
       const assetFolderCreateTransport = options.dryRun
         ? async (folder: AssetFolderCreate) => folder as AssetFolder
-        : makeCreateAssetFolderAPITransport({ spaceId: space });
+        : makeCreateAssetFolderAPITransport({ spaceId: targetSpace });
       const assetFolderUpdateTransport = options.dryRun
         ? async (folder: AssetFolderUpdate) => folder
-        : makeUpdateAssetFolderAPITransport({ spaceId: space });
+        : makeUpdateAssetFolderAPITransport({ spaceId: targetSpace });
       const assetFolderManifestTransport = options.dryRun
         ? () => Promise.resolve()
         : makeAppendAssetFolderManifestFSTransport({ manifestFile: folderManifestFile });
@@ -150,13 +150,13 @@ assetsCommand
         } satisfies AssetUpload;
       }
 
-      const getAssetTransport = makeGetAssetAPITransport({ spaceId: space });
+      const getAssetTransport = makeGetAssetAPITransport({ spaceId: targetSpace });
       const createAssetTransport = options.dryRun
         ? async (asset: AssetCreate) => asset as Asset
-        : makeCreateAssetAPITransport({ spaceId: space });
+        : makeCreateAssetAPITransport({ spaceId: targetSpace });
       const updateAssetTransport = options.dryRun
         ? async (asset: AssetUpdate) => asset as Asset
-        : makeUpdateAssetAPITransport({ spaceId: space });
+        : makeUpdateAssetAPITransport({ spaceId: targetSpace });
       const downloadAssetFileTransport = makeDownloadAssetFileTransport({
         assetToken,
         region,
@@ -197,13 +197,13 @@ assetsCommand
         const schemas = await findComponentSchemas(resolveCommandPath(directories.components, fromSpace, basePath));
         const writeStoryTransport = options.dryRun
           ? async (story: Story) => story
-          : makeWriteStoryAPITransport({ spaceId: space });
+          : makeWriteStoryAPITransport({ spaceId: targetSpace });
 
         summaries.push(...await mapAssetReferencesInStoriesPipeline({
           logger,
           maps,
           schemas,
-          space,
+          space: targetSpace,
           transports: {
             writeStory: writeStoryTransport,
           },

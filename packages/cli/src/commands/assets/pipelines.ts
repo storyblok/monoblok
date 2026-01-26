@@ -81,7 +81,7 @@ export const upsertAssetFoldersPipeline = async ({
 };
 
 export const upsertAssetsPipeline = async ({
-  assetSource,
+  assetBinaryPath,
   assetData,
   directoryPath,
   logger,
@@ -89,7 +89,7 @@ export const upsertAssetsPipeline = async ({
   transports,
   ui,
 }: {
-  assetSource?: string;
+  assetBinaryPath?: string;
   assetData?: AssetUpload;
   directoryPath: string;
   logger: Logger;
@@ -109,13 +109,13 @@ export const upsertAssetsPipeline = async ({
 
   const steps = [];
   // Use the asset provided via the CLI.
-  if (assetSource && assetData) {
+  if (assetBinaryPath && assetData) {
     summary.total = 1;
     assetProgress.setTotal(1);
 
     steps.push(readSingleAssetStream({
       asset: assetData,
-      assetSource,
+      assetBinaryPath,
       onAssetError: (error) => {
         summary.failed += 1;
         assetProgress.increment();

@@ -128,19 +128,19 @@ assetsCommand
       /**
        * Upsert Assets
        */
-      const assetSource = typeof assetInput === 'string' && assetInput.trim().length > 0
+      const assetBinaryPath = typeof assetInput === 'string' && assetInput.trim().length > 0
         ? assetInput
         : undefined;
       let assetData: AssetUpload | undefined;
-      if (assetSource) {
+      if (assetBinaryPath) {
         const assetDataPartial = options.data
           ? parseAssetData(options.data)
-          : !isRemoteSource(assetSource)
-              ? await loadSidecarAssetData(assetSource)
+          : !isRemoteSource(assetBinaryPath)
+              ? await loadSidecarAssetData(assetBinaryPath)
               : {};
-        const sourceBasename = isRemoteSource(assetSource)
-          ? basename(new URL(assetSource).pathname)
-          : basename(assetSource);
+        const sourceBasename = isRemoteSource(assetBinaryPath)
+          ? basename(new URL(assetBinaryPath).pathname)
+          : basename(assetBinaryPath);
         const shortFilename = options.shortFilename || assetDataPartial.short_filename || sourceBasename;
         const folderId = options.folder ? Number(options.folder) : undefined;
         assetData = {
@@ -169,7 +169,7 @@ assetsCommand
         : () => Promise.resolve();
 
       summaries.push(...await upsertAssetsPipeline({
-        assetSource,
+        assetBinaryPath,
         assetData,
         directoryPath: assetsDirectoryPath,
         logger,

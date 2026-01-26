@@ -22,8 +22,12 @@ export const parseAssetData = (raw?: string) => {
   }
 };
 
-export const loadSidecarAssetData = async (assetSource: string) => {
-  const sidecarPath = join(dirname(assetSource), `${basename(assetSource, extname(assetSource))}.json`);
+export const getSidecarFilename = (assetBinaryPath: string) => {
+  return join(dirname(assetBinaryPath), `${basename(assetBinaryPath, extname(assetBinaryPath))}.json`);
+};
+
+export const loadSidecarAssetData = async (assetBinaryPath: string) => {
+  const sidecarPath = getSidecarFilename(assetBinaryPath);
   try {
     const sidecarRaw = await readFile(sidecarPath, 'utf8');
     try {
@@ -42,9 +46,9 @@ export const loadSidecarAssetData = async (assetSource: string) => {
   }
 };
 
-export const isRemoteSource = (assetSource: string) => {
+export const isRemoteSource = (assetBinaryPath: string) => {
   try {
-    const url = new URL(assetSource);
+    const url = new URL(assetBinaryPath);
     return url.protocol === 'http:' || url.protocol === 'https:';
   }
   catch {

@@ -1235,6 +1235,25 @@ describe('assets push command', () => {
     }), expect.anything(), expect.anything());
   });
 
+  it('should clean up binary and sidecar json when pushing a single local asset with --cleanup', async () => {
+    const assetPath = '/tmp/local-asset.png';
+    const assetJsonPath = '/tmp/local-asset.json';
+    const pngBuffer = makePngBuffer(120, 80);
+    preconditions.canLoadLocalFile(assetPath, pngBuffer);
+    preconditions.canLoadLocalFile(assetJsonPath, JSON.stringify({
+      meta_data: {
+        alt: 'Alt text',
+      },
+    }));
+    const asset = makeMockAsset({ short_filename: 'local-asset.png' });
+    preconditions.canUpsertRemoteAssets([asset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup', assetPath]);
+
+    expect(vol.toJSON()[assetPath]).toBeUndefined();
+    expect(vol.toJSON()[assetJsonPath]).toBeUndefined();
+  });
+
   it('should push a single local asset with inline overrides', async () => {
     const assetPath = '/tmp/local-asset.png';
     const pngBuffer = makePngBuffer(200, 300);
@@ -1306,8 +1325,8 @@ describe('assets push command', () => {
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
     const ext = path.extname(asset.filename);
     const baseName = `${path.basename(asset.filename, ext)}_${asset.id}`;
-    const assetFilePath = path.join(assetsDir, `${baseName}${ext}`);
-    const metadataFilePath = path.join(assetsDir, `${baseName}.json`);
+    const assetBinaryPath = path.join(assetsDir, `${baseName}${ext}`);
+    const assetPath = path.join(assetsDir, `${baseName}.json`);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
 
@@ -1316,8 +1335,8 @@ describe('assets push command', () => {
       return filename.endsWith('.json') || filename.endsWith('.png');
     });
 
-    expect(files).not.toContain(assetFilePath);
-    expect(files).not.toContain(metadataFilePath);
+    expect(files).not.toContain(assetBinaryPath);
+    expect(files).not.toContain(assetPath);
     expect(cleanedFiles).toEqual([]);
   });
 

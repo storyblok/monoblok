@@ -1,6 +1,6 @@
 import { join, parse, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { appendFile, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import { access, appendFile, constants, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
@@ -236,4 +236,14 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
 
 export function importModule(filePath: string) {
   return import(pathToFileURL(filePath).href);
+}
+
+export async function fileExists(path: string) {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  }
+  catch {
+    return false;
+  }
 }

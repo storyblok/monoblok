@@ -93,7 +93,7 @@ storiesCommand
     try {
       const manifestFile = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
       const manifest = await loadManifest(manifestFile);
-      const assetManifestFile = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+      const assetManifestFile = join(resolveCommandPath(directories.assets, fromSpace, basePath), 'manifest.jsonl');
       const maps = {
         assets: await loadAssetMap(assetManifestFile),
         stories: new Map<unknown, string | number>(manifest.map(e => [e.old_id, e.new_id])),

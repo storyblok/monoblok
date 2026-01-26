@@ -288,7 +288,8 @@ export const readLocalAssetFoldersStream = ({
       setTotalFolders?.(jsonFiles.size);
 
       const processed = new Set<number>();
-      while (jsonFiles.size > 0) {
+      let maxIterations = jsonFiles.size * jsonFiles.size;
+      while (jsonFiles.size > 0 && maxIterations-- > 0) {
         for (const file of jsonFiles) {
           try {
             const filePath = join(directoryPath, file);
@@ -318,6 +319,9 @@ export const readLocalAssetFoldersStream = ({
             onFolderError?.(toError(maybeError));
           }
         }
+      }
+      if (jsonFiles.size > 0) {
+        onFolderError?.(new Error(`Unable to resolve folder dependencies for: ${[...jsonFiles].join(', ')}`));
       }
     }
     catch (maybeError) {

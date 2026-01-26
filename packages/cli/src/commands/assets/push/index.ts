@@ -37,7 +37,7 @@ assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .option('--cleanup', 'delete local assets and metadata after a successful push')
+   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
   .option('--asset-token <token>', 'asset token for accessing private assets')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')

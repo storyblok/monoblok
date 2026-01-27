@@ -152,20 +152,20 @@ function updateDOMWithNewBody(
     if (newDomFocusElem) {
       // Add the [data-blok-focused] attribute to the above element
       newDomFocusElem.setAttribute(STORYBLOK_FOCUSED_ATTRIBUTE, 'true');
-      // Use morphdom to update the focused element while preserving state
-      updateWithMorphdom(focusedElem, newDomFocusElem);
+      // Update the focused element while preserving state
+      updateDOM(focusedElem, newDomFocusElem);
       shouldUpdateFullBody = false;
     }
     // If focused element not found in new DOM, fall back to full body update
   }
   if (shouldUpdateFullBody) {
-    // Use morphdom to efficiently morph the DOM while preserving state
-    updateWithMorphdom(currentBody, newBody);
+    // Efficiently update the DOM while preserving state
+    updateDOM(currentBody, newBody);
   }
 }
 /**
  * Returns a unique key for an element based on its data-blok-uid attribute
- * Used by morphdom to match elements between old and new DOM trees
+ * Used to match elements between old and new DOM trees
  */
 function getNodeKey(node: Node) {
   if (node.nodeType === 1) { // Element node
@@ -176,7 +176,7 @@ function getNodeKey(node: Node) {
   }
   return undefined;
 }
-function updateWithMorphdom(currentNode: Node, newNode: Node) {
+function updateDOM(currentNode: Node, newNode: Node) {
   morphdom(currentNode, newNode, {
     getNodeKey,
     onBeforeElUpdated: (fromEl, toEl) => {

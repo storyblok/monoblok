@@ -6,7 +6,7 @@ interface Props {
 const { disableLivePreview } = Astro.props;
 ---
 
-<div class="widget">
+<div class="widget" data-preserve-state>
   <div class="spinner-container">
     <p>Live preview spinner</p>
     <LivePreviewSpinner />

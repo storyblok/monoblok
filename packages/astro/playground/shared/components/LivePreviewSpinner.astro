@@ -1,0 +1,47 @@
+<div class="spinner" style="display: none;" id="spinner">
+  <div id="loading"></div>
+</div>
+<style>
+  #loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255);
+    border-radius: 50%;
+    border-top-color: #17a2b8;
+    animation: spin 1s ease-in-out infinite;
+    -webkit-animation: spin 1s ease-in-out infinite;
+  }
+
+  @keyframes spin {
+    to {
+      -webkit-transform: rotate(360deg);
+    }
+  }
+  @-webkit-keyframes spin {
+    to {
+      -webkit-transform: rotate(360deg);
+    }
+  }
+</style>
+<script>
+  const spinner = document.getElementById('spinner');
+
+  document.addEventListener('storyblok-live-preview-updating', (event) => {
+    if (spinner) {
+      spinner.style.display = 'block'; // show spinner
+
+      // If the event is prevented, hide spinner immediately
+      // Use a microtask to check after all event handlers have run
+      queueMicrotask(() => {
+        if (event.defaultPrevented && spinner) {
+          spinner.style.display = 'none';
+        }
+      });
+    }
+  });
+
+  document.addEventListener('storyblok-live-preview-updated', () => {
+    if (spinner) spinner.style.display = 'none'; // hide spinner
+  });
+</script>

@@ -1,0 +1,27 @@
+---
+import { storyblokEditable } from '@storyblok/astro';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+
+const { blok } = Astro.props;
+---
+
+<div {...storyblokEditable(blok)}>
+  <h2 class="heading">{blok.title}</h2>
+  <div class="grid">
+    {
+      blok.faqs?.map((blok) => {
+        return <StoryblokComponent blok={blok} />;
+      })
+    }
+  </div>
+</div>
+
+<style>
+  .heading {
+    text-align: center;
+    color: var(--color-secondary);
+    font-size: 1.25rem; /* text-xl */
+    line-height: 1.75rem;
+    font-weight: 700; /* bold */
+  }
+</style>

@@ -1,0 +1,73 @@
+---
+import LivePreviewSpinner from './LivePreviewSpinner.astro';
+interface Props {
+  disableLivePreview: boolean;
+}
+const { disableLivePreview } = Astro.props;
+---
+
+<div class="widget" data-preserve-state>
+  <div class="spinner-container">
+    <p>Live preview spinner</p>
+    <LivePreviewSpinner />
+  </div>
+  <h1>Conditional Live Preview</h1>
+  {
+    disableLivePreview ? (
+      <p>
+        <strong>Live preview is disabled for this page via code. The input will not work. </strong>
+      </p>
+    ) : (
+      <p>Live preview is controlled via custom logic in this page.</p>
+    )
+  }
+
+  <label>
+    <input type="checkbox" id="enableLivePreview" checked={!disableLivePreview} disabled={disableLivePreview} />
+    Enable Live Preview
+  </label>
+  <slot />
+</div>
+<script>
+  // Example: Conditionally prevent live preview based on user preference
+  const checkbox = document.getElementById('enableLivePreview') as HTMLInputElement;
+  let updateStartTime: number;
+
+  document.addEventListener('storyblok-live-preview-updating', (event: Event) => {
+    updateStartTime = performance.now();
+
+    if (!checkbox?.checked) {
+      // Prevent the live preview update
+      event.preventDefault();
+      console.log('Live preview update prevented by user preference');
+    } else {
+      console.log('Live preview is updating...');
+    }
+  });
+
+  // Example: Log when updates complete
+  document.addEventListener('storyblok-live-preview-updated', (event: Event) => {
+    const updateEndTime = performance.now();
+    const duration = updateEndTime - updateStartTime;
+    console.log(`Live preview updated! Time taken: ${duration.toFixed(2)}ms`);
+  });
+</script>
+<style>
+  .widget {
+    background: #d1ecf1;
+    border: 2px solid #17a2b8;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    position: fixed;
+    bottom: 0;
+  }
+  .spinner-container {
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

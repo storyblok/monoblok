@@ -45,6 +45,7 @@ export default defineConfig(() => {
             src: [
               'src/components/StoryblokComponent.astro',
               'src/components/FallbackComponent.astro',
+              'src/components/StoryblokServerData.astro',
             ],
             dest: 'components',
           },

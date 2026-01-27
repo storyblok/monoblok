@@ -7,11 +7,7 @@ import { reportsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetLogger } from '../../../lib/logger/logger';
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 vi.spyOn(console, 'info');
-vi.spyOn(console, 'log');
 
 const REPORTS_FILE_DIR = resolveCommandPath('reports', '12345');
 
@@ -29,7 +25,6 @@ describe('reports prune command', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-    vol.reset();
     // Reset logger to prevent test log files from being created
     resetLogger();
   });

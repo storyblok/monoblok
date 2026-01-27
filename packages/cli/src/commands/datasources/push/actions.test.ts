@@ -1,12 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { vol } from 'memfs';
 import { readDatasourcesFiles } from './actions';
 import type { SpaceDatasource } from '../constants';
-import { vol } from 'memfs';
-import { FileSystemError } from '../../../utils';
-
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+import { FileSystemError } from '../../../utils/error/filesystem-error';
 
 // Mock datasources data that matches the SpaceDatasource interface
 const mockDatasource1: SpaceDatasource = {

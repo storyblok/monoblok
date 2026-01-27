@@ -33,27 +33,6 @@ vi.mock('../../api', () => ({
   mapiClient: vi.fn(),
 }));
 
-vi.mock('../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: true,
-          password: 'test-token',
-          region: 'eu',
-        },
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../utils/konsola');
 vi.mock('../../utils', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, any>;
@@ -122,7 +101,7 @@ const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser =
   username: 'testuser',
   friendly_name: 'Test User',
   otp_required: false,
-  access_token: 'test-token',
+  access_token: 'valid-token',
   has_org: false,
   org: {
     name: 'Test Organization',
@@ -549,7 +528,7 @@ describe('createCommand', () => {
 
       expect(mapiClient).toHaveBeenCalledWith({
         token: {
-          accessToken: 'test-token',
+          accessToken: 'valid-token',
         },
         region: 'eu',
       });
@@ -1095,7 +1074,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(getUser).toHaveBeenCalledWith('test-token', 'eu');
+        expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
       });
     });
   });

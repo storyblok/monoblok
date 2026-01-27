@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
@@ -16,28 +17,6 @@ vi.mock('./actions', () => ({
   saveComponentsToFiles: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../../utils/konsola');
 
 describe('pull', () => {
@@ -45,11 +24,11 @@ describe('pull', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     // Reset the option values
-    componentsCommand._optionValues = {};
-    componentsCommand._optionValueSources = {};
+    (componentsCommand as any)._optionValues = {};
+    (componentsCommand as any)._optionValueSources = {};
     for (const command of componentsCommand.commands) {
-      command._optionValueSources = {};
-      command._optionValues = {};
+      (command as any)._optionValueSources = {};
+      (command as any)._optionValues = {};
     }
   });
 
@@ -62,9 +41,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }, {
         name: 'component-name-2',
         display_name: 'Component Name 2',
@@ -72,9 +51,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
 
       session().state = {
@@ -109,9 +88,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       };
 
       session().state = {
@@ -173,9 +152,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
 
       session().state = {
@@ -208,9 +187,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
 
       session().state = {
@@ -243,9 +222,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }, {
         name: 'component-name-2',
         display_name: 'Component Name 2',
@@ -253,9 +232,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
       session().state = {
@@ -286,9 +265,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
       session().state = {

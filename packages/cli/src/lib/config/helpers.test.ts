@@ -15,8 +15,6 @@ vi.mock('node:os', () => ({
   homedir: () => '/home/tester',
 }));
 
-vi.mock('node:fs');
-
 vi.mock('./loader', () => ({
   SUPPORTED_EXTENSIONS: supportedExtensions,
   loadConfig: (options: any) => loadConfigMock(options),

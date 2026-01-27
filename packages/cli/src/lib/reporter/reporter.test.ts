@@ -1,13 +1,6 @@
-import { beforeEach, expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { REPORT_STATUS, Reporter } from './reporter';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-beforeEach(() => {
-  vol.reset();
-});
 
 it('should compute status and write report when enabled', () => {
   const reporterSuccess = new Reporter({ enabled: true, filePath: './success.json' });

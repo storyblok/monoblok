@@ -18,28 +18,6 @@ vi.mock('../../creds', () => ({
   removeAllCredentials: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../utils/konsola');
 
 describe('languagesCommand', () => {
@@ -48,9 +26,9 @@ describe('languagesCommand', () => {
       vi.resetAllMocks();
       vi.clearAllMocks();
       // Reset the option values
-      languagesCommand._optionValues = {};
+      (languagesCommand as any)._optionValues = {};
       for (const command of languagesCommand.commands) {
-        command._optionValues = {};
+        (command as any)._optionValues = {};
       }
     });
     describe('default mode', () => {

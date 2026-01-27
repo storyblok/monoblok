@@ -11,7 +11,6 @@ vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
 vi.spyOn(console, 'info');
-vi.spyOn(console, 'log');
 
 const LOGS_FILE_DIR = resolveCommandPath('logs', '12345');
 

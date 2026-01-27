@@ -13,28 +13,6 @@ vi.mock('../../creds', () => ({
   isAuthorized: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../session', () => {
-  let _cache;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../utils/konsola');
 
 describe('userCommand', () => {
@@ -48,6 +26,8 @@ describe('userCommand', () => {
       id: 1,
       friendly_name: 'John Doe',
       email: 'john.doe@storyblok.com',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
     };
     session().state = {
       isLoggedIn: true,

@@ -1,12 +1,13 @@
 import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
-import chalk from 'chalk';
-import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import { join } from 'node:path';
 import { mapiClient } from '../../../api';
+import { handleAPIError } from '../../../utils/error/api-error';
+import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
 
 export const pushDatasource = async (spaceId: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {

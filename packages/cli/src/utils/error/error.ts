@@ -1,3 +1,4 @@
+import type { LogContext } from '../../lib/logger/logger';
 import { getLogger } from '../../lib/logger/logger';
 import { konsola } from '..';
 import type { FetchError } from '../fetch';
@@ -54,7 +55,7 @@ function handleVerboseError(error: unknown): void {
   }
 }
 
-export function handleError(error: Error | FetchError, verbose = false): void {
+export function handleError(error: Error | FetchError, verbose = false, context?: LogContext): void {
   // Print the message stack if it exists
   if (error instanceof APIError || error instanceof FileSystemError) {
     const messageStack = (error).messageStack;
@@ -81,5 +82,9 @@ export function handleError(error: Error | FetchError, verbose = false): void {
   if (!process.env.VITEST) {
     console.log(''); // Add a line break for readability
   }
-  getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR' });
+  getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
+}
+
+export function logOnlyError(error: Error | FetchError, context?: LogContext): void {
+  getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 }

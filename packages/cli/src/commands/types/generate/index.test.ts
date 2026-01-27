@@ -39,28 +39,6 @@ vi.mock('../../components/push/actions', () => ({
   readComponentsFiles: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../../utils', async () => {
   const actualUtils = await vi.importActual('../../../utils');
   return {

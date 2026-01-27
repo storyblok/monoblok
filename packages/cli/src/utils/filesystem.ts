@@ -1,9 +1,11 @@
 import { join, parse, resolve } from 'node:path';
-import { appendFile, mkdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { access, appendFile, constants, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';
 import type { FileReaderResult } from '../types';
 import filenamify from 'filenamify';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { toError } from './error';
 
 // Default working folder for commands that do not pass --path explicitly.
 export const DEFAULT_STORAGE_DIR = '.storyblok';
@@ -20,7 +22,7 @@ export const getStoryblokGlobalPath = () => {
   return join(homeDirectory, '.storyblok');
 };
 
-export const saveToFile = async (filePath: string, data: string, options?: FileOptions) => {
+export const saveToFile = async (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
   // Get the directory path
   const resolvedPath = parse(filePath).dir;
 
@@ -42,7 +44,7 @@ export const saveToFile = async (filePath: string, data: string, options?: FileO
   }
 };
 
-export const saveToFileSync = (filePath: string, data: string, options?: FileOptions) => {
+export const saveToFileSync = (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
   const resolvedPath = parse(filePath).dir;
 
   // Only attempt to create a directory if there's a directory part
@@ -64,23 +66,26 @@ export const saveToFileSync = (filePath: string, data: string, options?: FileOpt
   }
 };
 
-export const appendToFile = async (filePath: string, data: string, options?: FileOptions) => {
-  const resolvedPath = parse(filePath).dir;
-
-  // Ensure the directory exists
+export const appendToFile = async (filePath: string, data: string, options?: any) => {
+  const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
   try {
-    await mkdir(resolvedPath, { recursive: true });
-  }
-  catch (mkdirError) {
-    handleFileSystemError('mkdir', mkdirError as Error);
-    return;
-  }
-  try {
-    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
     await appendFile(filePath, dataWithNewline, options);
   }
-  catch (writeError) {
-    handleFileSystemError('write', writeError as Error);
+  catch (maybeError) {
+    const error = toError(maybeError);
+    // If the directory doesn't exist, create it and retry
+    if ('code' in error && error.code === 'ENOENT') {
+      const dir = parse(filePath).dir;
+      await mkdir(dir, { recursive: true });
+      // Retry the append
+      await appendFile(filePath, dataWithNewline, options);
+    }
+    else {
+      handleFileSystemError(
+        'syscall' in error && error.syscall === 'mkdir' ? 'mkdir' : 'write',
+        error,
+      );
+    }
   }
 };
 
@@ -113,6 +118,50 @@ export const readFile = async (filePath: string) => {
     handleFileSystemError('read', error as Error);
     return '';
   }
+};
+
+export interface ManifestEntry {
+  old_id: string | number;
+  new_id: string | number;
+  old_filename?: string;
+  new_filename?: string;
+  created_at?: string;
+}
+
+export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[]> => {
+  return readFileImpl(manifestFile, 'utf8')
+    .then(manifest => manifest.split('\n').filter(Boolean).map(entry => JSON.parse(entry)))
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error && error.code === 'ENOENT') {
+        return [];
+      }
+      throw error;
+    });
+};
+
+/**
+ * Saves an array of manifest entries to a JSONL file.
+ */
+export const saveManifest = async (manifestFile: string, entries: ManifestEntry[]): Promise<void> => {
+  const content = entries.map(entry => JSON.stringify(entry)).join('\n');
+  await saveToFile(manifestFile, content ? `${content}\n` : '');
+};
+
+/**
+ * Deduplicates a manifest file by keeping only the latest entry for each `old_id`.
+ */
+export const deduplicateManifest = async (manifestFile: string): Promise<void> => {
+  const entries = await loadManifest(manifestFile);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const uniqueEntries = new Map<string | number, ManifestEntry>();
+  for (const entry of entries) {
+    uniqueEntries.set(entry.old_id, entry);
+  }
+
+  await saveManifest(manifestFile, Array.from(uniqueEntries.values()));
 };
 
 export const resolvePath = (path: string | undefined, folder: string) => {
@@ -160,6 +209,17 @@ export const sanitizeFilename = (filename: string): string => {
   });
 };
 
+export async function readDirectory(directoryPath: string) {
+  try {
+    const files = await readdir(directoryPath);
+    return files;
+  }
+  catch (maybeError) {
+    handleFileSystemError('read', toError(maybeError));
+    return [];
+  }
+}
+
 export async function readJsonFile<T>(filePath: string): Promise<FileReaderResult<T>> {
   try {
     const content = (await readFile(filePath)).toString();
@@ -175,5 +235,15 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
 }
 
 export function importModule(filePath: string) {
-  return import(`file://${filePath}`);
+  return import(pathToFileURL(filePath).href);
+}
+
+export async function fileExists(path: string) {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  }
+  catch {
+    return false;
+  }
 }

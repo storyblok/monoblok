@@ -8,7 +8,6 @@ import * as filesystem from '../../utils/filesystem';
 
 // Mock external dependencies
 vi.mock('node:child_process');
-vi.mock('node:fs');
 vi.mock('node:fs/promises', () => ({
   default: {
     access: vi.fn(),

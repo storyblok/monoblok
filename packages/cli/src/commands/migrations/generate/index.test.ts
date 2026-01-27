@@ -5,9 +5,7 @@ import { generateMigration } from './actions';
 import '../index';
 import { migrationsCommand } from '../command';
 import { fetchComponent } from '../../../commands/components';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+import { getLogFileContents } from '../../__tests__/helpers';
 
 vi.mock('../../../commands/components', () => ({
   fetchComponent: vi.fn(),
@@ -17,22 +15,8 @@ vi.mock('./actions', () => ({
   generateMigration: vi.fn(),
 }));
 
-vi.mock('../../../session', () => ({
-  session: vi.fn(() => ({
-    state: {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    },
-    initializeSession: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
-vi.spyOn(console, 'debug');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'log');
-vi.spyOn(console, 'warn');
 
 const LOG_PREFIX = 'storyblok-migrations-generate-';
 
@@ -50,11 +34,6 @@ const mockComponent = {
     },
   },
 } as const;
-
-const getLogFileContents = () => {
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(LOG_PREFIX))?.[1];
-};
 
 const preconditions = {
   componentExists() {
@@ -78,7 +57,7 @@ describe('migrations generate command', () => {
     await migrationsCommand.parseAsync(['node', 'test', 'generate', 'component-name', '--space', '12345']);
 
     expect(generateMigration).toHaveBeenCalledWith('12345', undefined, expect.objectContaining({ name: 'component-name' }), undefined);
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration generation finished');
     expect(logFile).toContain('.storyblok/migrations/12345/component-name.js');
     expect(console.log).toHaveBeenCalledWith(
@@ -92,7 +71,7 @@ describe('migrations generate command', () => {
     await migrationsCommand.parseAsync(['node', 'test', 'generate', 'component-name', '--space', '12345', '--path', 'custom']);
 
     expect(generateMigration).toHaveBeenCalledWith('12345', 'custom', expect.objectContaining({ name: 'component-name' }), undefined);
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration generation finished');
     expect(logFile).toContain('custom/migrations/12345/component-name.js');
     expect(console.log).toHaveBeenCalledWith(
@@ -112,7 +91,7 @@ describe('migrations generate command', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No component found with name');
   });
 
@@ -126,7 +105,7 @@ describe('migrations generate command', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
-    const logFile = getLogFileContents();
+    const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Please provide the component name as argument');
   });
 });

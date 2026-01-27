@@ -10,30 +10,6 @@ vi.mock('../../creds', () => ({
   removeAllCredentials: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 describe('logoutCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();

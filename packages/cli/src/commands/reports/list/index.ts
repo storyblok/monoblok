@@ -9,7 +9,7 @@ reportsCommand.command('list')
   .action(async () => {
     const { space, path } = reportsCommand.opts();
     const ui = getUI();
-    const reportsPath = resolveCommandPath(directories.report, space, path);
+    const reportsPath = resolveCommandPath(directories.reports, space, path);
     const reportFiles = Reporter.listReportFiles(reportsPath, '.jsonl');
 
     if (reportFiles.length === 0) {

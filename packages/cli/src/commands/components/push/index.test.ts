@@ -7,10 +7,6 @@ import type { SpaceComponent } from '../constants';
 import '../index';
 import { componentsCommand } from '../command';
 
-// Mock filesystem modules
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 vi.mock('./actions', async () => {
   const actual = await vi.importActual('./actions');
   return {
@@ -36,28 +32,6 @@ vi.mock('../actions', () => ({
   fetchComponentPresets: vi.fn().mockResolvedValue([]),
   fetchComponentInternalTags: vi.fn().mockResolvedValue([]),
 }));
-
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
 
 vi.mock('../../../utils/konsola');
 

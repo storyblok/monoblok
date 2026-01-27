@@ -28,28 +28,6 @@ vi.mock('@inquirer/prompts', () => ({
   confirm: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../../utils/konsola');
 
 describe('datasources delete command', () => {
@@ -57,9 +35,9 @@ describe('datasources delete command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     // Reset the option values
-    datasourcesCommand._optionValues = {};
+    (datasourcesCommand as any)._optionValues = {};
     for (const command of datasourcesCommand.commands) {
-      command._optionValues = {};
+      (command as any)._optionValues = {};
     }
   });
 
@@ -83,7 +61,7 @@ describe('datasources delete command', () => {
       region: 'eu',
     };
     vi.mocked(fetchDatasource).mockResolvedValue({
-      id: '45678',
+      id: 45678,
       name: 'Countries',
       slug: 'countries',
       created_at: '2021-01-01',

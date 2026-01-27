@@ -3,7 +3,6 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
-import { mapiClient } from '../../../api';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
@@ -34,8 +33,7 @@ storiesCommand
     }
 
     const { space, path: basePath, verbose } = command.optsWithGlobals();
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -44,15 +42,6 @@ storiesCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const summary = {
       fetchStoryPages: { total: 0, succeeded: 0, failed: 0 },

@@ -1,6 +1,6 @@
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import type { FetchStoriesResult, StoriesQueryParams } from './constants';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 
@@ -15,7 +15,7 @@ export const fetchStories = async (
   params?: StoriesQueryParams,
 ): Promise<FetchStoriesResult | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data, response } = await client.stories.list({
       path: {
         space_id: spaceId,
@@ -43,7 +43,7 @@ export const fetchStory = async (
   storyId: string,
 ) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.stories.get({
       path: {
@@ -68,7 +68,7 @@ export const createStory = async (
   },
 ): Promise<Story | void> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.stories.create({
       path: {
@@ -108,7 +108,7 @@ export const updateStory = async (
   },
 ) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data } = await client.stories.updateStory({
       path: {
         space_id: spaceId,

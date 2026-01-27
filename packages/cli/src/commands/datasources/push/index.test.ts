@@ -6,6 +6,7 @@ import type { SpaceDatasource } from '../constants';
 // Import the main module first to ensure proper initialization
 import '../index';
 import { datasourcesCommand } from '../command';
+import { loggedOutSessionState } from '../../../../test/setup';
 
 vi.mock('./actions', async () => {
   const actual = await vi.importActual('./actions');
@@ -36,6 +37,14 @@ const mockDatasource: SpaceDatasource = {
   entries: [],
 };
 
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
+
 describe('push datasources', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -56,12 +65,6 @@ describe('push datasources', () => {
 
   describe('default mode', () => {
     it('should use target space as from space when --from option is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with datasources for the target space
       vol.fromJSON({
         '.storyblok/datasources/12345/datasources.json': JSON.stringify([mockDatasource]),
@@ -75,12 +78,6 @@ describe('push datasources', () => {
     });
 
     it('should use the --from option when provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with datasources for the source space
       vol.fromJSON({
         '.storyblok/datasources/source-space/datasources.json': JSON.stringify([mockDatasource]),
@@ -94,9 +91,7 @@ describe('push datasources', () => {
     });
 
     it('should throw an error if the user is not logged in', async () => {
-      session().state = {
-        isLoggedIn: false,
-      };
+      preconditions.loggedOut();
 
       await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
 
@@ -110,12 +105,6 @@ describe('push datasources', () => {
     });
 
     it('should throw an error if the space is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       const mockError = new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`);
 
       await datasourcesCommand.parseAsync(['node', 'test', 'push']);
@@ -128,12 +117,6 @@ describe('push datasources', () => {
 
   describe('--separate-files option', () => {
     it('should read from separate files when specified', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with separate files
       vol.fromJSON({
         '.storyblok/datasources/12345/test-datasource.json': JSON.stringify([mockDatasource]),

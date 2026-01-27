@@ -31,9 +31,7 @@ export const loginCommand = program
     // Command options
     const { token, region } = options;
 
-    const { state, updateSession, persistCredentials, initializeSession } = session();
-
-    await initializeSession();
+    const { state, updateSession, persistCredentials } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
       konsola.ok(`You are already logged in. If you want to login with a different account, please logout first.`);

@@ -8,7 +8,7 @@ import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, sha256, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
 import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource } from './utils';
@@ -355,7 +355,7 @@ export type GetAssetFolderTransport = (folderId: number) => Promise<AssetFolder 
 export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
 }): GetAssetFolderTransport => async (folderId) => {
-  const { data, response } = await mapiClient().assetFolders.get({
+  const { data, response } = await getMapiClient().assetFolders.get({
     path: {
       asset_folder_id: folderId,
       space_id: spaceId,
@@ -577,7 +577,7 @@ export type GetAssetTransport = (assetId: number) => Promise<Asset | undefined>;
 
 export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
   async (assetId: number) => {
-    const { data, response } = await mapiClient().assets.get({
+    const { data, response } = await getMapiClient().assets.get({
       path: {
         space_id: spaceId,
         asset_id: assetId,

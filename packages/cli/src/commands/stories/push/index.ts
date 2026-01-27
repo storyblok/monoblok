@@ -5,7 +5,6 @@ import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
-import { mapiClient } from '../../../api';
 import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
@@ -38,8 +37,7 @@ storiesCommand
 
     const { space, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = options.from || space;
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -48,15 +46,6 @@ storiesCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const warnAboutCustomPlugins = (fields: Set<Component['schema']>, story: Story) => {
       const warnedPlugins = new Set<string>();

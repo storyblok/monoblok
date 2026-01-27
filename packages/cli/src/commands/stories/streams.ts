@@ -11,7 +11,7 @@ import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 import { FetchError } from '../../utils/fetch';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 import { getStoryFilename } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
@@ -213,7 +213,7 @@ const getRemoteStory = async ({ spaceId, storyId }: {
   spaceId: string;
   storyId: number;
 }) => {
-  const { data, response } = await mapiClient().stories.get({
+  const { data, response } = await getMapiClient().stories.get({
     path: {
       space_id: spaceId,
       story_id: storyId,

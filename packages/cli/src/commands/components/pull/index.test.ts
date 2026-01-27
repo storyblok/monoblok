@@ -7,6 +7,7 @@ import { colorPalette } from '../../../constants';
 // Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
+import { loggedOutSessionState } from '../../../../test/setup';
 
 vi.mock('./actions', () => ({
   fetchComponents: vi.fn(),
@@ -18,6 +19,14 @@ vi.mock('./actions', () => ({
 }));
 
 vi.mock('../../../utils/konsola');
+
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
 
 describe('pull', () => {
   beforeEach(() => {
@@ -56,12 +65,6 @@ describe('pull', () => {
         internal_tag_ids: [] as string[],
       }];
 
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
@@ -92,12 +95,6 @@ describe('pull', () => {
         internal_tags_list: [{ id: 1, name: 'tag' }],
         internal_tag_ids: ['1'],
       };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
       vi.mocked(fetchComponent).mockResolvedValue(mockResponse);
       await componentsCommand.parseAsync(['node', 'test', 'pull', 'component-name', '--space', '12345']);
       expect(fetchComponent).toHaveBeenCalledWith('12345', 'component-name');
@@ -118,9 +115,7 @@ describe('pull', () => {
     });
 
     it('should throw an error if the user is not logged in', async () => {
-      session().state = {
-        isLoggedIn: false,
-      };
+      preconditions.loggedOut();
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
       expect(konsola.error).toHaveBeenCalledWith('You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.', null, {
         header: true,
@@ -128,12 +123,6 @@ describe('pull', () => {
     });
 
     it('should throw an error if the space is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       const mockError = new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`);
 
       await componentsCommand.parseAsync(['node', 'test', 'pull']);
@@ -156,12 +145,6 @@ describe('pull', () => {
         internal_tags_list: [] as { id?: number; name?: string }[],
         internal_tag_ids: [] as string[],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -191,12 +174,6 @@ describe('pull', () => {
         internal_tags_list: [] as { id?: number; name?: string }[],
         internal_tag_ids: [] as string[],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -237,12 +214,6 @@ describe('pull', () => {
         internal_tag_ids: ['1'],
       }];
 
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--separate-files']);
@@ -269,12 +240,6 @@ describe('pull', () => {
         internal_tags_list: [{ id: 1, name: 'tag' }],
         internal_tag_ids: ['1'],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 

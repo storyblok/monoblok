@@ -6,16 +6,19 @@ import type { SessionState } from '../src/session';
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
-const defaultSessionState: SessionState = {
+export const loggedOutSessionState = (): SessionState => ({
+  isLoggedIn: false,
+});
+export const loggedInSessionState = (): SessionState => ({
   isLoggedIn: true,
   password: 'valid-token',
   region: 'eu',
   envLogin: false,
-};
+});
 const sessionApi = {
-  state: structuredClone(defaultSessionState),
+  state: loggedInSessionState(),
   initializeSession: vi.fn(() => {
-    sessionApi.state = structuredClone(defaultSessionState);
+    sessionApi.state = loggedInSessionState();
   }),
   updateSession: vi.fn((login: string, password: string, region: RegionCode) => {
     sessionApi.state.isLoggedIn = true;
@@ -24,19 +27,13 @@ const sessionApi = {
     sessionApi.state.region = region;
   }),
   persistCredentials: vi.fn().mockResolvedValue(undefined),
-  logout: vi.fn(() => {
-    sessionApi.state.isLoggedIn = false;
-    sessionApi.state.login = undefined;
-    sessionApi.state.password = undefined;
-    sessionApi.state.region = undefined;
-  }),
 };
 
 vi.mock('../src/session.ts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/session')>();
   return {
     ...actual,
-    session: vi.fn(() => sessionApi),
+    session: () => sessionApi,
   };
 });
 
@@ -51,5 +48,4 @@ vi.mock('../src/lib/config/store', async (importOriginal) => {
 
 beforeEach(() => {
   vol.reset();
-  sessionApi.initializeSession();
 });

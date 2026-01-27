@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 
 const mockedComponents = [{
   name: 'component-name',
@@ -65,7 +65,7 @@ afterAll(() => server.close());
 
 describe('pull components actions', () => {
   beforeEach(() => {
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'valid-token',
       },
@@ -117,7 +117,7 @@ describe('pull components actions', () => {
 
   // TODO: Ask team regarding resseting the mapi client options
   /* it('should throw an masked error for invalid token', async () => {
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'invalid-token',
       },

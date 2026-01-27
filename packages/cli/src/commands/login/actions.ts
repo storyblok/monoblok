@@ -33,7 +33,7 @@ export const loginWithToken = async (token: string, region: RegionCode) => {
 
 export const loginWithEmailAndPassword = async (email: string, password: string, region: RegionCode) => {
   try {
-    // TODO: we cant use the mapiClient for now here because token is required for its instantiation
+    // TODO: we cant use the getMapiClient for now here because token is required for its instantiation
     const url = getStoryblokUrl(region);
     return await customFetch<StoryblokLoginResponse>(`${url}/users/login`, {
       method: 'POST',

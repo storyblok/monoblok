@@ -22,31 +22,33 @@ function configsAreEqual(config1: ManagementApiClientConfig, config2: Management
   return JSON.stringify(config1) === JSON.stringify(config2);
 }
 
-export function mapiClient(options?: ManagementApiClientConfig) {
+function applyRateLimit(client: ManagementApiClient) {
+  if (getActiveConfig().api.maxConcurrency > 0) {
+    client.interceptors.request.use(async (request) => {
+      const limit = resolveLimiter();
+      await limit();
+      return request;
+    });
+  }
+}
+
+export function creategetMapiClient(options: ManagementApiClientConfig) {
+  const client = new ManagementApiClient(options);
+  applyRateLimit(client);
+  return client;
+}
+
+export function getMapiClient(options?: ManagementApiClientConfig) {
   if (!instance && options) {
-    instance = new ManagementApiClient(options);
-    if (getActiveConfig().api.maxConcurrency > 0) {
-      instance.interceptors.request.use(async (request) => {
-        const limit = resolveLimiter();
-        await limit();
-        return request;
-      });
-    }
+    instance = creategetMapiClient(options);
     storedConfig = options;
   }
   else if (!instance) {
-    throw new Error('MAPI client not initialized. Call mapiClient with configuration first.');
+    throw new Error('MAPI client not initialized. Call getMapiClient with configuration first.');
   }
   else if (options && storedConfig && !configsAreEqual(options, storedConfig)) {
-    // Create new instance if options are different from stored config
-    instance = new ManagementApiClient(options);
-    if (getActiveConfig().api.maxConcurrency > 0) {
-      instance.interceptors.request.use(async (request) => {
-        const limit = resolveLimiter();
-        await limit();
-        return request;
-      });
-    }
+    // Create new instance if options differ from stored config
+    instance = creategetMapiClient(options);
     storedConfig = options;
   }
   return instance;

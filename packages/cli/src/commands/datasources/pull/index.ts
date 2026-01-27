@@ -3,7 +3,6 @@ import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 
 import { getProgram } from '../../../program';
-import { mapiClient } from '../../../api';
 import { datasourcesCommand } from '../command';
 import type { PullDatasourcesOptions } from './constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
@@ -40,8 +39,7 @@ datasourcesCommand
     // Keep writing under .storyblok unless a command-level --path explicitly overrides it.
     const datasourcesOutputDir = resolveCommandPath(directories.datasources, space, path);
 
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -50,15 +48,6 @@ datasourcesCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinnerDatasources = new Spinner({
       verbose: !isVitest,

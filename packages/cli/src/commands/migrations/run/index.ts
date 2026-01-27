@@ -11,7 +11,6 @@ import { createStoriesStream } from './streams/stories-stream';
 import { readMigrationFiles } from './actions';
 import { MigrationStream } from './streams/migrations-transform';
 import { UpdateStream } from './streams/update-stream';
-import { mapiClient } from '../../../api';
 import { pipeline } from 'node:stream';
 
 migrationsCommand.command('run [componentName]')
@@ -37,8 +36,7 @@ migrationsCommand.command('run [componentName]')
 
     const verbose = program.opts().verbose;
     const { space, path } = migrationsCommand.opts();
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -49,14 +47,6 @@ migrationsCommand.command('run [componentName]')
     }
 
     const { filter, dryRun = false, query, startsWith, publish } = options;
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     try {
       const spinner = ui.createSpinner(`Fetching migration files and stories...`);

@@ -6,7 +6,6 @@ import { fetchLanguages, saveLanguagesToFile } from './actions';
 import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
 import { Spinner } from '@topcli/spinner';
-import { mapiClient } from '../../api';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -32,8 +31,7 @@ languagesCommand
     const { space, path } = languagesCommand.opts();
     const { filename = 'languages', suffix = options.space } = options;
 
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -42,15 +40,6 @@ languagesCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinner = new Spinner({
       verbose: !isVitest,

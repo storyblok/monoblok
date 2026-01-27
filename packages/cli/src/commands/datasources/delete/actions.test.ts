@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { deleteDatasource } from './actions';
 
 // MSW handlers for mocking the datasources API endpoint
@@ -28,7 +28,7 @@ afterAll(() => server.close());
 describe('delete datasources actions', () => {
   beforeEach(() => {
     // Reset and configure the MAPI client before each test
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'valid-token',
       },

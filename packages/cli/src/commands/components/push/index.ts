@@ -9,7 +9,7 @@ import { componentsCommand } from '../command';
 import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 
@@ -33,8 +33,7 @@ componentsCommand
     const fromSpace = options.from || space;
 
     // Check if the user is logged in
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -48,16 +47,9 @@ componentsCommand
     konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
     konsola.br();
 
-    const { password, region } = state;
-
     let requestCount = 0;
 
-    const client = mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
+    const client = getMapiClient();
 
     client.interceptors.request.use((config) => {
       requestCount++;

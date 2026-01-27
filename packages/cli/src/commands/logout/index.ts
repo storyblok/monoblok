@@ -14,8 +14,7 @@ export const logoutCommand = program
 
     const verbose = program.opts().verbose;
     try {
-      const { state, initializeSession } = session();
-      await initializeSession();
+      const { state } = session();
       if (!state.isLoggedIn || !state.password || !state.region) {
         konsola.warn(`You are already logged out. If you want to login, please use the login command.`);
         konsola.br();

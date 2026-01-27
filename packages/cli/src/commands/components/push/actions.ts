@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 
 // Define a type for components data without datasources
 export interface ComponentsData {
@@ -19,7 +19,7 @@ export interface ComponentsData {
 // Component actions
 export const pushComponent = async (space: string, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.components.create({
       path: {
@@ -39,7 +39,7 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
 
 export const updateComponent = async (space: string, componentId: number, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.components.update({
       path: {
@@ -78,7 +78,7 @@ export const upsertComponent = async (
 
 export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.componentFolders.create({
       path: {
@@ -99,7 +99,7 @@ export const pushComponentGroup = async (space: string, componentGroup: SpaceCom
 
 export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.componentFolders.update({
       path: {
@@ -137,7 +137,7 @@ export const upsertComponentGroup = async (
 // Component preset actions
 export const pushComponentPreset = async (space: string, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.presets.create({
       path: {
@@ -158,7 +158,7 @@ export const pushComponentPreset = async (space: string, preset: SpaceComponentP
 
 export const updateComponentPreset = async (space: string, presetId: number, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.presets.update({
       path: {
@@ -197,7 +197,7 @@ export const upsertComponentPreset = async (
 
 export const pushComponentInternalTag = async (space: string, componentInternalTag: SpaceComponentInternalTag): Promise<SpaceComponentInternalTag | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.internalTags.create({
       path: {
@@ -216,7 +216,7 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
 
 export const updateComponentInternalTag = async (space: string, tagId: number, componentInternalTag: SpaceComponentInternalTag): Promise<SpaceComponentInternalTag | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.internalTags.update({
       path: {

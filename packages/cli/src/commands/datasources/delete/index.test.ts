@@ -1,4 +1,3 @@
-import { session } from '../../../session';
 import { konsola } from '../../../utils';
 import { deleteDatasource } from './actions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -42,12 +41,6 @@ describe('datasources delete command', () => {
   });
 
   it('should delete a datasource by id', async () => {
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
-
     vi.mocked(deleteDatasource).mockResolvedValue(undefined);
     await datasourcesCommand.parseAsync(['node', 'test', 'delete', '--space', '12345', '--id', '45678']);
     expect(deleteDatasource).toHaveBeenCalledWith('12345', '45678');
@@ -55,11 +48,6 @@ describe('datasources delete command', () => {
   });
 
   it('should delete a datasource by name', async () => {
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
     vi.mocked(fetchDatasource).mockResolvedValue({
       id: 45678,
       name: 'Countries',
@@ -76,12 +64,6 @@ describe('datasources delete command', () => {
   });
 
   it('should prompt the user with a warning if both name and id are provided', async () => {
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
-
     await datasourcesCommand.parseAsync(['node', 'test', 'delete', 'Countries', '--space', '12345', '--id', '45678']);
     expect(konsola.warn).toHaveBeenCalledWith('Both a datasource name and an id were provided. Only one is required. The id will be used as the source of truth.');
   });

@@ -13,11 +13,8 @@ export const userCommand = program
   .description('Get the current user')
   .action(async () => {
     konsola.title(`${commands.USER}`, colorPalette.USER);
-
     const verbose = program.opts().verbose;
-
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state)) {
       return;

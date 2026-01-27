@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { session } from '../../../session';
 import { konsola } from '../../../utils';
 import { generateStoryblokTypes, generateTypes } from './actions';
 import chalk from 'chalk';
@@ -73,12 +72,6 @@ describe('types generate', () => {
 
   describe('default mode', () => {
     it('should prompt the user if the operation was sucessfull', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
 
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
@@ -98,12 +91,6 @@ describe('types generate', () => {
     });
 
     it('should pass strict mode option to generateTypes when --strict flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -119,12 +106,6 @@ describe('types generate', () => {
     });
 
     it('should pass typePrefix option to generateTypes when --type-prefix flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -155,12 +136,6 @@ describe('types generate', () => {
     });
 
     it('should pass suffix option to generateTypes when --suffix flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -176,12 +151,6 @@ describe('types generate', () => {
     });
 
     it('should pass separateFiles option to generateTypes when --separate-files flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -197,12 +166,6 @@ describe('types generate', () => {
     });
 
     it('should pass customFieldsParser option to generateTypes when --custom-fields-parser flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -218,12 +181,6 @@ describe('types generate', () => {
     });
 
     it('should pass compilerOptions option to generateTypes when --compiler-options flag is used', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');

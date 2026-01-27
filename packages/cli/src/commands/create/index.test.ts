@@ -528,7 +528,7 @@ describe('createCommand', () => {
 
       expect(mapiClient).toHaveBeenCalledWith({
         token: {
-          accessToken: 'valid-token',
+          accessToken: 'test-token',
         },
         region: 'eu',
       });
@@ -1074,7 +1074,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
+        expect(getUser).toHaveBeenCalledWith('test-token', 'eu');
       });
     });
   });

@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { exit } from 'process';
+import { exit, argv, stdin, stdout } from 'process';
+import * as readline from 'readline';
 
 const MAIN_BRANCH = 'main';
 const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
+
+// Parse command line arguments
+const args = argv.slice(2);
+const isDryRun = args.includes('--dry-run') || args.includes('-d');
 const RED = '\x1b[31m';
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -69,8 +74,23 @@ function isUpToDateWithRemote(branch) {
   }
 }
 
-function main() {
+function askConfirmation(question) {
+  const rl = readline.createInterface({ input: stdin, output: stdout });
+
+  return new Promise((resolve) => {
+    rl.question(`${YELLOW}${question} (y/N): ${RESET}`, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
+}
+
+async function main() {
   log('\n🚀 Monoblok Release Script\n', GREEN);
+
+  if (isDryRun) {
+    log('🔍 DRY RUN MODE: No changes will be made\n', YELLOW);
+  }
 
   // Check 1: Are we in a git repository?
   try {
@@ -99,16 +119,20 @@ function main() {
 
   // Check 3: Do we have uncommitted changes?
   if (hasUncommittedChanges()) {
-    log('❌ Error: You have uncommitted changes', RED);
-    log('\n📋 Instructions:', BLUE);
-    log(`  1. Review your changes: ${YELLOW}git status${RESET}`);
-    log(`  2. Commit your changes: ${YELLOW}git add . && git commit -m "your message"${RESET}`);
-    log(`  3. Or stash them: ${YELLOW}git stash${RESET}`);
-    log(`  4. Run the release script again: ${YELLOW}pnpm release${RESET}\n`);
-    exit(1);
+    log('⚠️  Warning: You have uncommitted changes', YELLOW);
+    const proceed = await askConfirmation('Do you want to proceed anyway?');
+    if (!proceed) {
+      log('\n📋 Instructions:', BLUE);
+      log(`  1. Review your changes: ${YELLOW}git status${RESET}`);
+      log(`  2. Commit your changes: ${YELLOW}git add . && git commit -m "your message"${RESET}`);
+      log(`  3. Or stash them: ${YELLOW}git stash${RESET}`);
+      log(`  4. Run the release script again: ${YELLOW}pnpm release${RESET}\n`);
+      exit(1);
+    }
+    log('Proceeding with uncommitted changes...', YELLOW);
+  } else {
+    log('✅ No uncommitted changes', GREEN);
   }
-
-  log('✅ No uncommitted changes', GREEN);
 
   // Check 4: Fetch from remote and check if we're up to date
   fetchFromRemote();
@@ -129,14 +153,27 @@ function main() {
   log('━'.repeat(50), BLUE);
 
   try {
-    execCommand('pnpm nx release --skip-publish');
+    // For pre-release branches, use the branch name as the preid (e.g., alpha, beta, next)
+    // This creates versions like 7.4.0-alpha.0 instead of 7.4.0
+    const dryRunFlag = isDryRun ? ' --dry-run' : '';
+    const preidFlag = isPrerelease ? ` --preid=${currentBranch}` : '';
+    const releaseCommand = `pnpm nx release --skip-publish${preidFlag}${dryRunFlag}`;
+
+    log(`Running: ${releaseCommand}\n`, BLUE);
+    execCommand(releaseCommand);
     log('\n━'.repeat(50), BLUE);
-    log('\n✅ Release completed successfully!', GREEN);
-    log('\n📋 Next steps:', BLUE);
-    log('  1. Go to the GitHub Actions tab');
-    log('  2. Select the "Publish" workflow');
-    log(`  3. Click "Run workflow" and select the ${YELLOW}${currentBranch}${RESET} branch`);
-    log(`  4. Click "Run workflow" to publish to npm${isPrerelease ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
+
+    if (isDryRun) {
+      log('\n✅ Dry run completed successfully!', GREEN);
+      log('\nNo changes were made. Run without --dry-run to perform the actual release.\n', YELLOW);
+    } else {
+      log('\n✅ Release completed successfully!', GREEN);
+      log('\n📋 Next steps:', BLUE);
+      log('  1. Go to the GitHub Actions tab');
+      log('  2. Select the "Publish" workflow');
+      log(`  3. Click "Run workflow" and select the ${YELLOW}${currentBranch}${RESET} branch`);
+      log(`  4. Click "Run workflow" to publish to npm${isPrerelease ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
+    }
   } catch (error) {
     log('\n━'.repeat(50), BLUE);
     log('\n❌ Release command failed', RED);
@@ -145,4 +182,7 @@ function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  log(`\n❌ Unexpected error: ${error.message}`, RED);
+  exit(1);
+});

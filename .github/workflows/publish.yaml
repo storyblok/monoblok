@@ -37,6 +37,26 @@ jobs:
       - name: Print Environment Info
         run: pnpm nx report
 
+      # Workaround for Nx bugs:
+      #   - https://github.com/nrwl/nx/issues/34000
+      #   - https://github.com/nrwl/nx/issues/27822
+      # For prereleases, only publish packages that were bumped in the release commit
+      - name: Detect packages to publish (prerelease)
+        id: detect-packages
+        if: steps.npm-tag.outputs.tag != 'latest'
+        run: |
+          # Extract package names from "- project: <name> <version>" lines in HEAD commit
+          PACKAGES=$(git log -1 --format=%B HEAD | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
+          echo "Packages to publish: $PACKAGES"
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+
       - name: Publish packages
-        run: pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }}
+        run: |
+          if [ "${{ steps.npm-tag.outputs.tag }}" = "latest" ]; then
+            pnpm nx release publish --excludeTaskDependencies --tag=latest
+          elif [ -n "${{ steps.detect-packages.outputs.packages }}" ]; then
+            pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }} --projects=${{ steps.detect-packages.outputs.packages }}
+          else
+            echo "No packages to publish"
+          fi
         shell: bash

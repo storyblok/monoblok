@@ -45,8 +45,10 @@ jobs:
         id: detect-packages
         if: steps.npm-tag.outputs.tag != 'latest'
         run: |
-          # Extract package names from "- project: <name> <version>" lines in HEAD commit
-          PACKAGES=$(git log -1 --format=%B HEAD | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
+          # Find the latest "chore(release): publish" commit and extract package names
+          RELEASE_COMMIT=$(git log --grep='^chore(release): publish' --format=%H -1)
+          echo "Release commit: $RELEASE_COMMIT"
+          PACKAGES=$(git log -1 --format=%B "$RELEASE_COMMIT" | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
           echo "Packages to publish: $PACKAGES"
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 

@@ -5,6 +5,7 @@ import { CommandError, konsola } from '../../utils';
 import { fetchLanguages, saveLanguagesToFile } from './actions';
 import { colorPalette } from '../../constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('./actions', () => ({
   fetchLanguages: vi.fn(),
@@ -19,6 +20,14 @@ vi.mock('../../creds', () => ({
 }));
 
 vi.mock('../../utils/konsola');
+
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
 
 describe('languagesCommand', () => {
   describe('pull', () => {
@@ -46,11 +55,6 @@ describe('languagesCommand', () => {
             },
           ],
         };
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
-        };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
@@ -62,9 +66,7 @@ describe('languagesCommand', () => {
       });
 
       it('should throw an error if the user is not logged in', async () => {
-        session().state = {
-          isLoggedIn: false,
-        };
+        preconditions.loggedOut();
         const mockError = new CommandError(`You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.`);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
         expect(konsola.error).toHaveBeenCalledWith(mockError.message, null, {
@@ -73,12 +75,6 @@ describe('languagesCommand', () => {
       });
 
       it('should throw an error if the space is not provided', async () => {
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
-        };
-
         const mockError = new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`);
         try {
           await languagesCommand.parseAsync(['node', 'test', 'pull']);
@@ -95,11 +91,6 @@ describe('languagesCommand', () => {
         const mockResponse = {
           default_lang_name: 'en',
           languages: [],
-        };
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
         };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
@@ -123,11 +114,6 @@ describe('languagesCommand', () => {
               name: 'French',
             },
           ],
-        };
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
         };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
@@ -155,11 +141,6 @@ describe('languagesCommand', () => {
             },
           ],
         };
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
-        };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filename', 'custom-languages']);
@@ -186,11 +167,6 @@ describe('languagesCommand', () => {
               name: 'French',
             },
           ],
-        };
-        session().state = {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
         };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);

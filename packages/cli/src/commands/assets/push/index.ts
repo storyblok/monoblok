@@ -8,7 +8,6 @@ import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, toError } from '../../../utils/error/error';
-import { mapiClient } from '../../../api';
 import { deduplicateManifest, resolveCommandPath } from '../../../utils/filesystem';
 import {
   makeAppendAssetFolderManifestFSTransport,
@@ -58,8 +57,7 @@ assetsCommand
     const { space: targetSpace, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = (options.from as string | undefined) || targetSpace;
     const assetToken = options.assetToken as string | undefined;
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       process.exitCode = 2;
@@ -71,14 +69,7 @@ assetsCommand
       return;
     }
 
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
+    const { region } = state;
 
     const summaries: [string, Report['summary'][string]][] = [];
     let fatalError = false;

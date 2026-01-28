@@ -4,6 +4,7 @@ import { userCommand } from './';
 import { getUser } from './actions';
 import { konsola } from '../../utils';
 import { session } from '../../session';
+import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('./actions', () => ({
   getUser: vi.fn(),
@@ -14,6 +15,14 @@ vi.mock('../../creds', () => ({
 }));
 
 vi.mock('../../utils/konsola');
+
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
 
 describe('userCommand', () => {
   beforeEach(() => {
@@ -29,11 +38,6 @@ describe('userCommand', () => {
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
     vi.mocked(getUser).mockResolvedValue(mockResponse);
     await userCommand.parseAsync(['node', 'test']);
 
@@ -45,9 +49,8 @@ describe('userCommand', () => {
   });
 
   it('should show an error if the user is not logged in', async () => {
-    session().state = {
-      isLoggedIn: false,
-    };
+    preconditions.loggedOut();
+
     await userCommand.parseAsync(['node', 'test']);
 
     expect(konsola.error).toHaveBeenCalledWith('You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.', null, {
@@ -56,12 +59,6 @@ describe('userCommand', () => {
   });
 
   it('should show an error if the user information cannot be fetched', async () => {
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
-
     const mockError = new Error('Network error');
 
     vi.mocked(getUser).mockRejectedValue(mockError);

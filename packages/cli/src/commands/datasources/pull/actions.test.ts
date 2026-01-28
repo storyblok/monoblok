@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import mockedDatasources from './datasource.mock.json' assert { type: 'json' };
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { vol } from 'memfs';
 
@@ -71,7 +71,7 @@ describe('pull datasources actions', () => {
     // Reset counters before each test
     datasourcesPageRequests = 0;
     entriesPageRequests = 0;
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'valid-token',
       },
@@ -190,7 +190,7 @@ describe('pull datasources actions', () => {
     });
     /*  it('should throw a masked error for invalid token', async () => {
       // Configure client with invalid token
-      mapiClient({
+      getMapiClient({
         token: {
           accessToken: 'invalid-token',
         },

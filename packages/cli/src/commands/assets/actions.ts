@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { basename } from 'node:path';
 import Storyblok from 'storyblok-js-client';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
@@ -17,7 +17,7 @@ export const fetchAssets = async ({ spaceId, params }: {
   params?: AssetsQueryParams;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data, response } = await client.assets.list({
       path: {
         space_id: spaceId,
@@ -81,7 +81,7 @@ export const fetchAssetFolders = async ({ spaceId }: {
   spaceId: string;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data, response } = await client.assetFolders.list({
       path: {
         space_id: spaceId,
@@ -106,7 +106,7 @@ export const createAssetFolder = async (folder: AssetFolderCreate, {
   spaceId: string;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data } = await client.assetFolders.create({
       path: {
         space_id: spaceId,
@@ -134,7 +134,7 @@ export const updateAssetFolder = async (folder: AssetFolderUpdate, {
   spaceId: string;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     await client.assetFolders.update({
       path: {
         asset_folder_id: folder.id,
@@ -156,7 +156,7 @@ const requestAssetUpload = async (asset: AssetUpload, { spaceId }: {
   spaceId: string;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data } = await client.assets.upload({
       path: {
         space_id: spaceId,
@@ -217,7 +217,7 @@ const finishAssetUpload = async (assetId: number, {
   spaceId: string;
 }) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     await client.assets.finalize({
       path: {
         space_id: spaceId,
@@ -324,7 +324,7 @@ export const updateAsset = async (asset: AssetUpdate, fileBuffer: ArrayBuffer | 
       assetWithNewFilename.short_filename = uploadedAsset.short_filename;
     }
 
-    const client = mapiClient();
+    const client = getMapiClient();
     await client.assets.update({
       path: {
         space_id: spaceId,

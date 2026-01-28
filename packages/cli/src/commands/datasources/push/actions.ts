@@ -5,13 +5,13 @@ import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils/error/api-error';
 import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
 
 export const pushDatasource = async (spaceId: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasources.create({
       path: {
@@ -30,7 +30,7 @@ export const pushDatasource = async (spaceId: string, datasource: SpaceDatasourc
 
 export const updateDatasource = async (spaceId: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasources.update({
       path: {
@@ -68,7 +68,7 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
  */
 export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry): Promise<SpaceDatasourceEntry | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasourceEntries.create({
       path: {
@@ -99,7 +99,7 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  */
 export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     await client.datasourceEntries.updateDatasourceEntry({
       path: {
         space_id: spaceId,

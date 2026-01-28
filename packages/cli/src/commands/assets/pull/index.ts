@@ -9,7 +9,6 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, logOnlyError, toError } from '../../../utils/error/error';
-import { mapiClient } from '../../../api';
 import {
   downloadAssetStream,
   fetchAssetFoldersStream,
@@ -40,8 +39,7 @@ assetsCommand
 
     const { space, path: basePath, verbose } = command.optsWithGlobals();
     const assetToken = options.assetToken as string | undefined;
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       process.exitCode = 2;
@@ -53,14 +51,7 @@ assetsCommand
       return;
     }
 
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
+    const { region } = state;
 
     const summary = {
       folderResults: { total: 0, succeeded: 0, failed: 0 },

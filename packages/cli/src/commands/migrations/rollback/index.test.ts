@@ -9,6 +9,7 @@ import type { RollbackData } from './actions';
 import type { StoryContent } from '../../stories/constants';
 import { getLogFileContents } from '../../__tests__/helpers';
 import { session } from '../../../session';
+import { loggedOutSessionState } from '../../../../test/setup';
 
 vi.mock('./actions', () => ({
   readRollbackFile: vi.fn(),
@@ -45,7 +46,9 @@ const mockRollbackData: RollbackData = {
 
 const preconditions = {
   loggedOut() {
-    session().logout();
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
   },
   canLoadRollbackFile() {
     vi.mocked(readRollbackFile).mockResolvedValue(mockRollbackData);

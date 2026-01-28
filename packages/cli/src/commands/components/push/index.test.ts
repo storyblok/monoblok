@@ -6,6 +6,7 @@ import type { SpaceComponent } from '../constants';
 // Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
+import { loggedOutSessionState } from '../../../../test/setup';
 
 vi.mock('./actions', async () => {
   const actual = await vi.importActual('./actions');
@@ -50,6 +51,14 @@ const mockComponent: SpaceComponent = {
   internal_tag_ids: [],
 };
 
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
+
 describe('push', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -70,12 +79,6 @@ describe('push', () => {
 
   describe('default mode', () => {
     it('should use target space as from space when --from option is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with components for the target space
       vol.fromJSON({
         '.storyblok/components/12345/components.json': JSON.stringify([mockComponent]),
@@ -89,12 +92,6 @@ describe('push', () => {
     });
 
     it('should use the --from option when provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with components for the source space
       vol.fromJSON({
         '.storyblok/components/source-space/components.json': JSON.stringify([mockComponent]),
@@ -108,9 +105,7 @@ describe('push', () => {
     });
 
     it('should throw an error if the user is not logged in', async () => {
-      session().state = {
-        isLoggedIn: false,
-      };
+      preconditions.loggedOut();
 
       await componentsCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
 
@@ -124,12 +119,6 @@ describe('push', () => {
     });
 
     it('should throw an error if the space is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       const mockError = new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`);
 
       await componentsCommand.parseAsync(['node', 'test', 'push']);
@@ -142,12 +131,6 @@ describe('push', () => {
 
   describe('--separate-files option', () => {
     it('should read from separate files when specified', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       // Create mock filesystem with separate files
       vol.fromJSON({
         '.storyblok/components/12345/test-component.json': JSON.stringify([mockComponent]),

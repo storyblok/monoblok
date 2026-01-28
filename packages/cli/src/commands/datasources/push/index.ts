@@ -5,7 +5,6 @@ import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
-import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
@@ -30,8 +29,7 @@ datasourcesCommand
     const fromSpace = options.from || space;
 
     // Check if the user is logged in
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -44,15 +42,6 @@ datasourcesCommand
     }
     konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     try {
       // Read datasources data from source space (from option or target space)

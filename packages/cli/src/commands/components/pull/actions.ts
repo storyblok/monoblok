@@ -4,12 +4,12 @@ import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_F
 import type { SaveComponentsOptions } from './constants';
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 
 // Components
 export const fetchComponents = async (spaceId: string): Promise<SpaceComponent[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.components.list({
       path: {
@@ -27,7 +27,7 @@ export const fetchComponents = async (spaceId: string): Promise<SpaceComponent[]
 
 export const fetchComponent = async (spaceId: string, componentName: string): Promise<SpaceComponent | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.components.list({
       path: {
@@ -49,7 +49,7 @@ export const fetchComponent = async (spaceId: string, componentName: string): Pr
 // Component group actions
 export const fetchComponentGroups = async (spaceId: string): Promise<SpaceComponentFolder[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.componentFolders.list({
       path: {
@@ -67,7 +67,7 @@ export const fetchComponentGroups = async (spaceId: string): Promise<SpaceCompon
 // Component preset actions
 export const fetchComponentPresets = async (spaceId: string): Promise<SpaceComponentPreset[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.presets.list({
       path: {
@@ -85,7 +85,7 @@ export const fetchComponentPresets = async (spaceId: string): Promise<SpaceCompo
 // Component internal tags
 export const fetchComponentInternalTags = async (spaceId: string): Promise<SpaceComponentInternalTag[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.internalTags.list({
       path: {

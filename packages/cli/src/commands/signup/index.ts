@@ -14,10 +14,7 @@ export const signupCommand = program
     konsola.title(`${commands.SIGNUP}`, colorPalette.SIGNUP);
     // Global options
     const verbose = program.opts().verbose;
-
-    const { state, initializeSession } = session();
-
-    await initializeSession();
+    const { state } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
       konsola.ok(`You are already logged in. If you want to signup with a different account, please logout first.`);

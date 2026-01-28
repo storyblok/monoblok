@@ -8,7 +8,6 @@ import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetch
 import { componentsCommand } from '../command';
 import chalk from 'chalk';
 import { getProgram } from '../../../program';
-import { mapiClient } from '../../../api';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
@@ -39,8 +38,7 @@ componentsCommand
     // `--path` overrides remain command-scoped; fallback keeps the historic .storyblok output.
     const componentsOutputDir = resolveCommandPath(directories.components, space, path);
 
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -49,15 +47,6 @@ componentsCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinnerGroups = new Spinner({
       verbose: !isVitest,

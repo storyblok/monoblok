@@ -1,16 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCommand } from './';
 import { handleError, konsola, requireAuthentication, toHumanReadable } from '../../utils';
 import { confirm, input, select } from '@inquirer/prompts';
 
 import { createSpace } from '../spaces';
 import type { Space } from '../spaces/actions';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import { getUser } from '../user/actions';
 import type { StoryblokUser } from '../../types';
 import { templates } from './constants';
 import { regionCodes } from '../../constants';
+import type { SessionState } from '../../session';
+import { session } from '../../session';
+import { loggedInSessionState, loggedOutSessionState } from '../../../test/setup';
 
 // Mock all dependencies
 vi.mock('./actions', () => ({
@@ -30,7 +33,7 @@ vi.mock('../user/actions', () => ({
 }));
 
 vi.mock('../../api', () => ({
-  mapiClient: vi.fn(),
+  getMapiClient: vi.fn(),
 }));
 
 vi.mock('../../utils/konsola');
@@ -112,6 +115,19 @@ const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser =
   ...overrides,
 });
 
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+  hasSessionState(state: Partial<SessionState>) {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = { ...loggedInSessionState(), ...state };
+    });
+  },
+};
+
 describe('createCommand', () => {
   describe('--token option', () => {
     it('should use provided token, skip space creation, and update env', async () => {
@@ -139,12 +155,7 @@ describe('createCommand', () => {
     });
 
     it('should work with --token even when not logged in', async () => {
-      // Mock session to simulate not logged in
-      const { session } = await import('../../session');
-      const mockSession = session();
-      mockSession.state.isLoggedIn = false;
-      mockSession.state.password = undefined;
-
+      preconditions.loggedOut();
       vi.mocked(generateProject).mockResolvedValue(undefined);
       vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
       vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -165,13 +176,6 @@ describe('createCommand', () => {
   beforeEach(async () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-
-    // Reset session state to default values
-    const { session } = await import('../../session');
-    const mockSession = session();
-    mockSession.state.isLoggedIn = true;
-    mockSession.state.password = 'test-token';
-    mockSession.state.region = 'eu';
 
     // Set up mock implementations
     vi.mocked(requireAuthentication).mockReturnValue(true);
@@ -526,9 +530,9 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
-      expect(mapiClient).toHaveBeenCalledWith({
+      expect(getMapiClient).toHaveBeenCalledWith({
         token: {
-          accessToken: 'test-token',
+          accessToken: 'valid-token',
         },
         region: 'eu',
       });
@@ -883,21 +887,8 @@ describe('createCommand', () => {
     });
 
     describe('non-EU region space creation behavior', () => {
-      beforeEach(async () => {
-        // Mock session to return non-EU region by updating the existing mock
-        const sessionModule = await import('../../session');
-        const mockSession = sessionModule.session();
-        mockSession.state.region = 'us'; // Change to non-EU region
-      });
-
-      afterEach(async () => {
-        // Reset back to EU region for other tests
-        const sessionModule = await import('../../session');
-        const mockSession = sessionModule.session();
-        mockSession.state.region = 'eu';
-      });
-
       it('should automatically use organization for users with org in non-EU region', async () => {
+        preconditions.hasSessionState({ region: 'ca' });
         const mockUser = createMockUser({
           has_org: true,
           has_partner: false,
@@ -931,6 +922,7 @@ describe('createCommand', () => {
       });
 
       it('should warn and exit for users without org in non-EU region', async () => {
+        preconditions.hasSessionState({ region: 'ca' });
         const mockUser = createMockUser({
           has_org: false,
           has_partner: false,
@@ -1074,7 +1066,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(getUser).toHaveBeenCalledWith('test-token', 'eu');
+        expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
       });
     });
   });
@@ -1259,11 +1251,7 @@ describe('createCommand', () => {
 
     describe('session region fallback behavior', () => {
       it('should use US session region as fallback when no --region provided with --token', async () => {
-        // Mock session to return US region
-        const { session } = await import('../../session');
-        const mockSession = session();
-        mockSession.state.region = 'us';
-
+        preconditions.hasSessionState({ region: 'us' });
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -1273,17 +1261,10 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token']);
 
         expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us');
-
-        // Reset to EU for other tests
-        mockSession.state.region = 'eu';
       });
 
       it('should use CA session region as fallback when no --region provided with --skip-space', async () => {
-        // Mock session to return CA region
-        const { session } = await import('../../session');
-        const mockSession = session();
-        mockSession.state.region = 'ca';
-
+        preconditions.hasSessionState({ region: 'ca' });
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -1293,17 +1274,10 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
 
         expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
-
-        // Reset to EU for other tests
-        mockSession.state.region = 'eu';
       });
 
       it('should prioritize user-provided --region over session region', async () => {
-        // Mock session to return US region
-        const { session } = await import('../../session');
-        const mockSession = session();
-        mockSession.state.region = 'us';
-
+        preconditions.hasSessionState({ region: 'us' });
         vi.mocked(generateProject).mockResolvedValue(undefined);
         vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
         vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
@@ -1314,9 +1288,6 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token', '--region', 'ap']);
 
         expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'ap');
-
-        // Reset to EU for other tests
-        mockSession.state.region = 'eu';
       });
     });
   });

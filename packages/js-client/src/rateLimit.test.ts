@@ -402,7 +402,7 @@ describe('rateLimit', () => {
     });
 
     it('should use default rate limit of 3 for MAPI single story request', () => {
-      // Simulates: mapiClient.get(`spaces/{SPACE_ID}/stories/{STORY_ID}`)
+      // Simulates: getMapiClient.get(`spaces/{SPACE_ID}/stories/{STORY_ID}`)
       const url = '/spaces/123/stories/456';
       const params: ISbStoriesParams = {};
       const config = {

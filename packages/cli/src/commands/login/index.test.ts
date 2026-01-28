@@ -7,6 +7,7 @@ import { regions } from '../../constants';
 import chalk from 'chalk';
 import { session } from '../../session';
 import type { User } from '../user/actions';
+import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('./actions', () => ({
   loginWithEmailAndPassword: vi.fn(),
@@ -46,11 +47,19 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
 }));
 
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
+
 describe('loginCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-    session().logout();
+    preconditions.loggedOut();
   });
 
   describe('default interactive login', () => {
@@ -63,9 +72,6 @@ describe('loginCommand', () => {
     });
 
     describe('login-with-email strategy', () => {
-      beforeEach(() => {
-        vi.resetAllMocks();
-      });
       it('should prompt the user for email and password when login-with-email is selected', async () => {
         vi.mocked(select)
           .mockResolvedValueOnce('login-with-email') // For login strategy

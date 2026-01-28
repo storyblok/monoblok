@@ -10,6 +10,8 @@ import { FileTransport } from './lib/logger/logger-transport-file';
 import { ConsoleTransport } from './lib/logger/logger-transport-console';
 import { resolveCommandPath } from './utils/filesystem';
 import { directories } from './constants';
+import { session } from './session';
+import { getMapiClient } from './api';
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -68,6 +70,18 @@ export function getProgram(): Command {
       const resolvedConfig = await resolveConfig(targetCommand, ancestry);
       applyConfigToCommander(ancestry, resolvedConfig);
       setActiveConfig(resolvedConfig);
+
+      // Initialize mapiClient
+      const { state, initializeSession } = session();
+      await initializeSession();
+      if (state.password) {
+        getMapiClient({
+          token: {
+            accessToken: state.password,
+          },
+          region: state.region ?? resolvedConfig.region,
+        });
+      }
 
       // Step 2: Setup logging, UI, and reporting with resolved config
       const options = targetCommand.optsWithGlobals();

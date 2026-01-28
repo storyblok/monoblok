@@ -6,7 +6,6 @@ import { colorPalette, commands } from '../../../constants';
 import chalk from 'chalk';
 import { Spinner } from '@topcli/spinner';
 import type { DeleteDatasourceOptions } from './constants';
-import { mapiClient } from '../../../api';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
 
@@ -38,21 +37,12 @@ datasourcesCommand
     const verbose = datasourcesCommand.parent?.opts().verbose;
 
     // Authenticate user
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
     if (!requireAuthentication(state, verbose)) { return; }
     if (!space) {
       handleError(new CommandError('Please provide the space as argument --space YOUR_SPACE_ID.'), verbose);
       return;
     }
-
-    const { password, region } = state;
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinner = new Spinner({
       verbose: !isVitest,

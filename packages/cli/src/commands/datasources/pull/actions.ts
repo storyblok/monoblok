@@ -1,5 +1,5 @@
 import { handleAPIError, handleFileSystemError } from '../../../utils';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { join, resolve } from 'node:path';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
@@ -49,7 +49,7 @@ export const fetchDatasourceEntries = async (
   datasourceId: number,
 ): Promise<SpaceDatasourceEntry[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     return await fetchAllPages(
       (page: number) => client.datasourceEntries.list({
         path: {
@@ -72,7 +72,7 @@ export const fetchDatasourceEntries = async (
 
 export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource[] | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const datasources = await fetchAllPages(
       (page: number) => client.datasources.list({
         path: {
@@ -104,7 +104,7 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
 
 export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data } = await client.datasources.list({
       path: {
         space_id: spaceId,

@@ -1,4 +1,4 @@
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils';
 
 /**
@@ -8,7 +8,7 @@ import { handleAPIError } from '../../../utils';
  */
 export async function deleteDatasource(spaceId: string, id: string): Promise<void> {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     // Call the Storyblok Management API to delete the datasource by id
     await client.datasources.delete({
       path: {

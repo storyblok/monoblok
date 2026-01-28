@@ -8,7 +8,6 @@ import { session } from '../../../session';
 import { fetchComponent } from '../../../commands/components';
 import { migrationsCommand } from '../command';
 import { generateMigration } from './actions';
-import { mapiClient } from '../../../api';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
@@ -38,8 +37,7 @@ migrationsCommand
       return;
     }
 
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -48,15 +46,6 @@ migrationsCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {

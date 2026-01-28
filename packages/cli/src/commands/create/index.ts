@@ -10,7 +10,6 @@ import path from 'node:path';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate } from '../spaces';
 import { Spinner } from '@topcli/spinner';
-import { mapiClient } from '../../api';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
 
@@ -83,7 +82,6 @@ export const createCommand = program
     }
 
     const { state, initializeSession } = session();
-    await initializeSession();
 
     // Declare these outside to be used throughout the function
     let password: string | undefined;
@@ -117,16 +115,9 @@ export const createCommand = program
         handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
         return;
       }
-
-      mapiClient({
-        token: {
-          accessToken: password,
-        },
-        region,
-      });
     }
     else if (state.isLoggedIn && state.password) {
-      // If using --token or --skip-space but user is logged in, still get their credentials for mapiClient
+      // If using --token or --skip-space but user is logged in, still get their credentials for getMapiClient
       password = state.password;
       if (state.region) {
         region = state.region;

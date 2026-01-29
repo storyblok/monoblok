@@ -242,8 +242,8 @@ export const makeCreateStoryAPITransport = ({ spaceId }: {
     story: {
       ...newStoryData,
       content: {
-        // @ts-expect-error Our types are wrong.
-        component: content?.component,
+        _uid: '',
+        component: '__tmp__',
       },
     },
     publish: 0,

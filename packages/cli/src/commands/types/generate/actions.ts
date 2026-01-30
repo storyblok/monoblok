@@ -8,6 +8,13 @@ import { join, resolve } from 'node:path';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';
 import type { ComponentPropertySchema } from '../../../types/schemas';
+import {
+  createComponentFile,
+  createContentTypesFile,
+  createDatasourcesFile,
+  generateComponentImports,
+  generateStoryblokImports,
+} from './utils';
 
 export interface ComponentGroupsAndNamesObject {
   componentGroups: Map<string, Set<string>>;
@@ -161,6 +168,10 @@ const getComponentPropertiesTypeAnnotations = async (
   spaceData: SpaceComponentsData,
   customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<JSONSchema['properties']> => {
+  // Handle null/undefined schema
+  if (!component.schema || typeof component.schema !== 'object') {
+    return {};
+  }
   return Object.entries(component.schema).reduce(async (accPromise, [key, value]) => {
     const acc = await accPromise;
 
@@ -315,7 +326,7 @@ export const generateTypes = async (
   options: GenerateTypesOptions = {
     strict: false,
   },
-) => {
+): Promise<string | Array<{ name: string; content: string }> | undefined> => {
   try {
     const typeDefs = [...DEFAULT_TYPEDEFS_HEADER];
     const storyblokPropertyTypes = new Set<string>();
@@ -389,6 +400,12 @@ export const generateTypes = async (
       const enumValues: string[] | undefined = datasource.entries
         ?.filter(d => d.value)
         .map(d => d.value!);
+
+      // Handle potential null/undefined slug
+      if (!datasource.slug) {
+        return null;
+      }
+
       const type = getDatasourceTypeTitle(datasource.slug);
       // Check for conflicts with existing component types
       if (allComponentTypes.includes(type)) {
@@ -402,7 +419,12 @@ export const generateTypes = async (
       };
       return datasourceSchema;
     });
-    const resolvedDatasourcesSchema = await Promise.all(datasourcesSchema);
+    const resolvedDatasourcesSchemaWithNulls = await Promise.all(datasourcesSchema);
+    const resolvedDatasourcesSchema = resolvedDatasourcesSchemaWithNulls.filter((s): s is JSONSchema => s !== null);
+
+    // Track which schemas are components, datasources, or other types
+    const componentTitles = new Set(resolvedComponentsSchema.map(s => s.title).filter(Boolean));
+    const datasourceTitles = new Set(resolvedDatasourcesSchema.map(s => s.title).filter(Boolean));
 
     const contentTypeSchema: JSONSchema = {
       $id: `#/ContentType`,
@@ -418,33 +440,63 @@ export const generateTypes = async (
 
     const result = await Promise.all(schemas.map(async (schema) => {
     // Use the title as the interface name
-      return await compile(schema, schema.title || schema.$id.replace('#/', ''), {
-        additionalProperties: !options.strict,
-        bannerComment: '',
-        ...compilerOptions,
-      });
+      const title = schema.title || schema.$id.replace('#/', '');
+      return {
+        title,
+        content: await compile(schema, title, {
+          additionalProperties: !options.strict,
+          bannerComment: '',
+          ...compilerOptions,
+        }),
+        isComponent: componentTitles.has(title),
+        isDatasource: datasourceTitles.has(title),
+      };
     }));
 
     // Add imports for Storyblok types if needed
-    const imports: string[] = [];
+    const imports = generateStoryblokImports(storyblokPropertyTypes, STORY_TYPE);
 
-    // Check if ISbStoryData is needed
-    const needsISbStoryData = storyblokPropertyTypes.has(STORY_TYPE);
-    if (needsISbStoryData) {
-      imports.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
-      storyblokPropertyTypes.delete(STORY_TYPE); // Remove it so it's not included in the next import
+    // If separate files, return an array of individual type definitions
+    if (options.separateFiles) {
+      const files: Array<{ name: string; content: string }> = [];
+
+      // Get datasource and ContentType schemas
+      const datasourceResults = result.filter(r => r.isDatasource);
+      const componentResults = result.filter(r => r.isComponent);
+
+      // Create datasources file if there are any
+      const datasourcesFile = createDatasourcesFile(datasourceResults, typeDefs);
+      if (datasourcesFile) {
+        files.push(datasourcesFile);
+      }
+
+      // Create content-types file if ContentType exists
+      // Pass contentTypeBloks to properly generate the union type with imports
+      const contentTypesFile = createContentTypesFile(
+        contentTypeBloks,
+        typeDefs,
+      );
+      if (contentTypesFile) {
+        files.push(contentTypesFile);
+      }
+
+      // For each component, determine which imports it needs and create the file
+      for (const componentResult of componentResults) {
+        const componentImports = generateComponentImports(
+          componentResult.content,
+          componentResult.title,
+          storyblokPropertyTypes,
+          datasourceResults,
+          componentResults,
+          STORY_TYPE,
+        );
+        files.push(createComponentFile(componentResult, typeDefs, componentImports));
+      }
+      return files;
     }
 
-    if (storyblokPropertyTypes.size > 0) {
-      const typeImports = Array.from(storyblokPropertyTypes).map((type) => {
-        const pascalType = toPascalCase(type);
-        return `Storyblok${pascalType}`;
-      });
-
-      imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
-    }
-
-    const finalTypeDef = [...typeDefs, ...imports, ...result];
+    // Otherwise, return a single combined file
+    const finalTypeDef = [...typeDefs, ...imports, ...result.map(r => r.content)];
 
     return [
       ...finalTypeDef,
@@ -455,15 +507,28 @@ export const generateTypes = async (
   }
 };
 
-export const saveTypesToComponentsFile = async (space: string, typedefString: string, options: Pick<GenerateTypesOptions, 'path' | 'filename'>) => {
-  const { filename = DEFAULT_COMPONENT_FILENAME, path } = options;
+export const saveTypesToComponentsFile = async (
+  space: string,
+  typedefData: string | Array<{ name: string; content: string }>,
+  options: Pick<GenerateTypesOptions, 'path' | 'filename' | 'separateFiles'>,
+) => {
+  const { filename = DEFAULT_COMPONENT_FILENAME, path, separateFiles } = options;
   // Ensure we always include the components/space folder structure regardless of custom path
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'types', space)
     : resolvePath(path, `types/${space}`);
 
   try {
-    await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedefString);
+    if (separateFiles && Array.isArray(typedefData)) {
+      // Save each component type to a separate file
+      for (const { name, content } of typedefData) {
+        await saveToFile(join(resolvedPath, `${name}.d.ts`), content);
+      }
+    }
+    else if (typeof typedefData === 'string') {
+      // Save all types to a single file
+      await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedefData);
+    }
   }
   catch (error) {
     handleFileSystemError('write', error as Error);

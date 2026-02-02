@@ -1,8 +1,8 @@
 import type { ISbStoriesParams } from './interfaces';
-import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS, StoryblokContentVersion } from './constants';
+import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS } from './constants';
 
 export interface RateLimitConfig {
-  // User-provided rate limit (applies only to uncached requests)
+  // User-provided rate limit
   userRateLimit?: number;
   // Rate limit determined from server response headers
   serverHeadersRateLimit?: number;
@@ -16,7 +16,8 @@ export interface RateLimitHeaders {
 }
 
 /**
- * Rate limit tiers for uncached requests based on per_page parameter
+ * Rate limit tiers based on per_page parameter
+ * These limits apply to all CDN API requests regardless of version
  */
 const UNCACHED_RATE_LIMITS = {
   SINGLE_OR_SMALL: 50, // Single entries or listings ≤25 entries
@@ -27,7 +28,6 @@ const UNCACHED_RATE_LIMITS = {
 
 /**
  * Maximum rate limit that should never be exceeded
- * Also used for cached requests (version=published or missing)
  */
 const MAX_RATE_LIMIT = 1000;
 
@@ -35,13 +35,6 @@ const MAX_RATE_LIMIT = 1000;
  * Default rate limit for Management API (when using oauthToken)
  */
 export const MANAGEMENT_API_DEFAULT_RATE_LIMIT = 3;
-
-/**
- * Determines if a request is uncached (draft version)
- */
-function isUncachedRequest(params: ISbStoriesParams): boolean {
-  return params.version === StoryblokContentVersion.DRAFT;
-}
 
 /**
  * Determines if a request is for a single story based on URL and params
@@ -57,10 +50,10 @@ function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
 }
 
 /**
- * Calculates the appropriate rate limit tier for uncached requests
- * based on the number of entries requested (per_page parameter)
+ * Calculates the appropriate rate limit tier based on the per_page parameter
+ * These tiers match the backend rate limiting logic
  */
-function getUncachedRateLimitTier(perPage: number): number {
+function getRateLimitTier(perPage: number): number {
   if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
     return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
   }
@@ -77,11 +70,14 @@ function getUncachedRateLimitTier(perPage: number): number {
 
 /**
  * Determines the appropriate rate limit for a request based on:
- * - Request version (cached vs uncached)
  * - Request type (single vs listing)
  * - Number of entries (per_page)
  * - User configuration
  * - Server headers
+ *
+ * Rate limits are based on per_page regardless of version (draft/published).
+ * The backend enforces per_page-based rate limits on ALL requests before
+ * checking the cache, so cached requests still count against rate limits.
  *
  * When url and params are not provided (Management API), uses the defaultRateLimit
  * as the fallback instead of automatic tier calculation.
@@ -96,8 +92,7 @@ export function determineRateLimit(
   // 1. User-provided rate limit (highest priority, applies to all requests)
   // 2. Server-provided rate limit (from response headers)
   // 3. Default rate limit (Management API)
-  // 4. For cached requests (published), use the maximum rate limit
-  // 5. Automatic tier calculation (CDN)
+  // 4. Automatic tier calculation based on per_page (CDN)
 
   if (config.userRateLimit !== undefined) {
     return Math.min(config.userRateLimit, MAX_RATE_LIMIT);
@@ -112,21 +107,20 @@ export function determineRateLimit(
     return defaultRateLimit;
   }
 
-  // For cached requests, use the maximum rate limit
-  if (params && !isUncachedRequest(params)) {
-    return MAX_RATE_LIMIT;
+  // For CDN API, calculate based on request type and per_page
+  // At this point, url and params should be defined for CDN API calls
+  if (!url || !params) {
+    return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
   }
 
-  // For CDN API, calculate based on request type
-  // At this point, url and params should be defined for CDN API calls
-  // Single story requests or listings without per_page
-  if (isSingleStoryRequest(url!, params!)) {
+  // Single story requests
+  if (isSingleStoryRequest(url, params)) {
     return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
   }
 
   // For listings, determine tier based on per_page
-  const perPage = params!.per_page || DEFAULT_PER_PAGE;
-  return getUncachedRateLimitTier(perPage);
+  const perPage = params.per_page || DEFAULT_PER_PAGE;
+  return getRateLimitTier(perPage);
 }
 
 /**

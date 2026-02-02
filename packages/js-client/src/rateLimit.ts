@@ -19,7 +19,7 @@ export interface RateLimitHeaders {
  * Rate limit tiers based on per_page parameter
  * These limits apply to all CDN API requests regardless of version
  */
-const UNCACHED_RATE_LIMITS = {
+const RATE_LIMIT_TIERS = {
   SINGLE_OR_SMALL: 50, // Single entries or listings ≤25 entries
   MEDIUM: 15, // 26-50 entries
   LARGE: 10, // 51-75 entries
@@ -55,16 +55,16 @@ function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
  */
 function getRateLimitTier(perPage: number): number {
   if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
-    return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
+    return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
   }
   else if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
-    return UNCACHED_RATE_LIMITS.MEDIUM;
+    return RATE_LIMIT_TIERS.MEDIUM;
   }
   else if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
-    return UNCACHED_RATE_LIMITS.LARGE;
+    return RATE_LIMIT_TIERS.LARGE;
   }
   else {
-    return UNCACHED_RATE_LIMITS.VERY_LARGE;
+    return RATE_LIMIT_TIERS.VERY_LARGE;
   }
 }
 
@@ -110,12 +110,12 @@ export function determineRateLimit(
   // For CDN API, calculate based on request type and per_page
   // At this point, url and params should be defined for CDN API calls
   if (!url || !params) {
-    return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
+    return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
   }
 
   // Single story requests
   if (isSingleStoryRequest(url, params)) {
-    return UNCACHED_RATE_LIMITS.SINGLE_OR_SMALL;
+    return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
   }
 
   // For listings, determine tier based on per_page

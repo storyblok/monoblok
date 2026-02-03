@@ -1,5 +1,5 @@
 ---
-name: sb-mcp-stories
+name: sb-mcp-mapi-stories
 description: Working with stories via the Storyblok MAPI MCP
 ---
 

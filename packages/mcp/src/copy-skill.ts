@@ -9,7 +9,7 @@ interface SkillMapping {
 }
 
 const skillMappings: SkillMapping[] = [
-  { command: 'mapi-stories', skill: 'sb-mcp-stories' },
+  { command: 'mapi-stories', skill: 'sb-mcp-mapi-stories' },
 ];
 
 const [commandName, targetPath] = process.argv.slice(2);

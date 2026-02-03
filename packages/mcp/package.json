@@ -1,0 +1,75 @@
+{
+  "name": "@storyblok/mcp",
+  "type": "module",
+  "version": "0.0.1",
+  "private": false,
+  "packageManager": "pnpm@10.10.0",
+  "description": "Storyblok MCPs",
+  "author": "",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./copy-skill": {
+      "types": "./dist/copy-skill.d.ts",
+      "import": "./dist/copy-skill.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "storyblok-mcp": "./dist/storyblok-mcp.js"
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@ivotoby/openapi-mcp-server": "^1.12.4",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@storyblok/openapi": "workspace:*",
+    "dotenv": "^16.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@types/node": "^24.1.0",
+    "eslint": "^9.39.2",
+    "tsdown": "^0.20.1",
+    "tsx": "^4.21.0"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**"
+        ]
+      }
+    }
+  }
+}

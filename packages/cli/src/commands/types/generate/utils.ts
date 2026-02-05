@@ -191,7 +191,6 @@ export function createDatasourcesFile(
 /**
  * Creates a file object for content types
  * @param contentTypeBloks - Set of component type names that are content types
- * @param componentResults - Array of all component type results
  * @param typeDefs - Header comments for the file
  * @returns File object or null if no content types
  */

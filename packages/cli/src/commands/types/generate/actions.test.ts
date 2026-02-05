@@ -385,10 +385,9 @@ describe('generate types actions', () => {
     expect(Array.isArray(result)).toBe(true);
     if (Array.isArray(result)) {
       // Should have datasources file
-      const datasourcesFile = result.find(f => f.name === 'datasources');
+      const datasourcesFile = result.find(f => f.name === 'datasource-types');
       expect(datasourcesFile).toBeDefined();
       if (datasourcesFile) {
-        console.log(datasourcesFile.content);
         expect(datasourcesFile.content).toContain('CountriesDataSource');
         expect(datasourcesFile.content).toContain('"us"');
         expect(datasourcesFile.content).toContain('"ca"');

@@ -219,7 +219,7 @@ describe('generateComponentImports', () => {
     expect(imports.some(i => i.includes('StoryblokAsset') && i.includes('from \'../storyblok.d.ts\''))).toBe(true);
 
     // Should have datasource import
-    expect(imports.some(i => i.includes('CountriesDataSource') && i.includes('from \'./datasources.d.ts\''))).toBe(true);
+    expect(imports.some(i => i.includes('CountriesDataSource') && i.includes('from \'./datasource-types.d.ts\''))).toBe(true);
 
     // Should have component import
     expect(imports.some(i => i.includes('import type { Hero } from \'./Hero.d.ts\''))).toBe(true);
@@ -293,7 +293,7 @@ describe('createDatasourcesFile', () => {
     const file = createDatasourcesFile(datasourceResults, typeDefs);
 
     expect(file).not.toBeNull();
-    expect(file?.name).toBe('datasources');
+    expect(file?.name).toBe('datasource-types');
     expect(file?.content).toContain('// Header comment');
     expect(file?.content).toContain('export type CountriesDataSource = "usa" | "uk";');
     expect(file?.content).toContain('export type CategoriesDataSource = "tech" | "news";');

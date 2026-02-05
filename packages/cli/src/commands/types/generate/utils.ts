@@ -38,6 +38,15 @@ interface TypeResult {
   isDatasource: boolean;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasIdentifier(content: string, identifier: string): boolean {
+  const regex = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, 'g');
+  return regex.test(content);
+}
+
 /**
  * Detects which Storyblok types are used in a component's content
  * @param content - The generated type definition content
@@ -79,7 +88,7 @@ export function detectUsedDatasourceTypes(
   datasourceResults: TypeResult[],
 ): string[] {
   return datasourceResults
-    .filter(ds => content.includes(ds.title))
+    .filter(ds => hasIdentifier(content, ds.title))
     .map(ds => ds.title);
 }
 
@@ -96,7 +105,7 @@ export function detectReferencedComponents(
   componentResults: TypeResult[],
 ): string[] {
   return componentResults
-    .filter(c => c.title !== currentTitle && content.includes(c.title))
+    .filter(c => c.title !== currentTitle && hasIdentifier(content, c.title))
     .map(c => c.title);
 }
 
@@ -147,7 +156,7 @@ export function generateComponentImports(
   // Check if this component uses any datasource types
   const usedDatasourceTypes = detectUsedDatasourceTypes(componentContent, datasourceResults);
   if (usedDatasourceTypes.length > 0) {
-    imports.push(`import type { ${usedDatasourceTypes.join(', ')} } from './datasources.d.ts';`);
+    imports.push(`import type { ${usedDatasourceTypes.join(', ')} } from './datasource-types.d.ts';`);
   }
 
   // Check if this component references other components
@@ -185,7 +194,7 @@ export function createDatasourcesFile(
     ...datasourceResults.map(r => r.content),
   ].join('\n');
 
-  return { name: 'datasources', content };
+  return { name: 'datasource-types', content };
 }
 
 /**

@@ -147,19 +147,30 @@ describe('rateLimit', () => {
       });
     });
 
-    describe('cached requests', () => {
-      it('should use 1000 req/s for published version when no config provided', () => {
+    describe('published requests (same rate limits as draft)', () => {
+      it('should use per_page-based rate limit for published version', () => {
         const params: ISbStoriesParams = {
           version: StoryblokContentVersion.PUBLISHED,
         };
+        // Default per_page is 25, so rate limit should be 50
         const result = determineRateLimit('/cdn/stories', params);
-        expect(result).toBe(1000);
+        expect(result).toBe(50);
       });
 
-      it('should use 1000 req/s when version is not specified (defaults to published)', () => {
+      it('should use per_page-based rate limit when version is not specified', () => {
         const params: ISbStoriesParams = {};
+        // Default per_page is 25, so rate limit should be 50
         const result = determineRateLimit('/cdn/stories', params);
-        expect(result).toBe(1000);
+        expect(result).toBe(50);
+      });
+
+      it('should use 6 req/s for published with per_page 100', () => {
+        const params: ISbStoriesParams = {
+          version: StoryblokContentVersion.PUBLISHED,
+          per_page: 100,
+        };
+        const result = determineRateLimit('/cdn/stories', params);
+        expect(result).toBe(6);
       });
 
       it('should apply user rate limit to published version', () => {
@@ -184,9 +195,10 @@ describe('rateLimit', () => {
         expect(result).toBe(75);
       });
 
-      it('should prefer user rate limit over default 1000 for published', () => {
+      it('should prefer user rate limit over per_page-based limit for published', () => {
         const params: ISbStoriesParams = {
           version: StoryblokContentVersion.PUBLISHED,
+          per_page: 100, // Would be 6 req/s
         };
         const config = {
           userRateLimit: 10,

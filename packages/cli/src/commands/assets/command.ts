@@ -5,6 +5,4 @@ const program = getProgram();
 
 export const assetsCommand = program
   .command(commands.ASSETS)
-  .description(`Manage your space's assets`)
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'base path to store assets (default .storyblok)');
+  .description(`Manage your space's assets`);

@@ -37,18 +37,21 @@ function createCommandHierarchy(): CommandHierarchy {
   registerGlobalOptions(root);
 
   const components = root
-    .command('components')
-    .option('--path <path>', 'Components working directory');
+    .command('components');
 
   const pull = components
     .command('pull')
     .option('--separate-files', 'Separate output per component', false)
     .option('--filename <filename>', 'Filename used for exports', 'components')
-    .option('--suffix <suffix>', 'Optional filename suffix');
+    .option('--suffix <suffix>', 'Optional filename suffix')
+    .option('-s, --space <space>', 'space ID')
+    .option('-p, --path <path>', 'path for file storage');
 
   const push = components
     .command('push')
-    .option('--dry-run', 'Preview component push', false);
+    .option('--dry-run', 'Preview component push', false)
+    .option('-s, --space <space>', 'space ID')
+    .option('-p, --path <path>', 'path for file storage');
 
   return { root, components, pull, push };
 }
@@ -146,7 +149,7 @@ describe('config resolver', () => {
 
     const { root, components, pull } = createCommandHierarchy();
     root.setOptionValueWithSource('region', 'cn', 'cli');
-    components.setOptionValueWithSource('path', './from-cli', 'cli');
+    pull.setOptionValueWithSource('path', './from-cli', 'cli');
     pull.setOptionValueWithSource('separateFiles', true, 'cli');
 
     const resolved = await resolveConfig(pull, [root, components, pull]);
@@ -198,14 +201,118 @@ describe('config resolver', () => {
 
     const defaultConfig = createDefaultResolvedConfig();
     expect(root.getOptionValue('region')).toBe(defaultConfig.region);
-    expect(components.getOptionValue('path')).toBeUndefined();
+    expect(pull.getOptionValue('path')).toBeUndefined();
     expect(pull.getOptionValue('suffix')).toBeUndefined();
 
     applyConfigToCommander(ancestry, resolved);
 
     expect(root.getOptionValue('region')).toBe('us');
-    expect(components.getOptionValue('path')).toBe('.storyblok');
+    expect(pull.getOptionValue('path')).toBe('.storyblok');
     expect(pull.getOptionValue('suffix')).toBe('resolved');
+  });
+
+  it('coerces numeric space to string in resolved config', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        space: 12345,
+        modules: {
+          components: {},
+        },
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.space).toBe('12345');
+    expect(typeof resolved.space).toBe('string');
+  });
+
+  it('preserves string space as-is', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        space: '67890',
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.space).toBe('67890');
+  });
+
+  it('resolves global space when no module override exists', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        space: 111,
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.space).toBe('111');
+  });
+
+  it('module-level space overrides global space', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        space: 111,
+        modules: {
+          components: {
+            space: 222,
+          },
+        },
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.space).toBe('222');
+  });
+
+  it('subcommand-level space overrides module-level space', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        space: 111,
+        modules: {
+          components: {
+            space: 222,
+            pull: {
+              space: 333,
+            },
+          },
+        },
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.space).toBe('333');
+  });
+
+  it('warns on unknown module key', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        modules: {
+          components: { path: '.storyblok' },
+          unknownModule: { foo: 'bar' },
+        },
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    await resolveConfig(pull, [root, components, pull]);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Unknown module "unknownModule"'),
+    );
+
+    warnSpy.mockRestore();
   });
 });
 
@@ -342,12 +449,13 @@ describe('deeply nested command structures', () => {
     registerGlobalOptions(root);
 
     const components = root
-      .command('components')
-      .option('--path <path>', 'Components working directory');
+      .command('components');
 
     const pull = components
       .command('pull')
-      .option('--filename <filename>', 'Filename', 'components');
+      .option('--filename <filename>', 'Filename', 'components')
+      .option('-s, --space <space>', 'space ID')
+      .option('-p, --path <path>', 'path for file storage');
 
     const show = pull
       .command('show')

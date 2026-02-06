@@ -7,6 +7,4 @@ const program = getProgram(); // Get the shared singleton instance
 export const migrationsCommand = program
   .command(commands.MIGRATIONS)
   .alias('mig')
-  .description(`Manage your space's migrations`)
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/migrations');
+  .description(`Manage your space's migrations`);

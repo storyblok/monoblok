@@ -1,6 +1,6 @@
+import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
-import { getProgram } from '../../../program';
 import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
@@ -10,20 +10,21 @@ import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from '.
 import { fetchDatasources } from '../pull/actions';
 import { Spinner } from '@topcli/spinner';
 
-const program = getProgram(); // Get the shared singleton instance
-
-datasourcesCommand
+const pushCmd = datasourcesCommand
   .command('push [datasourceName]')
   .description(`Push your space's datasources schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the datasources before pushing')
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
-  .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions) => {
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+pushCmd
+  .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions, command: Command) => {
     konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
-    // Global options
-    const verbose = program.opts().verbose;
-    const { space, path } = datasourcesCommand.opts();
+
+    const { space, path, verbose } = command.optsWithGlobals();
 
     const { filter } = options;
     const fromSpace = options.from || space;

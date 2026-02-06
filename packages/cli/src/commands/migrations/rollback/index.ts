@@ -1,6 +1,6 @@
+import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
-import { getProgram } from '../../../program';
 import { migrationsCommand } from '../command';
 import { session } from '../../../session';
 import { readRollbackFile } from './actions';
@@ -9,10 +9,13 @@ import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import chalk from 'chalk';
 
-migrationsCommand.command('rollback [migrationFile]')
+const rollbackCmd = migrationsCommand.command('rollback [migrationFile]')
   .description('Rollback a migration')
-  .action(async (migrationFile: string) => {
-    const program = getProgram();
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+rollbackCmd
+  .action(async (migrationFile: string, _options: unknown, command: Command) => {
     const ui = getUI();
     const logger = getLogger();
 
@@ -24,10 +27,7 @@ migrationsCommand.command('rollback [migrationFile]')
         : 'Rolling back migration...',
     );
 
-    const verbose = program.opts().verbose;
-
-    // Command options
-    const { space, path } = migrationsCommand.opts();
+    const { space, path, verbose } = command.optsWithGlobals();
 
     logger.info('Migration rollback started', {
       migrationFile,

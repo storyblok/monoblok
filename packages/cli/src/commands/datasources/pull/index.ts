@@ -1,8 +1,8 @@
+import type { Command } from 'commander';
 import { Spinner } from '@topcli/spinner';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 
-import { getProgram } from '../../../program';
 import { datasourcesCommand } from '../command';
 import type { PullDatasourcesOptions } from './constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
@@ -12,22 +12,20 @@ import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 
-const program = getProgram();
-
-datasourcesCommand
+const pullCmd = datasourcesCommand
   .command('pull [datasourceName]')
   .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
   .option('--sf, --separate-files', 'Argument to create a single file for each datasource')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. datasources.<suffix>.json)')
-  .description('Pull datasources from your space')
-  .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions) => {
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage')
+  .description('Pull datasources from your space');
+
+pullCmd
+  .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions, command: Command) => {
     konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
 
-    // Global options
-    const verbose = program.opts().verbose;
-
-    // Command options
-    const { space, path } = datasourcesCommand.opts();
+    const { space, path, verbose } = command.optsWithGlobals();
     const {
       separateFiles = false,
       suffix,

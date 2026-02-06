@@ -1,13 +1,18 @@
+import type { Command } from 'commander';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { logsCommand } from '../command';
 import { FileTransport } from '../../../lib/logger/logger-transport-file';
 import { directories } from '../../../constants';
 
-logsCommand.command('list')
+const listCmd = logsCommand.command('list')
   .description('List logs')
-  .action(async () => {
-    const { space, path } = logsCommand.opts();
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+listCmd
+  .action(async (_options: unknown, command: Command) => {
+    const { space, path } = command.optsWithGlobals();
     const ui = getUI();
     const logsPath = resolveCommandPath(directories.logs, space, path);
     const logFiles = FileTransport.listLogFiles(logsPath);

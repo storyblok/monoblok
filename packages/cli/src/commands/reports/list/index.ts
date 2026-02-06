@@ -1,13 +1,18 @@
+import type { Command } from 'commander';
 import { directories } from '../../../constants';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { Reporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { reportsCommand } from '../command';
 
-reportsCommand.command('list')
+const listCmd = reportsCommand.command('list')
   .description('List reports')
-  .action(async () => {
-    const { space, path } = reportsCommand.opts();
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+listCmd
+  .action(async (_options: unknown, command: Command) => {
+    const { space, path } = command.optsWithGlobals();
     const ui = getUI();
     const reportsPath = resolveCommandPath(directories.reports, space, path);
     const reportFiles = Reporter.listReportFiles(reportsPath, '.jsonl');

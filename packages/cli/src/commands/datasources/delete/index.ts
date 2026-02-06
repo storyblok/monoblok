@@ -1,3 +1,4 @@
+import type { Command } from 'commander';
 import { datasourcesCommand } from '../command';
 import { deleteDatasource } from './actions';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
@@ -8,15 +9,18 @@ import { Spinner } from '@topcli/spinner';
 import type { DeleteDatasourceOptions } from './constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
-
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
-datasourcesCommand
+const deleteCmd = datasourcesCommand
   .command('delete [name]')
   .description('Delete a datasource from your space by name or id')
   .option('--id <id>', 'Delete by datasource id instead of name')
   .option('--force', 'Skip confirmation prompt for deletion (useful for CI)')
-  .action(async (name: string, options: DeleteDatasourceOptions) => {
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+deleteCmd
+  .action(async (name: string, options: DeleteDatasourceOptions, command: Command) => {
     konsola.title(
       `${commands.DATASOURCES}`,
       colorPalette.DATASOURCES,
@@ -33,8 +37,7 @@ datasourcesCommand
     }
 
     // Get global options
-    const { space } = datasourcesCommand.opts();
-    const verbose = datasourcesCommand.parent?.opts().verbose;
+    const { space, verbose } = command.optsWithGlobals();
 
     // Authenticate user
     const { state } = session();

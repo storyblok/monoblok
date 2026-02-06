@@ -2,6 +2,8 @@ import type { GlobalConfig, ResolvedCliConfig } from './types';
 
 const BASE_GLOBAL_CONFIG: GlobalConfig = {
   region: undefined,
+  space: undefined,
+  path: undefined,
   api: {
     maxRetries: 3,
     maxConcurrency: 6,

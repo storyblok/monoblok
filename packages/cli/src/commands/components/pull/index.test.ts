@@ -76,10 +76,9 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, {
-        path: undefined,
+      }, expect.objectContaining({
         separateFiles: false,
-      });
+      }));
       expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/components.json`)}`);
     });
 
@@ -104,7 +103,7 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, { separateFiles: true, path: undefined });
+      }, expect.objectContaining({ separateFiles: true }));
     });
 
     it('should throw an error if the component is not found', async () => {
@@ -156,7 +155,7 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, { path: '/path/to/components', separateFiles: false });
+      }, expect.objectContaining({ path: '/path/to/components', separateFiles: false }));
       expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`/path/to/components/components/12345/components.json`)}`);
     });
   });
@@ -185,7 +184,7 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, { filename: 'custom', separateFiles: false });
+      }, expect.objectContaining({ filename: 'custom', separateFiles: false }));
       expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/custom.json`)}`);
     });
   });
@@ -224,7 +223,7 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, { separateFiles: true, path: undefined });
+      }, expect.objectContaining({ separateFiles: true }));
       expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/`)}`);
     });
 
@@ -251,7 +250,7 @@ describe('pull', () => {
         presets: [],
         internalTags: [],
         datasources: [],
-      }, { separateFiles: true, filename: 'custom' });
+      }, expect.objectContaining({ separateFiles: true, filename: 'custom' }));
       expect(konsola.warn).toHaveBeenCalledWith(`The --filename option is ignored when using --separate-files`);
     });
   });

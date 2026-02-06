@@ -44,12 +44,24 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const { accessToken, region = 'eu', baseUrl, headers = {}, throwOnError = false } = config;
   const client: Client = createClient(
     createConfig({
-      baseUrl: baseUrl || getRegionBaseUrl(region, 'https'),
+      baseUrl: baseUrl || getRegionBaseUrl(region),
       headers: {
         'Content-Type': 'application/json',
         ...headers,
       },
       throwOnError,
+      kyOptions: {
+        // Enable `throwHttpErrors` to make retry work, even if `throwOnError`
+        // is `false`. The client's error handling will still work because it
+        // catches `HTTPError`.
+        throwHttpErrors: true,
+        timeout: 30_000,
+        retry: {
+          limit: 12,
+          backoffLimit: 20_000,
+          jitter: true,
+        },
+      },
     }),
   );
 

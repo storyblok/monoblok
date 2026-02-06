@@ -39,7 +39,8 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@storyblok/region-helper": "workspace:*"
+    "@storyblok/region-helper": "workspace:*",
+    "ky": "^1.14.3"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.92.3",
@@ -48,7 +49,7 @@
     "@storyblok/openapi": "workspace:*",
     "@types/node": "^24.1.0",
     "eslint": "^9.39.2",
-    "msw": "^2.12.8",
+    "msw": "^2.12.9",
     "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
     "vitest": "^4.0.18"

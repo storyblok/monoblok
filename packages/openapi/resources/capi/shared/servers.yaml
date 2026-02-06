@@ -1,0 +1,10 @@
+- url: https://api.storyblok.com
+  description: Base URL for spaces created in the EU
+- url: https://api-us.storyblok.com
+  description: Base URL for spaces created in the US
+- url: https://api-ca.storyblok.com
+  description: Base URL for spaces created in Canada
+- url: https://api-ap.storyblok.com
+  description: Base URL for spaces created in Australia
+- url: https://app.storyblok.cn
+  description: Base URL for spaces created in China

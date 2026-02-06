@@ -90,6 +90,7 @@ Use these scripts to quickly seed QA spaces with predictable data for manual tes
 | Scenario | Seeds |
 | --- | --- |
 | `./scenarios/has-stories.sh [--space <spaceId>]` | Seeds 3 stories backed by a minimal component (source space). |
+| `./scenarios/has-nested-stories.sh [--space <spaceId>]` | Seeds 1 story folder and 2 nested stories inside that folder. |
 | `./scenarios/has-private-assets.sh [--space <spaceId>]` | Seeds 1 public asset and 1 private asset (source space). |
 | `./scenarios/has-nested-asset-folders.sh [--space <spaceId>]` | Seeds 2 nested asset folders and 3 public assets (2 assets inside folders). |
 

@@ -1,0 +1,112 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/stories/the-story-object
+# See: https://www.storyblok.com/docs/api/management/stories/the-story-object
+type: object
+description: Common Storyblok story fields shared by Content Delivery and Management APIs
+required:
+  - id
+  - name
+  - slug
+  - full_slug
+  - uuid
+  - created_at
+  - updated_at
+  - content
+  - is_folder
+  - is_startpage
+  - parent_id
+  - group_id
+  - alternates
+  - tag_list
+  - position
+  - published
+properties:
+  id:
+    type: integer
+    description: Numeric id of the story
+    readOnly: true
+  name:
+    type: string
+    description: The complete name provided for the story
+  parent_id:
+    type: integer
+    description: ID of the parent folder
+  group_id:
+    type: string
+    format: uuid
+    description: Group ID (UUID string), shared between stories defined as alternates
+  alternates:
+    type: array
+    description: An array containing objects that provide basic data of the stories defined as alternates of the current story
+    items:
+      $ref: ./story-alternate.yaml
+  created_at:
+    type: string
+    format: date-time
+    description: Creation date yyyy-MM-dd'T'HH:mm:ssZ
+  sort_by_date:
+    type: string
+    format: date
+    nullable: true
+    description: Date defined in the story's entry configuration YYYY-mm-dd
+  tag_list:
+    type: array
+    description: Array of tag names
+    items:
+      type: string
+  updated_at:
+    type: string
+    format: date-time
+    description: Latest update date yyyy-MM-dd'T'HH:mm:ssZ
+  published_at:
+    type: string
+    format: date-time
+    nullable: true
+    description: Latest publishing date yyyy-MM-dd'T'HH:mm:ssZ
+  uuid:
+    type: string
+    format: uuid
+    description: Generated UUID string
+    readOnly: true
+  is_folder:
+    type: boolean
+    description: true if the instance constitutes a folder
+  content:
+    $ref: ./story-content.yaml
+  published:
+    type: boolean
+    description: true if a story is currently published, even if it has unpublished changes
+  slug:
+    type: string
+    description: The slug specific for the story
+  path:
+    type: string
+    nullable: true
+    description: Value of the real path defined in the story's entry configuration (usually required for the Visual Editor)
+  full_slug:
+    type: string
+    description: The full slug of the story, combining the parent folder(s) and the designated story slug
+  is_startpage:
+    type: boolean
+    description: true if the story is defined as root for the folder
+  meta_data:
+    type: object
+    nullable: true
+    description: Object to store non-editable data that is exclusively maintained with the Management API
+  first_published_at:
+    type: string
+    format: date-time
+    nullable: true
+    description: First publishing date yyyy-MM-dd'T'HH:mm:ssZ
+  translated_slugs:
+    type: array
+    description: Array of translated slug objects (if the app Translatable Slugs is installed)
+    items:
+      $ref: ./story-translated-slug.yaml
+  localized_paths:
+    type: array
+    description: An array of translated path objects
+    items:
+      $ref: ./story-localized-path.yaml
+  position:
+    type: integer
+    description: Numeric representation of the story's position in the folder

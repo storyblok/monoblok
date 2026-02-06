@@ -1,0 +1,22 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/stories/the-story-object
+# See: https://www.storyblok.com/docs/api/management/stories/the-story-object
+type: object
+description: Localized path object (from Translatable Slugs app)
+required:
+  - path
+  - lang
+properties:
+  path:
+    type: string
+    description: Value of the real path defined in the story's entry configuration
+  name:
+    type: string
+    nullable: true
+    description: The complete name provided for the story
+  lang:
+    type: string
+    description: Language code of the current language
+  published:
+    type: boolean
+    nullable: true
+    description: true if a story is currently published, even if it has unpublished changes

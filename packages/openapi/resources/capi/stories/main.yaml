@@ -1,0 +1,445 @@
+openapi: 3.0.0
+info:
+  title: Storyblok Stories API
+  version: 1.0.0
+  description: API for delivering Storyblok stories
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v2/cdn/stories:
+    get:
+      operationId: getAll
+      summary: Retrieve Multiple Stories
+      description: Returns an array of all stories. The API response can be filtered using the query parameters, including specific filter queries.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: A preview or public access token
+          schema:
+            type: string
+        - name: version
+          in: query
+          required: false
+          description: Version to retrieve
+          schema:
+            type: string
+            enum:
+              - published
+              - draft
+            default: published
+        - name: cv
+          in: query
+          required: false
+          description: Cached version Unix timestamp for cache invalidation
+          schema:
+            type: integer
+        - name: starts_with
+          in: query
+          required: false
+          description: Filter by full_slug to only return stories starting with the given value (e.g., "blog/posts")
+          schema:
+            type: string
+        - name: from_release
+          in: query
+          required: false
+          description: Access a story version in a specific release by providing the release ID
+          schema:
+            type: string
+        - name: search_term
+          in: query
+          required: false
+          description: Search for any string in stories (name, slug/full slug, or content object)
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          required: false
+          description: Number of stories per page (default 25, max 100)
+          schema:
+            type: integer
+            default: 25
+            maximum: 100
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: resolve_links
+          in: query
+          required: false
+          description: Resolve link fields (story, url, or link)
+          schema:
+            type: string
+            enum:
+              - story
+              - url
+              - link
+        - name: resolve_links_level
+          in: query
+          required: false
+          description: Resolve up to specified levels of links (1 or 2)
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 2
+            default: 1
+        - name: resolve_relations
+          in: query
+          required: false
+          description: Resolve referenced stories (comma-separated list, e.g., "page.author,page.categories")
+          schema:
+            type: string
+        - name: resolve_level
+          in: query
+          required: false
+          description: Force resolve second-level relations when first level reaches limit
+          schema:
+            type: integer
+            enum:
+              - 2
+        - name: resolve_assets
+          in: query
+          required: false
+          description: Resolve asset metadata including custom metadata (1 to enable)
+          schema:
+            type: integer
+            enum:
+              - 0
+              - 1
+        - name: fallback_lang
+          in: query
+          required: false
+          description: Define custom fallback language for untranslated fields (e.g., "es_co")
+          schema:
+            type: string
+        - name: language
+          in: query
+          required: false
+          description: Retrieve translated story version (language code)
+          schema:
+            type: string
+        - name: content_type
+          in: query
+          required: false
+          description: Retrieve stories of a specific content type (e.g., "page")
+          schema:
+            type: string
+        - name: by_slugs
+          in: query
+          required: false
+          description: Retrieve stories by comma-separated full_slug. Use wildcards with * (e.g., "posts/my-third-post,posts/my-second-post" or "posts/*")
+          schema:
+            type: string
+        - name: excluding_slugs
+          in: query
+          required: false
+          description: Exclude stories by comma-separated full_slug. Use wildcards with * (e.g., "posts/my-third-post,posts/my-second-post" or "posts/*")
+          schema:
+            type: string
+        - name: by_uuids
+          in: query
+          required: false
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string
+          schema:
+            type: string
+        - name: by_uuids_ordered
+          in: query
+          required: false
+          description: Retrieve specific stories by providing their UUIDs as a comma-separated string (response order matches UUID order)
+          schema:
+            type: string
+        - name: excluding_ids
+          in: query
+          required: false
+          description: Exclude specific stories by providing their IDs as a comma-separated string
+          schema:
+            type: string
+        - name: with_tag
+          in: query
+          required: false
+          description: Filter by specific tag(s) by providing their slug(s). Multiple tags can be provided as a comma-separated string (OR operator)
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          required: false
+          description: Sort stories by a specific property (e.g., "created_at:desc", "content.price:asc:float")
+          schema:
+            type: string
+        - name: in_workflow_stages
+          in: query
+          required: false
+          description: Retrieve stories in particular workflow stages by providing a comma-separated list of workflow stage IDs
+          schema:
+            type: string
+        - name: filter_query
+          in: query
+          required: false
+          description: Filter queries to filter stories by specific attributes
+          schema:
+            type: string
+        - name: level
+          in: query
+          required: false
+          description: Retrieve stories located in the specified folder level (1 = root folder, 2 = top-level folders, etc.)
+          schema:
+            type: integer
+        - name: is_startpage
+          in: query
+          required: false
+          description: Filter by stories defined as root for the folder
+          schema:
+            type: integer
+            enum:
+              - 0
+              - 1
+        - name: first_published_at_gt
+          in: query
+          required: false
+          description: Retrieve stories first published after the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: first_published_at_lt
+          in: query
+          required: false
+          description: Retrieve stories first published before the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: published_at_gt
+          in: query
+          required: false
+          description: Retrieve stories published after the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: published_at_lt
+          in: query
+          required: false
+          description: Retrieve stories published before the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: updated_at_gt
+          in: query
+          required: false
+          description: Retrieve stories updated after the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: updated_at_lt
+          in: query
+          required: false
+          description: Retrieve stories updated before the specified date (Format yyyy-MM-dd HH:mm)
+          schema:
+            type: string
+        - name: excluding_fields
+          in: query
+          required: false
+          description: Exclude specific fields of a content type by providing the field names as a comma-separated string (e.g., "body,meta_description")
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of stories
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - stories
+                properties:
+                  stories:
+                    type: array
+                    description: Array of story objects
+                    items:
+                      $ref: '#/components/schemas/story'
+                  cv:
+                    type: integer
+                    description: Cache version Unix timestamp
+                  rels:
+                    type: array
+                    description: Array of resolved stories (when resolve_relations is used)
+                    items:
+                      $ref: '#/components/schemas/story'
+                  links:
+                    type: array
+                    description: Array of resolved links (when resolve_links is used)
+                    items:
+                      type: object
+                  rel_uuids:
+                    type: array
+                    description: Array of UUIDs of referenced stories (if limit exceeded)
+                    items:
+                      type: string
+                  link_uuids:
+                    type: array
+                    description: Array of UUIDs of linked stories (if limit exceeded)
+                    items:
+                      type: string
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  /v2/cdn/stories/{identifier}:
+    get:
+      operationId: get
+      summary: Retrieve One Story
+      description: Returns a single story object for the specified full_slug, id or uuid
+      parameters:
+        - name: identifier
+          in: path
+          required: true
+          description: Story identifier - can be full_slug (string), id (number), or uuid (string). When using uuid, the find_by=uuid query parameter is required.
+          schema:
+            type: string
+          examples:
+            full_slug:
+              summary: By full slug
+              value: posts/my-third-post
+            id:
+              summary: By numeric ID
+              value: "440448565"
+            uuid:
+              summary: By UUID (requires find_by=uuid)
+              value: e656e146-f4ed-44a2-8017-013e5a9d9395
+        - name: token
+          in: query
+          required: true
+          description: A preview or public access token
+          schema:
+            type: string
+        - name: find_by
+          in: query
+          required: false
+          description: Required when using the story UUID as a path parameter
+          schema:
+            type: string
+            enum:
+              - uuid
+        - name: version
+          in: query
+          required: false
+          description: Version to retrieve
+          schema:
+            type: string
+            enum:
+              - published
+              - draft
+            default: published
+        - name: cv
+          in: query
+          required: false
+          description: Cached version Unix timestamp for cache invalidation
+          schema:
+            type: integer
+        - name: from_release
+          in: query
+          required: false
+          description: Access a story version in a specific release by providing the release ID
+          schema:
+            type: string
+        - name: resolve_links
+          in: query
+          required: false
+          description: Resolve link fields (story, url, or link)
+          schema:
+            type: string
+            enum:
+              - story
+              - url
+              - link
+        - name: resolve_links_level
+          in: query
+          required: false
+          description: Resolve up to specified levels of links (1 or 2)
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 2
+            default: 1
+        - name: resolve_relations
+          in: query
+          required: false
+          description: Resolve referenced stories (comma-separated list, e.g., "page.author,page.categories")
+          schema:
+            type: string
+        - name: resolve_level
+          in: query
+          required: false
+          description: Force resolve second-level relations when first level reaches limit
+          schema:
+            type: integer
+            enum:
+              - 2
+        - name: resolve_assets
+          in: query
+          required: false
+          description: Resolve asset metadata including custom metadata (1 to enable)
+          schema:
+            type: integer
+            enum:
+              - 0
+              - 1
+        - name: fallback_lang
+          in: query
+          required: false
+          description: Define custom fallback language for untranslated fields (e.g., "es_co")
+          schema:
+            type: string
+        - name: language
+          in: query
+          required: false
+          description: Retrieve translated story version (language code)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Story details
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - story
+                properties:
+                  story:
+                    $ref: '#/components/schemas/story'
+                  cv:
+                    type: integer
+                    description: Cache version Unix timestamp
+                  rels:
+                    type: array
+                    description: Array of resolved stories (when resolve_relations is used)
+                    items:
+                      $ref: '#/components/schemas/story'
+                  links:
+                    type: array
+                    description: Array of resolved links (when resolve_links is used)
+                    items:
+                      type: object
+                  rel_uuids:
+                    type: array
+                    description: Array of UUIDs of referenced stories (if limit exceeded)
+                    items:
+                      type: string
+                  link_uuids:
+                    type: array
+                    description: Array of UUIDs of linked stories (if limit exceeded)
+                    items:
+                      type: string
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Story not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    story:
+      $ref: ../shared/stories/story-capi.yaml

@@ -1,0 +1,60 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+# Note: Table fields do NOT have a 'fieldtype' property in API responses
+# They are identified by the presence of 'thead' and 'tbody' properties
+type: object
+description: Table field type - structured table data
+required:
+  - thead
+  - tbody
+properties:
+  thead:
+    type: array
+    description: Table header cells
+    items:
+      type: object
+      required:
+        - _uid
+        - component
+      properties:
+        _uid:
+          type: string
+          format: uuid
+        component:
+          type: string
+          enum: [_table_head]
+        value:
+          type: string
+          description: Header cell content
+  tbody:
+    type: array
+    description: Table body rows
+    items:
+      type: object
+      required:
+        - _uid
+        - component
+      properties:
+        _uid:
+          type: string
+          format: uuid
+        component:
+          type: string
+          enum: [_table_row]
+        body:
+          type: array
+          description: Cells in this row
+          items:
+            type: object
+            required:
+              - _uid
+              - component
+            properties:
+              _uid:
+                type: string
+                format: uuid
+              component:
+                type: string
+                enum: [_table_col]
+              value:
+                type: string
+                description: Cell content

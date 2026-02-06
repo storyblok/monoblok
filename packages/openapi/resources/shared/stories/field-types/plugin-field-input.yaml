@@ -1,0 +1,14 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+# Note: Plugin fields do NOT have a 'fieldtype' property - they use 'plugin' instead
+# Input variant allows all fields to be optional
+type: object
+description: Plugin/Custom field input - field plugin with custom structure
+properties:
+  plugin:
+    type: string
+    description: Technical name of the field plugin
+  _uid:
+    type: string
+    format: uuid
+    description: Unique identifier for this plugin field instance (auto-generated if not provided)
+additionalProperties: true

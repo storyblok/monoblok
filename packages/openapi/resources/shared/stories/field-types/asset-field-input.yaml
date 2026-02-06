@@ -1,0 +1,45 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+type: object
+description: Asset field input for creating/updating stories - minimal required fields
+properties:
+  fieldtype:
+    type: string
+    enum: [asset]
+    description: Identifies this as an asset field
+  id:
+    type: integer
+    nullable: true
+    description: Numeric ID of the asset
+  alt:
+    type: string
+    nullable: true
+    description: Alternative text for the asset
+  name:
+    type: string
+    description: Name of the asset
+  focus:
+    type: string
+    nullable: true
+    description: Focal point coordinates for cropping (format "123x456:789x1011")
+  title:
+    type: string
+    nullable: true
+    description: Title of the asset
+  source:
+    type: string
+    nullable: true
+    description: Source attribution for the asset
+  filename:
+    type: string
+    description: URL to the asset file
+  copyright:
+    type: string
+    nullable: true
+    description: Copyright information
+  meta_data:
+    type: object
+    additionalProperties: true
+    description: Additional metadata for the asset
+  is_external_url:
+    type: boolean
+    description: Whether the asset is hosted externally

@@ -72,5 +72,9 @@ export async function resolveConfig(
   mergeDeep(resolved as PlainObject, globalResolved);
   Object.assign(resolved, localResolved);
 
+  if (resolved.space != null) {
+    resolved.space = String(resolved.space);
+  }
+
   return resolved;
 }

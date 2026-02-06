@@ -12,13 +12,16 @@ import { requireAuthentication } from '../../../utils/auth';
 import { handleError, toError } from '../../../utils/error/error';
 import { CommandError } from '../../../utils/error/command-error';
 
-storiesCommand
+const pullCmd = storiesCommand
   .command('pull')
+  .option('-s, --space <space>', 'space ID')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-p, --path <path>', 'base path to store stories (default .storyblok)')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
-  .description(`Download your space's stories as separate json files.`)
+  .description(`Download your space's stories as separate json files.`);
+
+pullCmd
   .action(async (options, command) => {
     const ui = getUI();
     const logger = getLogger();

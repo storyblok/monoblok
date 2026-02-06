@@ -1,4 +1,5 @@
 import type { PullComponentsOptions } from './constants';
+import type { Command } from 'commander';
 
 import { Spinner } from '@topcli/spinner';
 import { colorPalette, commands, directories } from '../../../constants';
@@ -7,26 +8,24 @@ import { session } from '../../../session';
 import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents, saveComponentsToFiles } from '../actions';
 import { componentsCommand } from '../command';
 import chalk from 'chalk';
-import { getProgram } from '../../../program';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
 
-const program = getProgram();
-
-componentsCommand
+const pullCmd = componentsCommand
   .command('pull [componentName]')
   .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
   .option('--sf, --separate-files', 'Argument to create a single file for each component')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
-  .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`)
-  .action(async (componentName: string | undefined, options: PullComponentsOptions) => {
-    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
-    // Global options
-    const verbose = program.opts().verbose;
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage')
+  .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`);
 
-    // Command options
-    const { space, path } = componentsCommand.opts();
+pullCmd
+  .action(async (componentName: string | undefined, options: PullComponentsOptions, command: Command) => {
+    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
+
+    const { space, path, verbose } = command.optsWithGlobals();
     const {
       separateFiles = false,
       suffix,

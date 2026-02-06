@@ -1,0 +1,35 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/stories/the-story-object
+# See: https://www.storyblok.com/docs/api/management/stories/the-story-object
+type: object
+description: Minimal story object for alternates
+required:
+  - id
+  - name
+  - slug
+  - published
+  - full_slug
+  - is_folder
+  - parent_id
+properties:
+  id:
+    type: integer
+    description: The numeric ID
+  name:
+    type: string
+    description: The complete name provided for the story
+  slug:
+    type: string
+    description: The slug specific for the story
+  published:
+    type: boolean
+    description: true if a story is currently published, even if it has unpublished changes
+  full_slug:
+    type: string
+    description: The full slug of the story, combining the parent folder(s) and the designated story slug
+  is_folder:
+    type: boolean
+    description: true if the instance constitutes a folder
+  parent_id:
+    type: integer
+    nullable: true
+    description: ID of the parent folder

@@ -1,0 +1,49 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+# See: https://www.storyblok.com/docs/api/management/components/the-component-object
+#
+# story.content input for creating/updating stories.
+# More lenient than the output schema - allows partial data and auto-generates UIDs.
+type: object
+description: >-
+  Content input for creating/updating component instances. Contains a component
+  technical name and dynamic fields whose values depend on the component's schema
+  field types. The _uid is optional and will be auto-generated if not provided.
+required:
+  - component
+properties:
+  _uid:
+    type: string
+    format: uuid
+    description: Unique identifier for this component instance (auto-generated if not provided)
+  component:
+    type: string
+    description: Technical name of the component (content type or nestable block)
+  _editable:
+    type: string
+    description: Storyblok editor markup string for inline editing (usually not needed in input)
+additionalProperties:
+  oneOf:
+    # Simple field types (primitives)
+    - type: string
+      description: Text, textarea, markdown, datetime, or single-option field
+    - type: number
+      description: Number field
+    - type: boolean
+      description: Boolean field
+    # Array field types
+    - type: array
+      description: Multi-options (array of strings), multi-assets, references (array of UUIDs), or bloks (array of components)
+      items:
+        oneOf:
+          - type: string
+            description: Option value or UUID reference
+          - $ref: ./field-types/asset-field-input.yaml
+            description: Multi-asset item
+          - $ref: '#'
+            description: Nested component (blok)
+    # Complex field types (objects with fieldtype discriminator or special structure)
+    - $ref: ./field-types/asset-field-input.yaml
+    - $ref: ./field-types/multilink-field-input.yaml
+    - $ref: ./field-types/table-field-input.yaml
+    - $ref: ./field-types/richtext-field-input.yaml
+    - $ref: ./field-types/plugin-field-input.yaml

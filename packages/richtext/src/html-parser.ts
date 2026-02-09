@@ -56,40 +56,55 @@ const getAllowedStylesForElement = (element: HTMLElement, { allowedStyles }: { a
   return allowedStyles.filter(x => classes.includes(x));
 };
 
-const LinkDefault = LinkOriginal.extend<StyledOptions>({
+const StoryblokBulletList = BulletList.extend({
+  name: 'bullet_list',
   addOptions() {
-    return {
-      ...this.parent?.(),
-      allowedStyles: undefined,
-    };
+    return { ...this.parent!(), itemTypeName: 'list_item' };
   },
+});
+const StoryblokOrderedList = OrderedList.extend({
+  name: 'ordered_list',
+  addOptions() {
+    return { ...this.parent!(), itemTypeName: 'list_item' };
+  },
+});
+const StoryblokListItem = ListItem.extend({
+  name: 'list_item',
+  addOptions() {
+    return { ...this.parent!(), bulletListTypeName: 'bullet_list', orderedListTypeName: 'ordered_list' };
+  },
+});
+const StoryblokCodeBlock = CodeBlock.extend({ name: 'code_block' });
+const StoryblokHardBreak = HardBreak.extend({ name: 'hard_break' });
+const StoryblokHorizontalRule = HorizontalRule.extend({ name: 'horizontal_rule' });
+
+const LinkDefault = LinkOriginal.extend({
   addAttributes() {
     return {
-      ...this.parent?.(),
-      class: {
-        parseHTML: (element) => {
-          const styles = getAllowedStylesForElement(element, { allowedStyles: this.options.allowedStyles || [] });
-          return styles.length ? styles.join(' ') : null;
-        },
+      href: {
+        parseHTML: element => element.getAttribute('href'),
       },
-      rel: {
-        parseHTML: (element) => {
-          const target = element.getAttribute('target');
-          return target === '_blank' ? 'noopener noreferrer' : null;
-        },
+      uuid: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-uuid') || null,
+      },
+      anchor: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-anchor') || null,
       },
       target: {
-        parseHTML: (element) => {
-          const target = element.getAttribute('target');
-          return target || null;
-        },
+        parseHTML: element => element.getAttribute('target') || null,
+      },
+      linktype: {
+        default: 'url',
+        parseHTML: element => element.getAttribute('data-linktype') || 'url',
       },
     };
   },
 });
 
 const supportedAttributesByTagName: Record<string, string[]> = {
-  a: ['class', 'href', 'rel', 'target'],
+  a: ['href', 'target', 'data-uuid', 'data-anchor', 'data-linktype'],
   img: ['alt', 'src', 'title'],
   span: ['class'],
 } as const;
@@ -99,6 +114,7 @@ const LinkWithCustomAttributes = LinkDefault.extend({
     return {
       ...this.parent?.(),
       custom: {
+        default: null,
         parseHTML: (element) => {
           const defaultLinkAttributes = supportedAttributesByTagName.a;
           const customAttributeNames = element.getAttributeNames().filter(n => !defaultLinkAttributes.includes(n));
@@ -106,7 +122,7 @@ const LinkWithCustomAttributes = LinkDefault.extend({
           for (const attributeName of customAttributeNames) {
             customAttributes[attributeName] = element.getAttribute(attributeName);
           }
-          return customAttributes;
+          return Object.keys(customAttributes).length ? customAttributes : null;
         },
       },
     };
@@ -174,9 +190,9 @@ const Reporter = Mark.create({
 });
 
 const defaultExtensions = {
-  bulletList: BulletList,
-  listItem: ListItem,
-  orderedList: OrderedList,
+  bulletList: StoryblokBulletList,
+  listItem: StoryblokListItem,
+  orderedList: StoryblokOrderedList,
   details: Details,
   detailsContent: DetailsContent,
   detailsSummary: DetailsSummary,
@@ -187,13 +203,13 @@ const defaultExtensions = {
   blockquote: Blockquote,
   bold: Bold,
   code: Code,
-  codeBlock: CodeBlock,
+  codeBlock: StoryblokCodeBlock,
   document: Document,
   emoji: Emoji,
-  hardBreak: HardBreak,
+  hardBreak: StoryblokHardBreak,
   heading: Heading,
   highlight: Highlight,
-  horizontalRule: HorizontalRule,
+  horizontalRule: StoryblokHorizontalRule,
   image: Image,
   italic: Italic,
   link: LinkDefault,
@@ -215,7 +231,7 @@ export function htmlToStoryblokRichtext(
   const Link = options.allowCustomAttributes ? LinkWithCustomAttributes : LinkDefault;
   const allExtensions = {
     ...defaultExtensions,
-    link: Link.configure({ allowedStyles: options.styleOptions?.map(o => o.value) }),
+    link: Link,
     reporter: Reporter.configure({
       allowCustomAttributes: options.allowCustomAttributes,
     }),

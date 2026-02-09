@@ -62,10 +62,10 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'bulletList',
+          type: 'bullet_list',
           content: [
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -76,7 +76,7 @@ describe('htmlToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -99,10 +99,10 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'orderedList',
+          type: 'ordered_list',
           content: [
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -113,7 +113,7 @@ describe('htmlToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -183,7 +183,7 @@ describe('htmlToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'codeBlock',
+          type: 'code_block',
           attrs: { language: 'js' },
           content: [
             { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);\n' },
@@ -458,7 +458,7 @@ describe('htmlToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontalRule',
+          type: 'horizontal_rule',
         },
         {
           type: 'paragraph',
@@ -480,7 +480,7 @@ describe('htmlToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'Line with a hard break here.' },
-            { type: 'hardBreak' },
+            { type: 'hard_break' },
             { type: 'text', text: 'Next line after break.' },
           ],
         },
@@ -738,10 +738,11 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
-                    class: null,
                     href: '/home',
-                    rel: 'noopener noreferrer',
+                    uuid: null,
+                    anchor: null,
                     target: '_blank',
+                    linktype: 'url',
                   },
                 },
               ],
@@ -776,13 +777,14 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
-                    class: null,
                     custom: {
                       'data-supported-custom-attribute': 'whatever',
                     },
                     href: '/home',
-                    rel: 'noopener noreferrer',
+                    uuid: null,
+                    anchor: null,
                     target: '_blank',
+                    linktype: 'url',
                   },
                 },
               ],
@@ -795,7 +797,7 @@ describe('htmlToStoryblokRichtext', () => {
 
   it('preserves styleOptions on inline elements', () => {
     const resultStyleOptions = htmlToStoryblokRichtext(
-      '<p>foo <span class="style-1 invalid-style">bar</span></p><p>baz <span class="style-2">qux</span></p><p>corge <span class="style-3">grault</span> <a href="/home" class="style-1 invalid-style">Home</a></p>',
+      '<p>foo <span class="style-1 invalid-style">bar</span></p><p>baz <span class="style-2">qux</span></p><p>corge <span class="style-3">grault</span> <a href="/home">Home</a></p>',
       {
         styleOptions: [
           { name: 'Style1', value: 'style-1' },
@@ -862,10 +864,11 @@ describe('htmlToStoryblokRichtext', () => {
                 {
                   type: 'link',
                   attrs: {
-                    class: 'style-1',
                     href: '/home',
-                    rel: null,
+                    uuid: null,
+                    anchor: null,
                     target: null,
+                    linktype: 'url',
                   },
                 },
               ],
@@ -927,6 +930,119 @@ describe('htmlToStoryblokRichtext', () => {
     });
   });
 
+  it('produces Storyblok-compatible richtext for all node types', () => {
+    const html = [
+      '<h1>Title</h1>',
+      '<h2>Subtitle</h2>',
+      '<h3>H3</h3>',
+      '<h4>H4</h4>',
+      '<h5>H5</h5>',
+      '<h6>H6</h6>',
+      '<p>Plain paragraph</p>',
+      '<p><strong>bold</strong> <em>italic</em> <s>strike</s> <u>underline</u> <code>code</code></p>',
+      '<ul><li>bullet 1</li><li>bullet 2</li></ul>',
+      '<ol><li>ordered 1</li><li>ordered 2</li></ol>',
+      '<blockquote><p>quote</p></blockquote>',
+      '<pre><code class="language-ts">const x = 1;</code></pre>',
+      '<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>C</td></tr></tbody></table>',
+      '<p><a href="https://example.com" target="_blank">link</a></p>',
+      '<img src="https://example.com/img.png" alt="alt" title="title">',
+      '<hr />',
+      '<p>before<br />after</p>',
+      '<p><strong><em>bold+italic</em></strong></p>',
+    ].join('');
+    const result = htmlToStoryblokRichtext(html);
+
+    expect(result).toMatchObject({
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Title' }] },
+        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Subtitle' }] },
+        { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'H3' }] },
+        { type: 'heading', attrs: { level: 4 }, content: [{ type: 'text', text: 'H4' }] },
+        { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'H5' }] },
+        { type: 'heading', attrs: { level: 6 }, content: [{ type: 'text', text: 'H6' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Plain paragraph' }] },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'bold', marks: [{ type: 'bold' }] },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'italic', marks: [{ type: 'italic' }] },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'strike', marks: [{ type: 'strike' }] },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'underline', marks: [{ type: 'underline' }] },
+            { type: 'text', text: ' ' },
+            { type: 'text', text: 'code', marks: [{ type: 'code' }] },
+          ],
+        },
+        {
+          type: 'bullet_list',
+          content: [
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'bullet 1' }] }] },
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'bullet 2' }] }] },
+          ],
+        },
+        {
+          type: 'ordered_list',
+          content: [
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'ordered 1' }] }] },
+            { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'ordered 2' }] }] },
+          ],
+        },
+        {
+          type: 'blockquote',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'quote' }] }],
+        },
+        {
+          type: 'code_block',
+          attrs: { language: 'ts' },
+          content: [{ type: 'text', text: 'const x = 1;' }],
+        },
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [{ type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'H' }] }] }] },
+            { type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'C' }] }] }] },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [{
+            type: 'text',
+            text: 'link',
+            marks: [{
+              type: 'link',
+              attrs: { href: 'https://example.com', target: '_blank', uuid: null, anchor: null, linktype: 'url' },
+            }],
+          }],
+        },
+        {
+          type: 'image',
+          attrs: { src: 'https://example.com/img.png', alt: 'alt', title: 'title' },
+        },
+        { type: 'horizontal_rule' },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'before' },
+            { type: 'hard_break' },
+            { type: 'text', text: 'after' },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [{
+            type: 'text',
+            text: 'bold+italic',
+            marks: [{ type: 'bold' }, { type: 'italic' }],
+          }],
+        },
+      ],
+    });
+  });
+
   it('normalizes whitespace', () => {
     const html = '<h2>Heading</h2>\n<p>paragraph\n1</p>\r\n<p>paragraph 2</p><p><strong>paragraph</strong>\n<strong>2</strong></p>\n<hr />\n<pre>Hello\nworld</pre>';
     const result = htmlToStoryblokRichtext(html);
@@ -955,10 +1071,10 @@ describe('htmlToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontalRule',
+          type: 'horizontal_rule',
         },
         {
-          type: 'codeBlock',
+          type: 'code_block',
           attrs: {},
           content: [{ type: 'text', text: 'Hello\nworld' }],
         },

@@ -63,10 +63,10 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'bulletList',
+          type: 'bullet_list',
           content: [
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -75,7 +75,7 @@ describe('markdownToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -96,10 +96,10 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'orderedList',
+          type: 'ordered_list',
           content: [
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -108,7 +108,7 @@ describe('markdownToStoryblokRichtext', () => {
               ],
             },
             {
-              type: 'listItem',
+              type: 'list_item',
               content: [
                 {
                   type: 'paragraph',
@@ -381,7 +381,7 @@ describe('markdownToStoryblokRichtext', () => {
       type: 'doc',
       content: [
         {
-          type: 'codeBlock',
+          type: 'code_block',
           attrs: { language: 'js' },
           content: [
             { type: 'text', text: 'const foo = "bar";\nconsole.log(foo);\n' },
@@ -436,10 +436,11 @@ describe('markdownToStoryblokRichtext', () => {
               marks: [
                 {
                   attrs: {
-                    class: null,
                     href: 'https://www.storyblok.com/',
-                    rel: null,
+                    uuid: null,
+                    anchor: null,
                     target: null,
+                    linktype: 'url',
                   },
                   type: 'link',
                 },
@@ -451,10 +452,11 @@ describe('markdownToStoryblokRichtext', () => {
               marks: [
                 {
                   attrs: {
-                    class: null,
                     href: 'https://www.storyblok.com/',
-                    rel: null,
+                    uuid: null,
+                    anchor: null,
                     target: null,
+                    linktype: 'url',
                   },
                   type: 'link',
                 },
@@ -489,7 +491,7 @@ describe('markdownToStoryblokRichtext', () => {
           ],
         },
         {
-          type: 'horizontalRule',
+          type: 'horizontal_rule',
         },
         {
           type: 'paragraph',
@@ -529,7 +531,7 @@ describe('markdownToStoryblokRichtext', () => {
           type: 'paragraph',
           content: [
             { type: 'text', text: 'Line with a hard break here.' },
-            { type: 'hardBreak' },
+            { type: 'hard_break' },
             { type: 'text', text: 'Next line after break.' },
           ],
         },

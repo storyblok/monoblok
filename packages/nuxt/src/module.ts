@@ -67,6 +67,7 @@ export default defineNuxtModule<AllModuleOptions>({
       nitroConfig.alias = nitroConfig.alias || {};
       nitroConfig.alias['#storyblok/server'] = resolver.resolve('./runtime/server');
     });
+    nuxt.options.alias['#storyblok/server'] = resolver.resolve('./runtime/server');
 
     // Add auto imports
     const names = [

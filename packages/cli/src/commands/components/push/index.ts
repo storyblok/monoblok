@@ -9,7 +9,7 @@ import { componentsCommand } from '../command';
 import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 
@@ -20,7 +20,7 @@ componentsCommand
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
+  .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
 
   .action(async (componentName: string | undefined, options: PushComponentsOptions) => {
@@ -29,11 +29,11 @@ componentsCommand
     const verbose = program.opts().verbose;
     const { space, path } = componentsCommand.opts();
 
-    const { from, filter } = options;
+    const { filter } = options;
+    const fromSpace = options.from || space;
 
     // Check if the user is logged in
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -44,25 +44,12 @@ componentsCommand
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
-
-    if (!from) {
-      // If no source space is provided, use the target space as source
-      options.from = space;
-    }
-
-    konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(options.from)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
+    konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
     konsola.br();
-
-    const { password, region } = state;
 
     let requestCount = 0;
 
-    const client = mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
+    const client = getMapiClient();
 
     client.interceptors.request.use((config) => {
       requestCount++;
@@ -70,11 +57,11 @@ componentsCommand
     });
 
     try {
-      // Read components data
+      // Read components data from source space (from option or target space)
       const componentsData = await readComponentsFiles({
         ...options,
         path,
-        space,
+        from: fromSpace,
       });
 
       // Combine into the expected structure
@@ -165,7 +152,7 @@ componentsCommand
 
       // Use optimized graph-based dependency resolution with colocated target data
       konsola.info('Using graph-based dependency resolution');
-      const graphResults = await pushWithDependencyGraph(space, spaceState, 5);
+      const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
 

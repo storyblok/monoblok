@@ -1,13 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { session } from '../../../session';
 import { konsola } from '../../../utils';
 import { generateStoryblokTypes, generateTypes } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { typesCommand } from '../command';
 import { readComponentsFiles } from '../../components/push/actions';
+
+const mockResponse = [{
+  name: 'component-name',
+  display_name: 'Component Name',
+  created_at: '2021-08-09T12:00:00Z',
+  updated_at: '2021-08-09T12:00:00Z',
+  id: 12345,
+  schema: { type: 'object' },
+  color: undefined,
+  internal_tags_list: [],
+  internal_tag_ids: [],
+}];
+
+const mockSpaceData = {
+  components: mockResponse,
+  groups: [],
+  presets: [],
+  internalTags: [],
+  datasources: [],
+};
 
 vi.mock('./actions', () => ({
   generateStoryblokTypes: vi.fn(),
@@ -18,28 +37,6 @@ vi.mock('./actions', () => ({
 vi.mock('../../components/push/actions', () => ({
   readComponentsFiles: vi.fn(),
 }));
-
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
 
 vi.mock('../../../utils', async () => {
   const actualUtils = await vi.importActual('../../../utils');
@@ -75,32 +72,6 @@ describe('types generate', () => {
 
   describe('default mode', () => {
     it('should prompt the user if the operation was sucessfull', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
 
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
@@ -120,32 +91,6 @@ describe('types generate', () => {
     });
 
     it('should pass strict mode option to generateTypes when --strict flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -161,32 +106,6 @@ describe('types generate', () => {
     });
 
     it('should pass typePrefix option to generateTypes when --type-prefix flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -202,32 +121,6 @@ describe('types generate', () => {
     });
 
     it('should pass typeSuffix option to generateTypes when --type-suffix flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -243,32 +136,6 @@ describe('types generate', () => {
     });
 
     it('should pass suffix option to generateTypes when --suffix flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -284,32 +151,6 @@ describe('types generate', () => {
     });
 
     it('should pass separateFiles option to generateTypes when --separate-files flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -325,32 +166,6 @@ describe('types generate', () => {
     });
 
     it('should pass customFieldsParser option to generateTypes when --custom-fields-parser flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
@@ -366,32 +181,6 @@ describe('types generate', () => {
     });
 
     it('should pass compilerOptions option to generateTypes when --compiler-options flag is used', async () => {
-      const mockResponse = [{
-        name: 'component-name',
-        display_name: 'Component Name',
-        created_at: '2021-08-09T12:00:00Z',
-        updated_at: '2021-08-09T12:00:00Z',
-        id: 12345,
-        schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
-      }];
-
-      const mockSpaceData = {
-        components: mockResponse,
-        groups: [],
-        presets: [],
-        internalTags: [],
-        datasources: [],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');

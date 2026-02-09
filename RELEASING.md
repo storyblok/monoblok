@@ -60,20 +60,78 @@ There are two ways to handle versioning, depending on your needs:
 
 ### Full Release (with GitHub Release)
 
-To create a release with automatic version increments and a GitHub release:
+To create a release with automatic version increments and a GitHub release, use the dedicated release script:
 
 ```bash
-pnpm nx release --skip-publish
+pnpm release
 ```
 
-This will:
-- Analyze conventional commits since the last release
-- Determine appropriate version bumps
-- Create version commits
-- Create git tags
-- Push changes to the repository
-- Generate changelogs
-- Create a GitHub release
+This script will:
+- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
+- Check for uncommitted changes
+- Fetch the latest changes from remote
+- Verify you're up to date with the remote branch
+- Run `nx release --skip-publish` to:
+  - Analyze conventional commits since the last release
+  - Determine appropriate version bumps
+  - Create version commits
+  - Create git tags
+  - Push changes to the repository
+  - Generate changelogs
+  - Create a GitHub release
+
+**Important**: The script enforces these prerequisites automatically. If any check fails, it will provide clear instructions on how to fix the issue before proceeding.
+
+### Pre-release Versions (alpha, beta, next)
+
+To release a pre-release version (e.g., for testing before stable release):
+
+1. **Create or switch to a pre-release branch**:
+   ```bash
+   git checkout -b alpha   # or beta, next
+   # Or if branch exists:
+   git checkout alpha
+   ```
+
+2. **Make your changes and commit** using conventional commits:
+   ```bash
+   git add .
+   git commit -m "feat(astro): add new feature"
+   git push origin alpha
+   ```
+
+3. **Run the release script**:
+   ```bash
+   pnpm release
+   ```
+   This will bump versions with the pre-release suffix (e.g., `1.0.0-alpha.0`).
+
+4. **Publish via GitHub Actions**:
+   - Go to **Actions** → **Publish** workflow
+   - Click **Run workflow** and select your pre-release branch
+   - Packages will be published with the branch name as the npm tag
+
+#### Supported Pre-release Channels by Package
+
+Not all packages have pre-release channels configured. Check the `release.branches` field in each package's `package.json`:
+
+| Package | Channels |
+|---------|----------|
+| `@storyblok/astro` | `alpha`, `next` |
+| `@storyblok/nuxt` | `next` |
+| `storyblok-js-client` | `beta`, `next` |
+
+#### Promoting Pre-release to Stable
+
+Once a pre-release is ready:
+
+```bash
+git checkout main
+git merge alpha   # or beta, next
+git push origin main
+pnpm release
+# Then run Publish workflow on main
+```
 
 ### Silent Versioning (without GitHub Release)
 
@@ -161,14 +219,14 @@ Each branch corresponds to a specific npm distribution tag, ensuring users can i
 
 ## Best Practices
 
-1. Always run versioning commands from the target branch
+1. Always use `pnpm release` to ensure you're on a release branch with the latest changes
 2. Review version commits before pushing
 3. Ensure all tests pass before publishing
 4. Use conventional commits for automatic versioning
 5. Document breaking changes in commit messages
 6. Test the published package before announcing the release
 7. Use `nx release version` for release candidates or when you don't want to create a GitHub release
-8. Use `nx release --skip-publish` for full releases that should be announced via GitHub
+8. Use `pnpm release` for full releases that should be announced via GitHub
 
 ## Troubleshooting
 
@@ -226,7 +284,7 @@ git push origin main  # or your target branch
 
 ### Failed Versioning Process
 
-If `nx release --skip-publish` or `nx release version` fails partway through:
+If `pnpm release` or `nx release version` fails partway through:
 
 1. **Check what was completed**:
    ```bash
@@ -280,6 +338,7 @@ git push origin main
 
 ### Common Error Messages
 
+- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, or `next` branch
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
 - **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials

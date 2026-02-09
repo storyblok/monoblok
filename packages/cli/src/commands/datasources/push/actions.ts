@@ -1,15 +1,17 @@
 import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
+import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
-import chalk from 'chalk';
-import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import { join } from 'node:path';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
+import { handleAPIError } from '../../../utils/error/api-error';
+import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
 
 export const pushDatasource = async (spaceId: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasources.create({
       path: {
@@ -28,7 +30,7 @@ export const pushDatasource = async (spaceId: string, datasource: SpaceDatasourc
 
 export const updateDatasource = async (spaceId: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasources.update({
       path: {
@@ -66,7 +68,7 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
  */
 export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry): Promise<SpaceDatasourceEntry | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.datasourceEntries.create({
       path: {
@@ -97,7 +99,7 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  */
 export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     await client.datasourceEntries.updateDatasourceEntry({
       path: {
         space_id: spaceId,
@@ -138,7 +140,7 @@ export const upsertDatasourceEntry = async (
 };
 
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
-  const { from, path, separateFiles = false, suffix, space } = options;
+  const { from, path, separateFiles = false, suffix } = options;
   const resolvedPath = resolvePath(path, `datasources/${from}`);
 
   // Check if directory exists first
@@ -152,7 +154,7 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
    ${chalk.cyan(`storyblok datasources pull --space ${from}`)}
 
 2. Then try pushing again:
-   ${chalk.cyan(`storyblok datasources push --space ${space} --from ${from}`)}`;
+   ${chalk.cyan(`storyblok datasources push --space <target_space> --from ${from}`)}`;
 
     throw new FileSystemError(
       'file_not_found',
@@ -188,7 +190,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 
     if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
       // Skip consolidated files - any file matching datasources.json or datasources.*.json pattern
-      if (file === 'datasources.json' || /^datasources\.\w+\.json$/.test(file)) {
+      if (file === `${DEFAULT_DATASOURCES_FILENAME}.json` || new RegExp(`^${DEFAULT_DATASOURCES_FILENAME}\\.\\w+\\.json$`).test(file)) {
         continue;
       }
       const result = await readJsonFile<SpaceDatasource>(filePath);
@@ -206,7 +208,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 }
 
 async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
-  const datasourcesPath = join(resolvedPath, suffix ? `datasources.${suffix}.json` : 'datasources.json');
+  const datasourcesPath = join(resolvedPath, suffix ? `${DEFAULT_DATASOURCES_FILENAME}.${suffix}.json` : `${DEFAULT_DATASOURCES_FILENAME}.json`);
   const datasourcesResult = await readJsonFile<SpaceDatasource>(datasourcesPath);
 
   if (datasourcesResult.error || !datasourcesResult.data.length) {

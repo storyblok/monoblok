@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchLanguages, saveLanguagesToFile } from './actions';
-import { mapiClient } from '../../api';
+import { getMapiClient } from '../../api';
 
 const handlers = [
   http.get('https://mapi.storyblok.com/v1/spaces/12345', async ({ request }) => {
@@ -36,19 +36,15 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('pull languages actions', () => {
   beforeEach(() => {
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'valid-token',
       },
       region: 'eu',
     });
     vi.clearAllMocks();
-    vol.reset();
   });
 
   describe('fetchLanguages', () => {

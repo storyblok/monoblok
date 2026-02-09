@@ -14,6 +14,8 @@ paths:
       summary: Retrieve Multiple Datasources
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/pagination.yaml#/page
+        - $ref: ../shared/pagination.yaml#/per_page
         - name: search
           in: query
           required: false

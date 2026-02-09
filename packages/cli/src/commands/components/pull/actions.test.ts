@@ -1,9 +1,9 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
-import { mapiClient } from '../../../api';
+import { getMapiClient } from '../../../api';
 
 const mockedComponents = [{
   name: 'component-name',
@@ -12,9 +12,9 @@ const mockedComponents = [{
   updated_at: '2021-08-09T12:00:00Z',
   id: 12345,
   schema: { type: 'object' },
-  color: null,
-  internal_tags_list: ['tag'],
-  internal_tag_ids: [1],
+  color: undefined,
+  internal_tags_list: [{ id: 1, name: 'tag' }],
+  internal_tag_ids: ['1'],
 }, {
   name: 'component-name-2',
   display_name: 'Component Name 2',
@@ -22,9 +22,9 @@ const mockedComponents = [{
   updated_at: '2021-08-09T12:00:00Z',
   id: 12346,
   schema: { type: 'object' },
-  color: null,
-  internal_tags_list: ['tag'],
-  internal_tag_ids: [1],
+  color: undefined,
+  internal_tags_list: [{ id: 1, name: 'tag' }],
+  internal_tag_ids: ['1'],
 }, {
   name: 'name-2',
   display_name: 'Name 2',
@@ -32,10 +32,17 @@ const mockedComponents = [{
   updated_at: '2021-08-09T12:00:00Z',
   id: 12346,
   schema: { type: 'object' },
-  color: null,
+  color: undefined,
   internal_tags_list: [],
   internal_tag_ids: [],
 }];
+
+const emptySpaceData = {
+  groups: [],
+  presets: [],
+  internalTags: [],
+  datasources: [],
+};
 
 const handlers = [
   http.get('https://mapi.storyblok.com/v1/spaces/12345/components', async ({ request }) => {
@@ -56,12 +63,9 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
 describe('pull components actions', () => {
   beforeEach(() => {
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'valid-token',
       },
@@ -70,40 +74,8 @@ describe('pull components actions', () => {
   });
 
   it('should pull components successfully with a valid token', async () => {
-    const mockResponse = [{
-      name: 'component-name',
-      display_name: 'Component Name',
-      created_at: '2021-08-09T12:00:00Z',
-      updated_at: '2021-08-09T12:00:00Z',
-      id: 12345,
-      schema: { type: 'object' },
-      color: null,
-      internal_tags_list: ['tag'],
-      internal_tag_ids: [1],
-    }, {
-      name: 'component-name-2',
-      display_name: 'Component Name 2',
-      created_at: '2021-08-09T12:00:00Z',
-      updated_at: '2021-08-09T12:00:00Z',
-      id: 12346,
-      schema: { type: 'object' },
-      color: null,
-      internal_tags_list: ['tag'],
-      internal_tag_ids: [1],
-    }, {
-      name: 'name-2',
-      display_name: 'Name 2',
-      created_at: '2021-08-09T12:00:00Z',
-      updated_at: '2021-08-09T12:00:00Z',
-      id: 12346,
-      schema: { type: 'object' },
-      color: null,
-      internal_tags_list: [],
-      internal_tag_ids: [],
-    }];
-
     const result = await fetchComponents('12345');
-    expect(result).toEqual(mockResponse);
+    expect(result).toEqual(mockedComponents);
   });
 
   it('should fetch a component by name', async () => {
@@ -115,9 +87,9 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }],
     };
     const result = await fetchComponent('12345', 'component-name');
@@ -133,7 +105,7 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
+        color: undefined,
         internal_tags_list: [],
         internal_tag_ids: [],
       }],
@@ -145,7 +117,7 @@ describe('pull components actions', () => {
 
   // TODO: Ask team regarding resseting the mapi client options
   /* it('should throw an masked error for invalid token', async () => {
-    mapiClient({
+    getMapiClient({
       token: {
         accessToken: 'invalid-token',
       },
@@ -180,15 +152,14 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
-      await saveComponentsToFiles('12345', { components }, {
+      await saveComponentsToFiles('12345', { components, ...emptySpaceData }, {
         path: '/path/to/',
         verbose: false,
-        space: '12345',
       });
 
       const files = vol.readdirSync('/path/to/components/12345');
@@ -207,12 +178,12 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
-      await saveComponentsToFiles('12345', { components }, {
+      await saveComponentsToFiles('12345', { components, ...emptySpaceData }, {
         path: '/path/to2/',
         filename: 'custom',
         verbose: false,
@@ -234,13 +205,13 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
       try {
-        await saveComponentsToFiles('12345', { components }, {
+        await saveComponentsToFiles('12345', { components, ...emptySpaceData }, {
           path: '/path/to3/',
           suffix: 'custom',
           verbose: false,
@@ -266,9 +237,9 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }, {
         name: 'component-name-2',
         display_name: 'Component Name 2',
@@ -276,12 +247,12 @@ describe('pull components actions', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
 
-      await saveComponentsToFiles('12345', { components }, {
+      await saveComponentsToFiles('12345', { components, ...emptySpaceData }, {
         path: '/path/to4/',
         separateFiles: true,
         verbose: false,

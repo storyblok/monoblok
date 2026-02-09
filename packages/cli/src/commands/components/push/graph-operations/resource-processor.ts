@@ -5,6 +5,7 @@ import { progressDisplay } from '../progress-display';
 import { pushComponent } from '../actions';
 import type { SpaceComponent } from '../../constants';
 import chalk from 'chalk';
+import { getActiveConfig } from '../../../../lib/config';
 
 // =============================================================================
 // RESOURCE PROCESSING
@@ -16,7 +17,8 @@ import chalk from 'chalk';
 export async function processAllResources(
   graph: DependencyGraph,
   space: string,
-  maxConcurrency: number = 5,
+
+  maxConcurrency: number = getActiveConfig().api.maxConcurrency,
 ): Promise<PushResults> {
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };

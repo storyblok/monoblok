@@ -7,16 +7,6 @@ vi.mock('./actions', () => ({
   openSignupInBrowser: vi.fn(),
 }));
 
-vi.mock('../../session', () => ({
-  session: () => ({
-    state: {
-      isLoggedIn: false,
-      envLogin: false,
-    },
-    initializeSession: vi.fn(),
-  }),
-}));
-
 vi.mock('../../utils', async () => {
   const actualUtils = await vi.importActual('../../utils');
   return {

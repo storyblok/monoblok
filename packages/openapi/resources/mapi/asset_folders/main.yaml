@@ -1,0 +1,205 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Asset Folders API
+  version: 1.0.0
+  description: API for managing Storyblok asset folders
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/asset_folders:
+    description: An asset folder can be used to organize assets together. Each asset can belong to only one folder. Asset folders support hierarchical nesting via parent_id. This endpoint allows you to manage asset folders. You can use it to retrieve, create, update, or delete asset folders.
+    get:
+      operationId: list
+      summary: Retrieve Multiple Asset Folders
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by folder's name
+        - name: with_parent
+          in: query
+          required: false
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+          description: Filter by parent id. Use 0 or "0" for root level folders.
+        - name: by_uuids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of UUIDs to filter by
+        - name: by_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of IDs to filter by
+      responses:
+        '200':
+          description: List of asset folders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssetFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+    post:
+      operationId: create
+      summary: Create an Asset Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset_folder:
+                  $ref: '#/components/schemas/AssetFolderInput'
+      responses:
+        '201':
+          description: Asset folder created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_folder:
+                    $ref: '#/components/schemas/AssetFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Space not found
+  /v1/spaces/{space_id}/asset_folders/{asset_folder_id}:
+    description: Operations for a specific asset folder
+    get:
+      operationId: get
+      summary: Retrieve a Single Asset Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_folder_id
+      responses:
+        '200':
+          description: Asset folder details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_folder:
+                    $ref: '#/components/schemas/AssetFolder'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset folder not found
+    put:
+      operationId: update
+      summary: Update an Asset Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_folder_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset_folder:
+                  $ref: '#/components/schemas/AssetFolderInput'
+      responses:
+        '204':
+          description: Asset folder updated successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset folder not found
+    delete:
+      operationId: delete
+      summary: Delete an Asset Folder
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: ../shared/parameters.yaml#/asset_folder_id
+        - name: recursive
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: If true, recursively delete all child folders and orphan their assets. If false (default), assets are orphaned and child folders are moved to the parent level.
+      responses:
+        '204':
+          description: Asset folder deleted successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Asset folder not found
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    AssetFolder:
+      type: object
+      required:
+        - id
+        - name
+        - uuid
+      properties:
+        id:
+          readOnly: true
+          type: number
+          description: The numeric ID of the asset folder
+        name:
+          type: string
+          description: The name of the asset folder
+        parent_id:
+          type: integer
+          nullable: true
+          description: ID of the parent folder for hierarchical structure
+        uuid:
+          readOnly: true
+          type: string
+          format: uuid
+          description: The UUID of the asset folder
+        parent_uuid:
+          readOnly: true
+          type: string
+          format: uuid
+          nullable: true
+          description: The UUID of the parent folder
+    AssetFolderInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of the asset folder
+        parent_id:
+          type: integer
+          nullable: true
+          description: ID of the parent folder for hierarchical structure. Use 0 or null to move to root level.

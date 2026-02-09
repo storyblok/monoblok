@@ -1,12 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loginCommand } from './';
 import { konsola } from '../../utils';
 import { input, password, select } from '@inquirer/prompts';
 import { regions } from '../../constants';
 import chalk from 'chalk';
-import { session } from '../../session'; // Import as module to mock properly
+import { session } from '../../session';
 import type { User } from '../user/actions';
+import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('./actions', () => ({
   loginWithEmailAndPassword: vi.fn(),
@@ -21,28 +22,6 @@ vi.mock('../../creds', () => ({
   removeAllCredentials: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../utils', async () => {
   const actualUtils = await vi.importActual('../../utils');
   return {
@@ -56,7 +35,7 @@ vi.mock('../../utils', async () => {
     },
     isVitestRunning: true,
     handleError: (error: Error, header = false) => {
-      konsola.error(error, header);
+      konsola.error(error as unknown as string, header);
       // Optionally, prevent process.exit during tests
     },
   };
@@ -68,10 +47,19 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
 }));
 
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
+
 describe('loginCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    preconditions.loggedOut();
   });
 
   describe('default interactive login', () => {
@@ -84,9 +72,6 @@ describe('loginCommand', () => {
     });
 
     describe('login-with-email strategy', () => {
-      beforeEach(() => {
-        vi.resetAllMocks();
-      });
       it('should prompt the user for email and password when login-with-email is selected', async () => {
         vi.mocked(select)
           .mockResolvedValueOnce('login-with-email') // For login strategy
@@ -124,8 +109,8 @@ describe('loginCommand', () => {
 
         vi.mocked(password).mockResolvedValueOnce('test-password');
 
-        vi.mocked(loginWithEmailAndPassword).mockResolvedValueOnce({ otp_required: true });
-        vi.mocked(loginWithOtp).mockResolvedValueOnce({ access_token: 'test-token' });
+        vi.mocked(loginWithEmailAndPassword).mockResolvedValueOnce({ otp_required: true } as any);
+        vi.mocked(loginWithOtp).mockResolvedValueOnce({ access_token: 'test-token' } as any);
 
         await loginCommand.parseAsync(['node', 'test']);
 
@@ -139,7 +124,7 @@ describe('loginCommand', () => {
         vi.mocked(input).mockResolvedValueOnce('eu');
 
         const mockError = new Error('Error logging in with email and password');
-        loginWithEmailAndPassword.mockRejectedValueOnce(mockError);
+        vi.mocked(loginWithEmailAndPassword).mockRejectedValueOnce(mockError);
 
         await loginCommand.parseAsync(['node', 'test']);
 
@@ -149,8 +134,8 @@ describe('loginCommand', () => {
 
     describe('login-with-token strategy', () => {
       it('should prompt the user for token when login-with-token is selected', async () => {
-        select.mockResolvedValueOnce('login-with-token');
-        password.mockResolvedValueOnce('test-token');
+        vi.mocked(select).mockResolvedValueOnce('login-with-token');
+        vi.mocked(password).mockResolvedValueOnce('test-token');
 
         await loginCommand.parseAsync(['node', 'test']);
 
@@ -237,7 +222,7 @@ describe('loginCommand', () => {
       // Build the expected error message
       const expectedMessage = `The provided region: invalid-region is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`;
 
-      expect(errorArg.message).toBe(expectedMessage);
+      expect((errorArg as unknown as Error).message).toBe(expectedMessage);
     });
   });
 });

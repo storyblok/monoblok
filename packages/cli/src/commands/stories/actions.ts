@@ -1,6 +1,8 @@
-import type { FetchStoriesResult, StoriesQueryParams, Story } from './constants';
-import { handleAPIError } from '../../utils/error';
-import { mapiClient } from '../../api';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { FetchStoriesResult, StoriesQueryParams } from './constants';
+import { getMapiClient } from '../../api';
+import { handleAPIError } from '../../utils/error/api-error';
+import { toError } from '../../utils/error/error';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -13,7 +15,7 @@ export const fetchStories = async (
   params?: StoriesQueryParams,
 ): Promise<FetchStoriesResult | undefined> => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
     const { data, response } = await client.stories.list({
       path: {
         space_id: spaceId,
@@ -41,7 +43,7 @@ export const fetchStory = async (
   storyId: string,
 ) => {
   try {
-    const client = mapiClient();
+    const client = getMapiClient();
 
     const { data } = await client.stories.get({
       path: {
@@ -51,10 +53,38 @@ export const fetchStory = async (
       throwOnError: true,
     });
 
-    return data?.story;
+    return data.story;
   }
   catch (error) {
     handleAPIError('pull_story', error as Error);
+  }
+};
+
+export const createStory = async (
+  spaceId: string,
+  payload: {
+    story: Omit<Story, 'id' | 'uuid'>;
+    publish?: number;
+  },
+): Promise<Story | void> => {
+  try {
+    const client = getMapiClient();
+
+    const { data } = await client.stories.create({
+      path: {
+        space_id: spaceId,
+      },
+      body: {
+        story: payload.story as Story,
+        publish: payload.publish,
+      },
+      throwOnError: true,
+    });
+
+    return data?.story;
+  }
+  catch (maybeError) {
+    handleAPIError('create_story', toError(maybeError));
   }
 };
 
@@ -66,7 +96,7 @@ export const fetchStory = async (
  * @param payload.story - The story data to update
  * @param payload.force_update - Whether to force the update (optional)
  * @param payload.publish - Whether to publish the story (optional)
- * @returns Promise with the updated story or undefined if error occurs
+ * @returns Promise with the updated story
  */
 export const updateStory = async (
   spaceId: string,
@@ -76,10 +106,9 @@ export const updateStory = async (
     force_update?: string;
     publish?: number;
   },
-): Promise<Story | undefined> => {
+) => {
   try {
-    const client = mapiClient();
-
+    const client = getMapiClient();
     const { data } = await client.stories.updateStory({
       path: {
         space_id: spaceId,
@@ -93,9 +122,15 @@ export const updateStory = async (
       throwOnError: true,
     });
 
-    return data?.story;
+    const { story } = data;
+    if (!story) {
+      throw new Error('Failed to update story');
+    }
+
+    return story;
   }
-  catch (error) {
-    handleAPIError('update_story', error as Error);
+  catch (maybeError) {
+    handleAPIError('update_story', toError(maybeError));
+    throw maybeError;
   }
 };

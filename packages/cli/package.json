@@ -1,7 +1,7 @@
 {
   "name": "storyblok",
   "type": "module",
-  "version": "4.6.13",
+  "version": "4.14.2",
   "packageManager": "pnpm@10.10.0",
   "description": "Storyblok CLI",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
@@ -18,7 +18,18 @@
     "node",
     "javascript"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.mjs"
+    }
+  },
   "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "bin": {
     "storyblok": "./dist/index.mjs"
   },
@@ -29,6 +40,7 @@
     "build": "unbuild",
     "release": "release-it",
     "dev": "pnpm run build && node dist/index.mjs",
+    "debug": "node --inspect-brk --loader tsx src/index.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest",
@@ -44,6 +56,7 @@
     "@storyblok/region-helper": "workspace:*",
     "@topcli/spinner": "^2.1.2",
     "async-sema": "^3.1.1",
+    "c12": "^3.3.0",
     "chalk": "^5.4.1",
     "cli-progress": "^3.12.0",
     "commander": "^13.1.0",

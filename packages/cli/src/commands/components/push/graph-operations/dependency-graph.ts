@@ -99,7 +99,8 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
 
   // Add group parent dependencies
   spaceState.local.groups.forEach((group) => {
-    if (group.parent_uuid) {
+    // Skip if parent_id is null/undefined (no parent) or if parent_uuid points to itself (self-reference)
+    if (group.parent_uuid && group.parent_id && group.parent_uuid !== group.uuid) {
       const childId = `group:${group.uuid}`;
       const parentId = `group:${group.parent_uuid}`;
       addDependency(childId, parentId);

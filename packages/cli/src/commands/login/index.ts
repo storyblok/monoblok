@@ -1,31 +1,17 @@
 import { Spinner } from '@topcli/spinner';
 import chalk from 'chalk';
-import { input, password, select } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import type { RegionCode } from '../../constants';
 import { colorPalette, commands, regionNames, regions } from '../../constants';
 import { getProgram } from '../../program';
 import { CommandError, handleError, isRegion, isVitest, konsola } from '../../utils';
-import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
+import { loginWithToken } from './actions';
 import { session } from '../../session';
+import { performInteractiveLogin } from './helpers';
 
 const program = getProgram(); // Get the shared singleton instance
 
 const allRegionsText = Object.values(regions).join(',');
-const loginStrategy = {
-  message: 'How would you like to login?',
-  choices: [
-    {
-      name: 'With email',
-      value: 'login-with-email',
-      short: 'Email',
-    },
-    {
-      name: 'With Token (Personal Access Token – works also for SSO accounts)',
-      value: 'login-with-token',
-      short: 'Token',
-    },
-  ],
-};
 
 export const loginCommand = program
   .command(commands.LOGIN)
@@ -45,9 +31,7 @@ export const loginCommand = program
     // Command options
     const { token, region } = options;
 
-    const { state, updateSession, persistCredentials, initializeSession } = session();
-
-    await initializeSession();
+    const { state, updateSession, persistCredentials } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
       konsola.ok(`You are already logged in. If you want to login with a different account, please logout first.`);
@@ -93,97 +77,18 @@ export const loginCommand = program
       }
     }
     else {
-      const spinner = new Spinner({
-        verbose: !isVitest,
-      });
       try {
-        const strategy = await select(loginStrategy);
-        if (strategy === 'login-with-token') {
-          konsola.info([
-            '🔑 You can use a Personal Access Token to log in.',
-            'This works for all accounts, including SSO accounts.',
-            `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
-          ].join('\n'));
+        const result = await performInteractiveLogin({
+          verbose,
+          preSelectedRegion: region,
+          showWelcomeMessage: true,
+        });
 
-          const userToken = await password({
-            message: 'Please enter your Personal Access Token:',
-            validate: (value: string) => {
-              return value.length > 0;
-            },
-          });
-
-          let userRegion = region;
-          if (!userRegion) {
-            userRegion = await select({
-              message: 'Please select the region you would like to work in:',
-              choices: Object.values(regions).map((region: RegionCode) => ({
-                name: regionNames[region],
-                value: region,
-              })),
-              default: regions.EU,
-            });
-          }
-          spinner.start(`Logging in with token`);
-          const user = await loginWithToken(userToken, userRegion);
-          spinner.succeed();
-          if (user) {
-            updateSession(user.email, userToken, userRegion);
-            await persistCredentials(userRegion);
-
-            konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
-          }
-        }
-
-        else {
-          const userEmail = await input({
-            message: 'Please enter your email address:',
-            required: true,
-            validate: (value: string) => {
-              const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-              return emailRegex.test(value);
-            },
-          });
-          const userPassword = await password({
-            message: 'Please enter your password:',
-          });
-
-          let userRegion = region;
-          if (!userRegion) {
-            userRegion = await select({
-              message: 'Please select the region you would like to work in:',
-              choices: Object.values(regions).map((region: RegionCode) => ({
-                name: regionNames[region],
-                value: region,
-              })),
-              default: regions.EU,
-            });
-          }
-
-          spinner.start(`Logging in with email`);
-          spinner.succeed();
-          const response = await loginWithEmailAndPassword(userEmail, userPassword, userRegion);
-
-          if (response?.otp_required) {
-            const otp = await input({
-              message: 'Add the code from your Authenticator app, or the one we sent to your e-mail / phone:',
-              required: true,
-            });
-
-            const otpResponse = await loginWithOtp(userEmail, userPassword, otp, userRegion);
-            if (otpResponse?.access_token) {
-              updateSession(userEmail, otpResponse?.access_token, userRegion);
-            }
-          }
-          else if (response?.access_token) {
-            updateSession(userEmail, response.access_token, userRegion);
-          }
-          await persistCredentials(region);
-
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
+        if (!result) {
+          konsola.warn('Login cancelled or failed.');
         }
       }
       catch (error) {
-        spinner.failed();
         konsola.br();
         handleError(error as Error, verbose);
       }

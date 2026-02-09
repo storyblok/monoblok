@@ -5,7 +5,6 @@ import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
-import { mapiClient } from '../../../api';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
@@ -26,11 +25,11 @@ datasourcesCommand
     const verbose = program.opts().verbose;
     const { space, path } = datasourcesCommand.opts();
 
-    const { from, filter } = options;
+    const { filter } = options;
+    const fromSpace = options.from || space;
 
     // Check if the user is logged in
-    const { state, initializeSession } = session();
-    await initializeSession();
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -41,30 +40,16 @@ datasourcesCommand
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
-
-    if (!from) {
-      // If no source space is provided, use the target space as source
-      options.from = space;
-    }
-
-    konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(options.from || space)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
+    konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
 
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
-
     try {
+      // Read datasources data from source space (from option or target space)
       const spaceState: SpaceDatasourcesDataState = {
         local: await readDatasourcesFiles({
           ...options,
           path,
-          space,
+          from: fromSpace,
         }),
         target: {
           datasources: new Map(),

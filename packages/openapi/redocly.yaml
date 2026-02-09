@@ -41,6 +41,10 @@ apis:
     root: resources/mapi/assets/main.yaml
     output: ./dist/mapi/assets.yaml
     title: Assets
+  asset-folders:
+    root: resources/mapi/asset_folders/main.yaml
+    output: ./dist/mapi/asset_folders.yaml
+    title: Asset Folders
   users:
     root: resources/mapi/users/main.yaml
     output: ./dist/mapi/users.yaml

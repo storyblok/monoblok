@@ -1,8 +1,12 @@
 import { Writable } from 'node:stream';
-import type { Story, StoryContent } from '../../../stories/constants';
+import { Sema } from 'async-sema';
+import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
-import { Sema } from 'async-sema';
+import { getLogger } from '../../../../lib/logger/logger';
+import { ERROR_CODES } from '../constants';
+import { toError } from '../../../../utils/error';
 
 export interface UpdateStreamOptions {
   space: string;
@@ -93,25 +97,37 @@ export class UpdateStream extends Writable {
         this.results.successful.push({ storyId, name: storyName });
         this.results.totalProcessed++;
         this.options.onProgress?.(this.results.totalProcessed);
+        getLogger().info('Updated story', { storyId });
       }
       else {
+        const error = new Error('Update returned null');
         this.results.failed.push({
           storyId,
           name: storyName,
-          error: new Error('Update returned null'),
+          error,
         });
         this.results.totalProcessed++;
         this.options.onProgress?.(this.results.totalProcessed);
+        getLogger().error(`Failed to update story: ${error.message}`, {
+          storyId,
+          errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_NULL,
+        });
       }
     }
-    catch (error) {
+    catch (maybeError) {
+      const error = toError(maybeError);
       this.results.failed.push({
         storyId,
         name: storyName,
-        error: error as Error,
+        error,
       });
       this.results.totalProcessed++;
       this.options.onProgress?.(this.results.totalProcessed);
+      getLogger().error(error.message, {
+        storyId,
+        error,
+        errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_ERROR,
+      });
     }
   }
 

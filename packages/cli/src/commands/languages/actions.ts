@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { handleAPIError, handleFileSystemError } from '../../utils';
 import { resolvePath, saveToFile } from '../../utils/filesystem';
 import type { PullLanguagesOptions } from './constants';
+import { DEFAULT_LANGUAGES_FILENAME } from './constants';
 import type { SpaceInternationalization } from '../../types';
 import { fetchSpace } from '../spaces';
 
@@ -22,7 +23,7 @@ export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationa
 
 export const saveLanguagesToFile = async (space: string, internationalizationOptions: SpaceInternationalization, options: PullLanguagesOptions) => {
   try {
-    const { filename = 'languages', suffix, path } = options;
+    const { filename = DEFAULT_LANGUAGES_FILENAME, suffix, path } = options;
     const data = JSON.stringify(internationalizationOptions, null, 2);
     const name = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
     const resolvedPath = resolvePath(path, `languages/${space}/`);

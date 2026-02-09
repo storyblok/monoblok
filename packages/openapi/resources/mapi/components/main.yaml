@@ -16,15 +16,7 @@ paths:
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/pagination.yaml#/page
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 25
-          description: Number of components per page. Default is 25, maximum is 100.
+        - $ref: ../shared/pagination.yaml#/per_page
         - name: by_ids
           in: query
           required: false
@@ -321,14 +313,7 @@ paths:
             type: integer
             default: 1
           description: Page number
-        - name: per_page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 25
-            maximum: 100
-          description: Number of versions per page
+        - $ref: ../shared/pagination.yaml#/per_page
         - name: model
           in: query
           required: false

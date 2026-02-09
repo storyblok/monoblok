@@ -1,41 +1,16 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { resolvePath } from '../../../utils/filesystem';
-import { FileSystemError } from '../../../utils/error';
+import { readdir } from 'node:fs/promises';
+import { importModule, resolvePath } from '../../../utils/filesystem';
+import { FileSystemError, toError } from '../../../utils/error';
 import { join } from 'node:path';
-import type { MigrationFile, ReadMigrationFilesOptions } from './constants';
-import { createRegexFromGlob, konsola } from '../../../utils';
+import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from './constants';
+import { createRegexFromGlob } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';
-
-export async function readJavascriptFile(filePath: string): Promise<string> {
-  try {
-    const content = await readFile(filePath, 'utf-8');
-    if (!content) {
-      throw new FileSystemError('invalid_argument', 'read', new Error(`File ${filePath} is empty`));
-    }
-    return content;
-  }
-  catch (error) {
-    throw new FileSystemError('file_not_found', 'read', error as Error);
-  }
-}
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 export async function readMigrationFiles(options: ReadMigrationFilesOptions): Promise<MigrationFile[]> {
   const { space, path, filter } = options;
   const resolvedPath = resolvePath(path, `migrations/${space}`);
-
-  // Check if directory exists first
-  try {
-    await readdir(resolvedPath);
-  }
-  catch (error) {
-    const message = `No directory found for space "${space}". Please make sure you have pulled the migrations first by running:\n\n  storyblok migrations pull --space ${space}`;
-    throw new FileSystemError(
-      'file_not_found',
-      'read',
-      error as Error,
-      message,
-    );
-  }
 
   try {
     const dirFiles = await readdir(resolvedPath);
@@ -53,12 +28,8 @@ export async function readMigrationFiles(options: ReadMigrationFilesOptions): Pr
           continue;
         }
 
-        const filePath = join(resolvedPath, file);
-        const content = await readJavascriptFile(filePath);
-
         migrationFiles.push({
           name: file,
-          content,
         });
       }
     }
@@ -66,10 +37,12 @@ export async function readMigrationFiles(options: ReadMigrationFilesOptions): Pr
     return migrationFiles;
   }
   catch (error) {
+    const message = `No directory found for space "${space}". Please make sure you have generated migrations first by running:\n\n  storyblok migrations generate YOUR_COMPONENT_NAME --space ${space}`;
     throw new FileSystemError(
       'file_not_found',
       'read',
       error as Error,
+      message,
     );
   }
 }
@@ -85,20 +58,28 @@ export async function getMigrationFunction(fileName: string, space: string, base
   try {
     const resolvedPath = resolvePath(basePath, `migrations/${space}`);
     const filePath = join(resolvedPath, fileName);
-
-    // Use dynamic import to load the module
-    const migrationModule = await import(`file://${filePath}`);
+    const migrationModule = await importModule(filePath);
 
     // Get the default export which should be the migration function
     if (typeof migrationModule.default === 'function') {
       return migrationModule.default;
     }
 
-    konsola.error(`Migration file "${fileName}" does not export a default function.`);
+    getUI().error(`Migration file "${fileName}" does not export a default function.`);
+    getLogger().error('Migration file does not export a default function', {
+      fileName,
+      errorCode: ERROR_CODES.MIGRATION_FILE_NO_DEFAULT_EXPORT,
+    });
     return null;
   }
-  catch (error) {
-    konsola.error(`Error loading migration function from "${fileName}": ${(error as Error).message}`);
+  catch (maybeError) {
+    const error = toError(maybeError);
+    getUI().error(`Error loading migration function from "${fileName}": ${error.message}`);
+    getLogger().error('Couldn\'t load migration function', {
+      fileName,
+      error,
+      errorCode: ERROR_CODES.MIGRATION_LOAD_ERROR,
+    });
     return null;
   }
 }

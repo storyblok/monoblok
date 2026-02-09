@@ -16,7 +16,7 @@ describe('throttledQueue', () => {
     for (let i = 0; i < 10; i++) {
       promises.push(throttled(i));
       if (i === 5) {
-        throttled.abort(); // but abort at call #6
+        throttled.abort?.(); // but abort at call #6
       }
     }
 
@@ -25,6 +25,7 @@ describe('throttledQueue', () => {
       expect(['fulfilled', 'rejected']).toContain(result.status);
     });
   });
+
   it('should enforce sequential resolution when throttle limit is exceeded', async () => {
     const throttled = throttledQueue(mockFn, 1, 100); // Limit of 1, 100ms interval
 

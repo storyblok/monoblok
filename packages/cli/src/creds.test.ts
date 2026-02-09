@@ -1,15 +1,7 @@
 import { addCredentials, getCredentials, removeAllCredentials } from './creds';
+import { describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import type { StoryblokCredentials } from './types';
-// tell vitest to use fs mock from __mocks__ folder
-// this can be done in a setup file if fs should always be mocked
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
-
-beforeEach(() => {
-  // reset the state of in-memory fs
-  vol.reset();
-});
 
 describe('creds', async () => {
   describe('getCredentials', () => {
@@ -17,7 +9,7 @@ describe('creds', async () => {
       vol.fromJSON({
         'test/credentials.json': JSON.stringify({
           'api.storyblok.com': {
-            login: 'julio.iglesias@storyblok.com',
+            login: 'julio.professional@storyblok.com',
             password: 'my_access_token',
             region: 'eu',
           },
@@ -27,7 +19,7 @@ describe('creds', async () => {
       const credentials = await getCredentials('/temp/test/credentials.json') as StoryblokCredentials;
 
       expect(credentials['api.storyblok.com']).toEqual({
-        login: 'julio.iglesias@storyblok.com',
+        login: 'julio.professional@storyblok.com',
         password: 'my_access_token',
         region: 'eu',
       });
@@ -47,13 +39,13 @@ describe('creds', async () => {
       await addCredentials({
         filePath: '/temp/test/credentials.json',
         machineName: 'api.storyblok.com',
-        login: 'julio.iglesias@storyblok.com',
+        login: 'julio.professional@storyblok.com',
         password: 'my_access_token',
         region: 'eu',
       });
 
       const content = vol.readFileSync('/temp/test/credentials.json', 'utf8');
-      expect(content).toBe('{\n  "api.storyblok.com": {\n    "login": "julio.iglesias@storyblok.com",\n    "password": "my_access_token",\n    "region": "eu"\n  }\n}');
+      expect(content).toBe('{\n  "api.storyblok.com": {\n    "login": "julio.professional@storyblok.com",\n    "password": "my_access_token",\n    "region": "eu"\n  }\n}');
     });
   });
 
@@ -62,7 +54,7 @@ describe('creds', async () => {
       vol.fromJSON({
         'test/credentials.json': JSON.stringify({
           'api.storyblok.com': {
-            login: 'julio.iglesias@storyblok.com',
+            login: 'julio.professional@storyblok.com',
             password: 'my_access_token',
             region: 'eu',
           },

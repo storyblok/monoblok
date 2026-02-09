@@ -1,14 +1,16 @@
 import { Spinner } from '@topcli/spinner';
-import { colorPalette, commands } from '../../../constants';
+import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 
 import { getProgram } from '../../../program';
-import { mapiClient } from '../../../api';
 import { datasourcesCommand } from '../command';
 import type { PullDatasourcesOptions } from './constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
 import chalk from 'chalk';
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
+import { isAbsolute, join, relative } from 'pathe';
+import { resolveCommandPath } from '../../../utils/filesystem';
+import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 
 const program = getProgram();
 
@@ -26,10 +28,18 @@ datasourcesCommand
 
     // Command options
     const { space, path } = datasourcesCommand.opts();
-    const { separateFiles, suffix, filename = 'datasources' } = options;
+    const {
+      separateFiles = false,
+      suffix,
+      filename,
+    } = options;
 
-    const { state, initializeSession } = session();
-    await initializeSession();
+    // Use default filename when not provided
+    const actualFilename = filename ?? DEFAULT_DATASOURCES_FILENAME;
+    // Keep writing under .storyblok unless a command-level --path explicitly overrides it.
+    const datasourcesOutputDir = resolveCommandPath(directories.datasources, space, path);
+
+    const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
       return;
@@ -38,15 +48,6 @@ datasourcesCommand
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
       return;
     }
-
-    const { password, region } = state;
-
-    mapiClient({
-      token: {
-        accessToken: password,
-      },
-      region,
-    });
 
     const spinnerDatasources = new Spinner({
       verbose: !isVitest,
@@ -81,21 +82,27 @@ datasourcesCommand
       );
       konsola.br();
       if (separateFiles) {
-        if (filename !== 'datasources') {
+        if (filename && filename !== DEFAULT_DATASOURCES_FILENAME) {
           konsola.warn(`The --filename option is ignored when using --separate-files`);
         }
-        const filePath = path ? `${path}/datasources/${space}/` : `.storyblok/datasources/${space}/`;
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        const filePath = `${datasourcesOutputDir}/`;
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), datasourcesOutputDir)}/`;
+        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else if (datasourceName) {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${datasourceName}.json`;
-        const filePath = path ? `${path}/datasources/${space}/${fileName}` : `.storyblok/datasources/${space}/${fileName}`;
-        konsola.ok(`Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${datasourceName}.json`;
+        const filePath = join(datasourcesOutputDir, fileName);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(`Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else {
-        const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
-        const filePath = path ? `${path}/datasources/${space}/${fileName}` : `.storyblok/datasources/${space}/${fileName}`;
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(filePath)}`);
+        const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
+        const filePath = join(datasourcesOutputDir, fileName);
+        // Only show relative path if the base path wasn't absolute
+        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       konsola.br();
     }

@@ -3,11 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "description": "Official monorepo for Storyblok open source packages",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.27.0",
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",
     "prepare": "husky",
+    "release": "node tools/release.mjs",
     "lint": "nx run-many --target=lint",
     "lint:fix": "nx run-many --target=lint --fix",
     "lint:affected": "nx affected:lint"

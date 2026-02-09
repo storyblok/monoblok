@@ -1,5 +1,5 @@
 import { colorPalette, commands } from '../../../constants';
-import { handleError, isVitest, konsola } from '../../../utils';
+import { FileSystemError, handleError, isVitest, konsola } from '../../../utils';
 import { getProgram } from '../../../program';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
@@ -7,17 +7,21 @@ import type { GenerateTypesOptions } from './constants';
 import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
+import { readDatasourcesFiles } from '../../datasources/push/actions';
+import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
+import type { ReadDatasourcesOptions } from './../../datasources/push/constants';
 
 const program = getProgram();
 
 typesCommand
   .command('generate')
   .description('Generate types d.ts for your component schemas')
-  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
   .option(
     '--filename <name>',
     'Base file name for all component types when generating a single declarations file (e.g. components.d.ts). Ignored when using --separate-files.',
   )
+
+  .option('--sf, --separate-files', 'Generate one .d.ts file per component instead of a single combined file')
   .option('--strict', 'strict mode, no loose typing')
   .option('--type-prefix <prefix>', 'prefix to be prepended to all generated component type names')
   .option('--type-suffix <suffix>', 'suffix to be appended to all generated component type names')
@@ -38,23 +42,40 @@ typesCommand
 
     try {
       spinner.start(`Generating types...`);
-      const spaceData = await readComponentsFiles({
-        ...options as ReadComponentsOptions,
+      const componentsData = await readComponentsFiles({
+        ...(options as ReadComponentsOptions),
         from: space,
         path,
       });
-
+      // Try to read datasources, but make it optional
+      let dataSourceData: SpaceDatasourcesData;
+      try {
+        dataSourceData = await readDatasourcesFiles({
+          ...(options as ReadDatasourcesOptions),
+          from: space,
+          path,
+        });
+      }
+      catch (error) {
+        // Only catch the specific case where datasources don't exist
+        if (error instanceof FileSystemError && error.errorId === 'file_not_found') {
+          dataSourceData = { datasources: [] };
+        }
+        else {
+          throw error;
+        }
+      }
       await generateStoryblokTypes({
         path,
       });
 
       // Add empty datasources array to match expected type for generateTypes
-      const spaceDataWithDatasources: ComponentsData & { datasources: [] } = {
-        ...spaceData,
-        datasources: [],
+      const spaceDataWithComponentsAndDatasources: ComponentsData & SpaceDatasourcesData = {
+        ...componentsData,
+        ...dataSourceData,
       };
 
-      const typedefString = await generateTypes(spaceDataWithDatasources, {
+      const typedefString = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
         path,
       });

@@ -1,11 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
 import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
-// Import the main components module first to ensure proper initialization
+// Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
+import { loggedOutSessionState } from '../../../../test/setup';
 
 vi.mock('./actions', () => ({
   fetchComponents: vi.fn(),
@@ -16,40 +18,26 @@ vi.mock('./actions', () => ({
   saveComponentsToFiles: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: false,
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
-
 vi.mock('../../../utils/konsola');
+
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
 
 describe('pull', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     // Reset the option values
-    componentsCommand._optionValues = {};
-    componentsCommand._optionValueSources = {};
+    (componentsCommand as any)._optionValues = {};
+    (componentsCommand as any)._optionValueSources = {};
     for (const command of componentsCommand.commands) {
-      command._optionValueSources = {};
-      command._optionValues = {};
+      (command as any)._optionValueSources = {};
+      (command as any)._optionValues = {};
     }
   });
 
@@ -62,9 +50,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }, {
         name: 'component-name-2',
         display_name: 'Component Name 2',
@@ -72,16 +60,10 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: [],
-        internal_tag_ids: [],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -109,15 +91,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
-      };
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       };
       vi.mocked(fetchComponent).mockResolvedValue(mockResponse);
       await componentsCommand.parseAsync(['node', 'test', 'pull', 'component-name', '--space', '12345']);
@@ -139,9 +115,7 @@ describe('pull', () => {
     });
 
     it('should throw an error if the user is not logged in', async () => {
-      session().state = {
-        isLoggedIn: false,
-      };
+      preconditions.loggedOut();
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
       expect(konsola.error).toHaveBeenCalledWith('You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.', null, {
         header: true,
@@ -149,12 +123,6 @@ describe('pull', () => {
     });
 
     it('should throw an error if the space is not provided', async () => {
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
-
       const mockError = new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`);
 
       await componentsCommand.parseAsync(['node', 'test', 'pull']);
@@ -173,16 +141,10 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -208,16 +170,10 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -243,9 +199,9 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }, {
         name: 'component-name-2',
         display_name: 'Component Name 2',
@@ -253,16 +209,10 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12346,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
@@ -286,16 +236,10 @@ describe('pull', () => {
         updated_at: '2021-08-09T12:00:00Z',
         id: 12345,
         schema: { type: 'object' },
-        color: null,
-        internal_tags_list: ['tag'],
-        internal_tag_ids: [1],
+        color: undefined,
+        internal_tags_list: [{ id: 1, name: 'tag' }],
+        internal_tag_ids: ['1'],
       }];
-
-      session().state = {
-        isLoggedIn: true,
-        password: 'valid-token',
-        region: 'eu',
-      };
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 

@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  publish:
     name: Publish
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
-      id-token: write # needed for provenance data generation
+      id-token: write # needed for OIDC trusted publishing
     timeout-minutes: 10
     steps:
       - name: Checkout repository
@@ -20,15 +20,6 @@ jobs:
           filter: tree:0
 
       - uses: ./.github/actions/setup-node
-
-      - run: pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-
-      - name: Build publishable packages
-        run: pnpm nx run-many -p="tag:npm:public" -t=build
-
-      - name: Print Environment Info
-        run: pnpm nx report
-        shell: bash
 
       - name: Determine npm tag
         id: npm-tag
@@ -40,6 +31,34 @@ jobs:
             echo "tag=$BRANCH_NAME" >> $GITHUB_OUTPUT
           fi
 
+      - name: Build packages
+        run: pnpm nx run-many -p="tag:npm:public" -t build
+
+      - name: Print Environment Info
+        run: pnpm nx report
+
+      # Workaround for Nx bugs:
+      #   - https://github.com/nrwl/nx/issues/34000
+      #   - https://github.com/nrwl/nx/issues/27822
+      # For prereleases, only publish packages that were bumped in the release commit
+      - name: Detect packages to publish (prerelease)
+        id: detect-packages
+        if: steps.npm-tag.outputs.tag != 'latest'
+        run: |
+          # Find the latest "chore(release): publish" commit and extract package names
+          RELEASE_COMMIT=$(git log --grep='^chore(release): publish' --format=%H -1)
+          echo "Release commit: $RELEASE_COMMIT"
+          PACKAGES=$(git log -1 --format=%B "$RELEASE_COMMIT" | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
+          echo "Packages to publish: $PACKAGES"
+          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+
       - name: Publish packages
-        run: pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }}
+        run: |
+          if [ "${{ steps.npm-tag.outputs.tag }}" = "latest" ]; then
+            pnpm nx release publish --excludeTaskDependencies --tag=latest
+          elif [ -n "${{ steps.detect-packages.outputs.packages }}" ]; then
+            pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }} --projects=${{ steps.detect-packages.outputs.packages }}
+          else
+            echo "No packages to publish"
+          fi
         shell: bash

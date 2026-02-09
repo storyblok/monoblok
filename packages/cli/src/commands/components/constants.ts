@@ -2,6 +2,11 @@ import type { SpaceDatasource } from '../datasources/constants';
 
 import type { ComponentFolders, Components, InternalTags, Presets } from '@storyblok/management-api-client';
 
+export const DEFAULT_COMPONENTS_FILENAME = 'components';
+export const DEFAULT_GROUPS_FILENAME = 'groups';
+export const DEFAULT_PRESETS_FILENAME = 'presets';
+export const DEFAULT_TAGS_FILENAME = 'tags';
+
 export type SpaceComponent = Components.Component;
 
 export type SpaceComponentFolder = ComponentFolders.ComponentFolder;

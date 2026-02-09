@@ -1,7 +1,8 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { logoutCommand } from './';
 import { session } from '../../session';
-
 import { removeAllCredentials } from '../../creds';
+import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('../../creds', () => ({
   getCredentials: vi.fn(),
@@ -10,29 +11,13 @@ vi.mock('../../creds', () => ({
   removeAllCredentials: vi.fn(),
 }));
 
-// Mocking the session module
-vi.mock('../../session', () => {
-  let _cache: Record<string, any> | null = null;
-  const session = () => {
-    if (!_cache) {
-      _cache = {
-        state: {
-          isLoggedIn: true,
-          password: 'valid-token',
-          region: 'eu',
-        },
-        updateSession: vi.fn(),
-        persistCredentials: vi.fn(),
-        initializeSession: vi.fn(),
-      };
-    }
-    return _cache;
-  };
-
-  return {
-    session,
-  };
-});
+const preconditions = {
+  loggedOut() {
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = loggedOutSessionState();
+    });
+  },
+};
 
 describe('logoutCommand', () => {
   beforeEach(() => {
@@ -41,19 +26,12 @@ describe('logoutCommand', () => {
   });
 
   it('should log out the user if has previously login', async () => {
-    session().state = {
-      isLoggedIn: true,
-      password: 'valid-token',
-      region: 'eu',
-    };
     await logoutCommand.parseAsync(['node', 'test']);
     expect(removeAllCredentials).toHaveBeenCalled();
   });
 
   it('should not log out the user if has not previously login', async () => {
-    session().state = {
-      isLoggedIn: false,
-    };
+    preconditions.loggedOut();
     await logoutCommand.parseAsync(['node', 'test']);
     expect(removeAllCredentials).not.toHaveBeenCalled();
   });

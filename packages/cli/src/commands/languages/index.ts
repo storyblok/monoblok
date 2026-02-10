@@ -7,6 +7,8 @@ import { fetchLanguages, saveLanguagesToFile } from './actions';
 import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
 import { Spinner } from '@topcli/spinner';
+import { isAbsolute, join, relative } from 'pathe';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -61,10 +63,12 @@ pullCmd
         filename,
         suffix,
       });
+      const languagesOutputDir = resolveCommandPath('languages', space, path);
       const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
-      const filePath = path ? `${path}/${fileName}` : `.storyblok/languages/${space}/${fileName}`;
+      const filePath = join(languagesOutputDir, fileName);
+      const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
       spinner.succeed();
-      konsola.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(filePath)}`, true);
+      konsola.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`, true);
     }
     catch (error) {
       spinner.failed();

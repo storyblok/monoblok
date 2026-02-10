@@ -6,6 +6,8 @@ import { fetchLanguages, saveLanguagesToFile } from './actions';
 import { colorPalette } from '../../constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loggedOutSessionState } from '../../../test/setup';
+import { join, relative } from 'pathe';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 vi.mock('./actions', () => ({
   fetchLanguages: vi.fn(),
@@ -60,7 +62,8 @@ describe('languagesCommand', () => {
         await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
         expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, expect.objectContaining({}));
-        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/languages/12345/languages.12345.json`)}`, true);
+        const expectedPath = relative(process.cwd(), join(resolveCommandPath('languages', '12345'), 'languages.12345.json'));
+        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(expectedPath)}`, true);
       });
 
       it('should throw an error if the user is not logged in', async () => {
@@ -120,7 +123,8 @@ describe('languagesCommand', () => {
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, expect.objectContaining({
           path: '/tmp',
         }));
-        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(`/tmp/languages.12345.json`)}`, true);
+        const expectedPath = join(resolveCommandPath('languages', '12345', '/tmp'), 'languages.12345.json');
+        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(expectedPath)}`, true);
       });
     });
 
@@ -146,7 +150,8 @@ describe('languagesCommand', () => {
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, expect.objectContaining({
           filename: 'custom-languages',
         }));
-        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/languages/12345/custom-languages.12345.json`)}`, true);
+        const expectedPath = relative(process.cwd(), join(resolveCommandPath('languages', '12345'), 'custom-languages.12345.json'));
+        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(expectedPath)}`, true);
       });
     });
 
@@ -172,7 +177,8 @@ describe('languagesCommand', () => {
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, expect.objectContaining({
           suffix: 'custom-suffix',
         }));
-        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/languages/12345/languages.custom-suffix.json`)}`, true);
+        const expectedPath = relative(process.cwd(), join(resolveCommandPath('languages', '12345'), 'languages.custom-suffix.json'));
+        expect(konsola.ok).toHaveBeenCalledWith(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(expectedPath)}`, true);
       });
     });
   });

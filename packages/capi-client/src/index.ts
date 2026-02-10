@@ -44,6 +44,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const { accessToken, region = 'eu', baseUrl, headers = {}, throwOnError = false } = config;
   const client: Client = createClient(
     createConfig({
+      auth: accessToken,
       baseUrl: baseUrl || getRegionBaseUrl(region),
       headers: {
         'Content-Type': 'application/json',
@@ -74,7 +75,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     identifier: GetData['path']['identifier'],
     query: Prettify<Omit<GetData['query'], 'token'>> = {},
   ): Promise<ApiResponse<GetResponse>> => {
-    return get({ client, path: { identifier }, query: { ...query, token: accessToken } });
+    return get({ client, path: { identifier }, query });
   };
 
   /**
@@ -84,7 +85,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const getAllStories = async (
     query: Prettify<Omit<GetAllData['query'], 'token'>> = {},
   ): Promise<ApiResponse<GetAllResponse>> => {
-    return getAll({ client, query: { ...query, token: accessToken } });
+    return getAll({ client, query });
   };
 
   const stories = {

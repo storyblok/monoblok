@@ -58,6 +58,8 @@ pullCmd
       await saveLanguagesToFile(space, internationalization, {
         ...options,
         path,
+        filename,
+        suffix,
       });
       const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
       const filePath = path ? `${path}/${fileName}` : `.storyblok/languages/${space}/${fileName}`;

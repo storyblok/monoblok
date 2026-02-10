@@ -294,7 +294,9 @@ paths:
           required: true
           description: Story identifier - can be full_slug (string), id (number), or uuid (string). When using uuid, the find_by=uuid query parameter is required.
           schema:
-            type: string
+            oneOf:
+              - type: integer
+              - type: string
           examples:
             full_slug:
               summary: By full slug

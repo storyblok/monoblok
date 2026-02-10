@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { VNode } from 'vue';
 import { createTextVNode, h } from 'vue';
-import type { BlockTypes, richTextResolver, type StoryblokRichTextNode, StoryblokRichTextNodeResolver, type StoryblokRichTextOptions } from '@storyblok/richtext';
+import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextNodeResolver, type StoryblokRichTextOptions } from '@storyblok/richtext';
 import { StoryblokComponent, useStoryblok } from '@storyblok/vue';
 
 import CodeBlock from './CodeBlock.vue';
@@ -368,7 +368,7 @@ import CodeBlock from './CodeBlock.vue';
   ],
 }; */
 
-const story = await useStoryblok('/home', {
+const story = await useStoryblok('/vue/test-richtext', {
   version: 'draft',
 });
 
@@ -397,7 +397,7 @@ const options: StoryblokRichTextOptions<VNode> = {
   },
 };
 
-const root = () => richTextResolver<VNode>(options).render(story.value.content.richtext);
+const root = () => story.value?.content?.richText ? richTextResolver<VNode>(options).render(story.value.content.richText) : null;
 </script>
 
 <template>

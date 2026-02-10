@@ -122,7 +122,7 @@ If you have a question, please ask in the [Discuss Storyblok on Discord](https:/
 
 ## Contributing
 
-If you're interested in contributing to Storyblok CLI, please read our [contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before submitting a pull request.
+If you're interested in contributing to Storyblok CLI, please read our [contributing docs](../../CONTRIBUTING.md) before submitting a pull request.
 
 ## License
 

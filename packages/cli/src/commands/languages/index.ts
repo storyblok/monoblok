@@ -1,3 +1,4 @@
+import type { Command } from 'commander';
 import { colorPalette, commands } from '../../constants';
 import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../utils';
 import { getProgram } from '../../program';
@@ -6,29 +7,29 @@ import { fetchLanguages, saveLanguagesToFile } from './actions';
 import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
 import { Spinner } from '@topcli/spinner';
+import { isAbsolute, join, relative } from 'pathe';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 const program = getProgram(); // Get the shared singleton instance
 
 export const languagesCommand = program
   .command(commands.LANGUAGES)
   .alias('lang')
-  .description(`Manage your space's languages`)
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path to save the file. Default is .storyblok/languages');
+  .description(`Manage your space's languages`);
 
-languagesCommand
+const pullCmd = languagesCommand
   .command('pull')
   .description(`Download your space's languages schema as json`)
   .option('-f, --filename <filename>', 'filename to save the file as <filename>.<suffix>.json')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. languages.<suffix>.json). By default, the space ID is used.')
-  .action(async (options: PullLanguagesOptions) => {
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+pullCmd
+  .action(async (options: PullLanguagesOptions, command: Command) => {
     konsola.title(`${commands.LANGUAGES}`, colorPalette.LANGUAGES);
 
-    // Global options
-    const verbose = program.opts().verbose;
-
-    // Command options
-    const { space, path } = languagesCommand.opts();
+    const { space, path, verbose } = command.optsWithGlobals();
     const { filename = 'languages', suffix = options.space } = options;
 
     const { state } = session();
@@ -59,11 +60,15 @@ languagesCommand
       await saveLanguagesToFile(space, internationalization, {
         ...options,
         path,
+        filename,
+        suffix,
       });
+      const languagesOutputDir = resolveCommandPath('languages', space, path);
       const fileName = suffix ? `${filename}.${suffix}.json` : `${filename}.json`;
-      const filePath = path ? `${path}/${fileName}` : `.storyblok/languages/${space}/${fileName}`;
+      const filePath = join(languagesOutputDir, fileName);
+      const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
       spinner.succeed();
-      konsola.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(filePath)}`, true);
+      konsola.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`, true);
     }
     catch (error) {
       spinner.failed();

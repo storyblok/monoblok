@@ -14,12 +14,6 @@ paths:
       summary: Retrieve Multiple Stories
       description: Returns an array of all stories. The API response can be filtered using the query parameters, including specific filter queries.
       parameters:
-        - name: token
-          in: query
-          required: true
-          description: A preview or public access token
-          schema:
-            type: string
         - name: version
           in: query
           required: false
@@ -307,12 +301,6 @@ paths:
             uuid:
               summary: By UUID (requires find_by=uuid)
               value: e656e146-f4ed-44a2-8017-013e5a9d9395
-        - name: token
-          in: query
-          required: true
-          description: A preview or public access token
-          schema:
-            type: string
         - name: find_by
           in: query
           required: false

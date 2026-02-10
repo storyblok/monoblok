@@ -4,10 +4,11 @@ import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createApiClient } from './index';
 
 const openapiSpecPath = join(
-  __dirname,
+  fileURLToPath(new URL('.', import.meta.url)),
   '../node_modules/@storyblok/openapi/dist/capi/stories.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');

@@ -4,6 +4,10 @@ description: Storyblok story object for the Content Delivery API
 allOf:
   - $ref: ../../../shared/stories/story-base.yaml
   - type: object
+    required:
+      - release_id
+      - lang
+      - default_full_slug
     properties:
       default_full_slug:
         type: string

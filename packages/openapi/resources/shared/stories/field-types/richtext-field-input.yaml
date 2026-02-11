@@ -1,9 +1,11 @@
-# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
-# See: https://www.storyblok.com/docs/packages/storyblok-richtext
-# Note: Richtext fields do NOT have a 'fieldtype' property
-# Input variant is identical to output for richtext
 type: object
-description: Richtext field input - structured rich text document (ProseMirror format)
+description: >-
+  Richtext field input - structured rich text document (ProseMirror format).
+  Note: Richtext fields do NOT have a 'fieldtype' property.
+  Input variant is identical to output for richtext.
+externalDocs:
+  description: Storyblok richtext documentation
+  url: https://www.storyblok.com/docs/packages/storyblok-richtext
 required:
   - type
 properties:

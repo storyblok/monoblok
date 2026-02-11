@@ -1,8 +1,8 @@
-# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
-# Note: Table fields do NOT have a 'fieldtype' property in API responses
-# Input variant allows more lenient validation
 type: object
 description: Table field input for creating/updating stories
+externalDocs:
+  description: Storyblok table field type documentation
+  url: https://www.storyblok.com/docs/api/management/components/possible-field-types
 properties:
   thead:
     type: array

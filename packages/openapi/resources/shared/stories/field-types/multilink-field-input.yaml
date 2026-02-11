@@ -1,6 +1,8 @@
-# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
 type: object
 description: Multilink field input for creating/updating stories - all fields optional
+externalDocs:
+  description: Storyblok multilink field type documentation
+  url: https://www.storyblok.com/docs/api/management/components/possible-field-types
 properties:
   fieldtype:
     type: string
@@ -20,11 +22,13 @@ properties:
     type: string
     description: Cached URL path for the linked story
   anchor:
-    type: string
-    nullable: true
+    type:
+      - string
+      - 'null'
     description: Anchor/fragment identifier for the link
   target:
-    type: string
-    enum: [_self, _blank]
-    nullable: true
+    type:
+      - string
+      - 'null'
+    enum: [_self, _blank, null]
     description: Link target attribute

@@ -62,7 +62,7 @@ All authentication methods work across all Storyblok server regions:
 - **US**: `https://api-us.storyblok.com`
 - **Canada**: `https://api-ca.storyblok.com`
 - **Australia**: `https://api-ap.storyblok.com`
-- **China**: `https://app.storyblok.cn`
+- **China**: `https://app.storyblokchina.cn`
 
 ## Troubleshooting
 

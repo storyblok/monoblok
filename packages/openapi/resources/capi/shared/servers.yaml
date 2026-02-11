@@ -6,5 +6,5 @@
   description: Base URL for spaces created in Canada
 - url: https://api-ap.storyblok.com
   description: Base URL for spaces created in Australia
-- url: https://app.storyblok.cn
+- url: https://app.storyblokchina.cn
   description: Base URL for spaces created in China

@@ -1,12 +1,12 @@
 BadRequest:
-      description: Bad request
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
+  description: Bad request
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          error:
+            type: string
 
 Unauthorized:
   description: Unauthorized

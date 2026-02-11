@@ -11,14 +11,18 @@ required:
   - created_at
   - updated_at
   - content
-  - is_folder
   - is_startpage
   - parent_id
   - group_id
   - alternates
   - tag_list
   - position
-  - published
+  - published_at
+  - sort_by_date
+  - meta_data
+  - first_published_at
+  - path
+  - translated_slugs
 properties:
   id:
     type: integer
@@ -67,14 +71,8 @@ properties:
     format: uuid
     description: Generated UUID string
     readOnly: true
-  is_folder:
-    type: boolean
-    description: true if the instance constitutes a folder
   content:
     $ref: ./story-content.yaml
-  published:
-    type: boolean
-    description: true if a story is currently published, even if it has unpublished changes
   slug:
     type: string
     description: The slug specific for the story

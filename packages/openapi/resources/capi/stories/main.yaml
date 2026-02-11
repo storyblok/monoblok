@@ -238,6 +238,8 @@ paths:
       responses:
         '200':
           description: Array of stories
+          headers:
+            $ref: ../../shared/pagination.yaml#/pagination_headers
           content:
             application/json:
               schema:

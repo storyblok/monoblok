@@ -1,4 +1,4 @@
-- url: https://mapi.storyblok.com
+- url: https://api.storyblok.com
   description: Base URL for spaces created in the EU
 - url: https://api-us.storyblok.com
   description: Base URL for spaces created in the US

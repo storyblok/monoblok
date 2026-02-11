@@ -1,0 +1,14 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+type: object
+description: Plugin/Custom field type - field plugin with custom structure
+required:
+  - plugin
+properties:
+  plugin:
+    type: string
+    description: Technical name of the field plugin
+  _uid:
+    type: string
+    format: uuid
+    description: Unique identifier for this plugin field instance
+additionalProperties: true

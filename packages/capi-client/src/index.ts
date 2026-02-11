@@ -46,10 +46,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     createConfig({
       auth: accessToken,
       baseUrl: baseUrl || getRegionBaseUrl(region),
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-      },
+      headers,
       throwOnError,
       kyOptions: {
         // Enable `throwHttpErrors` to make retry work, even if `throwOnError`
@@ -58,7 +55,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
         throwHttpErrors: true,
         timeout: 30_000,
         retry: {
-          limit: 12,
+          limit: 3,
           backoffLimit: 20_000,
           jitter: true,
         },

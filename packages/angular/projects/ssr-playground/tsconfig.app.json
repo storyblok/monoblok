@@ -8,10 +8,8 @@
     "types": [
       "node"
     ],
-        "paths": {
-      "@storyblok/angular": [
-        "../../dist/storyblok-angular-sdk"
-      ]
+    "paths": {
+      "@storyblok/angular": ["../../dist"]
     },
   },
   "include": [

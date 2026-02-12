@@ -16,6 +16,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@storyblok/richtext/markdown-parser': resolve(__dirname, '../../src/markdown-parser.ts'),
+      '@storyblok/richtext/html-parser': resolve(__dirname, '../../src/html-parser.ts'),
       '@storyblok/richtext': resolve(__dirname, '../../src/index.ts'),
     },
   },

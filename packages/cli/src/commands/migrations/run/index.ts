@@ -1,4 +1,4 @@
-import { getProgram } from '../../../program';
+import type { Command } from 'commander';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
@@ -13,15 +13,18 @@ import { MigrationStream } from './streams/migrations-transform';
 import { UpdateStream } from './streams/update-stream';
 import { pipeline } from 'node:stream';
 
-migrationsCommand.command('run [componentName]')
+const runCmd = migrationsCommand.command('run [componentName]')
   .description('Run migrations')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
-  .action(async (componentName: string | undefined, options: MigrationsRunOptions) => {
-    const program = getProgram();
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
+
+runCmd
+  .action(async (componentName: string | undefined, options: MigrationsRunOptions, command: Command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -34,8 +37,7 @@ migrationsCommand.command('run [componentName]')
       logger.warn('Dry run mode enabled');
     }
 
-    const verbose = program.opts().verbose;
-    const { space, path } = migrationsCommand.opts();
+    const { space, path, verbose } = command.optsWithGlobals();
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {

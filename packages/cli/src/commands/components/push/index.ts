@@ -1,7 +1,7 @@
 import type { PushComponentsOptions } from './constants';
+import type { Command } from 'commander';
 
 import { colorPalette, commands } from '../../../constants';
-import { getProgram } from '../../../program';
 import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { readComponentsFiles } from './actions';
@@ -13,21 +13,21 @@ import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 
-const program = getProgram(); // Get the shared singleton instance
-
-componentsCommand
+const pushCmd = componentsCommand
   .command('push [componentName]')
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage');
 
-  .action(async (componentName: string | undefined, options: PushComponentsOptions) => {
+pushCmd
+  .action(async (componentName: string | undefined, options: PushComponentsOptions, command: Command) => {
     konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
-    // Global options
-    const verbose = program.opts().verbose;
-    const { space, path } = componentsCommand.opts();
+
+    const { space, path, verbose } = command.optsWithGlobals();
 
     const { filter } = options;
     const fromSpace = options.from || space;

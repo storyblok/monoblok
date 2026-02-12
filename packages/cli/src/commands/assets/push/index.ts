@@ -29,9 +29,11 @@ import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsert
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { makeWriteStoryAPITransport } from '../../stories/streams';
 
-assetsCommand
+const pushCmd = assetsCommand
   .command('push')
   .argument('[asset]', 'path or URL of a single asset to push')
+  .option('-s, --space <space>', 'space ID')
+  .option('-p, --path <path>', 'path for file storage')
   .option('-f, --from <from>', 'source space id')
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
@@ -40,7 +42,9 @@ assetsCommand
   .option('--update-stories', 'update file references in stories if necessary', false)
   .option('--asset-token <token>', 'asset token for accessing private assets')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
-  .description(`Push local assets to a Storyblok space.`)
+  .description(`Push local assets to a Storyblok space.`);
+
+pushCmd
   .action(async (assetInput, options, command) => {
     const ui = getUI();
     const logger = getLogger();

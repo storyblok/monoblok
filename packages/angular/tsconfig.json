@@ -5,10 +5,7 @@
   "compilerOptions": {
     "paths": {
       "@storyblok/angular": [
-        "./dist/storyblok/angular"
-      ],
-      "storyblok-angular": [
-        "./dist/storyblok-angular"
+        "./dist/storyblok-angular-sdk"
       ]
     },
     "strict": true,
@@ -32,16 +29,10 @@
   "files": [],
   "references": [
     {
-      "path": "./projects/storyblok/angular/tsconfig.lib.json"
+      "path": "./projects/storyblok-angular-sdk/tsconfig.lib.json"
     },
     {
-      "path": "./projects/storyblok/angular/tsconfig.spec.json"
-    },
-    {
-      "path": "./projects/storyblok-angular/tsconfig.lib.json"
-    },
-    {
-      "path": "./projects/storyblok-angular/tsconfig.spec.json"
+      "path": "./projects/storyblok-angular-sdk/tsconfig.spec.json"
     },
     {
       "path": "./projects/ssr-playground/tsconfig.app.json"

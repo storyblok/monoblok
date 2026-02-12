@@ -4,9 +4,15 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "../../out-tsc/app",
+    "rootDir": "./src",
     "types": [
       "node"
-    ]
+    ],
+        "paths": {
+      "@storyblok/angular": [
+        "../../dist/storyblok-angular-sdk"
+      ]
+    },
   },
   "include": [
     "src/**/*.ts"

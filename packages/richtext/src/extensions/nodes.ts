@@ -163,7 +163,7 @@ export const StoryblokBlok = Node.create({
     return [{ tag: 'div[data-blok]' }];
   },
   renderHTML({ HTMLAttributes }) {
-    console.warn('[StoryblokRichtText] - BLOK resolver is not available for vanilla usage');
+    console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage');
     return ['span', {
       blok: HTMLAttributes?.body?.[0],
       id: HTMLAttributes?.id,

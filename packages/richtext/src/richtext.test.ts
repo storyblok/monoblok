@@ -3,6 +3,9 @@ import { richTextResolver } from './richtext';
 import { createTextVNode, h } from 'vue';
 import type { VNode } from 'vue';
 import { BlockTypes, MarkTypes, type StoryblokRichTextNode, type StoryblokRichTextNodeResolver } from './types';
+import { Mark, Node } from '@tiptap/core';
+import Heading from '@tiptap/extension-heading';
+import Bold from '@tiptap/extension-bold';
 
 describe('richtext', () => {
   describe('document', () => {
@@ -1659,5 +1662,138 @@ describe('richTextResolver', () => {
       const html = richTextResolver<string>({ keyedResolvers: true }).render(codeBlock as StoryblokRichTextNode<string>);
       expect(html).toBe('<pre key="pre-0"><code key="code-0">const x = 42;</code></pre>');
     });
+  });
+});
+
+describe('tiptapExtensions', () => {
+  it('should allow overriding a built-in node extension', () => {
+    const CustomHeading = Heading.extend({
+      renderHTML({ HTMLAttributes }) {
+        const { level, ...rest } = HTMLAttributes;
+        return [`h${level}`, { class: `custom-heading-${level}`, ...rest }, 0];
+      },
+    });
+
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'heading',
+        attrs: { level: 2 },
+        content: [{ type: 'text', text: 'Hello' }],
+      }],
+    };
+
+    const html = richTextResolver<string>({
+      tiptapExtensions: { heading: CustomHeading },
+    }).render(doc as any);
+
+    expect(html).toBe('<h2 class="custom-heading-2">Hello</h2>');
+  });
+
+  it('should allow overriding a built-in mark extension', () => {
+    const CustomBold = Bold.extend({
+      renderHTML() {
+        return ['b', { class: 'custom-bold' }, 0];
+      },
+    });
+
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        content: [{
+          type: 'text',
+          text: 'Bold text',
+          marks: [{ type: 'bold' }],
+        }],
+      }],
+    };
+
+    const html = richTextResolver<string>({
+      tiptapExtensions: { bold: CustomBold },
+    }).render(doc as any);
+
+    expect(html).toBe('<p><b class="custom-bold">Bold text</b></p>');
+  });
+
+  it('should allow adding a custom node extension', () => {
+    const Callout = Node.create({
+      name: 'callout',
+      group: 'block',
+      content: 'inline*',
+      renderHTML({ HTMLAttributes }) {
+        return ['div', { 'data-callout': '', 'class': 'callout', ...HTMLAttributes }, 0];
+      },
+    });
+
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'callout',
+        content: [{ type: 'text', text: 'Important note' }],
+      }],
+    };
+
+    const html = richTextResolver<string>({
+      tiptapExtensions: { callout: Callout },
+    }).render(doc as any);
+
+    expect(html).toBe('<div data-callout="" class="callout">Important note</div>');
+  });
+
+  it('should allow adding a custom mark extension', () => {
+    const Spoiler = Mark.create({
+      name: 'spoiler',
+      renderHTML() {
+        return ['span', { class: 'spoiler' }, 0];
+      },
+    });
+
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        content: [{
+          type: 'text',
+          text: 'Secret',
+          marks: [{ type: 'spoiler' }],
+        }],
+      }],
+    };
+
+    const html = richTextResolver<string>({
+      tiptapExtensions: { spoiler: Spoiler },
+    }).render(doc as any);
+
+    expect(html).toBe('<p><span class="spoiler">Secret</span></p>');
+  });
+
+  it('should let resolvers take priority over tiptapExtensions', () => {
+    const CustomHeading = Heading.extend({
+      renderHTML({ node, HTMLAttributes }) {
+        const level = node.attrs.level;
+        return [`h${level}`, { class: 'from-extension', ...HTMLAttributes }, 0];
+      },
+    });
+
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'heading',
+        attrs: { level: 1 },
+        content: [{ type: 'text', text: 'Title' }],
+      }],
+    };
+
+    const html = richTextResolver<string>({
+      tiptapExtensions: { heading: CustomHeading },
+      resolvers: {
+        [BlockTypes.HEADING]: (node) => {
+          return `<h1 class="from-resolver">${node.children}</h1>`;
+        },
+      },
+    }).render(doc as any);
+
+    expect(html).toBe('<h1 class="from-resolver">Title</h1>');
   });
 });

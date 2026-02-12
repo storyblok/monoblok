@@ -100,11 +100,15 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     resolvers = {},
     optimizeImages = false,
     keyedResolvers = false,
+    tiptapExtensions,
   } = options;
   const isExternalRenderFn = renderFn !== defaultRenderFn;
 
-  // Get extensions configured with runtime options
-  const allExtensions = getStoryblokExtensions({ optimizeImages });
+  // Get extensions configured with runtime options, merged with user overrides
+  const baseExtensions = getStoryblokExtensions({ optimizeImages });
+  const allExtensions = tiptapExtensions
+    ? { ...baseExtensions, ...tiptapExtensions }
+    : baseExtensions;
   const extensionValues = Object.values(allExtensions);
 
   // Build lookup maps: type name → extension config

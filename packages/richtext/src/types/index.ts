@@ -323,4 +323,9 @@ export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: B
    * ```
    */
   keyedResolvers?: boolean;
+  /**
+   * Custom tiptap extensions to override or add node/mark rendering.
+   * Extensions are merged with the built-in defaults, overriding by key.
+   */
+  tiptapExtensions?: Record<string, any>;
 }

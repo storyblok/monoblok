@@ -176,7 +176,7 @@ const getComponentPropertiesTypeAnnotations = async (
     const acc = await accPromise;
 
     // Skip tabbed properties
-    if (key.startsWith('tab-')) {
+    if (key.startsWith('tab-') || value.type === "section") {
       return acc;
     }
 

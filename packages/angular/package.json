@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "playground:ssr:start": "ng serve ssr-playground --ssl",
+    "playground:app:start": "ng serve app-playground --ssl",
+    "build": "ng build @storyblok/angular",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

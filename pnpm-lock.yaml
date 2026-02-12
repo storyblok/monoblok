@@ -29659,7 +29659,7 @@ snapshots:
       micro-api-client: 3.3.0
       node-fetch: 3.3.2
       p-wait-for: 5.0.2
-      qs: 6.14.0
+      qs: 6.14.2
     optional: true
 
   netmask@2.0.2: {}

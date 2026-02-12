@@ -8,18 +8,18 @@
   "projects": {
     "@storyblok/angular": {
       "projectType": "library",
-      "root": "projects/storyblok-angular-sdk",
-      "sourceRoot": "projects/storyblok-angular-sdk/src",
+      "root": "projects/sdk",
+      "sourceRoot": "projects/sdk/src",
       "prefix": "lib",
       "architect": {
         "build": {
           "builder": "@angular/build:ng-packagr",
           "configurations": {
             "production": {
-              "tsConfig": "projects/storyblok-angular-sdk/tsconfig.lib.prod.json"
+              "tsConfig": "projects/sdk/tsconfig.lib.prod.json"
             },
             "development": {
-              "tsConfig": "projects/storyblok-angular-sdk/tsconfig.lib.json"
+              "tsConfig": "projects/sdk/tsconfig.lib.json"
             }
           },
           "defaultConfiguration": "production"
@@ -27,7 +27,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/storyblok-angular-sdk/tsconfig.spec.json"
+            "tsConfig": "projects/sdk/tsconfig.spec.json"
           }
         }
       }

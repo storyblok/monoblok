@@ -5,6 +5,7 @@ import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
 import { storyblokSchemas } from '../../../utils/storyblok-schemas';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';
 import type { ComponentPropertySchema } from '../../../types/schemas';
@@ -304,7 +305,7 @@ const getComponentPropertiesTypeAnnotations = async (
 
 const loadCustomFieldsParser = async (path: string): Promise<((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined> => {
   try {
-    const customFieldsParser = await import(resolve(path));
+    const customFieldsParser = await import(pathToFileURL(resolve(path)).href);
     return customFieldsParser.default;
   }
   catch (error) {
@@ -315,7 +316,7 @@ const loadCustomFieldsParser = async (path: string): Promise<((key: string, valu
 
 async function loadCompilerOptions(path: string) {
   if (path) {
-    const compilerOptions = await import(resolve(path));
+    const compilerOptions = await import(pathToFileURL(resolve(path)).href);
     return compilerOptions.default;
   }
   return {};

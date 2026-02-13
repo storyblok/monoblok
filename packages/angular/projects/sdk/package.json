@@ -21,7 +21,10 @@
   ],
   "peerDependencies": {
     "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",
-    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
+    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0",
+    "@storyblok/live-preview": "workspace:*",
+    "storyblok-js-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*"
   },
   "dependencies": {
     "tslib": "^2.3.0"

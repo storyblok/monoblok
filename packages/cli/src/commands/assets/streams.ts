@@ -479,7 +479,9 @@ export const readLocalAssetsStream = ({
           if (!shortFilename) {
             throw new Error(
               `Asset metadata "${file}" is missing "short_filename" and "filename", `
-              + `and no companion binary file was found.`,
+              + `and no companion binary file was found. `
+              + `Please add a "short_filename" or "filename" field to the metadata, `
+              + `or place a companion binary file next to it (e.g. "${baseName}.png" for "${file}").`,
             );
           }
 

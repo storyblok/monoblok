@@ -1394,6 +1394,30 @@ describe('assets push command', () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it('should derive short_filename from filename CDN URL when short_filename is not present', async () => {
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    const userAssetMetadata = { filename: 'https://a.storyblok.com/f/12345/500x500/hero.png', alt: 'Hero' };
+    vol.fromJSON({
+      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.canLoadFoldersManifest([]);
+
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
+  });
+
   it('should derive short_filename from companion binary when metadata has neither filename nor short_filename', async () => {
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
     // User-defined metadata: no filename, no short_filename (bare metadata)
@@ -1434,6 +1458,7 @@ describe('assets push command', () => {
     expect(actions.createAsset).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('no companion binary file was found');
+    expect(logFile).toContain('Please add a');
     expect(process.exitCode).toBe(1);
   });
 

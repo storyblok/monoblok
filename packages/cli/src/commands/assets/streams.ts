@@ -453,6 +453,11 @@ export const readLocalAssetsStream = ({
     try {
       const files = await readdir(directoryPath);
       const metadataFiles = files.filter(file => file.endsWith('.json') && file !== 'manifest.jsonl');
+      const binaryFilesByBaseName = new Map(
+        files
+          .filter(f => !f.endsWith('.json') && !f.endsWith('.jsonl'))
+          .map(f => [parse(f).name, f]),
+      );
       setTotalAssets?.(metadataFiles.length);
       for (const file of metadataFiles) {
         const filePath = join(directoryPath, file);
@@ -463,12 +468,26 @@ export const readLocalAssetsStream = ({
           }
           const metadataContent = await readFile(filePath, 'utf8');
           const assetRaw = JSON.parse(metadataContent);
+          const baseName = parse(file).name;
+
+          // short_filename is derived by Storyrails from the full filename, but when
+          // non-existing (e.g. CMS migrations), it's also used by 1st step in asset uploading
+          // to generate the S3 key. Fall back to the companion binary file in the same directory.
+          const shortFilename: string | undefined = assetRaw.short_filename
+            || (assetRaw.filename ? basename(assetRaw.filename) : undefined)
+            || binaryFilesByBaseName.get(baseName);
+          if (!shortFilename) {
+            throw new Error(
+              `Asset metadata "${file}" is missing "short_filename" and "filename", `
+              + `and no companion binary file was found.`,
+            );
+          }
+
           const asset = {
             ...assetRaw,
-            short_filename: assetRaw.short_filename || basename(assetRaw.filename),
+            short_filename: shortFilename,
           } satisfies AssetUpload;
-          const baseName = parse(file).name;
-          const extFromMetadata = extname(asset.short_filename || asset.filename) || '';
+          const extFromMetadata = extname(shortFilename) || '';
           const assetBinaryPath = join(directoryPath, `${baseName}${extFromMetadata}`);
           const fileBuffer = await readFile(assetBinaryPath) as unknown as ArrayBuffer;
           yield {

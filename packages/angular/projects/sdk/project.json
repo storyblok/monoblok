@@ -6,5 +6,10 @@
         "packageRoot": "packages/angular/dist"
       }
     }
-  }
+  },
+  "implicitDependencies": [
+    "live-preview",
+    "storyblok-js-client",
+    "richtext"
+  ]
 }

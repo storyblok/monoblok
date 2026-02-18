@@ -4,7 +4,18 @@
   "compileOnSave": false,
   "compilerOptions": {
     "paths": {
-      "@storyblok/angular": ["./dist"]
+      "@storyblok/angular": [
+        "./dist"
+      ],
+      "@storyblok/live-preview": [
+        "../live-preview"
+      ],
+      "@storyblok/richtext": [
+        "../richtext"
+      ],
+      "storyblok-js-client": [
+        "../js-client"
+      ]
     },
     "strict": true,
     "noImplicitOverride": true,

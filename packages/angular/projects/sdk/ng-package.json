@@ -3,5 +3,10 @@
   "dest": "../../dist",
   "lib": {
     "entryFile": "src/public-api.ts"
-  }
+  },
+  "allowedNonPeerDependencies": [
+    "storyblok-js-client",
+    "@storyblok/live-preview",
+    "@storyblok/richtext"
+  ]
 }

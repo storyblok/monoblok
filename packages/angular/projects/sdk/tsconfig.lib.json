@@ -7,7 +7,7 @@
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
-    "types": []
+    "types": [],
   },
   "include": [
     "src/**/*.ts"

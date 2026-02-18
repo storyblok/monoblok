@@ -1053,7 +1053,7 @@ describe('stories push command', () => {
     expect(report.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('No response from server');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1069,10 +1069,11 @@ describe('stories push command', () => {
     );
   });
 
-  it('should handle errors when mapping references fails', async () => {
+  it('should gracefully handle non-array bloks field values', async () => {
     const storyA = makeMockStory({
       slug: 'story-a',
       content: {
+        _uid: randomUUID(),
         component: 'page',
         body: 'this-is-not-a-valid-blok-array',
       },
@@ -1088,34 +1089,51 @@ describe('stories push command', () => {
         },
       }),
     ]);
-    preconditions.canCreateStories([storyA]);
+    const remoteStories = preconditions.canCreateStories([storyA]);
+    preconditions.canUpdateStories(remoteStories);
 
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    expect(actions.updateStory).not.toHaveBeenCalled();
-    // Reporting
+    // Non-array bloks values should be passed through without crashing
+    expect(actions.updateStory).toHaveBeenCalled();
     const report = getReport();
-    expect(report?.status).toBe('PARTIAL_SUCCESS');
-    // Logging
-    const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Invalid data!');
-    // UI
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid data!'),
-      expect.anything(),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
-    );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Creating stories: 1/1 succeeded, 0 failed.'),
-    );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Processing stories: 0/1 succeeded, 1 failed.'),
-    );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
-    );
+    expect(report?.status).toBe('SUCCESS');
+  });
+
+  it('should push stories with missing content field', async () => {
+    const folder = makeMockStory({
+      slug: 'my-folder',
+      is_folder: true,
+      content: {} as any,
+    });
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      parent_id: folder.id,
+      content: {} as any,
+    });
+    // Remove content to simulate minimal story data
+    delete (folder as any).content;
+    delete (storyA as any).content;
+
+    preconditions.canLoadStories([folder, storyA]);
+    preconditions.canLoadComponents([
+      makeMockComponent({
+        name: 'page',
+      }),
+    ]);
+    const remoteStories = preconditions.canCreateStories([folder, storyA]);
+    preconditions.canUpdateStories(remoteStories);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // Both stories should be created and updated without crashing
+    const report = getReport();
+    expect(report?.status).toBe('SUCCESS');
+    expect(report?.summary).toMatchObject({
+      creationResults: { total: 2, succeeded: 2, failed: 0 },
+      processResults: { total: 2, succeeded: 2, failed: 0 },
+      updateResults: { total: 2, succeeded: 2, failed: 0 },
+    });
   });
 
   it('should handle errors when updating stories fails', async () => {
@@ -1141,10 +1159,10 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('No response from server');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
+      expect.stringContaining('No response from server'),
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(

@@ -2,7 +2,7 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import type { FetchStoriesResult, StoriesQueryParams } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
-import { toError } from '../../utils/error/error';
+import { FetchError } from '../../utils/fetch';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -67,25 +67,26 @@ export const createStory = async (
     publish?: number;
   },
 ): Promise<Story | void> => {
-  try {
-    const client = getMapiClient();
+  const client = getMapiClient();
 
-    const { data } = await client.stories.create({
-      path: {
-        space_id: spaceId,
-      },
-      body: {
-        story: payload.story as Story,
-        publish: payload.publish,
-      },
-      throwOnError: true,
-    });
+  const { data, error, response } = await client.stories.create({
+    path: {
+      space_id: spaceId,
+    },
+    body: {
+      story: payload.story as Story,
+      publish: payload.publish,
+    },
+  });
 
-    return data?.story;
+  if (!response.ok) {
+    handleAPIError('create_story', new FetchError(
+      response.statusText,
+      { status: response.status, statusText: response.statusText, data: error as Record<string, unknown> },
+    ));
   }
-  catch (maybeError) {
-    handleAPIError('create_story', toError(maybeError));
-  }
+
+  return data?.story;
 };
 
 /**
@@ -107,30 +108,30 @@ export const updateStory = async (
     publish?: number;
   },
 ) => {
-  try {
-    const client = getMapiClient();
-    const { data } = await client.stories.updateStory({
-      path: {
-        space_id: spaceId,
-        story_id: storyId,
-      },
-      body: {
-        story: payload.story as Story,
-        force_update: payload.force_update === '1' ? '1' : '0',
-        publish: payload.publish,
-      },
-      throwOnError: true,
-    });
+  const client = getMapiClient();
+  const { data, error, response } = await client.stories.updateStory({
+    path: {
+      space_id: spaceId,
+      story_id: storyId,
+    },
+    body: {
+      story: payload.story as Story,
+      force_update: payload.force_update === '1' ? '1' : '0',
+      publish: payload.publish,
+    },
+  });
 
-    const { story } = data;
-    if (!story) {
-      throw new Error('Failed to update story');
-    }
+  if (!response.ok) {
+    handleAPIError('update_story', new FetchError(
+      response.statusText,
+      { status: response.status, statusText: response.statusText, data: error as Record<string, unknown> },
+    ));
+  }
 
-    return story;
+  const story = data?.story;
+  if (!story) {
+    throw new Error('Failed to update story');
   }
-  catch (maybeError) {
-    handleAPIError('update_story', toError(maybeError));
-    throw maybeError;
-  }
+
+  return story;
 };

@@ -155,20 +155,46 @@ export const readLocalStoriesStream = ({
       .filter(f => extname(f) === '.json' && fileFilter({ uuid: getUUIDFromFilename(f) }));
     setTotalStories?.(files.length);
 
+    // Load all stories to enable parent-first ordering
+    const pending = new Map<string, Story>();
+    const processed = new Set<number | null | undefined>();
+    processed.add(0);
+    processed.add(null);
+    processed.add(undefined);
+
     for (const file of files) {
       try {
         const filePath = join(directoryPath, file);
         const fileContent = await readFile(filePath, 'utf-8');
         const story = JSON.parse(fileContent) as Story;
-
-        onStorySuccess?.(story);
-        yield story;
+        pending.set(file, story);
       }
       catch (maybeError) {
         onStoryError?.(toError(maybeError), file);
-      }
-      finally {
         onIncrement?.();
+      }
+    }
+
+    while (pending.size > 0) {
+      let progress = false;
+      for (const [file, story] of pending) {
+        if (!story.parent_id || processed.has(story.parent_id)) {
+          processed.add(story.id);
+          pending.delete(file);
+          progress = true;
+          onStorySuccess?.(story);
+          onIncrement?.();
+          yield story;
+        }
+      }
+      // Yield remaining stories to avoid infinite loop (orphan stories)
+      if (!progress) {
+        for (const [, story] of pending) {
+          onStorySuccess?.(story);
+          onIncrement?.();
+          yield story;
+        }
+        break;
       }
     }
   };
@@ -233,18 +259,21 @@ const getRemoteStory = async ({ spaceId, storyId }: {
 
 export type CreateStoryTransport = (story: Story) => Promise<Story>;
 
-export const makeCreateStoryAPITransport = ({ spaceId }: {
+export const makeCreateStoryAPITransport = ({ spaceId, maps }: {
   maps: RefMaps;
   spaceId: string;
 }): CreateStoryTransport => async (localStory) => {
-  const { id: _id, uuid: _uuid, content, parent_id: _p, ...newStoryData } = localStory;
+  const { id: _id, uuid: _uuid, content, ...newStoryData } = localStory;
+  const mappedParentId = localStory.parent_id
+    ? Number(maps.stories?.get(localStory.parent_id) ?? localStory.parent_id)
+    : localStory.parent_id;
   const remoteStory = await createStory(spaceId, {
     story: {
       ...newStoryData,
-      content: {
-        _uid: '',
-        component: '__tmp__',
-      },
+      parent_id: mappedParentId || undefined,
+      ...(content?.component
+        ? { content: { _uid: '', component: '__tmp__' } }
+        : {}),
     },
     publish: 0,
   });

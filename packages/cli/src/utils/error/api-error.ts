@@ -67,6 +67,26 @@ export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown,
         throw new APIError('network_error', action, error, customMessage);
     }
   }
+
+  // Handle non-FetchError objects that have a response property (e.g. openapi-fetch errors)
+  const response = (error as any)?.response;
+  if (response?.status) {
+    const wrappedError = new FetchError(
+      response.statusText || (error as Error).message,
+      { status: response.status, statusText: response.statusText ?? '', data: response.data },
+    );
+    switch (response.status) {
+      case 401:
+        throw new APIError('unauthorized', action, wrappedError, customMessage);
+      case 404:
+        throw new APIError('not_found', action, wrappedError, customMessage);
+      case 422:
+        throw new APIError('unprocessable_entity', action, wrappedError, customMessage);
+      default:
+        throw new APIError('network_error', action, wrappedError, customMessage);
+    }
+  }
+
   throw new APIError('generic', action, error as FetchError, customMessage);
 }
 

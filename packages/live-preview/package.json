@@ -1,0 +1,50 @@
+{
+  "name": "@storyblok/live-preview",
+  "type": "module",
+  "version": "0.0.0",
+  "private": false,
+  "packageManager": "pnpm@10.30.0",
+  "description": "Official Live Preview integration for the Storyblok Headless CMS",
+  "author": "Storyblok",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/live-preview#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/live-preview"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [
+    "live-preview",
+    "storyblok"
+  ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "bumpp": "^10.4.1",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@storyblok/preview-bridge": "^2.1.6"
+  }
+}

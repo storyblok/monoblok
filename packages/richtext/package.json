@@ -137,6 +137,7 @@
     "pathe": "^2.0.3",
     "prettier": "^3.4.2",
     "release-it": "^18.1.2",
+    "storyblok-js-client": "workspace:*",
     "tsdown": "^0.12.9",
     "typescript": "5.8.3",
     "vitest": "^3.1.3",

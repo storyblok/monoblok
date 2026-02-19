@@ -75,7 +75,7 @@ export const createStory = async (
     },
     body: {
       story: payload.story as Story,
-      publish: payload.publish,
+      ...(payload.publish ? { publish: payload.publish } : { }),
     },
   });
 
@@ -117,7 +117,7 @@ export const updateStory = async (
     body: {
       story: payload.story as Story,
       force_update: payload.force_update === '1' ? '1' : '0',
-      publish: payload.publish,
+      ...(payload.publish ? { publish: payload.publish } : { }),
     },
   });
 

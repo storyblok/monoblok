@@ -12,7 +12,7 @@ import { toError } from '../../utils/error/error';
 import { FetchError } from '../../utils/fetch';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { getMapiClient } from '../../api';
-import { getStoryFilename } from './utils';
+import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
 
@@ -362,7 +362,7 @@ export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   publish?: number;
 }): WriteStoryTransport => mappedLocalStory => updateStory(spaceId, mappedLocalStory.id, {
   story: mappedLocalStory,
-  publish: publish ?? (mappedLocalStory.published ? 1 : 0),
+  publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
 });
 
 export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;

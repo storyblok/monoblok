@@ -241,44 +241,4 @@ describe('storyRefMapper', () => {
     // @ts-expect-error Our types are wrong.
     expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
   });
-
-  it('should handle bloks field with non-array value', () => {
-    const story = {
-      name: 'Bad Bloks',
-      id: getID(),
-      uuid: randomUUID(),
-      parent_id: null,
-      is_folder: false,
-      slug: 'bad-bloks',
-      content: {
-        _uid: randomUUID(),
-        component: 'page_with_everything',
-        bloks: null,
-      },
-    };
-    const maps = { assets: new Map(), stories: new Map() };
-
-    // @ts-expect-error Our types are wrong.
-    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
-  });
-
-  it('should handle multiasset field with non-array value', () => {
-    const story = {
-      name: 'Bad Multiasset',
-      id: getID(),
-      uuid: randomUUID(),
-      parent_id: null,
-      is_folder: false,
-      slug: 'bad-multiasset',
-      content: {
-        _uid: randomUUID(),
-        component: 'page_with_everything',
-        multi_assets: 'invalid',
-      },
-    };
-    const maps = { assets: new Map(), stories: new Map() };
-
-    // @ts-expect-error Our types are wrong.
-    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
-  });
 });

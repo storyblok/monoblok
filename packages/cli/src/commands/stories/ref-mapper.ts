@@ -239,8 +239,8 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
   const alternates = story.alternates
     ? (story.alternates as Required<Story>['alternates']).map((a: any) => ({
         ...a,
-        id: maps.stories?.get(a.id) || a.id,
-        parent_id: maps.stories?.get(a.parent_id) || a.parent_id,
+        id: maps.stories?.get(a.id) ?? a.id,
+        parent_id: maps.stories?.get(a.parent_id) ?? a.parent_id,
       }))
     : story.alternates;
 
@@ -259,7 +259,7 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
     // @ts-expect-error Our types are wrong.
-    parent_id: parentId ? Number(parentId) : null,
+    parent_id: parentId != null ? Number(parentId) : null,
     alternates,
   } satisfies Story;
 

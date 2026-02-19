@@ -72,7 +72,7 @@ export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown,
   const response = (error as any)?.response;
   if (response?.status) {
     const wrappedError = new FetchError(
-      response.statusText || (error as Error).message,
+      response.statusText ?? (error as Error).message,
       { status: response.status, statusText: response.statusText ?? '', data: response.data },
     );
     switch (response.status) {

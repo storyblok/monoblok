@@ -135,6 +135,24 @@ describe('storyRefMapper', () => {
     expect(Array.from(missingSchemas)).toEqual(['page_with_everything']);
   });
 
+  it('should preserve parent_id of 0 instead of converting it to null', () => {
+    const story = {
+      name: 'Root Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: 0,
+      is_folder: false,
+      slug: 'root-story',
+      content: { _uid: randomUUID(), component: 'page_with_everything' },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.parent_id).toBe(0);
+  });
+
   it('should handle stories with missing content field', () => {
     const story = {
       name: 'No Content Story',

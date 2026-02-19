@@ -20,96 +20,34 @@ const collectStream = async (stream: ReturnType<typeof readLocalStoriesStream>):
 };
 
 describe('readLocalStoriesStream', () => {
-  it('should yield parent folders before their children', async () => {
-    const folder = {
-      name: 'Folder',
+  it('should yield all stories from the directory', async () => {
+    const storyA = {
+      name: 'Story A',
       id: 100,
       uuid: randomUUID(),
       parent_id: null,
-      is_folder: true,
-      slug: 'folder',
+      is_folder: false,
+      slug: 'story-a',
     };
-    const child = {
-      name: 'Child',
+    const storyB = {
+      name: 'Story B',
       id: 200,
       uuid: randomUUID(),
       parent_id: 100,
       is_folder: false,
-      slug: 'child',
+      slug: 'story-b',
     };
-    // Write child first to ensure filesystem order doesn't dictate output
-    writeStory(child);
-    writeStory(folder);
+    writeStory(storyA);
+    writeStory(storyB);
 
     const stream = readLocalStoriesStream({ directoryPath: STORIES_DIR });
     const results = await collectStream(stream);
 
     expect(results).toHaveLength(2);
-    const folderIndex = results.findIndex(s => s.id === 100);
-    const childIndex = results.findIndex(s => s.id === 200);
-    expect(folderIndex).toBeLessThan(childIndex);
+    expect(results.map(s => s.id)).toEqual(expect.arrayContaining([100, 200]));
   });
 
-  it('should yield deeply nested stories in correct order', async () => {
-    const root = {
-      name: 'Root',
-      id: 1,
-      uuid: randomUUID(),
-      parent_id: null,
-      is_folder: true,
-      slug: 'root',
-    };
-    const mid = {
-      name: 'Mid',
-      id: 2,
-      uuid: randomUUID(),
-      parent_id: 1,
-      is_folder: true,
-      slug: 'mid',
-    };
-    const leaf = {
-      name: 'Leaf',
-      id: 3,
-      uuid: randomUUID(),
-      parent_id: 2,
-      is_folder: false,
-      slug: 'leaf',
-    };
-    // Write in reverse order
-    writeStory(leaf);
-    writeStory(mid);
-    writeStory(root);
-
-    const stream = readLocalStoriesStream({ directoryPath: STORIES_DIR });
-    const results = await collectStream(stream);
-
-    expect(results).toHaveLength(3);
-    const rootIdx = results.findIndex(s => s.id === 1);
-    const midIdx = results.findIndex(s => s.id === 2);
-    const leafIdx = results.findIndex(s => s.id === 3);
-    expect(rootIdx).toBeLessThan(midIdx);
-    expect(midIdx).toBeLessThan(leafIdx);
-  });
-
-  it('should yield orphan stories without hanging', async () => {
-    const orphan = {
-      name: 'Orphan',
-      id: 10,
-      uuid: randomUUID(),
-      parent_id: 999,
-      is_folder: false,
-      slug: 'orphan',
-    };
-    writeStory(orphan);
-
-    const stream = readLocalStoriesStream({ directoryPath: STORIES_DIR });
-    const results = await collectStream(stream);
-
-    expect(results).toHaveLength(1);
-    expect(results[0].id).toBe(10);
-  });
-
-  it('should yield root stories with parent_id 0', async () => {
+  it('should yield stories with parent_id 0', async () => {
     const story = {
       name: 'Root Story',
       id: 5,
@@ -125,5 +63,31 @@ describe('readLocalStoriesStream', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].id).toBe(5);
+  });
+
+  it('should report errors for invalid JSON files without stopping', async () => {
+    const validStory = {
+      name: 'Valid',
+      id: 1,
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'valid',
+    };
+    writeStory(validStory);
+    vol.fromJSON({ [path.join(STORIES_DIR, 'bad_file.json')]: '{invalid json' });
+
+    const errors: string[] = [];
+    const stream = readLocalStoriesStream({
+      directoryPath: STORIES_DIR,
+      onStoryError(_error, filename) {
+        errors.push(filename);
+      },
+    });
+    const results = await collectStream(stream);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].id).toBe(1);
+    expect(errors).toHaveLength(1);
   });
 });

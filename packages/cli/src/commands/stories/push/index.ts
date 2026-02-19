@@ -137,7 +137,6 @@ pushCmd
             createStory: options.dryRun
               ? async (story: Story) => story
               : makeCreateStoryAPITransport({
-                  maps,
                   spaceId: space,
                 }),
             appendStoryManifest: options.dryRun

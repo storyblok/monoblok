@@ -88,6 +88,7 @@ const preconditions = {
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     vol.fromJSON({
+      [path.join(assetsDir, 'broken.png')]: 'binary-content',
       [path.join(assetsDir, 'broken.json')]: '{invalid json',
     });
   },
@@ -874,7 +875,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Expected property name or \'}\' in JSON');
+    expect(logFile).toContain('Invalid sidecar JSON');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
@@ -1443,23 +1444,26 @@ describe('assets push command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('should report an error when metadata has no filename and no companion binary exists', async () => {
+  it('should push a binary-only asset with no sidecar JSON using its filename as short_filename', async () => {
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
-    // Metadata-only file with no companion binary
     vol.fromJSON({
-      [path.join(assetsDir, 'orphan.json')]: JSON.stringify({ alt: 'No binary' }),
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssetsManifest([]);
     preconditions.canLoadFoldersManifest([]);
 
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    expect(actions.createAsset).not.toHaveBeenCalled();
-    const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('no companion binary file was found');
-    expect(logFile).toContain('Please add a');
-    expect(process.exitCode).toBe(1);
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
   });
 
   it('should filter stories using search parameter when updating a single asset', async () => {

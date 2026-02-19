@@ -242,7 +242,7 @@ export const makeCreateStoryAPITransport = ({ spaceId }: {
     story: {
       ...newStoryData,
       ...(content?.component
-        ? { content: { _uid: '', component: '__tmp__' } }
+        ? { content: { _uid: '', component: '__migration_artifact__' } }
         : {}),
     },
     publish: 0,

@@ -13,11 +13,6 @@
     "lint:fix": "nx run-many --target=lint --fix",
     "lint:affected": "nx affected:lint"
   },
-  "workspaces": [
-    "packages/*",
-    "packages/angular/projects/*",
-    "tools/*"
-  ],
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",

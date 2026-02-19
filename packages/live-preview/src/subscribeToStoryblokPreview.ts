@@ -1,31 +1,8 @@
 import type { BridgeParams,} from '@storyblok/preview-bridge';
-import { isBrowser } from './utils/isBrowser';
-import { isInEditor } from './utils/isInEditor';
-import type StoryblokBridge from '@storyblok/preview-bridge';
 import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
-let bridge: StoryblokBridge | null = null;
-let bridgePromise: Promise<StoryblokBridge> | null = null;
+import { loadStoryblokBridge } from './loadStoryblokBridge';
+import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
 
-/**
- * Get or create a StoryblokBridge instance.
- *
- * @param config Optional configuration for the StoryblokBridge.
- * @returns A promise that resolves to a StoryblokBridge instance.
- */
-async function getBridge(config?: BridgeParams) {
-  if (bridge) return bridge;
-
-  if (!bridgePromise) {
-    bridgePromise = import('@storyblok/preview-bridge').then(
-      ({ default: StoryblokBridge }) => {
-        bridge = new StoryblokBridge(config);
-        return bridge;
-      },
-    );
-  }
-
-  return bridgePromise;
-}
 
 /**
  * Registers a Storyblok Preview Bridge listener for a specific story.
@@ -59,10 +36,9 @@ export const subscribeToStoryblokPreview = async <T extends ISbComponentType<str
   callback: (newStory: ISbStoryData<T>) => void,
   bridgeOptions: BridgeParams,
 ): Promise<void> => {
-  if (!isBrowser()) return;
-  if (!isInEditor(new URL(window.location.href))) return;
+  if (!canUseStoryblokBridge()) return;
 
-  const bridge = await getBridge(bridgeOptions);
+  const bridge = await loadStoryblokBridge(bridgeOptions);
 
   bridge.on(['input', 'change', 'published'], (event) => {
     if (!event) return;
@@ -75,7 +51,7 @@ export const subscribeToStoryblokPreview = async <T extends ISbComponentType<str
     }
 
     if (event.action === 'change' || event.action === 'published') {
-            const eventStoryId = event.storyId
+      const eventStoryId = event.storyId;
       if (eventStoryId !== storyId) return;
       window.location.reload();
     }

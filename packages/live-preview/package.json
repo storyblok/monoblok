@@ -24,8 +24,6 @@
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "files": [
     "dist"
@@ -42,7 +40,8 @@
     "bumpp": "^10.4.1",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "storyblok-js-client": "workspace:*"
   },
   "dependencies": {
     "@storyblok/preview-bridge": "^2.1.6"

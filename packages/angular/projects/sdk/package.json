@@ -27,10 +27,7 @@
     "@storyblok/richtext": "workspace:*"
   },
   "dependencies": {
-    "tslib": "^2.3.0",
-    "@storyblok/live-preview": "workspace:*",
-    "storyblok-js-client": "workspace:*",
-    "@storyblok/richtext": "workspace:*"
+    "tslib": "^2.8.1"
   },
   "sideEffects": false
 }

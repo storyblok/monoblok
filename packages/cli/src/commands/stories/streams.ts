@@ -161,11 +161,12 @@ export const readLocalStoriesStream = ({
         const fileContent = await readFile(filePath, 'utf-8');
         const story = JSON.parse(fileContent) as Story;
         onStorySuccess?.(story);
-        onIncrement?.();
         yield story;
       }
       catch (maybeError) {
         onStoryError?.(toError(maybeError), file);
+      }
+      finally {
         onIncrement?.();
       }
     }
@@ -234,11 +235,8 @@ export type CreateStoryTransport = (story: Story) => Promise<Story>;
 export const makeCreateStoryAPITransport = ({ spaceId }: {
   spaceId: string;
 }): CreateStoryTransport => async (localStory) => {
-  // Exclude parent_id from the creation payload. Stories are created as
-  // placeholders (with __tmp__ content, no parent) and the correct parent_id
-  // is set in Pass 2 when the full ID map is available.  This avoids 422
-  // errors from the API when the parent story hasn't been created yet due to
-  // concurrent requests.
+  // Exclude parent_id from the creation payload. The correct parent_id is set in Pass 2 when the full ID map is available.
+  // This avoids 422 errors from the API.
   const { id: _id, uuid: _uuid, parent_id: _parentId, content, ...newStoryData } = localStory;
   const remoteStory = await createStory(spaceId, {
     story: {

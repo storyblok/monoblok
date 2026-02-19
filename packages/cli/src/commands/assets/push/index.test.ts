@@ -88,6 +88,7 @@ const preconditions = {
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     vol.fromJSON({
+      [path.join(assetsDir, 'broken.png')]: 'binary-content',
       [path.join(assetsDir, 'broken.json')]: '{invalid json',
     });
   },
@@ -874,7 +875,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Expected property name or \'}\' in JSON');
+    expect(logFile).toContain('Invalid sidecar JSON');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
@@ -1367,6 +1368,102 @@ describe('assets push command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).not.toContain('ENOENT');
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+  });
+
+  it('should push user-defined assets that have short_filename but no filename', async () => {
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    // User-defined metadata: has short_filename but no filename (e.g. CMS migration)
+    const userAssetMetadata = { short_filename: 'hero.png', alt: 'Hero image' };
+    vol.fromJSON({
+      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.canLoadFoldersManifest([]);
+
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should derive short_filename from filename CDN URL when short_filename is not present', async () => {
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    const userAssetMetadata = { filename: 'https://a.storyblok.com/f/12345/500x500/hero.png', alt: 'Hero' };
+    vol.fromJSON({
+      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.canLoadFoldersManifest([]);
+
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should derive short_filename from companion binary when metadata has neither filename nor short_filename', async () => {
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    // User-defined metadata: no filename, no short_filename (bare metadata)
+    const userAssetMetadata = { alt: 'Hero image', title: 'My hero' };
+    vol.fromJSON({
+      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.canLoadFoldersManifest([]);
+
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png', alt: 'Hero image' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should push a binary-only asset with no sidecar JSON using its filename as short_filename', async () => {
+    const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
+    vol.fromJSON({
+      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssetsManifest([]);
+    preconditions.canLoadFoldersManifest([]);
+
+    const remoteAsset = makeMockAsset({ short_filename: 'hero.png' });
+    preconditions.canUpsertRemoteAssets([remoteAsset]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ short_filename: 'hero.png' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(process.exitCode).toBe(0);
   });
 
   it('should filter stories using search parameter when updating a single asset', async () => {

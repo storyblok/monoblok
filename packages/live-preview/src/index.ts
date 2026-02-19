@@ -1,6 +1,7 @@
 // runtime exports
-export { subscribeToStoryblokPreview } from './subscribeToStoryblokPreview';
-export { isBrowser } from './utils/isBrowser';
+export { subscribeToStoryblokPreview} from './subscribeToStoryblokPreview';
+export { loadStoryblokBridge } from './loadStoryblokBridge';
+export { listenToStoryblokPreview } from './listenToStoryblokPreview';
 export { isInEditor } from './utils/isInEditor';
 
 // type exports

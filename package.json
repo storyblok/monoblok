@@ -32,5 +32,10 @@
   },
   "dependencies": {
     "cypress": "^14.3.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cypress"
+    ]
   }
 }

@@ -63,12 +63,21 @@ importers:
       '@angular/ssr':
         specifier: ^21.1.2
         version: 21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-server@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/compiler@21.1.4)(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-browser@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2)))(rxjs@7.8.2))(@angular/router@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-browser@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2)))(rxjs@7.8.2))
+      '@storyblok/live-preview':
+        specifier: workspace:*
+        version: link:../live-preview
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../richtext
       express:
         specifier: ^5.1.0
         version: 5.2.1
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
+      storyblok-js-client:
+        specifier: workspace:*
+        version: link:../js-client
       tslib:
         specifier: ^2.3.0
         version: 2.8.1
@@ -119,7 +128,7 @@ importers:
         specifier: workspace:*
         version: link:../../../js-client
       tslib:
-        specifier: ^2.3.0
+        specifier: ^2.8.1
         version: 2.8.1
 
   packages/astro:

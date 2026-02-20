@@ -118,6 +118,7 @@ function getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, 
 }
 
 // Export client utilities
+export { ClientError } from './client/error';
 export { createClient } from './client';
 export type { Client } from './client/types';
 

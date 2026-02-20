@@ -119,14 +119,14 @@ pushCmd
             processProgress.setTotal(total);
             updateProgress.setTotal(total);
           },
-          onStoryError(error) {
+          onStoryError(error, filename) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
             creationProgress.increment();
-            handleError(error, verbose);
+            handleError(error, verbose, { storyFile: filename });
           },
         }),
         // Create remote stories.
@@ -163,13 +163,13 @@ pushCmd
             logger.info('Skipped creating story', { storyId: localStory.uuid });
             summary.creationResults.skipped += 1;
           },
-          onStoryError(error) {
+          onStoryError(error, localStory) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            handleError(error, verbose);
+            handleError(error, verbose, { storyId: localStory?.uuid });
           },
           onIncrement() {
             creationProgress.increment();
@@ -197,13 +197,13 @@ pushCmd
             processProgress.setTotal(total);
             updateProgress.setTotal(total);
           },
-          onStoryError(error) {
+          onStoryError(error, filename) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            handleError(error, verbose);
+            handleError(error, verbose, { storyFile: filename });
           },
         }),
         // Map all references to numeric ids and uuids.

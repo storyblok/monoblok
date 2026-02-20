@@ -2,7 +2,6 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import type { FetchStoriesResult, StoriesQueryParams } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
-import { FetchError } from '../../utils/fetch';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -67,26 +66,25 @@ export const createStory = async (
     publish?: number;
   },
 ): Promise<Story | void> => {
-  const client = getMapiClient();
+  try {
+    const client = getMapiClient();
 
-  const { data, error, response } = await client.stories.create({
-    path: {
-      space_id: spaceId,
-    },
-    body: {
-      story: payload.story as Story,
-      ...(payload.publish ? { publish: payload.publish } : { }),
-    },
-  });
+    const { data } = await client.stories.create({
+      path: {
+        space_id: spaceId,
+      },
+      body: {
+        story: payload.story as Story,
+        ...(payload.publish ? { publish: payload.publish } : { }),
+      },
+      throwOnError: true,
+    });
 
-  if (!response.ok) {
-    handleAPIError('create_story', new FetchError(
-      response.statusText,
-      { status: response.status, statusText: response.statusText, data: error as Record<string, unknown> },
-    ));
+    return data?.story;
   }
-
-  return data?.story;
+  catch (error) {
+    handleAPIError('create_story', error);
+  }
 };
 
 /**
@@ -108,30 +106,32 @@ export const updateStory = async (
     publish?: number;
   },
 ) => {
-  const client = getMapiClient();
-  const { data, error, response } = await client.stories.updateStory({
-    path: {
-      space_id: spaceId,
-      story_id: storyId,
-    },
-    body: {
-      story: payload.story as Story,
-      force_update: payload.force_update === '1' ? '1' : '0',
-      ...(payload.publish ? { publish: payload.publish } : { }),
-    },
-  });
+  try {
+    const client = getMapiClient();
+    const { data } = await client.stories.updateStory({
+      path: {
+        space_id: spaceId,
+        story_id: storyId,
+      },
+      body: {
+        story: payload.story as Story,
+        force_update: payload.force_update === '1' ? '1' : '0',
+        ...(payload.publish ? { publish: payload.publish } : { }),
+      },
+      throwOnError: true,
+    });
 
-  if (!response.ok) {
-    handleAPIError('update_story', new FetchError(
-      response.statusText,
-      { status: response.status, statusText: response.statusText, data: error as Record<string, unknown> },
-    ));
+    const story = data?.story;
+    if (!story) {
+      throw new Error('Failed to update story');
+    }
+
+    return story;
   }
-
-  const story = data?.story;
-  if (!story) {
-    throw new Error('Failed to update story');
+  catch (error) {
+    if (error instanceof Error && error.message === 'Failed to update story') {
+      throw error;
+    }
+    handleAPIError('update_story', error);
   }
-
-  return story;
 };

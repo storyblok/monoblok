@@ -44,47 +44,42 @@ export const API_ACTIONS = {
 export const API_ERRORS = {
   unauthorized: 'The user is not authorized to access the API',
   network_error: 'No response from server, please check if you are correctly connected to internet',
+  server_error: 'The server returned an error',
   invalid_credentials: 'The provided credentials are invalid',
   timeout: 'The API request timed out',
   generic: 'Error fetching data from the API',
   not_found: 'The requested resource was not found',
   unprocessable_entity: 'The request was well-formed but was unable to be followed due to semantic errors',
-
 } as const;
+
+function getErrorId(status: number): keyof typeof API_ERRORS {
+  switch (status) {
+    case 401:
+      return 'unauthorized';
+    case 404:
+      return 'not_found';
+    case 422:
+      return 'unprocessable_entity';
+    default:
+      return status >= 500 ? 'server_error' : 'generic';
+  }
+}
 
 export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown, customMessage?: string): void {
   if (error instanceof FetchError) {
-    const status = error.response.status;
-
-    switch (status) {
-      case 401:
-        throw new APIError('unauthorized', action, error, customMessage);
-      case 404:
-        throw new APIError('not_found', action, error, customMessage);
-      case 422:
-        throw new APIError('unprocessable_entity', action, error, customMessage);
-      default:
-        throw new APIError('network_error', action, error, customMessage);
-    }
+    const errorId = getErrorId(error.response.status);
+    throw new APIError(errorId, action, error, customMessage);
   }
 
-  // Handle non-FetchError objects that have a response property (e.g. openapi-fetch errors)
+  // Handle non-FetchError objects that have a response property (e.g. mapi-client ClientError)
   const response = (error as any)?.response;
   if (response?.status) {
     const wrappedError = new FetchError(
       response.statusText ?? (error as Error).message,
       { status: response.status, statusText: response.statusText ?? '', data: response.data },
     );
-    switch (response.status) {
-      case 401:
-        throw new APIError('unauthorized', action, wrappedError, customMessage);
-      case 404:
-        throw new APIError('not_found', action, wrappedError, customMessage);
-      case 422:
-        throw new APIError('unprocessable_entity', action, wrappedError, customMessage);
-      default:
-        throw new APIError('network_error', action, wrappedError, customMessage);
-    }
+    const errorId = getErrorId(response.status);
+    throw new APIError(errorId, action, wrappedError, customMessage);
   }
 
   throw new APIError('generic', action, error as FetchError, customMessage);

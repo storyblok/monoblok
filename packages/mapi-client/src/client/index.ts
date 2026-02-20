@@ -6,6 +6,7 @@ export {
   urlSearchParamsBodySerializer,
 } from '../core/bodySerializer';
 export { buildClientParams } from '../core/params';
+export { ClientError } from './error';
 export { createClient } from './client';
 export type {
   Client,

@@ -61,7 +61,7 @@
     "pathe": "^2.0.3",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
-    "vite": "^6.3.5",
+    "vite": "^5.4.21",
     "vite-plugin-banner": "^0.8.0",
     "vite-plugin-dts": "^4.5.3",
     "vite-plugin-qrcode": "^0.2.4",

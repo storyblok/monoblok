@@ -12,20 +12,46 @@ export interface CacheProvider {
   flush: () => Promise<void>;
 }
 
-export const createMemoryCacheProvider = (): CacheProvider => {
+interface MemoryCacheProviderOptions {
+  maxEntries?: number;
+}
+
+export const createMemoryCacheProvider = (
+  options: MemoryCacheProviderOptions = {},
+): CacheProvider => {
+  const maxEntries = options.maxEntries ?? 1_000;
   const cache = new Map<string, CacheEntry>();
 
   return {
     async get(key: string) {
-      return cache.get(key);
+      const entry = cache.get(key);
+      if (!entry) {
+        return undefined;
+      }
+
+      if (Date.now() - entry.storedAt > entry.ttlMs) {
+        cache.delete(key);
+        return undefined;
+      }
+
+      return entry;
     },
     async set(key: string, entry: CacheEntry) {
+      if (cache.has(key)) {
+        cache.delete(key);
+      }
+
       cache.set(key, entry);
+
+      if (cache.size > maxEntries) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey !== undefined) {
+          cache.delete(oldestKey);
+        }
+      }
     },
     async flush() {
       cache.clear();
     },
   };
 };
-
-export const isCacheEntryFresh = (storedAt: number, ttlMs: number) => Date.now() - storedAt <= ttlMs;

@@ -75,11 +75,6 @@ describe('Client throws ClientError on error responses', () => {
       throwOnError: true,
     });
 
-    client.interceptors.request.use((request) => {
-      // Override fetch for this test
-      return request;
-    });
-
     try {
       // Use a simple API call
       await client.users.me({ fetch: mockFetch });

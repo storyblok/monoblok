@@ -85,7 +85,7 @@ createApiClient({
   cache: {
     provider: undefined, // optional, default: in-memory provider
     strategy: 'cache-first', // optional: 'cache-first' | 'network-first' | 'swr' (stale-while-revalidate)
-    ttlMs: 60000, // optional, default: 60000
+    ttlMs: 60_000, // optional, default: 60_000
   },
 });
 ```
@@ -93,6 +93,9 @@ createApiClient({
 ### Caching
 
 The client includes an in-memory cache provider by default for published CDN `GET` requests.
+
+- Expired entries are evicted on read (`ttlMs`).
+- The default in-memory cache is capped with LRU-like eviction (`maxEntries`, default `1_000`).
 
 ```typescript
 const client = createApiClient({
@@ -104,7 +107,7 @@ const client = createApiClient({
 });
 ```
 
-You can also provide your own cache provider:
+You can also provide your own cache provider. This is required if you want to customize provider-specific behavior like the in-memory provider `maxEntries` setting:
 
 ```typescript
 import type { CacheProvider } from '@storyblok/api-client';
@@ -115,8 +118,8 @@ const customCacheProvider: CacheProvider = {
   async get(key) {
     return memory.get(key);
   },
-  async set(key, value) {
-    memory.set(key, value);
+  async set(key, entry) {
+    memory.set(key, entry);
   },
   async flush() {
     memory.clear();
@@ -135,7 +138,7 @@ const client = createApiClient({
 
 ### Stale-While-Revalidate strategy
 
-Use the stale-while-revalidate mode (`swr`) when you want stale responses to be returned immediately while the cache is refreshed in the background.
+Use `swr` when you want cached responses returned immediately while the cache is refreshed in the background. In this mode, a refresh request is triggered for every cache hit (non-blocking). If no cached response exists, the request waits for the network result.
 
 ```typescript
 const client = createApiClient({

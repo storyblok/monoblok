@@ -65,7 +65,7 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
   }
 }
 
-export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown, customMessage?: string): void {
+export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown, customMessage?: string): never {
   if (error instanceof FetchError) {
     const errorId = getErrorId(error.response.status);
     throw new APIError(errorId, action, error, customMessage);

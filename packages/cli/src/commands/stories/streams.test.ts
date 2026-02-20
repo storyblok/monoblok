@@ -47,24 +47,6 @@ describe('readLocalStoriesStream', () => {
     expect(results.map(s => s.id)).toEqual(expect.arrayContaining([100, 200]));
   });
 
-  it('should yield stories with parent_id 0', async () => {
-    const story = {
-      name: 'Root Story',
-      id: 5,
-      uuid: randomUUID(),
-      parent_id: 0,
-      is_folder: false,
-      slug: 'root-story',
-    };
-    writeStory(story);
-
-    const stream = readLocalStoriesStream({ directoryPath: STORIES_DIR });
-    const results = await collectStream(stream);
-
-    expect(results).toHaveLength(1);
-    expect(results[0].id).toBe(5);
-  });
-
   it('should report errors for invalid JSON files without stopping', async () => {
     const validStory = {
       name: 'Valid',

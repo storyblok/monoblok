@@ -25,11 +25,6 @@
   </a>
 </p>
 
-## Features
-
-- Lazy-loads the Storyblok Preview Bridge
-- Safe to use in SSR environments
-
 ## Installation
 
 ```bash
@@ -40,15 +35,26 @@ yarn add @storyblok/live-preview
 
 ## Usage
 
-### Live preview (client frameworks)
+### Live preview
 
-Use this when you know the story ID and want to update client-side state on live edits.
+Covers the most common live preview use cases with minimal setup.
 
 ```ts
-import { subscribeToStoryblokPreview } from '@storyblok/live-preview';
+import { onStoryblokEditorEvent } from '@storyblok/live-preview';
 
-subscribeToStoryblokPreview(123, (story) => {
+onStoryblokEditorEvent((story) => {
   // update local state
+});
+```
+### Low-level Preview Bridge access
+For advanced use cases where full control is needed, the Preview Bridge can be accessed directly.
+```ts
+import { loadStoryblokBridge } from '@storyblok/live-preview';
+
+const bridge = await loadStoryblokBridge(bridgeOptions);
+
+bridge.on(['input', 'change', 'published'], (event) => {
+  // custom preview handling
 });
 ```
 ## Documentation

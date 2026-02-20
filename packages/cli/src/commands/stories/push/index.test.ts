@@ -1119,40 +1119,48 @@ describe('stories push command', () => {
     );
   });
 
-  it('should push stories with missing content field', async () => {
+  it('should push folders with missing content field', async () => {
     const folder = makeMockStory({
       slug: 'my-folder',
       is_folder: true,
       content: {} as any,
     });
-    const storyA = makeMockStory({
-      slug: 'story-a',
-      parent_id: folder.id,
-      content: {} as any,
-    });
-    // Remove content to simulate minimal story data
     delete (folder as any).content;
-    delete (storyA as any).content;
 
-    preconditions.canLoadStories([folder, storyA]);
+    preconditions.canLoadStories([folder]);
     preconditions.canLoadComponents([
-      makeMockComponent({
-        name: 'page',
-      }),
+      makeMockComponent({ name: 'page' }),
     ]);
-    const remoteStories = preconditions.canCreateStories([folder, storyA]);
+    const remoteStories = preconditions.canCreateStories([folder]);
     preconditions.canUpdateStories(remoteStories);
 
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    // Both stories should be created and updated without crashing
     const report = getReport();
     expect(report?.status).toBe('SUCCESS');
     expect(report?.summary).toMatchObject({
-      creationResults: { total: 2, succeeded: 2, failed: 0 },
-      processResults: { total: 2, succeeded: 2, failed: 0 },
-      updateResults: { total: 2, succeeded: 2, failed: 0 },
+      creationResults: { total: 1, succeeded: 1, failed: 0 },
     });
+  });
+
+  it('should fail to push non-folder stories with missing content.component', async () => {
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {} as any,
+    });
+    delete (storyA as any).content;
+
+    preconditions.canLoadStories([storyA]);
+    preconditions.canLoadComponents([
+      makeMockComponent({ name: 'page' }),
+    ]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain('is missing a content type (content.component)');
   });
 
   it('should handle errors when updating stories fails', async () => {

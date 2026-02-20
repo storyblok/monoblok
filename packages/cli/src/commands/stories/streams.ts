@@ -238,6 +238,11 @@ export const makeCreateStoryAPITransport = ({ spaceId }: {
   // Exclude parent_id from the creation payload. The correct parent_id is set in Pass 2 when the full ID map is available.
   // This avoids 422 errors from the API.
   const { id: _id, uuid: _uuid, parent_id: _parentId, content, ...newStoryData } = localStory;
+
+  if (!localStory.is_folder && !content?.component) {
+    throw new Error(`Story "${localStory.slug}" is missing a content type (content.component). Every story must define a content field with a valid component.`);
+  }
+
   const remoteStory = await createStory(spaceId, {
     story: {
       ...newStoryData,

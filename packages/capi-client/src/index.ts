@@ -3,7 +3,7 @@ import { get, getAll } from './generated/sdk.gen';
 import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/types.gen';
 import type { StoryCapi } from './generated';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
-import type { Client } from './generated/client';
+import type { Client, RequestOptions } from './generated/client';
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
@@ -29,6 +29,18 @@ type GetAllResponse = ReplaceStory<GetAllResponses[200]>;
 type ApiResponse<T> =
   | { data: T; error: undefined; response: Response; request: Request }
   | { data: undefined; error: unknown; response: Response; request: Request };
+
+type GenericRequestOptions<ThrowOnError extends boolean = false> = Omit<
+  RequestOptions<unknown, 'fields', ThrowOnError>,
+  'method' | 'security' | 'throwOnError' | 'url'
+>;
+
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+type GenericRequestMethod<ThrowOnError extends boolean = false> = <TData = unknown>(
+  path: string,
+  options?: GenericRequestOptions<ThrowOnError>,
+) => Promise<ApiResponse<TData>>;
 
 export interface ContentApiClientConfig<ThrowOnError extends boolean = false> {
   accessToken: string;
@@ -63,6 +75,38 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     }),
   );
 
+  const security = [
+    {
+      in: 'query' as const,
+      name: 'token',
+      type: 'apiKey' as const,
+    },
+  ];
+
+  const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`);
+
+  const request = async <TData = unknown, TError = unknown>(
+    method: HttpMethod,
+    path: string,
+    options: GenericRequestOptions<ThrowOnError> = {},
+  ): Promise<ApiResponse<TData>> => {
+    return client.request<TData, TError, ThrowOnError>({
+      ...options,
+      method,
+      security,
+      url: normalizePath(path),
+    }) as Promise<ApiResponse<TData>>;
+  };
+
+  const createMethod = (method: HttpMethod): GenericRequestMethod<ThrowOnError> => {
+    return <TData = unknown>(
+      path: string,
+      options: GenericRequestOptions<ThrowOnError> = {},
+    ) => {
+      return request<TData>(method, path, options);
+    };
+  };
+
   /**
    * Retrieve a single story
    * @param identifier - Story identifier - can be full_slug (string), id (number), or uuid (string). When using uuid, the find_by=uuid query parameter is required.
@@ -90,7 +134,18 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     getAll: getAllStories,
   };
 
+  const getRequest = createMethod('GET');
+  const postRequest = createMethod('POST');
+  const putRequest = createMethod('PUT');
+  const patchRequest = createMethod('PATCH');
+  const deleteRequest = createMethod('DELETE');
+
   return {
+    delete: deleteRequest,
+    get: getRequest,
+    patch: patchRequest,
+    post: postRequest,
+    put: putRequest,
     stories,
   };
 };

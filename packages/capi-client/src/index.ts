@@ -2,6 +2,10 @@ import { createClient, createConfig } from './generated/client';
 import { get, getAll } from './generated/sdk.gen';
 import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/types.gen';
 import type { StoryCapi } from './generated';
+import type { CacheProvider, CacheStrategy } from './cache';
+import { createMemoryCacheProvider, isCacheEntryFresh } from './cache';
+import { applyCvToQuery, extractCv } from './utils/cv';
+import { createCacheKey, isCdnPath, isDraftRequest, normalizePath, shouldUseCache, toQueryRecord } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { Client, RequestOptions } from './generated/client';
 
@@ -42,18 +46,38 @@ type GenericRequestMethod<ThrowOnError extends boolean = false> = <TData = unkno
   options?: GenericRequestOptions<ThrowOnError>,
 ) => Promise<ApiResponse<TData>>;
 
+interface CacheConfig {
+  provider?: CacheProvider;
+  strategy?: CacheStrategy;
+  ttlMs?: number;
+}
+
 export interface ContentApiClientConfig<ThrowOnError extends boolean = false> {
   accessToken: string;
   region?: Region;
   baseUrl?: string;
   headers?: Record<string, string>;
   throwOnError?: ThrowOnError;
+  cache?: CacheConfig;
 }
 
 export const createApiClient = <ThrowOnError extends boolean = false>(
   config: ContentApiClientConfig<ThrowOnError>,
 ) => {
-  const { accessToken, region = 'eu', baseUrl, headers = {}, throwOnError = false } = config;
+  const {
+    accessToken,
+    region = 'eu',
+    baseUrl,
+    headers = {},
+    throwOnError = false,
+    cache = {},
+  } = config;
+  const cacheProvider = cache.provider ?? createMemoryCacheProvider();
+  const cacheStrategy = cache.strategy ?? 'cache-first';
+  const cacheTtlMs = cache.ttlMs ?? 60_000;
+  const revalidations = new Map<string, Promise<void>>();
+  let currentCv: number | undefined;
+
   const client: Client = createClient(
     createConfig({
       auth: accessToken,
@@ -83,19 +107,120 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     },
   ];
 
-  const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`);
+  const updateCv = async (path: string, query: Record<string, unknown>, result: ApiResponse<unknown>) => {
+    if (!isCdnPath(path) || isDraftRequest(query)) {
+      return;
+    }
 
-  const request = async <TData = unknown, TError = unknown>(
+    const nextCv = extractCv(result);
+    if (nextCv === undefined) {
+      return;
+    }
+
+    if (currentCv !== undefined && currentCv !== nextCv) {
+      await cacheProvider.flush();
+    }
+
+    currentCv = nextCv;
+  };
+
+  const requestNetwork = async <TData = unknown, TError = unknown>(
     method: HttpMethod,
     path: string,
-    options: GenericRequestOptions<ThrowOnError> = {},
+    query: Record<string, unknown>,
+    options: GenericRequestOptions<ThrowOnError>,
   ): Promise<ApiResponse<TData>> => {
     return client.request<TData, TError, ThrowOnError>({
       ...options,
       method,
+      query,
       security,
-      url: normalizePath(path),
+      url: path,
     }) as Promise<ApiResponse<TData>>;
+  };
+
+  const requestWithCache = async <TData = unknown>(
+    method: HttpMethod,
+    path: string,
+    rawQuery: Record<string, unknown>,
+    fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData>>,
+  ): Promise<ApiResponse<TData>> => {
+    const query = applyCvToQuery(path, rawQuery, currentCv);
+    const cacheEnabled = shouldUseCache(method, path, rawQuery);
+
+    if (!cacheEnabled) {
+      const networkResult = await fetchFn(query);
+      await updateCv(path, rawQuery, networkResult as ApiResponse<unknown>);
+      return networkResult;
+    }
+
+    const key = createCacheKey(method, path, rawQuery);
+    const cachedEntry = await cacheProvider.get(key);
+    const cachedResult = cachedEntry?.value as ApiResponse<TData> | undefined;
+    const hasFreshCache = cachedEntry
+      ? isCacheEntryFresh(cachedEntry.storedAt, cachedEntry.ttlMs)
+      : false;
+
+    const cacheSuccessResult = async (result: ApiResponse<TData>) => {
+      await updateCv(path, rawQuery, result as ApiResponse<unknown>);
+      if (result.error === undefined) {
+        await cacheProvider.set(key, {
+          value: result,
+          storedAt: Date.now(),
+          ttlMs: cacheTtlMs,
+        });
+      }
+      return result;
+    };
+
+    const loadNetwork = async () => {
+      const result = await fetchFn(query);
+      return cacheSuccessResult(result);
+    };
+
+    if (cacheStrategy === 'network-first') {
+      try {
+        return await loadNetwork();
+      }
+      catch (error) {
+        if (cachedResult) {
+          return cachedResult;
+        }
+        throw error;
+      }
+    }
+
+    if (cachedResult && hasFreshCache) {
+      return cachedResult;
+    }
+
+    if (cacheStrategy === 'swr' && cachedResult) {
+      if (!revalidations.has(key)) {
+        const revalidation = loadNetwork()
+          .then(() => undefined)
+          .catch(() => undefined)
+          .finally(() => {
+            revalidations.delete(key);
+          });
+        revalidations.set(key, revalidation);
+      }
+      return cachedResult;
+    }
+
+    return loadNetwork();
+  };
+
+  const request = async <TData = unknown, TError = unknown>(
+    method: HttpMethod,
+    rawPath: string,
+    options: GenericRequestOptions<ThrowOnError> = {},
+  ): Promise<ApiResponse<TData>> => {
+    const path = normalizePath(rawPath);
+    const rawQuery = toQueryRecord(options.query);
+
+    return requestWithCache<TData>(method, path, rawQuery, (query) => {
+      return requestNetwork<TData, TError>(method, path, query, options);
+    });
   };
 
   const createMethod = (method: HttpMethod): GenericRequestMethod<ThrowOnError> => {
@@ -114,9 +239,17 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
    */
   const getStory = async (
     identifier: GetData['path']['identifier'],
-    query: Prettify<Omit<GetData['query'], 'token'>> = {},
+    query: GetData['query'] = {},
   ): Promise<ApiResponse<GetResponse>> => {
-    return get({ client, path: { identifier }, query });
+    const requestPath = `/v2/cdn/stories/${identifier}`;
+    const rawQuery = toQueryRecord(query);
+    return requestWithCache<GetResponse>('GET', requestPath, rawQuery, (requestQuery) => {
+      return get({
+        client,
+        path: { identifier },
+        query: requestQuery,
+      });
+    });
   };
 
   /**
@@ -124,9 +257,16 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
    * @param query - Query parameters for filtering and pagination
    */
   const getAllStories = async (
-    query: Prettify<Omit<GetAllData['query'], 'token'>> = {},
+    query: GetAllData['query'] = {},
   ): Promise<ApiResponse<GetAllResponse>> => {
-    return getAll({ client, query });
+    const requestPath = '/v2/cdn/stories';
+    const rawQuery = toQueryRecord(query);
+    return requestWithCache<GetAllResponse>('GET', requestPath, rawQuery, (requestQuery) => {
+      return getAll({
+        client,
+        query: requestQuery,
+      });
+    });
   };
 
   const stories = {
@@ -140,7 +280,22 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const patchRequest = createMethod('PATCH');
   const deleteRequest = createMethod('DELETE');
 
+  const cacheApi = {
+    clearCv: () => {
+      currentCv = undefined;
+    },
+    flush: async () => {
+      await cacheProvider.flush();
+      currentCv = undefined;
+    },
+    getCv: () => currentCv,
+    setCv: (cv: number) => {
+      currentCv = cv;
+    },
+  };
+
   return {
+    cache: cacheApi,
     delete: deleteRequest,
     get: getRequest,
     patch: patchRequest,
@@ -149,3 +304,5 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     stories,
   };
 };
+
+export type { CacheProvider, CacheStrategy };

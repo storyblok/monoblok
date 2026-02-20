@@ -82,7 +82,87 @@ createApiClient({
   baseUrl: 'https://custom.com', // optional, overrides region
   headers: {}, // optional, custom headers
   throwOnError: false, // optional, default: false
+  cache: {
+    provider: undefined, // optional, default: in-memory provider
+    strategy: 'cache-first', // optional: 'cache-first' | 'network-first' | 'swr' (stale-while-revalidate)
+    ttlMs: 60000, // optional, default: 60000
+  },
 });
+```
+
+### Caching
+
+The client includes an in-memory cache provider by default for published CDN `GET` requests.
+
+```typescript
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  cache: {
+    strategy: 'cache-first',
+    ttlMs: 60_000,
+  },
+});
+```
+
+You can also provide your own cache provider:
+
+```typescript
+import type { CacheProvider } from '@storyblok/api-client';
+
+const memory = new Map();
+
+const customCacheProvider: CacheProvider = {
+  async get(key) {
+    return memory.get(key);
+  },
+  async set(key, value) {
+    memory.set(key, value);
+  },
+  async flush() {
+    memory.clear();
+  },
+};
+
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  cache: {
+    provider: customCacheProvider,
+    strategy: 'network-first',
+    ttlMs: 30_000,
+  },
+});
+```
+
+### Stale-While-Revalidate strategy
+
+Use the stale-while-revalidate mode (`swr`) when you want stale responses to be returned immediately while the cache is refreshed in the background.
+
+```typescript
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  cache: {
+    strategy: 'swr',
+    ttlMs: 5_000,
+  },
+});
+
+const result = await client.get('/v2/cdn/links', {
+  query: {
+    version: 'published',
+  },
+});
+```
+
+### Cache version helpers
+
+The `cv` parameter is documented in Storyblok's official cache invalidation docs:
+https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/cache-invalidation
+
+```typescript
+client.cache.getCv();
+client.cache.setCv(1737800353);
+client.cache.clearCv();
+await client.cache.flush();
 ```
 
 ### Region parameter

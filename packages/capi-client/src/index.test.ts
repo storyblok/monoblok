@@ -369,8 +369,7 @@ describe('cache and cv', () => {
     expect(requestCount).toBe(3);
   });
 
-  it('should return stale response and revalidate in background with swr strategy', async () => {
-    vi.useFakeTimers();
+  it('should return cached response and revalidate in background with swr strategy', async () => {
     let requestCount = 0;
 
     server.use(
@@ -388,7 +387,7 @@ describe('cache and cv', () => {
       accessToken: 'test-token',
       cache: {
         strategy: 'swr',
-        ttlMs: 100,
+        ttlMs: 1_000,
       },
     });
 
@@ -396,15 +395,13 @@ describe('cache and cv', () => {
       query: { version: 'published' },
     });
 
-    await vi.advanceTimersByTimeAsync(120);
-
     const secondResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
       query: { version: 'published' },
     });
 
-    await vi.runAllTimersAsync();
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(requestCount).toBe(2);
+    });
 
     const thirdResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
       query: { version: 'published' },
@@ -413,6 +410,5 @@ describe('cache and cv', () => {
     expect(firstResult.data?.requestCount).toBe(1);
     expect(secondResult.data?.requestCount).toBe(1);
     expect(thirdResult.data?.requestCount).toBe(2);
-    vi.useRealTimers();
   });
 });

@@ -2,8 +2,8 @@ import { createClient, createConfig } from './generated/client';
 import { get, getAll } from './generated/sdk.gen';
 import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/types.gen';
 import type { StoryCapi } from './generated';
-import type { CacheProvider, CacheStrategy } from './cache';
-import { createMemoryCacheProvider } from './cache';
+import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './cache';
+import { createMemoryCacheProvider, createStrategy } from './cache';
 import { applyCvToQuery, extractCv } from './utils/cv';
 import { createCacheKey, isCdnPath, isDraftRequest, normalizePath, shouldUseCache, toQueryRecord } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
@@ -48,9 +48,8 @@ type GenericRequestMethod<ThrowOnError extends boolean = false> = <TData = unkno
 
 interface CacheConfig {
   provider?: CacheProvider;
-  strategy?: CacheStrategy;
+  strategy?: CacheStrategy | CacheStrategyHandler;
   ttlMs?: number;
-  maxEntries?: number;
 }
 
 export interface ContentApiClientConfig<ThrowOnError extends boolean = false> {
@@ -73,20 +72,17 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     throwOnError = false,
     cache = {},
   } = config;
-  const cacheProvider = cache.provider ?? createMemoryCacheProvider({
-    maxEntries: cache.maxEntries,
-  });
-  const cacheStrategy = cache.strategy ?? 'cache-first';
+  const cacheProvider = cache.provider ?? createMemoryCacheProvider();
+  const strategy = cache.strategy
+    ? typeof cache.strategy === 'string'
+      ? createStrategy(cache.strategy)
+      : cache.strategy
+    : createStrategy('cache-first');
   const cacheTtlMs = cache.ttlMs ?? 60_000;
-  const revalidations = new Map<string, Promise<void>>();
-  const swrCache = cacheStrategy === 'swr'
-    ? new Map<string, ApiResponse<unknown>>()
-    : undefined;
   let currentCv: number | undefined;
 
   const flushCaches = async () => {
     await cacheProvider.flush();
-    swrCache?.clear();
   };
 
   const client: Client = createClient(
@@ -150,63 +146,6 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     }) as Promise<ApiResponse<TData>>;
   };
 
-  const handleCacheFirst = async <TData>(
-    cachedResult: ApiResponse<TData> | undefined,
-    loadNetwork: () => Promise<ApiResponse<TData>>,
-  ): Promise<ApiResponse<TData>> => {
-    if (cachedResult) {
-      return cachedResult;
-    }
-
-    return loadNetwork();
-  };
-
-  const handleNetworkFirst = async <TData>(
-    cachedResult: ApiResponse<TData> | undefined,
-    loadNetwork: () => Promise<ApiResponse<TData>>,
-  ): Promise<ApiResponse<TData>> => {
-    try {
-      return await loadNetwork();
-    }
-    catch (error) {
-      // network-first: try network, fall back to cached data if available.
-      // Since the provider evicts expired entries, this only falls back to
-      // fresh cached data. If no fresh data is available, the error propagates.
-      if (cachedResult) {
-        return cachedResult;
-      }
-
-      throw error;
-    }
-  };
-
-  const handleSwr = async <TData>(
-    key: string,
-    cachedResult: ApiResponse<TData> | undefined,
-    staleResult: ApiResponse<TData> | undefined,
-    loadNetwork: () => Promise<ApiResponse<TData>>,
-  ): Promise<ApiResponse<TData>> => {
-    if (cachedResult) {
-      return cachedResult;
-    }
-
-    if (staleResult) {
-      if (!revalidations.has(key)) {
-        const revalidation = loadNetwork()
-          .then(() => undefined)
-          .catch(() => undefined)
-          .finally(() => {
-            revalidations.delete(key);
-          });
-        revalidations.set(key, revalidation);
-      }
-
-      return staleResult;
-    }
-
-    return loadNetwork();
-  };
-
   const requestWithCache = async <TData = unknown>(
     method: HttpMethod,
     path: string,
@@ -231,10 +170,8 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
       if (result.error === undefined) {
         await cacheProvider.set(key, {
           value: result,
-          storedAt: Date.now(),
           ttlMs: cacheTtlMs,
         });
-        swrCache?.set(key, result as ApiResponse<unknown>);
       }
       return result;
     };
@@ -244,16 +181,11 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
       return cacheSuccessResult(result);
     };
 
-    if (cacheStrategy === 'network-first') {
-      return handleNetworkFirst(cachedResult, loadNetwork);
-    }
-
-    if (cacheStrategy === 'swr') {
-      const staleResult = swrCache?.get(key) as ApiResponse<TData> | undefined;
-      return handleSwr(key, cachedResult, staleResult, loadNetwork);
-    }
-
-    return handleCacheFirst(cachedResult, loadNetwork);
+    return strategy({
+      key,
+      cachedResult,
+      loadNetwork,
+    });
   };
 
   const request = async <TData = unknown, TError = unknown>(
@@ -351,4 +283,4 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   };
 };
 
-export type { CacheProvider, CacheStrategy };
+export type { CacheProvider, CacheStrategy, CacheStrategyHandler };

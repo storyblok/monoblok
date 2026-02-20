@@ -128,3 +128,129 @@ describe('stories.getAll()', () => {
     expect(Array.isArray(result.data?.stories)).toBe(true);
   });
 });
+
+describe('generic HTTP methods', () => {
+  it('should perform GET requests with query params', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        return HttpResponse.json({
+          query: {
+            starts_with: url.searchParams.get('starts_with'),
+            token: url.searchParams.get('token'),
+            version: url.searchParams.get('version'),
+          },
+        });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    const result = await client.get<{
+      query: { starts_with: string | null; token: string | null; version: string | null };
+    }>('v2/cdn/links', {
+      query: {
+        starts_with: 'docs/',
+        version: 'published',
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.query).toEqual({
+      starts_with: 'docs/',
+      token: 'test-token',
+      version: 'published',
+    });
+  });
+
+  it('should perform POST requests with body', async () => {
+    server.use(
+      http.post('https://api.storyblok.com/v2/cdn/custom-endpoint', async ({ request }: { request: Request }) => {
+        const body = await request.json();
+        return HttpResponse.json({
+          method: request.method,
+          body,
+        });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    const result = await client.post<{ method: string; body: unknown }>('v2/cdn/custom-endpoint', {
+      body: {
+        title: 'hello',
+      },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual({
+      method: 'POST',
+      body: {
+        title: 'hello',
+      },
+    });
+  });
+
+  it('should perform PUT, PATCH and DELETE requests', async () => {
+    server.use(
+      http.put('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ method: 'PUT' });
+      }),
+      http.patch('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ method: 'PATCH' });
+      }),
+      http.delete('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ method: 'DELETE' });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    const putResult = await client.put<{ method: string }>('v2/cdn/custom-endpoint');
+    const patchResult = await client.patch<{ method: string }>('v2/cdn/custom-endpoint');
+    const deleteResult = await client.delete<{ method: string }>('v2/cdn/custom-endpoint');
+
+    expect(putResult.data?.method).toBe('PUT');
+    expect(patchResult.data?.method).toBe('PATCH');
+    expect(deleteResult.data?.method).toBe('DELETE');
+  });
+
+  it('should return error when throwOnError is false', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ message: 'Nope' }, { status: 404 });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    const result = await client.get('v2/cdn/custom-endpoint');
+
+    expect(result.error).toBeDefined();
+    expect(result.data).toBeUndefined();
+    expect(result.response.status).toBe(404);
+  });
+
+  it('should throw error when throwOnError is true', async () => {
+    server.use(
+      http.patch('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ message: 'Nope' }, { status: 404 });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      throwOnError: true,
+    });
+
+    await expect(client.patch('v2/cdn/custom-endpoint')).rejects.toThrow();
+  });
+});

@@ -1053,7 +1053,7 @@ describe('stories push command', () => {
     expect(report.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('No response from server');
+    expect(logFile).toContain('The server returned an error');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1069,7 +1069,7 @@ describe('stories push command', () => {
     );
   });
 
-  it('should gracefully handle non-array bloks field values', async () => {
+  it('should handle errors when mapping references fails', async () => {
     const storyA = makeMockStory({
       slug: 'story-a',
       content: {
@@ -1089,15 +1089,34 @@ describe('stories push command', () => {
         },
       }),
     ]);
-    const remoteStories = preconditions.canCreateStories([storyA]);
-    preconditions.canUpdateStories(remoteStories);
+    preconditions.canCreateStories([storyA]);
 
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
-    // Non-array bloks values should be passed through without crashing
-    expect(actions.updateStory).toHaveBeenCalled();
+    expect(actions.updateStory).not.toHaveBeenCalled();
+    // Reporting
     const report = getReport();
-    expect(report?.status).toBe('SUCCESS');
+    expect(report?.status).toBe('PARTIAL_SUCCESS');
+    // Logging
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain('Invalid bloks field: expected an array');
+    // UI
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid bloks field: expected an array'),
+      expect.anything(),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Creating stories: 1/1 succeeded, 0 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Processing stories: 0/1 succeeded, 1 failed.'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
+    );
   });
 
   it('should push stories with missing content field', async () => {
@@ -1159,10 +1178,10 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('No response from server');
+    expect(logFile).toContain('The server returned an error');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('No response from server'),
+      expect.stringContaining('The server returned an error'),
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(

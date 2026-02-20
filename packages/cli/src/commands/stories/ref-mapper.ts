@@ -171,7 +171,7 @@ const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
  */
 const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, processedFields, missingSchemas }) => {
   if (!Array.isArray(data)) {
-    return data;
+    throw new TypeError(`Invalid bloks field: expected an array, but received ${JSON.stringify(data)}. Please make sure your bloks field value is an array of components (e.g. [{ component: "my_blok", ... }]).`);
   }
 
   return data.map((d: any) => traverseAndMapBySchema(d, {
@@ -200,7 +200,7 @@ const assetFieldRefMapper: RefMapper = (data, { maps }) => {
  */
 const multiassetFieldRefMapper: RefMapper = (data, options) => {
   if (!Array.isArray(data)) {
-    return data;
+    throw new TypeError(`Invalid multiasset field: expected an array, but received ${JSON.stringify(data)}. Please make sure your multiasset field value is an array of asset objects (e.g. [{ filename: "...", id: 123 }]).`);
   }
 
   return data.map((d: any) => assetFieldRefMapper(d, options)) as any;

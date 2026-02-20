@@ -3,7 +3,7 @@ import { get, getAll } from './generated/sdk.gen';
 import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/types.gen';
 import type { StoryCapi } from './generated';
 import type { CacheProvider, CacheStrategy } from './cache';
-import { createMemoryCacheProvider, isCacheEntryFresh } from './cache';
+import { createMemoryCacheProvider } from './cache';
 import { applyCvToQuery, extractCv } from './utils/cv';
 import { createCacheKey, isCdnPath, isDraftRequest, normalizePath, shouldUseCache, toQueryRecord } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
@@ -50,6 +50,7 @@ interface CacheConfig {
   provider?: CacheProvider;
   strategy?: CacheStrategy;
   ttlMs?: number;
+  maxEntries?: number;
 }
 
 export interface ContentApiClientConfig<ThrowOnError extends boolean = false> {
@@ -72,11 +73,21 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     throwOnError = false,
     cache = {},
   } = config;
-  const cacheProvider = cache.provider ?? createMemoryCacheProvider();
+  const cacheProvider = cache.provider ?? createMemoryCacheProvider({
+    maxEntries: cache.maxEntries,
+  });
   const cacheStrategy = cache.strategy ?? 'cache-first';
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const revalidations = new Map<string, Promise<void>>();
+  const swrCache = cacheStrategy === 'swr'
+    ? new Map<string, ApiResponse<unknown>>()
+    : undefined;
   let currentCv: number | undefined;
+
+  const flushCaches = async () => {
+    await cacheProvider.flush();
+    swrCache?.clear();
+  };
 
   const client: Client = createClient(
     createConfig({
@@ -118,7 +129,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     }
 
     if (currentCv !== undefined && currentCv !== nextCv) {
-      await cacheProvider.flush();
+      await flushCaches();
     }
 
     currentCv = nextCv;
@@ -139,6 +150,63 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     }) as Promise<ApiResponse<TData>>;
   };
 
+  const handleCacheFirst = async <TData>(
+    cachedResult: ApiResponse<TData> | undefined,
+    loadNetwork: () => Promise<ApiResponse<TData>>,
+  ): Promise<ApiResponse<TData>> => {
+    if (cachedResult) {
+      return cachedResult;
+    }
+
+    return loadNetwork();
+  };
+
+  const handleNetworkFirst = async <TData>(
+    cachedResult: ApiResponse<TData> | undefined,
+    loadNetwork: () => Promise<ApiResponse<TData>>,
+  ): Promise<ApiResponse<TData>> => {
+    try {
+      return await loadNetwork();
+    }
+    catch (error) {
+      // network-first: try network, fall back to cached data if available.
+      // Since the provider evicts expired entries, this only falls back to
+      // fresh cached data. If no fresh data is available, the error propagates.
+      if (cachedResult) {
+        return cachedResult;
+      }
+
+      throw error;
+    }
+  };
+
+  const handleSwr = async <TData>(
+    key: string,
+    cachedResult: ApiResponse<TData> | undefined,
+    staleResult: ApiResponse<TData> | undefined,
+    loadNetwork: () => Promise<ApiResponse<TData>>,
+  ): Promise<ApiResponse<TData>> => {
+    if (cachedResult) {
+      return cachedResult;
+    }
+
+    if (staleResult) {
+      if (!revalidations.has(key)) {
+        const revalidation = loadNetwork()
+          .then(() => undefined)
+          .catch(() => undefined)
+          .finally(() => {
+            revalidations.delete(key);
+          });
+        revalidations.set(key, revalidation);
+      }
+
+      return staleResult;
+    }
+
+    return loadNetwork();
+  };
+
   const requestWithCache = async <TData = unknown>(
     method: HttpMethod,
     path: string,
@@ -157,9 +225,6 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     const key = createCacheKey(method, path, rawQuery);
     const cachedEntry = await cacheProvider.get(key);
     const cachedResult = cachedEntry?.value as ApiResponse<TData> | undefined;
-    const hasFreshCache = cachedEntry
-      ? isCacheEntryFresh(cachedEntry.storedAt, cachedEntry.ttlMs)
-      : false;
 
     const cacheSuccessResult = async (result: ApiResponse<TData>) => {
       await updateCv(path, rawQuery, result as ApiResponse<unknown>);
@@ -169,6 +234,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
           storedAt: Date.now(),
           ttlMs: cacheTtlMs,
         });
+        swrCache?.set(key, result as ApiResponse<unknown>);
       }
       return result;
     };
@@ -179,35 +245,15 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     };
 
     if (cacheStrategy === 'network-first') {
-      try {
-        return await loadNetwork();
-      }
-      catch (error) {
-        if (cachedResult) {
-          return cachedResult;
-        }
-        throw error;
-      }
+      return handleNetworkFirst(cachedResult, loadNetwork);
     }
 
-    if (cachedResult && hasFreshCache) {
-      return cachedResult;
+    if (cacheStrategy === 'swr') {
+      const staleResult = swrCache?.get(key) as ApiResponse<TData> | undefined;
+      return handleSwr(key, cachedResult, staleResult, loadNetwork);
     }
 
-    if (cacheStrategy === 'swr' && cachedResult) {
-      if (!revalidations.has(key)) {
-        const revalidation = loadNetwork()
-          .then(() => undefined)
-          .catch(() => undefined)
-          .finally(() => {
-            revalidations.delete(key);
-          });
-        revalidations.set(key, revalidation);
-      }
-      return cachedResult;
-    }
-
-    return loadNetwork();
+    return handleCacheFirst(cachedResult, loadNetwork);
   };
 
   const request = async <TData = unknown, TError = unknown>(
@@ -285,7 +331,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
       currentCv = undefined;
     },
     flush: async () => {
-      await cacheProvider.flush();
+      await flushCaches();
       currentCv = undefined;
     },
     getCv: () => currentCv,

@@ -254,3 +254,165 @@ describe('generic HTTP methods', () => {
     await expect(client.patch('v2/cdn/custom-endpoint')).rejects.toThrow();
   });
 });
+
+describe('cache and cv', () => {
+  it('should use in-memory cache by default for published CDN GET requests', async () => {
+    let requestCount = 0;
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+        requestCount++;
+        return HttpResponse.json({
+          links: {},
+          cv: 1,
+        });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await client.get('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+    await client.get('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    expect(requestCount).toBe(1);
+  });
+
+  it('should not cache draft requests', async () => {
+    let requestCount = 0;
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+        requestCount++;
+        return HttpResponse.json({ links: {} });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await client.get('v2/cdn/links', {
+      query: { version: 'draft' },
+    });
+    await client.get('v2/cdn/links', {
+      query: { version: 'draft' },
+    });
+
+    expect(requestCount).toBe(2);
+  });
+
+  it('should append cv when cache.setCv() was called', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        return HttpResponse.json({
+          cv: url.searchParams.get('cv'),
+        });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    client.cache.setCv(4242);
+    const result = await client.get<{ cv: string | null }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    expect(result.data?.cv).toBe('4242');
+    expect(client.cache.getCv()).toBe(4242);
+  });
+
+  it('should flush cache when cv changes', async () => {
+    let requestCount = 0;
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        requestCount++;
+        const url = new URL(request.url);
+        const page = url.searchParams.get('page');
+
+        if (page === '2') {
+          return HttpResponse.json({ links: {}, cv: 2 });
+        }
+
+        return HttpResponse.json({ links: {}, cv: 1 });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await client.get('v2/cdn/links', {
+      query: { version: 'published', page: 1 },
+    });
+    await client.get('v2/cdn/links', {
+      query: { version: 'published', page: 1 },
+    });
+
+    await client.get('v2/cdn/links', {
+      query: { version: 'published', page: 2 },
+    });
+
+    await client.get('v2/cdn/links', {
+      query: { version: 'published', page: 1 },
+    });
+
+    expect(requestCount).toBe(3);
+  });
+
+  it('should return stale response and revalidate in background with swr strategy', async () => {
+    vi.useFakeTimers();
+    let requestCount = 0;
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+        requestCount++;
+        return HttpResponse.json({
+          requestCount,
+          links: {},
+          cv: 1,
+        });
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      cache: {
+        strategy: 'swr',
+        ttlMs: 100,
+      },
+    });
+
+    const firstResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    await vi.advanceTimersByTimeAsync(120);
+
+    const secondResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    await vi.runAllTimersAsync();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const thirdResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    expect(firstResult.data?.requestCount).toBe(1);
+    expect(secondResult.data?.requestCount).toBe(1);
+    expect(thirdResult.data?.requestCount).toBe(2);
+    vi.useRealTimers();
+  });
+});

@@ -1,7 +1,8 @@
 import {
+  ComponentBlok,
   richTextResolver,
   type StoryblokRichTextNode,
-  type StoryblokRichTextResolvers,
+  type StoryblokRichTextOptions,
 } from '@storyblok/js';
 import { experimental_AstroContainer } from 'astro/container';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
@@ -13,13 +14,13 @@ let container: null | experimental_AstroContainer = null;
  * @experimental Converts a Storyblok RichText field into an HTML string.
  *
  * This API is still under development and may change in future releases.
- * It also relies on Astro’s experimental
+ * It also relies on Astro's experimental
  * [experimental_AstroContainer](https://docs.astro.build/en/reference/container-reference/) feature.
  *
  * @async
  * @param {StoryblokRichTextNode} richTextField - The root RichText node to convert.
- * @param {StoryblokRichTextResolvers} [customResolvers] - Optional custom resolvers
- *   for customizing how specific nodes or marks are transformed into HTML.
+ * @param {StoryblokRichTextOptions['tiptapExtensions']} [tiptapExtensions] - Optional custom
+ *   tiptap extensions for customizing how specific nodes or marks are rendered.
  * @returns {Promise<string>} A promise that resolves to the HTML string representation
  *   of the provided RichText content.
  *
@@ -36,7 +37,7 @@ let container: null | experimental_AstroContainer = null;
  */
 export const richTextToHTML = async (
   richTextField: StoryblokRichTextNode,
-  customResolvers?: StoryblokRichTextResolvers,
+  tiptapExtensions?: StoryblokRichTextOptions['tiptapExtensions'],
 ): Promise<string> => {
   // Create Astro container only once
   if (!container) {
@@ -45,17 +46,11 @@ export const richTextToHTML = async (
 
   // Collect async render results keyed by placeholder ID
   const asyncReplacements: Promise<{ id: string; result: string }>[] = [];
-  // Build the resolvers object
-  const resolvers: StoryblokRichTextResolvers = {
-    // Handle async components
-    blok: (node) => {
-      const componentBody = node.attrs?.body;
-      if (!Array.isArray(componentBody)) {
-        return '';
-      }
 
-      return componentBody
-        .map((blok) => {
+  const resolver = richTextResolver<string>({
+    tiptapExtensions: {
+      blok: ComponentBlok.configure({
+        renderComponent: (blok: Record<string, unknown>) => {
           if (!blok || typeof blok !== 'object' || !container) {
             return '';
           }
@@ -77,15 +72,11 @@ export const richTextToHTML = async (
 
           asyncReplacements.push(promise);
           return placeholder;
-        })
-        .join('\n');
+        },
+      }),
+      ...tiptapExtensions,
     },
-
-    // Add custom resolvers if provided
-    ...customResolvers,
-  };
-
-  const resolver = richTextResolver({ resolvers });
+  });
 
   let html = resolver.render(richTextField);
   // Wait for all async renders

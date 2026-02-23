@@ -11,9 +11,7 @@ export {
   richTextResolver,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,
-  type StoryblokRichTextNodeResolver,
   type StoryblokRichTextNodeTypes,
   type StoryblokRichTextOptions,
-  type StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/js';

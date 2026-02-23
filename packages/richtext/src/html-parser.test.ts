@@ -973,7 +973,7 @@ describe('hTML → Richtext: Options & configuration', () => {
 
 // ── Reported Issues / Regressions ──────────────────────────────────────────
 //
-// Tests derived from customer-reported issues (Porsche / WDX-141).
+// Tests derived from customer-reported issues.
 // These ensure the parser output is compatible with Storyblok's Tiptap editor.
 
 describe('hTML → Richtext: Editor compatibility (reported issues)', () => {
@@ -1032,62 +1032,6 @@ describe('hTML → Richtext: Editor compatibility (reported issues)', () => {
       expect(linkText.type).toBe('text');
       expect(linkText.marks[0].type).toBe('link');
       expect(linkText.marks[0].attrs.href).toBe('tel:+44 3457 911 911');
-    });
-  });
-
-  describe('porsche exact HTML example', () => {
-    it('parses the Porsche migration HTML correctly', () => {
-      const html = `
-<h1>Main Heading</h1>
-
-<p>This is a <strong>bold</strong> paragraph with <em>italic</em> text.</p>
-
-<ul>
- <li>List item 1</li>
- <li>List item 2</li>
-</ul>
-
-<blockquote>
- <p>This is a blockquote</p>
-</blockquote>
-`;
-      const result = htmlToStoryblokRichtext(html);
-
-      const types = result.content.map((n: any) => n.type);
-      expect(types).toEqual(['heading', 'paragraph', 'bullet_list', 'blockquote']);
-
-      expect(result.content[0]).toMatchObject({
-        type: 'heading',
-        attrs: { level: 1 },
-        content: [{ type: 'text', text: 'Main Heading' }],
-      });
-
-      expect(result.content[1]).toMatchObject({
-        type: 'paragraph',
-        content: [
-          { type: 'text', text: 'This is a ' },
-          { type: 'text', text: 'bold', marks: [{ type: 'bold' }] },
-          { type: 'text', text: ' paragraph with ' },
-          { type: 'text', text: 'italic', marks: [{ type: 'italic' }] },
-          { type: 'text', text: ' text.' },
-        ],
-      });
-
-      expect(result.content[2]).toMatchObject({
-        type: 'bullet_list',
-        content: [
-          { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'List item 1' }] }] },
-          { type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'List item 2' }] }] },
-        ],
-      });
-
-      expect(result.content[3]).toMatchObject({
-        type: 'blockquote',
-        content: [{
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'This is a blockquote' }],
-        }],
-      });
     });
   });
 

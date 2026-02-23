@@ -149,10 +149,18 @@ export const StoryblokEmoji = Emoji.extend({
 });
 
 // Blok node (component placeholder for vanilla usage)
-export const StoryblokBlok = Node.create({
+// Configure `renderComponent` option to render blok components in framework SDKs.
+// Similar to PHP Tiptap extension's `renderer` callback:
+// https://github.com/storyblok/php-tiptap-extension/blob/main/src/Node/Blok.php
+export const ComponentBlok = Node.create<{ renderComponent: ((blok: Record<string, unknown>, id?: string) => unknown) | null }>({
   name: 'blok',
   group: 'block',
   atom: true,
+  addOptions() {
+    return {
+      renderComponent: null,
+    };
+  },
   addAttributes() {
     return {
       id: { default: null },
@@ -163,7 +171,7 @@ export const StoryblokBlok = Node.create({
     return [{ tag: 'div[data-blok]' }];
   },
   renderHTML({ HTMLAttributes }) {
-    console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage');
+    console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage. Configure `renderComponent` option on the blok tiptapExtension.');
     return ['span', {
       blok: HTMLAttributes?.body?.[0],
       id: HTMLAttributes?.id,

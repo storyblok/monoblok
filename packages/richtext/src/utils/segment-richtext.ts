@@ -1,5 +1,6 @@
-import { BlockTypes, type StoryblokRichTextNode, type StoryblokRichTextOptions } from '../types';
+import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '../types';
 import { richTextResolver } from '../richtext';
+import { ComponentBlok } from '../extensions/nodes';
 import type { ISbComponentType } from 'storyblok-js-client';
 
 export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
@@ -57,16 +58,15 @@ export function segmentStoryblokRichText(
   const blokGroups: SbBlokData[][] = [];
   const resolver: StoryblokRichTextOptions<string> = {
     ...options,
-    resolvers: {
-      ...options.resolvers,
-      [BlockTypes.COMPONENT]: (node) => {
-        const body = node.attrs?.body;
-        if (!Array.isArray(body) || body.length === 0) {
-          return '';
-        }
-        const index = blokGroups.push(body as SbBlokData[]) - 1;
-        return `<!--${BLOK_MARKER_PREFIX}${index}-->`;
-      },
+    tiptapExtensions: {
+      blok: ComponentBlok.configure({
+        renderComponent: (blok: Record<string, unknown>) => {
+          const body = [blok];
+          const index = blokGroups.push(body as SbBlokData[]) - 1;
+          return `<!--${BLOK_MARKER_PREFIX}${index}-->`;
+        },
+      }),
+      ...options.tiptapExtensions,
     },
   };
   const html = richTextResolver<string>(resolver).render(doc);

@@ -1,5 +1,5 @@
 import { getStoryblokExtensions } from './extensions';
-import type { BlockAttributes, MarkNode, StoryblokRichTextContext, StoryblokRichTextDocumentNode, StoryblokRichTextNode, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
+import type { BlockAttributes, MarkNode, StoryblokRichTextDocumentNode, StoryblokRichTextNode, StoryblokRichTextOptions, TextNode } from './types';
 import { attrsToString, escapeHtml, SELF_CLOSING_TAGS } from './utils';
 
 /**
@@ -97,7 +97,6 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   const {
     renderFn = defaultRenderFn,
     textFn = escapeHtml,
-    resolvers = {},
     optimizeImages = false,
     keyedResolvers = false,
     tiptapExtensions,
@@ -133,42 +132,33 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     return renderFn(tag, attrs, children);
   };
 
-  // Backward-compat context for custom resolvers
-  const context: StoryblokRichTextContext<T> = {
-    render: contextRenderFn,
-    originalResolvers: new Map(),
-    mergedResolvers: new Map(),
-  };
-
   function renderNode(node: StoryblokRichTextNode<T>): T {
-    // 1. Check for user resolver override (backward compat)
-    const override = resolvers[node.type as StoryblokRichTextNodeTypes];
-    if (override) {
-      if (node.type === 'text') {
-        return override(node as StoryblokRichTextNode<T>, context);
-      }
-      const children = node.content ? node.content.map(render) : undefined;
-      return override({
-        ...node,
-        children: children as T,
-      }, context);
-    }
-
-    // 2. Text nodes — apply marks via reduce
+    // Text nodes — apply marks via reduce
     if (node.type === 'text') {
       return renderText(node as TextNode<T>);
     }
 
-    // 3. Special: document node renders without wrapper
+    // Document node renders without wrapper
     if (node.type === 'doc') {
       return render(node);
     }
 
-    // 4. Find extension and call renderHTML
+    // Find extension and call renderHTML
     const ext = nodeExtMap.get(node.type);
     if (!ext?.config?.renderHTML) {
-      console.error('<Storyblok>', `No resolver found for node type ${node.type}`);
+      console.error('<Storyblok>', `No extension found for node type ${node.type}`);
       return '' as unknown as T;
+    }
+
+    // Check for renderComponent option (e.g., blok nodes configured via tiptapExtensions)
+    if (ext.options?.renderComponent) {
+      const body = node.attrs?.body;
+      const id = node.attrs?.id;
+      if (!Array.isArray(body) || body.length === 0) {
+        return (isExternalRenderFn ? [] : '') as unknown as T;
+      }
+      const rendered = body.map((blok: Record<string, unknown>) => ext.options.renderComponent(blok, id));
+      return (isExternalRenderFn ? rendered : rendered.filter((r: unknown) => r != null).join('')) as unknown as T;
     }
 
     const children = node.content ? node.content.map(render) : undefined;
@@ -195,15 +185,9 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
 
       // Apply marks as reduce: text → mark1(text) → mark2(mark1(text))
       return marks.reduce((text: T, mark: MarkNode<T>) => {
-        // Check for user mark resolver override
-        const override = resolvers[mark.type as StoryblokRichTextNodeTypes];
-        if (override) {
-          return override({ ...mark, text } as any, context);
-        }
-
         const ext = markExtMap.get(mark.type);
         if (!ext?.config?.renderHTML) {
-          console.error('<Storyblok>', `No resolver found for node type ${mark.type}`);
+          console.error('<Storyblok>', `No extension found for node type ${mark.type}`);
           return text;
         }
 

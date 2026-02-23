@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { richTextResolver } from './richtext';
 import { createTextVNode, h } from 'vue';
 import type { VNode } from 'vue';
-import { BlockTypes, MarkTypes, type StoryblokRichTextNode, type StoryblokRichTextNodeResolver } from './types';
+import { BlockTypes, type StoryblokRichTextNode } from './types';
 import { Mark, Node } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import Bold from '@tiptap/extension-bold';
+import { ComponentBlok } from './extensions/nodes';
 
 describe('richtext', () => {
   describe('document', () => {
@@ -1185,76 +1186,82 @@ describe('richtext', () => {
       const vnode = render(paragraph as StoryblokRichTextNode<VNode>);
       expect(vnode?.children[0].children).toBe('Hello, world!');
     });
-    it('should overwrite a resolver', async () => {
-      const RouterLink = h('span');
+    it('should render a mark with a Vue component via tiptapExtensions', () => {
+      // Simulate a Vue component (like RouterLink)
+      const RouterLink = { name: 'RouterLink', render: () => null };
 
-      const { render } = richTextResolver({
-        resolvers: {
-          [MarkTypes.LINK]: (node: StoryblokRichTextNode<VNode>) => h(RouterLink, {
-            to: node.attrs?.href,
-            target: node.attrs?.target,
-          }, node.text),
+      const CustomLink = Mark.create({
+        name: 'link',
+        renderHTML({ HTMLAttributes }: any) {
+          if (HTMLAttributes.linktype === 'story') {
+            // Return component reference as DOMOutputSpec tag
+            return [RouterLink, { to: HTMLAttributes.href }, 0];
+          }
+          return ['a', { href: HTMLAttributes.href }, 0];
         },
       });
-      const link = {
-        text: 'Internal Link',
-        type: 'text',
-        marks: [
-          {
-            type: 'link',
-            attrs: {
-              href: '/about',
-              uuid: '2bbf3ee7-acbe-401c-ade5-cf33e6e0babb',
-              anchor: null,
-              target: '_blank',
-              linktype: 'story',
-            },
-          },
-        ],
-      };
-      const node = render(link as unknown as StoryblokRichTextNode<VNode>);
-      expect(node.type).toBe('span');
-      expect(node?.props?.to).toBe('/about');
-    });
 
-    // TODO: skipping this test for now, as it requires @storyblok/vue but adding it introduces a circular dependency
-    it.skip('should render a blok component', async () => {
-      const { StoryblokComponent } = await import('@storyblok/vue');
-      const componentResolver: StoryblokRichTextNodeResolver<VNode> = (node: StoryblokRichTextNode<VNode>): VNode => {
-        return h(StoryblokComponent, {
-          blok: node?.attrs?.body[0],
-          id: node.attrs?.id,
-        }, node.children);
-      };
-      const { render } = richTextResolver({
+      const { render } = richTextResolver<VNode>({
         renderFn: h,
         textFn: createTextVNode,
-        resolvers: {
-          [BlockTypes.COMPONENT]: componentResolver,
+        tiptapExtensions: { link: CustomLink },
+      });
+
+      // Story link → should use RouterLink component
+      const storyLink = {
+        type: 'text',
+        text: 'Internal Link',
+        marks: [{
+          type: 'link',
+          attrs: { href: '/about', linktype: 'story' },
+        }],
+      };
+      const storyVNode = render(storyLink as any);
+      expect(storyVNode.__v_isVNode).toBeTruthy();
+      expect(storyVNode.type).toBe(RouterLink);
+      expect(storyVNode.props?.to).toBe('/about');
+
+      // URL link → should use <a> tag
+      const urlLink = {
+        type: 'text',
+        text: 'External Link',
+        marks: [{
+          type: 'link',
+          attrs: { href: 'https://example.com', linktype: 'url' },
+        }],
+      };
+      const urlVNode = render(urlLink as any);
+      expect(urlVNode.__v_isVNode).toBeTruthy();
+      expect(urlVNode.type).toBe('a');
+      expect(urlVNode.props?.href).toBe('https://example.com');
+    });
+
+    it('should render a node with a Vue component via tiptapExtensions', () => {
+      const CustomAlert = { name: 'CustomAlert', render: () => null };
+
+      const AlertNode = Node.create({
+        name: 'paragraph',
+        content: 'inline*',
+        group: 'block',
+        renderHTML() {
+          return [CustomAlert, { class: 'alert' }, 0];
         },
       });
-      const paragraph = {
-        type: 'blok',
-        attrs: {
-          id: '489f2970-6787-486a-97c3-6f1e8a99b7a9',
-          body: [
-            {
-              sub: [],
-              _uid: 'i-134324ee-1754-48be-93df-02df1e394733',
-              title: 'Second button!',
-              component: 'test-button',
-            },
-            {
-              sub: [],
-              _uid: 'i-437c2948-0be9-442e-949d-a11c79736aa6',
-              title: 'My Button ',
-              component: 'test-button',
-            },
-          ],
-        },
+
+      const { render } = richTextResolver<VNode>({
+        renderFn: h,
+        textFn: createTextVNode,
+        tiptapExtensions: { paragraph: AlertNode },
+      });
+
+      const doc = {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Alert content' }],
       };
-      const vnode = render(paragraph as unknown as StoryblokRichTextNode<VNode>);
-      expect(vnode?.props?.blok.component).toBe('test-button');
+      const vnode = render(doc as any);
+      expect(vnode.__v_isVNode).toBeTruthy();
+      expect(vnode.type).toBe(CustomAlert);
+      expect(vnode.props?.class).toBe('alert');
     });
   });
 });
@@ -1767,33 +1774,399 @@ describe('tiptapExtensions', () => {
 
     expect(html).toBe('<p><span class="spoiler">Secret</span></p>');
   });
+});
 
-  it('should let resolvers take priority over tiptapExtensions', () => {
-    const CustomHeading = Heading.extend({
-      renderHTML({ node, HTMLAttributes }) {
-        const level = node.attrs.level;
-        return [`h${level}`, { class: 'from-extension', ...HTMLAttributes }, 0];
+describe('renderComponent (blok extension option)', () => {
+  const blokDoc = {
+    type: 'doc',
+    content: [{
+      type: 'blok',
+      attrs: {
+        id: '489f2970-6787-486a-97c3-6f1e8a99b7a9',
+        body: [
+          {
+            _uid: 'i-134324ee-1754-48be-93df-02df1e394733',
+            title: 'Second button!',
+            component: 'test-button',
+          },
+          {
+            _uid: 'i-437c2948-0be9-442e-949d-a11c79736aa6',
+            title: 'My Button',
+            component: 'test-button',
+          },
+        ],
       },
+    }],
+  };
+
+  describe('vanilla (HTML string)', () => {
+    it('should render blok nodes via renderComponent returning HTML strings', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any, id?: string) =>
+              `<div data-component="${blok.component}" data-id="${id}">${blok.title}</div>`,
+          }),
+        },
+      });
+
+      const html = render(blokDoc as any);
+      expect(html).toBe(
+        '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">Second button!</div>'
+        + '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">My Button</div>',
+      );
     });
 
-    const doc = {
-      type: 'doc',
-      content: [{
-        type: 'heading',
-        attrs: { level: 1 },
-        content: [{ type: 'text', text: 'Title' }],
-      }],
-    };
-
-    const html = richTextResolver<string>({
-      tiptapExtensions: { heading: CustomHeading },
-      resolvers: {
-        [BlockTypes.HEADING]: (node) => {
-          return `<h1 class="from-resolver">${node.children}</h1>`;
+    it('should return empty string for empty body', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<div>${blok.title}</div>`,
+          }),
         },
-      },
-    }).render(doc as any);
+      });
 
-    expect(html).toBe('<h1 class="from-resolver">Title</h1>');
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: { id: 'test', body: [] },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('');
+    });
+
+    it('should return empty string when body is undefined', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<div>${blok.title}</div>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: { id: 'test' },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('');
+    });
+  });
+
+  describe('framework (Vue VNodes)', () => {
+    it('should render blok nodes via renderComponent returning VNodes', () => {
+      const MockComponent = { name: 'MockBlok', render: () => null };
+
+      const { render } = richTextResolver<VNode | VNode[]>({
+        renderFn: h,
+        // @ts-expect-error - createTextVNode types
+        textFn: createTextVNode,
+        keyedResolvers: true,
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any, id?: string) =>
+              h(MockComponent, { blok, id }),
+          }),
+        },
+      });
+
+      const result = render(blokDoc as any) as any;
+      // doc renders array of children; first child is the blok array
+      const blokElements = result[0];
+      expect(Array.isArray(blokElements)).toBe(true);
+      expect(blokElements).toHaveLength(2);
+      expect(blokElements[0].props.blok.component).toBe('test-button');
+      expect(blokElements[0].props.blok.title).toBe('Second button!');
+      expect(blokElements[1].props.blok.component).toBe('test-button');
+      expect(blokElements[1].props.blok.title).toBe('My Button');
+    });
+
+    it('should return empty array for empty body in framework mode', () => {
+      const { render } = richTextResolver<VNode | VNode[]>({
+        renderFn: h,
+        // @ts-expect-error - createTextVNode types
+        textFn: createTextVNode,
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => h('div', {}, blok.title),
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: { id: 'test', body: [] },
+        }],
+      };
+      const result = render(doc as any) as any;
+      expect(result[0]).toEqual([]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should render two consecutive blok nodes in sequence', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any, id?: string) =>
+              `<div data-component="${blok.component}" data-id="${id}">${blok.title}</div>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [
+          {
+            type: 'blok',
+            attrs: {
+              id: 'blok-1',
+              body: [{ _uid: '1', component: 'banner', title: 'Banner A' }],
+            },
+          },
+          {
+            type: 'blok',
+            attrs: {
+              id: 'blok-2',
+              body: [{ _uid: '2', component: 'cta', title: 'CTA B' }],
+            },
+          },
+        ],
+      };
+      const html = render(doc as any);
+      expect(html).toBe(
+        '<div data-component="banner" data-id="blok-1">Banner A</div>'
+        + '<div data-component="cta" data-id="blok-2">CTA B</div>',
+      );
+    });
+
+    it('should render a single body item', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<button>${blok.title}</button>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: {
+            id: 'single',
+            body: [{ _uid: '1', component: 'btn', title: 'Solo' }],
+          },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('<button>Solo</button>');
+    });
+
+    it('should return empty string when body is null', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<div>${blok.title}</div>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: { id: 'test', body: null },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('');
+    });
+
+    it('should produce empty string when renderComponent callback returns null', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: () => null,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: {
+            id: 'test',
+            body: [{ _uid: '1', component: 'hidden', title: 'Hidden' }],
+          },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('');
+    });
+
+    it('should fall back to renderHTML warning when no renderComponent is configured', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { render } = richTextResolver<string>({});
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: {
+            id: 'test',
+            body: [{ _uid: '1', component: 'btn', title: 'Click' }],
+          },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toContain('display: none');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('BLOK resolver is not available'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should support heading override and blok renderComponent together', () => {
+      const CustomHeading = Heading.extend({
+        renderHTML({ HTMLAttributes }) {
+          const { level, ...rest } = HTMLAttributes;
+          return [`h${level}`, { class: 'custom', ...rest }, 0];
+        },
+      });
+
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          heading: CustomHeading,
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<widget>${blok.title}</widget>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: 'Title' }],
+          },
+          {
+            type: 'blok',
+            attrs: {
+              id: 'b1',
+              body: [{ _uid: '1', component: 'widget', title: 'My Widget' }],
+            },
+          },
+        ],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('<h2 class="custom">Title</h2><widget>My Widget</widget>');
+    });
+
+    it('should allow user to override the default blok extension entirely', () => {
+      const CustomBlok = Node.create({
+        name: 'blok',
+        group: 'block',
+        atom: true,
+        renderHTML({ HTMLAttributes }) {
+          return ['div', { 'class': 'custom-blok', 'data-id': HTMLAttributes.id }];
+        },
+      });
+
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: { blok: CustomBlok },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'blok',
+          attrs: { id: 'test', body: [{ _uid: '1', component: 'x' }] },
+        }],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('<div class="custom-blok" data-id="test"></div>');
+    });
+
+    it('should not apply keyed resolvers to blok renderComponent output', () => {
+      const { render } = richTextResolver<string>({
+        keyedResolvers: true,
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) => `<button>${blok.title}</button>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before' }],
+          },
+          {
+            type: 'blok',
+            attrs: {
+              id: 'b1',
+              body: [{ _uid: '1', component: 'btn', title: 'Click' }],
+            },
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'After' }],
+          },
+        ],
+      };
+      const html = render(doc as any);
+      // Blok output is raw (no key attrs), but surrounding paragraphs get keys
+      expect(html).toBe('<p key="p-0">Before</p><button>Click</button><p key="p-1">After</p>');
+    });
+  });
+
+  describe('mixed content', () => {
+    it('should work alongside other content in a document', () => {
+      const { render } = richTextResolver<string>({
+        tiptapExtensions: {
+          blok: ComponentBlok.configure({
+            renderComponent: (blok: any) =>
+              `<button>${blok.title}</button>`,
+          }),
+        },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before blok' }],
+          },
+          {
+            type: 'blok',
+            attrs: {
+              id: 'test',
+              body: [{ _uid: '1', component: 'btn', title: 'Click me' }],
+            },
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'After blok' }],
+          },
+        ],
+      };
+      const html = render(doc as any);
+      expect(html).toBe('<p>Before blok</p><button>Click me</button><p>After blok</p>');
+    });
   });
 });

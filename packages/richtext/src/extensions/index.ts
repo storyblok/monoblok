@@ -1,12 +1,12 @@
 import type { Extension, Mark, Node } from '@tiptap/core';
 import type { StoryblokRichTextImageOptimizationOptions } from '../types';
 import {
+  ComponentBlok,
   Details,
   DetailsContent,
   DetailsSummary,
   Document,
   StoryblokBlockquote,
-  StoryblokBlok,
   StoryblokBulletList,
   StoryblokCodeBlock,
   StoryblokEmoji,
@@ -76,7 +76,7 @@ const defaultExtensions = {
   tableRow: StoryblokTableRow,
   tableCell: StoryblokTableCell,
   tableHeader: StoryblokTableHeader,
-  blok: StoryblokBlok,
+  blok: ComponentBlok,
   details: Details,
   detailsContent: DetailsContent,
   detailsSummary: DetailsSummary,

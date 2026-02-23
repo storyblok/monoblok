@@ -32,10 +32,8 @@ export type {
   StoryblokRichTextDocumentNode,
   StoryblokRichTextImageOptimizationOptions,
   StoryblokRichTextNode,
-  StoryblokRichTextNodeResolver,
   StoryblokRichTextNodeTypes,
   StoryblokRichTextOptions,
-  StoryblokRichTextResolvers,
   TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';

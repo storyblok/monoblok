@@ -113,40 +113,6 @@ export interface TextNode<T = string> extends StoryblokRichTextNode<T> {
 }
 
 /**
- * Represents the render context provided to resolvers
- * @template T - The type of the resolved value
- */
-export interface StoryblokRichTextContext<T = string> {
-  /**
-   * Render function that automatically handles key generation
-   * @param tag - The HTML tag to render
-   * @param attrs - The attributes for the tag
-   * @param children - Optional children content
-   */
-  render: (tag: string, attrs?: BlockAttributes, children?: T) => T;
-  /**
-   * Original resolvers map
-   */
-  originalResolvers: Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>;
-  /**
-   * Merged resolvers map
-   */
-  mergedResolvers: Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>;
-}
-
-/**
- * Represents a resolver function for a Storyblok rich text node.
- * @template T - The type of the resolved value.
- * @param node - The rich text node to resolve.
- * @param context - The render context with utilities
- * @returns The resolved value of type T.
- */
-export type StoryblokRichTextNodeResolver<T = string> = (
-  node: StoryblokRichTextNode<T> | TextNode<T> | MarkNode<T> | LinkNode<T>,
-  context: StoryblokRichTextContext<T>
-) => T;
-
-/**
  * Represents the configuration options for optimizing images in rich text content.
  */
 export interface StoryblokRichTextImageOptimizationOptions {
@@ -225,13 +191,6 @@ export interface StoryblokRichTextImageOptimizationOptions {
 }
 
 /**
- * Resolvers for Storyblok RichText nodes.
- *
- * @template T - The type of the resolved value.
- */
-export type StoryblokRichTextResolvers<T = string> = Partial<Record<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>>;
-
-/**
  * Represents the options for rendering rich text.
  */
 export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: BlockAttributes, children?: T) => T> {
@@ -267,23 +226,6 @@ export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: B
    * ```
    */
   textFn?: (text: string, attrs?: BlockAttributes) => T;
-
-  /**
-   * Defines the resolvers for each type of node.
-   *
-   * @example
-   *
-   * ```typescript
-   * const options: StoryblokRichTextOptions = {
-   *  resolvers: {
-   *    [MarkTypes.LINK]: (node: StoryblokRichTextNode) => {
-   *      return `<a href="${node.attrs.href}">${node.text}</a>`
-   *    }
-   *  }
-   * }
-   * ```
-   */
-  resolvers?: StoryblokRichTextResolvers<T>;
 
   /**
    * Defines opt-out image optimization options.

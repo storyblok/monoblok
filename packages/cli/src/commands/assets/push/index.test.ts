@@ -904,7 +904,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
@@ -933,7 +933,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('API Error: Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
@@ -956,7 +956,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('API Error: Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -1001,7 +1001,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );

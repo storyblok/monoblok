@@ -39,6 +39,9 @@ const traverseAndMapBySchema = (
     missingSchemas: MissingSchemas;
   },
 ): any => {
+  if (!data?.component) {
+    return data ?? {};
+  }
   const schema = schemas[data.component];
   if (!schema) {
     missingSchemas.add(data.component);
@@ -97,7 +100,7 @@ const traverseAndMapRichtextDoc = (
   }
 
   if (data && typeof data === 'object') {
-    if (data.type === 'link' && data.attrs.linktype === 'story') {
+    if (data.type === 'link' && data.attrs?.linktype === 'story') {
       return {
         ...data,
         attrs: {
@@ -111,7 +114,7 @@ const traverseAndMapRichtextDoc = (
         ...data,
         attrs: {
           ...data.attrs,
-          body: data.attrs.body.map((d: any) => traverseAndMapBySchema(d, {
+          body: (data.attrs?.body ?? []).map((d: any) => traverseAndMapBySchema(d, {
             schemas,
             maps,
             fieldRefMappers,
@@ -168,7 +171,7 @@ const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
  */
 const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, processedFields, missingSchemas }) => {
   if (!Array.isArray(data)) {
-    throw new TypeError('Invalid data!');
+    throw new TypeError(`Invalid bloks field: expected an array, but received ${JSON.stringify(data)}. Please make sure your bloks field value is an array of components (e.g. [{ component: "my_blok", ... }]).`);
   }
 
   return data.map((d: any) => traverseAndMapBySchema(d, {
@@ -197,7 +200,7 @@ const assetFieldRefMapper: RefMapper = (data, { maps }) => {
  */
 const multiassetFieldRefMapper: RefMapper = (data, options) => {
   if (!Array.isArray(data)) {
-    throw new TypeError('Invalid data!');
+    throw new TypeError(`Invalid multiasset field: expected an array, but received ${JSON.stringify(data)}. Please make sure your multiasset field value is an array of asset objects (e.g. [{ filename: "...", id: 123 }]).`);
   }
 
   return data.map((d: any) => assetFieldRefMapper(d, options)) as any;
@@ -236,25 +239,27 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
   const alternates = story.alternates
     ? (story.alternates as Required<Story>['alternates']).map((a: any) => ({
         ...a,
-        id: maps.stories?.get(a.id) || a.id,
-        parent_id: maps.stories?.get(a.parent_id) || a.parent_id,
+        id: maps.stories?.get(a.id) ?? a.id,
+        parent_id: maps.stories?.get(a.parent_id) ?? a.parent_id,
       }))
     : story.alternates;
 
-  const parentId = maps.stories?.get(story.parent_id) || story.parent_id;
+  const parentId = maps.stories?.get(story.parent_id) ?? story.parent_id;
   const mappedStory = {
     ...story,
-    content: traverseAndMapBySchema(story.content, {
-      schemas,
-      maps,
-      fieldRefMappers,
-      processedFields,
-      missingSchemas,
-    }),
-    id: Number(maps.stories?.get(story.id) || story.id),
-    uuid: String(maps.stories?.get(story.uuid) || story.uuid),
+    content: story.content?.component
+      ? traverseAndMapBySchema(story.content, {
+          schemas,
+          maps,
+          fieldRefMappers,
+          processedFields,
+          missingSchemas,
+        })
+      : story.content,
+    id: Number(maps.stories?.get(story.id) ?? story.id),
+    uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
     // @ts-expect-error Our types are wrong.
-    parent_id: parentId ? Number(parentId) : null,
+    parent_id: parentId != null ? Number(parentId) : null,
     alternates,
   } satisfies Story;
 

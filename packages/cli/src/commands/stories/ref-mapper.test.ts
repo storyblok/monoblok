@@ -134,4 +134,153 @@ describe('storyRefMapper', () => {
 
     expect(Array.from(missingSchemas)).toEqual(['page_with_everything']);
   });
+
+  it('should preserve parent_id of 0 instead of converting it to null', () => {
+    const story = {
+      name: 'Root Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: 0,
+      is_folder: false,
+      slug: 'root-story',
+      content: { _uid: randomUUID(), component: 'page_with_everything' },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.parent_id).toBe(0);
+  });
+
+  it('should handle stories with missing content field', () => {
+    const story = {
+      name: 'No Content Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'no-content',
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content).toBeUndefined();
+    expect(mappedStory.id).toBe(story.id);
+    expect(mappedStory.uuid).toBe(story.uuid);
+  });
+
+  it('should handle stories with content lacking a component field', () => {
+    const story = {
+      name: 'Folder',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: true,
+      slug: 'folder',
+      content: { _uid: randomUUID() },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const { mappedStory, missingSchemas } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content).toEqual(story.content);
+    expect(Array.from(missingSchemas)).toEqual([]);
+  });
+
+  it('should handle richtext with missing attrs on link nodes', () => {
+    const story = {
+      name: 'Richtext Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'richtext-story',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        richtext: {
+          type: 'doc',
+          content: [
+            { type: 'link' },
+          ],
+        },
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
+  });
+
+  it('should handle richtext blok nodes with missing attrs or body', () => {
+    const story = {
+      name: 'Blok Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'blok-story',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        richtext: {
+          type: 'doc',
+          content: [
+            { type: 'blok' },
+            { type: 'blok', attrs: {} },
+          ],
+        },
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
+  });
+
+  it('should throw a helpful error when bloks field has a non-array value', () => {
+    const story = {
+      name: 'Bad Bloks',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'bad-bloks',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        bloks: 'invalid',
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps }))
+      .toThrow('Invalid bloks field: expected an array, but received "invalid"');
+  });
+
+  it('should throw a helpful error when multiasset field has a non-array value', () => {
+    const story = {
+      name: 'Bad Multiasset',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'bad-multiasset',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        multi_assets: { filename: 'image.png' },
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps }))
+      .toThrow('Invalid multiasset field: expected an array, but received {"filename":"image.png"}');
+  });
 });

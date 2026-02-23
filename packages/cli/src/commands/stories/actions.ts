@@ -2,7 +2,6 @@ import type { Story } from '@storyblok/management-api-client/resources/stories';
 import type { FetchStoriesResult, StoriesQueryParams } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
-import { toError } from '../../utils/error/error';
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -76,15 +75,15 @@ export const createStory = async (
       },
       body: {
         story: payload.story as Story,
-        publish: payload.publish,
+        ...(payload.publish ? { publish: payload.publish } : { }),
       },
       throwOnError: true,
     });
 
     return data?.story;
   }
-  catch (maybeError) {
-    handleAPIError('create_story', toError(maybeError));
+  catch (error) {
+    handleAPIError('create_story', error);
   }
 };
 
@@ -117,20 +116,22 @@ export const updateStory = async (
       body: {
         story: payload.story as Story,
         force_update: payload.force_update === '1' ? '1' : '0',
-        publish: payload.publish,
+        ...(payload.publish ? { publish: payload.publish } : { }),
       },
       throwOnError: true,
     });
 
-    const { story } = data;
+    const story = data?.story;
     if (!story) {
       throw new Error('Failed to update story');
     }
 
     return story;
   }
-  catch (maybeError) {
-    handleAPIError('update_story', toError(maybeError));
-    throw maybeError;
+  catch (error) {
+    if (error instanceof Error && error.message === 'Failed to update story') {
+      throw error;
+    }
+    handleAPIError('update_story', error);
   }
 };

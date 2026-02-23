@@ -37,6 +37,7 @@
     "storyblok-js-client": "workspace:*",
     "@storyblok/richtext": "workspace:*",
     "@storyblok/js": "workspace:*",
+    "@storyblok/preview-bridge": "^2.1.6",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

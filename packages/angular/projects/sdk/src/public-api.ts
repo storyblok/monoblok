@@ -38,7 +38,10 @@ export {
 export type {
   ISbStoriesParams,
   ISbStoryData,
-  SbBlokData,
   ISbResult,
   ISbStory,
-} from '@storyblok/js';
+  ISbConfig,
+  ISbComponentType,
+} from 'storyblok-js-client';
+
+export type { SbBlokData } from '@storyblok/js';

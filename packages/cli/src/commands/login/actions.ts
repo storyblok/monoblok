@@ -1,7 +1,6 @@
-import chalk from 'chalk';
 import type { RegionCode } from '../../constants';
-import { customFetch, FetchError } from '../../utils/fetch';
-import { APIError, handleAPIError, maskToken } from '../../utils';
+import { customFetch } from '../../utils/fetch';
+import { APIError, handleAPIError } from '../../utils';
 import { getStoryblokUrl } from '../../utils/api-routes';
 import type { StoryblokLoginResponse, StoryblokLoginWithOtpResponse } from '../../types';
 import { getUser } from '../user/actions';
@@ -16,18 +15,7 @@ export const loginWithToken = async (token: string, region: RegionCode) => {
       throw error;
     }
 
-    if (error instanceof FetchError) {
-      const status = error.response.status;
-
-      switch (status) {
-        case 401:
-          throw new APIError('unauthorized', 'login_with_token', error, `The token provided ${chalk.bold(maskToken(token))} is invalid.
-        Please make sure you are using the correct token and try again.`);
-        default:
-          throw new APIError('network_error', 'login_with_token', error);
-      }
-    }
-    throw new APIError('generic', 'login_with_token', error as FetchError, 'The provided credentials are invalid');
+    handleAPIError('login_with_token', error);
   }
 };
 

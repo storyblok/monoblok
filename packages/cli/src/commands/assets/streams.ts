@@ -1,17 +1,18 @@
 import { Buffer } from 'node:buffer';
-import { basename, extname, join, parse } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import { readdir, readFile, stat, unlink } from 'node:fs/promises';
+import { readdir, readFile, unlink } from 'node:fs/promises';
 import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
+import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
 import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, sha256, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
-import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource } from './utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
 
@@ -452,31 +453,27 @@ export const readLocalAssetsStream = ({
   const iterator = async function* readAssets() {
     try {
       const files = await readdir(directoryPath);
-      const metadataFiles = files.filter(file => file.endsWith('.json') && file !== 'manifest.jsonl');
-      setTotalAssets?.(metadataFiles.length);
-      for (const file of metadataFiles) {
-        const filePath = join(directoryPath, file);
+      const binaryFiles = files.filter(f => SUPPORTED_ASSET_EXTENSIONS.has(extname(f).toLowerCase()));
+      setTotalAssets?.(binaryFiles.length);
+      for (const file of binaryFiles) {
+        const binaryFilePath = join(directoryPath, file);
         try {
-          const statResult = await stat(filePath);
-          if (!statResult.isFile()) {
-            continue;
-          }
-          const metadataContent = await readFile(filePath, 'utf8');
-          const assetRaw = JSON.parse(metadataContent);
+          const sidecar = await loadSidecarAssetData(binaryFilePath);
+          const shortFilename: string = sidecar.short_filename
+            || (sidecar.filename ? basename(sidecar.filename) : undefined)
+            || file;
           const asset = {
-            ...assetRaw,
-            short_filename: assetRaw.short_filename || basename(assetRaw.filename),
+            ...sidecar,
+            short_filename: shortFilename,
           } satisfies AssetUpload;
-          const baseName = parse(file).name;
-          const extFromMetadata = extname(asset.short_filename || asset.filename) || '';
-          const assetBinaryPath = join(directoryPath, `${baseName}${extFromMetadata}`);
-          const fileBuffer = await readFile(assetBinaryPath) as unknown as ArrayBuffer;
+          const fileBuffer = await readFile(binaryFilePath) as unknown as ArrayBuffer;
+          const sidecarPath = getSidecarFilename(binaryFilePath);
           yield {
             asset,
             context: {
               fileBuffer,
-              assetBinaryPath,
-              assetPath: filePath,
+              assetBinaryPath: binaryFilePath,
+              assetPath: sidecarPath,
             },
           } satisfies LocalAssetPayload;
         }

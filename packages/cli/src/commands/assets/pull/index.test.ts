@@ -276,7 +276,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(logFile).toContain('"fetchAssetPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchAssets":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
@@ -310,7 +310,7 @@ describe('assets pull command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(logFile).toContain('"folderResults":{"total":1,"succeeded":0,"failed":1}');
     expect(process.exitCode).toBe(1);
   });

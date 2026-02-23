@@ -1,5 +1,6 @@
 import { getManagementBaseUrl, getRegion } from '@storyblok/region-helper';
 import type { Client, Config, RequestOptions } from './types';
+import { ClientError } from './error';
 import {
   buildUrl,
   createConfig,
@@ -182,7 +183,11 @@ export const createClient = (config: Config): Client => {
     finalError = finalError || ({} as string);
 
     if (opts.throwOnError) {
-      throw finalError;
+      throw new ClientError(response.statusText || 'API request failed', {
+        status: response.status,
+        statusText: response.statusText,
+        data: finalError,
+      });
     }
 
     // TODO: we probably want to return error and improve types

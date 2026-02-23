@@ -92,6 +92,50 @@ export interface SpaceOptions {
   spaceId: string;
 }
 
+/**
+ * Supported asset file extensions based on Storyblok's accepted MIME types.
+ * @see https://www.storyblok.com/docs/concepts/assets
+ * @see https://www.storyblok.com/faq/are-there-asset-type-upload-limitations
+ */
+export const SUPPORTED_ASSET_EXTENSIONS = new Set([
+  // Images: image/png, image/x-png, image/gif, image/jpeg, image/avif, image/svg+xml, image/webp
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+  '.avif',
+  '.svg',
+  // Video: video/*, application/mp4, application/x-mpegurl, application/vnd.apple.mpegurl
+  '.mp4',
+  '.mov',
+  '.avi',
+  '.webm',
+  '.wmv',
+  '.mkv',
+  '.flv',
+  '.ogv',
+  '.3gp',
+  '.m4v',
+  '.mpg',
+  '.mpeg',
+  '.m3u8',
+  // Audio: audio/*
+  '.mp3',
+  '.wav',
+  '.ogg',
+  '.aac',
+  '.flac',
+  '.wma',
+  '.m4a',
+  '.opus',
+  // Documents: application/msword, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.txt',
+]);
+
 export const directories = {
   assets: 'assets',
   components: 'components',

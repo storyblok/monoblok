@@ -12,7 +12,7 @@ import { toError } from '../../utils/error/error';
 import { FetchError } from '../../utils/fetch';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { getMapiClient } from '../../api';
-import { getStoryFilename } from './utils';
+import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
 
@@ -160,7 +160,6 @@ export const readLocalStoriesStream = ({
         const filePath = join(directoryPath, file);
         const fileContent = await readFile(filePath, 'utf-8');
         const story = JSON.parse(fileContent) as Story;
-
         onStorySuccess?.(story);
         yield story;
       }
@@ -234,17 +233,22 @@ const getRemoteStory = async ({ spaceId, storyId }: {
 export type CreateStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeCreateStoryAPITransport = ({ spaceId }: {
-  maps: RefMaps;
   spaceId: string;
 }): CreateStoryTransport => async (localStory) => {
-  const { id: _id, uuid: _uuid, content, parent_id: _p, ...newStoryData } = localStory;
+  // Exclude parent_id from the creation payload. The correct parent_id is set in Pass 2 when the full ID map is available.
+  // This avoids 422 errors from the API.
+  const { id: _id, uuid: _uuid, parent_id: _parentId, content, ...newStoryData } = localStory;
+
+  if (!localStory.is_folder && !content?.component) {
+    throw new Error(`Story "${localStory.slug}" is missing a content type (content.component). Every story must define a content field with a valid component.`);
+  }
+
   const remoteStory = await createStory(spaceId, {
     story: {
       ...newStoryData,
-      content: {
-        _uid: '',
-        component: '__tmp__',
-      },
+      ...(content?.component
+        ? { content: { _uid: '', component: '__migration_artifact__' } }
+        : {}),
     },
     publish: 0,
   });
@@ -363,7 +367,7 @@ export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   publish?: number;
 }): WriteStoryTransport => mappedLocalStory => updateStory(spaceId, mappedLocalStory.id, {
   story: mappedLocalStory,
-  publish: publish ?? (mappedLocalStory.published ? 1 : 0),
+  publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
 });
 
 export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;

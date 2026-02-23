@@ -4,12 +4,10 @@ import { FileSystemError, handleError, isVitest, konsola } from '../../../utils'
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
-import type { ReadComponentsOptions } from '../../components/push/constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
 import { readDatasourcesFiles } from '../../datasources/push/actions';
 import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
-import type { ReadDatasourcesOptions } from './../../datasources/push/constants';
 
 const generateCmd = typesCommand
   .command('generate')
@@ -41,17 +39,19 @@ generateCmd
     try {
       spinner.start(`Generating types...`);
       const componentsData = await readComponentsFiles({
-        ...(options as ReadComponentsOptions),
         from: space,
         path,
+        suffix: options.suffix,
+        verbose,
       });
       // Try to read datasources, but make it optional
       let dataSourceData: SpaceDatasourcesData;
       try {
         dataSourceData = await readDatasourcesFiles({
-          ...(options as ReadDatasourcesOptions),
           from: space,
           path,
+          suffix: options.suffix,
+          verbose,
         });
       }
       catch (error) {
@@ -73,19 +73,24 @@ generateCmd
         ...dataSourceData,
       };
 
-      const typedefString = await generateTypes(spaceDataWithComponentsAndDatasources, {
+      const typedefData = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
         path,
       });
 
-      if (typedefString) {
-        await saveTypesToComponentsFile(space, typedefString, {
+      if (typedefData) {
+        await saveTypesToComponentsFile(space, typedefData, {
           filename: options.filename,
           path,
+          separateFiles: options.separateFiles,
         });
       }
 
       spinner.succeed();
+      if (options.separateFiles && options.filename) {
+        konsola.warn(`The --filename option is ignored when using --separate-files`);
+      }
+
       konsola.ok(`Successfully generated types for space ${space}`, true);
       konsola.br();
     }

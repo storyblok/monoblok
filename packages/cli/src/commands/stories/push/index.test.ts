@@ -1053,7 +1053,7 @@ describe('stories push command', () => {
     expect(report.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     // UI
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1073,6 +1073,7 @@ describe('stories push command', () => {
     const storyA = makeMockStory({
       slug: 'story-a',
       content: {
+        _uid: randomUUID(),
         component: 'page',
         body: 'this-is-not-a-valid-blok-array',
       },
@@ -1098,10 +1099,10 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Invalid data!');
+    expect(logFile).toContain('Invalid bloks field: expected an array');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Invalid data!'),
+      expect.stringContaining('Invalid bloks field: expected an array'),
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(
@@ -1116,6 +1117,50 @@ describe('stories push command', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
     );
+  });
+
+  it('should push folders with missing content field', async () => {
+    const folder = makeMockStory({
+      slug: 'my-folder',
+      is_folder: true,
+      content: {} as any,
+    });
+    delete (folder as any).content;
+
+    preconditions.canLoadStories([folder]);
+    preconditions.canLoadComponents([
+      makeMockComponent({ name: 'page' }),
+    ]);
+    const remoteStories = preconditions.canCreateStories([folder]);
+    preconditions.canUpdateStories(remoteStories);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const report = getReport();
+    expect(report?.status).toBe('SUCCESS');
+    expect(report?.summary).toMatchObject({
+      creationResults: { total: 1, succeeded: 1, failed: 0 },
+    });
+  });
+
+  it('should fail to push non-folder stories with missing content.component', async () => {
+    const storyA = makeMockStory({
+      slug: 'story-a',
+      content: {} as any,
+    });
+    delete (storyA as any).content;
+
+    preconditions.canLoadStories([storyA]);
+    preconditions.canLoadComponents([
+      makeMockComponent({ name: 'page' }),
+    ]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    const report = getReport();
+    expect(report?.status).toBe('FAILURE');
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain('is missing a content type (content.component)');
   });
 
   it('should handle errors when updating stories fails', async () => {
@@ -1141,10 +1186,10 @@ describe('stories push command', () => {
     expect(report?.status).toBe('PARTIAL_SUCCESS');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Error fetching data from the API'),
+      expect.stringContaining('The server returned an error'),
       expect.anything(),
     );
     expect(console.info).toHaveBeenCalledWith(

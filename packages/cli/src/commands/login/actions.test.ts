@@ -4,8 +4,6 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import chalk from 'chalk';
-import { FetchError } from '../../utils/fetch';
-import { APIError } from '../../utils';
 
 const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
@@ -51,21 +49,20 @@ describe('login actions', () => {
     });
 
     it('should throw an masked error for invalid token', async () => {
-      const error = new FetchError('Non-JSON response', { status: 401, statusText: 'Unauthorized', data: null });
       await expect(loginWithToken('invalid-token', 'eu')).rejects.toThrow(
-        new APIError('unauthorized', 'login_with_token', error, `The token provided ${chalk.bold('inva*********')} is invalid.
-        Please make sure you are using the correct token and try again.`),
+        `The token provided ${chalk.bold('inva*********')} is invalid.
+        Please make sure you are using the correct token and try again.`,
       );
     });
 
-    it('should throw a network error if response is empty (network)', async () => {
+    it('should throw a server error if response is 500', async () => {
       server.use(
         http.get('https://mapi.storyblok.com/v1/users/me', () => {
           return new HttpResponse(null, { status: 500 });
         }),
       );
       await expect(loginWithToken('any-token', 'eu')).rejects.toThrow(
-        'No response from server, please check if you are correctly connected to internet',
+        'The server returned an error',
       );
     });
   });

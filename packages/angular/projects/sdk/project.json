@@ -7,5 +7,10 @@
       }
     }
   },
-  "implicitDependencies": ["live-preview", "storyblok-js-client", "richtext"]
+  "implicitDependencies": [
+    "live-preview",
+    "storyblok-js-client",
+    "richtext",
+    "js"
+  ]
 }

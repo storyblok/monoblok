@@ -63,6 +63,9 @@ importers:
       '@angular/ssr':
         specifier: ^21.1.2
         version: 21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-server@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/compiler@21.1.4)(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-browser@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2)))(rxjs@7.8.2))(@angular/router@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(@angular/platform-browser@21.1.4(@angular/common@21.1.4(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2)))(rxjs@7.8.2))
+      '@storyblok/js':
+        specifier: workspace:*
+        version: link:../js
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../live-preview
@@ -118,9 +121,15 @@ importers:
       '@angular/core':
         specifier: ^19.0.0 || ^20.0.0 || ^21.0.0
         version: 21.1.4(@angular/compiler@21.1.4)(rxjs@7.8.2)
+      '@storyblok/js':
+        specifier: workspace:*
+        version: link:../../../js
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../../../live-preview
+      '@storyblok/preview-bridge':
+        specifier: ^2.1.6
+        version: 2.1.6
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../../../richtext

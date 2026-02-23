@@ -1,9 +1,10 @@
 import { Injectable, InjectionToken } from '@angular/core';
 import StoryblokClient, {
   type ISbConfig,
+  type ISbStoryData,
   type ISbStoriesParams,
-  type ISbResult,
 } from 'storyblok-js-client';
+
 /**
  * Injection token for Storyblok configuration
  */
@@ -45,6 +46,7 @@ export class StoryblokService {
     this.storyblok = storyblok;
     this.initialized = true;
   }
+
   /**
    * Fetch a single story by its slug.
    *
@@ -52,7 +54,7 @@ export class StoryblokService {
    * @param options - API options for resolving relations and links
    * @returns The story data or null if not found
    */
-  async getStory(slug: string, options: ISbStoriesParams = {}): Promise<ISbResult | null> {
+  async getStory(slug: string, options: ISbStoriesParams = {}): Promise<ISbStoryData | null> {
     if (!this.storyblok) {
       console.error('Storyblok API not initialized. Call init() first.');
       return null;
@@ -64,7 +66,7 @@ export class StoryblokService {
         resolve_links: options.resolve_links,
       });
 
-      return response.data ?? null;
+      return response.data?.story ?? null;
     } catch (error) {
       console.error(`Failed to fetch story: ${slug}`, error);
       return null;

@@ -10,7 +10,6 @@ import { InjectionToken, Type, Provider } from '@angular/core';
  *   import('./teaser/teaser').then(m => m.Teaser);
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type StoryblokComponentLoader = () => Promise<Type<any>>;
 
 /**
@@ -44,10 +43,13 @@ export const STORYBLOK_COMPONENTS = new InjectionToken<StoryblokComponentsMap>(
  * Feature interface for Storyblok provider features.
  * @internal
  */
-export interface StoryblokFeature {
-  ɵkind: 'components';
-  ɵproviders: Provider[];
-}
+/**
+ * Discriminated union for Storyblok provider features.
+ */
+
+export type StoryblokFeature =
+  | { ɵkind: 'components'; ɵproviders: Provider[] }
+  | { ɵkind: 'livePreview'; ɵproviders: Provider[] };
 
 /**
  * Registers Storyblok components for dynamic rendering.
@@ -96,7 +98,6 @@ export function withStoryblokComponents(components: StoryblokComponentsMap): Sto
  * @returns True if the component is a lazy loader
  */
 export function isComponentLoader(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component: Type<any> | StoryblokComponentLoader,
 ): component is StoryblokComponentLoader {
   return typeof component === 'function' && component.length === 0 && !component.prototype;

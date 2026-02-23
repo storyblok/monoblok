@@ -31,7 +31,7 @@ const baseConfig = [
       'vue/object-property-newline': [
         'error',
         {
-          allowAllPropertiesOnSameLine: false,
+          allowAllPropertiesOnSameLine: true,
         },
       ],
     },

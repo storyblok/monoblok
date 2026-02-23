@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components';
-import { MarkTypes, type StoryblokRichTextNode } from '@storyblok/vue';
+import { Mark } from '@tiptap/core';
+import { asTag } from '@storyblok/vue';
 
 const { story } = await useAsyncStoryblok('vue/test-richtext', {
   api: {
@@ -9,26 +10,18 @@ const { story } = await useAsyncStoryblok('vue/test-richtext', {
   bridge: {},
 });
 
-const resolvers = {
-  [MarkTypes.LINK]: (node: StoryblokRichTextNode<VNode>) => {
-    return node.attrs?.linktype === 'STORY'
-      ? h(
-          NuxtLink,
-          {
-            to: node.attrs?.href,
-            target: node.attrs?.target,
-          },
-          node.text,
-        )
-      : h(
-          'a',
-          {
-            href: node.attrs?.href,
-            target: node.attrs?.target,
-          },
-          node.text,
-        );
+const CustomLink = Mark.create({
+  name: 'link',
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
+    if (HTMLAttributes.linktype === 'story') {
+      return [asTag(NuxtLink), { to: HTMLAttributes.href }, 0];
+    }
+    return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
   },
+});
+
+const tiptapExtensions = {
+  link: CustomLink,
 };
 </script>
 
@@ -36,6 +29,6 @@ const resolvers = {
   <StoryblokRichText
     v-if="story?.content.richText"
     :doc="story.content.richText"
-    :resolvers="resolvers"
+    :tiptap-extensions="tiptapExtensions"
   />
 </template>

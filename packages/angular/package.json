@@ -34,10 +34,11 @@
     "@angular/router": "^21.1.0",
     "@angular/ssr": "^21.1.2",
     "@storyblok/live-preview": "workspace:*",
+    "storyblok-js-client": "workspace:*",
     "@storyblok/richtext": "workspace:*",
+    "@storyblok/js": "workspace:*",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
-    "storyblok-js-client": "workspace:*",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

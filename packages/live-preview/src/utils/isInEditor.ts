@@ -55,7 +55,7 @@ export function isInEditor(
   if (!hasRequiredParams) {
     return false;
   }
-  
+
   // Optional space ID validation
   if (options.spaceId && params.get('_storyblok_tk[space_id]') !== options.spaceId) {
     return false;

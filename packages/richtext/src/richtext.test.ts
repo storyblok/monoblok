@@ -7,6 +7,7 @@ import { Mark, Node } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import Bold from '@tiptap/extension-bold';
 import { ComponentBlok } from './extensions/nodes';
+import { getStoryblokExtensions } from './extensions';
 
 describe('richtext', () => {
   describe('document', () => {
@@ -1815,5 +1816,57 @@ describe('renderComponent (blok extension option)', () => {
       const html = render(doc as any);
       expect(html).toBe('<p>Before blok</p><button>Click me</button><p>After blok</p>');
     });
+  });
+
+  it('should register all expected extensions', () => {
+    const extensions = getStoryblokExtensions();
+    const extensionValues = Object.values(extensions);
+
+    const nodeNames = extensionValues.filter(e => e.type === 'node').map(e => e.name).sort();
+    const markNames = extensionValues.filter(e => e.type === 'mark').map(e => e.name).sort();
+    const extensionNames = extensionValues.filter(e => e.type === 'extension').map(e => e.name).sort();
+
+    expect(nodeNames).toEqual([
+      'blockquote',
+      'blok',
+      'bullet_list',
+      'code_block',
+      'details',
+      'detailsContent',
+      'detailsSummary',
+      'doc',
+      'emoji',
+      'hard_break',
+      'heading',
+      'horizontal_rule',
+      'image',
+      'list_item',
+      'ordered_list',
+      'paragraph',
+      'table',
+      'tableCell',
+      'tableHeader',
+      'tableRow',
+      'text',
+    ].sort());
+
+    expect(markNames).toEqual([
+      'anchor',
+      'bold',
+      'code',
+      'highlight',
+      'italic',
+      'link',
+      'reporter',
+      'strike',
+      'styled',
+      'subscript',
+      'superscript',
+      'underline',
+    ].sort());
+
+    expect(extensionNames).toEqual([
+      'textStyleKit',
+    ]);
   });
 });

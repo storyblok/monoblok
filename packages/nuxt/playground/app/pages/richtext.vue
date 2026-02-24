@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components';
 import { Mark } from '@tiptap/core';
-import { asTag } from '@storyblok/vue';
 
 const { story } = await useAsyncStoryblok('vue/test-richtext', {
   api: {
@@ -26,9 +25,6 @@ const tiptapExtensions = {
 </script>
 
 <template>
-  <StoryblokRichText
-    v-if="story?.content.richText"
-    :doc="story.content.richText"
-    :tiptap-extensions="tiptapExtensions"
-  />
+  <StoryblokRichText v-if="story?.content.richText" :doc="story.content.richText"
+    :tiptap-extensions="tiptapExtensions" />
 </template>

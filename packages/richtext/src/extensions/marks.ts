@@ -128,7 +128,18 @@ export const StoryblokTextStyle = Mark.create({
     };
   },
   parseHTML() {
-    return [{ tag: 'span', consuming: false }];
+    return [{
+      tag: 'span',
+      consuming: false,
+      getAttrs: (element: HTMLElement) => {
+        // Only match spans with inline style containing color
+        const style = element.getAttribute('style');
+        if (style && /color/i.test(style)) {
+          return null;
+        }
+        return false;
+      },
+    }];
   },
   renderHTML({ HTMLAttributes }) {
     const { class: className, id: idName, ...styleAttrs } = HTMLAttributes;

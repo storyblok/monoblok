@@ -1865,7 +1865,6 @@ describe('renderComponent (blok extension option)', () => {
 
     const nodeNames = extensionValues.filter(e => e.type === 'node').map(e => e.name).sort();
     const markNames = extensionValues.filter(e => e.type === 'mark').map(e => e.name).sort();
-    const extensionNames = extensionValues.filter(e => e.type === 'extension').map(e => e.name).sort();
 
     expect(nodeNames).toEqual([
       'blockquote',
@@ -1903,11 +1902,8 @@ describe('renderComponent (blok extension option)', () => {
       'styled',
       'subscript',
       'superscript',
+      'textStyle',
       'underline',
     ].sort());
-
-    expect(extensionNames).toEqual([
-      'textStyleKit',
-    ]);
   });
 });

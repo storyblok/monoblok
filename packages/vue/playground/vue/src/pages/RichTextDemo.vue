@@ -3,6 +3,7 @@ import { defineComponent, h } from 'vue';
 import { Mark } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import {
+  asTag,
   StoryblokRichText,
   useStoryblok,
 } from '@storyblok/vue';
@@ -20,7 +21,7 @@ const CustomLink = Mark.create({
   name: 'link',
   renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
     if (HTMLAttributes.linktype === 'story') {
-      return [RouterLink, { to: HTMLAttributes.href, class: 'router-link' }, 0];
+      return [asTag(RouterLink), { to: HTMLAttributes.href, class: 'router-link' }, 0];
     }
     return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
   },
@@ -65,9 +66,6 @@ setTimeout(() => {
 </script>
 
 <template>
-  <StoryblokRichText
-    v-if="story.content.richText"
-    :doc="story.content.richText"
-    :tiptap-extensions="tiptapExtensions"
-  />
+  <StoryblokRichText v-if="story.content.richText" :doc="story.content.richText"
+    :tiptap-extensions="tiptapExtensions" />
 </template>

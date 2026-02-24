@@ -33,10 +33,10 @@ import {
   StoryblokLink,
   StoryblokLinkWithCustomAttributes,
   StoryblokStyled,
+  StoryblokTextStyle,
   Strike,
   Subscript,
   Superscript,
-  TextStyleKit,
   Underline,
 } from './marks';
 
@@ -88,7 +88,7 @@ const defaultExtensions = {
   superscript: Superscript,
   subscript: Subscript,
   highlight: Highlight,
-  textStyleKit: TextStyleKit,
+  textStyle: StoryblokTextStyle,
   link: StoryblokLink as typeof StoryblokLink,
   anchor: StoryblokAnchor,
   styled: StoryblokStyled,

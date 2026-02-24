@@ -555,7 +555,7 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><th style="background-color: #F5F5F5;"><p>Header Cell</p></th><th><p>Another Header</p></th></tr><tr><td><p>Regular Cell</p></td><td><p>Another Cell</p></td></tr></tbody></table>');
+      expect(html).toBe('<table><thead><tr><th style="background-color: #F5F5F5;"><p>Header Cell</p></th><th><p>Another Header</p></th></tr></thead><tbody><tr><td><p>Regular Cell</p></td><td><p>Another Cell</p></td></tr></tbody></table>');
     });
   });
 

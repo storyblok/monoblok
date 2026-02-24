@@ -161,6 +161,32 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       return (isExternalRenderFn ? rendered : rendered.filter((r: unknown) => r != null).join('')) as unknown as T;
     }
 
+    // Table: group rows into thead/tbody based on cell types
+    if (node.type === 'table' && node.content?.length) {
+      const headerRows: StoryblokRichTextNode<T>[] = [];
+      const bodyRows: StoryblokRichTextNode<T>[] = [];
+      for (const row of node.content) {
+        const isHeaderRow = bodyRows.length === 0
+          && row.content?.every((cell: StoryblokRichTextNode<T>) => cell.type === 'tableHeader');
+        if (isHeaderRow) {
+          headerRows.push(row);
+        }
+        else {
+          bodyRows.push(row);
+        }
+      }
+      const nodeAttrs = node.attrs || {};
+      const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);
+      const parts: T[] = [];
+      if (headerRows.length > 0) {
+        parts.push(contextRenderFn('thead', {}, headerRows.map(render) as T));
+      }
+      if (bodyRows.length > 0) {
+        parts.push(contextRenderFn('tbody', {}, bodyRows.map(render) as T));
+      }
+      return specToRender(spec, contextRenderFn, parts as T | undefined) as T;
+    }
+
     const children = node.content ? node.content.map(render) : undefined;
 
     const nodeAttrs = node.attrs || {};

@@ -90,11 +90,13 @@ export const StoryblokCodeBlock = CodeBlock.extend({
 export const StoryblokHardBreak = HardBreak.extend({ name: 'hard_break' });
 export const StoryblokHorizontalRule = HorizontalRule.extend({ name: 'horizontal_rule' });
 
-// Table with custom renderHTML (wraps in tbody)
+// Table with custom renderHTML
+// Note: thead/tbody grouping is handled by the richtext renderer,
+// which inspects child rows to detect header vs body rows.
 export const StoryblokTable = Table.extend({
   renderHTML({ HTMLAttributes }) {
     const attrs = processBlockAttrs(HTMLAttributes);
-    return ['table', attrs, ['tbody', {}, 0]];
+    return ['table', attrs, 0];
   },
 });
 
@@ -174,9 +176,9 @@ export const ComponentBlok = Node.create<{ renderComponent: ((blok: Record<strin
   renderHTML({ HTMLAttributes }) {
     console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage. Configure `renderComponent` option on the blok tiptapExtension.');
     return ['span', {
-      blok: HTMLAttributes?.body?.[0],
-      id: HTMLAttributes?.id,
-      style: 'display: none',
+      'data-blok': JSON.stringify(HTMLAttributes?.body?.[0] ?? null),
+      'data-blok-id': HTMLAttributes?.id,
+      'style': 'display: none',
     }];
   },
 });

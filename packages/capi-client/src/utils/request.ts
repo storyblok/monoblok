@@ -1,25 +1,23 @@
-const CDN_PATH_PREFIX = '/v2/cdn/';
 export const CACHEABLE_METHODS = new Set(['GET']);
 export const NON_CACHEABLE_PATHS = new Set(['/v2/cdn/spaces/me']);
 
-export const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`);
-
-export const isCdnPath = (path: string) => path.startsWith(CDN_PATH_PREFIX);
-
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === 'draft';
 
+/**
+ * Recursively normalizes query values by sorting object keys.
+ * This makes JSON stringification deterministic for cache key generation.
+ */
 const normalizeQuery = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map(item => normalizeQuery(item));
   }
 
   if (value && typeof value === 'object') {
-    return Object.keys(value as Record<string, unknown>)
-      .sort()
-      .reduce<Record<string, unknown>>((acc, key) => {
-        acc[key] = normalizeQuery((value as Record<string, unknown>)[key]);
-        return acc;
-      }, {});
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[key] = normalizeQuery((value as Record<string, unknown>)[key]);
+    }
+    return sorted;
   }
 
   return value;
@@ -35,11 +33,6 @@ export const createCacheKey = (method: string, path: string, query: Record<strin
 
 export const shouldUseCache = (method: string, path: string, query: Record<string, unknown>) => {
   return CACHEABLE_METHODS.has(method)
-    && isCdnPath(path)
     && !NON_CACHEABLE_PATHS.has(path)
     && !isDraftRequest(query);
-};
-
-export const toQueryRecord = <T extends Record<string, unknown>>(query: T | undefined): Record<string, unknown> => {
-  return query ?? {};
 };

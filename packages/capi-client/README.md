@@ -139,10 +139,6 @@ result.data.story.content.author;
 
 If the API response includes `rel_uuids` (overflow of relation UUIDs), the client automatically fetches the missing related stories and includes them in the inlining pass when `inlineRelations` is enabled.
 
-- Missing UUIDs are deduplicated before fetching.
-- UUIDs are fetched in chunks (`by_uuids`) and merged with `rels`.
-- If relation fetches fail, the request fails to avoid returning partially inlined relation data.
-
 ### Caching
 
 The client includes an in-memory cache provider by default for published CDN `GET` requests.

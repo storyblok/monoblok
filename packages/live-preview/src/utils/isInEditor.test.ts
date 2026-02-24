@@ -1,43 +1,43 @@
-import { describe, expect, test } from 'vitest'
-import { isInEditor } from './isInEditor'
+import { describe, expect, it } from 'vitest';
+import { isInEditor } from './isInEditor';
 
 describe('isInEditor', () => {
-  test('returns false when required Storyblok params are missing', () => {
-    const url = new URL('https://example.com')
+  it('returns false when required Storyblok params are missing', () => {
+    const url = new URL('https://example.com');
 
-    expect(isInEditor(url)).toBe(false)
-  })
+    expect(isInEditor(url)).toBe(false);
+  });
 
-  test('returns true when all required Storyblok params are present', () => {
+  it('returns true when all required Storyblok params are present', () => {
     const url = new URL(
-      'https://example.com?' +
-        '_storyblok=1&' +
-        '_storyblok_c=1&' +
-        '_storyblok_tk[space_id]=123'
-    )
+      'https://example.com?'
+      + '_storyblok=1&'
+      + '_storyblok_c=1&'
+      + '_storyblok_tk[space_id]=123',
+    );
 
-    expect(isInEditor(url)).toBe(true)
-  })
+    expect(isInEditor(url)).toBe(true);
+  });
 
-  test('returns false when spaceId option does not match', () => {
+  it('returns false when spaceId option does not match', () => {
     const url = new URL(
-      'https://example.com?' +
-        '_storyblok=1&' +
-        '_storyblok_c=1&' +
-        '_storyblok_tk[space_id]=123'
-    )
+      'https://example.com?'
+      + '_storyblok=1&'
+      + '_storyblok_c=1&'
+      + '_storyblok_tk[space_id]=123',
+    );
 
-    expect(isInEditor(url, { spaceId: '999' })).toBe(false)
-  })
+    expect(isInEditor(url, { spaceId: '999' })).toBe(false);
+  });
 
-  test('returns true when spaceId option matches', () => {
+  it('returns true when spaceId option matches', () => {
     const url = new URL(
-      'https://example.com?' +
-        '_storyblok=1&' +
-        '_storyblok_c=1&' +
-        '_storyblok_tk[space_id]=123'
-    )
+      'https://example.com?'
+      + '_storyblok=1&'
+      + '_storyblok_c=1&'
+      + '_storyblok_tk[space_id]=123',
+    );
 
-    expect(isInEditor(url, { spaceId: '123' })).toBe(true)
-  })
-})
+    expect(isInEditor(url, { spaceId: '123' })).toBe(true);
+  });
+});

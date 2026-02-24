@@ -20,17 +20,21 @@ import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
  * })
  * ```
  */
-export const onStoryblokEditorEvent = async <T extends ISbComponentType<string> = any,> (
+export const onStoryblokEditorEvent = async <T extends ISbComponentType<string> = any> (
   callback: (newStory: ISbStoryData<T>) => void,
   bridgeOptions?: BridgeParams,
 ): Promise<void> => {
-  if (!canUseStoryblokBridge()) return
+  if (!canUseStoryblokBridge()) {
+    return;
+  }
 
-  const bridge = await loadStoryblokBridge(bridgeOptions)
+  const bridge = await loadStoryblokBridge(bridgeOptions);
   bridge.on(['input', 'change', 'published'], (event) => {
-    if (!event) return;
+    if (!event) {
+      return;
+    }
 
-    if ( event.action === 'input' ) {
+    if (event.action === 'input') {
       callback(event.story as ISbStoryData<T>);
       return;
     }
@@ -39,4 +43,4 @@ export const onStoryblokEditorEvent = async <T extends ISbComponentType<string> 
       window.location.reload();
     }
   });
-}
+};

@@ -1,4 +1,4 @@
-import type { StoryCapi } from '../generated';
+import type { StoryCapi } from '../generated/stories';
 
 type RelationPath = `${string}.${string}`;
 

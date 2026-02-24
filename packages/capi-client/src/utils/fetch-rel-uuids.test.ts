@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { type Client, createClient, createConfig } from '../generated/client';
+import { type Client, createClient, createConfig } from '../generated/stories/client';
 import { fetchMissingRelations } from './fetch-rel-uuids';
 
 const server = setupServer();

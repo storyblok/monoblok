@@ -1,5 +1,5 @@
 import { ISbConfig } from 'storyblok-js-client';
-import { StoryblokFeature } from './storyblok-components';
+import { StoryblokFeature } from './components.feature';
 import {
   EnvironmentProviders,
   inject,

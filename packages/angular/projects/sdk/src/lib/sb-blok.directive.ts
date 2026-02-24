@@ -9,7 +9,7 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { storyblokEditable, type SbBlokData } from '@storyblok/js';
-import { STORYBLOK_COMPONENTS, isComponentLoader } from './storyblok-components';
+import { STORYBLOK_COMPONENTS, isComponentLoader } from './components.feature';
 
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.

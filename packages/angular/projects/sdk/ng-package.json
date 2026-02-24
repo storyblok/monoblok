@@ -8,6 +8,7 @@
     "storyblok-js-client",
     "@storyblok/live-preview",
     "@storyblok/richtext",
-    "@storyblok/js"
+    "@storyblok/js",
+    "@storyblok/preview-bridge"
   ]
 }

@@ -10,8 +10,8 @@ export {
   STORYBLOK_COMPONENTS,
   withStoryblokComponents,
   isComponentLoader,
-} from './lib/storyblok-components';
-export type { StoryblokComponentsMap, StoryblokComponentLoader } from './lib/storyblok-components';
+} from './lib/components.feature';
+export type { StoryblokComponentsMap, StoryblokComponentLoader } from './lib/components.feature';
 
 // Live Preview feature (optional, tree-shakeable)
 export { LivePreviewService } from './lib/livepreview.service';

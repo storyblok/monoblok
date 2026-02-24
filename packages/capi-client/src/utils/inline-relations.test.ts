@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StoryCapi } from '../generated';
+import type { StoryCapi } from '../generated/stories';
 import {
   buildRelationMap,
   inlineStoriesContent,

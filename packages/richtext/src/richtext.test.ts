@@ -737,6 +737,28 @@ describe('richtext', () => {
       expect(html2).toBe('<a>Link text</a>');
     });
 
+    it('should not render null attributes on links', async () => {
+      const { render } = richTextResolver({});
+      const link = {
+        text: 'Hello',
+        type: 'text',
+        marks: [
+          {
+            type: 'link',
+            attrs: {
+              href: '/',
+              uuid: null,
+              anchor: null,
+              target: null,
+              linktype: 'url',
+            },
+          },
+        ],
+      };
+      const html = render(link as unknown as StoryblokRichTextNode<string>);
+      expect(html).toBe('<a href="/">Hello</a>');
+    });
+
     it('should render as a URL when linktype is not defined', async () => {
       const { render } = richTextResolver({ });
       const link = {

@@ -66,6 +66,9 @@ setTimeout(() => {
 </script>
 
 <template>
-  <StoryblokRichText v-if="story.content.richText" :doc="story.content.richText"
-    :tiptap-extensions="tiptapExtensions" />
+  <StoryblokRichText
+    v-if="story.content.richText"
+    :doc="story.content.richText"
+    :tiptap-extensions="tiptapExtensions"
+  />
 </template>

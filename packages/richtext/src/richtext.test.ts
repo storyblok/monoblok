@@ -637,6 +637,25 @@ describe('richtext', () => {
       expect(html).toBe('<a href="mailto:hola@alvarosaburido.dev">hola@alvarosaburido.dev</a>');
     });
 
+    it('should not duplicate mailto: prefix when href already contains it', async () => {
+      const { render } = richTextResolver({});
+      const link = {
+        text: 'hey@hoe.dev',
+        type: 'text',
+        marks: [
+          {
+            type: 'link',
+            attrs: {
+              href: 'mailto:hey@hoe.dev',
+              linktype: 'email',
+            },
+          },
+        ],
+      };
+      const html = render(link as unknown as StoryblokRichTextNode<string>);
+      expect(html).toBe('<a href="mailto:hey@hoe.dev">hey@hoe.dev</a>');
+    });
+
     it('should render an internal link', async () => {
       const { render } = richTextResolver({});
       const link = {

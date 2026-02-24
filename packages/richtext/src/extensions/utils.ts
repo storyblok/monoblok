@@ -39,7 +39,7 @@ export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: s
       finalHref = href;
       break;
     case LinkTypes.EMAIL:
-      finalHref = `mailto:${href}`;
+      finalHref = href?.startsWith('mailto:') ? href : `mailto:${href}`;
       break;
     case LinkTypes.STORY:
       finalHref = href;

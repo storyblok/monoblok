@@ -31,7 +31,7 @@
     "access": "public"
   },
   "scripts": {
-    "generate": "openapi-ts",
+    "generate": "tsx scripts/generate.ts",
     "build": "tsdown",
     "test": "vitest",
     "test:ci": "vitest run",

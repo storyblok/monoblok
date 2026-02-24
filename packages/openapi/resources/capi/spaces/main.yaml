@@ -1,0 +1,37 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Spaces API
+  version: 1.0.0
+  description: API for retrieving Storyblok space information
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v2/cdn/spaces/me:
+    get:
+      operationId: get
+      summary: Retrieve Current Space
+      description: Returns information about the current space
+      responses:
+        '200':
+          description: Space details
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - space
+                properties:
+                  space:
+                    $ref: ../shared/spaces/space-capi.yaml
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    Space:
+      $ref: ../shared/spaces/space-capi.yaml

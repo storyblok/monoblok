@@ -1,0 +1,21 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/datasource-entries/the-datasource-entry-object
+type: object
+description: Storyblok datasource entry object for the Content Delivery API
+required:
+  - id
+  - name
+  - value
+properties:
+  id:
+    type: integer
+    description: Unique identifier of the datasource entry
+  name:
+    type: string
+    description: Display name of the datasource entry
+  value:
+    type: string
+    description: Value of the datasource entry
+  dimension_value:
+    type: string
+    nullable: true
+    description: Dimension value of the datasource entry (null if no dimension is specified)

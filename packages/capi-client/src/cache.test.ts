@@ -8,13 +8,13 @@ import {
 } from './cache';
 
 describe('createMemoryCacheProvider', () => {
-  it('get() returns undefined for missing keys', async () => {
+  it('should return undefined for missing keys in get()', async () => {
     const provider = createMemoryCacheProvider();
 
     await expect(provider.get('missing')).resolves.toBeUndefined();
   });
 
-  it('set() then get() returns the entry', async () => {
+  it('should return the entry after set() then get()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -30,7 +30,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('set() uses Date.now() when storedAt is omitted', async () => {
+  it('should use Date.now() when storedAt is omitted in set()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -48,7 +48,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('get() returns undefined for expired entries', async () => {
+  it('should return undefined for expired entries in get()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -65,7 +65,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('get() returns entry when within TTL', async () => {
+  it('should return entry when within TTL in get()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -82,7 +82,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('get() deletes expired entry from map', async () => {
+  it('should delete expired entry from map in get()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -101,7 +101,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('flush() clears all entries', async () => {
+  it('should clear all entries in flush()', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -124,7 +124,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('keeps entry valid exactly at TTL boundary', async () => {
+  it('should keep entry valid exactly at TTL boundary', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider();
@@ -141,7 +141,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('evicts oldest entry when max entries is exceeded', async () => {
+  it('should evict oldest entry when max entries is exceeded', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider({ maxEntries: 2 });
@@ -168,7 +168,7 @@ describe('createMemoryCacheProvider', () => {
     vi.useRealTimers();
   });
 
-  it('uses LRU order when updating an existing key', async () => {
+  it('should use LRU order when updating an existing key', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000);
     const provider = createMemoryCacheProvider({ maxEntries: 2 });
@@ -196,15 +196,15 @@ describe('createMemoryCacheProvider', () => {
       ttlMs: 1_000,
     });
 
-    await expect(provider.get('b')).resolves.toBeUndefined();
     await expect(provider.get('a')).resolves.toBeDefined();
+    await expect(provider.get('b')).resolves.toBeUndefined();
     await expect(provider.get('c')).resolves.toBeDefined();
     vi.useRealTimers();
   });
 });
 
 describe('cache strategies', () => {
-  it('cache-first returns cached result when available', async () => {
+  it('should return cached result with cache-first when available', async () => {
     const strategy = createCacheFirstStrategy();
     const loadNetwork = vi.fn().mockResolvedValue('network');
 
@@ -218,7 +218,7 @@ describe('cache strategies', () => {
     expect(loadNetwork).not.toHaveBeenCalled();
   });
 
-  it('cache-first calls network when no cached result', async () => {
+  it('should call network with cache-first when no cached result', async () => {
     const strategy = createCacheFirstStrategy();
     const loadNetwork = vi.fn().mockResolvedValue('network');
 
@@ -232,7 +232,7 @@ describe('cache strategies', () => {
     expect(loadNetwork).toHaveBeenCalledTimes(1);
   });
 
-  it('network-first returns network result on success', async () => {
+  it('should return network result with network-first on success', async () => {
     const strategy = createNetworkFirstStrategy();
     const loadNetwork = vi.fn().mockResolvedValue('network');
 
@@ -245,7 +245,7 @@ describe('cache strategies', () => {
     expect(result).toBe('network');
   });
 
-  it('network-first falls back to cached result on network error', async () => {
+  it('should fall back to cached result with network-first on network error', async () => {
     const strategy = createNetworkFirstStrategy();
     const loadNetwork = vi.fn().mockRejectedValue(new Error('boom'));
 
@@ -258,7 +258,7 @@ describe('cache strategies', () => {
     expect(result).toBe('cached');
   });
 
-  it('network-first throws when no cached result exists', async () => {
+  it('should throw with network-first when no cached result exists', async () => {
     const strategy = createNetworkFirstStrategy();
     const loadNetwork = vi.fn().mockRejectedValue(new Error('boom'));
 
@@ -269,7 +269,7 @@ describe('cache strategies', () => {
     })).rejects.toThrow('boom');
   });
 
-  it('swr returns cached result and refreshes in background', async () => {
+  it('should return cached result and refresh in background with swr', async () => {
     const strategy = createSwrStrategy();
     const loadNetwork = vi.fn().mockResolvedValue('updated');
 
@@ -283,7 +283,7 @@ describe('cache strategies', () => {
     expect(loadNetwork).toHaveBeenCalledTimes(1);
   });
 
-  it('swr does not block on refresh failures', async () => {
+  it('should not block on refresh failures with swr', async () => {
     const strategy = createSwrStrategy();
     const loadNetwork = vi.fn().mockRejectedValue(new Error('refresh failed'));
 
@@ -296,7 +296,7 @@ describe('cache strategies', () => {
     expect(result).toBe('cached');
   });
 
-  it('swr loads from network when no cached result exists', async () => {
+  it('should load from network with swr when no cached result exists', async () => {
     const strategy = createSwrStrategy();
     const loadNetwork = vi.fn().mockResolvedValue('fresh');
 
@@ -310,7 +310,7 @@ describe('cache strategies', () => {
     expect(loadNetwork).toHaveBeenCalledTimes(1);
   });
 
-  it('swr deduplicates background revalidation by cache key', async () => {
+  it('should deduplicate background revalidation by cache key with swr', async () => {
     let resolveRefresh: (() => void) | undefined;
     const refreshPromise = new Promise<string>((resolve) => {
       resolveRefresh = () => resolve('updated');

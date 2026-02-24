@@ -50,7 +50,7 @@ export const richTextToHTML = async (
   const resolver = richTextResolver<string>({
     tiptapExtensions: {
       blok: ComponentBlok.configure({
-        renderComponent: (blok: Record<string, unknown>) => {
+        renderComponent: (blok: Record<string, unknown>, _id?: string) => {
           if (!blok || typeof blok !== 'object' || !container) {
             return '';
           }

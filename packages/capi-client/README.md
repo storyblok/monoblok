@@ -329,6 +329,120 @@ const result = await client.stories.getAll({
 });
 ```
 
+### Fetching links
+
+```typescript
+client.links.getAll(query = {});
+```
+
+**Parameters:**
+
+- `query` (optional): Query parameters for filtering
+
+**Example:**
+
+```typescript
+const result = await client.links.getAll({
+  version: 'published',
+});
+
+if (result.data) {
+  console.log(result.data.links);
+}
+```
+
+### Fetching space information
+
+```typescript
+client.spaces.get();
+```
+
+**Example:**
+
+```typescript
+const result = await client.spaces.get();
+
+if (result.data) {
+  console.log(result.data.space);
+}
+```
+
+### Fetching datasources
+
+```typescript
+client.datasources.getAll(query = {});
+client.datasources.get(id);
+```
+
+**Parameters:**
+
+- `query` (optional): Query parameters for filtering
+- `id` (required for `get`): Datasource identifier
+
+**Examples:**
+
+```typescript
+// Get all datasources
+const result = await client.datasources.getAll({
+  page: 2,
+});
+
+if (result.data) {
+  console.log(result.data.datasources);
+}
+
+// Get a single datasource
+const result = await client.datasources.get(123);
+
+if (result.data) {
+  console.log(result.data.datasource);
+}
+```
+
+### Fetching datasource entries
+
+```typescript
+client.datasourceEntries.getAll(query = {});
+```
+
+**Parameters:**
+
+- `query` (optional): Query parameters for filtering
+
+**Example:**
+
+```typescript
+const result = await client.datasourceEntries.getAll({
+  datasource: 'slug',
+});
+
+if (result.data) {
+  console.log(result.data.datasource_entries);
+}
+```
+
+### Fetching tags
+
+```typescript
+client.tags.getAll(query = {});
+```
+
+**Parameters:**
+
+- `query` (optional): Query parameters for filtering
+
+**Example:**
+
+```typescript
+const result = await client.tags.getAll({
+  starts_with: 'foo',
+});
+
+if (result.data) {
+  console.log(result.data.tags);
+}
+```
+
 ## Error handling
 
 The client returns a response object with either `data` or `error`:
@@ -370,7 +484,7 @@ catch (error) {
 This client is written in TypeScript and provides full type safety:
 
 ```typescript
-import type { Story } from '@storyblok/api-client';
+import type { Datasource, DatasourceEntry, Link, Space, Story, Tag } from '@storyblok/api-client';
 
 const result = await client.stories.get('home');
 
@@ -380,6 +494,32 @@ if (result.data) {
   console.log(story.name);
   console.log(story.full_slug);
   console.log(story.content);
+}
+
+// Other entity types are also fully typed
+const linksResult = await client.links.getAll();
+if (linksResult.data) {
+  const links: Record<string, Link> = linksResult.data.links;
+}
+
+const spaceResult = await client.spaces.get();
+if (spaceResult.data) {
+  const space: Space = spaceResult.data.space;
+}
+
+const datasourcesResult = await client.datasources.getAll();
+if (datasourcesResult.data) {
+  const datasources: Datasource[] = datasourcesResult.data.datasources;
+}
+
+const entriesResult = await client.datasourceEntries.getAll();
+if (entriesResult.data) {
+  const entries: DatasourceEntry[] = entriesResult.data.datasource_entries;
+}
+
+const tagsResult = await client.tags.getAll();
+if (tagsResult.data) {
+  const tags: Tag[] = tagsResult.data.tags;
 }
 ```
 

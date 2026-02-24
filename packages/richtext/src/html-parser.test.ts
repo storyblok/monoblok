@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { htmlToStoryblokRichtext } from './html-parser';
+import { richTextResolver } from './richtext';
+import { Mark, Node } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
+import Link from '@tiptap/extension-link';
 
 // ── Nodes ──────────────────────────────────────────────────────────────────
 
@@ -941,7 +944,7 @@ describe('hTML → Richtext: Options & configuration', () => {
   });
 
   describe('custom Tiptap extensions', () => {
-    it('allows using custom Tiptap extensions to override parsing', () => {
+    it('allows overriding a node extension for parsing', () => {
       const html = '<h2>Custom Heading</h2>';
       const result = htmlToStoryblokRichtext(html, {
         tiptapExtensions: {
@@ -968,6 +971,211 @@ describe('hTML → Richtext: Options & configuration', () => {
         }],
       });
     });
+
+    it('allows overriding a mark extension for parsing', () => {
+      const html = '<p><a href="/about" data-linktype="story" data-uuid="abc-123">About</a></p>';
+      const CustomLink = Link.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            href: { parseHTML: (el: HTMLElement) => el.getAttribute('href') },
+            linktype: {
+              default: 'url',
+              parseHTML: (el: HTMLElement) => el.getAttribute('data-linktype') || 'url',
+            },
+            uuid: {
+              default: null,
+              parseHTML: (el: HTMLElement) => el.getAttribute('data-uuid') || null,
+            },
+            customParsed: {
+              default: false,
+              parseHTML: () => true,
+            },
+          };
+        },
+      });
+
+      const result = htmlToStoryblokRichtext(html, {
+        tiptapExtensions: { link: CustomLink },
+      });
+
+      const linkText = result.content[0].content[0];
+      expect(linkText.marks[0].attrs).toMatchObject({
+        href: '/about',
+        linktype: 'story',
+        uuid: 'abc-123',
+        customParsed: true,
+      });
+    });
+
+    it('allows adding a completely new node type', () => {
+      const Callout = Node.create({
+        name: 'callout',
+        group: 'block',
+        content: 'inline*',
+        parseHTML() {
+          return [{ tag: 'div[data-callout]' }];
+        },
+        renderHTML() {
+          return ['div', { 'data-callout': '' }, 0];
+        },
+      });
+
+      const html = '<div data-callout>This is a callout</div>';
+      const result = htmlToStoryblokRichtext(html, {
+        tiptapExtensions: { callout: Callout },
+      });
+
+      expect(result.content[0]).toMatchObject({
+        type: 'callout',
+        content: [{ type: 'text', text: 'This is a callout' }],
+      });
+    });
+  });
+});
+
+// ── Roundtrip: HTML → Richtext → HTML ─────────────────────────────────────
+//
+// Tests that custom tiptapExtensions work in both directions:
+// the same extension defines parseHTML (for the parser) and
+// renderHTML (for the renderer).
+
+describe('roundtrip: HTML → Richtext → HTML', () => {
+  it('roundtrips a custom heading extension', () => {
+    const CustomHeading = Heading.extend({
+      renderHTML({ node, HTMLAttributes }) {
+        const { level, ...rest } = HTMLAttributes;
+        return [`h${node.attrs.level}`, { class: 'custom', ...rest }, 0];
+      },
+    });
+
+    const html = '<h2>Hello World</h2>';
+    const extensions = { heading: CustomHeading };
+
+    // Parse: HTML → JSON
+    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
+    expect(json.content[0]).toMatchObject({
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: 'Hello World' }],
+    });
+
+    // Render: JSON → HTML (uses the custom renderHTML)
+    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
+    expect(output).toBe('<h2 class="custom">Hello World</h2>');
+  });
+
+  it('roundtrips a custom link mark extension', () => {
+    const CustomLink = Link.extend({
+      addAttributes() {
+        return {
+          href: { parseHTML: (el: HTMLElement) => el.getAttribute('href') },
+          target: { parseHTML: (el: HTMLElement) => el.getAttribute('target') || null },
+          linktype: {
+            default: 'url',
+            parseHTML: (el: HTMLElement) => el.getAttribute('data-linktype') || 'url',
+          },
+        };
+      },
+      renderHTML({ HTMLAttributes }) {
+        if (HTMLAttributes.linktype === 'story') {
+          return ['a', { href: HTMLAttributes.href, class: 'internal-link' }, 0];
+        }
+        return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
+      },
+    });
+
+    const extensions = { link: CustomLink };
+
+    // Parse: HTML → JSON (story link with data-linktype)
+    const storyHtml = '<p><a href="/about" data-linktype="story">About</a></p>';
+    const storyJson = htmlToStoryblokRichtext(storyHtml, { tiptapExtensions: extensions });
+    expect(storyJson.content[0].content[0].marks[0].attrs).toMatchObject({
+      href: '/about',
+      linktype: 'story',
+    });
+
+    // Render: JSON → HTML (story link gets class="internal-link")
+    const storyOutput = richTextResolver({ tiptapExtensions: extensions }).render(storyJson);
+    expect(storyOutput).toBe('<p><a href="/about" class="internal-link">About</a></p>');
+
+    // Parse + render: external link
+    const extHtml = '<p><a href="https://example.com" target="_blank">Example</a></p>';
+    const extJson = htmlToStoryblokRichtext(extHtml, { tiptapExtensions: extensions });
+    const extOutput = richTextResolver({ tiptapExtensions: extensions }).render(extJson);
+    expect(extOutput).toBe('<p><a href="https://example.com" target="_blank">Example</a></p>');
+  });
+
+  it('roundtrips a completely new node type', () => {
+    const Callout = Node.create({
+      name: 'callout',
+      group: 'block',
+      content: 'inline*',
+      addAttributes() {
+        return {
+          type: {
+            default: 'info',
+            parseHTML: (el: HTMLElement) => el.getAttribute('data-type') || 'info',
+          },
+        };
+      },
+      parseHTML() {
+        return [{ tag: 'div[data-callout]' }];
+      },
+      renderHTML({ HTMLAttributes }) {
+        return ['div', { 'data-callout': '', 'data-type': HTMLAttributes.type, 'class': `callout-${HTMLAttributes.type}` }, 0];
+      },
+    });
+
+    const extensions = { callout: Callout };
+
+    // Parse: HTML → JSON
+    const html = '<div data-callout data-type="warning">Watch out!</div>';
+    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
+    expect(json.content[0]).toMatchObject({
+      type: 'callout',
+      attrs: { type: 'warning' },
+      content: [{ type: 'text', text: 'Watch out!' }],
+    });
+
+    // Render: JSON → HTML
+    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
+    expect(output).toBe('<div data-callout="" data-type="warning" class="callout-warning">Watch out!</div>');
+  });
+
+  it('roundtrips a custom mark with extra attributes', () => {
+    const CustomHighlight = Mark.create({
+      name: 'highlight',
+      addAttributes() {
+        return {
+          color: {
+            default: 'yellow',
+            parseHTML: (el: HTMLElement) => el.getAttribute('data-color') || 'yellow',
+          },
+        };
+      },
+      parseHTML() {
+        return [{ tag: 'mark' }];
+      },
+      renderHTML({ HTMLAttributes }) {
+        return ['mark', { 'data-color': HTMLAttributes.color, 'style': `background-color: ${HTMLAttributes.color}` }, 0];
+      },
+    });
+
+    const extensions = { highlight: CustomHighlight };
+
+    // Parse: HTML → JSON
+    const html = '<p><mark data-color="pink">Important</mark></p>';
+    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
+    expect(json.content[0].content[0]).toMatchObject({
+      type: 'text',
+      text: 'Important',
+      marks: [{ type: 'highlight', attrs: { color: 'pink' } }],
+    });
+
+    // Render: JSON → HTML
+    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
+    expect(output).toBe('<p><mark data-color="pink" style="background-color: pink">Important</mark></p>');
   });
 });
 

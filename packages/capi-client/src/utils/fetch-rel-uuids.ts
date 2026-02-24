@@ -1,6 +1,6 @@
-import type { Client } from '../generated/client';
-import { getAll } from '../generated/sdk.gen';
-import type { StoryCapi } from '../generated/types.gen';
+import type { Client } from '../generated/stories/client';
+import { getAll } from '../generated/stories/sdk.gen';
+import type { StoryCapi } from '../generated/stories/types.gen';
 import { chunkArray } from './array';
 
 const UUID_CHUNK_SIZE = 50;

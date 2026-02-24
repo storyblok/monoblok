@@ -1,0 +1,80 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Datasource Entries API
+  version: 1.0.0
+  description: API for delivering Storyblok datasource entries
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v2/cdn/datasource_entries:
+    get:
+      operationId: getAll
+      summary: Retrieve Multiple Datasource Entries
+      description: Returns an array of all datasource entries. The API response can be filtered using the query parameters.
+      parameters:
+        - name: datasource
+          in: query
+          required: false
+          description: Slug of the datasource to filter by
+          schema:
+            type: string
+        - name: dimension
+          in: query
+          required: false
+          description: Datasource dimension
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of entries per page (default 25, max 1000)
+          schema:
+            type: integer
+            default: 25
+            maximum: 1000
+        - name: cv
+          in: query
+          required: false
+          description: Cached version Unix timestamp for cache invalidation
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Array of datasource entries
+          headers:
+            $ref: ../../shared/pagination.yaml#/pagination_headers
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - datasource_entries
+                properties:
+                  datasource_entries:
+                    type: array
+                    description: Array of datasource entry objects
+                    items:
+                      $ref: '#/components/schemas/DatasourceEntry'
+                  cv:
+                    type: integer
+                    nullable: true
+                    description: Cache version Unix timestamp
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    DatasourceEntry:
+      $ref: ../shared/datasources/datasource-entry-capi.yaml

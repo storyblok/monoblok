@@ -799,6 +799,12 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.16(tailwindcss@4.1.10)
+      '@tiptap/core':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/pm@3.19.0)
+      '@tiptap/extension-heading':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))
       next:
         specifier: ^16.0.0
         version: 16.0.0(@babel/core@7.28.6)(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -870,6 +876,12 @@ importers:
       '@storyblok/react':
         specifier: workspace:*
         version: link:../..
+      '@tiptap/core':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/pm@3.19.0)
+      '@tiptap/extension-heading':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))
       react:
         specifier: ^19.1.0
         version: 19.1.1
@@ -1364,6 +1376,12 @@ importers:
       '@storyblok/vue':
         specifier: workspace:*
         version: link:../..
+      '@tiptap/core':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/pm@3.19.0)
+      '@tiptap/extension-heading':
+        specifier: ^3.10.2
+        version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))
       vue:
         specifier: ^3.5.13
         version: 3.5.21(typescript@5.6.3)

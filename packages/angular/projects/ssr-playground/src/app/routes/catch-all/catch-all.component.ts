@@ -49,6 +49,6 @@ export class CatchAllComponent implements OnInit {
     // Enable live preview for real-time editing in the Visual Editor
     this.livePreview.listen((updatedStory) => {
       this.story.set(updatedStory);
-    });
+    }, this.bridgeConfig);
   }
 }

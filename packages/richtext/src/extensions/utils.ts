@@ -30,7 +30,7 @@ export function processBlockAttrs(attrs: BlockAttributes = {}): BlockAttributes 
  * Resolves a Storyblok link's attributes into a final href and remaining attrs.
  */
 export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: string; rest: Record<string, any> } {
-  const { linktype, href, anchor, ...rest } = attrs;
+  const { linktype, href, anchor, uuid, custom, ...rest } = attrs;
 
   let finalHref = '';
   switch (linktype) {
@@ -52,7 +52,7 @@ export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: s
       break;
   }
 
-  return { href: finalHref, rest };
+  return { href: finalHref, rest: { ...rest, ...(custom || {}) } };
 }
 
 /**

@@ -80,9 +80,10 @@ export const StoryblokListItem = ListItem.extend({
 export const StoryblokCodeBlock = CodeBlock.extend({
   name: 'code_block',
   renderHTML({ node, HTMLAttributes }) {
-    const attrs = processBlockAttrs(HTMLAttributes);
-    const language = node.attrs.language;
-    const codeAttrs = language ? { class: `language-${language}` } : {};
+    const { language: _, ...rest } = HTMLAttributes;
+    const attrs = processBlockAttrs(rest);
+    const lang = node.attrs.language;
+    const codeAttrs = lang ? { class: `language-${lang}` } : {};
     return ['pre', attrs, ['code', codeAttrs, 0]];
   },
 });

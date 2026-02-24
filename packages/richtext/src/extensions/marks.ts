@@ -41,11 +41,7 @@ export const StoryblokLink = LinkOriginal.extend({
   },
   renderHTML({ HTMLAttributes }) {
     const { href, rest } = resolveStoryblokLink(HTMLAttributes);
-    const attrs: Record<string, any> = { ...rest };
-    if (href) {
-      attrs.href = href;
-    }
-    return ['a', attrs, 0];
+    return ['a', cleanObject({ ...(href ? { href } : {}), ...rest }), 0];
   },
 });
 
@@ -82,12 +78,7 @@ export const StoryblokAnchor = Mark.create({
     return [{ tag: 'span[id]' }];
   },
   renderHTML({ HTMLAttributes }) {
-    const { href, rest } = resolveStoryblokLink(HTMLAttributes);
-    const attrs: Record<string, any> = { ...rest };
-    if (href) {
-      attrs.href = href;
-    }
-    return ['a', attrs, 0];
+    return ['span', { id: HTMLAttributes.id }, 0];
   },
 });
 

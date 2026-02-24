@@ -75,7 +75,7 @@ function specToRender<T>(
  * Calls renderHTML on a tiptap extension.
  */
 function callExtensionRenderHTML(ext: any, type: 'node' | 'mark', attrs: Record<string, any>): any[] {
-  const thisContext = { options: ext.options || {} };
+  const thisContext = { options: ext.options || {}, name: ext.name, type: ext.type };
   if (type === 'node') {
     return ext.config.renderHTML.call(thisContext, {
       node: { attrs },

@@ -1,11 +1,21 @@
 import { createClient, createConfig } from './generated/client';
 import { get, getAll } from './generated/sdk.gen';
 import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/types.gen';
-import type { StoryCapi } from './generated';
+import type {
+  AssetField,
+  MultilinkField,
+  PluginField,
+  RichtextField,
+  StoryCapi,
+  StoryContent,
+  TableField,
+} from './generated';
 import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './cache';
 import { createMemoryCacheProvider, createStrategy } from './cache';
 import { applyCvToQuery, extractCv } from './utils/cv';
-import { createCacheKey, isCdnPath, isDraftRequest, normalizePath, shouldUseCache, toQueryRecord } from './utils/request';
+import { fetchMissingRelations } from './utils/fetch-rel-uuids';
+import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from './utils/inline-relations';
+import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { Client, RequestOptions } from './generated/client';
 
@@ -15,20 +25,48 @@ type Prettify<T> = {
 
 export type Story = Prettify<StoryCapi>;
 
+type InlinedStoryContentField =
+  | string
+  | number
+  | boolean
+  | Array<string | AssetField | StoryContent | StoryWithInlinedRelations>
+  | AssetField
+  | MultilinkField
+  | TableField
+  | RichtextField
+  | PluginField
+  | StoryWithInlinedRelations
+  | undefined;
+
+interface InlinedStoryContent {
+  _uid: string;
+  component: string;
+  _editable?: string;
+  [key: string]: InlinedStoryContentField;
+}
+
+export type StoryWithInlinedRelations = Prettify<Omit<Story, 'content'> & {
+  content: InlinedStoryContent;
+}>;
+
+type StoryResult<InlineRelations extends boolean> = InlineRelations extends true
+  ? StoryWithInlinedRelations
+  : Story;
+
 // Helper type to replace StoryCapi with Story in response types
-type ReplaceStory<T> = T extends StoryCapi
-  ? Story
+type ReplaceStory<T, InlineRelations extends boolean> = T extends StoryCapi
+  ? StoryResult<InlineRelations>
   : T extends Array<StoryCapi>
-    ? Array<Story>
+    ? Array<StoryResult<InlineRelations>>
     : T extends Array<infer U>
-      ? Array<ReplaceStory<U>>
+      ? Array<ReplaceStory<U, InlineRelations>>
       : T extends object
-        ? { [K in keyof T]: ReplaceStory<T[K]> }
+        ? { [K in keyof T]: ReplaceStory<T[K], InlineRelations> }
         : T;
 
 // Transform response types to use Story instead of StoryCapi
-type GetResponse = ReplaceStory<GetResponses[200]>;
-type GetAllResponse = ReplaceStory<GetAllResponses[200]>;
+type GetResponse<InlineRelations extends boolean> = ReplaceStory<GetResponses[200], InlineRelations>;
+type GetAllResponse<InlineRelations extends boolean> = ReplaceStory<GetAllResponses[200], InlineRelations>;
 
 type ApiResponse<T> =
   | { data: T; error: undefined; response: Response; request: Request }
@@ -52,17 +90,24 @@ interface CacheConfig {
   ttlMs?: number;
 }
 
-export interface ContentApiClientConfig<ThrowOnError extends boolean = false> {
+export interface ContentApiClientConfig<
+  ThrowOnError extends boolean = false,
+  InlineRelations extends boolean = false,
+> {
   accessToken: string;
   region?: Region;
   baseUrl?: string;
   headers?: Record<string, string>;
   throwOnError?: ThrowOnError;
   cache?: CacheConfig;
+  inlineRelations?: InlineRelations;
 }
 
-export const createApiClient = <ThrowOnError extends boolean = false>(
-  config: ContentApiClientConfig<ThrowOnError>,
+export const createApiClient = <
+  ThrowOnError extends boolean = false,
+  InlineRelations extends boolean = false,
+>(
+  config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
 ) => {
   const {
     accessToken,
@@ -71,6 +116,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     headers = {},
     throwOnError = false,
     cache = {},
+    inlineRelations = false as InlineRelations,
   } = config;
   const cacheProvider = cache.provider ?? createMemoryCacheProvider();
   const strategy = cache.strategy
@@ -80,10 +126,6 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     : createStrategy('cache-first');
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   let currentCv: number | undefined;
-
-  const flushCaches = async () => {
-    await cacheProvider.flush();
-  };
 
   const client: Client = createClient(
     createConfig({
@@ -114,21 +156,28 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     },
   ];
 
-  const updateCv = async (path: string, query: Record<string, unknown>, result: ApiResponse<unknown>) => {
-    if (!isCdnPath(path) || isDraftRequest(query)) {
-      return;
-    }
-
-    const nextCv = extractCv(result);
+  const updateCv = async (result: ApiResponse<unknown>) => {
+    const nextCv = extractCv(result.data);
     if (nextCv === undefined) {
       return;
     }
 
     if (currentCv !== undefined && currentCv !== nextCv) {
-      await flushCaches();
+      await cacheProvider.flush();
     }
 
     currentCv = nextCv;
+  };
+
+  const cacheSuccessResult = async <TResponse extends ApiResponse<unknown>>(key: string, result: TResponse) => {
+    await updateCv(result);
+    if (result.error === undefined) {
+      await cacheProvider.set(key, {
+        value: result,
+        ttlMs: cacheTtlMs,
+      });
+    }
+    return result;
   };
 
   const requestNetwork = async <TData = unknown, TError = unknown>(
@@ -152,33 +201,22 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData>>,
   ): Promise<ApiResponse<TData>> => {
-    const query = applyCvToQuery(path, rawQuery, currentCv);
+    const query = currentCv ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);
-      await updateCv(path, rawQuery, networkResult as ApiResponse<unknown>);
+      await updateCv(networkResult);
       return networkResult;
     }
 
     const key = createCacheKey(method, path, rawQuery);
-    const cachedEntry = await cacheProvider.get(key);
-    const cachedResult = cachedEntry?.value as ApiResponse<TData> | undefined;
-
-    const cacheSuccessResult = async (result: ApiResponse<TData>) => {
-      await updateCv(path, rawQuery, result as ApiResponse<unknown>);
-      if (result.error === undefined) {
-        await cacheProvider.set(key, {
-          value: result,
-          ttlMs: cacheTtlMs,
-        });
-      }
-      return result;
-    };
+    const cachedEntry = await cacheProvider.get<ApiResponse<TData>>(key);
+    const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
       const result = await fetchFn(query);
-      return cacheSuccessResult(result);
+      return cacheSuccessResult(key, result);
     };
 
     return strategy({
@@ -190,11 +228,10 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
 
   const request = async <TData = unknown, TError = unknown>(
     method: HttpMethod,
-    rawPath: string,
+    path: string,
     options: GenericRequestOptions<ThrowOnError> = {},
   ): Promise<ApiResponse<TData>> => {
-    const path = normalizePath(rawPath);
-    const rawQuery = toQueryRecord(options.query);
+    const rawQuery = options.query || {};
 
     return requestWithCache<TData>(method, path, rawQuery, (query) => {
       return requestNetwork<TData, TError>(method, path, query, options);
@@ -218,15 +255,43 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const getStory = async (
     identifier: GetData['path']['identifier'],
     query: GetData['query'] = {},
-  ): Promise<ApiResponse<GetResponse>> => {
+  ): Promise<ApiResponse<GetResponse<InlineRelations>>> => {
     const requestPath = `/v2/cdn/stories/${identifier}`;
-    const rawQuery = toQueryRecord(query);
-    return requestWithCache<GetResponse>('GET', requestPath, rawQuery, (requestQuery) => {
-      return get({
+    return requestWithCache<GetResponse<InlineRelations>>('GET', requestPath, query, async (requestQuery) => {
+      const response = await get({
         client,
         path: { identifier },
         query: requestQuery,
       });
+
+      if (!inlineRelations || response.data === undefined) {
+        return response;
+      }
+
+      const relationPaths = parseResolveRelations(requestQuery);
+      if (relationPaths.length === 0) {
+        return response;
+      }
+
+      const relationMap = buildRelationMap(response.data.rels);
+      if (response.data.rel_uuids?.length) {
+        const fetchedRelations = await fetchMissingRelations({
+          client,
+          uuids: response.data.rel_uuids,
+          baseQuery: requestQuery,
+        });
+        for (const relationStory of fetchedRelations) {
+          relationMap.set(relationStory.uuid, relationStory);
+        }
+      }
+
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          story: inlineStoryContent(response.data.story, relationPaths, relationMap),
+        },
+      } as ApiResponse<GetResponse<InlineRelations>>;
     });
   };
 
@@ -236,14 +301,42 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
    */
   const getAllStories = async (
     query: GetAllData['query'] = {},
-  ): Promise<ApiResponse<GetAllResponse>> => {
+  ): Promise<ApiResponse<GetAllResponse<InlineRelations>>> => {
     const requestPath = '/v2/cdn/stories';
-    const rawQuery = toQueryRecord(query);
-    return requestWithCache<GetAllResponse>('GET', requestPath, rawQuery, (requestQuery) => {
-      return getAll({
+    return requestWithCache<GetAllResponse<InlineRelations>>('GET', requestPath, query, async (requestQuery) => {
+      const response = await getAll({
         client,
         query: requestQuery,
       });
+
+      if (!inlineRelations || response.data === undefined) {
+        return response;
+      }
+
+      const relationPaths = parseResolveRelations(requestQuery);
+      if (relationPaths.length === 0) {
+        return response;
+      }
+
+      const relationMap = buildRelationMap(response.data.rels);
+      if (response.data.rel_uuids?.length) {
+        const fetchedRelations = await fetchMissingRelations({
+          client,
+          uuids: response.data.rel_uuids,
+          baseQuery: requestQuery,
+        });
+        for (const relationStory of fetchedRelations) {
+          relationMap.set(relationStory.uuid, relationStory);
+        }
+      }
+
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          stories: inlineStoriesContent(response.data.stories, relationPaths, relationMap),
+        },
+      } as ApiResponse<GetAllResponse<InlineRelations>>;
     });
   };
 
@@ -258,22 +351,7 @@ export const createApiClient = <ThrowOnError extends boolean = false>(
   const patchRequest = createMethod('PATCH');
   const deleteRequest = createMethod('DELETE');
 
-  const cacheApi = {
-    clearCv: () => {
-      currentCv = undefined;
-    },
-    flush: async () => {
-      await flushCaches();
-      currentCv = undefined;
-    },
-    getCv: () => currentCv,
-    setCv: (cv: number) => {
-      currentCv = cv;
-    },
-  };
-
   return {
-    cache: cacheApi,
     delete: deleteRequest,
     get: getRequest,
     patch: patchRequest,

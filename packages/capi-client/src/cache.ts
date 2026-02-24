@@ -8,21 +8,21 @@ interface StrategyContext<TData> {
 
 export type CacheStrategyHandler = <TData>(context: StrategyContext<TData>) => Promise<TData>;
 
-export interface CacheEntry {
-  value: unknown;
+export interface CacheEntry<TValue = unknown> {
+  value: TValue;
   storedAt: number;
   ttlMs: number;
 }
 
-export interface CacheEntryInput {
-  value: unknown;
+export interface CacheEntryInput<TValue = unknown> {
+  value: TValue;
   storedAt?: number;
   ttlMs: number;
 }
 
 export interface CacheProvider {
-  get: (key: string) => Promise<CacheEntry | undefined>;
-  set: (key: string, entry: CacheEntryInput) => Promise<void>;
+  get: <TValue = unknown>(key: string) => Promise<CacheEntry<TValue> | undefined>;
+  set: <TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) => Promise<void>;
   flush: () => Promise<void>;
 }
 
@@ -34,11 +34,11 @@ export const createMemoryCacheProvider = (
   options: MemoryCacheProviderOptions = {},
 ): CacheProvider => {
   const maxEntries = options.maxEntries ?? 1_000;
-  const cache = new Map<string, CacheEntry>();
+  const cache = new Map<string, CacheEntry<unknown>>();
 
   return {
-    async get(key: string) {
-      const entry = cache.get(key);
+    async get<TValue = unknown>(key: string) {
+      const entry = cache.get(key) as CacheEntry<TValue>;
       if (!entry) {
         return undefined;
       }
@@ -50,12 +50,14 @@ export const createMemoryCacheProvider = (
 
       return entry;
     },
-    async set(key: string, entry: CacheEntryInput) {
-      const cacheEntry: CacheEntry = {
+    async set<TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) {
+      const cacheEntry: CacheEntry<TValue> = {
         ...entry,
         storedAt: entry.storedAt ?? Date.now(),
       };
 
+      // Move existing keys to the end so eviction stays LRU-like.
+      // Map#set updates values in place and does not change insertion order.
       if (cache.has(key)) {
         cache.delete(key);
       }
@@ -69,7 +71,7 @@ export const createMemoryCacheProvider = (
         }
       }
     },
-    async flush() {
+    async flush(): Promise<void> {
       cache.clear();
     },
   };
@@ -112,7 +114,6 @@ export const createSwrStrategy = (): CacheStrategyHandler => {
           .finally(() => {
             revalidations.delete(key);
           });
-
         revalidations.set(key, revalidation);
       }
 

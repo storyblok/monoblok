@@ -82,6 +82,7 @@ createApiClient({
   baseUrl: 'https://custom.com', // optional, overrides region
   headers: {}, // optional, custom headers
   throwOnError: false, // optional, default: false
+  inlineRelations: false, // optional, default: false
   cache: {
     provider: undefined, // optional, default: in-memory provider
     strategy: 'cache-first', // optional: 'cache-first' | 'network-first' | 'swr' (stale-while-revalidate)
@@ -89,6 +90,58 @@ createApiClient({
   },
 });
 ```
+
+### Relation inlining
+
+By default, relation fields remain UUID strings, even if `resolve_relations` is used.
+
+Enable relation inlining globally with `inlineRelations: true` to replace matching relation fields in `story.content` and `stories[].content`.
+
+```typescript
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  inlineRelations: true,
+});
+
+const result = await client.stories.get('blog/my-post', {
+  version: 'draft',
+  resolve_relations: 'article.author',
+});
+```
+
+When enabled:
+
+- Inlining runs only for fields explicitly listed in `resolve_relations` (exact `component.field` match).
+- `rels` and `rel_uuids` are still returned as-is in the response payload.
+- Relation fields can contain either UUID strings or inlined story objects.
+- Cyclic relations are represented as cyclic object references (for example, `A -> B -> A`).
+
+Before (`inlineRelations: false`):
+
+```typescript
+result.data.story.content.author;
+// "9ef7f0c0-5a5f-4fbb-9f5e-1e8de56b8910"
+```
+
+After (`inlineRelations: true`):
+
+```typescript
+result.data.story.content.author;
+// { uuid: "9ef7f0c0-5a5f-4fbb-9f5e-1e8de56b8910", ...storyFields }
+```
+
+> [!WARNING]
+> `inlineRelations: true` can produce cyclic object references.
+> This can break serialization workflows that rely on `JSON.stringify` (for example, payload transfer in SSR/SSG pipelines).
+> If you need to serialize response objects, we recommend leaving `inlineRelations` disabled.
+
+### Automatic fetching for `rel_uuids`
+
+If the API response includes `rel_uuids` (overflow of relation UUIDs), the client automatically fetches the missing related stories and includes them in the inlining pass when `inlineRelations` is enabled.
+
+- Missing UUIDs are deduplicated before fetching.
+- UUIDs are fetched in chunks (`by_uuids`) and merged with `rels`.
+- If relation fetches fail, the request fails to avoid returning partially inlined relation data.
 
 ### Caching
 
@@ -156,17 +209,9 @@ const result = await client.get('/v2/cdn/links', {
 });
 ```
 
-### Cache version helpers
+### Cache version (`cv`)
 
-The `cv` parameter is documented in Storyblok's official cache invalidation docs:
-https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/cache-invalidation
-
-```typescript
-client.cache.getCv();
-client.cache.setCv(1737800353);
-client.cache.clearCv();
-await client.cache.flush();
-```
+`cv` handling is managed internally by the client.
 
 ### Region parameter
 

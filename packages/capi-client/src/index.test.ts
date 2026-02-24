@@ -19,6 +19,34 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+const makeStory = (uuid: string, content: Record<string, unknown>) => {
+  return {
+    alternates: [],
+    content,
+    created_at: '2024-01-01T00:00:00.000Z',
+    default_full_slug: `default/${uuid}`,
+    first_published_at: '2024-01-01T00:00:00.000Z',
+    full_slug: `stories/${uuid}`,
+    group_id: `group-${uuid}`,
+    id: Number.parseInt(uuid.replace(/\D/g, ''), 10) || 1,
+    is_startpage: false,
+    lang: 'default',
+    localized_paths: [],
+    name: `Story ${uuid}`,
+    parent_id: 0,
+    path: `stories/${uuid}`,
+    position: 0,
+    published_at: '2024-01-01T00:00:00.000Z',
+    release_id: 0,
+    slug: uuid,
+    sort_by_date: '2024-01-01',
+    tag_list: [],
+    translated_slugs: [],
+    updated_at: '2024-01-01T00:00:00.000Z',
+    uuid,
+  };
+};
+
 describe('stories.get()', () => {
   it('should successfully retrieve a single story', async () => {
     const client = createApiClient({
@@ -71,6 +99,7 @@ describe('stories.get()', () => {
   });
 
   it('should return error in response when throwOnError is false (default)', async () => {
+    vi.useFakeTimers();
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
         return HttpResponse.json(
@@ -82,16 +111,18 @@ describe('stories.get()', () => {
         );
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.stories.get('non-existent-story');
+    const resultPromise = client.stories.get('non-existent-story');
+    await vi.runOnlyPendingTimersAsync();
+    const result = await resultPromise;
 
     expect(result.error).toBeDefined();
     expect(result.data).toBeUndefined();
     expect(result.response.status).toBe(404);
+    vi.useRealTimers();
   });
 
   it('should throw error when throwOnError is true', async () => {
@@ -106,7 +137,6 @@ describe('stories.get()', () => {
         );
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
       throwOnError: true,
@@ -129,6 +159,225 @@ describe('stories.getAll()', () => {
   });
 });
 
+describe('inlineRelations', () => {
+  it('should keep default behavior when inlineRelations is false', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rels: [
+            makeStory('author-1', {
+              _uid: 'author-content-1',
+              component: 'author',
+              name: 'Ada',
+            }),
+          ],
+          story: makeStory('page-1', {
+            _uid: 'page-content-1',
+            author: 'author-1',
+            component: 'page',
+          }),
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    const result = await client.stories.get('test-story', {
+      resolve_relations: 'page.author',
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.story.content.author).toBe('author-1');
+  });
+
+  it('should inline relations for stories.get()', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rels: [
+            makeStory('author-1', {
+              _uid: 'author-content-1',
+              component: 'author',
+              name: 'Pat',
+            }),
+            makeStory('article-1', {
+              _uid: 'article-content-1',
+              component: 'article',
+              title: 'Foo',
+            }),
+            makeStory('article-2', {
+              _uid: 'article-content-2',
+              component: 'article',
+              title: 'Bar',
+            }),
+          ],
+          story: makeStory('page-1', {
+            _uid: 'page-content-1',
+            author: 'author-1',
+            articles: [
+              'article-1',
+            ],
+            teaser: [
+              {
+                _uid: 'teaser-content-1',
+                component: 'teaser',
+                articles: [
+                  'article-2',
+                ],
+              },
+            ],
+            component: 'page',
+          }),
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+    });
+
+    const result = await client.stories.get('test-story', {
+      resolve_relations: 'page.author,page.articles,teaser.articles',
+    });
+
+    expect(result.error).toBeUndefined();
+    const content = result.data?.story.content;
+    expect(content?.author).toMatchObject({ uuid: 'author-1' });
+    expect(content?.articles).toMatchObject([{ uuid: 'article-1' }]);
+    // @ts-expect-error dynamically typed
+    expect(content?.teaser?.[0].articles).toMatchObject([{ uuid: 'article-2' }]);
+  });
+
+  it('should auto-fetch rel_uuids and inline fetched stories', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rel_uuids: ['author-1'],
+          story: makeStory('page-1', {
+            _uid: 'page-content-1',
+            author: 'author-1',
+            component: 'page',
+          }),
+        });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('by_uuids') === 'author-1') {
+          return HttpResponse.json({
+            stories: [
+              makeStory('author-1', {
+                _uid: 'author-content-1',
+                component: 'author',
+                name: 'Kai',
+              }),
+            ],
+          });
+        }
+
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+    });
+
+    const result = await client.stories.get('test-story', {
+      resolve_relations: 'page.author',
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.story.content.author).toMatchObject({ uuid: 'author-1' });
+  });
+
+  it('should throw when relation fetching fails', async () => {
+    vi.useFakeTimers();
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rel_uuids: ['author-throw'],
+          story: makeStory('page-throw', {
+            _uid: 'page-content-throw',
+            author: 'author-throw',
+            component: 'page',
+          }),
+        });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/stories', () => {
+        return HttpResponse.json({ message: 'Nope' }, { status: 500 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+    });
+
+    await expect(async () => {
+      const resultPromise = client.stories.get('test-story', {
+        resolve_relations: 'page.author',
+      });
+      await Promise.all([resultPromise, vi.runAllTimersAsync()]);
+    }).rejects.toThrow();
+    vi.useRealTimers();
+  });
+
+  it('should merge inline relations from rels and rel_uuids for stories.getAll()', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        const byUuids = url.searchParams.get('by_uuids');
+
+        if (byUuids) {
+          return HttpResponse.json({
+            stories: [
+              makeStory('author-1', {
+                _uid: 'author-content-1',
+                component: 'author',
+                name: 'Lee',
+              }),
+            ],
+          });
+        }
+
+        return HttpResponse.json({
+          rel_uuids: ['author-1'],
+          rels: [
+            makeStory('author-2', {
+              _uid: 'author-content-2',
+              component: 'author',
+              name: 'Sam',
+            }),
+          ],
+          stories: [
+            makeStory('page-1', {
+              _uid: 'page-content-1',
+              authors: ['author-1', 'author-2'],
+              component: 'page',
+            }),
+          ],
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+    });
+
+    const result = await client.stories.getAll({
+      resolve_relations: 'page.authors',
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.stories[0]?.content.authors).toMatchObject([
+      { uuid: 'author-1' },
+      { uuid: 'author-2' },
+    ]);
+    expect(result.data?.rels).toHaveLength(1);
+    expect(result.data?.rel_uuids).toEqual(['author-1']);
+  });
+});
+
 describe('generic HTTP methods', () => {
   it('should perform GET requests with query params', async () => {
     server.use(
@@ -143,7 +392,6 @@ describe('generic HTTP methods', () => {
         });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -175,7 +423,6 @@ describe('generic HTTP methods', () => {
         });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -207,7 +454,6 @@ describe('generic HTTP methods', () => {
         return HttpResponse.json({ method: 'DELETE' });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -227,7 +473,6 @@ describe('generic HTTP methods', () => {
         return HttpResponse.json({ message: 'Nope' }, { status: 404 });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -245,7 +490,6 @@ describe('generic HTTP methods', () => {
         return HttpResponse.json({ message: 'Nope' }, { status: 404 });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
       throwOnError: true,
@@ -258,7 +502,6 @@ describe('generic HTTP methods', () => {
 describe('cache and cv', () => {
   it('should use in-memory cache by default for published CDN GET requests', async () => {
     let requestCount = 0;
-
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/links', () => {
         requestCount++;
@@ -268,7 +511,6 @@ describe('cache and cv', () => {
         });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -285,14 +527,12 @@ describe('cache and cv', () => {
 
   it('should not cache draft requests', async () => {
     let requestCount = 0;
-
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/links', () => {
         requestCount++;
         return HttpResponse.json({ links: {} });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -307,32 +547,8 @@ describe('cache and cv', () => {
     expect(requestCount).toBe(2);
   });
 
-  it('should append cv when cache.setCv() was called', async () => {
-    server.use(
-      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
-        const url = new URL(request.url);
-        return HttpResponse.json({
-          cv: url.searchParams.get('cv'),
-        });
-      }),
-    );
-
-    const client = createApiClient({
-      accessToken: 'test-token',
-    });
-
-    client.cache.setCv(4242);
-    const result = await client.get<{ cv: string | null }>('v2/cdn/links', {
-      query: { version: 'published' },
-    });
-
-    expect(result.data?.cv).toBe('4242');
-    expect(client.cache.getCv()).toBe(4242);
-  });
-
   it('should flush cache when cv changes', async () => {
     let requestCount = 0;
-
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
         requestCount++;
@@ -346,7 +562,6 @@ describe('cache and cv', () => {
         return HttpResponse.json({ links: {}, cv: 1 });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -357,11 +572,9 @@ describe('cache and cv', () => {
     await client.get('v2/cdn/links', {
       query: { version: 'published', page: 1 },
     });
-
     await client.get('v2/cdn/links', {
       query: { version: 'published', page: 2 },
     });
-
     await client.get('v2/cdn/links', {
       query: { version: 'published', page: 1 },
     });
@@ -371,7 +584,6 @@ describe('cache and cv', () => {
 
   it('should return cached response and revalidate in background with swr strategy', async () => {
     let requestCount = 0;
-
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/links', () => {
         requestCount++;
@@ -382,7 +594,6 @@ describe('cache and cv', () => {
         });
       }),
     );
-
     const client = createApiClient({
       accessToken: 'test-token',
       cache: {
@@ -394,15 +605,12 @@ describe('cache and cv', () => {
     const firstResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
       query: { version: 'published' },
     });
-
     const secondResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
       query: { version: 'published' },
     });
-
     await vi.waitFor(() => {
       expect(requestCount).toBe(2);
     });
-
     const thirdResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
       query: { version: 'published' },
     });

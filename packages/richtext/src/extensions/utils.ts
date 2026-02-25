@@ -32,23 +32,22 @@ export function processBlockAttrs(attrs: BlockAttributes = {}): BlockAttributes 
 export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: string; rest: Record<string, any> } {
   const { linktype, href, anchor, uuid, custom, ...rest } = attrs;
 
-  let finalHref = '';
+  let finalHref = href ?? '';
   switch (linktype) {
     case LinkTypes.ASSET:
     case LinkTypes.URL:
-      finalHref = href;
       break;
     case LinkTypes.EMAIL:
-      finalHref = href?.startsWith('mailto:') ? href : `mailto:${href}`;
+      if (finalHref && !finalHref.startsWith('mailto:')) {
+        finalHref = `mailto:${finalHref}`;
+      }
       break;
     case LinkTypes.STORY:
-      finalHref = href;
       if (anchor) {
         finalHref = `${finalHref}#${anchor}`;
       }
       break;
     default:
-      finalHref = href;
       break;
   }
 

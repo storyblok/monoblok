@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Mark } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import {
+  asTag,
   StoryblokRichText,
   useStoryblok,
 } from '@storyblok/react';
@@ -12,7 +13,7 @@ const CustomLink = Mark.create({
   name: 'link',
   renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
     if (HTMLAttributes.linktype === 'story') {
-      return [Link, { to: HTMLAttributes.href, className: 'router-link' }, 0];
+      return [asTag(Link), { to: HTMLAttributes.href, className: 'router-link' }, 0];
     }
     return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
   },
@@ -28,7 +29,7 @@ function CustomHeadingComponent({ level, children }: { level: number; children: 
 
 const CustomHeading = Heading.extend({
   renderHTML({ node }: { node: { attrs: { level: number } } }) {
-    return [CustomHeadingComponent, { level: node.attrs.level }, 0];
+    return [asTag(CustomHeadingComponent), { level: node.attrs.level }, 0];
   },
 });
 

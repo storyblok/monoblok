@@ -34,6 +34,7 @@ const sharedConfig = {
   dts: true,
   exports: true,
   external: ['mdast'],
+  hash: false,
   outDir: './dist',
   publint: true,
   sourcemap: true,

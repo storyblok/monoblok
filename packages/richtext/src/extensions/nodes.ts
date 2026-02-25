@@ -175,10 +175,10 @@ export const ComponentBlok = Node.create<{ renderComponent: ((blok: Record<strin
   },
   renderHTML({ HTMLAttributes }) {
     console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage. Configure `renderComponent` option on the blok tiptapExtension.');
-    return ['span', {
+    return ['span', cleanObject({
       'data-blok': JSON.stringify(HTMLAttributes?.body?.[0] ?? null),
       'data-blok-id': HTMLAttributes?.id,
       'style': 'display: none',
-    }];
+    })];
   },
 });

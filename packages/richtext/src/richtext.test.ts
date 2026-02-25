@@ -181,7 +181,7 @@ describe('richtext', () => {
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="🚀"><img src="undefined" alt="undefined" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy"></span>');
+      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="🚀"><img style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy"></span>');
     });
 
     it('should render a table', async () => {
@@ -586,7 +586,7 @@ describe('richtext', () => {
           {
             type: 'link',
             attrs: {
-              href: 'https://alvarosaburido.dev',
+              href: 'https://example.com',
               target: '_blank',
               linktype: 'url',
             },
@@ -594,7 +594,7 @@ describe('richtext', () => {
         ],
       };
       const html = render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<a href="https://alvarosaburido.dev" target="_blank">External link</a>');
+      expect(html).toBe('<a href="https://example.com" target="_blank">External link</a>');
     });
 
     it('should render an anchor link', async () => {
@@ -621,20 +621,20 @@ describe('richtext', () => {
     it('should render an email link', async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'hola@alvarosaburido.dev',
+        text: 'jane@example.com',
         type: 'text',
         marks: [
           {
             type: 'link',
             attrs: {
-              href: 'hola@alvarosaburido.dev',
+              href: 'jane@example.com',
               linktype: 'email',
             },
           },
         ],
       };
       const html = render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<a href="mailto:hola@alvarosaburido.dev">hola@alvarosaburido.dev</a>');
+      expect(html).toBe('<a href="mailto:jane@example.com">jane@example.com</a>');
     });
 
     it('should not duplicate mailto: prefix when href already contains it', async () => {
@@ -910,7 +910,7 @@ describe('richtext', () => {
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="😊" key="span-0"><img src="smile.png" alt="undefined" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" key="img-0"></span>');
+      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="😊" key="span-0"><img src="smile.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" key="img-0"></span>');
     });
 
     it('should render a code block with keys', () => {

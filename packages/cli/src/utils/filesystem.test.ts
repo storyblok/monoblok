@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import { appendToFile, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 
 beforeEach(() => {
   vi.clearAllMocks();

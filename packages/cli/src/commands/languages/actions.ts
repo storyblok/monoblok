@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { handleAPIError, handleFileSystemError } from '../../utils';
 import { resolvePath, saveToFile } from '../../utils/filesystem';
 import type { PullLanguagesOptions } from './constants';

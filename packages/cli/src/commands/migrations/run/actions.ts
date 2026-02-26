@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { importModule, resolvePath } from '../../../utils/filesystem';
 import { FileSystemError, toError } from '../../../utils/error';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from './constants';
 import { createRegexFromGlob } from '../../../utils';
 import type { StoryContent } from '../../stories/constants';

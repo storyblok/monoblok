@@ -11,6 +11,9 @@
     "test": {
       "dependsOn": ["build"]
     },
+    "test:types": {
+      "dependsOn": ["build"]
+    },
     "lint": {
       "dependsOn": ["^build"],
       "cache": true

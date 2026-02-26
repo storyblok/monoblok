@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { basename } from 'node:path';
+import { basename } from 'pathe';
 import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import path from 'node:path';
+import { join } from 'pathe';
 import fs from 'node:fs/promises';
 import { saveToFile } from '../../utils/filesystem';
 import { appDomains, type RegionCode } from '../../constants';
@@ -21,7 +21,7 @@ export const generateProject = async (
   targetPath: string = process.cwd(),
 ): Promise<void> => {
   try {
-    const projectPath = path.join(targetPath, projectName);
+    const projectPath = join(targetPath, projectName);
     const templateRepo = `storyblok/blueprint-core-${blueprint}`;
 
     // Check if directory already exists
@@ -86,7 +86,7 @@ export const createEnvFile = async (
   additionalVars?: Record<string, string>,
 ): Promise<void> => {
   try {
-    const envPath = path.join(projectPath, '.env');
+    const envPath = join(projectPath, '.env');
 
     // Build the .env content
     let envContent = `# Storyblok Configuration

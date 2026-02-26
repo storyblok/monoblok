@@ -1,4 +1,4 @@
-import { basename, join } from 'node:path';
+import { basename, join } from 'pathe';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';

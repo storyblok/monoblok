@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
+import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import type { Component } from '@storyblok/management-api-client/resources/components';
@@ -52,7 +52,7 @@ const preconditions = {
     vol.fromJSON(Object.fromEntries([...otherFiles, components].map((f) => {
       const suffix = Math.random() < 0.5 ? '.suffix' : '';
       return [
-        path.join(COMPONENTS_DIR, `${'name' in f ? f.name : 'components'}${suffix}.json`),
+        join(COMPONENTS_DIR, `${'name' in f ? f.name : 'components'}${suffix}.json`),
         JSON.stringify(f),
       ];
     })));
@@ -65,7 +65,7 @@ const preconditions = {
     vol.fromJSON(Object.fromEntries([...otherFiles, ...components].map((c) => {
       const suffix = Math.random() < 0.5 ? '.suffix' : '';
       return [
-        path.join(COMPONENTS_DIR, `${c.name}${suffix}.json`),
+        join(COMPONENTS_DIR, `${c.name}${suffix}.json`),
         JSON.stringify(c),
       ];
     })));

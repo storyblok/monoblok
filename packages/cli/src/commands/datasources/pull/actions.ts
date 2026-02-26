@@ -1,6 +1,6 @@
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { getMapiClient } from '../../../api';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';

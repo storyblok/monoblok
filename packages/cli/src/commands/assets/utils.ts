@@ -1,4 +1,4 @@
-import { basename, dirname, extname, join } from 'node:path';
+import { basename, dirname, extname, join } from 'pathe';
 import { readFile } from 'node:fs/promises';
 import { toError } from '../../utils/error/error';
 import type { ManifestEntry } from '../../utils/filesystem';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resolve } from 'node:path';
+import { resolve } from 'pathe';
 import { vol } from 'memfs';
 // Import the main module first to ensure proper initialization
 import '../index';

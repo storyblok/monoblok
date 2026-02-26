@@ -4,7 +4,7 @@ import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase,
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
 import { storyblokSchemas } from '../../../utils/storyblok-schemas';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import { readFileSync } from 'node:fs';

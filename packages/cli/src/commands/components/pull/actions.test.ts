@@ -259,7 +259,7 @@ describe('pull components actions', () => {
       });
 
       const files = vol.readdirSync('/path/to4/components/12345');
-      expect(files).toEqual(['component-name-2.json', 'component-name.json', 'groups.json', 'tags.json']);
+      expect([...files].sort()).toEqual(['component-name-2.json', 'component-name.json', 'groups.json', 'tags.json'].sort());
     });
   });
 });

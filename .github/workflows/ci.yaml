@@ -19,17 +19,28 @@ env:
 jobs:
   build:
     environment: test
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            projects: tag:npm:public
+          - os: windows-latest
+            projects: storyblok
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-node
 
       - name: Check
-        run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="tag:npm:public"
+        run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
 
       - name: Check Licenses
-        run: pnpm nx exec -p="tag:npm:public" -- pnpm -w monoblok license check \$NX_PROJECT_NAME
+        run: pnpm nx exec -p="${{ matrix.projects }}" -- pnpm -w monoblok license check \$NX_PROJECT_NAME

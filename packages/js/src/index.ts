@@ -129,6 +129,7 @@ export {
   LinkTypes,
   MarkTypes,
   richTextResolver,
+  segmentStoryblokRichText,
   type StoryblokRichTextDocumentNode,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,

@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "QA Product Laptop",
+  "slug": "qa-product-laptop",
+  "full_slug": "qa-product-laptop",
+  "content": {
+    "component": "qa_product",
+    "title": "Laptop",
+    "category": "electronics",
+    "tags": ["electronics", "books"]
+  }
+}

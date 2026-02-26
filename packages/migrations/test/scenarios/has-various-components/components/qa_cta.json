@@ -1,0 +1,15 @@
+{
+  "id": 212,
+  "name": "qa_cta",
+  "display_name": "QA CTA",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "label": { "type": "text", "pos": 0 },
+    "url": { "type": "multilink", "pos": 1 },
+    "icon": { "type": "asset", "pos": 2 }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

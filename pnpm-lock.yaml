@@ -577,6 +577,40 @@ importers:
         specifier: ^3.1.3
         version: 3.1.3(@types/debug@4.1.12)(@types/node@24.1.0)(@vitest/ui@3.1.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.1)(msw@2.10.2(@types/node@24.1.0)(typescript@5.8.3))(terser@5.39.2)(tsx@4.20.3)(yaml@2.8.2)
 
+  packages/migrations:
+    dependencies:
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../richtext
+    devDependencies:
+      '@storyblok/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@storyblok/management-api-client':
+        specifier: workspace:*
+        version: link:../mapi-client
+      '@types/node':
+        specifier: ^22.15.18
+        version: 22.15.18
+      '@vitest/coverage-v8':
+        specifier: ^3.1.3
+        version: 3.1.3(vitest@3.1.3)
+      eslint:
+        specifier: ^9.26.0
+        version: 9.26.0(jiti@2.6.1)
+      jiti:
+        specifier: ^2.4.2
+        version: 2.6.1
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      unbuild:
+        specifier: ^3.5.0
+        version: 3.6.1(typescript@5.8.3)(vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.26)(esbuild@0.27.2)(vue@3.5.26(typescript@5.8.3)))(vue-tsc@2.2.10(typescript@5.8.3))(vue@3.5.26(typescript@5.8.3))
+      vitest:
+        specifier: ^3.1.3
+        version: 3.1.3(@types/debug@4.1.12)(@types/node@22.15.18)(@vitest/ui@3.1.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.1)(msw@2.10.2(@types/node@22.15.18)(typescript@5.8.3))(terser@5.39.2)(tsx@4.20.3)(yaml@2.8.2)
+
   packages/nuxt:
     dependencies:
       '@storyblok/vue':
@@ -19262,13 +19296,13 @@ snapshots:
 
   '@rollup/plugin-json@6.1.0(rollup@4.40.2)':
     dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@4.40.2)
+      '@rollup/pluginutils': 5.3.0(rollup@4.40.2)
     optionalDependencies:
       rollup: 4.40.2
 
   '@rollup/plugin-json@6.1.0(rollup@4.55.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@4.55.1)
+      '@rollup/pluginutils': 5.3.0(rollup@4.55.1)
     optionalDependencies:
       rollup: 4.55.1
 
@@ -19284,7 +19318,7 @@ snapshots:
 
   '@rollup/plugin-node-resolve@16.0.3(rollup@4.55.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@4.55.1)
+      '@rollup/pluginutils': 5.3.0(rollup@4.55.1)
       '@types/resolve': 1.20.2
       deepmerge: 4.3.1
       is-module: 1.0.0
@@ -19301,7 +19335,7 @@ snapshots:
 
   '@rollup/plugin-replace@6.0.3(rollup@4.55.1)':
     dependencies:
-      '@rollup/pluginutils': 5.1.4(rollup@4.55.1)
+      '@rollup/pluginutils': 5.3.0(rollup@4.55.1)
       magic-string: 0.30.21
     optionalDependencies:
       rollup: 4.55.1
@@ -19338,6 +19372,14 @@ snapshots:
       picomatch: 4.0.3
     optionalDependencies:
       rollup: 4.55.1
+
+  '@rollup/pluginutils@5.3.0(rollup@4.40.2)':
+    dependencies:
+      '@types/estree': 1.0.8
+      estree-walker: 2.0.2
+      picomatch: 4.0.3
+    optionalDependencies:
+      rollup: 4.40.2
 
   '@rollup/pluginutils@5.3.0(rollup@4.55.1)':
     dependencies:
@@ -19897,7 +19939,7 @@ snapshots:
     dependencies:
       '@ampproject/remapping': 2.3.0
       enhanced-resolve: 5.18.1
-      jiti: 2.4.2
+      jiti: 2.6.1
       lightningcss: 1.30.1
       magic-string: 0.30.17
       source-map-js: 1.2.1
@@ -22222,7 +22264,7 @@ snapshots:
       defu: 6.1.4
       dotenv: 16.5.0
       giget: 1.2.5
-      jiti: 2.4.2
+      jiti: 2.6.1
       mlly: 1.7.4
       ohash: 1.1.6
       pathe: 1.1.2
@@ -22733,7 +22775,7 @@ snapshots:
     dependencies:
       '@types/node': 24.1.0
       cosmiconfig: 9.0.0(typescript@5.8.3)
-      jiti: 2.4.2
+      jiti: 2.6.1
       typescript: 5.8.3
 
   cosmiconfig@7.1.0:
@@ -30887,7 +30929,7 @@ snapshots:
     dependencies:
       citty: 0.1.6
       defu: 6.1.4
-      jiti: 2.4.2
+      jiti: 2.6.1
       knitwork: 1.2.0
       scule: 1.3.0
 

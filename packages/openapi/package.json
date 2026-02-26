@@ -24,6 +24,17 @@
     "js-yaml": "^4.1.0"
   },
   "nx": {
-    "projectType": "library"
+    "projectType": "library",
+    "targets": {
+      "build": {
+        "inputs": [
+          "{projectRoot}/resources/**",
+          "{projectRoot}/redocly.yaml"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**"
+        ]
+      }
+    }
   }
 }

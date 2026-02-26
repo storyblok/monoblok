@@ -2,7 +2,7 @@ import { FileSystemError, handleAPIError, handleFileSystemError } from '../../..
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
 import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { ReadComponentsOptions } from './constants';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { readdir } from 'node:fs/promises';
 import { readJsonFile, resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';

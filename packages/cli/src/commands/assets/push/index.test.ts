@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Buffer } from 'node:buffer';
-import path from 'node:path';
+import { basename, dirname, extname, join, sep } from 'pathe';
 import { tmpdir } from 'node:os';
 import * as fsPromises from 'node:fs/promises';
 import { http, HttpResponse } from 'msw';
@@ -63,7 +63,7 @@ const preconditions = {
   canLoadComponents(components: MockComponent[], space = DEFAULT_SPACE, basePath?: string) {
     const componentsDir = resolveCommandPath(directories.components, space, basePath);
     vol.fromJSON(Object.fromEntries(components.map(c => [
-      path.join(componentsDir, `${c.name}.json`),
+      join(componentsDir, `${c.name}.json`),
       JSON.stringify(c),
     ])));
   },
@@ -73,11 +73,11 @@ const preconditions = {
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     const files = assets.map(asset => [
-      path.join(assetsDir, getAssetBinaryFilename(asset)),
+      join(assetsDir, getAssetBinaryFilename(asset)),
       'binary-content',
     ]);
     const metadataFiles = assets.map(asset => [
-      path.join(assetsDir, getAssetFilename(asset)),
+      join(assetsDir, getAssetFilename(asset)),
       JSON.stringify(asset),
     ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
@@ -88,16 +88,16 @@ const preconditions = {
   }: { space?: string; basePath?: string } = {}) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     vol.fromJSON({
-      [path.join(assetsDir, 'broken.png')]: 'binary-content',
-      [path.join(assetsDir, 'broken.json')]: '{invalid json',
+      [join(assetsDir, 'broken.png')]: 'binary-content',
+      [join(assetsDir, 'broken.json')]: '{invalid json',
     });
   },
   canLoadAssetsManifest(manifestEntries: Record<number | string, number | string>[], {
     space = DEFAULT_SPACE,
     basePath,
   }: { space?: string; basePath?: string } = {}) {
-    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
-    vol.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    const manifestPath = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+    vol.mkdirSync(dirname(manifestPath), { recursive: true });
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
@@ -111,8 +111,8 @@ const preconditions = {
     space = DEFAULT_SPACE,
     basePath,
   }: { space?: string; basePath?: string } = {}) {
-    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
-    vol.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    const manifestPath = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
+    vol.mkdirSync(dirname(manifestPath), { recursive: true });
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
@@ -125,7 +125,7 @@ const preconditions = {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     const folderFiles = folders.map((folder) => {
       return [
-        path.join(assetsDir, 'folders', getFolderFilename(folder)),
+        join(assetsDir, 'folders', getFolderFilename(folder)),
         JSON.stringify(folder),
       ] as const;
     });
@@ -229,7 +229,7 @@ const preconditions = {
         const body = await request.json() as { filename?: string };
         const requestedFilename = body?.filename;
 
-        const match = remoteAssets.find(a => path.basename(a.filename) === requestedFilename);
+        const match = remoteAssets.find(a => basename(a.filename) === requestedFilename);
         if (!match) {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
@@ -248,7 +248,7 @@ const preconditions = {
         const form = await request.formData();
         const filename = (form.get('file') as { name?: string }).name;
 
-        const match = remoteAssets.find(a => path.basename(a.filename) === filename);
+        const match = remoteAssets.find(a => basename(a.filename) === filename);
         if (!match) {
           return HttpResponse.json({ message: 'Error uploading asset' }, { status: 500 });
         }
@@ -383,12 +383,12 @@ const preconditions = {
 };
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
-  const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+  const manifestPath = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
 const parseFoldersManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
-  const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
+  const manifestPath = join(resolveCommandPath(directories.assets, space, basePath), 'folders', 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
@@ -802,7 +802,7 @@ describe('assets push command', () => {
   });
 
   it('should log an error and stop when manifest loading fails', async () => {
-    const manifestPath = path.join(resolveCommandPath(directories.assets, DEFAULT_SPACE), 'manifest.jsonl');
+    const manifestPath = join(resolveCommandPath(directories.assets, DEFAULT_SPACE), 'manifest.jsonl');
     preconditions.canLoadLocalFile(manifestPath, 'not-json');
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
@@ -1290,12 +1290,12 @@ describe('assets push command', () => {
   it('should download an external asset and clean up the temp file after upload', async () => {
     const externalUrl = 'https://example.com/assets/external.png';
     preconditions.canDownloadExternalAsset(externalUrl);
-    const asset = makeMockAsset({ short_filename: path.basename(externalUrl) });
+    const asset = makeMockAsset({ short_filename: basename(externalUrl) });
     preconditions.canUpsertRemoteAssets([asset]);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup', externalUrl]);
 
-    const tempRoot = path.join(tmpdir(), 'storyblok-assets');
+    const tempRoot = join(tmpdir(), 'storyblok-assets');
     const tempFiles = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${tempRoot}/`));
     expect(tempFiles).toEqual([]);
   });
@@ -1324,14 +1324,14 @@ describe('assets push command', () => {
     const [remoteFolder] = preconditions.canCreateRemoteFolders([folder]);
     preconditions.canFetchRemoteFolders([remoteFolder]);
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
-    const ext = path.extname(asset.filename);
-    const baseName = `${path.basename(asset.filename, ext)}_${asset.id}`;
-    const assetBinaryPath = path.join(assetsDir, `${baseName}${ext}`);
-    const assetPath = path.join(assetsDir, `${baseName}.json`);
+    const ext = extname(asset.filename);
+    const baseName = `${basename(asset.filename, ext)}_${asset.id}`;
+    const assetBinaryPath = join(assetsDir, `${baseName}${ext}`);
+    const assetPath = join(assetsDir, `${baseName}.json`);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
 
-    const files = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${assetsDir}${path.sep}`));
+    const files = Object.keys(vol.toJSON()).filter(filename => filename.startsWith(`${assetsDir}${sep}`));
     const cleanedFiles = files.filter((filename) => {
       return filename.endsWith('.json') || filename.endsWith('.png');
     });
@@ -1375,8 +1375,8 @@ describe('assets push command', () => {
     // User-defined metadata: has short_filename but no filename (e.g. CMS migration)
     const userAssetMetadata = { short_filename: 'hero.png', alt: 'Hero image' };
     vol.fromJSON({
-      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
-      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+      [join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [join(assetsDir, 'hero.png')]: 'binary-content',
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssetsManifest([]);
@@ -1399,8 +1399,8 @@ describe('assets push command', () => {
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
     const userAssetMetadata = { filename: 'https://a.storyblok.com/f/12345/500x500/hero.png', alt: 'Hero' };
     vol.fromJSON({
-      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
-      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+      [join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [join(assetsDir, 'hero.png')]: 'binary-content',
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssetsManifest([]);
@@ -1424,8 +1424,8 @@ describe('assets push command', () => {
     // User-defined metadata: no filename, no short_filename (bare metadata)
     const userAssetMetadata = { alt: 'Hero image', title: 'My hero' };
     vol.fromJSON({
-      [path.join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
-      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+      [join(assetsDir, 'hero.json')]: JSON.stringify(userAssetMetadata),
+      [join(assetsDir, 'hero.png')]: 'binary-content',
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssetsManifest([]);
@@ -1447,7 +1447,7 @@ describe('assets push command', () => {
   it('should push a binary-only asset with no sidecar JSON using its filename as short_filename', async () => {
     const assetsDir = resolveCommandPath(directories.assets, DEFAULT_SPACE);
     vol.fromJSON({
-      [path.join(assetsDir, 'hero.png')]: 'binary-content',
+      [join(assetsDir, 'hero.png')]: 'binary-content',
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssetsManifest([]);
@@ -1468,7 +1468,7 @@ describe('assets push command', () => {
 
   it('should filter stories using search parameter when updating a single asset', async () => {
     const localAssetFilename = 'search-me.png';
-    const localAssetPath = path.join(tmpdir(), localAssetFilename);
+    const localAssetPath = join(tmpdir(), localAssetFilename);
     const pngBuffer = makePngBuffer(10, 10);
     preconditions.canLoadLocalFile(localAssetPath, pngBuffer);
     const localAsset = makeMockAsset({ short_filename: localAssetFilename });

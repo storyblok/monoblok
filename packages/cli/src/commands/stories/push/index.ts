@@ -1,5 +1,5 @@
 import { pipeline } from 'node:stream/promises';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';

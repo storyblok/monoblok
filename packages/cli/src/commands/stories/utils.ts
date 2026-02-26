@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import path from 'node:path';
+import { extname, join } from 'pathe';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
@@ -38,9 +38,9 @@ export const findComponentSchemas = async (directoryPath: string) => {
   });
 
   const fileContents = files
-    .filter(f => path.extname(f) === '.json')
+    .filter(f => extname(f) === '.json')
     .map((f) => {
-      const filePath = path.join(directoryPath, f);
+      const filePath = join(directoryPath, f);
       const fileContent = readFileSync(filePath, 'utf-8');
       return JSON.parse(fileContent);
     });

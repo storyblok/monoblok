@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import * as fsPromises from 'node:fs/promises';
-import path from 'node:path';
+import { join } from 'pathe';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -33,7 +33,7 @@ vi.spyOn(actions, 'updateStory');
 const LOG_PREFIX = 'storyblok-stories-push-';
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
-  const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+  const manifestPath = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
   return loadManifest(manifestPath);
 };
 
@@ -50,32 +50,32 @@ const preconditions = {
   canLoadComponents(components: MockComponent[], space = DEFAULT_SPACE, basePath?: string) {
     const componentsDir = resolveCommandPath(directories.components, space, basePath);
     vol.fromJSON(Object.fromEntries(components.map(c => [
-      path.join(componentsDir, `${c.name}.json`),
+      join(componentsDir, `${c.name}.json`),
       JSON.stringify(c),
     ])));
   },
   canLoadStories(stories: MockStory[], space = DEFAULT_SPACE, basePath?: string) {
     const storiesDir = resolveCommandPath(directories.stories, space, basePath);
     vol.fromJSON(Object.fromEntries(stories.map(s => [
-      path.join(storiesDir, `${s.slug}_${s.uuid}.json`),
+      join(storiesDir, `${s.slug}_${s.uuid}.json`),
       JSON.stringify(s),
     ])));
   },
   failsToLoadStories(space = DEFAULT_SPACE, basePath?: string) {
     const storiesDir = resolveCommandPath(directories.stories, space, basePath);
     vol.fromJSON({
-      [path.join(storiesDir, 'story-a.json')]: '{invalid json',
+      [join(storiesDir, 'story-a.json')]: '{invalid json',
     });
   },
   canLoadManifest(manifestEntries: Record<number | string, number | string>[], space = DEFAULT_SPACE, basePath?: string) {
-    const manifestPath = path.join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
+    const manifestPath = join(resolveCommandPath(directories.stories, space, basePath), 'manifest.jsonl');
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
     });
   },
   canLoadAssetManifest(manifestEntries: Record<string, unknown>[], space = DEFAULT_SPACE, basePath?: string) {
-    const manifestPath = path.join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
+    const manifestPath = join(resolveCommandPath(directories.assets, space, basePath), 'manifest.jsonl');
     const content = `${manifestEntries.map(entry => JSON.stringify(entry)).join('\n')}\n`;
     vol.fromJSON({
       [manifestPath]: content,
@@ -812,7 +812,7 @@ describe('stories push command', () => {
         name: 'page',
       }),
     ]);
-    const manifestPath = path.join(resolveCommandPath(directories.stories, DEFAULT_SPACE), 'manifest.jsonl');
+    const manifestPath = join(resolveCommandPath(directories.stories, DEFAULT_SPACE), 'manifest.jsonl');
     vol.fromJSON({
       [manifestPath]: 'not-json',
     });
@@ -1225,7 +1225,7 @@ describe('stories push command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
 
     const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
-    const storyFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const storyFilePath = join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
     const files = Object.keys(vol.toJSON());
     expect(files).not.toContain(storyFilePath);
   });
@@ -1247,7 +1247,7 @@ describe('stories push command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup', '--dry-run']);
 
     const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
-    const storyFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const storyFilePath = join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
     const files = Object.keys(vol.toJSON());
     expect(files).toContain(storyFilePath);
   });
@@ -1279,8 +1279,8 @@ describe('stories push command', () => {
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
 
     const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
-    const storyAFilePath = path.join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
-    const storyBFilePath = path.join(storiesDir, `${storyB.slug}_${storyB.uuid}.json`);
+    const storyAFilePath = join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
+    const storyBFilePath = join(storiesDir, `${storyB.slug}_${storyB.uuid}.json`);
     const files = Object.keys(vol.toJSON());
     // storyA should be deleted (successful)
     expect(files).not.toContain(storyAFilePath);

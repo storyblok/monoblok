@@ -1,5 +1,5 @@
 import { access } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { FileSystemError, handleFileSystemError } from './utils';
 import { getStoryblokGlobalPath, readFile, saveToFile } from './utils/filesystem';
 import type { StoryblokCredentials } from './types';

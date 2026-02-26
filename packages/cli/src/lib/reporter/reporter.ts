@@ -1,6 +1,6 @@
 import { saveToFileSync } from '../../utils/filesystem';
 import { existsSync, readdirSync, unlinkSync } from 'node:fs';
-import { dirname, extname, join, relative } from 'node:path';
+import { dirname, extname, join, relative } from 'pathe';
 
 export const REPORT_STATUS = {
   unfinished: 'UNFINISHED',

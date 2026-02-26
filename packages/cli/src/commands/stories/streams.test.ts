@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
+import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { readLocalStoriesStream } from './streams';
@@ -7,7 +7,7 @@ import { readLocalStoriesStream } from './streams';
 const STORIES_DIR = '/tmp/stories';
 
 const writeStory = (story: Record<string, unknown>) => {
-  const filePath = path.join(STORIES_DIR, `${story.slug}_${story.uuid}.json`);
+  const filePath = join(STORIES_DIR, `${story.slug}_${story.uuid}.json`);
   vol.fromJSON({ [filePath]: JSON.stringify(story) });
 };
 
@@ -57,7 +57,7 @@ describe('readLocalStoriesStream', () => {
       slug: 'valid',
     };
     writeStory(validStory);
-    vol.fromJSON({ [path.join(STORIES_DIR, 'bad_file.json')]: '{invalid json' });
+    vol.fromJSON({ [join(STORIES_DIR, 'bad_file.json')]: '{invalid json' });
 
     const errors: string[] = [];
     const stream = readLocalStoriesStream({

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateMigration } from './actions';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
 import type { SpaceComponent } from '../../components';
 

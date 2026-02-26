@@ -1,5 +1,5 @@
 import { readFile, unlink } from 'node:fs/promises';
-import { basename, extname, join, resolve } from 'node:path';
+import { basename, extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
 import type { Component } from '@storyblok/management-api-client/resources/components';

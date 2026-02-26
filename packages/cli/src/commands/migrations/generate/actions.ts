@@ -1,6 +1,6 @@
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import type { SpaceComponent } from '../../components/constants';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
 
 const getMigrationTemplate = () => {

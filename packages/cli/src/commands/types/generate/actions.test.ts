@@ -1,7 +1,7 @@
 import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentsFile } from './actions';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import type { GenerateTypesOptions } from './constants';
@@ -34,10 +34,14 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn().mockReturnValue(''),
 }));
 
-vi.mock('node:path', () => ({
-  resolve: vi.fn().mockReturnValue('/mocked/path'),
-  join: vi.fn().mockReturnValue('/mocked/joined/path'),
-}));
+vi.mock('pathe', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('pathe')>();
+  return {
+    ...actual,
+    resolve: vi.fn().mockReturnValue('/mocked/path'),
+    join: vi.fn().mockReturnValue('/mocked/joined/path'),
+  };
+});
 
 // Create a mock for the custom fields parser
 const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {

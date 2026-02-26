@@ -43,6 +43,17 @@ vi.mock('pathe', async (importOriginal) => {
   };
 });
 
+// Mock pathToFileURL so dynamic imports resolve consistently on all platforms.
+// On Windows, pathToFileURL adds a drive-letter prefix (file:///D:/…) which
+// prevents vi.mock('/mocked/path') from intercepting the import.
+vi.mock('node:url', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:url')>();
+  return {
+    ...actual,
+    pathToFileURL: (p: string) => ({ href: p }),
+  };
+});
+
 // Create a mock for the custom fields parser
 const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {
   if (field.field_type === 'native-color-picker') {

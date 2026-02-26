@@ -27,6 +27,10 @@ vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
+// memfs on Windows strips drive-letter prefixes (D:/a/… → /a/…),
+// so we normalise resolved paths before comparing with vol.toJSON() keys.
+const stripDriveLetter = (p: string) => p.replace(/^[a-z]:/i, '');
+
 vi.spyOn(actions, 'createStory');
 vi.spyOn(actions, 'updateStory');
 
@@ -1227,7 +1231,7 @@ describe('stories push command', () => {
     const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
     const storyFilePath = join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
     const files = Object.keys(vol.toJSON());
-    expect(files).not.toContain(storyFilePath);
+    expect(files).not.toContain(stripDriveLetter(storyFilePath));
   });
 
   it('should not delete local story files when dry-run is enabled', async () => {
@@ -1249,7 +1253,7 @@ describe('stories push command', () => {
     const storiesDir = resolveCommandPath(directories.stories, DEFAULT_SPACE);
     const storyFilePath = join(storiesDir, `${storyA.slug}_${storyA.uuid}.json`);
     const files = Object.keys(vol.toJSON());
-    expect(files).toContain(storyFilePath);
+    expect(files).toContain(stripDriveLetter(storyFilePath));
   });
 
   it('should only delete stories that were successfully pushed', async () => {
@@ -1283,8 +1287,8 @@ describe('stories push command', () => {
     const storyBFilePath = join(storiesDir, `${storyB.slug}_${storyB.uuid}.json`);
     const files = Object.keys(vol.toJSON());
     // storyA should be deleted (successful)
-    expect(files).not.toContain(storyAFilePath);
+    expect(files).not.toContain(stripDriveLetter(storyAFilePath));
     // storyB should remain (failed)
-    expect(files).toContain(storyBFilePath);
+    expect(files).toContain(stripDriveLetter(storyBFilePath));
   });
 });

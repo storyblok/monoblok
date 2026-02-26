@@ -1,0 +1,41 @@
+{
+  "id": 4,
+  "uuid": "4",
+  "name": "Getting Started with Tech",
+  "slug": "blog-tech-intro",
+  "full_slug": "blog-index/blog-tech-intro",
+  "parent_id": 3,
+  "content": {
+    "component": "blog",
+    "title": "Getting Started with Tech",
+    "featured_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "Tech"
+    },
+    "author": "QA Bot",
+    "category": "technology",
+    "related_post": {
+      "fieldtype": "multilink",
+      "linktype": "story",
+      "id": "5",
+      "url": "",
+      "cached_url": "blog-index/blog-design-tips"
+    },
+    "body": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "An introduction to technology trends."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

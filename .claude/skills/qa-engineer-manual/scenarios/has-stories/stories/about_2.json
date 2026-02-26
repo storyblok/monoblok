@@ -1,0 +1,39 @@
+{
+  "id": 2,
+  "uuid": "2",
+  "name": "About",
+  "slug": "about",
+  "full_slug": "about",
+  "content": {
+    "component": "page",
+    "headline": "About Us",
+    "hero_image": {
+      "id": 2,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/blog-cover.png",
+      "alt": "About hero"
+    },
+    "body": [
+      {
+        "component": "hero",
+        "_uid": "hero-about-1",
+        "title": "Who We Are",
+        "image": {
+          "id": 2,
+          "fieldtype": "asset",
+          "filename": "https://placeholder.example.com/blog-cover.png",
+          "alt": "About image"
+        },
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "1",
+          "url": "",
+          "cached_url": "home"
+        },
+        "subtitle": "Learn more about our journey"
+      }
+    ],
+    "seo_description": "About our company"
+  }
+}

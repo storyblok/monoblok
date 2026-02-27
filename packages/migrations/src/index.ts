@@ -1,6 +1,4 @@
 export { deleteOutOfSchemaFields } from './delete-out-of-schema-fields';
-export { getAllAssets } from './get-all-assets';
-export { getAllStories } from './get-all-stories';
 export { getLocalAssets, updateLocalAsset } from './local-assets';
 export { getLocalComponents, updateLocalComponent } from './local-components';
 export { getLocalDatasources, updateLocalDatasource } from './local-datasources';

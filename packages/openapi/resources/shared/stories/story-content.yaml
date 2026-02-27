@@ -22,7 +22,6 @@ required:
 properties:
   _uid:
     type: string
-    format: uuid
     description: Unique identifier for this component instance
   component:
     type: string

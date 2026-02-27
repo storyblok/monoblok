@@ -149,7 +149,7 @@ If the API response includes `rel_uuids` (overflow of relation UUIDs), the clien
 The client includes an in-memory cache provider by default for published CDN `GET` requests.
 
 - Expired entries are evicted on read (`ttlMs`).
-- The default in-memory cache is capped with LRU-like eviction (`maxEntries`, default `1_000`).
+- The default in-memory cache is capped with LRU-like eviction (`maxEntries`, default `1_000`). Pass a [custom cache provider](#custom-cache-provider) to change this.
 
 ```typescript
 const client = createApiClient({
@@ -160,6 +160,8 @@ const client = createApiClient({
   },
 });
 ```
+
+#### Custom cache provider
 
 You can also provide your own cache provider. This is required if you want to customize provider-specific behavior like the in-memory provider `maxEntries` setting:
 

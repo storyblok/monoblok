@@ -579,6 +579,9 @@ importers:
 
   packages/migrations:
     dependencies:
+      '@storyblok/management-api-client':
+        specifier: workspace:*
+        version: link:../mapi-client
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../richtext
@@ -586,9 +589,6 @@ importers:
       '@storyblok/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@storyblok/management-api-client':
-        specifier: workspace:*
-        version: link:../mapi-client
       '@types/node':
         specifier: ^22.15.18
         version: 22.15.18

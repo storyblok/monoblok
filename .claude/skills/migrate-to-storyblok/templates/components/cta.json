@@ -1,0 +1,26 @@
+{
+  "id": 1005,
+  "name": "cta",
+  "display_name": "Call to action",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "headline": { "type": "text", "pos": 0, "display_name": "Headline" },
+    "description": { "type": "textarea", "pos": 1, "display_name": "Description" },
+    "button_label": { "type": "text", "pos": 2, "display_name": "Button label" },
+    "button_link": { "type": "multilink", "pos": 3, "display_name": "Button link" },
+    "secondary_button_label": {
+      "type": "text",
+      "pos": 4,
+      "display_name": "Secondary button label"
+    },
+    "secondary_button_link": {
+      "type": "multilink",
+      "pos": 5,
+      "display_name": "Secondary button link"
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

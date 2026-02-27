@@ -245,7 +245,6 @@ describe('inlineRelations', () => {
     const content = result.data?.story.content;
     expect(content?.author).toMatchObject({ uuid: 'author-1' });
     expect(content?.articles).toMatchObject([{ uuid: 'article-1' }]);
-    // @ts-expect-error dynamically typed
     expect(content?.teaser?.[0].articles).toMatchObject([{ uuid: 'article-2' }]);
   });
 
@@ -378,7 +377,7 @@ describe('inlineRelations', () => {
   });
 });
 
-describe('generic HTTP methods', () => {
+describe('generic GET method', () => {
   it('should perform GET requests with query params', async () => {
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
@@ -413,60 +412,6 @@ describe('generic HTTP methods', () => {
     });
   });
 
-  it('should perform POST requests with body', async () => {
-    server.use(
-      http.post('https://api.storyblok.com/v2/cdn/custom-endpoint', async ({ request }: { request: Request }) => {
-        const body = await request.json();
-        return HttpResponse.json({
-          method: request.method,
-          body,
-        });
-      }),
-    );
-    const client = createApiClient({
-      accessToken: 'test-token',
-    });
-
-    const result = await client.post<{ method: string; body: unknown }>('v2/cdn/custom-endpoint', {
-      body: {
-        title: 'hello',
-      },
-    });
-
-    expect(result.error).toBeUndefined();
-    expect(result.data).toEqual({
-      method: 'POST',
-      body: {
-        title: 'hello',
-      },
-    });
-  });
-
-  it('should perform PUT, PATCH and DELETE requests', async () => {
-    server.use(
-      http.put('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
-        return HttpResponse.json({ method: 'PUT' });
-      }),
-      http.patch('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
-        return HttpResponse.json({ method: 'PATCH' });
-      }),
-      http.delete('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
-        return HttpResponse.json({ method: 'DELETE' });
-      }),
-    );
-    const client = createApiClient({
-      accessToken: 'test-token',
-    });
-
-    const putResult = await client.put<{ method: string }>('v2/cdn/custom-endpoint');
-    const patchResult = await client.patch<{ method: string }>('v2/cdn/custom-endpoint');
-    const deleteResult = await client.delete<{ method: string }>('v2/cdn/custom-endpoint');
-
-    expect(putResult.data?.method).toBe('PUT');
-    expect(patchResult.data?.method).toBe('PATCH');
-    expect(deleteResult.data?.method).toBe('DELETE');
-  });
-
   it('should return error when throwOnError is false', async () => {
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
@@ -486,7 +431,7 @@ describe('generic HTTP methods', () => {
 
   it('should throw error when throwOnError is true', async () => {
     server.use(
-      http.patch('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+      http.get('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
         return HttpResponse.json({ message: 'Nope' }, { status: 404 });
       }),
     );
@@ -495,7 +440,7 @@ describe('generic HTTP methods', () => {
       throwOnError: true,
     });
 
-    await expect(client.patch('v2/cdn/custom-endpoint')).rejects.toThrow();
+    await expect(client.get('v2/cdn/custom-endpoint')).rejects.toThrow();
   });
 });
 

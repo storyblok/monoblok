@@ -93,8 +93,6 @@ type GenericRequestOptions<ThrowOnError extends boolean = false> = Omit<
   'method' | 'security' | 'throwOnError' | 'url'
 >;
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-
 type GenericRequestMethod<ThrowOnError extends boolean = false> = <TData = unknown>(
   path: string,
   options?: GenericRequestOptions<ThrowOnError>,
@@ -196,7 +194,7 @@ export const createApiClient = <
   };
 
   const requestNetwork = async <TData = unknown, TError = unknown>(
-    method: HttpMethod,
+    method: 'GET',
     path: string,
     query: Record<string, unknown>,
     options: GenericRequestOptions<ThrowOnError>,
@@ -211,7 +209,7 @@ export const createApiClient = <
   };
 
   const requestWithCache = async <TData = unknown>(
-    method: HttpMethod,
+    method: 'GET',
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData>>,
@@ -242,7 +240,7 @@ export const createApiClient = <
   };
 
   const request = async <TData = unknown, TError = unknown>(
-    method: HttpMethod,
+    method: 'GET',
     path: string,
     options: GenericRequestOptions<ThrowOnError> = {},
   ): Promise<ApiResponse<TData>> => {
@@ -253,13 +251,11 @@ export const createApiClient = <
     });
   };
 
-  const createMethod = (method: HttpMethod): GenericRequestMethod<ThrowOnError> => {
-    return <TData = unknown>(
-      path: string,
-      options: GenericRequestOptions<ThrowOnError> = {},
-    ) => {
-      return request<TData>(method, path, options);
-    };
+  const getRequest: GenericRequestMethod<ThrowOnError> = <TData = unknown>(
+    path: string,
+    options: GenericRequestOptions<ThrowOnError> = {},
+  ) => {
+    return request<TData>('GET', path, options);
   };
 
   /**
@@ -468,21 +464,11 @@ export const createApiClient = <
     getAll: getAllDatasources,
   };
 
-  const getRequest = createMethod('GET');
-  const postRequest = createMethod('POST');
-  const putRequest = createMethod('PUT');
-  const patchRequest = createMethod('PATCH');
-  const deleteRequest = createMethod('DELETE');
-
   return {
     datasourceEntries,
     datasources,
-    delete: deleteRequest,
     get: getRequest,
     links,
-    patch: patchRequest,
-    post: postRequest,
-    put: putRequest,
     spaces,
     stories,
     tags,

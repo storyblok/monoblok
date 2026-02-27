@@ -25,6 +25,7 @@ import { fetchMissingRelations } from './utils/fetch-rel-uuids';
 import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from './utils/inline-relations';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
+import type { RetryOptions } from 'ky';
 import type { Client, RequestOptions } from './generated/stories/client';
 import { get as getSpaceApi } from './generated/spaces/sdk.gen';
 import type { SpaceCapi, GetResponses as SpacesGetResponses } from './generated/spaces/types.gen';
@@ -116,6 +117,7 @@ export interface ContentApiClientConfig<
   throwOnError?: ThrowOnError;
   cache?: CacheConfig;
   inlineRelations?: InlineRelations;
+  retry?: RetryOptions;
 }
 
 export const createApiClient = <
@@ -132,7 +134,9 @@ export const createApiClient = <
     throwOnError = false,
     cache = {},
     inlineRelations = false as InlineRelations,
+    retry,
   } = config;
+  const retryOptions: RetryOptions = { limit: 3, backoffLimit: 20_000, jitter: true, ...retry };
   const cacheProvider = cache.provider ?? createMemoryCacheProvider();
   const strategy = cache.strategy
     ? typeof cache.strategy === 'string'
@@ -154,11 +158,7 @@ export const createApiClient = <
         // catches `HTTPError`.
         throwHttpErrors: true,
         timeout: 30_000,
-        retry: {
-          limit: 3,
-          backoffLimit: 20_000,
-          jitter: true,
-        },
+        retry: retryOptions,
       },
     }),
   );

@@ -88,6 +88,11 @@ createApiClient({
     strategy: 'cache-first', // optional: 'cache-first' | 'network-first' | 'swr' (stale-while-revalidate)
     ttlMs: 60_000, // optional, default: 60_000
   },
+  retry: {
+    limit: 3, // optional, default: 3
+    backoffLimit: 20_000, // optional, default: 20_000
+    jitter: true, // optional, default: true
+  },
 });
 ```
 
@@ -208,6 +213,30 @@ const result = await client.get('/v2/cdn/links', {
 ### Cache version (`cv`)
 
 `cv` handling is managed internally by the client.
+
+### Retry
+
+The client retries failed requests automatically. Pass a `retry` object to override individual retry settings — any property you omit falls back to its default.
+
+| Property | Default | Description |
+|---|---|---|
+| `limit` | `3` | Maximum number of retry attempts |
+| `backoffLimit` | `20_000` | Maximum backoff delay in milliseconds |
+| `jitter` | `true` | Add randomness to backoff delays to avoid thundering herd |
+
+```typescript
+// Increase the retry limit, keep other defaults
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  retry: { limit: 5 },
+});
+
+// Disable retries
+const client = createApiClient({
+  accessToken: 'YOUR_ACCESS_TOKEN',
+  retry: { limit: 0 },
+});
+```
 
 ### Region parameter
 

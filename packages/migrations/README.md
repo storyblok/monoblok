@@ -2,7 +2,7 @@
 
 ![Storyblok ImagoType](https://raw.githubusercontent.com/storyblok/.github/refs/heads/main/profile/public/github-banner.png)
 
-<h1>@storyblok/migrations</h1>
+<h1 align="center">@storyblok/migrations</h1>
   <p>
     Pure utility helpers to migrate content into <a href="https://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-migrations" target="_blank">Storyblok</a>.
   </p>
@@ -29,238 +29,19 @@
 
 ## Features
 
-- **Content Converters** - Convert HTML and Markdown to Storyblok rich text format
-- **Link & Asset Helpers** - Transform URLs into Storyblok link and asset objects
-- **Paginated Fetching** - Fetch all stories and assets across paginated API responses
-- **Local File Workflows** - Read and update locally pulled stories, assets, components, and datasources
-- **Reference Mapping** - Remap story and asset references when migrating between spaces
-- **Schema Cleanup** - Remove out-of-schema fields and rename datasource values
+- **Content Converters**: Convert HTML and Markdown to Storyblok rich text format.
+- **Link and Asset Helpers**: Transform URLs into Storyblok link and asset objects.
+- **Local File Workflows**: Read and update locally pulled stories, assets, components, and datasources.
+- **Reference Mapping**: Remap story and asset references when migrating between spaces.
+- **Schema Cleanup**: Remove out-of-schema fields and rename datasource values.
 
-## Installation
+## Documentation
 
-```bash
-npm install @storyblok/migrations
-# or
-pnpm add @storyblok/migrations
-```
+For complete documentation, please visit the [package reference](https://www.storyblok.com/docs/packages/storyblok-migrations).
 
-## Quick Start
+## Contributing
 
-```ts
-import { htmlToStoryblokRichtext, markdownToStoryblokRichtext, urlToAsset, urlToLink } from '@storyblok/migrations';
-
-const cta = urlToLink('https://example.com/pricing#plans', {
-  target: '_blank',
-  title: 'See plans',
-});
-
-const heroImage = urlToAsset('https://cdn.example.com/hero.jpg', {
-  alt: 'Hero image',
-});
-
-const docFromHtml = htmlToStoryblokRichtext('<p>Hello</p>');
-const docFromMarkdown = markdownToStoryblokRichtext('# Hello');
-```
-
-## API Overview
-
-- `urlToLink(url, options?)`
-- `urlToAsset(url, options?)`
-- `getAllStories(fn)`
-- `getAllAssets(fn)`
-- `getLocalStories(dir)` / `updateLocalStory(dir, story)`
-- `getLocalAssets(dir)` / `updateLocalAsset(dir, asset)`
-- `getLocalComponents(dir)` / `updateLocalComponent(dir, component)`
-- `getLocalDatasources(dir)` / `updateLocalDatasource(dir, datasource)`
-- `mapRefs(story, { schemas, maps })`
-- `renameDataSourceValue(story, componentsToUpdate, oldValue, newValue)`
-- `deleteOutOfSchemaFields(story, schemas)`
-
-## Examples
-
-### Converting HTML and Markdown
-
-```ts
-import { htmlToStoryblokRichtext, markdownToStoryblokRichtext } from '@storyblok/migrations';
-
-const docFromHtml = htmlToStoryblokRichtext('<p>Hello <strong>world</strong></p>');
-const docFromMarkdown = markdownToStoryblokRichtext('# Hello\n\nA paragraph with **bold** text.');
-```
-
-### Creating links and assets
-
-```ts
-import { urlToAsset, urlToLink } from '@storyblok/migrations';
-
-const cta = urlToLink('https://example.com/pricing#plans', {
-  target: '_blank',
-  title: 'See plans',
-});
-
-const email = urlToLink('mailto:hello@example.com');
-
-const heroImage = urlToAsset('https://cdn.example.com/hero.jpg', {
-  alt: 'Hero image',
-  copyright: '2025 Example Inc.',
-});
-```
-
-### Fetching all stories and assets
-
-```ts
-import { getAllAssets, getAllStories } from '@storyblok/migrations';
-
-const stories = await getAllStories(page =>
-  client.stories.list({
-    path: { space_id: 12345 },
-    query: { page, per_page: 100 },
-  }),
-);
-
-const assets = await getAllAssets(page =>
-  client.assets.list({
-    path: { space_id: 12345 },
-    query: { page, per_page: 100 },
-  }),
-);
-```
-
-### Local stories
-
-Pull stories locally with the Storyblok CLI, modify them with the migration helpers, then push them back:
-
-> **Note:** For many migration scenarios, [Storyblok CLI migrations](https://www.storyblok.com/docs/cli/migrations) are the preferable approach. Use the local stories workflow when you need fine-grained, programmatic control that goes beyond what CLI migrations offer.
-
-```bash
-storyblok stories pull --space 12345
-```
-
-```ts
-import { getLocalStories, updateLocalStory } from '@storyblok/migrations';
-
-const dir = '.storyblok/stories/12345';
-const stories = await getLocalStories(dir);
-
-const first = stories[0];
-first.name = `${first.name} (migrated)`;
-
-await updateLocalStory(dir, first);
-```
-
-```bash
-storyblok stories push --space 12345
-```
-
-### Local assets
-
-```bash
-storyblok assets pull --space 12345
-```
-
-```ts
-import { getLocalAssets, updateLocalAsset } from '@storyblok/migrations';
-
-const dir = '.storyblok/assets/12345';
-const assets = await getLocalAssets(dir);
-
-const first = assets[0];
-first.alt = 'Updated alt text';
-
-await updateLocalAsset(dir, first);
-```
-
-### Local components
-
-```bash
-storyblok components pull --space 12345 --separate-files
-```
-
-```ts
-import { getLocalComponents, updateLocalComponent } from '@storyblok/migrations';
-
-const dir = '.storyblok/components/12345';
-const components = await getLocalComponents(dir);
-
-const hero = components.find(c => c.name === 'hero');
-hero.schema.subtitle = { type: 'text' };
-
-await updateLocalComponent(dir, hero);
-```
-
-### Local datasources
-
-```bash
-storyblok datasources pull --space 12345
-```
-
-```ts
-import { getLocalDatasources, updateLocalDatasource } from '@storyblok/migrations';
-
-const dir = '.storyblok/datasources/12345';
-const datasources = await getLocalDatasources(dir);
-
-const first = datasources[0];
-first.name = 'Renamed datasource';
-
-await updateLocalDatasource(dir, first);
-```
-
-### Reference mapping
-
-Pull component schemas locally with the Storyblok CLI, then use them to remap references when migrating stories between spaces:
-
-```bash
-storyblok components pull --space 12345 --separate-files
-```
-
-```ts
-import { type ComponentSchemas, getLocalComponents, mapRefs } from '@storyblok/migrations';
-
-const components = await getLocalComponents('.storyblok/components/12345');
-
-const schemas: ComponentSchemas = {};
-for (const component of components) {
-  schemas[component.name] = component.schema;
-}
-
-const { mappedStory, missingSchemas } = mapRefs(story, {
-  schemas,
-  maps: {
-    stories: new Map([[oldStoryId, newStoryId]]),
-    assets: new Map([[oldAssetId, newAssetId]]),
-  },
-});
-```
-
-### Renaming datasource values
-
-```ts
-import { renameDataSourceValue } from '@storyblok/migrations';
-
-const { story: updatedStory, changes } = renameDataSourceValue(
-  story,
-  [{ name: 'product_card', field: 'category' }],
-  'old-category',
-  'new-category',
-);
-```
-
-### Deleting out-of-schema fields
-
-Use component schemas to strip fields that no longer belong to a component:
-
-```ts
-import { type ComponentSchemas, deleteOutOfSchemaFields, getLocalComponents } from '@storyblok/migrations';
-
-const components = await getLocalComponents('.storyblok/components/12345');
-
-const schemas: ComponentSchemas = {};
-for (const component of components) {
-  schemas[component.name] = component.schema;
-}
-
-const { story: cleanedStory, removedFields } = deleteOutOfSchemaFields(story, schemas);
-```
+If you're interested in contributing, please read our [contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before submitting a pull request.
 
 ## Community
 
@@ -279,9 +60,13 @@ For bugs or feature requests, please [submit an issue](https://github.com/storyb
 > [!IMPORTANT]
 > Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
-## Contributing
+### I can't share my company project code
 
-If you're interested in contributing, please read our [contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before submitting a pull request.
+We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a Github Repo lease make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+
+### Feedback
+
+If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

@@ -12,6 +12,7 @@ export {
   // New richtext
   richTextResolver,
   segmentStoryblokRichText,
+  segmentStoryblokRichTextDynamic,
   storyblokEditable,
 } from '@storyblok/js';
 export { storyblokIntegration as storyblok };

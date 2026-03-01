@@ -1,0 +1,47 @@
+---
+import { ComponentBlok, richTextResolver, type StoryblokRichTextNode } from '../../../../richtext/dist';
+import { renderRichText } from '@storyblok/astro';
+import type { Schema } from './types';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import { Mark } from '../../ssr/node_modules/@tiptap/core';
+import TestLink from '@shared/components/TestLink.astro';
+export interface Props {
+  content: StoryblokRichTextNode;
+  schema: Schema;
+}
+
+const richTextSegments = richTextResolver({
+  tiptapExtensions: {
+    link: Mark.create({
+      name: 'link',
+      renderHTML({ mark, HTMLAttributes }) {
+        return `['a', HTMLAttributes, 0]`;
+      },
+    }),
+  },
+}).render(Astro.props.content);
+---
+
+<div>
+  {
+    () => {
+      const p = renderRichText(Astro.props.content, {
+        tiptapExtensions: {
+          link: Mark.create({
+            name: 'link',
+            renderHTML({ mark, HTMLAttributes }) {
+              console.log({ HTMLAttributes, mark });
+              return `<TestLink />`;
+            },
+          }),
+        },
+      });
+      return (
+        <div>
+          <div set:html={p} />
+        </div>
+      );
+    }
+  }
+  <div set:html={richTextSegments} />
+</div>

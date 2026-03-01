@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import Link from 'next/link';
 import { Mark } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
 import type { ISbStoriesParams, StoryblokClient } from '@storyblok/react/rsc';
 import {
   asTag,
+  StoryblokServerComponent,
   StoryblokServerRichText,
 } from '@storyblok/react/rsc';
 import { getStoryblokApi } from '@/lib/storyblok';
-
+import { segmentStoryblokRichTextDynamic } from '@storyblok/js';
+import Heading2 from '../../components/Heading';
+import { HtmlRenderer } from '@/app/components/HtmlRenderer';
 // Custom link mark: Next.js Link for story links, <a> for everything else
 const CustomLink = Mark.create({
   name: 'link',
@@ -29,8 +32,8 @@ function CustomHeadingComponent({ level, children }: { level: number; children: 
 }
 
 const CustomHeading = Heading.extend({
-  renderHTML({ node }: { node: { attrs: { level: number } } }) {
-    return [asTag(CustomHeadingComponent), { level: node.attrs.level }, 0];
+  renderHTML({ node, HTMLAttributes }: { node: { attrs: { level: number } }, HTMLAttributes: Record<string, any> }) {
+    return [asTag(CustomHeadingComponent), { ...HTMLAttributes, level: node.attrs.level }, 0];
   },
 });
 
@@ -51,10 +54,34 @@ export default async function RichtextPage() {
       </div>
     );
   }
-
-  return (
+const segments = segmentStoryblokRichTextDynamic(data.story.content.richText, { supportedSegments: ['link', 'heading'] as const});
+console.log(segments);
+  
+return (
     <div className="container mx-auto px-4 py-8 prose prose-lg dark:prose-invert max-w-4xl">
       <h1 className="text-3xl font-bold mb-8">Rich Text Example</h1>
+      <div className="flex">
+            <div>
+            {segments.map((segment, index) => {
+              if (segment.type ==="html") {
+                return                   <HtmlRenderer
+        key={index}
+html={segment.content}
+      />
+              }
+              if (segment.type === "heading") {
+                return <Heading2 key={index}  level={segment.props.level} content={segment.content} />;
+              }
+              if (segment.type==="link") {
+                return <Link style={{display:"inline"}} key={index} href={segment.props.href} className="next-link">{segment.content}</Link>;
+              }
+              if (segment.type ==="blok") {
+                return <StoryblokServerComponent key={index} blok={segment.props} />;
+              }
+              return null;
+            })}
+          </div>
+                  <div>
       {data.story.content.richText
         ? (
             <StoryblokServerRichText
@@ -65,6 +92,9 @@ export default async function RichtextPage() {
         : (
             <p className="text-gray-600 dark:text-gray-400">No content available</p>
           )}
+        </div>
+      </div>
+
     </div>
   );
 }

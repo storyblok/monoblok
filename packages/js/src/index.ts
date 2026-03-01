@@ -130,6 +130,7 @@ export {
   MarkTypes,
   richTextResolver,
   segmentStoryblokRichText,
+  segmentStoryblokRichTextDynamic,
   type StoryblokRichTextDocumentNode,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,

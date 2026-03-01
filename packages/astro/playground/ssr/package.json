@@ -14,6 +14,7 @@
     "@astrojs/vercel": "^8.2.6",
     "@astrojs/vue": "^5.1.0",
     "@storyblok/astro": "workspace:*",
+    "@tiptap/core": "^3.19.0",
     "astro": "^5.13.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -1,34 +1,32 @@
 ---
 import { storyblokEditable } from '@storyblok/astro';
-import { segmentStoryblokRichText } from '@storyblok/astro';
+import { segmentStoryblokRichTextDynamic } from '@storyblok/astro';
 import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import TestLink from '@shared/components/TestLink.astro';
 
 const { blok } = Astro.props;
 
-const richTextSegments = segmentStoryblokRichText(blok.text);
+const richTextSegments = segmentStoryblokRichTextDynamic(blok.text, {
+  supportedSegments: ['link'] as const,
+});
 ---
 
 <div {...storyblokEditable(blok)}>
   <h2 class="heading">
     {blok.headline}
   </h2>
-
+  <pre>{JSON.stringify(richTextSegments, null, 2)}</pre>
   {
-    richTextSegments.map((segment, index) => {
+    richTextSegments.map((segment) => {
       if (segment.type === 'html') {
-        return <div set:html={segment.content} />;
+        return <Fragment set:html={segment.content} />;
+      }
+      if (segment.type === 'link') {
+        return <TestLink {...segment.props} />;
       }
       if (segment.type === 'blok') {
-        return <StoryblokComponent blok={segment.blok} />;
+        return <StoryblokComponent blok={segment.props} />;
       }
     })
   }
 </div>
-<style>
-  .heading {
-    text-align: center;
-    font: 700 2.25rem/2.5rem sans-serif;
-    color: var(--color-primary);
-    padding: 3rem 0;
-  }
-</style>

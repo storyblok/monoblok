@@ -2,6 +2,7 @@ export { ComponentBlok } from './extensions/nodes';
 export * from './richtext';
 export * from './types';
 export * from './utils/segment-richtext';
+export * from './utils/segment-richtext-dynamic';
 
 /**
  * Wraps a framework component (React, Vue, etc.) for use as a tag

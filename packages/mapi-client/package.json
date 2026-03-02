@@ -1,11 +1,12 @@
 {
   "name": "@storyblok/management-api-client",
   "version": "0.1.9",
+  "type": "module",
   "description": "Storyblok Management API Client",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "private": false,
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mapi-client#readme",
   "repository": {
     "type": "git",
@@ -20,12 +21,19 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
+    "./package.json": "./package.json",
     "./resources/*": {
-      "types": "./dist/generated/*/types.gen.d.ts"
+      "import": {
+        "types": "./dist/generated/*/types.gen.d.ts",
+        "default": "./dist/generated/*/types.gen.js"
+      },
+      "require": {
+        "types": "./dist/generated/*/types.gen.d.cts",
+        "default": "./dist/generated/*/types.gen.cjs"
+      }
     }
   },
   "scripts": {
@@ -47,7 +55,7 @@
     "change-case": "^5.4.4",
     "glob": "^10.3.10",
     "mustache": "^4.2.0",
-    "tsdown": "^0.12.9",
+    "tsdown": "^0.20.3",
     "tsx": "^4.20.3",
     "vitest": "^3.1.3"
   },

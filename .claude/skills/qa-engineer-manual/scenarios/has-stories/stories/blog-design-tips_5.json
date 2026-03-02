@@ -1,0 +1,41 @@
+{
+  "id": 5,
+  "uuid": "5",
+  "name": "Design Tips for Better UX",
+  "slug": "blog-design-tips",
+  "full_slug": "blog-index/blog-design-tips",
+  "parent_id": 3,
+  "content": {
+    "component": "blog",
+    "title": "Design Tips for Better UX",
+    "featured_image": {
+      "id": 2,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/blog-cover.png",
+      "alt": "Design"
+    },
+    "author": "QA Bot",
+    "category": "design",
+    "related_post": {
+      "fieldtype": "multilink",
+      "linktype": "story",
+      "id": "4",
+      "url": "",
+      "cached_url": "blog-index/blog-tech-intro"
+    },
+    "body": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Practical design tips to improve user experiences."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

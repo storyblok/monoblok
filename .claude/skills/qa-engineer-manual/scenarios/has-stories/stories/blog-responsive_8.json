@@ -1,0 +1,41 @@
+{
+  "id": 8,
+  "uuid": "8",
+  "name": "Responsive Patterns",
+  "slug": "blog-responsive",
+  "full_slug": "blog-index/blog-responsive",
+  "parent_id": 3,
+  "content": {
+    "component": "blog",
+    "title": "Responsive Patterns",
+    "featured_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "Responsive"
+    },
+    "author": "QA Bot",
+    "category": "design",
+    "related_post": {
+      "fieldtype": "multilink",
+      "linktype": "story",
+      "id": "7",
+      "url": "",
+      "cached_url": "blog-index/blog-color-theory"
+    },
+    "body": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Responsive design techniques for modern web interfaces."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

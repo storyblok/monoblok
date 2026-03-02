@@ -23,49 +23,29 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      },
-      "umd": "./dist/index.umd.js"
-    },
-    "./markdown-parser": {
-      "import": {
-        "types": "./dist/markdown-parser.d.ts",
-        "default": "./dist/markdown-parser.js"
-      },
-      "require": {
-        "types": "./dist/markdown-parser.d.cts",
-        "default": "./dist/markdown-parser.cjs"
-      },
-      "umd": "./dist/markdown-parser.umd.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     },
     "./html-parser": {
-      "import": {
-        "types": "./dist/html-parser.d.ts",
-        "default": "./dist/html-parser.js"
-      },
-      "require": {
-        "types": "./dist/html-parser.d.cts",
-        "default": "./dist/html-parser.cjs"
-      },
-      "umd": "./dist/html-parser.umd.js"
-    }
+      "import": "./dist/html-parser.mjs",
+      "require": "./dist/html-parser.cjs"
+    },
+    "./markdown-parser": {
+      "import": "./dist/markdown-parser.mjs",
+      "require": "./dist/markdown-parser.cjs"
+    },
+    "./package.json": "./package.json"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "typesVersions": {
     "*": {
       "markdown-parser": [
-        "./dist/markdown-parser.d.ts"
+        "./dist/markdown-parser.d.cts"
       ],
       "html-parser": [
-        "./dist/html-parser.d.ts"
+        "./dist/html-parser.d.cts"
       ]
     }
   },
@@ -137,8 +117,7 @@
     "pathe": "^2.0.3",
     "prettier": "^3.4.2",
     "release-it": "^18.1.2",
-    "storyblok-js-client": "workspace:*",
-    "tsdown": "^0.12.9",
+    "tsdown": "^0.20.3",
     "typescript": "5.8.3",
     "vitest": "^3.1.3",
     "vue": "^3.5.13"

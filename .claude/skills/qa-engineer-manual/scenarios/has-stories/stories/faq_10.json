@@ -1,0 +1,51 @@
+{
+  "id": 10,
+  "uuid": "10",
+  "name": "FAQ",
+  "slug": "faq",
+  "full_slug": "faq",
+  "content": {
+    "component": "page",
+    "headline": "Frequently Asked Questions",
+    "hero_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "FAQ hero"
+    },
+    "body": [
+      {
+        "component": "hero",
+        "_uid": "hero-faq-1",
+        "title": "Need more help?",
+        "image": {
+          "id": 2,
+          "fieldtype": "asset",
+          "filename": "https://placeholder.example.com/blog-cover.png",
+          "alt": "Help"
+        },
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "9",
+          "url": "",
+          "cached_url": "contact"
+        },
+        "subtitle": "Reach out anytime"
+      },
+      {
+        "component": "cta",
+        "_uid": "cta-faq-1",
+        "label": "Learn about us",
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "2",
+          "url": "",
+          "cached_url": "about"
+        }
+      }
+    ],
+    "seo_description": "Answers to common questions"
+  }
+}

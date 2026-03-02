@@ -1,0 +1,18 @@
+{
+  "id": 101,
+  "name": "blog",
+  "display_name": "Blog Article",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "title": { "type": "text", "pos": 0 },
+    "body": { "type": "richtext", "pos": 1 },
+    "featured_image": { "type": "asset", "pos": 2, "filetypes": ["images"] },
+    "author": { "type": "text", "pos": 3 },
+    "category": { "type": "option", "pos": 4, "source": "internal_stories", "datasource_slug": "categories" },
+    "related_post": { "type": "multilink", "pos": 5, "restrict_content_types": true }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

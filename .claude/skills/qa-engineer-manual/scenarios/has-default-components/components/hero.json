@@ -1,0 +1,16 @@
+{
+  "id": 102,
+  "name": "hero",
+  "display_name": "Hero Section",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "title": { "type": "text", "pos": 0 },
+    "image": { "type": "asset", "pos": 1, "filetypes": ["images"] },
+    "link": { "type": "multilink", "pos": 2 },
+    "subtitle": { "type": "text", "pos": 3 }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

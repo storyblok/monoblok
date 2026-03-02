@@ -191,16 +191,16 @@ export const createApiClient = <
     },
   ];
 
-  const updateCv = async (result: ApiResponse<unknown>) => {
+  const updateCv = async (result: ApiResponse<unknown>): Promise<boolean> => {
     const nextCv = extractCv(result.data);
     if (nextCv === undefined) {
-      return;
+      return true;
     }
 
     // Guard against cv regression: SWR background revalidation may carry a
     // stale cv from a prior request; never move cv backward.
     if (currentCv !== undefined && nextCv < currentCv) {
-      return;
+      return false;
     }
 
     if (cacheFlush === 'auto' && currentCv !== undefined && currentCv !== nextCv) {
@@ -208,11 +208,12 @@ export const createApiClient = <
     }
 
     currentCv = nextCv;
+    return true;
   };
 
   const cacheSuccessResult = async <TResponse extends ApiResponse<unknown>>(key: string, result: TResponse) => {
-    await updateCv(result);
-    if (result.error === undefined) {
+    const shouldCacheResult = await updateCv(result);
+    if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
         value: result,
         ttlMs: cacheTtlMs,
@@ -448,10 +449,11 @@ export const createApiClient = <
     id: DatasourcesGetData['path']['id'],
   ): Promise<ApiResponse<DatasourcesGetResponses[200]>> => {
     const requestPath = `/v2/cdn/datasources/${id}`;
-    return requestWithCache<DatasourcesGetResponses[200]>('GET', requestPath, {}, async () => {
+    return requestWithCache<DatasourcesGetResponses[200]>('GET', requestPath, {}, async (requestQuery) => {
       const response = await getDatasourceApi({
         client,
         path: { id },
+        query: requestQuery as DatasourcesGetData['query'],
       });
       return response;
     });

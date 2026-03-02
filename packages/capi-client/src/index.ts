@@ -104,6 +104,13 @@ interface CacheConfig {
   provider?: CacheProvider;
   strategy?: CacheStrategy | CacheStrategyHandler;
   ttlMs?: number;
+  /**
+   * Controls when the cache is flushed on cv change.
+   *
+   * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
+   * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
+   */
+  flush?: 'auto' | 'manual';
 }
 
 export interface ContentApiClientConfig<
@@ -156,6 +163,7 @@ export const createApiClient = <
       : cache.strategy
     : createStrategy('cache-first');
   const cacheTtlMs = cache.ttlMs ?? 60_000;
+  const cacheFlush = cache.flush ?? 'auto';
   let currentCv: number | undefined;
 
   const client: Client = createClient(
@@ -195,7 +203,7 @@ export const createApiClient = <
       return;
     }
 
-    if (currentCv !== undefined && currentCv !== nextCv) {
+    if (cacheFlush === 'auto' && currentCv !== undefined && currentCv !== nextCv) {
       await cacheProvider.flush();
     }
 
@@ -488,9 +496,21 @@ export const createApiClient = <
     getAll: getAllDatasources,
   };
 
+  /**
+   * Flush the in-memory cache and reset the tracked cv.
+   *
+   * Call this explicitly when `cache.flush` is set to `'manual'`, e.g. after
+   * receiving a Storyblok webhook event that signals content has changed.
+   */
+  const flushCache = async (): Promise<void> => {
+    await cacheProvider.flush();
+    currentCv = undefined;
+  };
+
   return {
     datasourceEntries,
     datasources,
+    flushCache,
     get: getRequest,
     links,
     spaces,

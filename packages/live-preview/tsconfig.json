@@ -22,8 +22,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "src",
-    "tests/isInEditor.test.ts",
-    "tests/isBrowser.test.ts"
+    "src"
   ]
 }

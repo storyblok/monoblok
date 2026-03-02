@@ -3,6 +3,11 @@ import { loadStoryblokBridge } from './loadStoryblokBridge';
 import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
 import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
 
+type StoryInputCallback = (newStory: ISbStoryData<ISbComponentType<string>>) => void;
+
+const storyInputCallbacks = new Set<StoryInputCallback>();
+const bridgesWithEditorListener = new WeakSet<object>();
+
 /**
  * Registers a callback for Storyblok Visual Editor events.
  *
@@ -28,14 +33,24 @@ export const onStoryblokEditorEvent = async <T extends ISbComponentType<string> 
     return;
   }
 
+  storyInputCallbacks.add(callback as StoryInputCallback);
+
   const bridge = await loadStoryblokBridge(bridgeOptions);
+  if (bridgesWithEditorListener.has(bridge)) {
+    return;
+  }
+
+  bridgesWithEditorListener.add(bridge);
+
   bridge.on(['input', 'change', 'published'], (event) => {
     if (!event) {
       return;
     }
 
     if (event.action === 'input') {
-      callback(event.story as ISbStoryData<T>);
+      for (const storyInputCallback of storyInputCallbacks) {
+        storyInputCallback(event.story as ISbStoryData<ISbComponentType<string>>);
+      }
       return;
     }
 

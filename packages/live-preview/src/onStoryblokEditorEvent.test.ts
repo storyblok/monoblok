@@ -1,25 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onStoryblokEditorEvent } from './onStoryblokEditorEvent';
 
-import { isBrowser } from '../src/utils/isBrowser';
-import { isInEditor } from '../src/utils/isInEditor';
+import { isBrowser } from './utils/isBrowser';
+import { isInEditor } from './utils/isInEditor';
 
 // ---- mocks ----
 
-vi.mock('../src/utils/isBrowser', () => ({
+vi.mock('./utils/isBrowser', () => ({
   isBrowser: vi.fn(),
 }));
 
-vi.mock('../src/utils/isInEditor', () => ({
+vi.mock('./utils/isInEditor', () => ({
   isInEditor: vi.fn(),
 }));
 
 const onMock = vi.fn();
+let mockBridge: { on: typeof onMock };
 
-// SINGLE bridge instance
-const mockBridge = {
+// SINGLE bridge instance per test
+const getMockBridge = () => ({
   on: onMock,
-};
+});
 
 vi.mock('./loadStoryblokBridge', () => ({
   loadStoryblokBridge: vi.fn(async () => mockBridge),
@@ -28,6 +29,7 @@ vi.mock('./loadStoryblokBridge', () => ({
 describe('onStoryblokEditorEvent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockBridge = getMockBridge();
 
     Object.defineProperty(window, 'location', {
       value: { reload: vi.fn(), href: 'http://localhost/' },
@@ -116,5 +118,15 @@ describe('onStoryblokEditorEvent', () => {
     });
 
     expect(window.location.reload).toHaveBeenCalledOnce();
+  });
+
+  it('registers bridge listener only once on repeated calls', async () => {
+    vi.mocked(isBrowser).mockReturnValue(true);
+    vi.mocked(isInEditor).mockReturnValue(true);
+
+    await onStoryblokEditorEvent(vi.fn(), {});
+    await onStoryblokEditorEvent(vi.fn(), {});
+
+    expect(onMock).toHaveBeenCalledOnce();
   });
 });

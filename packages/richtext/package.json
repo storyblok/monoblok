@@ -23,38 +23,18 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      },
-      "umd": "./dist/index.umd.js"
-    },
-    "./markdown-parser": {
-      "import": {
-        "types": "./dist/markdown-parser.d.mts",
-        "default": "./dist/markdown-parser.mjs"
-      },
-      "require": {
-        "types": "./dist/markdown-parser.d.cts",
-        "default": "./dist/markdown-parser.cjs"
-      },
-      "umd": "./dist/markdown-parser.umd.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     },
     "./html-parser": {
-      "import": {
-        "types": "./dist/html-parser.d.mts",
-        "default": "./dist/html-parser.mjs"
-      },
-      "require": {
-        "types": "./dist/html-parser.d.cts",
-        "default": "./dist/html-parser.cjs"
-      },
-      "umd": "./dist/html-parser.umd.js"
-    }
+      "import": "./dist/html-parser.mjs",
+      "require": "./dist/html-parser.cjs"
+    },
+    "./markdown-parser": {
+      "import": "./dist/markdown-parser.mjs",
+      "require": "./dist/markdown-parser.cjs"
+    },
+    "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

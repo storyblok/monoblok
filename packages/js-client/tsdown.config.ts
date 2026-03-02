@@ -11,5 +11,6 @@ export default defineConfig([
     dts: true,
     attw: true,
     exports: true,
+    publint: true,
   },
 ]);

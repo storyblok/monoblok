@@ -4,22 +4,32 @@
   "parallel": 5,
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "{projectRoot}/dist"
+      ],
       "cache": true
     },
     "test": {
-      "dependsOn": ["build"]
+      "dependsOn": [
+        "build"
+      ]
     },
     "test:types": {
       "dependsOn": ["build"]
     },
     "lint": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "cache": true
     },
     "dev": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "cache": false
     }
   },
@@ -28,7 +38,10 @@
   },
   "release": {
     "projectsRelationship": "independent",
-    "projects": ["packages/*"],
+    "projects": [
+      "packages/*",
+      "packages/angular/projects/*"
+    ],
     "version": {
       "conventionalCommits": true,
       "fallbackCurrentVersionResolver": "disk",

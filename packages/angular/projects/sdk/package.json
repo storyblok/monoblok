@@ -1,0 +1,35 @@
+{
+  "name": "@storyblok/angular",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Official Angular integration for the Storyblok Headless CMS",
+  "author": "Storyblok",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/angular#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/angular"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [
+    "angular",
+    "storyblok",
+    "angular-sdk"
+  ],
+  "peerDependencies": {
+    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",
+    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.8.1",
+    "@storyblok/live-preview": "workspace:*",
+    "storyblok-js-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
+    "@storyblok/js": "workspace:*",
+    "@storyblok/preview-bridge": "^2.1.6"
+  },
+  "sideEffects": false
+}

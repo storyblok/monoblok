@@ -1,0 +1,16 @@
+{
+  "name": "@storyblok/angular",
+  "targets": {
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "packages/angular/dist"
+      }
+    }
+  },
+  "implicitDependencies": [
+    "live-preview",
+    "storyblok-js-client",
+    "richtext",
+    "js"
+  ]
+}

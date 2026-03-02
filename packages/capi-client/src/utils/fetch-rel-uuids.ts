@@ -19,7 +19,9 @@ const QUERY_CONTEXT_KEYS = new Set([
 const pickQueryContext = (baseQuery: Record<string, unknown>): Record<string, unknown> => {
   const query: Record<string, unknown> = {};
   for (const key of QUERY_CONTEXT_KEYS) {
-    query[key] = baseQuery[key];
+    if (baseQuery[key] !== undefined) {
+      query[key] = baseQuery[key];
+    }
   }
   return query;
 };

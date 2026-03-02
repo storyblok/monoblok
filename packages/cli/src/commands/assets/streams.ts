@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { basename, extname, join } from 'node:path';
+import { basename, extname, join } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
 import { readdir, readFile, unlink } from 'node:fs/promises';

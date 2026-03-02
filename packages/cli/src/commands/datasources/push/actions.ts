@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';

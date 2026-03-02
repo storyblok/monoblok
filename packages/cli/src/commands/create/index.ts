@@ -6,7 +6,7 @@ import type { CreateOptions } from './constants';
 import { session } from '../../session';
 import { confirm, input, select } from '@inquirer/prompts';
 import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
-import path from 'node:path';
+import { basename, dirname, resolve } from 'pathe';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate } from '../spaces';
 import { Spinner } from '@topcli/spinner';
@@ -180,7 +180,7 @@ export const createCommand = program
               return 'Project path is required';
             }
             // Basic validation for valid paths
-            const projectName = path.basename(value);
+            const projectName = basename(value);
             if (!/^[\w-]+$/.test(projectName)) {
               return 'Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores';
             }
@@ -190,9 +190,9 @@ export const createCommand = program
       }
 
       // Parse the path to get directory and project name
-      const resolvedPath = path.resolve(finalProjectPath);
-      const targetDirectory = path.dirname(resolvedPath);
-      const projectName = path.basename(resolvedPath);
+      const resolvedPath = resolve(finalProjectPath);
+      const targetDirectory = dirname(resolvedPath);
+      const projectName = basename(resolvedPath);
 
       konsola.br();
       konsola.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`);

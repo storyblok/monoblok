@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import path from 'node:path';
+import { join } from 'pathe';
 // Import the main first to ensure proper initialization
 import '../index';
 import { reportsCommand } from '../command';
@@ -14,9 +14,9 @@ const REPORTS_FILE_DIR = resolveCommandPath('reports', '12345');
 const preconditions = {
   hasReportFiles() {
     vol.fromJSON({
-      [path.join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567890.jsonl')]: 'foo',
-      [path.join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567891.jsonl')]: 'foo',
-      [path.join(REPORTS_FILE_DIR, 'storyblok-components-push-1234567892.jsonl')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567890.jsonl')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567891.jsonl')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-components-push-1234567892.jsonl')]: 'foo',
     });
   },
 };

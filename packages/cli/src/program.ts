@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import path from 'node:path';
+import { join } from 'pathe';
 import { getPackageJson, handleError } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
@@ -119,7 +119,7 @@ export function getProgram(): Command {
           options.path,
         );
         const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
-        logFilePath = path.join(logsPath, logFilename);
+        logFilePath = join(logsPath, logFilename);
         transports.push(
           new FileTransport({
             filePath: logFilePath,
@@ -151,7 +151,7 @@ export function getProgram(): Command {
           options.path,
         );
         const reportFilename = `${commandPieces.join('-')}-${runId}.json`;
-        const reportFilePath = path.join(reportPath, reportFilename);
+        const reportFilePath = join(reportPath, reportFilename);
         const reporter = getReporter({
           enabled: true,
           filePath: reportFilePath,

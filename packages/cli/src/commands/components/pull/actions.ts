@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData } from '../constants';
 import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { SaveComponentsOptions } from './constants';

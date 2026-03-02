@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { appendToFile, getComponentNameFromFilename, resolvePath } from '../../../utils/filesystem';
 import type { StoryContent } from '../../stories/constants';
 import { readFile } from 'node:fs/promises';

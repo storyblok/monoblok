@@ -1,4 +1,4 @@
-import { join, parse, resolve } from 'node:path';
+import { join, parse, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import { access, appendFile, constants, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
 import { handleFileSystemError } from './error/filesystem-error';

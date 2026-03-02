@@ -1,7 +1,7 @@
 import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentsFile } from './actions';
 import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve } from 'pathe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
 import type { GenerateTypesOptions } from './constants';
@@ -34,10 +34,25 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn().mockReturnValue(''),
 }));
 
-vi.mock('node:path', () => ({
-  resolve: vi.fn().mockReturnValue('/mocked/path'),
-  join: vi.fn().mockReturnValue('/mocked/joined/path'),
-}));
+vi.mock('pathe', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('pathe')>();
+  return {
+    ...actual,
+    resolve: vi.fn().mockReturnValue('/mocked/path'),
+    join: vi.fn().mockReturnValue('/mocked/joined/path'),
+  };
+});
+
+// Mock pathToFileURL so dynamic imports resolve consistently on all platforms.
+// On Windows, pathToFileURL adds a drive-letter prefix (file:///D:/…) which
+// prevents vi.mock('/mocked/path') from intercepting the import.
+vi.mock('node:url', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:url')>();
+  return {
+    ...actual,
+    pathToFileURL: (p: string) => ({ href: p }),
+  };
+});
 
 // Create a mock for the custom fields parser
 const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {

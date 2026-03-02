@@ -85,4 +85,28 @@ describe('datasources.get()', () => {
     expect(result.response.status).toBe(401);
     vi.useRealTimers();
   });
+
+  it('should forward tracked cv to datasource requests', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+        return HttpResponse.json({ links: {}, cv: 42 });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/datasources/*', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        return HttpResponse.json({
+          cv: Number(url.searchParams.get('cv') || 0),
+          datasource: { id: 123, name: 'Example', slug: 'example' },
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await client.links.getAll({ version: 'published' });
+    const result = await client.datasources.get(123);
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.cv).toBe(42);
+  });
 });

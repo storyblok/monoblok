@@ -635,4 +635,44 @@ describe('cache and cv', () => {
     expect(secondResult.data?.requestCount).toBe(1);
     expect(thirdResult.data?.requestCount).toBe(2);
   });
+
+  it('should not cache stale swr revalidation results after cv regression', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        requestCount++;
+        const url = new URL(request.url);
+        const cv = url.searchParams.get('cv');
+
+        if (cv === '2') {
+          return HttpResponse.json({ links: {}, marker: 'stale', cv: 1 });
+        }
+
+        return HttpResponse.json({ links: {}, marker: 'fresh', cv: 2 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      cache: {
+        strategy: 'swr',
+      },
+    });
+
+    const firstResult = await client.get<{ marker: string }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+    const secondResult = await client.get<{ marker: string }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+    await vi.waitFor(() => {
+      expect(requestCount).toBe(2);
+    });
+    const thirdResult = await client.get<{ marker: string }>('v2/cdn/links', {
+      query: { version: 'published' },
+    });
+
+    expect(firstResult.data?.marker).toBe('fresh');
+    expect(secondResult.data?.marker).toBe('fresh');
+    expect(thirdResult.data?.marker).toBe('fresh');
+  });
 });

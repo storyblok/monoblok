@@ -189,6 +189,12 @@ export const createApiClient = <
       return;
     }
 
+    // Guard against cv regression: SWR background revalidation may carry a
+    // stale cv from a prior request; never move cv backward.
+    if (currentCv !== undefined && nextCv < currentCv) {
+      return;
+    }
+
     if (currentCv !== undefined && currentCv !== nextCv) {
       await cacheProvider.flush();
     }

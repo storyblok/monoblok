@@ -48,6 +48,7 @@ export const fetchMissingRelations = async ({
           query: {
             ...queryContext,
             by_uuids: chunk.join(','),
+            per_page: UUID_CHUNK_SIZE,
           },
         });
 

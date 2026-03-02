@@ -1,13 +1,20 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { type Client, createClient, createConfig } from '../generated/stories/client';
+import { createThrottleManager } from '../rate-limit';
 import { fetchMissingRelations } from './fetch-rel-uuids';
+
+// Passthrough throttle — no queuing overhead for most unit tests.
+const passthroughThrottleManager = createThrottleManager(false);
 
 const server = setupServer();
 
 beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  server.resetHandlers();
+  vi.useRealTimers();
+});
 afterAll(() => server.close());
 
 const createTestClient = (): Client => {
@@ -44,6 +51,7 @@ describe('fetchMissingRelations', () => {
         version: 'draft',
       },
       client: createTestClient(),
+      throttleManager: passthroughThrottleManager,
       uuids: ['a', 'b', 'a'],
     });
 
@@ -53,8 +61,12 @@ describe('fetchMissingRelations', () => {
     expect(stories.map(story => story.uuid)).toEqual(['a', 'b', 'a']);
   });
 
-  it('should limit fetch concurrency to current chunk count when below max concurrency', async () => {
-    const uuids = Array.from({ length: 160 }, (_, index) => `uuid-${index}`);
+  it('should respect the throttle manager concurrency limit', async () => {
+    vi.useFakeTimers();
+
+    // Limit to 2 concurrent requests so we can verify the throttle is honoured.
+    const limitedThrottleManager = createThrottleManager(2);
+    const uuids = Array.from({ length: 150 }, (_, index) => `uuid-${index}`); // 3 chunks
     let activeRequests = 0;
     let maxActiveRequests = 0;
     let requestCount = 0;
@@ -77,14 +89,18 @@ describe('fetchMissingRelations', () => {
       }),
     );
 
-    await fetchMissingRelations({
+    const promise = fetchMissingRelations({
       baseQuery: {},
       client: createTestClient(),
+      throttleManager: limitedThrottleManager,
       uuids,
     });
 
-    expect(requestCount).toBe(4);
-    expect(maxActiveRequests).toBeLessThanOrEqual(4);
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(requestCount).toBe(3);
+    expect(maxActiveRequests).toBeLessThanOrEqual(2);
   });
 
   it('should throw when one relation chunk fails', async () => {
@@ -104,6 +120,7 @@ describe('fetchMissingRelations', () => {
     await expect(fetchMissingRelations({
       baseQuery: {},
       client: createTestClient(),
+      throttleManager: passthroughThrottleManager,
       uuids: ['bad'],
     })).rejects.toBeDefined();
   });

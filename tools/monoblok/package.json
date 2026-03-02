@@ -2,7 +2,6 @@
   "name": "monoblok-cli",
   "version": "0.1.0",
   "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
-  "packageManager": "pnpm@10.10.0",
   "type": "module",
   "main": "dist/index.mjs",
   "private": true,
@@ -25,7 +24,7 @@
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.8",
-    "@types/node": "^22.15.18",
+    "@types/node": "^24.11.0",
     "typescript": "5.8.3"
   }
 }

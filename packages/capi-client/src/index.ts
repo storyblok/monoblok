@@ -228,7 +228,7 @@ export const createApiClient = <
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData>>,
   ): Promise<ApiResponse<TData>> => {
-    const query = currentCv ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
+    const query = currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {

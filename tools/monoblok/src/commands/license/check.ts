@@ -22,7 +22,16 @@ const PERMITTED_LICENSES = [
   'BSD*',
   'Unlicense',
 ];
-
+/**
+ * Packages to exclude from the license check.
+ *
+ * **Supported formats:**
+ * - **Exact package**: `@storyblok/preview-bridge@2.1.6`
+ * - **Regex string**: `/^@storyblok\\//` (matches all `@storyblok/*`)
+ */
+const EXCLUDED_PACKAGES = [
+  '/^@storyblok\\//', // regex: exclude all @storyblok/* packages
+];
 export function checkCommand(program: Command): void {
   program
     .command('check')
@@ -45,7 +54,22 @@ export function checkCommand(program: Command): void {
           }
 
           // The remaining packages are the ones that have invalid licenses
-          const packagesWithInvalidLicenses = Object.entries(packages);
+          let packagesWithInvalidLicenses = Object.entries(packages);
+
+          // Internal exclusion by name or regex
+          if (EXCLUDED_PACKAGES.length > 0) {
+            packagesWithInvalidLicenses = packagesWithInvalidLicenses.filter(([pkgName]) => {
+              return !EXCLUDED_PACKAGES.some(pattern => {
+                if (pattern.startsWith('/') && pattern.endsWith('/')) {
+                  // Regex pattern
+                  const regex = new RegExp(pattern.slice(1, -1));
+                  return regex.test(pkgName);
+                }
+                // Exact match
+                return pkgName === pattern;
+              });
+            });
+          }
 
           if (packagesWithInvalidLicenses.length > 0) {
             console.error(chalk.red(`Invalid licenses found for package '${packageName}'`));

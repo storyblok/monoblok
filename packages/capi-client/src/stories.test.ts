@@ -527,6 +527,32 @@ describe('cache and cv', () => {
     expect(requestCount).toBe(3);
   });
 
+  it('should not downgrade cv or flush cache when a lower cv is received', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        requestCount++;
+        const url = new URL(request.url);
+        const page = url.searchParams.get('page');
+        // page 1 first returns cv=2, then a stale response with cv=1 simulating SWR regression
+        if (page === '1') {
+          return HttpResponse.json({ links: {}, cv: requestCount === 1 ? 2 : 1 });
+        }
+        return HttpResponse.json({ links: {}, cv: 2 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 1 } }); // cv → 2
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 2 } }); // cv stays 2
+    // Simulate a stale response coming in with cv=1 — should not flush the cache
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 1 } }); // served from cache (cv regression guard)
+
+    expect(requestCount).toBe(2); // page 1 still served from cache after receiving stale cv
+  });
+
   it('should return cached response and revalidate in background with swr strategy', async () => {
     let requestCount = 0;
     server.use(

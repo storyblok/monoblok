@@ -2,7 +2,6 @@
   "name": "@storyblok/vue",
   "type": "module",
   "version": "9.4.5",
-  "packageManager": "pnpm@10.2.0",
   "description": "SDK to integrate Storyblok into your project using Vue.",
   "author": "Storyblok",
   "license": "MIT",
@@ -53,7 +52,7 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
     "@storyblok/eslint-config": "workspace:*",
-    "@types/node": "^22.15.18",
+    "@types/node": "^24.11.0",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "cypress": "^14.3.3",
@@ -69,11 +68,6 @@
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "cypress"
-    ]
   },
   "release": {
     "branches": [

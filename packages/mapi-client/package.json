@@ -44,7 +44,6 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "packageManager": "pnpm@10.10.0",
   "dependencies": {
     "@storyblok/region-helper": "workspace:*"
   },

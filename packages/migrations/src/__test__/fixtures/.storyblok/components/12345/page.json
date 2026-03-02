@@ -1,0 +1,12 @@
+{
+  "id": 2,
+  "name": "page",
+  "display_name": "Page",
+  "schema": {
+    "title": { "type": "text" },
+    "body": { "type": "bloks" }
+  },
+  "component_group_uuid": null,
+  "created_at": "2024-01-02T00:00:00.000Z",
+  "updated_at": "2024-01-02T00:00:00.000Z"
+}

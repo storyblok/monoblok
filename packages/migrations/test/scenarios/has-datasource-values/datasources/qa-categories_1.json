@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "name": "QA Categories",
+  "slug": "qa-categories",
+  "datasource_entries": [
+    { "name": "Electronics", "value": "electronics" },
+    { "name": "Clothing", "value": "clothing" },
+    { "name": "Books", "value": "books" }
+  ]
+}

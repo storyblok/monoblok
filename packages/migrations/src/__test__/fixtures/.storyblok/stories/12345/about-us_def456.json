@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "uuid": "def456",
+  "name": "About Us",
+  "slug": "about-us",
+  "full_slug": "about-us",
+  "content": {
+    "component": "page",
+    "headline": "About Us"
+  },
+  "created_at": "2024-01-02T00:00:00.000Z",
+  "published_at": null,
+  "updated_at": "2024-01-02T00:00:00.000Z"
+}

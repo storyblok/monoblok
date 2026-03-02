@@ -1,0 +1,11 @@
+{
+  "id": 3,
+  "uuid": "3",
+  "name": "QA XRef Blog",
+  "slug": "qa-xref-blog",
+  "full_slug": "qa-xref-blog",
+  "content": {
+    "component": "qa_xref_page",
+    "title": "Blog"
+  }
+}

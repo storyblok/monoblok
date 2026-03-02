@@ -1,0 +1,57 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "QA Rich Content A",
+  "slug": "qa-rich-content-a",
+  "full_slug": "qa-rich-content-a",
+  "content": {
+    "component": "qa_rich_page",
+    "title": "QA Story With Rich Content",
+    "body_richtext": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            { "type": "text", "text": "Hello " },
+            { "type": "text", "text": "world", "marks": [{ "type": "bold" }] }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Visit site",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://example.com",
+                    "linktype": "url"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "hero_image": {
+      "fieldtype": "asset",
+      "id": 0,
+      "filename": "https://via.placeholder.com/800x400",
+      "name": "placeholder.png",
+      "alt": "Hero placeholder",
+      "is_external_url": true
+    },
+    "cta_link": {
+      "fieldtype": "multilink",
+      "id": "",
+      "url": "https://example.com/pricing",
+      "cached_url": "https://example.com/pricing",
+      "linktype": "url",
+      "target": "_blank"
+    }
+  }
+}

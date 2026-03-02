@@ -1,0 +1,17 @@
+{
+  "id": 200,
+  "name": "qa_rich_page",
+  "display_name": "QA Rich Page",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "title": { "type": "text", "pos": 0 },
+    "body_richtext": { "type": "richtext", "pos": 1 },
+    "hero_image": { "type": "asset", "pos": 2, "filetypes": ["images"] },
+    "cta_link": { "type": "multilink", "pos": 3 },
+    "gallery": { "type": "multiasset", "pos": 4, "filetypes": ["images"] }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

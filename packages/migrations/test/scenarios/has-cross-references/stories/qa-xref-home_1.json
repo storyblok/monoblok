@@ -1,0 +1,40 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "QA XRef Home",
+  "slug": "qa-xref-home",
+  "full_slug": "qa-xref-home",
+  "content": {
+    "component": "qa_xref_page",
+    "title": "Home",
+    "cta_link": {
+      "fieldtype": "multilink",
+      "linktype": "story",
+      "id": 2,
+      "url": "",
+      "cached_url": "qa-xref-about"
+    },
+    "hero_image": {
+      "fieldtype": "asset",
+      "id": 0,
+      "filename": "https://via.placeholder.com/100x100",
+      "name": "qa-placeholder.png",
+      "alt": "Placeholder",
+      "is_external_url": true
+    },
+    "body": [
+      {
+        "component": "qa_xref_hero",
+        "heading": "Welcome",
+        "image": {
+          "fieldtype": "asset",
+          "id": 0,
+          "filename": "https://via.placeholder.com/100x100",
+          "name": "qa-placeholder.png",
+          "alt": "Hero image",
+          "is_external_url": true
+        }
+      }
+    ]
+  }
+}

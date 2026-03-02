@@ -103,6 +103,30 @@ describe('fetchMissingRelations', () => {
     expect(maxActiveRequests).toBeLessThanOrEqual(2);
   });
 
+  it('should send per_page equal to chunk size to avoid silent truncation', async () => {
+    const seenPerPage: Array<string | null> = [];
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        seenPerPage.push(url.searchParams.get('per_page'));
+        const byUuids = url.searchParams.get('by_uuids') ?? '';
+        return HttpResponse.json({
+          stories: byUuids.split(',').map(uuid => ({ uuid })),
+        });
+      }),
+    );
+
+    await fetchMissingRelations({
+      baseQuery: {},
+      client: createTestClient(),
+      throttleManager: passthroughThrottleManager,
+      uuids: ['a', 'b'],
+    });
+
+    expect(seenPerPage).toEqual(['50']);
+  });
+
   it('should throw when one relation chunk fails', async () => {
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {

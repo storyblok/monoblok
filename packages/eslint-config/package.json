@@ -21,12 +21,12 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "files": [
     "dist"
   ],
@@ -47,6 +47,6 @@
   },
   "devDependencies": {
     "eslint": "9.26.0",
-    "tsdown": "^0.12.9"
+    "tsdown": "^0.20.3"
   }
 }

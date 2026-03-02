@@ -1,5 +1,5 @@
 import { storyblokLintConfig } from '@storyblok/eslint-config';
 
 export default storyblokLintConfig({}, {
-  ignores: ['dist/', 'src/generated/'],
+  ignores: ['dist/', 'src/generated/', '**/*.md'],
 });

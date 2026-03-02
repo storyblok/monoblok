@@ -1,0 +1,60 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Tags API
+  version: 1.0.0
+  description: API for retrieving Storyblok tags
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v2/cdn/tags:
+    get:
+      operationId: getAll
+      summary: Retrieve All Tags
+      description: Returns an array of all available tags. Tags can be filtered by prefix and version.
+      parameters:
+        - name: starts_with
+          in: query
+          required: false
+          description: Filter by tag name prefix
+          schema:
+            type: string
+        - name: version
+          in: query
+          required: false
+          description: Version to retrieve
+          schema:
+            type: string
+            enum:
+              - published
+              - draft
+            default: published
+      responses:
+        '200':
+          description: Array of tags
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - tags
+                properties:
+                  tags:
+                    type: array
+                    description: Array of tag objects
+                    items:
+                      $ref: '#/components/schemas/Tag'
+                  cv:
+                    type: integer
+                    description: Cache version Unix timestamp
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  schemas:
+    Tag:
+      $ref: ../shared/tags/tag-capi.yaml

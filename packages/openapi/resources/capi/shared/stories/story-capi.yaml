@@ -1,0 +1,22 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/stories/the-story-object
+type: object
+description: Storyblok story object for the Content Delivery API
+allOf:
+  - $ref: ../../../shared/stories/story-base.yaml
+  - type: object
+    required:
+      - release_id
+      - lang
+      - default_full_slug
+    properties:
+      default_full_slug:
+        type: string
+        nullable: true
+        description: Contains the complete slug of the default language (if the Translatable Slugs app is installed)
+      release_id:
+        type: integer
+        nullable: true
+        description: ID of the current release (can be requested with the from_release API parameter)
+      lang:
+        type: string
+        description: Language code of the current language version (if requested via the language parameter)

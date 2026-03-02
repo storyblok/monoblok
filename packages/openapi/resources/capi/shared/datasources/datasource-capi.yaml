@@ -1,0 +1,40 @@
+type: object
+required:
+  - id
+  - name
+  - slug
+  - dimensions
+properties:
+  id:
+    type: integer
+    description: Unique identifier for the datasource
+  name:
+    type: string
+    description: Name of the datasource
+  slug:
+    type: string
+    description: Slug of the datasource
+  dimensions:
+    type: array
+    description: Array of datasource dimensions
+    items:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the dimension
+        name:
+          type: string
+          description: Name of the dimension
+        entry_value:
+          type: string
+          description: Entry value of the dimension
+        datasource_id:
+          type: integer
+          description: ID of the parent datasource
+        created_at:
+          type: string
+          description: Creation timestamp
+        updated_at:
+          type: string
+          description: Last update timestamp

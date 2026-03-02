@@ -1,0 +1,78 @@
+{
+  "name": "@storyblok/api-client",
+  "type": "module",
+  "version": "0.1.0",
+  "private": false,
+  "packageManager": "pnpm@10.10.0",
+  "description": "Storyblok Content Delivery API Client",
+  "author": "",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/capi-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/capi-client"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "build": "tsdown",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@storyblok/region-helper": "workspace:*",
+    "ky": "^1.14.3"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.92.3",
+    "@msw/source": "^0.6.1",
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi": "workspace:*",
+    "@types/node": "^24.1.0",
+    "eslint": "^9.39.2",
+    "msw": "^2.12.9",
+    "tsdown": "^0.20.3",
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.18"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated/**"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "generate",
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**"
+        ]
+      }
+    }
+  }
+}

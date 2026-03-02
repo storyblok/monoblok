@@ -1,0 +1,6 @@
+# See: https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/authentication
+securitySchemes:
+  PersonalAccessToken:
+    type: apiKey
+    in: query
+    name: token

@@ -20,6 +20,8 @@ import type {
 } from './generated/stories';
 import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './cache';
 import { createMemoryCacheProvider, createStrategy } from './cache';
+import type { RateLimitConfig } from './rate-limit';
+import { createThrottleManager } from './rate-limit';
 import { applyCvToQuery, extractCv } from './utils/cv';
 import { fetchMissingRelations } from './utils/fetch-rel-uuids';
 import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from './utils/inline-relations';
@@ -116,6 +118,15 @@ export interface ContentApiClientConfig<
   cache?: CacheConfig;
   inlineRelations?: InlineRelations;
   retry?: RetryOptions;
+  /**
+   * Preventive rate limiting to avoid hitting the Storyblok CDN rate limits.
+   *
+   * - `undefined` (default): auto-detect tier from path + `per_page` query param.
+   * - `number`: fixed max concurrent requests per second (single queue).
+   * - `{ maxConcurrent?: number; adaptToServerHeaders?: boolean }`: full config.
+   * - `false`: disable rate limiting entirely.
+   */
+  rateLimit?: RateLimitConfig | number | false;
 }
 
 export const createApiClient = <
@@ -133,8 +144,11 @@ export const createApiClient = <
     cache = {},
     inlineRelations = false as InlineRelations,
     retry,
+    rateLimit,
   } = config;
   const retryOptions: RetryOptions = { limit: 3, backoffLimit: 20_000, jitter: true, ...retry };
+  // `rateLimit` defaults to `{}` (auto-detect mode) when not supplied.
+  const throttleManager = createThrottleManager(rateLimit ?? {});
   const cacheProvider = cache.provider ?? createMemoryCacheProvider();
   const strategy = cache.strategy
     ? typeof cache.strategy === 'string'
@@ -218,7 +232,8 @@ export const createApiClient = <
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {
-      const networkResult = await fetchFn(query);
+      const networkResult = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      throttleManager.adaptToResponse(networkResult.response);
       await updateCv(networkResult);
       return networkResult;
     }
@@ -228,7 +243,8 @@ export const createApiClient = <
     const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
-      const result = await fetchFn(query);
+      const result = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      throttleManager.adaptToResponse(result.response);
       return cacheSuccessResult(key, result);
     };
 
@@ -290,6 +306,7 @@ export const createApiClient = <
           client,
           uuids: response.data.rel_uuids,
           baseQuery: requestQuery,
+          throttleManager,
         });
         for (const relationStory of fetchedRelations) {
           relationMap.set(relationStory.uuid, relationStory);
@@ -335,6 +352,7 @@ export const createApiClient = <
           client,
           uuids: response.data.rel_uuids,
           baseQuery: requestQuery,
+          throttleManager,
         });
         for (const relationStory of fetchedRelations) {
           relationMap.set(relationStory.uuid, relationStory);
@@ -476,3 +494,4 @@ export const createApiClient = <
 };
 
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler };
+export type { RateLimitConfig };

@@ -99,7 +99,8 @@
     "@tiptap/extension-text-style": "^3.10.2",
     "@tiptap/extension-underline": "^3.10.2",
     "@tiptap/html": "^3.10.2",
-    "markdown-it": "^14.1.0"
+    "markdown-it": "^14.1.0",
+    "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",

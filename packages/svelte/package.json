@@ -3,7 +3,6 @@
   "type": "module",
   "version": "5.2.17",
   "private": false,
-  "packageManager": "pnpm@9.15.9",
   "description": "SDK to integrate Storyblok into your project using Svelte.",
   "author": "Storyblok",
   "license": "MIT",

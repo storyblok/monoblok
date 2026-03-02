@@ -1,0 +1,32 @@
+{
+  "id": 9,
+  "uuid": "9",
+  "name": "Contact",
+  "slug": "contact",
+  "full_slug": "contact",
+  "content": {
+    "component": "page",
+    "headline": "Contact Us",
+    "hero_image": {
+      "id": 2,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/blog-cover.png",
+      "alt": "Contact hero"
+    },
+    "body": [
+      {
+        "component": "cta",
+        "_uid": "cta-contact-1",
+        "label": "Go back home",
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "1",
+          "url": "",
+          "cached_url": "home"
+        }
+      }
+    ],
+    "seo_description": "How to contact us"
+  }
+}

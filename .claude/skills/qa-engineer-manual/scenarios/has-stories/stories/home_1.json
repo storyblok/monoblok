@@ -1,0 +1,51 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "Home",
+  "slug": "home",
+  "full_slug": "home",
+  "content": {
+    "component": "page",
+    "headline": "Welcome Home",
+    "hero_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "Hero image"
+    },
+    "body": [
+      {
+        "component": "hero",
+        "_uid": "hero-home-1",
+        "title": "Main Hero",
+        "image": {
+          "id": 1,
+          "fieldtype": "asset",
+          "filename": "https://placeholder.example.com/hero.png",
+          "alt": "Hero"
+        },
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "2",
+          "url": "",
+          "cached_url": "about"
+        },
+        "subtitle": "Discover our story"
+      },
+      {
+        "component": "cta",
+        "_uid": "cta-home-1",
+        "label": "Read our blog",
+        "link": {
+          "fieldtype": "multilink",
+          "linktype": "story",
+          "id": "3",
+          "url": "",
+          "cached_url": "blog-index"
+        }
+      }
+    ],
+    "seo_description": "The homepage"
+  }
+}

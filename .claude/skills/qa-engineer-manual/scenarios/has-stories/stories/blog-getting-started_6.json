@@ -1,0 +1,41 @@
+{
+  "id": 6,
+  "uuid": "6",
+  "name": "Blog Getting Started",
+  "slug": "blog-getting-started",
+  "full_slug": "blog-index/blog-getting-started",
+  "parent_id": 3,
+  "content": {
+    "component": "blog",
+    "title": "Blog Getting Started",
+    "featured_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "Start"
+    },
+    "author": "QA Bot",
+    "category": "technology",
+    "related_post": {
+      "fieldtype": "multilink",
+      "linktype": "story",
+      "id": "4",
+      "url": "",
+      "cached_url": "blog-index/blog-tech-intro"
+    },
+    "body": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "How to start building a modern content workflow."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

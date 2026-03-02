@@ -1,0 +1,11 @@
+{
+  "id": 3,
+  "uuid": "3",
+  "name": "QA Nested B",
+  "slug": "nested-b",
+  "full_slug": "qa-folder/nested-b",
+  "parent_id": 1,
+  "content": {
+    "component": "page"
+  }
+}

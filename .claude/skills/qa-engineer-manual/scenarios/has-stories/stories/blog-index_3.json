@@ -1,0 +1,19 @@
+{
+  "id": 3,
+  "uuid": "3",
+  "name": "Blog",
+  "slug": "blog-index",
+  "full_slug": "blog-index",
+  "is_folder": true,
+  "content": {
+    "component": "page",
+    "headline": "Blog",
+    "hero_image": {
+      "id": 1,
+      "fieldtype": "asset",
+      "filename": "https://placeholder.example.com/hero.png",
+      "alt": "Blog hero"
+    },
+    "seo_description": "Our blog"
+  }
+}

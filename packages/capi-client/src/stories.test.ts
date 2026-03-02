@@ -527,6 +527,51 @@ describe('cache and cv', () => {
     expect(requestCount).toBe(3);
   });
 
+  it('should not auto-flush cache when cv changes and flush is manual', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', ({ request }: { request: Request }) => {
+        requestCount++;
+        const url = new URL(request.url);
+        const page = url.searchParams.get('page');
+        return HttpResponse.json({ links: {}, cv: page === '2' ? 2 : 1 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      cache: { flush: 'manual' },
+    });
+
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 1 } });
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 2 } }); // cv changes to 2
+    await client.get('v2/cdn/links', { query: { version: 'published', page: 1 } }); // still cached despite cv change
+
+    expect(requestCount).toBe(2); // page 1 served from cache, not re-fetched after cv change
+  });
+
+  it('should flush cache and reset cv when flushCache() is called', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+        requestCount++;
+        return HttpResponse.json({ links: {}, cv: 1 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      cache: { flush: 'manual' },
+    });
+
+    await client.get('v2/cdn/links', { query: { version: 'published' } }); // populates cache
+    await client.get('v2/cdn/links', { query: { version: 'published' } }); // served from cache
+    expect(requestCount).toBe(1);
+
+    await client.flushCache();
+
+    await client.get('v2/cdn/links', { query: { version: 'published' } }); // cache cleared, re-fetches
+    expect(requestCount).toBe(2);
+  });
+
   it('should not downgrade cv or flush cache when a lower cv is received', async () => {
     let requestCount = 0;
     server.use(

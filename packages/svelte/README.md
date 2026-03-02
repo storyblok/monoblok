@@ -66,7 +66,7 @@ For bugs or feature requests, please [submit an issue](https://github.com/storyb
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a Github Repo lease make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a Github Repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
 
 ### Feedback
 

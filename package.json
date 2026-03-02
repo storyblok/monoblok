@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Official monorepo for Storyblok open source packages",
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "pnpm@10.28.2",
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",

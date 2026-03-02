@@ -29,6 +29,12 @@ paths:
             type: integer
             default: 25
             maximum: 1000
+        - name: cv
+          in: query
+          required: false
+          description: Cached version Unix timestamp for cache invalidation
+          schema:
+            type: integer
       responses:
         '200':
           description: Array of datasources
@@ -69,6 +75,12 @@ paths:
             id:
               summary: By numeric ID
               value: 12345
+        - name: cv
+          in: query
+          required: false
+          description: Cached version Unix timestamp for cache invalidation
+          schema:
+            type: integer
       responses:
         '200':
           description: Datasource details

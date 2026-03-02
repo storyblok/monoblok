@@ -22,7 +22,7 @@
   "packageManager": "pnpm@10.10.0",
   "dependencies": {
     "@redocly/cli": "^2.0.2",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.1"
   },
   "nx": {
     "projectType": "library"

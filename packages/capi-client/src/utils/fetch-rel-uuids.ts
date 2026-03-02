@@ -1,10 +1,10 @@
 import type { Client } from '../generated/stories/client';
 import { getAll } from '../generated/stories/sdk.gen';
 import type { StoryCapi } from '../generated/stories/types.gen';
+import type { ThrottleManager } from '../rate-limit';
 import { chunkArray } from './array';
 
 const UUID_CHUNK_SIZE = 50;
-const MAX_CONCURRENT_REQUESTS = 50;
 const QUERY_CONTEXT_KEYS = new Set([
   'cv',
   'fallback_lang',
@@ -28,42 +28,43 @@ interface FetchMissingRelationsOptions {
   client: Client;
   uuids: string[];
   baseQuery: Record<string, unknown>;
+  throttleManager: ThrottleManager;
 }
 
 export const fetchMissingRelations = async ({
   client,
   uuids,
   baseQuery,
+  throttleManager,
 }: FetchMissingRelationsOptions): Promise<StoryCapi[]> => {
   const queryContext = pickQueryContext(baseQuery);
   const chunks = chunkArray(uuids, UUID_CHUNK_SIZE);
-  const stories: StoryCapi[] = [];
-  let chunkIndex = 0;
 
-  const worker = async () => {
-    while (chunkIndex < chunks.length) {
-      const currentChunk = chunks[chunkIndex++];
-      const response = await getAll({
-        client,
-        query: {
-          ...queryContext,
-          by_uuids: currentChunk.join(','),
-        },
-      });
+  const results = await Promise.all(
+    chunks.map(chunk =>
+      throttleManager.execute('/v2/cdn/stories', queryContext, async () => {
+        const response = await getAll({
+          client,
+          query: {
+            ...queryContext,
+            by_uuids: chunk.join(','),
+          },
+        });
 
-      if (response.error !== undefined) {
-        throw response.error;
-      }
+        throttleManager.adaptToResponse(response.response);
 
-      if (response.data === undefined) {
-        throw new Error('Failed to fetch missing relations.');
-      }
+        if (response.error !== undefined) {
+          throw response.error;
+        }
 
-      stories.push(...response.data.stories);
-    }
-  };
+        if (response.data === undefined) {
+          throw new Error('Failed to fetch missing relations.');
+        }
 
-  const workers = Array.from({ length: Math.min(MAX_CONCURRENT_REQUESTS, chunks.length) }, () => worker());
-  await Promise.all(workers);
-  return stories;
+        return response.data.stories;
+      }),
+    ),
+  );
+
+  return results.flat();
 };

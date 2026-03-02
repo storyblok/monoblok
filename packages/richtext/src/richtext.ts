@@ -1,16 +1,9 @@
-import { optimizeImage } from './images-optimization';
-import { BlockTypes, LinkTypes, MarkTypes, TextTypes } from './types';
-import type { BlockAttributes, MarkNode, StoryblokRichTextContext, StoryblokRichTextNode, StoryblokRichTextNodeResolver, StoryblokRichTextNodeTypes, StoryblokRichTextOptions, TextNode } from './types';
-import { attrsToString, attrsToStyle, cleanObject, escapeHtml, SELF_CLOSING_TAGS } from './utils';
+import { getStoryblokExtensions } from './extensions';
+import type { BlockAttributes, MarkNode, StoryblokRichTextDocumentNode, StoryblokRichTextNode, StoryblokRichTextOptions, TextNode } from './types';
+import { attrsToString, escapeHtml, SELF_CLOSING_TAGS } from './utils';
 
 /**
  * Default render function that creates an HTML string for a given tag, attributes, and children.
- *
- * @template T
- * @param {string} tag
- * @param {BlockAttributes} [attrs]
- * @param {T} children
- * @return {*}  {T}
  */
 function defaultRenderFn<T = string | null>(tag: string, attrs: BlockAttributes = {}, children?: T): T {
   const attrsString = attrsToString(attrs);
@@ -27,12 +20,76 @@ function defaultRenderFn<T = string | null>(tag: string, attrs: BlockAttributes 
 }
 
 /**
+ * Converts a ProseMirror DOMOutputSpec array to renderFn calls.
+ */
+function specToRender<T>(
+  spec: any[],
+  renderFn: (tag: string, attrs?: BlockAttributes, children?: T) => T,
+  children: T | undefined,
+): T {
+  const [tag, ...rest] = spec;
+  let attrs: BlockAttributes = {};
+  let content = rest;
+
+  // First non-array, non-number, non-null plain object = attributes
+  if (
+    content.length > 0
+    && content[0] !== null
+    && content[0] !== undefined
+    && typeof content[0] === 'object'
+    && !Array.isArray(content[0])
+    && typeof content[0] !== 'number'
+  ) {
+    attrs = content[0] as BlockAttributes;
+    content = content.slice(1);
+  }
+
+  // Filter nulls (Table extension can produce them)
+  content = content.filter((c: any) => c !== null && c !== undefined);
+
+  // No content → self-closing (img, hr, br)
+  if (content.length === 0) {
+    return renderFn(tag, attrs) as T;
+  }
+
+  // Content hole (0) → insert children
+  if (content.length === 1 && content[0] === 0) {
+    return renderFn(tag, attrs, children) as T;
+  }
+
+  // Nested specs → recursive
+  const nested = content.map((item: any) => {
+    if (item === 0) {
+      return children;
+    }
+    if (Array.isArray(item)) {
+      return specToRender(item, renderFn, children);
+    }
+    return item;
+  });
+
+  return renderFn(tag, attrs, nested.length === 1 ? nested[0] : nested) as T;
+}
+
+/**
+ * Calls renderHTML on a tiptap extension.
+ */
+function callExtensionRenderHTML(ext: any, type: 'node' | 'mark', attrs: Record<string, any>): any[] {
+  const thisContext = { options: ext.options || {}, name: ext.name, type: ext.type };
+  if (type === 'node') {
+    return ext.config.renderHTML.call(thisContext, {
+      node: { attrs },
+      HTMLAttributes: attrs,
+    });
+  }
+  return ext.config.renderHTML.call(thisContext, {
+    mark: { attrs },
+    HTMLAttributes: attrs,
+  });
+}
+
+/**
  * Creates a rich text resolver with the given options.
- *
- * @export
- * @template T
- * @param {StoryblokRichTextOptions<T>} [options]
- * @return {*}
  */
 export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   const keyCounters = new Map<string, number>();
@@ -40,342 +97,148 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   const {
     renderFn = defaultRenderFn,
     textFn = escapeHtml,
-    resolvers = {},
     optimizeImages = false,
     keyedResolvers = false,
+    tiptapExtensions,
   } = options;
   const isExternalRenderFn = renderFn !== defaultRenderFn;
 
-  /**
-   * Processes attributes and styles for a node
-   * @param attrs The node attributes
-   * @returns Processed attributes with styles
-   */
-  const processAttributes = (attrs: BlockAttributes = {}): BlockAttributes => {
-    const { textAlign, class: className, id: idName, style: existingStyle, ...rest } = attrs;
-    const styles: string[] = [];
+  // Get extensions configured with runtime options, merged with user overrides
+  const baseExtensions = getStoryblokExtensions({ optimizeImages });
+  const allExtensions = tiptapExtensions
+    ? { ...baseExtensions, ...tiptapExtensions }
+    : baseExtensions;
+  const extensionValues = Object.values(allExtensions);
 
-    // Add existing styles if any
-    if (existingStyle) {
-      styles.push(existingStyle.endsWith(';') ? existingStyle : `${existingStyle};`);
+  // Build lookup maps: type name → extension config
+  const nodeExtMap = new Map<string, any>();
+  const markExtMap = new Map<string, any>();
+  for (const ext of extensionValues) {
+    if (ext.type === 'node') {
+      nodeExtMap.set(ext.name, ext);
     }
-
-    // Add text alignment if specified
-    if (textAlign) {
-      styles.push(`text-align: ${textAlign};`);
+    else if (ext.type === 'mark') {
+      markExtMap.set(ext.name, ext);
     }
+  }
 
-    return cleanObject({
-      ...rest,
-      class: className,
-      id: idName,
-      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-    });
-  };
-
-  const nodeResolver = (tag: string): StoryblokRichTextNodeResolver<T> =>
-    (node: StoryblokRichTextNode<T>, context): T => {
-      const attributes = processAttributes(node.attrs);
-      return context.render(tag, attributes, node.children || null as any) as T;
-    };
-
-  const imageResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context) => {
-    const { src, alt, title, srcset, sizes } = node.attrs || {};
-    let finalSrc = src;
-    let finalAttrs = {};
-
-    if (optimizeImages) {
-      const { src: optimizedSrc, attrs: optimizedAttrs } = optimizeImage(src, optimizeImages);
-      finalSrc = optimizedSrc;
-      finalAttrs = optimizedAttrs;
+  // Wrap renderFn with auto-keying
+  const contextRenderFn = (tag: string, attrs: BlockAttributes = {}, children?: T): T => {
+    if (keyedResolvers && tag) {
+      const currentCount = keyCounters.get(tag) || 0;
+      keyCounters.set(tag, currentCount + 1);
+      attrs = { ...attrs, key: `${tag}-${currentCount}` };
     }
-
-    const imgAttrs = {
-      src: finalSrc,
-      alt,
-      title,
-      srcset,
-      sizes,
-      ...finalAttrs,
-    };
-
-    return context.render('img', cleanObject(imgAttrs)) as T;
-  };
-
-  const headingResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const { level, ...rest } = node.attrs || {};
-    const attributes = processAttributes(rest);
-    return context.render(`h${level}`, attributes, node.children) as T;
-  };
-
-  const emojiResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context) => {
-    const internalImg = context.render('img', {
-      src: node.attrs?.fallbackImage,
-      alt: node.attrs?.alt,
-      style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
-      draggable: 'false',
-      loading: 'lazy',
-    }) as T;
-
-    return context.render('span', {
-      'data-type': 'emoji',
-      'data-name': node.attrs?.name,
-      'data-emoji': node.attrs?.emoji,
-    }, internalImg) as T;
-  };
-
-  const codeBlockResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    return context.render('pre', node.attrs || {}, context.render('code', {}, node.children || '' as any),
-    ) as T;
-  };
-
-  const markResolver = (tag: string, styled = false): StoryblokRichTextNodeResolver<T> => ({ text, attrs }, context): T => {
-    const { class: className, id: idName, ...styleAttrs } = attrs || {};
-    const attributes = styled
-      ? {
-          class: className,
-          id: idName,
-          style: attrsToStyle(styleAttrs) || undefined,
-        }
-      : attrs || {};
-
-    return context.render(tag, cleanObject(attributes), text as any) as T;
-  };
-
-  const renderToT = (node: any): T => {
-    // Implementation that ensures the return type is T
-    // This might involve checking the type of T and handling accordingly
-    return render(node) as unknown as T;
-  };
-
-  const textResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>): T => {
-    const { marks, ...rest } = node as TextNode<T>;
-    if ('text' in node) {
-      if (marks) {
-        return marks.reduce(
-          (text: T, mark: MarkNode<T>) => renderToT({ ...mark, text }) as T,
-          renderToT({ ...rest, children: rest.children as T }) as T,
-        );
-      }
-      const attributes = node.attrs || {};
-      if (keyedResolvers) {
-        const currentCount = keyCounters.get('txt') || 0;
-        keyCounters.set('txt', currentCount + 1);
-        attributes.key = `${'txt'}-${currentCount}`;
-      }
-      return textFn(rest.text, attributes) as T;
-    }
-    return '' as T;
-  };
-
-  const linkResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context) => {
-    const { linktype, href, anchor, ...rest } = node.attrs || {};
-
-    let finalHref = '';
-    switch (linktype) {
-      case LinkTypes.ASSET:
-      case LinkTypes.URL:
-        finalHref = href;
-        break;
-      case LinkTypes.EMAIL:
-        finalHref = `mailto:${href}`;
-        break;
-      case LinkTypes.STORY:
-        finalHref = href;
-        if (anchor) {
-          finalHref = `${finalHref}#${anchor}`;
-        }
-        break;
-      default:
-        finalHref = href;
-        break;
-    }
-    const attributes: Record<string, any> = { ...rest };
-    if (finalHref) {
-      attributes.href = finalHref;
-    }
-    return context.render('a', attributes, node.text as any) as T;
-  };
-
-  const componentResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    console.warn('[StoryblokRichtText] - BLOK resolver is not available for vanilla usage');
-    return context.render('span', {
-      blok: node?.attrs?.body[0],
-      id: node.attrs?.id,
-      style: 'display: none',
-    }) as T;
-  };
-
-  const tableResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const attributes = processAttributes(node.attrs);
-    const children = node.children || null as any;
-    return context.render('table', attributes, context.render('tbody', {}, children)) as T;
-  };
-
-  const tableRowResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const attributes = processAttributes(node.attrs);
-    return context.render('tr', attributes, node.children) as T;
-  };
-
-  const tableCellResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const { colspan, rowspan, colwidth, backgroundColor, textAlign, ...rest } = node.attrs || {};
-    const styles: string[] = [];
-
-    if (colwidth) {
-      styles.push(`width: ${colwidth}px;`);
-    }
-
-    if (backgroundColor) {
-      styles.push(`background-color: ${backgroundColor};`);
-    }
-
-    if (textAlign) {
-      styles.push(`text-align: ${textAlign};`);
-    }
-
-    const attributes = {
-      ...rest,
-      ...(colspan > 1 ? { colspan } : {}),
-      ...(rowspan > 1 ? { rowspan } : {}),
-      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-    };
-
-    return context.render('td', cleanObject(attributes), node.children) as T;
-  };
-
-  const tableHeaderResolver: StoryblokRichTextNodeResolver<T> = (node: StoryblokRichTextNode<T>, context): T => {
-    const { colspan, rowspan, colwidth, backgroundColor, textAlign, ...rest } = node.attrs || {};
-    const styles: string[] = [];
-
-    if (colwidth) {
-      styles.push(`width: ${colwidth}px;`);
-    }
-
-    if (backgroundColor) {
-      styles.push(`background-color: ${backgroundColor};`);
-    }
-
-    if (textAlign) {
-      styles.push(`text-align: ${textAlign};`);
-    }
-
-    const attributes = {
-      ...rest,
-      ...(colspan > 1 ? { colspan } : {}),
-      ...(rowspan > 1 ? { rowspan } : {}),
-      ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-    };
-
-    return context.render('th', cleanObject(attributes), node.children) as T;
-  };
-
-  // Create the original resolvers map with default implementations
-  const originalResolvers = new Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>([
-    [BlockTypes.DOCUMENT, nodeResolver('')],
-    [BlockTypes.HEADING, headingResolver],
-    [BlockTypes.PARAGRAPH, nodeResolver('p')],
-    [BlockTypes.UL_LIST, nodeResolver('ul')],
-    [BlockTypes.OL_LIST, nodeResolver('ol')],
-    [BlockTypes.LIST_ITEM, nodeResolver('li')],
-    [BlockTypes.IMAGE, imageResolver],
-    [BlockTypes.EMOJI, emojiResolver],
-    [BlockTypes.CODE_BLOCK, codeBlockResolver],
-    [BlockTypes.HR, nodeResolver('hr')],
-    [BlockTypes.BR, nodeResolver('br')],
-    [BlockTypes.QUOTE, nodeResolver('blockquote')],
-    [BlockTypes.COMPONENT, componentResolver],
-    [TextTypes.TEXT, textResolver],
-    [MarkTypes.LINK, linkResolver],
-    [MarkTypes.ANCHOR, linkResolver],
-    [MarkTypes.STYLED, markResolver('span', true)],
-    [MarkTypes.BOLD, markResolver('strong')],
-    [MarkTypes.TEXT_STYLE, markResolver('span', true)],
-    [MarkTypes.ITALIC, markResolver('em')],
-    [MarkTypes.UNDERLINE, markResolver('u')],
-    [MarkTypes.STRIKE, markResolver('s')],
-    [MarkTypes.CODE, markResolver('code')],
-    [MarkTypes.SUPERSCRIPT, markResolver('sup')],
-    [MarkTypes.SUBSCRIPT, markResolver('sub')],
-    [MarkTypes.HIGHLIGHT, markResolver('mark')],
-    [BlockTypes.TABLE, tableResolver],
-    [BlockTypes.TABLE_ROW, tableRowResolver],
-    [BlockTypes.TABLE_CELL, tableCellResolver],
-    [BlockTypes.TABLE_HEADER, tableHeaderResolver],
-  ]);
-
-  // Create the merged resolvers map that includes user overrides
-  const mergedResolvers = new Map<StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>>([
-    ...originalResolvers,
-    ...(Object.entries(resolvers).map(([type, resolver]) => [type as StoryblokRichTextNodeTypes, resolver])) as unknown as Array<[StoryblokRichTextNodeTypes, StoryblokRichTextNodeResolver<T>]>,
-  ]);
-
-  const createRenderContext = () => {
-    const contextRenderFn = (tag: string, attrs: BlockAttributes = {}, children?: T): T => {
-      if (keyedResolvers && tag) {
-        const currentCount = keyCounters.get(tag) || 0;
-        keyCounters.set(tag, currentCount + 1);
-        attrs.key = `${tag}-${currentCount}`;
-      }
-      return renderFn(tag, attrs, children);
-    };
-    const context: StoryblokRichTextContext<T> = {
-      render: contextRenderFn,
-      originalResolvers,
-      mergedResolvers,
-    };
-    return context;
+    return renderFn(tag, attrs, children);
   };
 
   function renderNode(node: StoryblokRichTextNode<T>): T {
-    const resolver = mergedResolvers.get(node.type);
-    if (!resolver) {
-      console.error('<Storyblok>', `No resolver found for node type ${node.type}`);
+    // Text nodes — apply marks via reduce
+    if (node.type === 'text') {
+      return renderText(node as TextNode<T>);
+    }
+
+    // Document node renders without wrapper
+    if (node.type === 'doc') {
+      return render(node);
+    }
+
+    // Find extension and call renderHTML
+    const ext = nodeExtMap.get(node.type);
+    if (!ext?.config?.renderHTML) {
+      console.error('<Storyblok>', `No extension found for node type ${node.type}`);
       return '' as unknown as T;
     }
 
-    const context = createRenderContext();
+    // Check for renderComponent option (e.g., blok nodes configured via tiptapExtensions)
+    if (ext.options?.renderComponent) {
+      const body = node.attrs?.body;
+      const id = node.attrs?.id;
+      if (!Array.isArray(body) || body.length === 0) {
+        return (isExternalRenderFn ? [] : '') as unknown as T;
+      }
+      const rendered = body.map((blok: Record<string, unknown>) => ext.options.renderComponent(blok, id));
+      return (isExternalRenderFn ? rendered : rendered.filter((r: unknown) => r != null).join('')) as unknown as T;
+    }
 
-    if (node.type === 'text') {
-      return resolver(node as StoryblokRichTextNode<T>, context);
+    // Table: group rows into thead/tbody based on cell types
+    if (node.type === 'table' && node.content?.length) {
+      const headerRows: StoryblokRichTextNode<T>[] = [];
+      const bodyRows: StoryblokRichTextNode<T>[] = [];
+      for (const row of node.content) {
+        const isHeaderRow = bodyRows.length === 0
+          && row.content?.every((cell: StoryblokRichTextNode<T>) => cell.type === 'tableHeader');
+        if (isHeaderRow) {
+          headerRows.push(row);
+        }
+        else {
+          bodyRows.push(row);
+        }
+      }
+      const nodeAttrs = node.attrs || {};
+      const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);
+      const parts: T[] = [];
+      if (headerRows.length > 0) {
+        parts.push(contextRenderFn('thead', {}, headerRows.map(render) as T));
+      }
+      if (bodyRows.length > 0) {
+        parts.push(contextRenderFn('tbody', {}, bodyRows.map(render) as T));
+      }
+      return specToRender(spec, contextRenderFn, parts as T | undefined) as T;
     }
 
     const children = node.content ? node.content.map(render) : undefined;
 
-    return resolver({
-      ...node,
-      children: children as T,
-    }, context);
+    const nodeAttrs = node.attrs || {};
+    const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);
+    return specToRender(spec, contextRenderFn, children as T | undefined) as T;
   }
 
-  /**
-   * Renders a rich text node coming from Storyblok.
-   *
-   * @param {StoryblokRichTextNode<T>} node
-   * @return {*}  {T}
-   *
-   * @example
-   *
-   * ```typescript
-   * import StoryblokClient from 'storyblok-js-client'
-   * import { richTextResolver } from '@storyblok/richtext'
-   *
-   * const storyblok = new StoryblokClient({
-   *  accessToken:  import.meta.env.VITE_STORYBLOK_TOKEN,
-   * })
-   *
-   * const story = await client.get('cdn/stories/home', {
-   *  version: 'draft',
-   * })
-   *
-   * const html = richTextResolver().render(story.data.story.content.richtext)
-   * ```
-   *
-   */
-  function render(node: StoryblokRichTextNode<T>): T {
-    if (node.type === 'doc') {
-      return isExternalRenderFn ? node.content.map(renderNode) as T : node.content.map(renderNode).join('') as T;
+  function renderText(node: TextNode<T>): T {
+    const { marks, ...rest } = node;
+
+    if (marks?.length) {
+      // Base text
+      const baseText = (() => {
+        const attrs: BlockAttributes = {};
+        if (keyedResolvers) {
+          const currentCount = keyCounters.get('txt') || 0;
+          keyCounters.set('txt', currentCount + 1);
+          attrs.key = `txt-${currentCount}`;
+        }
+        return textFn(rest.text, attrs) as T;
+      })();
+
+      // Apply marks as reduce: text → mark1(text) → mark2(mark1(text))
+      return marks.reduce((text: T, mark: MarkNode<T>) => {
+        const ext = markExtMap.get(mark.type);
+        if (!ext?.config?.renderHTML) {
+          console.error('<Storyblok>', `No extension found for node type ${mark.type}`);
+          return text;
+        }
+
+        const markAttrs = mark.attrs || {};
+        const spec = callExtensionRenderHTML(ext, 'mark', markAttrs);
+        return specToRender(spec, contextRenderFn, text) as T;
+      }, baseText);
     }
-    return Array.isArray(node) ? node.map(renderNode) as T : renderNode(node) as T;
+
+    // Plain text, no marks
+    const attrs: BlockAttributes = node.attrs || {};
+    if (keyedResolvers) {
+      const currentCount = keyCounters.get('txt') || 0;
+      keyCounters.set('txt', currentCount + 1);
+      attrs.key = `txt-${currentCount}`;
+    }
+    return textFn(rest.text, attrs) as T;
+  }
+
+  function render(node: StoryblokRichTextNode<T> | StoryblokRichTextDocumentNode): T {
+    const n = node as StoryblokRichTextNode<T>;
+    if (n.type === 'doc') {
+      return isExternalRenderFn ? n.content.map(renderNode) as T : n.content.map(renderNode).join('') as T;
+    }
+    return Array.isArray(n) ? n.map(renderNode) as T : renderNode(n) as T;
   }
 
   return {

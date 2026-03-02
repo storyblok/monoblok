@@ -10,7 +10,9 @@ export { default as StoryblokStory } from './story';
 
 export {
   apiPlugin,
+  asTag,
   BlockTypes,
+  ComponentBlok,
   loadStoryblokBridge,
   MarkTypes,
   registerStoryblokBridge,
@@ -19,10 +21,8 @@ export {
   storyblokEditable,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,
-  type StoryblokRichTextNodeResolver,
   type StoryblokRichTextNodeTypes,
   type StoryblokRichTextOptions,
-  type StoryblokRichTextResolvers,
   TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';

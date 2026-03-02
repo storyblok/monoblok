@@ -30,9 +30,7 @@ export type {
   StoryblokRichTextDocumentNode,
   StoryblokRichTextImageOptimizationOptions,
   StoryblokRichTextNode,
-  StoryblokRichTextNodeResolver,
   StoryblokRichTextNodeTypes,
   StoryblokRichTextOptions,
-  StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/js';

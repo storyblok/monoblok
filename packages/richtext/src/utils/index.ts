@@ -82,7 +82,8 @@ export const attrsToString = (attrs: BlockAttributes = {}) => {
   const { custom, ...attrsWithoutCustom } = attrs;
   const normalizedAttrs = { ...attrsWithoutCustom, ...custom };
   return Object.keys(normalizedAttrs)
-    .map(key => `${key}="${normalizedAttrs[key]}"`)
+    .filter(key => normalizedAttrs[key] != null)
+    .map(key => `${key}="${String(normalizedAttrs[key]).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`)
     .join(' ');
 };
 
@@ -156,5 +157,5 @@ export function escapeHtml(unsafeText: string): string {
  *
  */
 export const cleanObject = (obj: Record<string, any>) => {
-  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v != null));
 };

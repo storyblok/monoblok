@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { ISbStoryData, SbSDKOptions, StoryblokBridgeConfigV2, StoryblokRichTextNode, StoryblokRichTextResolvers } from '@storyblok/js';
+import type { ISbStoryData, SbSDKOptions, StoryblokBridgeConfigV2, StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/js';
 
 export interface SbReactComponentsMap {
   [key: string]: React.ElementType;
@@ -18,7 +18,7 @@ export type TUseStoryblokState = <T = void>(
 
 export interface StoryblokRichTextProps {
   doc: StoryblokRichTextNode<React.ReactElement>;
-  resolvers?: StoryblokRichTextResolvers<React.ReactElement>;
+  tiptapExtensions?: StoryblokRichTextOptions<React.ReactElement>['tiptapExtensions'];
 }
 
 export type {

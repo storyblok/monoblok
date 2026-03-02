@@ -123,16 +123,18 @@ export * from './types';
 
 // New Richtext Resolver
 export {
+  asTag,
   BlockTypes,
+  ComponentBlok,
+  LinkTypes,
   MarkTypes,
   richTextResolver,
+  segmentStoryblokRichText,
   type StoryblokRichTextDocumentNode,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,
-  type StoryblokRichTextNodeResolver,
   type StoryblokRichTextNodeTypes,
   type StoryblokRichTextOptions,
-  type StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/richtext';
 

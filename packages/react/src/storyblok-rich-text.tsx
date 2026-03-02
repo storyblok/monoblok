@@ -5,9 +5,9 @@ import { useStoryblokRichText } from './richtext';
 import type { StoryblokRichTextProps } from './types';
 
 const StoryblokRichText = forwardRef<HTMLDivElement, StoryblokRichTextProps>(
-  ({ doc, resolvers }, ref) => {
+  ({ doc, tiptapExtensions }, ref) => {
     const { render } = useStoryblokRichText({
-      resolvers,
+      tiptapExtensions,
     });
 
     const html = render(doc);

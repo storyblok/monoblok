@@ -37,7 +37,7 @@ export default defineConfig(() => {
           { src: 'src/live-preview/middleware.ts', dest: 'live-preview' },
           { src: 'src/dev-toolbar/toolbarApp.ts', dest: 'dev-toolbar' },
           {
-            src: ['src/lib/richTextToHTML.ts', 'src/lib/client.ts'],
+            src: ['src/lib/client.ts'],
             dest: 'lib',
           },
           { src: 'src/public.d.ts', dest: '.' },

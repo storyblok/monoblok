@@ -9,14 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { loadBridge } from './bridge';
 
-const renderMock = vi.fn(() => '<p>Rendered HTML</p>');
-vi.mock('@storyblok/richtext', () => {
-  return {
-    richTextResolver: vi.fn(() => ({
-      render: renderMock,
-    })),
-  };
+const { renderMock, richTextResolverMock } = vi.hoisted(() => {
+  const renderMock = vi.fn(() => '<p>Rendered HTML</p>');
+  const richTextResolverMock = vi.fn(() => ({ render: renderMock }));
+  return { renderMock, richTextResolverMock };
 });
+vi.mock('@storyblok/richtext', () => ({
+  richTextResolver: richTextResolverMock,
+}));
 describe('@storyblok/js', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -299,29 +299,24 @@ describe('@storyblok/js', () => {
       vi.clearAllMocks();
     });
 
-    it('should call richTextResolver with correct options', () => {
+    it('should call render with the provided data', () => {
       const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
-      const options = {
-        resolvers: {
-          paragraph: () => '<p>test</p>',
-        },
-      };
 
-      renderRichText(data, options);
+      renderRichText(data);
 
+      expect(richTextResolverMock).toHaveBeenCalledWith(undefined);
       expect(renderMock).toHaveBeenCalledWith(data);
     });
 
-    it('calls render with the provided data', () => {
+    it('should forward tiptapExtensions to richTextResolver', () => {
       const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
       const options = {
-        resolvers: {
-          paragraph: () => '<p>test</p>',
-        },
+        tiptapExtensions: { link: { name: 'link' } },
       };
 
-      renderRichText(data, options);
+      renderRichText(data, options as any);
 
+      expect(richTextResolverMock).toHaveBeenCalledWith(options);
       expect(renderMock).toHaveBeenCalledWith(data);
     });
   });

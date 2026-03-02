@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 const routes = [
   { path: '/', name: 'Home', component: () => import('../pages/Home.vue') },
   {
-    path: '/vue/test-richtext',
+    path: '/richtext',
     name: 'RichTextDemo',
     component: () => import('../pages/RichTextDemo.vue'),
   },

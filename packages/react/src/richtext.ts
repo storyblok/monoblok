@@ -1,9 +1,5 @@
 import StoryblokComponent from './core/storyblok-component';
-import { createComponentResolver, createRichTextHook } from './core/richtext-hoc';
-
-export const componentResolver = createComponentResolver(StoryblokComponent, {
-  isServerContext: false,
-});
+import { createRichTextHook } from './core/richtext-hoc';
 
 export const useStoryblokRichText = createRichTextHook(StoryblokComponent, {
   isServerContext: false,

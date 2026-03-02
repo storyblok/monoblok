@@ -1,33 +1,116 @@
-<h1 id="heading-1">Heading 1</h1>
-<p>This is a paragraph with <strong>bold</strong> and <em>italic</em> text.</p>
-<h2 id="heading-2">Heading 2</h2>
-<p>Another paragraph.</p>
-<blockquote>
-  <p>This is a blockquote example.</p>
-</blockquote>
-<p>Here is some <code>inline code</code> in a sentence.</p>
-<p>Here is a <a href="https://www.storyblok.com/">Storyblok link</a> in a sentence.</p>
-<p>Strikethrough example: <del>deleted text</del></p>
-<p>Line with a hard break here.<br />Next line after break.</p>
-<hr />
-<pre><code><span class="hljs-keyword">const</span> foo = <span class="hljs-string">'bar'</span><span class="hljs-comment">;</span>
-console.<span class="hljs-built_in">log</span>(foo)<span class="hljs-comment">;</span>
-</code></pre>
+<!-- Richtext Kitchen Sink — every supported node and mark type -->
+
+<!-- ── Headings (h1–h6) ─────────────────────────────────────────────── -->
+
+<h1>Heading 1</h1>
+<h2>Heading 2</h2>
+<h3>Heading 3</h3>
+<h4>Heading 4</h4>
+<h5>Heading 5</h5>
+<h6>Heading 6</h6>
+
+<!-- ── Paragraphs ────────────────────────────────────────────────────── -->
+
+<p>This is a plain paragraph.</p>
+<p>This paragraph has <strong>bold</strong>, <em>italic</em>, <u>underlined</u>, <s>strikethrough</s>, and <code>inline code</code> text.</p>
+<p>This paragraph has <sup>superscript</sup> and <sub>subscript</sub> text.</p>
+<p>This paragraph has <mark>highlighted</mark> text.</p>
+
+<!-- ── Combined marks ────────────────────────────────────────────────── -->
+
+<p><strong><em>Bold and italic combined.</em></strong></p>
+<p><strong><em><u>Bold, italic, and underlined combined.</u></em></strong></p>
+<p><strong>Bold with <em>partial italic</em> inside.</strong></p>
+
+<!-- ── Links ─────────────────────────────────────────────────────────── -->
+
+<p>A <a href="https://www.storyblok.com/" target="_blank">URL link (new tab)</a> in a paragraph.</p>
+<p>A <a href="/about" data-uuid="abc-123" data-linktype="story">story link</a> in a paragraph.</p>
+<p>A <a href="/about" data-uuid="abc-123" data-anchor="section-1" data-linktype="story">story link with anchor</a> in a paragraph.</p>
+<p>An <a href="mailto:info@storyblok.com" data-linktype="email">email link</a> in a paragraph.</p>
+<p>An <a href="https://a.storyblok.com/f/000000/sample.pdf" data-linktype="asset">asset link</a> in a paragraph.</p>
+<p>A <a href="tel:+44 3457 911 911">telephone link</a> in a paragraph.</p>
+<p><strong><a href="https://example.com">Bold link</a></strong> and <em><a href="https://example.com">italic link</a></em>.</p>
+<p><a href="https://example.com"><strong>Bold</strong>, normal, and <em>italic</em> inside link</a>.</p>
+
+<h2>Heading with <a href="https://example.com">a link</a> inside</h2>
+
+<!-- ── Anchor mark ───────────────────────────────────────────────────── -->
+
+<p><span id="my-anchor">Text with an anchor mark.</span></p>
+
+<!-- ── Bullet list ───────────────────────────────────────────────────── -->
+
 <ul>
-  <li>Unordered list item 1</li>
-  <li>Unordered list item 2</li>
-  <li><p>Unordered list item 3</p></li>
-  <li><p>Ordered list item 1</p></li>
-  <li>Ordered list item 2</li>
-  <li>Ordered list item 3</li>
+  <li>Bullet item 1</li>
+  <li>Bullet item 2 with <strong>bold</strong></li>
+  <li>Bullet item 3
+    <ul>
+      <li>Nested bullet item A</li>
+      <li>Nested bullet item B</li>
+    </ul>
+  </li>
 </ul>
-<p>
-  <img
-    src="https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg"
-    alt="Alt text for image"
-    title="Image Title"
-  />
-</p>
+
+<!-- ── Ordered list ──────────────────────────────────────────────────── -->
+
+<ol>
+  <li>Ordered item 1</li>
+  <li>Ordered item 2 with <em>italic</em></li>
+  <li>Ordered item 3
+    <ol>
+      <li>Nested ordered item A</li>
+    </ol>
+  </li>
+</ol>
+
+<!-- ── Mixed nested list ─────────────────────────────────────────────── -->
+
+<ul>
+  <li>Bullet parent
+    <ol>
+      <li>Ordered child 1</li>
+      <li>Ordered child 2</li>
+    </ol>
+  </li>
+</ul>
+
+<!-- ── Blockquote ────────────────────────────────────────────────────── -->
+
+<blockquote>
+  <p>This is a blockquote with <em>italic</em> text inside.</p>
+</blockquote>
+
+<blockquote>
+  <blockquote>
+    <p>Nested blockquote.</p>
+  </blockquote>
+</blockquote>
+
+<!-- ── Code block ────────────────────────────────────────────────────── -->
+
+<pre><code class="language-javascript">function greet(name) {
+  return `Hello, ${name}!`;
+}
+
+console.log(greet('Storyblok'));</code></pre>
+
+<pre><code>Code block without a language.</code></pre>
+
+<!-- ── Horizontal rule ───────────────────────────────────────────────── -->
+
+<hr>
+
+<!-- ── Hard break ────────────────────────────────────────────────────── -->
+
+<p>Line one<br>Line two (after hard break)<br>Line three</p>
+
+<!-- ── Image ─────────────────────────────────────────────────────────── -->
+
+<img src="https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg" alt="Placeholder image" title="A sample image">
+
+<!-- ── Table ─────────────────────────────────────────────────────────── -->
+
 <table>
   <thead>
     <tr>
@@ -38,19 +121,60 @@ console.<span class="hljs-built_in">log</span>(foo)<span class="hljs-comment">;<
   </thead>
   <tbody>
     <tr>
-      <td>R1C1</td>
-      <td>R1C2</td>
-      <td>R1C3</td>
+      <td>Cell 1</td>
+      <td><strong>Bold cell</strong></td>
+      <td>Cell 3</td>
     </tr>
     <tr>
-      <td><strong>R2C1</strong></td>
-      <td><em>R2C2</em></td>
-      <td>R2C3</td>
+      <td><em>Italic cell</em></td>
+      <td><a href="https://example.com">Link cell</a></td>
+      <td><code>Code cell</code></td>
     </tr>
     <tr>
-      <td>R3C1</td>
-      <td>R3C2</td>
-      <td>R3C3</td>
+      <td colspan="2">Colspan 2 cell</td>
+      <td>Normal cell</td>
     </tr>
   </tbody>
 </table>
+
+<!-- ── Table without thead ───────────────────────────────────────────── -->
+
+<table>
+  <tbody>
+    <tr>
+      <td>Body-only A</td>
+      <td>Body-only B</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ── Details / Accordion ───────────────────────────────────────────── -->
+
+<details>
+  <summary>Click to expand</summary>
+  <p>Hidden content inside a details element.</p>
+</details>
+
+<h1>Product Overview</h1>
+<p>Welcome to our <strong>product page</strong>. For more details, visit <a href="https://example.com/docs" target="_blank">our documentation</a>.</p>
+<h2>Features</h2>
+<ul>
+  <li>Fast performance with <code>O(1)</code> lookups</li>
+  <li>Built-in <em>type safety</em></li>
+  <li>Comprehensive API</li>
+</ul>
+<h2>Pricing</h2>
+<table>
+  <thead>
+    <tr><th>Plan</th><th>Price</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Free</td><td>$0/mo</td></tr>
+    <tr><td>Pro</td><td><strong>$29/mo</strong></td></tr>
+  </tbody>
+</table>
+<h2>Contact</h2>
+<p>Email us at <a href="mailto:support@example.com">support@example.com</a> or call <a href="tel:+1-555-0123">+1-555-0123</a>.</p>
+<hr>
+<blockquote><p>The best product I've ever used! — <em>Customer Review</em></p></blockquote>
+<pre><code class="language-bash">npm install @example/product</code></pre>

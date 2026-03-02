@@ -12,6 +12,7 @@ export default defineConfig({
   integrations: [
     storyblok({
       accessToken: 'xUMqa0Ka06Cfnrjb4M1e5Qtt',
+      enableFallbackComponent: true,
     }),
   ],
   // Add path aliases configuration

@@ -175,7 +175,7 @@ import CodeBlock from './CodeBlock.vue';
             {
               type: 'link',
               attrs: {
-                href: 'https://alvarosaburido.dev',
+                href: 'https://example.com',
                 uuid: null,
                 anchor: null,
                 target: '_blank',
@@ -211,13 +211,13 @@ import CodeBlock from './CodeBlock.vue';
       type: 'paragraph',
       content: [
         {
-          text: 'hola@alvarosaburido.dev',
+          text: 'jane@example.com',
           type: 'text',
           marks: [
             {
               type: 'link',
               attrs: {
-                href: 'hola@alvarosaburido.dev',
+                href: 'jane@example.com',
                 uuid: null,
                 anchor: null,
                 target: null,

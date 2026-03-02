@@ -6,14 +6,14 @@ export { default as StoryblokServerStory } from '../server/server-story';
 export { default as StoryblokServerRichText } from '../server/server-storyblok-richtext-component';
 
 export {
+  asTag,
   BlockTypes,
+  ComponentBlok,
   MarkTypes,
   richTextResolver,
   type StoryblokRichTextImageOptimizationOptions,
   type StoryblokRichTextNode,
-  type StoryblokRichTextNodeResolver,
   type StoryblokRichTextNodeTypes,
   type StoryblokRichTextOptions,
-  type StoryblokRichTextResolvers,
   TextTypes,
 } from '@storyblok/js';

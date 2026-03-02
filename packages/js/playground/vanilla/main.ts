@@ -1,12 +1,11 @@
 /* eslint-disable no-console */
+import { Mark } from '@tiptap/core';
 import type {
-  StoryblokRichTextNode,
   StoryblokRichTextOptions,
 } from '@storyblok/js';
 import {
   apiPlugin,
   loadStoryblokBridge,
-  MarkTypes,
   renderRichText,
   storyblokInit,
   useStoryblokBridge,
@@ -52,12 +51,17 @@ window.loadStoryblokBridgeScript = () => {
   loadStoryblokBridge();
 };
 
+const CustomLink = Mark.create({
+  name: 'link',
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
+    return ['button', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
+  },
+});
+
 window.renderRichText = () => {
   const options: StoryblokRichTextOptions = {
-    resolvers: {
-      [MarkTypes.LINK]: (node: StoryblokRichTextNode<string>) => {
-        return `<button href="${node.attrs?.href}" target="${node.attrs?.target}">${node.attrs?.href}</button>`;
-      },
+    tiptapExtensions: {
+      link: CustomLink,
     },
   };
   const html = renderRichText(richTextFixture as any, options);

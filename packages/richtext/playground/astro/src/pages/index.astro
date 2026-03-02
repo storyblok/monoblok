@@ -1,15 +1,30 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { useStoryblokApi } from "@storyblok/astro";
-import { richTextResolver } from "@storyblok/richtext";
-import { markdownToStoryblokRichtext } from "@storyblok/richtext/markdown-parser";
-import { htmlToStoryblokRichtext } from "@storyblok/richtext/html-parser";
+import { useStoryblokApi } from '@storyblok/astro';
+import {
+  richTextResolver,
+  type StoryblokRichTextOptions,
+  ComponentBlok,
+  segmentStoryblokRichText,
+} from '@storyblok/richtext';
+import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
+import { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
 
 const storyblokApi = useStoryblokApi();
-const { data } = await storyblokApi.get("cdn/stories/home", {
-  version: "draft",
+const { data } = await storyblokApi.get('cdn/stories/home', {
+  version: 'draft',
 });
-const renderedRichTextStory = richTextResolver().render(data.story.content.richtext);
+
+const options: StoryblokRichTextOptions = {
+  tiptapExtensions: {
+    blok: ComponentBlok.configure({
+      renderComponent: (props) => {
+        return `<pre>${JSON.stringify({ props }, null, 2)}</pre>`;
+      },
+    }),
+  },
+};
+const renderedRichTextStory = segmentStoryblokRichText(data.story.content.richtext);
 
 import testMarkdown from '/test.md?url&raw';
 
@@ -18,15 +33,28 @@ console.log({ markdownToStoryblokDoc });
 const renderedRichTextMarkdown = richTextResolver().render(markdownToStoryblokDoc);
 
 import testHTML from '/test.html?url&raw';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
 
 const htmlToStoryblokDoc = htmlToStoryblokRichtext(testHTML);
-console.log({ markdownToStoryblokDoc });
+console.log({ htmlToStoryblokDoc });
 const renderedRichTextHTML = richTextResolver().render(htmlToStoryblokDoc);
-
 ---
 
 <Layout>
-	<div set:html={renderedRichTextStory} />
+  {
+    renderedRichTextStory.map((segment, index) => {
+      if (segment.type === 'html') {
+        return <div set:html={segment.content} />;
+      }
+      if (segment.type === 'blok') {
+        if (segment.blok.component === 'test') {
+          return <pre>{JSON.stringify({ segment }, null, 2)}</pre>;
+        }
+        return <StoryblokComponent blok={segment.blok} />;
+      }
+    })
+  }
+  <div set:html={renderedRichTextStory} />
   <hr />
   <hr />
   <hr />

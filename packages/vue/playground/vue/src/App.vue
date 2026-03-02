@@ -20,7 +20,7 @@ watch([route], () => setBodyClass(route.name?.toString() ?? ''));
               <RouterLink to="/">Home</RouterLink>
             </li>
             <li>
-              <RouterLink to="/vue/test-richtext">Richtext</RouterLink>
+              <RouterLink to="/richtext">Richtext</RouterLink>
             </li>
           </ul>
         </nav>

@@ -11,6 +11,8 @@
   "dependencies": {
     "@storyblok/react": "workspace:*",
     "@tailwindcss/typography": "^0.5.16",
+    "@tiptap/core": "^3.10.2",
+    "@tiptap/extension-heading": "^3.10.2",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

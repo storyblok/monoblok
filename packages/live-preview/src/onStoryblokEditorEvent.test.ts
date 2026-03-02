@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onStoryblokEditorEvent } from './onStoryblokEditorEvent';
 
-import { isBrowser } from '../src/utils/isBrowser';
-import { isInEditor } from '../src/utils/isInEditor';
+import { isBrowser } from './utils/isBrowser';
+import { isInEditor } from './utils/isInEditor';
 
 // ---- mocks ----
 

@@ -1,0 +1,31 @@
+{
+  "id": 1000,
+  "name": "page",
+  "display_name": "Page",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "headline": { "type": "text", "pos": 0, "display_name": "Headline" },
+    "body": {
+      "type": "bloks",
+      "pos": 1,
+      "display_name": "Body",
+      "restrict_components": false
+    },
+    "hero_image": {
+      "type": "asset",
+      "pos": 2,
+      "display_name": "Hero image",
+      "filetypes": ["images"]
+    },
+    "seo_title": { "type": "text", "pos": 3, "display_name": "SEO title" },
+    "seo_description": {
+      "type": "textarea",
+      "pos": 4,
+      "display_name": "SEO description"
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

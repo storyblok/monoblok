@@ -1,0 +1,22 @@
+{
+  "id": 1004,
+  "name": "teaser",
+  "display_name": "Teaser",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "image": {
+      "type": "asset",
+      "pos": 0,
+      "display_name": "Image",
+      "filetypes": ["images"]
+    },
+    "headline": { "type": "text", "pos": 1, "display_name": "Headline" },
+    "text": { "type": "textarea", "pos": 2, "display_name": "Text" },
+    "link": { "type": "multilink", "pos": 3, "display_name": "Link" },
+    "link_label": { "type": "text", "pos": 4, "display_name": "Link label" }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

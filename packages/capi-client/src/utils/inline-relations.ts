@@ -96,7 +96,7 @@ export const buildRelationMap = (rels: Array<StoryCapi> | undefined): Map<string
   return relationMap;
 };
 
-export function resolveFieldValue(
+function resolveFieldValue(
   value: unknown,
   relationMap: ReadonlyMap<string, StoryCapi>,
   relationPaths: ReadonlySet<RelationPath>,

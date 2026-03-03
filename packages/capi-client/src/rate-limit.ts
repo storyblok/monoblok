@@ -62,16 +62,15 @@ function createThrottle(initialLimit: number, intervalMs = DEFAULT_INTERVAL_MS):
   const queue: Array<() => void> = [];
 
   const tryNext = () => {
-    if (queue.length === 0 || activeCount >= limit) {
-      return;
+    while (queue.length > 0 && activeCount < limit) {
+      activeCount++;
+      const run = queue.shift()!;
+      run();
+      setTimeout(() => {
+        activeCount--;
+        tryNext();
+      }, intervalMs);
     }
-    activeCount++;
-    const run = queue.shift()!;
-    run();
-    setTimeout(() => {
-      activeCount--;
-      tryNext();
-    }, intervalMs);
   };
 
   const execute = <T>(fn: () => Promise<T>): Promise<T> => {

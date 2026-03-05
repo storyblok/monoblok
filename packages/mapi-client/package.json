@@ -44,14 +44,13 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "packageManager": "pnpm@10.10.0",
   "dependencies": {
     "@storyblok/region-helper": "workspace:*"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.80.1",
     "@storyblok/openapi": "workspace:*",
-    "@types/node": "^24.1.0",
+    "@types/node": "^24.11.0",
     "change-case": "^5.4.4",
     "glob": "^10.3.10",
     "mustache": "^4.2.0",

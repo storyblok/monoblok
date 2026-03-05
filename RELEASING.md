@@ -160,6 +160,38 @@ pnpm nx release 1.2.3 --skip-publish
 
 # Without GitHub release
 pnpm nx release version 1.2.3
+
+### Advanced Release Options
+
+The release script (`pnpm release`) supports several advanced options for more granular control:
+
+#### Usage Examples
+
+```bash
+# Specify a version explicitly
+pnpm release --version=0.1.0
+
+# Filter to specific projects
+pnpm release --projects=@storyblok/astro
+
+# Mark as first release
+pnpm release --first-release
+
+# Combine options (order does not matter)
+pnpm release --version=0.1.0 --projects=@storyblok/astro --first-release --dry-run
+```
+
+#### Option Reference
+
+| Option                | Description                                                      | Example                                 |
+|-----------------------|------------------------------------------------------------------|-----------------------------------------|
+| `--version`           | Set the release version (e.g., 1.2.3). Takes priority if present. | `--version=1.2.3` or `--version 1.2.3`  |
+| positional version    | Version as first argument (if `--version` not used).             | `pnpm release 1.2.3`                    |
+| `--projects`          | Only release the specified project(s).                           | `--projects=@storyblok/astro`           |
+| `--first-release`     | Mark this as the first release for the project(s).               | `--first-release`                       |
+| `--dry-run`, `-d`     | Run the release in dry-run mode (no changes made).               | `--dry-run` or `-d`                     |
+
+You can combine these options as needed. The script will always place the version (if specified) immediately after `pnpm nx release` in the underlying command.
 ```
 
 ### Version Bumps

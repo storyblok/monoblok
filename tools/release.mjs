@@ -9,7 +9,6 @@ const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
 
 // Parse command line arguments
 const args = argv.slice(2);
-const isDryRun = args.includes('--dry-run') || args.includes('-d');
 const RED = '\x1b[31m';
 const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
@@ -85,6 +84,49 @@ function askConfirmation(question) {
   });
 }
 
+let versionArg = null;
+let projectsArg = null;
+let firstRelease = false;
+let isDryRun = false;
+const filteredArgs = [];
+
+const isVersion = (value) => /^\d+\.\d+\.\d+/.test(value);
+
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+
+  if (arg === '--dry-run' || arg === '-d') {
+    isDryRun = true;
+    continue;
+  }
+
+  if (arg === '--first-release') {
+    firstRelease = true;
+    continue;
+  }
+
+  if (arg === '--version') {
+    const next = args[i + 1];
+    if (next && isVersion(next)) {
+      versionArg = next;
+      i++;
+      continue;
+    }
+  }
+
+  if (arg.startsWith('--version=')) {
+    versionArg = arg.slice('--version='.length);
+    continue;
+  }
+
+  if (arg.startsWith('--projects=')) {
+    projectsArg = arg.slice('--projects='.length);
+    continue;
+  }
+
+  filteredArgs.push(arg);
+}
+
 async function main() {
   log('\n🚀 Monoblok Release Script\n', GREEN);
 
@@ -153,11 +195,14 @@ async function main() {
   log('━'.repeat(50), BLUE);
 
   try {
-    // For pre-release branches, use the branch name as the preid (e.g., alpha, beta, next)
-    // This creates versions like 7.4.0-alpha.0 instead of 7.4.0
-    const dryRunFlag = isDryRun ? ' --dry-run' : '';
-    const preidFlag = isPrerelease ? ` --preid=${currentBranch}` : '';
-    const releaseCommand = `pnpm nx release --skip-publish${preidFlag}${dryRunFlag}`;
+    // Build release command with correct version position
+    let releaseCommand = 'pnpm nx release';
+    if (versionArg) releaseCommand += ` ${versionArg}`;
+    releaseCommand += ' --skip-publish';
+    if (isPrerelease) releaseCommand += ` --preid=${currentBranch}`;
+    if (projectsArg) releaseCommand += ` --projects=${projectsArg}`;
+    if (firstRelease) releaseCommand += ' --first-release';
+    if (isDryRun) releaseCommand += ' --dry-run';
 
     log(`Running: ${releaseCommand}\n`, BLUE);
     execCommand(releaseCommand);

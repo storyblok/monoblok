@@ -28,6 +28,12 @@ const baseConfig = [
           normal: 'never',
         },
       }],
+      'vue/object-property-newline': [
+        'error',
+        {
+          allowAllPropertiesOnSameLine: true,
+        },
+      ],
     },
   },
 ];

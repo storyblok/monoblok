@@ -11,9 +11,10 @@ export function createSpacesResource(deps: ResourceDeps) {
     ): Promise<ApiResponse<SpacesGetResponses[200], ThrowOnError>> => {
       const { signal, throwOnError } = options;
       const requestPath = '/v2/cdn/spaces/me';
-      return requestWithCache<SpacesGetResponses[200], ThrowOnError>('GET', requestPath, {}, () => {
+      return requestWithCache<SpacesGetResponses[200], ThrowOnError>('GET', requestPath, {}, (requestQuery: Record<string, unknown>) => {
         return asApiResponse<SpacesGetResponses[200], ThrowOnError>(getSpaceApi({
           client,
+          query: requestQuery as never,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
         }));

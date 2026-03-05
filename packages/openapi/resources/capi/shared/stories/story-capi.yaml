@@ -10,12 +10,14 @@ allOf:
       - default_full_slug
     properties:
       default_full_slug:
-        type: string
-        nullable: true
+        type:
+          - string
+          - "null"
         description: Contains the complete slug of the default language (if the Translatable Slugs app is installed)
       release_id:
-        type: integer
-        nullable: true
+        type:
+          - integer
+          - "null"
         description: ID of the current release (can be requested with the from_release API parameter)
       lang:
         type: string

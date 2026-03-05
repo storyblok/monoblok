@@ -32,8 +32,9 @@ properties:
     type: string
     description: The complete name provided for the story
   parent_id:
-    type: integer
-    nullable: true
+    type:
+      - integer
+      - "null"
     description: ID of the parent folder. Null for root-level stories.
   group_id:
     type: string
@@ -49,9 +50,10 @@ properties:
     format: date-time
     description: Creation date yyyy-MM-dd'T'HH:mm:ssZ
   sort_by_date:
-    type: string
+    type:
+      - string
+      - "null"
     format: date
-    nullable: true
     description: Date defined in the story's entry configuration YYYY-mm-dd
   tag_list:
     type: array
@@ -63,9 +65,10 @@ properties:
     format: date-time
     description: Latest update date yyyy-MM-dd'T'HH:mm:ssZ
   published_at:
-    type: string
+    type:
+      - string
+      - "null"
     format: date-time
-    nullable: true
     description: Latest publishing date yyyy-MM-dd'T'HH:mm:ssZ
   uuid:
     type: string
@@ -78,8 +81,9 @@ properties:
     type: string
     description: The slug specific for the story
   path:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: Value of the real path defined in the story's entry configuration (usually required for the Visual Editor)
   full_slug:
     type: string
@@ -88,16 +92,21 @@ properties:
     type: boolean
     description: true if the story is defined as root for the folder
   meta_data:
-    type: object
-    nullable: true
+    type:
+      - object
+      - "null"
+    additionalProperties: true
     description: Object to store non-editable data that is exclusively maintained with the Management API
   first_published_at:
-    type: string
+    type:
+      - string
+      - "null"
     format: date-time
-    nullable: true
     description: First publishing date yyyy-MM-dd'T'HH:mm:ssZ
   translated_slugs:
-    type: array
+    type:
+      - array
+      - "null"
     description: Array of translated slug objects (if the app Translatable Slugs is installed)
     items:
       $ref: ./story-translated-slug.yaml

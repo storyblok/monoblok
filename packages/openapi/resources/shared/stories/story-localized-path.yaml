@@ -10,13 +10,15 @@ properties:
     type: string
     description: Value of the real path defined in the story's entry configuration
   name:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: The complete name provided for the story
   lang:
     type: string
     description: Language code of the current language
   published:
-    type: boolean
-    nullable: true
+    type:
+      - boolean
+      - "null"
     description: true if a story is currently published, even if it has unpublished changes

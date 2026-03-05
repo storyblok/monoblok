@@ -65,8 +65,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/DatasourceEntry'
                   cv:
-                    type: integer
-                    nullable: true
+                    type:
+                      - integer
+                      - "null"
                     description: Cache version Unix timestamp
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest

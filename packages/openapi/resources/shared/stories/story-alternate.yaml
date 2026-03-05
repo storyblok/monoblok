@@ -30,6 +30,7 @@ properties:
     type: boolean
     description: true if the instance constitutes a folder
   parent_id:
-    type: integer
-    nullable: true
+    type:
+      - integer
+      - "null"
     description: ID of the parent folder

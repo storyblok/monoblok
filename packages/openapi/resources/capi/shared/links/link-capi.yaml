@@ -23,12 +23,14 @@ properties:
     type: string
     description: The slug of the link
   path:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: The path of the link (can be null for root)
   parent_id:
-    type: integer
-    nullable: true
+    type:
+      - integer
+      - "null"
     description: ID of the parent link (null for root)
   name:
     type: string
@@ -48,6 +50,20 @@ properties:
   real_path:
     type: string
     description: The real path of the link
+  published_at:
+    type:
+      - string
+      - "null"
+    format: date-time
+    description: Publishing date (only present when include_dates=1)
+  created_at:
+    type: string
+    format: date-time
+    description: Creation date (only present when include_dates=1)
+  updated_at:
+    type: string
+    format: date-time
+    description: Last update date (only present when include_dates=1)
   alternates:
     type: array
     description: Array of alternate language versions (only present when translations are active)
@@ -61,8 +77,9 @@ properties:
           type: string
           description: Slug in the alternate language
         path:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: Path in the alternate language
         published:
           type: boolean

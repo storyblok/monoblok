@@ -1,3 +1,4 @@
+export { default as storyblokEditable } from './editable';
 export { loadStoryblokBridge } from './loadStoryblokBridge';
 export { onStoryblokEditorEvent } from './onStoryblokEditorEvent';
 export { isInEditor } from './utils/isInEditor';

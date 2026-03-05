@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/live-preview",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "description": "Official Live Preview integration for the Storyblok Headless CMS",
   "author": "Storyblok",

@@ -207,12 +207,20 @@ export const createApiClient = <
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+    options: { throttle?: boolean } = {},
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
     const query = currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
+    const useThrottle = options.throttle ?? true;
+
+    const loadNetworkResult = async () => {
+      return useThrottle
+        ? throttleManager.execute(path, rawQuery, () => fetchFn(query))
+        : fetchFn(query);
+    };
 
     if (!cacheEnabled) {
-      const networkResult = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      const networkResult = await loadNetworkResult();
       throttleManager.adaptToResponse(networkResult.response);
       // widen conditional generic — updateCv only reads cv, TData irrelevant
       await updateCv(networkResult as ApiResponse<unknown>);
@@ -224,7 +232,7 @@ export const createApiClient = <
     const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
-      const result = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      const result = await loadNetworkResult();
       throttleManager.adaptToResponse(result.response);
       // drop ThrowOnError for cache storage; value is restored after strategy returns
       return cacheSuccessResult(key, result as ApiResponse<TData>);

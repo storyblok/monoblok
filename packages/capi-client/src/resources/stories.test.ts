@@ -309,6 +309,49 @@ describe('inlineRelations', () => {
     expect(result.data?.story.content.author).toMatchObject({ uuid: 'author-1' });
   });
 
+  it('should not deadlock inline relation fetches with fixed rateLimit', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rel_uuids: ['author-1'],
+          story: makeStory('page-1', {
+            _uid: 'page-content-1',
+            author: 'author-1',
+            component: 'page',
+          }),
+        });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/stories', () => {
+        return HttpResponse.json({
+          stories: [
+            makeStory('author-1', {
+              _uid: 'author-content-1',
+              component: 'author',
+              name: 'Kai',
+            }),
+          ],
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+      rateLimit: 1,
+    });
+
+    const result = await Promise.race([
+      client.stories.get('test-story', {
+        query: { resolve_relations: 'page.author' },
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timed out waiting for inline relations request.')), 2_000);
+      }),
+    ]);
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.story.content.author).toMatchObject({ uuid: 'author-1' });
+  });
+
   it('should throw when relation fetching fails', async () => {
     vi.useFakeTimers();
     server.use(

@@ -12,8 +12,6 @@ export type HttpRequestOptions = Omit<
   'method' | 'security' | 'url'
 >;
 
-export type RequestConfigOverrides = Pick<HttpRequestOptions, 'throwOnError'>;
-
 export type HttpRequestMethod = <TData = unknown>(
   path: string,
   options?: HttpRequestOptions,
@@ -26,6 +24,7 @@ export interface ResourceDeps {
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+    options?: { throttle?: boolean },
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   asApiResponse: <TData, ThrowOnError extends boolean = false>(p: Promise<unknown>) => Promise<ApiResponse<TData, ThrowOnError>>;
 }

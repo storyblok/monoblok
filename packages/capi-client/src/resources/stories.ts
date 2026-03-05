@@ -77,13 +77,14 @@ export function createStoriesResource<InlineRelations extends boolean>(
       const requestPath = `/v2/cdn/stories/${identifier}`;
       type Res = ApiResponse<GetResponse<InlineRelations>, ThrowOnError>;
       return requestWithCache<GetResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<Res> => {
-        const response = await asApiResponse<GetResponse<InlineRelations>, ThrowOnError>(get({
-          client,
-          path: { identifier },
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        const response = await throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<GetResponse<InlineRelations>, ThrowOnError>(get({
+            client,
+            path: { identifier },
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
 
         if (!inlineRelations || response.data === undefined) {
           return response as Res; // TS cannot resolve conditional ApiResponse with generic ThrowOnError
@@ -116,7 +117,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             story: inlineStoryContent(response.data.story as StoryCapi, relationPaths, relationMap),
           },
         } as Res; // spread loses conditional type precision; result matches Res structurally
-      });
+      }, { throttle: false });
     },
 
     getAll: async <ThrowOnError extends boolean = false>(
@@ -126,12 +127,13 @@ export function createStoriesResource<InlineRelations extends boolean>(
       const requestPath = '/v2/cdn/stories';
       type ResAll = ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>;
       return requestWithCache<GetAllResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<ResAll> => {
-        const response = await asApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>(getAll({
-          client,
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        const response = await throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>(getAll({
+            client,
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
 
         if (!inlineRelations || response.data === undefined) {
           return response as ResAll; // TS cannot resolve conditional ApiResponse with generic ThrowOnError
@@ -164,7 +166,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             stories: inlineStoriesContent(response.data.stories as StoryCapi[], relationPaths, relationMap),
           },
         } as ResAll; // spread loses conditional type precision; result matches ResAll structurally
-      });
+      }, { throttle: false });
     },
   };
 }

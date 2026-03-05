@@ -33,7 +33,8 @@ properties:
     description: The complete name provided for the story
   parent_id:
     type: integer
-    description: ID of the parent folder
+    nullable: true
+    description: ID of the parent folder. Null for root-level stories.
   group_id:
     type: string
     format: uuid

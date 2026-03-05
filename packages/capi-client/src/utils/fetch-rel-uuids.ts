@@ -1,7 +1,7 @@
-import type { Client } from '../generated/stories/client';
+import type { Client } from '../generated/shared/client';
 import { getAll } from '../generated/stories/sdk.gen';
 import type { StoryCapi } from '../generated/stories/types.gen';
-import type { ThrottleManager } from '../rate-limit';
+import type { ThrottleManager } from './rate-limit';
 import { chunkArray } from './array';
 
 const UUID_CHUNK_SIZE = 50;

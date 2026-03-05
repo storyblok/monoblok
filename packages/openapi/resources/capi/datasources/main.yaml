@@ -56,9 +56,9 @@ paths:
                     type: integer
                     description: Cache version Unix timestamp
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
   /v2/cdn/datasources/{id}:
     get:
       operationId: get
@@ -97,9 +97,9 @@ paths:
                     type: integer
                     description: Cache version Unix timestamp
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource not found
 components:

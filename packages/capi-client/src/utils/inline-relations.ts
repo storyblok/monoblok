@@ -13,6 +13,7 @@ const isComponentNode = (value: unknown): value is ComponentNode => {
     return false;
   }
 
+  // TS narrows to `object` which lacks properties; cast to Partial to access fields in the guard.
   const node = value as Partial<ComponentNode>;
   return typeof node.component === 'string' && typeof node._uid === 'string';
 };
@@ -30,6 +31,7 @@ const inlineStoryContentInternal = (
 
   const clonedStory = structuredClone(story);
   resolved.set(story.uuid, clonedStory);
+  // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
   clonedStory.content = resolveNode(clonedStory.content, relationMap, relationPaths, resolved) as StoryCapi['content'];
   return clonedStory;
 };
@@ -48,6 +50,7 @@ function resolveNode(
     return value;
   }
 
+  // TS narrows to `object` which lacks an index signature; cast needed for property iteration.
   const result = value as Record<string, unknown>;
 
   if (isComponentNode(result)) {
@@ -56,6 +59,7 @@ function resolveNode(
         continue;
       }
 
+      // TS cannot verify template literal types from runtime string values.
       const relationPath = `${result.component}.${fieldName}` as RelationPath;
       result[fieldName] = relationPaths.has(relationPath)
         ? resolveFieldValue(fieldValue, relationMap, relationPaths, resolved)
@@ -72,7 +76,7 @@ function resolveNode(
   return result;
 }
 
-export const parseResolveRelations = (query: Record<string, unknown>): string[] => {
+export const parseResolveRelations = (query: Record<string, unknown>): RelationPath[] => {
   if (typeof query.resolve_relations !== 'string') {
     return [];
   }
@@ -80,7 +84,7 @@ export const parseResolveRelations = (query: Record<string, unknown>): string[] 
   return query.resolve_relations
     .split(',')
     .map(path => path.trim())
-    .filter((path): path is string => {
+    .filter((path): path is RelationPath => {
       const [component = '', field = '', ...rest] = path.split('.');
       return component.length > 0 && field.length > 0 && rest.length === 0;
     });
@@ -120,20 +124,20 @@ function resolveFieldValue(
 
 export const inlineStoryContent = (
   story: StoryCapi,
-  relationPaths: string[],
+  relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, StoryCapi>,
 ): StoryCapi => {
-  const normalizedPaths = new Set(relationPaths as RelationPath[]);
+  const normalizedPaths = new Set(relationPaths);
   const resolved = new Map<string, StoryCapi>();
   return inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved);
 };
 
 export const inlineStoriesContent = (
   stories: Array<StoryCapi>,
-  relationPaths: string[],
+  relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, StoryCapi>,
 ): Array<StoryCapi> => {
-  const normalizedPaths = new Set(relationPaths as RelationPath[]);
+  const normalizedPaths = new Set(relationPaths);
   const resolved = new Map<string, StoryCapi>();
   return stories.map(story => inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved));
 };

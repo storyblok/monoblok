@@ -26,9 +26,9 @@ paths:
                   space:
                     $ref: ../shared/spaces/space-capi.yaml
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
 components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes

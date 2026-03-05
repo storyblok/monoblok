@@ -164,6 +164,7 @@ pushCmd
         createStoryPlaceholderStream({
           maps,
           existingTargetStories,
+          isCrossSpace: fromSpace !== space,
           transports: {
             createStory: options.dryRun
               ? async (story: Story) => story

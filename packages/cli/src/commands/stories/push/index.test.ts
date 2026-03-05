@@ -1298,6 +1298,31 @@ describe('stories push command', () => {
     expect(files).toContain(stripDriveLetter(storyBFilePath));
   });
 
+  it('should create a new story when same-space slug matches but UUID differs', async () => {
+    // Simulates: user pulled story, deleted it, created a different story at the same slug.
+    const localStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'story-a',
+    });
+    // Target space has a different story at the same slug (different UUID).
+    const targetStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'story-a',
+    });
+
+    preconditions.canLoadStories([localStory]);
+    preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+    preconditions.canListStories([targetStory]);
+    const [createdStory] = preconditions.canCreateStories([localStory]);
+    preconditions.canUpdateStories([createdStory]);
+
+    // Same-space push (no --from flag)
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // UUID mismatch: story should be created, not matched by slug.
+    expect(actions.createStory).toHaveBeenCalled();
+  });
+
   it('should match existing stories by full_slug in a duplicated space', async () => {
     const sourceSpace = '99999';
     const targetSpace = DEFAULT_SPACE;

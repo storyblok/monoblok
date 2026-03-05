@@ -262,6 +262,7 @@ export interface ExistingTargetStories {
 export const createStoryPlaceholderStream = ({
   maps,
   existingTargetStories,
+  isCrossSpace,
   transports,
   onIncrement,
   onStorySuccess,
@@ -270,6 +271,7 @@ export const createStoryPlaceholderStream = ({
 }: {
   maps: RefMaps;
   existingTargetStories: ExistingTargetStories;
+  isCrossSpace: boolean;
   transports: {
     createStory: CreateStoryTransport;
     appendStoryManifest: AppendToManifestTransport;
@@ -305,9 +307,15 @@ export const createStoryPlaceholderStream = ({
             ? existingTargetStories.bySlug.get(localStory.full_slug)
             : undefined;
           if (existingBySlug) {
-            await transports.appendStoryManifest(localStory, existingBySlug);
-            onStorySkipped?.(localStory, existingBySlug);
-            return;
+            // Same-space: verify UUID to avoid binding to an unrelated story that
+            // was recreated at the same slug between pull and push.
+            // Cross-space: UUIDs always differ, so we can only match by slug.
+            const isMatchConfirmed = isCrossSpace || existingBySlug.uuid === localStory.uuid;
+            if (isMatchConfirmed) {
+              await transports.appendStoryManifest(localStory, existingBySlug);
+              onStorySkipped?.(localStory, existingBySlug);
+              return;
+            }
           }
 
           const newRemoteStory = await transports.createStory(localStory);

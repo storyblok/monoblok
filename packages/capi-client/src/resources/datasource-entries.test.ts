@@ -5,11 +5,11 @@ import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApiClient } from './index';
+import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../node_modules/@storyblok/openapi/dist/capi/datasource_entries.yaml',
+  '../../node_modules/@storyblok/openapi/dist/capi/datasource_entries.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -52,7 +52,7 @@ describe('datasourceEntries.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.datasourceEntries.getAll({ datasource: 'my-datasource' });
+    const result = await client.datasourceEntries.getAll({ query: { datasource: 'my-datasource' } });
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);

@@ -5,11 +5,11 @@ import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApiClient } from './index';
+import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../node_modules/@storyblok/openapi/dist/capi/links.yaml',
+  '../../node_modules/@storyblok/openapi/dist/capi/links.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -101,8 +101,8 @@ describe('links.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    await client.links.getAll({ version: 'published' });
-    await client.links.getAll({ version: 'published' });
+    await client.links.getAll({ query: { version: 'published' } });
+    await client.links.getAll({ query: { version: 'published' } });
 
     expect(requestCount).toBe(1);
   });
@@ -119,8 +119,8 @@ describe('links.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    await client.links.getAll({ version: 'draft' });
-    await client.links.getAll({ version: 'draft' });
+    await client.links.getAll({ query: { version: 'draft' } });
+    await client.links.getAll({ query: { version: 'draft' } });
 
     expect(requestCount).toBe(2);
   });

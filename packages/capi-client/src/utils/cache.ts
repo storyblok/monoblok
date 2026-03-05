@@ -38,6 +38,7 @@ export const createMemoryCacheProvider = (
 
   return {
     async get<TValue = unknown>(key: string) {
+      // Map stores heterogeneous CacheEntry<unknown>; caller provides the expected type via the generic.
       const entry = cache.get(key) as CacheEntry<TValue>;
       if (!entry) {
         return undefined;

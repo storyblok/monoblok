@@ -13,11 +13,11 @@ export function createDatasourcesResource(deps: ResourceDeps) {
   return {
     get: async <ThrowOnError extends boolean = false>(
       id: DatasourcesGetData['path']['id'],
-      options: { signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
+      options: { query?: DatasourcesGetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
     ): Promise<ApiResponse<DatasourcesGetResponses[200], ThrowOnError>> => {
-      const { signal, throwOnError } = options;
+      const { query = {}, signal, throwOnError } = options;
       const requestPath = `/v2/cdn/datasources/${id}`;
-      return requestWithCache<DatasourcesGetResponses[200], ThrowOnError>('GET', requestPath, {}, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<DatasourcesGetResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceApi({
           client,
           path: { id },

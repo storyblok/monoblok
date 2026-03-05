@@ -5,11 +5,11 @@ import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApiClient } from './index';
+import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../node_modules/@storyblok/openapi/dist/capi/stories.yaml',
+  '../../node_modules/@storyblok/openapi/dist/capi/stories.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -144,6 +144,25 @@ describe('stories.get()', () => {
 
     await expect(client.stories.get('non-existent-story')).rejects.toThrow();
   });
+
+  it('should allow overriding throwOnError per stories method call', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json(
+          {
+            error: 'Not Found',
+            message: 'Story not found',
+          },
+          { status: 404 },
+        );
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await expect(client.stories.get('non-existent-story', { throwOnError: true })).rejects.toThrow();
+  });
 });
 
 describe('stories.getAll()', () => {
@@ -184,7 +203,7 @@ describe('inlineRelations', () => {
     });
 
     const result = await client.stories.get('test-story', {
-      resolve_relations: 'page.author',
+      query: { resolve_relations: 'page.author' },
     });
 
     expect(result.error).toBeUndefined();
@@ -238,14 +257,14 @@ describe('inlineRelations', () => {
     });
 
     const result = await client.stories.get('test-story', {
-      resolve_relations: 'page.author,page.articles,teaser.articles',
+      query: { resolve_relations: 'page.author,page.articles,teaser.articles' },
     });
 
     expect(result.error).toBeUndefined();
     const content = result.data?.story.content;
     expect(content?.author).toMatchObject({ uuid: 'author-1' });
     expect(content?.articles).toMatchObject([{ uuid: 'article-1' }]);
-    expect(content?.teaser?.[0].articles).toMatchObject([{ uuid: 'article-2' }]);
+    expect((content?.teaser as any)?.[0].articles).toMatchObject([{ uuid: 'article-2' }]);
   });
 
   it('should auto-fetch rel_uuids and inline fetched stories', async () => {
@@ -283,7 +302,7 @@ describe('inlineRelations', () => {
     });
 
     const result = await client.stories.get('test-story', {
-      resolve_relations: 'page.author',
+      query: { resolve_relations: 'page.author' },
     });
 
     expect(result.error).toBeUndefined();
@@ -314,7 +333,7 @@ describe('inlineRelations', () => {
 
     await expect(async () => {
       const resultPromise = client.stories.get('test-story', {
-        resolve_relations: 'page.author',
+        query: { resolve_relations: 'page.author' },
       });
       await Promise.all([resultPromise, vi.runAllTimersAsync()]);
     }).rejects.toThrow();
@@ -364,7 +383,7 @@ describe('inlineRelations', () => {
     });
 
     const result = await client.stories.getAll({
-      resolve_relations: 'page.authors',
+      query: { resolve_relations: 'page.authors' },
     });
 
     expect(result.error).toBeUndefined();
@@ -441,6 +460,19 @@ describe('generic GET method', () => {
     });
 
     await expect(client.get('v2/cdn/custom-endpoint')).rejects.toThrow();
+  });
+
+  it('should allow overriding throwOnError per generic get call', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/custom-endpoint', () => {
+        return HttpResponse.json({ message: 'Nope' }, { status: 404 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+    });
+
+    await expect(client.get('v2/cdn/custom-endpoint', { throwOnError: true })).rejects.toThrow();
   });
 });
 

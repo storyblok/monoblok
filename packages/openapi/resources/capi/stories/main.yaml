@@ -276,9 +276,9 @@ paths:
                     items:
                       type: string
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
   /v2/cdn/stories/{identifier}:
     get:
       operationId: get
@@ -424,9 +424,9 @@ paths:
                     items:
                       type: string
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
 components:

@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from './rate-limit';
 
-// ---------------------------------------------------------------------------
-// determineTier
-// ---------------------------------------------------------------------------
-
 describe('determineTier()', () => {
   it('returns SINGLE_OR_SMALL for a single story path', () => {
     expect(determineTier('/v2/cdn/stories/my-story', {})).toBe('SINGLE_OR_SMALL');
@@ -57,10 +53,6 @@ describe('determineTier()', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// parseRateLimitPolicyHeader
-// ---------------------------------------------------------------------------
-
 describe('parseRateLimitPolicyHeader()', () => {
   const makeResponse = (headerValue: string | null) =>
     new Response(null, {
@@ -84,10 +76,6 @@ describe('parseRateLimitPolicyHeader()', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createThrottleManager — passthrough (false)
-// ---------------------------------------------------------------------------
-
 describe('createThrottleManager(false)', () => {
   it('executes the function immediately without queuing', async () => {
     const manager = createThrottleManager(false);
@@ -102,10 +90,6 @@ describe('createThrottleManager(false)', () => {
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });
 });
-
-// ---------------------------------------------------------------------------
-// createThrottleManager — fixed limit (number shorthand)
-// ---------------------------------------------------------------------------
 
 describe('createThrottleManager(number)', () => {
   afterEach(() => vi.useRealTimers());
@@ -194,10 +178,6 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(3);
   });
 });
-
-// ---------------------------------------------------------------------------
-// createThrottleManager — auto-detect mode (default / {})
-// ---------------------------------------------------------------------------
 
 describe('createThrottleManager({})', () => {
   afterEach(() => vi.useRealTimers());

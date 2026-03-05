@@ -24,7 +24,6 @@ const PER_PAGE_THRESHOLDS = {
 
 const DEFAULT_PER_PAGE = 25;
 const MAX_RATE_LIMIT = 1_000;
-const DEFAULT_INTERVAL_MS = 1_000;
 
 export interface RateLimitConfig {
   /**
@@ -52,11 +51,12 @@ interface Throttle {
 }
 
 /**
- * Token-bucket throttle: allows up to `initialLimit` concurrent requests
- * per `intervalMs`. Each taken slot is released after `intervalMs`, giving
- * at most `initialLimit` request starts per second with the default interval.
+ * Concurrency limiter: allows up to `initialLimit` requests to be in-flight
+ * at the same time. A slot is freed as soon as the request's promise settles
+ * (resolves or rejects), so throughput scales with how quickly requests
+ * complete rather than being artificially capped at N per second.
  */
-function createThrottle(initialLimit: number, intervalMs = DEFAULT_INTERVAL_MS): Throttle {
+export function createThrottle(initialLimit: number): Throttle {
   let limit = initialLimit;
   let activeCount = 0;
   const queue: Array<() => void> = [];
@@ -66,16 +66,25 @@ function createThrottle(initialLimit: number, intervalMs = DEFAULT_INTERVAL_MS):
       activeCount++;
       const run = queue.shift()!;
       run();
-      setTimeout(() => {
-        activeCount--;
-        tryNext();
-      }, intervalMs);
     }
   };
 
   const execute = <T>(fn: () => Promise<T>): Promise<T> => {
     return new Promise<T>((resolve, reject) => {
-      queue.push(() => fn().then(resolve, reject));
+      queue.push(() => {
+        fn().then(
+          (value) => {
+            activeCount--;
+            tryNext();
+            resolve(value);
+          },
+          (error) => {
+            activeCount--;
+            tryNext();
+            reject(error);
+          },
+        );
+      });
       tryNext();
     });
   };

@@ -5,11 +5,11 @@ import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createApiClient } from './index';
+import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../node_modules/@storyblok/openapi/dist/capi/tags.yaml',
+  '../../node_modules/@storyblok/openapi/dist/capi/tags.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -47,7 +47,7 @@ describe('tags.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.tags.getAll({ starts_with: 'blog' });
+    const result = await client.tags.getAll({ query: { starts_with: 'blog' } });
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.tags)).toBe(true);

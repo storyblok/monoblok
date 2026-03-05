@@ -35,7 +35,8 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@storyblok/region-helper": "workspace:*",
@@ -48,6 +49,7 @@
     "@storyblok/openapi": "workspace:*",
     "@types/node": "^24.11.0",
     "eslint": "^9.39.2",
+    "glob": "^13.0.6",
     "msw": "^2.12.9",
     "tsdown": "^0.20.3",
     "tsx": "^4.21.0",

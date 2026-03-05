@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { type Client, createClient, createConfig } from '../generated/stories/client';
-import { createThrottleManager } from '../rate-limit';
+import { type Client, createClient, createConfig } from '../generated/shared/client';
+import { createThrottleManager } from './rate-limit';
 import { fetchMissingRelations } from './fetch-rel-uuids';
 
 // Passthrough throttle — no queuing overhead for most unit tests.

@@ -1,104 +1,42 @@
-import { createClient, createConfig } from './generated/stories/client';
-import { get, getAll } from './generated/stories/sdk.gen';
-import type { GetAllData, GetAllResponses, GetData, GetResponses } from './generated/stories/types.gen';
-import { getAll as getAllLinks } from './generated/links/sdk.gen';
-import type { LinkCapi, GetAllData as LinksGetAllData, GetAllResponses as LinksGetAllResponses } from './generated/links/types.gen';
-import { getAll as getAllDatasourceEntriesApi } from './generated/datasource-entries/sdk.gen';
-import type { GetAllData as DatasourceEntriesGetAllData, GetAllResponses as DatasourceEntriesGetAllResponses, DatasourceEntryCapi } from './generated/datasource-entries/types.gen';
-import { getAll as getAllTagsApi } from './generated/tags/sdk.gen';
-import type { TagCapi, GetAllData as TagsGetAllData, GetAllResponses as TagsGetAllResponses } from './generated/tags/types.gen';
-import { getAll as getAllDatasourcesApi, get as getDatasourceApi } from './generated/datasources/sdk.gen';
-import type { DatasourceCapi, GetAllData as DatasourcesGetAllData, GetAllResponses as DatasourcesGetAllResponses, GetData as DatasourcesGetData, GetResponses as DatasourcesGetResponses } from './generated/datasources/types.gen';
-import type {
-  AssetField,
-  MultilinkField,
-  PluginField,
-  RichtextField,
-  StoryCapi,
-  StoryContent,
-  TableField,
-} from './generated/stories';
-import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './cache';
-import { createMemoryCacheProvider, createStrategy } from './cache';
-import type { RateLimitConfig } from './rate-limit';
-import { createThrottleManager } from './rate-limit';
+import { createClient, createConfig } from './generated/shared/client';
+import type { StoryCapi } from './generated/stories';
+import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
+import { createMemoryCacheProvider, createStrategy } from './utils/cache';
+import { ClientError } from './error';
+import type { RateLimitConfig } from './utils/rate-limit';
+import { createThrottleManager } from './utils/rate-limit';
 import { applyCvToQuery, extractCv } from './utils/cv';
-import { fetchMissingRelations } from './utils/fetch-rel-uuids';
-import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from './utils/inline-relations';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { RetryOptions } from 'ky';
-import type { Client, RequestOptions } from './generated/stories/client';
-import { get as getSpaceApi } from './generated/spaces/sdk.gen';
-import type { SpaceCapi, GetResponses as SpacesGetResponses } from './generated/spaces/types.gen';
+import type { Client, ResolvedRequestOptions } from './generated/shared/client';
+import type { Middleware } from './generated/shared/client/utils.gen';
+import type { ApiResponse, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
+import { createStoriesResource } from './resources/stories';
+import { createLinksResource } from './resources/links';
+import { createTagsResource } from './resources/tags';
+import { createDatasourcesResource } from './resources/datasources';
+import { createDatasourceEntriesResource } from './resources/datasource-entries';
+import { createSpacesResource } from './resources/spaces';
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
 export type Story = Prettify<StoryCapi>;
-export type Link = Prettify<LinkCapi>;
-export type Space = Prettify<SpaceCapi>;
-export type Datasource = Prettify<DatasourceCapi>;
-export type DatasourceEntry = Prettify<DatasourceEntryCapi>;
-export type Tag = Prettify<TagCapi>;
+export { ClientError } from './error';
+export type { DatasourceEntryCapi as DatasourceEntry } from './generated/datasource_entries/types.gen';
+export type { DatasourceCapi as Datasource } from './generated/datasources/types.gen';
+export type { LinkCapi as Link } from './generated/links/types.gen';
+export type { Middleware } from './generated/shared/client/utils.gen';
+export type { SpaceCapi as Space } from './generated/spaces/types.gen';
+export type { ApiResponse, HttpRequestMethod, HttpRequestOptions };
+export type { CacheProvider, CacheStrategy, CacheStrategyHandler };
+export type { RateLimitConfig };
+export type { TagCapi as Tag } from './generated/tags/types.gen';
+export type { StoryWithInlinedRelations } from './resources/stories';
 
-type InlinedStoryContentField =
-  | string
-  | number
-  | boolean
-  | Array<string | AssetField | StoryContent | StoryWithInlinedRelations>
-  | AssetField
-  | MultilinkField
-  | TableField
-  | RichtextField
-  | PluginField
-  | StoryWithInlinedRelations
-  | undefined;
-
-interface InlinedStoryContent {
-  _uid: string;
-  component: string;
-  _editable?: string;
-  [key: string]: InlinedStoryContentField;
-}
-
-export type StoryWithInlinedRelations = Prettify<Omit<Story, 'content'> & {
-  content: InlinedStoryContent;
-}>;
-
-type StoryResult<InlineRelations extends boolean> = InlineRelations extends true
-  ? StoryWithInlinedRelations
-  : Story;
-
-// Helper type to replace StoryCapi with Story in response types
-type ReplaceStory<T, InlineRelations extends boolean> = T extends StoryCapi
-  ? StoryResult<InlineRelations>
-  : T extends Array<StoryCapi>
-    ? Array<StoryResult<InlineRelations>>
-    : T extends Array<infer U>
-      ? Array<ReplaceStory<U, InlineRelations>>
-      : T extends object
-        ? { [K in keyof T]: ReplaceStory<T[K], InlineRelations> }
-        : T;
-
-// Transform response types to use Story instead of StoryCapi
-type GetResponse<InlineRelations extends boolean> = ReplaceStory<GetResponses[200], InlineRelations>;
-type GetAllResponse<InlineRelations extends boolean> = ReplaceStory<GetAllResponses[200], InlineRelations>;
-
-type ApiResponse<T> =
-  | { data: T; error: undefined; response: Response; request: Request }
-  | { data: undefined; error: unknown; response: Response; request: Request };
-
-type GenericRequestOptions<ThrowOnError extends boolean = false> = Omit<
-  RequestOptions<unknown, 'fields', ThrowOnError>,
-  'method' | 'security' | 'throwOnError' | 'url'
->;
-
-type GenericRequestMethod<ThrowOnError extends boolean = false> = <TData = unknown>(
-  path: string,
-  options?: GenericRequestOptions<ThrowOnError>,
-) => Promise<ApiResponse<TData>>;
+export { createThrottle, parseRateLimitPolicyHeader } from './utils/rate-limit';
 
 interface CacheConfig {
   provider?: CacheProvider;
@@ -126,6 +64,11 @@ export interface ContentApiClientConfig<
   inlineRelations?: InlineRelations;
   retry?: RetryOptions;
   /**
+   * Request timeout in milliseconds.
+   * @default 30_000
+   */
+  timeout?: number;
+  /**
    * Preventive rate limiting to avoid hitting the Storyblok CDN rate limits.
    *
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
@@ -149,8 +92,9 @@ export const createApiClient = <
     headers = {},
     throwOnError = false,
     cache = {},
-    inlineRelations = false as InlineRelations,
+    inlineRelations = false,
     retry,
+    timeout = 30_000,
     rateLimit,
   } = config;
   const retryOptions: RetryOptions = { limit: 3, backoffLimit: 20_000, jitter: true, ...retry };
@@ -177,10 +121,19 @@ export const createApiClient = <
         // is `false`. The client's error handling will still work because it
         // catches `HTTPError`.
         throwHttpErrors: true,
-        timeout: 30_000,
+        timeout,
         retry: retryOptions,
       },
     }),
+  );
+
+  client.interceptors.error.use(
+    (error: unknown, response: Response) =>
+      new ClientError(response?.statusText || 'API request failed', {
+        status: response?.status ?? 0,
+        statusText: response?.statusText ?? '',
+        data: error,
+      }),
   );
 
   const security = [
@@ -226,30 +179,43 @@ export const createApiClient = <
     method: 'GET',
     path: string,
     query: Record<string, unknown>,
-    options: GenericRequestOptions<ThrowOnError>,
+    options: HttpRequestOptions,
   ): Promise<ApiResponse<TData>> => {
-    return client.request<TData, TError, ThrowOnError>({
+    return client.request<TData, TError, boolean>({
       ...options,
       method,
       query,
       security,
       url: path,
-    }) as Promise<ApiResponse<TData>>;
+      // The error interceptor transforms errors into ClientError instances at
+      // runtime, but the generated types still report `error: unknown`. Cast
+      // here so the rest of the codebase sees the narrowed type.
+    }) as unknown as Promise<ApiResponse<TData>>;
   };
 
-  const requestWithCache = async <TData = unknown>(
+  /**
+   * Wraps a raw SDK call to cast the `error: unknown` type returned by
+   * generated code to `ClientError` — the error interceptor ensures the
+   * runtime value IS a ClientError.
+   */
+  const asApiResponse = <TData, ThrowOnError extends boolean = false>(
+    p: Promise<unknown>,
+  ): Promise<ApiResponse<TData, ThrowOnError>> => p as unknown as Promise<ApiResponse<TData, ThrowOnError>>;
+
+  const requestWithCache = async <TData = unknown, ThrowOnError extends boolean = false>(
     method: 'GET',
     path: string,
     rawQuery: Record<string, unknown>,
-    fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData>>,
-  ): Promise<ApiResponse<TData>> => {
+    fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+  ): Promise<ApiResponse<TData, ThrowOnError>> => {
     const query = currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {
       const networkResult = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
       throttleManager.adaptToResponse(networkResult.response);
-      await updateCv(networkResult);
+      // widen conditional generic — updateCv only reads cv, TData irrelevant
+      await updateCv(networkResult as ApiResponse<unknown>);
       return networkResult;
     }
 
@@ -260,20 +226,21 @@ export const createApiClient = <
     const loadNetwork = async () => {
       const result = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
       throttleManager.adaptToResponse(result.response);
-      return cacheSuccessResult(key, result);
+      // drop ThrowOnError for cache storage; value is restored after strategy returns
+      return cacheSuccessResult(key, result as ApiResponse<TData>);
     };
 
     return strategy({
       key,
       cachedResult,
       loadNetwork,
-    });
+    }) as Promise<ApiResponse<TData, ThrowOnError>>; // restore ThrowOnError erased by the generic CacheStrategyHandler
   };
 
   const request = async <TData = unknown, TError = unknown>(
     method: 'GET',
     path: string,
-    options: GenericRequestOptions<ThrowOnError> = {},
+    options: HttpRequestOptions = {},
   ): Promise<ApiResponse<TData>> => {
     const rawQuery = options.query || {};
 
@@ -282,221 +249,24 @@ export const createApiClient = <
     });
   };
 
-  const getRequest: GenericRequestMethod<ThrowOnError> = <TData = unknown>(
+  const getRequest: HttpRequestMethod = <TData = unknown>(
     path: string,
-    options: GenericRequestOptions<ThrowOnError> = {},
+    options: HttpRequestOptions = {},
   ) => {
     return request<TData>('GET', path, options);
   };
 
-  /**
-   * Retrieve a single story
-   * @param identifier - Story identifier - can be full_slug (string), id (number), or uuid (string). When using uuid, the find_by=uuid query parameter is required.
-   * @param query - Query parameters for the request
-   */
-  const getStory = async (
-    identifier: GetData['path']['identifier'],
-    query: GetData['query'] = {},
-  ): Promise<ApiResponse<GetResponse<InlineRelations>>> => {
-    const requestPath = `/v2/cdn/stories/${identifier}`;
-    return requestWithCache<GetResponse<InlineRelations>>('GET', requestPath, query, async (requestQuery) => {
-      const response = await get({
-        client,
-        path: { identifier },
-        query: requestQuery,
-      });
-
-      if (!inlineRelations || response.data === undefined) {
-        return response;
-      }
-
-      const relationPaths = parseResolveRelations(requestQuery);
-      if (relationPaths.length === 0) {
-        return response;
-      }
-
-      const relationMap = buildRelationMap(response.data.rels);
-      if (response.data.rel_uuids?.length) {
-        const fetchedRelations = await fetchMissingRelations({
-          client,
-          uuids: response.data.rel_uuids,
-          baseQuery: requestQuery,
-          throttleManager,
-        });
-        for (const relationStory of fetchedRelations) {
-          relationMap.set(relationStory.uuid, relationStory);
-        }
-      }
-
-      return {
-        ...response,
-        data: {
-          ...response.data,
-          story: inlineStoryContent(response.data.story, relationPaths, relationMap),
-        },
-      } as ApiResponse<GetResponse<InlineRelations>>;
-    });
+  const resourceDeps: ResourceDeps = {
+    client,
+    requestWithCache,
+    asApiResponse,
   };
 
-  /**
-   * Retrieve multiple stories
-   * @param query - Query parameters for filtering and pagination
-   */
-  const getAllStories = async (
-    query: GetAllData['query'] = {},
-  ): Promise<ApiResponse<GetAllResponse<InlineRelations>>> => {
-    const requestPath = '/v2/cdn/stories';
-    return requestWithCache<GetAllResponse<InlineRelations>>('GET', requestPath, query, async (requestQuery) => {
-      const response = await getAll({
-        client,
-        query: requestQuery,
-      });
-
-      if (!inlineRelations || response.data === undefined) {
-        return response;
-      }
-
-      const relationPaths = parseResolveRelations(requestQuery);
-      if (relationPaths.length === 0) {
-        return response;
-      }
-
-      const relationMap = buildRelationMap(response.data.rels);
-      if (response.data.rel_uuids?.length) {
-        const fetchedRelations = await fetchMissingRelations({
-          client,
-          uuids: response.data.rel_uuids,
-          baseQuery: requestQuery,
-          throttleManager,
-        });
-        for (const relationStory of fetchedRelations) {
-          relationMap.set(relationStory.uuid, relationStory);
-        }
-      }
-
-      return {
-        ...response,
-        data: {
-          ...response.data,
-          stories: inlineStoriesContent(response.data.stories, relationPaths, relationMap),
-        },
-      } as ApiResponse<GetAllResponse<InlineRelations>>;
-    });
-  };
-
-  /**
-   * Retrieve multiple links
-   * @param query - Query parameters for filtering and pagination
-   */
-  const getLinks = async (
-    query: LinksGetAllData['query'] = {},
-  ): Promise<ApiResponse<LinksGetAllResponses[200]>> => {
-    const requestPath = '/v2/cdn/links';
-    return requestWithCache<LinksGetAllResponses[200]>('GET', requestPath, query, async (requestQuery) => {
-      const response = await getAllLinks({
-        client,
-        query: requestQuery,
-      });
-      return response;
-    });
-  };
-
-  /**
-   * Retrieve multiple datasource entries
-   * @param query - Query parameters for filtering and pagination
-   */
-  const getAllDatasourceEntries = async (
-    query: DatasourceEntriesGetAllData['query'] = {},
-  ): Promise<ApiResponse<DatasourceEntriesGetAllResponses[200]>> => {
-    const requestPath = '/v2/cdn/datasource_entries';
-    return requestWithCache<DatasourceEntriesGetAllResponses[200]>('GET', requestPath, query, async (requestQuery) => {
-      const response = await getAllDatasourceEntriesApi({
-        client,
-        query: requestQuery,
-      });
-      return response;
-    });
-  };
-
-  const getSpace = async (): Promise<ApiResponse<SpacesGetResponses[200]>> => {
-    const requestPath = '/v2/cdn/spaces/me';
-    return requestWithCache<SpacesGetResponses[200]>('GET', requestPath, {}, async (_requestQuery) => {
-      const response = await getSpaceApi({
-        client,
-      });
-      return response;
-    });
-  };
-
-  /**
-   * Retrieve all tags
-   * @param query - Query parameters for filtering
-   */
-  const getAllTags = async (
-    query: TagsGetAllData['query'] = {},
-  ): Promise<ApiResponse<TagsGetAllResponses[200]>> => {
-    const requestPath = '/v2/cdn/tags';
-    return requestWithCache<TagsGetAllResponses[200]>('GET', requestPath, query, async (requestQuery) => {
-      const response = await getAllTagsApi({
-        client,
-        query: requestQuery,
-      });
-      return response;
-    });
-  };
-
-  const getDatasource = async (
-    id: DatasourcesGetData['path']['id'],
-  ): Promise<ApiResponse<DatasourcesGetResponses[200]>> => {
-    const requestPath = `/v2/cdn/datasources/${id}`;
-    return requestWithCache<DatasourcesGetResponses[200]>('GET', requestPath, {}, async (requestQuery) => {
-      const response = await getDatasourceApi({
-        client,
-        path: { id },
-        query: requestQuery as DatasourcesGetData['query'],
-      });
-      return response;
-    });
-  };
-
-  const getAllDatasources = async (
-    query: DatasourcesGetAllData['query'] = {},
-  ): Promise<ApiResponse<DatasourcesGetAllResponses[200]>> => {
-    const requestPath = '/v2/cdn/datasources';
-    return requestWithCache<DatasourcesGetAllResponses[200]>('GET', requestPath, query ?? {}, async (requestQuery) => {
-      const response = await getAllDatasourcesApi({
-        client,
-        query: requestQuery,
-      });
-      return response;
-    });
-  };
-
-  const stories = {
-    get: getStory,
-    getAll: getAllStories,
-  };
-
-  const links = {
-    getAll: getLinks,
-  };
-
-  const datasourceEntries = {
-    getAll: getAllDatasourceEntries,
-  };
-
-  const spaces = {
-    get: getSpace,
-  };
-
-  const tags = {
-    getAll: getAllTags,
-  };
-
-  const datasources = {
-    get: getDatasource,
-    getAll: getAllDatasources,
-  };
+  const stories = createStoriesResource<InlineRelations>({
+    ...resourceDeps,
+    inlineRelations,
+    throttleManager,
+  });
 
   /**
    * Flush the in-memory cache and reset the tracked cv.
@@ -510,16 +280,15 @@ export const createApiClient = <
   };
 
   return {
-    datasourceEntries,
-    datasources,
+    datasourceEntries: createDatasourceEntriesResource(resourceDeps),
+    datasources: createDatasourcesResource(resourceDeps),
     flushCache,
     get: getRequest,
-    links,
-    spaces,
+    // generated client type is broader; narrow for public API surface
+    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    links: createLinksResource(resourceDeps),
+    spaces: createSpacesResource(resourceDeps),
     stories,
-    tags,
+    tags: createTagsResource(resourceDeps),
   };
 };
-
-export type { CacheProvider, CacheStrategy, CacheStrategyHandler };
-export type { RateLimitConfig };

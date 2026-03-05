@@ -4,17 +4,19 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'pathe';
 import { storyblok } from '@storyblok/astro';
 
+import react from '@astrojs/react';
+
+import vue from '@astrojs/vue';
+
 // Get the directory path using import.meta.url
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [
-    storyblok({
-      accessToken: 'xUMqa0Ka06Cfnrjb4M1e5Qtt',
-      enableFallbackComponent: true,
-    }),
-  ],
+  integrations: [storyblok({
+    accessToken: 'xUMqa0Ka06Cfnrjb4M1e5Qtt',
+    enableFallbackComponent: true,
+  }), react(), vue()],
   // Add path aliases configuration
   vite: {
     resolve: {

@@ -1,66 +1,38 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { useStoryblokApi } from '@storyblok/astro';
-import {
-  richTextResolver,
-  type StoryblokRichTextOptions,
-  ComponentBlok,
-  segmentStoryblokRichText,
-} from '@storyblok/richtext';
-import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
-import { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
-
+import { formateRichText } from '@storyblok/richtext';
+import AstroRichtext from '../components/AstroRichtext.astro';
+import Wrapper from '../components/Wrapper';
 const storyblokApi = useStoryblokApi();
 const { data } = await storyblokApi.get('cdn/stories/home', {
   version: 'draft',
 });
 
-const options: StoryblokRichTextOptions = {
-  tiptapExtensions: {
-    blok: ComponentBlok.configure({
-      renderComponent: (props) => {
-        return `<pre>${JSON.stringify({ props }, null, 2)}</pre>`;
-      },
-    }),
-  },
-};
-const renderedRichTextStory = segmentStoryblokRichText(data.story.content.richtext);
-
-import testMarkdown from '/test.md?url&raw';
-
-const markdownToStoryblokDoc = markdownToStoryblokRichtext(testMarkdown);
-console.log({ markdownToStoryblokDoc });
-const renderedRichTextMarkdown = richTextResolver().render(markdownToStoryblokDoc);
-
-import testHTML from '/test.html?url&raw';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-
-const htmlToStoryblokDoc = htmlToStoryblokRichtext(testHTML);
-console.log({ htmlToStoryblokDoc });
-const renderedRichTextHTML = richTextResolver().render(htmlToStoryblokDoc);
+const segments = formateRichText(data.story.content.richtext, {
+  optimizeImages: true,
+});
 ---
 
 <Layout>
-  {
-    renderedRichTextStory.map((segment, index) => {
-      if (segment.type === 'html') {
-        return <div set:html={segment.content} />;
-      }
-      if (segment.type === 'blok') {
-        if (segment.blok.component === 'test') {
-          return <pre>{JSON.stringify({ segment }, null, 2)}</pre>;
-        }
-        return <StoryblokComponent blok={segment.blok} />;
-      }
-    })
-  }
-  <div set:html={renderedRichTextStory} />
-  <hr />
-  <hr />
-  <hr />
-  <div set:html={renderedRichTextMarkdown} />
-  <hr />
-  <hr />
-  <hr />
-  <div set:html={renderedRichTextHTML} />
+  <div class="flex">
+    <pre>{JSON.stringify({ segments }, null, 2)}</pre>
+    <AstroRichtext segments={segments} />
+    <div class="react">
+      <Wrapper segments={segments} />
+    </div>
+  </div>
 </Layout>
+<style>
+  .flex {
+    display: flex;
+    gap: 20px;
+  }
+  pre {
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 5px;
+    width: 100%;
+    overflow-x: auto;
+  }
+</style>

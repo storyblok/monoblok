@@ -9,7 +9,6 @@ function defaultRenderFn<T = string | null>(tag: string, attrs: BlockAttributes 
   const attrsString = attrsToString(attrs);
   const tagString = attrsString ? `${tag} ${attrsString}` : tag;
   const content = Array.isArray(children) ? children.join('') : children || '';
-
   if (!tag) {
     return content as unknown as T;
   }

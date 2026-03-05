@@ -11,6 +11,7 @@ export const getStoryblokApi = storyblokInit({
     'teaser': Teaser,
     'page': Page,
     'grid': Grid,
+    'feature':  Teaser, // Placeholder for a missing component
     'emoji-randomizer': EmojiRandomizer,
   },
 });

@@ -1303,6 +1303,41 @@ describe('stories push command', () => {
     expect(files).toContain(stripDriveLetter(storyBFilePath));
   });
 
+  it('should not send is_startpage when creating placeholder stories', async () => {
+    const folder = makeMockStory({
+      slug: 'lang-a',
+      full_slug: 'lang-a',
+      is_folder: true,
+    });
+    const startpage = makeMockStory({
+      slug: 'home',
+      full_slug: 'lang-a/home',
+      parent_id: folder.id,
+      is_startpage: true,
+    });
+
+    preconditions.canLoadStories([folder, startpage]);
+    preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+    const [remoteFolder, remoteStartpage] = preconditions.canCreateStories([folder, startpage]);
+    preconditions.canUpdateStories([remoteFolder, remoteStartpage]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // Verify is_startpage and parent_id are NOT sent in the creation payload
+    expect(actions.createStory).toHaveBeenCalledWith(
+      DEFAULT_SPACE,
+      expect.objectContaining({
+        story: expect.not.objectContaining({ is_startpage: true }),
+      }),
+    );
+    expect(actions.createStory).toHaveBeenCalledWith(
+      DEFAULT_SPACE,
+      expect.objectContaining({
+        story: expect.not.objectContaining({ parent_id: expect.anything() }),
+      }),
+    );
+  });
+
   it('should create a new story when same-space slug matches but UUID differs', async () => {
     // Simulates: user pulled story, deleted it, created a different story at the same slug.
     const localStory = makeMockStory({

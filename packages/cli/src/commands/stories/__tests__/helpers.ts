@@ -15,6 +15,7 @@ export interface MockStory {
   content: Record<string, unknown>;
   is_folder: boolean;
   parent_id: null | number | string;
+  is_startpage?: boolean;
   published?: 0 | 1;
 }
 

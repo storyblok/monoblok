@@ -100,7 +100,7 @@ pushCmd
         return;
       }
 
-      const fetchProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(21) });
+      const fetchProgress = ui.createProgressBar({ title: 'Matching Stories...'.padEnd(21) });
       const existingTargetStories = await prefetchTargetStories(space, {
         onTotal: total => fetchProgress.setTotal(total),
         onIncrement: count => fetchProgress.increment(count),

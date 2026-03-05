@@ -232,6 +232,9 @@ importers:
       eslint:
         specifier: ^9.39.2
         version: 9.39.3(jiti@2.6.1)
+      glob:
+        specifier: ^13.0.6
+        version: 13.0.6
       msw:
         specifier: ^2.12.9
         version: 2.12.10(@types/node@24.11.0)(typescript@5.9.3)

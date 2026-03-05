@@ -356,10 +356,9 @@ export type GetAssetFolderTransport = (folderId: number) => Promise<AssetFolder 
 export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
 }): GetAssetFolderTransport => async (folderId) => {
-  const { data, response } = await getMapiClient().assetFolders.get({
+  const { data, response } = await getMapiClient().assetFolders.get(folderId, {
     path: {
-      asset_folder_id: folderId,
-      space_id: spaceId,
+      space_id: Number(spaceId),
     },
   });
 
@@ -527,7 +526,7 @@ export type CreateAssetTransport = (asset: AssetCreate, fileBuffer: ArrayBuffer)
 export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport =>
   (asset, fileBuffer) => createAsset(asset, fileBuffer, { spaceId });
 
-export type UpdateAssetTransport = (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<Asset>;
+export type UpdateAssetTransport = (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<AssetUpdate>;
 
 export const makeUpdateAssetAPITransport = ({
   spaceId,
@@ -574,10 +573,9 @@ export type GetAssetTransport = (assetId: number) => Promise<Asset | undefined>;
 
 export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
   async (assetId: number) => {
-    const { data, response } = await getMapiClient().assets.get({
+    const { data, response } = await getMapiClient().assets.get(assetId, {
       path: {
-        space_id: spaceId,
-        asset_id: assetId,
+        space_id: Number(spaceId),
       },
     });
 
@@ -585,12 +583,11 @@ export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetA
       handleAPIError('pull_asset', new FetchError(response.statusText, response));
     }
 
-    // @ts-expect-error Our types are wrong
     if (data?.deleted_at) {
       return undefined;
     }
 
-    return data as Asset;
+    return data;
   };
 
 export type CleanupAssetTransport = (context: { assetBinaryPath: string; assetPath?: string }) => Promise<void>;
@@ -725,7 +722,10 @@ const processAsset = async ({
       status = 'skipped';
     }
     else {
-      newRemoteAsset = await transports.updateAsset(updatePayload, fileBuffer);
+      const updatedFields = await transports.updateAsset(updatePayload, fileBuffer);
+      // Merge the update result back onto the full remote asset so all
+      // server-assigned readonly fields remain present.
+      newRemoteAsset = { ...remoteAsset, ...updatedFields };
       status = 'updated';
     }
   }

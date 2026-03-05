@@ -1,5 +1,5 @@
 import { pipeline, Readable, Transform } from 'node:stream';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '@storyblok/management-api-client';
 import { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams } from '../../../stories/constants';

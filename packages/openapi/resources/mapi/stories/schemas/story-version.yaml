@@ -22,4 +22,4 @@ properties:
         type: string
         description: User name
   story:
-    $ref: ./story.yaml 
+    $ref: ./story-mapi.yaml

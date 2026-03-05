@@ -11,7 +11,7 @@ paths:
   /v1/spaces/{space_id}/components:
     description: A component is a standalone entity that is meaningful in its own right. While components (or bloks) can be nested in each other, semantically they remain equal. Each component is a small piece of your data structure which can be filled with content. One component can consist of as many field types as required. The components endpoint allows you to retrieve, add, update, or delete components.
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Components
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -78,9 +78,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -96,7 +96,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/Component'
+                  $ref: '#/components/schemas/ComponentCreate'
       responses:
         '201':
           description: Component created
@@ -108,9 +108,9 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/components/{component_id}:
@@ -132,9 +132,9 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
     put:
@@ -151,7 +151,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/Component'
+                  $ref: '#/components/schemas/ComponentUpdate'
                 update_content:
                   type: boolean
                   description: Update component name in stories when component name changes
@@ -166,13 +166,13 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
     delete:
-      operationId: deleteComponent
+      operationId: remove
       summary: Delete a Component
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -188,9 +188,9 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/rename_attribute:
@@ -223,9 +223,9 @@ paths:
         '204':
           description: Attribute renamed successfully
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/restore:
@@ -247,9 +247,9 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
   /v1/spaces/{space_id}/components/bulk_update:
@@ -294,9 +294,9 @@ paths:
                     type: string
                     description: Success message
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component group not found
   /v1/spaces/{space_id}/versions:
@@ -363,9 +363,9 @@ paths:
                           type: boolean
                 
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/component_versions/{version_id}:
@@ -397,9 +397,9 @@ paths:
                         type: object
                         additionalProperties: true
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component or version not found
   /v1/spaces/{space_id}/versions/{version_id}:
@@ -437,9 +437,9 @@ paths:
                   component:
                     $ref: '#/components/schemas/Component'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component or version not found
 components:
@@ -616,3 +616,7 @@ components:
             collapsed:
               type: boolean
               description: Whether the fieldset is collapsed by default
+    ComponentCreate:
+      $ref: ./component-create.yaml
+    ComponentUpdate:
+      $ref: ./component-update.yaml

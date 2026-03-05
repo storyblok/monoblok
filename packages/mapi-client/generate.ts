@@ -1,149 +1,109 @@
 #!/usr/bin/env tsx
 
-import { execSync } from 'child_process';
-import { writeFileSync, readFileSync, existsSync, mkdirSync, rmSync } from 'fs';
-import { join, dirname, basename } from 'path';
-import { glob } from 'glob';
 import { createClient } from '@hey-api/openapi-ts';
-import Mustache from 'mustache';
-import { camelCase, pascalCase } from 'change-case';
+import { execSync } from 'node:child_process';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { glob } from 'glob';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 interface OpenApiPackage {
   path: string;
 }
 
-async function main() {
+/**
+ * After @hey-api/openapi-ts generates per-resource client/ and core/ directories
+ * (which are byte-for-byte identical across all resources), consolidate them into
+ * a single src/generated/shared/ directory and rewrite per-resource imports to
+ * point there. This eliminates ~10x duplication in the dist/ output.
+ */
+function deduplicateSharedCode(generatedDir: string, resourceNames: string[]) {
+  if (resourceNames.length === 0) {
+    return;
+  }
 
-  rmSync('src/generated', { recursive: true, force: true })
+  const sharedDir = resolve(generatedDir, 'shared');
+  const firstResource = resourceNames[0];
 
-  try {
-    // Get OpenAPI package path
-    const openapiListOutput = execSync('pnpm --filter @storyblok/openapi list --json', { encoding: 'utf8' });
-    const openapiPackages: OpenApiPackage[] = JSON.parse(openapiListOutput);
-    const OPENAPI_PATH = openapiPackages[0].path;
+  // Copy client/ and core/ from the first resource into shared/
+  for (const subdir of ['client', 'core']) {
+    cpSync(resolve(generatedDir, firstResource, subdir), resolve(sharedDir, subdir), { recursive: true });
+  }
 
-    // Find all yaml files in the resources folder
-    const yamlFiles = await glob('dist/mapi/*.yaml', { cwd: OPENAPI_PATH });
-    
-    if (yamlFiles.length === 0) {
-      console.log('No YAML files found in OpenAPI dist folder');
-      return;
+  // For every resource: delete its client/ and core/ and rewrite imports
+  for (const resource of resourceNames) {
+    const resourceDir = resolve(generatedDir, resource);
+
+    // Remove duplicate client/ and core/
+    for (const subdir of ['client', 'core']) {
+      rmSync(resolve(resourceDir, subdir), { recursive: true, force: true });
     }
 
-    const generatedSdks: string[] = [];
-
-    // Generate a client for each resource
-    for (const yamlFile of yamlFiles) {
-      const resourcePath = join(OPENAPI_PATH, yamlFile);
-      const resourceName = basename(yamlFile, '.yaml')
-    
-      await createClient({
-        input: resourcePath,
-        output: `src/generated/${resourceName}`,
-        plugins: [
-           {
-            enums: 'javascript',
-            name: '@hey-api/typescript',
-            exportFromIndex: true
-          },
-          {
-            name: '@hey-api/client-fetch',
-          },
-          {
-            asClass: true,
-            instance: true,
-            name: '@hey-api/sdk',
-          }
-        ]
-      })
-
-      generatedSdks.push(resourceName);
+    // Rewrite imports in client.gen.ts and sdk.gen.ts:
+    //   from './client'  →  from '../shared/client'
+    for (const fileName of ['client.gen.ts', 'sdk.gen.ts']) {
+      const filePath = resolve(resourceDir, fileName);
+      const original = readFileSync(filePath, 'utf8');
+      if (!original.includes('from \'./client\'')) {
+        throw new Error(
+          `Expected "from './client'" in ${filePath} but it was not found. `
+          + `The generator may have changed its import style — update deduplicateSharedCode accordingly.`,
+        );
+      }
+      const rewritten = original.split('from \'./client\'').join('from \'../shared/client\'');
+      writeFileSync(filePath, rewritten, 'utf8');
     }
-
-    // Generate single SDK registry file
-    console.log('Generating SDK registry...');
-    
-    const registryContent = generateRegistryContent(generatedSdks);
-    
-    // Generate types barrel export
-    console.log('Generating types barrel export...');
-    
-    const typesContent = generateTypesContent(generatedSdks);
-    
-    // Ensure src directory exists
-    const srcDir = 'src';
-    if (!existsSync(srcDir)) {
-      mkdirSync(srcDir, { recursive: true });
-    }
-    
-    writeFileSync(join(srcDir, 'sdk-registry.generated.ts'), registryContent);
-    writeFileSync(join(srcDir, 'types.generated.ts'), typesContent);
-    
-    console.log(`Generated SDK registry and types barrel export with ${generatedSdks.length} SDKs: ${generatedSdks.join(', ')}`);
-    
-  } catch (error) {
-    console.error('Build failed:', error);
-    process.exit(1);
   }
 }
 
-function generateRegistryContent(generatedSdks: string[]): string {
-  const template = `// Auto-generated SDK registry
-// This file is generated by generate.ts - do not edit manually
+async function main() {
+  rmSync(resolve(__dirname, 'src/generated'), { recursive: true, force: true });
 
-// Import all generated SDKs
-{{#generatedSdks}}
-import { Sdk as {{className}}Sdk } from './generated/{{originalName}}/sdk.gen';
-{{/generatedSdks}}
+  // Get OpenAPI package path
+  const openapiListOutput = execSync('pnpm --filter @storyblok/openapi list --json', { encoding: 'utf8' });
+  const openapiPackages: OpenApiPackage[] = JSON.parse(openapiListOutput);
+  const OPENAPI_PATH = openapiPackages[0].path;
 
-// Export all SDKs for grouped imports
-{{#generatedSdks}}
-export { {{className}}Sdk };
-{{/generatedSdks}}
+  // Find all yaml files in the mapi dist folder
+  const yamlFiles = await glob('dist/mapi/*.yaml', { cwd: OPENAPI_PATH });
 
-// Registry object for dynamic access
-export const sdkRegistry = {
-{{#generatedSdks}}
-  '{{propertyName}}': {{className}}Sdk,
-{{/generatedSdks}}
-} as const;
+  if (yamlFiles.length === 0) {
+    console.warn('No YAML files found in OpenAPI dist folder');
+    return;
+  }
 
-export type SdkRegistryInstance = {
-  [K in keyof SdkRegistry]: InstanceType<SdkRegistry[K]>;
+  const resourceNames: string[] = [];
+
+  for (const yamlFile of yamlFiles) {
+    const resourcePath = resolve(OPENAPI_PATH, yamlFile);
+    const resourceName = basename(yamlFile, '.yaml');
+    resourceNames.push(resourceName);
+
+    await createClient({
+      input: resourcePath,
+      output: resolve(__dirname, `src/generated/${resourceName}`),
+      plugins: [
+        '@hey-api/typescript',
+        '@hey-api/client-ky',
+        {
+          name: '@hey-api/sdk',
+        },
+      ],
+    });
+
+    console.warn(`Generated SDK for ${resourceName}`);
+  }
+
+  console.warn(`Generated ${yamlFiles.length} SDKs: ${yamlFiles.map(f => basename(f, '.yaml')).join(', ')}`);
+
+  // Deduplicate shared client/ and core/ boilerplate
+  deduplicateSharedCode(resolve(__dirname, 'src/generated'), resourceNames);
+  console.warn('Deduplicated shared client/core into src/generated/shared/');
 }
 
-// Type for the registry
-export type SdkRegistry = typeof sdkRegistry;
-
-// Helper to get available SDK names
-export const getAvailableSdks = () => Object.keys(sdkRegistry);
-`;
-
-  return Mustache.render(template, { 
-    generatedSdks: generatedSdks.map(sdk => ({
-      originalName: sdk,
-      className: pascalCase(sdk),
-      propertyName: camelCase(sdk)
-    }))
-  });
-}
-
-function generateTypesContent(generatedSdks: string[]): string {
-  const template = `// Auto-generated types barrel export
-// This file is generated by generate.ts - do not edit manually
-
-// Export all types from generated SDKs
-{{#generatedSdks}}
-export * as {{className}} from './generated/{{originalName}}/types.gen';
-{{/generatedSdks}}
-`;
-
-  return Mustache.render(template, { 
-    generatedSdks: generatedSdks.map(sdk => ({
-      originalName: sdk,
-      className: pascalCase(sdk)
-    }))
-  });
-}
-
-main().catch(console.error); 
+main().catch((error) => {
+  console.error('Generation failed:', error);
+  process.exit(1);
+});

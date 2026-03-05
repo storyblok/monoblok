@@ -15,7 +15,7 @@ export const pushDatasource = async (spaceId: string, datasource: SpaceDatasourc
 
     const { data } = await client.datasources.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: { datasource },
       throwOnError: true,
@@ -32,10 +32,9 @@ export const updateDatasource = async (spaceId: string, datasourceId: number, da
   try {
     const client = getMapiClient();
 
-    const { data } = await client.datasources.update({
+    const { data } = await client.datasources.update(datasourceId, {
       path: {
-        space_id: spaceId,
-        datasource_id: datasourceId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource,
@@ -72,11 +71,12 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
 
     const { data } = await client.datasourceEntries.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource_entry: {
           ...entry,
+          value: entry.value ?? '',
           datasource_id: datasourceId,
         },
       },
@@ -100,10 +100,9 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
 export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
   try {
     const client = getMapiClient();
-    await client.datasourceEntries.updateDatasourceEntry({
+    await client.datasourceEntries.update(entryId, {
       path: {
-        space_id: spaceId,
-        datasource_entry_id: entryId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource_entry: entry,

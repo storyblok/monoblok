@@ -26,7 +26,7 @@ import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpd
 import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '@storyblok/management-api-client';
 import { makeWriteStoryAPITransport } from '../../stories/streams';
 
 const pushCmd = assetsCommand
@@ -183,9 +183,9 @@ pushCmd
       /**
        * Map Asset References in Stories
        */
-      const hasUpdatedFilename = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+      const hasUpdatedFilename = (entry: { old: Asset | AssetMapped | AssetUpload; new: AssetMapped }) =>
         'filename' in entry.old && entry.old.filename !== entry.new.filename;
-      const hasMetadata = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+      const hasMetadata = (entry: { old: Asset | AssetMapped | AssetUpload; new: AssetMapped }) =>
         'meta_data' in entry.new && entry.new.meta_data;
       const hasUpdatedAssets = maps.assets.values().some(v => hasUpdatedFilename(v) || hasMetadata(v));
       if (hasUpdatedAssets && options.updateStories) {

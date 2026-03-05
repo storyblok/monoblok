@@ -1,0 +1,27 @@
+type: object
+description: Input for creating a datasource.
+required:
+  - name
+  - slug
+properties:
+  name:
+    type: string
+    description: The complete name provided for a datasource
+  slug:
+    type: string
+    description: Slug of a datasource
+  dimensions_attributes:
+    type: array
+    description: Dimensions to create along with the datasource
+    items:
+      type: object
+      required:
+        - name
+        - entry_value
+      properties:
+        name:
+          type: string
+          description: The complete name provided for the datasource dimension
+        entry_value:
+          type: string
+          description: The value provided for the datasource dimension (e.g., a language code)

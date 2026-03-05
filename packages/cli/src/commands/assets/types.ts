@@ -1,8 +1,12 @@
-import type { Asset as MapiAsset } from '@storyblok/management-api-client/resources/assets';
+import type { Asset as MapiAsset } from '@storyblok/management-api-client';
 
-export type Asset = Required<Pick<MapiAsset, 'id' | 'filename'>> & MapiAsset;
+export type Asset = MapiAsset;
 
-export type AssetCreate = Required<Pick<Asset, 'short_filename'>> & Omit<Asset, 'id' | 'filename'>;
+/**
+ * Fields the user can provide when creating a new asset. Server-assigned
+ * readonly fields (`space_id`, `created_at`, etc.) are excluded.
+ */
+export type AssetCreate = Required<Pick<Asset, 'short_filename'>> & Omit<Asset, 'id' | 'filename' | 'space_id' | 'created_at' | 'updated_at' | 'content_type' | 'content_length' | 'short_filename'>;
 
 export type AssetUpdate = Required<Pick<Asset, 'id' | 'filename'>> & Partial<Asset>;
 
@@ -37,13 +41,13 @@ export interface AssetFolder {
   id: number;
   uuid: string;
   name: string;
-  parent_id?: number;
-  parent_uuid?: string;
+  parent_id?: number | null;
+  parent_uuid?: string | null;
 }
 
 export interface AssetFolderCreate {
   name: string;
-  parent_id?: number;
+  parent_id?: number | null;
 }
 
 export interface AssetFolderUpdate extends AssetFolderCreate {

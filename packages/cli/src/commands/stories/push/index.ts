@@ -1,6 +1,6 @@
 import { pipeline } from 'node:stream/promises';
 import { join } from 'pathe';
-import type { Component } from '@storyblok/management-api-client/resources/components';
+import type { Component, Story } from '@storyblok/management-api-client';
 import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
@@ -12,7 +12,6 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const pushCmd = storiesCommand
   .command('push')

@@ -2,8 +2,7 @@ import { readFile, unlink } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import type { Component } from '@storyblok/management-api-client/resources/components';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Component, Story } from '@storyblok/management-api-client';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
 import type { StoriesQueryParams } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
@@ -193,7 +192,6 @@ export const mapReferencesStream = ({
     transform(localStory: Story, _encoding, callback) {
       try {
         const { mappedStory, processedFields, missingSchemas } = storyRefMapper(localStory, { schemas, maps });
-        // @ts-expect-error Our types are wrong.
         onStorySuccess?.(mappedStory, processedFields, missingSchemas);
         this.push(mappedStory);
       }
@@ -212,10 +210,9 @@ const getRemoteStory = async ({ spaceId, storyId }: {
   spaceId: string;
   storyId: number;
 }) => {
-  const { data, response } = await getMapiClient().stories.get({
+  const { data, response } = await getMapiClient().stories.get(storyId, {
     path: {
-      space_id: spaceId,
-      story_id: storyId,
+      space_id: Number(spaceId),
     },
   });
 
@@ -249,7 +246,7 @@ export const makeCreateStoryAPITransport = ({ spaceId }: {
       ...(content?.component
         ? { content: { _uid: '', component: '__migration_artifact__' } }
         : {}),
-    },
+    } as Omit<Story, 'id' | 'uuid'>,
     publish: 0,
   });
   if (!remoteStory) {

@@ -1,10 +1,8 @@
-import type { Spaces } from '@storyblok/management-api-client';
+import type { Space, SpaceCreateRequest, SpaceUpdateRequest } from '@storyblok/management-api-client';
 import { handleAPIError } from '../../utils';
 import { getMapiClient } from '../../api';
 
-export type Space = Spaces.Space;
-export type SpaceCreate = Spaces.SpaceCreateRequest;
-export type SpaceUpdate = Spaces.SpaceUpdateRequest;
+export type { Space, SpaceCreateRequest as SpaceCreate, SpaceUpdateRequest as SpaceUpdate };
 
 export const fetchSpace = async (spaceId: string): Promise<Space | undefined> => {
   try {
@@ -12,7 +10,7 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
 
     const { data } = await client.spaces.get({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       throwOnError: true,
     });
@@ -29,7 +27,7 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
  * @param space - The space creation request data
  * @returns Promise<Space> - The created space data
  */
-export const createSpace = async (space: SpaceCreate): Promise<Space | undefined> => {
+export const createSpace = async (space: SpaceCreateRequest): Promise<Space | undefined> => {
   try {
     const client = getMapiClient();
     const { data } = await client.spaces.create({

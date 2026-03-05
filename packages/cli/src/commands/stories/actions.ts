@@ -1,4 +1,4 @@
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '@storyblok/management-api-client';
 import type { FetchStoriesResult, StoriesQueryParams } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -15,9 +15,9 @@ export const fetchStories = async (
 ): Promise<FetchStoriesResult | undefined> => {
   try {
     const client = getMapiClient();
-    const { data, response } = await client.stories.list({
+    const { data, response } = await client.stories.getAll({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       query: {
         ...params,
@@ -28,7 +28,7 @@ export const fetchStories = async (
     });
 
     return {
-      stories: data?.stories || [],
+      stories: data.stories || [],
       headers: response.headers,
     };
   }
@@ -39,15 +39,14 @@ export const fetchStories = async (
 
 export const fetchStory = async (
   spaceId: string,
-  storyId: string,
+  storyId: string | number,
 ) => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.stories.get({
+    const { data } = await client.stories.get(storyId, {
       path: {
-        space_id: spaceId,
-        story_id: storyId,
+        space_id: Number(spaceId),
       },
       throwOnError: true,
     });
@@ -71,11 +70,15 @@ export const createStory = async (
 
     const { data } = await client.stories.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: {
-        story: payload.story as Story,
-        ...(payload.publish ? { publish: payload.publish } : { }),
+        story: {
+          ...payload.story,
+          // StoryCreate2 expects `parent_id?: number`; normalize null → undefined.
+          parent_id: payload.story.parent_id ?? undefined,
+        },
+        ...(payload.publish ? { publish: payload.publish } : {}),
       },
       throwOnError: true,
     });
@@ -108,15 +111,18 @@ export const updateStory = async (
 ) => {
   try {
     const client = getMapiClient();
-    const { data } = await client.stories.updateStory({
+    const { data } = await client.stories.update(storyId, {
       path: {
-        space_id: spaceId,
-        story_id: storyId,
+        space_id: Number(spaceId),
       },
       body: {
-        story: payload.story as Story,
+        story: {
+          ...payload.story,
+          // StoryUpdate2 expects `parent_id?: number`; normalize null → undefined.
+          parent_id: payload.story.parent_id ?? undefined,
+        },
         force_update: payload.force_update === '1' ? '1' : '0',
-        ...(payload.publish ? { publish: payload.publish } : { }),
+        ...(payload.publish ? { publish: payload.publish } : {}),
       },
       throwOnError: true,
     });

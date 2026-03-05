@@ -15,8 +15,9 @@ properties:
     type: string
     description: Technical name used for component property in entries
   display_name:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: Name that will be used in the editor interface
   created_at:
     readOnly: true
@@ -40,8 +41,9 @@ properties:
         description: Component type field configuration
     additionalProperties: true
   image:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: URL to the preview image
   preview_field:
     type: string
@@ -50,8 +52,9 @@ properties:
     type: boolean
     description: Whether the component can be used as a root component
   preview_tmpl:
-    type: string
-    nullable: true
+    type:
+      - string
+      - "null"
     description: Preview template for the component
   is_nestable:
     type: boolean
@@ -72,8 +75,9 @@ properties:
           type: number
           description: The ID of the component the preset is for
         image:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: Link to the preview image of the preset
         icon:
           type: string
@@ -85,8 +89,9 @@ properties:
           type: string
           description: The description of the preset
   preset_id:
-    type: integer
-    nullable: true
+    type:
+      - integer
+      - "null"
     description: ID of the preset currently selected for this component
   real_name:
     type: string

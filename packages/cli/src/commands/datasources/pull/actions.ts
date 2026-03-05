@@ -51,9 +51,9 @@ export const fetchDatasourceEntries = async (
   try {
     const client = getMapiClient();
     return await fetchAllPages(
-      (page: number) => client.datasourceEntries.list({
+      (page: number) => client.datasourceEntries.getAll({
         path: {
-          space_id: spaceId,
+          space_id: Number(spaceId),
         },
         query: {
           datasource_id: datasourceId,
@@ -74,20 +74,20 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
   try {
     const client = getMapiClient();
     const datasources = await fetchAllPages(
-      (page: number) => client.datasources.list({
+      (page: number) => client.datasources.getAll({
         path: {
-          space_id: spaceId,
+          space_id: Number(spaceId),
         },
         query: {
           page,
         },
         throwOnError: true,
       }),
-      data => data?.datasources || [],
+      data => data.datasources || [],
     );
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
-      datasources.map(async (ds: any) => {
+      datasources.map(async (ds: SpaceDatasource) => {
         if (!ds.id) {
           return { ...ds, entries: [] };
         }
@@ -105,16 +105,16 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
 export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
-    const { data } = await client.datasources.list({
+    const { data } = await client.datasources.getAll({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       query: {
         search: datasourceName,
       },
       throwOnError: true,
     });
-    const found = data?.datasources?.find(d => d.name === datasourceName);
+    const found = data.datasources?.find((d: SpaceDatasource) => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
     const entries = await fetchDatasourceEntries(spaceId, found.id as number);

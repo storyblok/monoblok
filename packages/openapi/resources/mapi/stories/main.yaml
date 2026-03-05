@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces/{space_id}/stories:
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Stories
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -237,9 +237,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -300,9 +300,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/stories/{story_id}:
@@ -335,13 +335,13 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
     put:
-      operationId: updateStory
+      operationId: update
       summary: Update a Story
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -387,13 +387,13 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete a Story
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -409,9 +409,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/duplicate:
@@ -456,9 +456,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/publish:
@@ -491,9 +491,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/unpublish:
@@ -526,14 +526,14 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/export.json:
     get:
-      operationId: export
+      operationId: exportStory
       summary: Export a Story
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -567,14 +567,14 @@ paths:
                 description: Export data with field keys and values
                 additionalProperties: true
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/import.json:
     put:
-      operationId: import
+      operationId: importStory
       summary: Import a Story
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -626,9 +626,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/ai_translate:
@@ -672,9 +672,9 @@ paths:
                     $ref: '#/components/schemas/Story'
                     description: A single story object, containing the translated fields in its content property
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/story_versions:
@@ -779,9 +779,9 @@ paths:
                           type: object
                           description: This object contains the Story's content when the show_content parameter is used
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/restore_with:
@@ -820,9 +820,9 @@ paths:
                   story:
                     $ref: '#/components/schemas/Story'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story or version not found
   /v1/spaces/{space_id}/stories/{story_id}/compare:
@@ -847,9 +847,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/StoryVersionComparison'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Story not found
 
@@ -889,9 +889,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/UnpublishedStory'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
 components:
@@ -899,7 +899,11 @@ components:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
     Story:
-      $ref: ./schemas/story.yaml
+      $ref: ./schemas/story-mapi.yaml
+    StoryCreate:
+      $ref: ./schemas/story-create.yaml
+    StoryUpdate:
+      $ref: ./schemas/story-update.yaml
     StoryCreateRequest:
       $ref: ./schemas/story-create-request.yaml
     StoryUpdateRequest:
@@ -953,4 +957,4 @@ components:
     UnpublishedStory:
       $ref: ./schemas/unpublished-story.yaml
     ComponentContent:
-      $ref: ./schemas/blok.yaml
+      $ref: ../../shared/stories/story-content.yaml

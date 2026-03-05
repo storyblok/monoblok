@@ -11,7 +11,7 @@ paths:
   /v1/spaces/{space_id}/component_groups:
     description: A component folder can be used to group components together. Each component can have only one component folder. Component folders can be seen as block folders in the Storyblok App. This endpoint allows you to manage the component groups (folders). You can use it to retrieve, create, update, or delete the component folders.
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Component Folders
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -34,15 +34,17 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - component_groups
                 properties:
                   component_groups:
                     type: array
                     items:
                       $ref: '#/components/schemas/ComponentFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -70,9 +72,9 @@ paths:
                   component_group:
                     $ref: '#/components/schemas/ComponentFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/component_groups/{component_group_id}:
@@ -94,9 +96,9 @@ paths:
                   component_group:
                     $ref: '#/components/schemas/ComponentFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component folder not found
     put:
@@ -125,13 +127,13 @@ paths:
                   component_group:
                     $ref: '#/components/schemas/ComponentFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component folder not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete a Component Folder
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -140,9 +142,9 @@ paths:
         '204':
           description: Component folder deleted successfully
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component folder not found
 components:

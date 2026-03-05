@@ -142,6 +142,7 @@ const preconditions = {
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders`, async ({ request }) => {
         const body = await request.json();
+        console.log(body, space);
         const match = body
           && typeof body === 'object'
           && 'asset_folder' in body

@@ -11,7 +11,7 @@ paths:
   /v1/spaces/{space_id}/asset_folders:
     description: An asset folder can be used to organize assets together. Each asset can belong to only one folder. Asset folders support hierarchical nesting via parent_id. This endpoint allows you to manage asset folders. You can use it to retrieve, create, update, or delete asset folders.
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Asset Folders
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -54,9 +54,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/AssetFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -84,9 +84,9 @@ paths:
                   asset_folder:
                     $ref: '#/components/schemas/AssetFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/asset_folders/{asset_folder_id}:
@@ -108,9 +108,9 @@ paths:
                   asset_folder:
                     $ref: '#/components/schemas/AssetFolder'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Asset folder not found
     put:
@@ -132,13 +132,13 @@ paths:
         '204':
           description: Asset folder updated successfully
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Asset folder not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete an Asset Folder
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -153,9 +153,9 @@ paths:
         '204':
           description: Asset folder deleted successfully
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Asset folder not found
 components:
@@ -177,8 +177,9 @@ components:
           type: string
           description: The name of the asset folder
         parent_id:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
           description: ID of the parent folder for hierarchical structure
         uuid:
           readOnly: true
@@ -187,9 +188,10 @@ components:
           description: The UUID of the asset folder
         parent_uuid:
           readOnly: true
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
           description: The UUID of the parent folder
     AssetFolderInput:
       type: object
@@ -200,6 +202,7 @@ components:
           type: string
           description: The name of the asset folder
         parent_id:
-          type: integer
-          nullable: true
+          type:
+            - integer
+            - "null"
           description: ID of the parent folder for hierarchical structure. Use 0 or null to move to root level.

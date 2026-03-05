@@ -1,126 +1,309 @@
-// Import generated SDKs with shared client support
-import { createClient } from './client';
-import type { Client } from './client/types';
+import type { Asset as AssetRaw } from './generated/assets/types.gen';
+import type { Component as ComponentRaw } from './generated/components/types.gen';
+import type { ComponentFolder as ComponentFolderRaw } from './generated/component_folders/types.gen';
+import type { DatasourceEntry as DatasourceEntryRaw } from './generated/datasource_entries/types.gen';
+import type { Datasource as DatasourceRaw } from './generated/datasources/types.gen';
+import type { InternalTag as InternalTagRaw } from './generated/internal_tags/types.gen';
+import type { Preset as PresetRaw } from './generated/presets/types.gen';
+import type { Space as SpaceRaw } from './generated/spaces/types.gen';
+import type {
+  AssetField as AssetFieldRaw,
+  MultilinkField as MultilinkFieldRaw,
+  PluginField as PluginFieldRaw,
+  RichtextField as RichtextFieldRaw,
+  StoryMapi,
+  TableField as TableFieldRaw,
+} from './generated/stories/types.gen';
+import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/shared/client';
+import type { Middleware } from './generated/shared/client/utils.gen';
+import type { User as UserRaw } from './generated/users/types.gen';
+import { createClient, createConfig } from './generated/shared/client';
 import { getManagementBaseUrl, type Region } from '@storyblok/region-helper';
-import { sdkRegistry, SdkRegistryInstance } from './sdk-registry.generated';
+import { ClientError } from './error';
+import type { RateLimitConfig } from './rate-limit';
+import { createThrottleManager } from './rate-limit';
+import { createAssetFoldersResource } from './resources/asset-folders';
+import { createAssetsResource } from './resources/assets';
+import { createComponentFoldersResource } from './resources/component-folders';
+import { createComponentsResource } from './resources/components';
+import { createDatasourceEntriesResource } from './resources/datasource-entries';
+import { createDatasourcesResource } from './resources/datasources';
+import { createInternalTagsResource } from './resources/internal-tags';
+import { createPresetsResource } from './resources/presets';
+import { createSpacesResource } from './resources/spaces';
+import { createStoriesResource } from './resources/stories';
+import { createUsersResource } from './resources/users';
 
-type PersonalAccessToken = {
-  accessToken: string;
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+export type ApiResponse<T, ThrowOnError extends boolean = false> =
+  ThrowOnError extends true
+    ? { data: T; response: Response; request: Request }
+    : | { data: T; error: undefined; response: Response; request: Request }
+      | { data: undefined; error: ClientError; response: Response; request: Request };
+
+export interface RequestConfigOverrides {
+  throwOnError?: boolean;
 }
 
-type OAuthToken = {
-  oauthToken: string;
-}
-
-export interface ManagementApiClientConfig<ThrowOnError extends boolean = false> {
-  token: PersonalAccessToken | OAuthToken;
-  region?: Region;
-  baseUrl?: string; // Override for custom endpoints
+export interface HttpRequestOptions {
+  query?: Record<string, unknown>;
+  body?: unknown;
   headers?: Record<string, string>;
-  throwOnError?: ThrowOnError;
+  signal?: AbortSignal;
+  throwOnError?: RequestConfigOverrides['throwOnError'];
 }
 
-export interface ManagementApiClient<ThrowOnError extends boolean = false> extends SdkRegistryInstance {}
-export class ManagementApiClient<ThrowOnError extends boolean = false> {
-  protected client: Client;
-  protected config: ManagementApiClientConfig<ThrowOnError>;
-  protected sdkCache: Record<string, Promise<any>> = {};
-
-  constructor(config: ManagementApiClientConfig<ThrowOnError>) {
-    this.config = config;
-    this.client = createClientInstance(config);
-
-    Object.entries(sdkRegistry).forEach(([name, Sdk]) => {
-      Object.defineProperty(this, name, {
-        get: () => new Sdk({ client: this.client as any }),
-        enumerable: true,
-        configurable: true
-      });
-    });
-  }
-
-
-  /**
-   * @returns The client's interceptors
-   * @example
-   * client.interceptors.request.use((request, options) => {
-   *   console.log('Request:', request);
-   *   return request;
-   * });
-   */
-  public get interceptors(): Client['interceptors'] {
-    return this.client.interceptors;
-  }
-
-  /**
-   * @param config - The configuration to set
-   * @example
-   * client.setConfig({ region: 'eu' });
-   */
-  setConfig(config: Partial<Omit<ManagementApiClientConfig, 'token'>>): void {
-    const { region, baseUrl, headers } = config;
-    
-    if (headers) {
-      this.client.setConfig({
-        baseUrl: baseUrl || this.config.baseUrl,
-        region: region || this.config.region!,
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(this.config.token),
-          ...headers
-        }
-      });
-    }
-  }
-
-  /**
-   * @param token - The token to set
-   * @example
-   * client.setToken({ accessToken: '123' });
-   */
-  setToken(token: PersonalAccessToken | OAuthToken): void {
-    this.config.token = token;
-    this.client.setConfig({
-      region: this.config.region ?? "eu",
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(token),
-        ...this.config.headers
-      }
-    });
-  }
+/**
+ * Dependencies injected into every resource factory.
+ */
+export interface MapiResourceDeps {
+  client: Client;
+  spaceId?: number;
+  wrapRequest: <TData, ThrowOnError extends boolean = false>(fn: () => Promise<unknown>, throwOnError?: ThrowOnError) => Promise<ApiResponse<TData, ThrowOnError>>;
 }
 
-// Pure functions for client creation and setup
-function createClientInstance<ThrowOnError extends boolean = false>(
-  config: ManagementApiClientConfig<ThrowOnError>
-): Client {
-  const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
-  
-  return createClient({
+export interface ManagementApiClientConfig {
+  /**
+   * Personal access token for authentication.
+   * Provide either `accessToken` or `oauthToken`.
+   */
+  accessToken?: string;
+  /**
+   * OAuth bearer token for authentication.
+   * Provide either `accessToken` or `oauthToken`.
+   */
+  oauthToken?: string;
+  /**
+   * The Storyblok space ID. Used as the default for space-scoped endpoints.
+   * You can also override it per request via `path.space_id`.
+   */
+  spaceId?: number;
+  /**
+   * Storyblok region. Determines the base URL.
+   * @default 'eu'
+   */
+  region?: Region;
+  /**
+   * Override the base URL entirely (e.g. for testing).
+   */
+  baseUrl?: string;
+  /**
+   * Additional request headers.
+   */
+  headers?: Record<string, string>;
+  /**
+   * Throw on HTTP errors instead of returning them.
+   * @default false
+   */
+  throwOnError?: boolean;
+  /**
+   * Retry configuration for failed requests.
+   */
+  retry?: RetryOptions;
+  /**
+   * Request timeout in milliseconds.
+   * @default 30_000
+   */
+  timeout?: number;
+  /**
+   * Preventive rate limiting to avoid hitting the Storyblok Management API rate limits.
+   *
+   * - `undefined` (default): single bucket at maxConcurrent: 6.
+   * - `number`: fixed max concurrent requests per second.
+   * - `{ maxConcurrent?: number; adaptToServerHeaders?: boolean }`: full config.
+   * - `false`: disable rate limiting entirely.
+   */
+  rateLimit?: RateLimitConfig | number | false;
+}
+
+function getAuthorizationHeader(config: ManagementApiClientConfig): string | undefined {
+  if (config.accessToken) {
+    return config.accessToken;
+  }
+  if (config.oauthToken) {
+    return `Bearer ${config.oauthToken}`;
+  }
+  return undefined;
+}
+
+export const createManagementApiClient = (config: ManagementApiClientConfig) => {
+  const {
+    spaceId,
+    region = 'eu',
     baseUrl,
-    region,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(token),
-      ...headers
+    headers = {},
+    throwOnError = false,
+    retry = {
+      limit: 12,
+      backoffLimit: 20_000,
+      methods: ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'],
+      statusCodes: [429],
     },
-    throwOnError: throwOnError ?? false
-  });
-}
+    timeout = 30_000,
+    rateLimit,
+  } = config;
 
-function getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, string> {
-  return 'accessToken' in token ? {
-    'Authorization': token.accessToken
-  } : {
-    'Authorization': token.oauthToken
+  const throttleManager = createThrottleManager(rateLimit ?? {});
+  const authHeader = getAuthorizationHeader(config);
+
+  const client: Client = createClient(
+    createConfig({
+      baseUrl: baseUrl || getManagementBaseUrl(region),
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...headers,
+      },
+      throwOnError,
+      kyOptions: {
+        throwHttpErrors: true,
+        timeout,
+        retry,
+      },
+    }),
+  );
+
+  client.interceptors.error.use(
+    (error: unknown, response: Response) =>
+      new ClientError(response?.statusText || 'API request failed', {
+        status: response?.status ?? 0,
+        statusText: response?.statusText ?? '',
+        data: error,
+      }),
+  );
+
+  /**
+   * Wraps an SDK call with throttling and response adaptation.
+   * The throttle slot is held for the entire duration of the request.
+   * When throwOnError is true, errors throw and data is guaranteed non-null.
+   */
+  function wrapRequest<TData, ThrowOnError extends boolean = false>(
+    fn: () => Promise<unknown>,
+    _throwOnError?: ThrowOnError,
+  ): Promise<ApiResponse<TData, ThrowOnError>> {
+    return throttleManager.execute(async () => {
+      const result = await fn() as ApiResponse<TData, ThrowOnError>;
+      throttleManager.adaptToResponse((result as { response: Response }).response);
+      return result;
+    }) as Promise<ApiResponse<TData, ThrowOnError>>;
   }
-}
 
-// Export client utilities
-export { ClientError } from './client/error';
-export { createClient } from './client';
-export type { Client } from './client/types';
+  const deps: MapiResourceDeps = { client, spaceId, wrapRequest };
 
-// Export all generated types
-export * from './types.generated';
+  /**
+   * Escape hatch: send a GET request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpGet = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    return wrapRequest<TData>(() =>
+      client.get({ url: path, ...options }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a POST request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpPost = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    return wrapRequest<TData>(() =>
+      client.post({ url: path, ...options }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a PUT request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpPut = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    return wrapRequest<TData>(() =>
+      client.put({ url: path, ...options }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a DELETE request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpDelete = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    return wrapRequest<TData>(() =>
+      client.delete({ url: path, ...options }),
+    );
+  };
+
+  return {
+    assetFolders: createAssetFoldersResource(deps),
+    assets: createAssetsResource(deps),
+    componentFolders: createComponentFoldersResource(deps),
+    components: createComponentsResource(deps),
+    datasourceEntries: createDatasourceEntriesResource(deps),
+    datasources: createDatasourcesResource(deps),
+    delete: httpDelete,
+    get: httpGet,
+    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    internalTags: createInternalTagsResource(deps),
+    post: httpPost,
+    presets: createPresetsResource(deps),
+    put: httpPut,
+    spaces: createSpacesResource(deps),
+    stories: createStoriesResource(deps),
+    users: createUsersResource({ client, wrapRequest }),
+  };
+};
+
+export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
+
+export type { RateLimitConfig };
+export { ClientError } from './error';
+
+// Fields
+export type AssetField = Prettify<AssetFieldRaw>;
+export type MultilinkField = Prettify<MultilinkFieldRaw>;
+export type PluginField = Prettify<PluginFieldRaw>;
+export type RichtextField = Prettify<RichtextFieldRaw>;
+export type TableField = Prettify<TableFieldRaw>;
+
+// Components
+export type Component = Prettify<ComponentRaw>;
+export type ComponentFolder = Prettify<ComponentFolderRaw>;
+export type { SignedResponseObject } from './generated/assets/types.gen';
+
+// Assets
+export type Asset = Prettify<AssetRaw>;
+export type { ComponentCreate, ComponentUpdate } from './generated/components/types.gen';
+
+// Datasources
+export type Datasource = Prettify<DatasourceRaw>;
+export type DatasourceEntry = Prettify<DatasourceEntryRaw>;
+export type { DatasourceEntryCreate, DatasourceEntryUpdate } from './generated/datasource_entries/types.gen';
+export type { DatasourceCreate, DatasourceUpdate } from './generated/datasources/types.gen';
+
+// Spaces
+export type Space = Prettify<SpaceRaw>;
+export type { SpaceCreateRequest, SpaceUpdateRequest } from './generated/spaces/types.gen';
+
+// Internal Tags
+export type InternalTag = Prettify<InternalTagRaw>;
+
+// Presets
+export type Preset = Prettify<PresetRaw>;
+
+// Stories
+export type Story = Prettify<StoryMapi>;
+export type { StoryCreate, StoryUpdate } from './generated/stories/types.gen';
+
+// Users
+export type User = Prettify<UserRaw>;

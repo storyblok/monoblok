@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces/{space_id}/internal_tags:
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Internal Tags
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -44,9 +44,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/InternalTag'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -71,9 +71,9 @@ paths:
                   internal_tag:
                     $ref: '#/components/schemas/InternalTag'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/internal_tags/{internal_tag_id}:
@@ -94,7 +94,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/InternalTag'
-              required: 
       responses:
         '200':
           description: Internal tag updated
@@ -106,13 +105,13 @@ paths:
                   internal_tag:
                     $ref: '#/components/schemas/InternalTag'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Internal tag not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete an Internal Tag
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -126,9 +125,9 @@ paths:
         '204':
           description: Internal tag deleted
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Internal tag not found
 components:
@@ -137,10 +136,8 @@ components:
   schemas:
     InternalTag:
       type: object
-      required: 
-        -  id
+      required:
         - name
-        - object_type
       properties:
         name:
           type: string

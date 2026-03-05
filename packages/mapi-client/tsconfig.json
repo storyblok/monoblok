@@ -8,6 +8,7 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "types": ["node"],
     "allowImportingTsExtensions": true,
 
     /* Linting */
@@ -17,8 +18,7 @@
     "noUnusedParameters": true,
     "noEmit": true,
     "isolatedModules": true,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "skipLibCheck": true
   },
   "include": ["src", "examples", "dist"],
   "exclude": ["node_modules", "src/**/*.cy.ts", "src/**/*.test.ts"]

@@ -10,7 +10,7 @@ security:
 paths:
   /v1/spaces:
     get:
-      operationId: list
+      operationId: getAll
       summary: Retrieve Multiple Spaces
       description: Returns an array of space objects.
       parameters:
@@ -33,9 +33,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/Space'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '403':
           description: Forbidden - insufficient permissions
     post:
@@ -76,9 +76,9 @@ paths:
                   space:
                     $ref: '#/components/schemas/Space'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '403':
           description: Forbidden - insufficient permissions
         '422':
@@ -101,9 +101,9 @@ paths:
                   space:
                     $ref: '#/components/schemas/Space'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '403':
           description: Forbidden - insufficient permissions
         '404':
@@ -136,9 +136,9 @@ paths:
                   space:
                     $ref: '#/components/schemas/Space'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '403':
           description: Forbidden - insufficient permissions
         '404':
@@ -146,7 +146,7 @@ paths:
         '422':
           description: Unprocessable entity - validation errors
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete a Space
       description: Delete a space by its numeric id.
       parameters:
@@ -162,9 +162,9 @@ paths:
                   space:
                     $ref: '#/components/schemas/Space'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '403':
           description: Forbidden - insufficient permissions
         '404':
@@ -297,8 +297,9 @@ components:
               type: boolean
               description: Whether AI text generator is disabled in the organization
             custom_upload_limit_in_mb:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - "null"
               description: Custom upload limit in MB for the organization
         in_org:
           type: boolean
@@ -319,8 +320,9 @@ components:
                 type: string
                 description: Display name of the language
               ai_translation_code:
-                type: string
-                nullable: true
+                type:
+                  - string
+                  - "null"
                 description: AI translation code for the language, can be null
         default_lang_name:
           type: string
@@ -464,8 +466,9 @@ components:
               type: boolean
               description: Whether AI text generator is disabled in the organization
             custom_upload_limit_in_mb:
-              type: integer
-              nullable: true
+              type:
+                - integer
+                - "null"
               description: Custom upload limit in MB for the organization
         in_org:
           type: boolean

@@ -23,7 +23,7 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
 
     const { data } = await client.components.create({
       path: {
-        space_id: space,
+        space_id: Number(space),
       },
       body: {
         component,
@@ -41,10 +41,9 @@ export const updateComponent = async (space: string, componentId: number, compon
   try {
     const client = getMapiClient();
 
-    const { data } = await client.components.update({
+    const { data } = await client.components.update(componentId, {
       path: {
         space_id: Number(space),
-        component_id: componentId,
       },
       body: {
         component,
@@ -101,10 +100,9 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
   try {
     const client = getMapiClient();
 
-    const { data } = await client.componentFolders.update({
+    const { data } = await client.componentFolders.update(groupId, {
       path: {
         space_id: Number(space),
-        component_group_id: String(groupId),
       },
       body: {
         component_group: componentGroup,
@@ -160,10 +158,9 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
   try {
     const client = getMapiClient();
 
-    const { data } = await client.presets.update({
+    const { data } = await client.presets.update(presetId, {
       path: {
         space_id: Number(space),
-        preset_id: presetId,
       },
       body: {
         preset,
@@ -218,10 +215,9 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
   try {
     const client = getMapiClient();
 
-    const { data } = await client.internalTags.update({
+    const { data } = await client.internalTags.update(tagId, {
       path: {
         space_id: Number(space),
-        internal_tag_id: tagId,
       },
       body: componentInternalTag,
       throwOnError: true,

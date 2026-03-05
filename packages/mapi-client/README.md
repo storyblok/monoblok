@@ -1,13 +1,15 @@
 # @storyblok/management-api-client
 
-A comprehensive TypeScript SDK for the Storyblok Management API with automatic region resolution and built-in retry logic.
+A TypeScript SDK for the Storyblok Management API with automatic region resolution, built-in preventive rate limiting, and configurable retry logic.
 
 ## Features
 
 - **Type-Safe**: Generated from OpenAPI specifications with full TypeScript support
+- **Factory Function**: `createManagementApiClient(config)` — no class instantiation
 - **Region Resolution**: Automatic regional endpoint selection based on space ID
-- **Retry Logic**: Built-in retry with exponential backoff and `retry-after` header support
-- **Multi-Resource**: Unified client for many MAPI resources (stories, datasources, components, etc.)
+- **Preventive Rate Limiting**: Token-bucket throttling to avoid hitting API rate limits before they occur
+- **Retry Logic**: Built-in retry with exponential backoff and `Retry-After` header support
+- **Multi-Resource**: Unified client for all Storyblok Management API resources
 
 ## Installation
 
@@ -20,18 +22,17 @@ pnpm add @storyblok/management-api-client
 ## Quick Start
 
 ```typescript
-import { ManagementApiClient } from '@storyblok/management-api-client';
+import { createManagementApiClient } from '@storyblok/management-api-client';
 
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-personal-access-token' },
-  // Optional configuration
-  region: 'us', // 'eu' | 'us' | 'ap' | 'ca' | 'cn'
+const client = createManagementApiClient({
+  accessToken: 'your-personal-access-token',
+  region: 'eu', // 'eu' | 'us' | 'ap' | 'ca' | 'cn'
 });
 
-// Get stories with full type safety
-const stories = await client.stories.list({
+// Get all stories
+const stories = await client.stories.getAll({
   path: { space_id: 123456 },
-  query: { per_page: 10 }
+  query: { per_page: 10 },
 });
 
 // Create a datasource
@@ -40,25 +41,27 @@ const datasource = await client.datasources.create({
   body: {
     datasource: {
       name: 'My Datasource',
-      slug: 'my-datasource'
-    }
-  }
+      slug: 'my-datasource',
+    },
+  },
 });
 ```
 
 ## Authentication
 
 ### Personal Access Token
+
 ```typescript
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-personal-access-token' }
+const client = createManagementApiClient({
+  accessToken: 'your-personal-access-token',
 });
 ```
 
 ### OAuth Token
+
 ```typescript
-const client = new ManagementApiClient({
-  token: { oauthToken: 'your-oauth-token' }
+const client = createManagementApiClient({
+  oauthToken: 'your-oauth-token',
 });
 ```
 
@@ -66,131 +69,157 @@ const client = new ManagementApiClient({
 
 ```typescript
 interface ManagementApiClientConfig {
-  token: { accessToken: string } | { oauthToken: string };
-  region?: 'eu' | 'us' | 'ap' | 'ca' | 'cn'; // Auto-detected from space_id if not provided
-  baseUrl?: string; // Override automatic region resolution
-  headers?: Record<string, string>; // Additional headers
-  throwOnError?: boolean; // Throw on HTTP errors (default: false)
+  /** Personal access token. Provide either `accessToken` or `oauthToken`. */
+  accessToken?: string;
+  /** OAuth bearer token. Provide either `accessToken` or `oauthToken`. */
+  oauthToken?: string;
+  /** Storyblok region. Auto-detected from space ID if omitted. @default 'eu' */
+  region?: 'eu' | 'us' | 'ap' | 'ca' | 'cn';
+  /** Override base URL entirely (e.g. for testing). */
+  baseUrl?: string;
+  /** Additional request headers. */
+  headers?: Record<string, string>;
+  /** Throw on HTTP errors. @default false */
+  throwOnError?: boolean;
+  /** Request timeout in milliseconds. @default 30_000 */
+  timeout?: number;
+  /** Retry configuration. */
+  retry?: {
+    limit?: number;        // @default 12
+    backoffLimit?: number; // @default 20_000 ms
+    methods?: string[];
+    statusCodes?: number[];
+  };
+  /** Preventive rate limiting. @default { maxConcurrent: 6, adaptToServerHeaders: true } */
+  rateLimit?: {
+    maxConcurrent?: number;        // @default 6
+    adaptToServerHeaders?: boolean; // @default true
+  } | number | false;
 }
 ```
 
 ## Available Resources
 
-The client provides access to all Storyblok Management API resources:
-
 ```typescript
 // Stories
-await client.stories.list({ path: { space_id } });
+await client.stories.getAll({ path: { space_id } });
 await client.stories.get({ path: { space_id, story_id } });
-await client.stories.create({ path: { space_id }, body: { story: {...} } });
-await client.stories.updateStory({ path: { space_id, story_id }, body: { story: {...} } });
+await client.stories.create({ path: { space_id }, body: { story: { ... } } });
+await client.stories.update({ path: { space_id, story_id }, body: { story: { ... } } });
 await client.stories.delete({ path: { space_id, story_id } });
 
-// Datasources
-await client.datasources.list({ path: { space_id } });
-await client.datasources.create({ path: { space_id }, body: { datasource: {...} } });
+// Assets
+await client.assets.getAll({ path: { space_id } });
+await client.assets.get({ path: { space_id, asset_id } });
+
+// Asset Folders
+await client.assetFolders.getAll({ path: { space_id } });
 
 // Components
-await client.components.list({ path: { space_id } });
-await client.components.create({ path: { space_id }, body: { component: {...} } });
+await client.components.getAll({ path: { space_id } });
+await client.components.create({ path: { space_id }, body: { component: { ... } } });
+await client.components.delete_({ path: { space_id, component_id } });
 
-// Spaces
-await client.spaces.list({});
-await client.spaces.get({ path: { space_id } });
+// Component Folders
+await client.componentFolders.getAll({ path: { space_id } });
+
+// Datasources
+await client.datasources.getAll({ path: { space_id } });
+await client.datasources.create({ path: { space_id }, body: { datasource: { ... } } });
 
 // Datasource Entries
-await client.datasourceEntries.list({ path: { space_id, datasource_id } });
+await client.datasourceEntries.getAll({ path: { space_id, datasource_id } });
+await client.datasourceEntries.update({ path: { space_id, datasource_entry_id }, body: { ... } });
+
+// Spaces
+await client.spaces.getAll({});
+await client.spaces.get({ path: { space_id } });
+
+// Presets
+await client.presets.getAll({ path: { space_id } });
 
 // Internal Tags
-await client.internalTags.list({ path: { space_id } });
+await client.internalTags.getAll({ path: { space_id } });
+
+// Users
+await client.users.getAll({ path: { space_id } });
 ```
+
+> **Note**: `delete` is a reserved word in JavaScript. The generated SDK exposes it as `delete_`.
 
 ## Region Resolution
 
-The client automatically determines the correct regional endpoint based on your space ID:
+The client automatically determines the correct regional endpoint from the `region` option. You can also override it:
 
 ```typescript
-// These will automatically route to the correct regional endpoints:
-await client.stories.list({ path: { space_id: 564469716905585 } }); 
-// → https://api-us.storyblok.com
-
-await client.stories.list({ path: { space_id: 845944693616241 } }); 
-// → https://api-ca.storyblok.com
-
-await client.stories.list({ path: { space_id: 1127419670326897 } }); 
-// → https://api-ap.storyblok.com
+// Custom base URL (bypasses automatic region detection)
+const client = createManagementApiClient({
+  accessToken: 'your-token',
+  baseUrl: 'https://mapi.example.com',
+});
 ```
 
-### Override Region Resolution
+## Rate Limiting
+
+The client includes built-in preventive throttling. Instead of waiting for a 429 response, it limits the number of concurrent in-flight requests using a token-bucket before dispatching. By default it allows 6 concurrent requests and automatically adapts that limit from the `X-RateLimit-Policy` response header.
+
 ```typescript
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-token' },
-  baseUrl: 'https://custom-api.example.com' // Bypasses automatic region detection
+const client = createManagementApiClient({
+  accessToken: 'your-token',
+  rateLimit: {
+    maxConcurrent: 3,              // lower for stricter plans
+    adaptToServerHeaders: false,   // disable dynamic adaptation
+  },
+  // Disable throttling entirely (not recommended):
+  // rateLimit: false,
 });
 ```
 
 ## Retry Logic
 
-The client includes built-in retry handling for rate limits and network errors:
-
-- **429 Retry Handling**: Automatically retries on rate limit responses
-- **Retry-After Support**: Respects `retry-after` headers from the API
-- **Exponential Backoff**: Smart retry delays to avoid overwhelming the API
-- **Network Error Retry**: Retries on network failures
+Retry is enabled by default for all HTTP methods on 429 responses, with exponential backoff:
 
 ```typescript
-// The client automatically handles retries with these defaults:
-// - maxRetries: 12
-// - retryDelay: 1000ms
-// - Respects retry-after headers from 429 responses
-
-const stories = await client.stories.list({ 
-  path: { space_id: 123456 },
-  query: { per_page: 10 }
+const client = createManagementApiClient({
+  accessToken: 'your-token',
+  retry: {
+    limit: 12,              // max retry attempts
+    backoffLimit: 20_000,   // max backoff delay in ms
+    statusCodes: [429],     // only retry rate-limit responses
+  },
 });
-// If rate limited, will automatically retry up to 12 times
-```
-
-## Runtime Configuration
-
-Update client configuration at runtime:
-
-```typescript
-// Update region/baseUrl
-client.setConfig({ 
-  region: 'us',
-  headers: { 'Custom-Header': 'value' }
-});
-
-// Update authentication
-client.setToken({ accessToken: 'new-token' });
 ```
 
 ## Error Handling
 
 ```typescript
-try {
-  const story = await client.stories.get({
-    path: { space_id: 123456, story_id: 'non-existent' }
-  });
-} catch (error) {
-  if (error.status === 404) {
-    console.log('Story not found');
-  }
-}
+import { ClientError, createManagementApiClient } from '@storyblok/management-api-client';
 
-// Or configure to not throw errors
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-token' },
-  throwOnError: false
+const client = createManagementApiClient({
+  accessToken: 'your-token',
+  throwOnError: true,
 });
 
+try {
+  await client.stories.get({ path: { space_id: 123456, story_id: 99999 } });
+} catch (error) {
+  if (error instanceof ClientError) {
+    console.error(error.status);     // e.g. 404
+    console.error(error.statusText); // e.g. 'Not Found'
+    console.error(error.data);       // parsed response body
+  }
+}
+```
+
+When `throwOnError` is `false` (the default), errors are returned in the response object instead of thrown:
+
+```typescript
 const result = await client.stories.get({
-  path: { space_id: 123456, story_id: 'non-existent' }
+  path: { space_id: 123456, story_id: 99999 },
 });
 
 if (result.error) {
-  console.log('Error:', result.error);
+  console.error('Error:', result.error);
 } else {
   console.log('Story:', result.data);
 }
@@ -198,25 +227,28 @@ if (result.error) {
 
 ## TypeScript Support
 
-The client provides full TypeScript support with generated types:
+Types are exported under namespaces to avoid name collisions:
 
 ```typescript
-import type { 
+import type {
   StoriesTypes,
   DatasourcesTypes,
-  ComponentsTypes 
+  ComponentsTypes,
 } from '@storyblok/management-api-client';
 
-// Full type safety for request/response data
-const createStory = async (storyData: StoriesTypes.CreateRequestBody) => {
+const createStory = async (storyData: StoriesTypes.StoryCreateRequest) => {
   const response = await client.stories.create({
     path: { space_id: 123456 },
-    body: storyData
+    body: storyData,
   });
-  
-  // Response is fully typed
-  return response.data; // StoriesTypes.Story
+  return response.data; // fully typed
 };
+```
+
+Convenience top-level re-exports are also available:
+
+```typescript
+import type { Story, StoryCreateRequest, StoryUpdateRequest } from '@storyblok/management-api-client';
 ```
 
 ## Development
@@ -235,6 +267,84 @@ pnpm test
 ## Contributing
 
 This package is generated from OpenAPI specifications in `packages/openapi/`. To add new endpoints or modify existing ones, update the OpenAPI specs and regenerate the client.
+
+---
+
+## Migration Guide
+
+This section covers all breaking changes from the class-based `ManagementApiClient` to the new `createManagementApiClient` factory function.
+
+### Factory function (breaking)
+
+```typescript
+// Before
+import { ManagementApiClient } from '@storyblok/management-api-client';
+const client = new ManagementApiClient({ token: { accessToken: 'your-token' } });
+
+// After
+import { createManagementApiClient } from '@storyblok/management-api-client';
+const client = createManagementApiClient({ accessToken: 'your-token' });
+```
+
+### Config shape (breaking)
+
+```typescript
+// Before
+new ManagementApiClient({ token: { accessToken: '...' } });
+new ManagementApiClient({ token: { oauthToken: '...' } });
+
+// After
+createManagementApiClient({ accessToken: '...' });
+createManagementApiClient({ oauthToken: '...' });
+```
+
+### Renamed methods (breaking)
+
+| Before | After |
+|---|---|
+| `client.stories.list(...)` | `client.stories.getAll(...)` |
+| `client.stories.updateStory(...)` | `client.stories.update(...)` |
+| `client.components.list(...)` | `client.components.getAll(...)` |
+| `client.components.deleteComponent(...)` | `client.components.delete_(...)` |
+| `client.datasources.list(...)` | `client.datasources.getAll(...)` |
+| `client.datasourceEntries.list(...)` | `client.datasourceEntries.getAll(...)` |
+| `client.datasourceEntries.updateDatasourceEntry(...)` | `client.datasourceEntries.update(...)` |
+| `client.spaces.list(...)` | `client.spaces.getAll(...)` |
+| `client.assets.list(...)` | `client.assets.getAll(...)` |
+| `client.assetFolders.list(...)` | `client.assetFolders.getAll(...)` |
+| `client.presets.list(...)` | `client.presets.getAll(...)` |
+| `client.internalTags.list(...)` | `client.internalTags.getAll(...)` |
+| `client.componentFolders.list(...)` | `client.componentFolders.getAll(...)` |
+
+> **Note**: `delete` is a reserved JavaScript keyword. The method is now exposed as `delete_`.
+
+### Removed runtime config mutation (breaking)
+
+`client.setConfig()` and `client.setToken()` are removed — create a new client instance instead:
+
+```typescript
+// Before
+client.setToken({ accessToken: 'new-token' });
+
+// After
+const newClient = createManagementApiClient({ accessToken: 'new-token' });
+```
+
+### Rate limiting (non-breaking, but note)
+
+The client now includes built-in preventive throttling. If you were applying your own concurrency limiter (e.g. via a request interceptor with `async-sema`), remove it to avoid double-throttling and use the `rateLimit` option instead:
+
+```typescript
+// Before (manual limiter via request interceptor)
+const sema = new RateLimit(3);
+client.interceptors.request.use(async () => { await sema(); });
+
+// After (built-in throttling)
+const client = createManagementApiClient({
+  accessToken: 'your-token',
+  rateLimit: { maxConcurrent: 3 }, // default: 6
+});
+```
 
 ## License
 

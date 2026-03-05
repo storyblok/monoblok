@@ -90,7 +90,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const targetData = targetPreset
       ? {
           resource: targetPreset,
-          id: targetPreset.id,
+          id: targetPreset.id!,
         }
       : undefined;
     const node = new PresetNode(preset, targetData);
@@ -807,7 +807,7 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
   updateTargetData(result: SpaceComponentPreset): void {
     this.targetData = {
       resource: result,
-      id: result.id,
+      id: result.id!,
     };
   }
 }

@@ -1,5 +1,5 @@
 import { Transform } from 'node:stream';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '@storyblok/management-api-client';
 import type { StoryContent } from '../../../stories/constants';
 import { ERROR_CODES, type FailedMigration, type MigrationFile, type SkippedMigration, type SuccessfulMigration } from '../constants';
 import { applyMigrationToAllBlocks, getMigrationFunction } from '../actions';

@@ -14,7 +14,7 @@ const inputListeners = new Set<(story: ISbStoryData) => void>();
  * Tracks whether the Storyblok Preview Bridge event listeners
  * have already been registered.
  */
-let bridgeInitialized = false;
+let bridgeInitPromise: Promise<void> | undefined;
 
 /**
  * Initializes the Storyblok Preview Bridge and attaches event listeners.
@@ -29,31 +29,37 @@ let bridgeInitialized = false;
  * @param bridgeOptions Optional configuration for the Preview Bridge.
  */
 async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
-  if (bridgeInitialized || !canUseStoryblokBridge()) {
+  if (!canUseStoryblokBridge()) {
     return;
   }
 
-  const bridge = await loadStoryblokBridge(bridgeOptions);
+  // If initialization already started, reuse it
+  if (bridgeInitPromise) {
+    return bridgeInitPromise;
+  }
 
-  bridge.on(['input', 'change', 'published'], (event) => {
-    if (!event) {
-      return;
-    }
+  bridgeInitPromise = (async () => {
+    const bridge = await loadStoryblokBridge(bridgeOptions);
 
-    if (event.action === 'input' && event.story) {
-      for (const listener of inputListeners) {
-        listener(event.story as ISbStoryData);
+    bridge.on(['input', 'change', 'published'], (event) => {
+      if (!event) {
+        return;
       }
-      return;
-    }
 
-    // Always reload the page when content changes or is published
-    if (event.action === 'change' || event.action === 'published') {
-      window.location.reload();
-    }
-  });
+      if (event.action === 'input' && event.story) {
+        for (const listener of inputListeners) {
+          listener(event.story as ISbStoryData);
+        }
+        return;
+      }
 
-  bridgeInitialized = true;
+      if (event.action === 'change' || event.action === 'published') {
+        window.location.reload();
+      }
+    });
+  })();
+
+  return bridgeInitPromise;
 }
 
 /**

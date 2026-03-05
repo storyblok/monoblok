@@ -6,13 +6,13 @@ let storedConfig: BridgeParams | undefined;
 function configsAreEqual(config1: BridgeParams | undefined, config2: BridgeParams | undefined): boolean {
   return JSON.stringify(config1) === JSON.stringify(config2);
 }
+
 /**
  * Get or create a StoryblokBridge instance.
  *⚠️ The bridge is a singleton. Configuration is applied only on first load.
  * @param config Optional configuration for the StoryblokBridge.
  * @returns A promise that resolves to a StoryblokBridge instance.
  */
-
 export function loadStoryblokBridge(config?: BridgeParams) {
   if (bridgePromise) {
     if (config && !configsAreEqual(config, storedConfig)) {

@@ -2,5 +2,8 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   exports: true,
-  // ...config options
+  sourcemap: true,
+  dts: true,
+  attw: true,
+  publint: true,
 });

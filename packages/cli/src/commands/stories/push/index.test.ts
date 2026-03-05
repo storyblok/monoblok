@@ -135,11 +135,16 @@ const preconditions = {
     }
   },
   canListStories(stories: MockStory[], space = DEFAULT_SPACE) {
+    const perPage = 2;
     server.use(
-      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, () => {
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, ({ request }) => {
+        const url = new URL(request.url);
+        const page = Number(url.searchParams.get('page') || '1');
+        const start = (page - 1) * perPage;
+        const pageStories = stories.slice(start, start + perPage);
         return HttpResponse.json(
-          { stories },
-          { headers: { 'Total': String(stories.length), 'Per-Page': '100' } },
+          { stories: pageStories },
+          { headers: { 'Total': String(stories.length), 'Per-Page': String(perPage) } },
         );
       }),
     );

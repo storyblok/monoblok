@@ -5,7 +5,7 @@ import { Sema } from 'async-sema';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
-import type { StoriesQueryParams } from './constants';
+import type { ExistingTargetStories, StoriesQueryParams, TargetStoryRef } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
@@ -252,12 +252,7 @@ export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   }));
 };
 
-export type TargetStoryRef = Pick<Story, 'id' | 'uuid'>;
-
-export interface ExistingTargetStories {
-  bySlug: Map<string, TargetStoryRef>;
-  byId: Map<number, TargetStoryRef>;
-}
+export type { ExistingTargetStories, TargetStoryRef };
 
 export const createStoryPlaceholderStream = ({
   maps,
@@ -290,8 +285,7 @@ export const createStoryPlaceholderStream = ({
 
       const task = (async () => {
         try {
-          // If a mapped remote story already exists, we must not create a new placeholder.
-          // This can happen when the user resumes a failed push or runs push multiple times.
+          // Primary: check manifest mapping (from a previous push).
           const mappedStoryId = maps.stories?.get(localStory.id);
           const mappedRemoteStory = mappedStoryId
             ? existingTargetStories.byId.get(Number(mappedStoryId))
@@ -301,8 +295,8 @@ export const createStoryPlaceholderStream = ({
             return;
           }
 
-          // Match by full_slug: handles both same-space pushes and cross-space
-          // pushes (duplicated spaces with different IDs but same slugs).
+          // Fallback: match by full_slug when no manifest entry exists (first push).
+          // Handles same-space pushes and cross-space pushes
           const existingBySlug = localStory.full_slug
             ? existingTargetStories.bySlug.get(localStory.full_slug)
             : undefined;

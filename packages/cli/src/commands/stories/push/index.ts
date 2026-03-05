@@ -9,10 +9,10 @@ import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, type TargetStoryRef, writeStoryStream } from '../streams';
+import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
-import { fetchStories } from '../actions';
+import { prefetchTargetStories } from '../actions';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const pushCmd = storiesCommand
@@ -100,35 +100,12 @@ pushCmd
         return;
       }
 
-      // Pre-fetch existing stories from target space. This single paginated fetch
-      // replaces per-story API calls inside createStoryPlaceholderStream, handling:
-      // - Resume: mapped IDs from a previous manifest are looked up by id
-      // - Same-space push: stories matched by full_slug
-      // - Cross-space push (existing stories): stories with different IDs but same slugs
-      const existingTargetStories = {
-        bySlug: new Map<string, TargetStoryRef>(),
-        byId: new Map<number, TargetStoryRef>(),
-      };
-      let page = 1;
-      let totalPages = 1;
-      while (page <= totalPages) {
-        const result = await fetchStories(space, { page, per_page: 100 });
-        if (!result) {
-          break;
-        }
-        const total = Number(result.headers.get('Total'));
-        const perPage = Number(result.headers.get('Per-Page'));
-        totalPages = Math.ceil(total / perPage);
-        for (const story of result.stories) {
-          // Store only the fields needed for matching to keep memory low on large spaces.
-          const ref: TargetStoryRef = { id: story.id, uuid: story.uuid };
-          if (story.full_slug) {
-            existingTargetStories.bySlug.set(story.full_slug, ref);
-          }
-          existingTargetStories.byId.set(story.id, ref);
-        }
-        page++;
-      }
+      const fetchProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(21) });
+      const existingTargetStories = await prefetchTargetStories(space, {
+        onTotal: total => fetchProgress.setTotal(total),
+        onIncrement: count => fetchProgress.increment(count),
+      });
+      fetchProgress.stop();
 
       const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
       const creationProgress = ui.createProgressBar({ title: 'Creating Stories...'.padEnd(21) });

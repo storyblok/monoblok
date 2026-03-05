@@ -117,3 +117,10 @@ export interface FetchStoriesResult {
   stories: Story[];
   headers: Headers;
 }
+
+export type TargetStoryRef = Pick<Story, 'id' | 'uuid'>;
+
+export interface ExistingTargetStories {
+  bySlug: Map<string, TargetStoryRef>;
+  byId: Map<number, TargetStoryRef>;
+}

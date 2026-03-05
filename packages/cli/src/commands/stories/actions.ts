@@ -1,5 +1,5 @@
 import type { Story } from '@storyblok/management-api-client/resources/stories';
-import type { FetchStoriesResult, StoriesQueryParams } from './constants';
+import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, TargetStoryRef } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 
@@ -134,4 +134,38 @@ export const updateStory = async (
     }
     handleAPIError('update_story', error);
   }
+};
+
+export const prefetchTargetStories = async (spaceId: string, options?: {
+  onTotal?: (total: number) => void;
+  onIncrement?: (count: number) => void;
+}): Promise<ExistingTargetStories> => {
+  const result: ExistingTargetStories = {
+    bySlug: new Map(),
+    byId: new Map(),
+  };
+  let page = 1;
+  let totalPages = 1;
+  while (page <= totalPages) {
+    const response = await fetchStories(spaceId, { page, per_page: 100 });
+    if (!response) {
+      break;
+    }
+    const total = Number(response.headers.get('Total'));
+    const perPage = Number(response.headers.get('Per-Page'));
+    totalPages = Math.ceil(total / perPage);
+    if (page === 1) {
+      options?.onTotal?.(total);
+    }
+    for (const story of response.stories) {
+      const ref: TargetStoryRef = { id: story.id, uuid: story.uuid };
+      if (story.full_slug) {
+        result.bySlug.set(story.full_slug, ref);
+      }
+      result.byId.set(story.id, ref);
+    }
+    options?.onIncrement?.(response.stories.length);
+    page++;
+  }
+  return result;
 };

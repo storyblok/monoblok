@@ -19,7 +19,7 @@ Inspect the root `package.json` and the `packages/` directory to identify active
 
 ## Code style and conventions
 
-Always use linting and type-checking scripts for affected packages after making changes.
+Always use linting and type-checking scripts for affected packages after making changes. When encountering lint errors, run the lint command with `--fix` first before attempting to fix issues manually.
 
 ### General
 

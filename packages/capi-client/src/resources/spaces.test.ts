@@ -48,6 +48,32 @@ describe('spaces.get()', () => {
     expect(result.response.status).toBe(401);
   });
 
+  it('should include the token in the request URL', async () => {
+    let capturedUrl = '';
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/spaces/me', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          space: {
+            id: 1,
+            name: 'Test Space',
+            domain: 'https://test.storyblok.com',
+            version: 1,
+            language_codes: [],
+          },
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'my-test-token',
+    });
+
+    await client.spaces.get();
+
+    const url = new URL(capturedUrl);
+    expect(url.searchParams.get('token')).toBe('my-test-token');
+  });
+
   it('should always hit the network (not cached)', async () => {
     let requestCount = 0;
     server.use(

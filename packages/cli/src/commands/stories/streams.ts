@@ -253,8 +253,6 @@ export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   }));
 };
 
-export type { ExistingTargetStories, TargetStoryRef };
-
 export const createStoryPlaceholderStream = ({
   maps,
   existingTargetStories,

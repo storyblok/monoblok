@@ -1,7 +1,8 @@
 {
   "name": "@storyblok/richtext",
   "type": "module",
-  "version": "4.0.0",
+  "version": "3.8.2",
+  "packageManager": "pnpm@10.2.0",
   "description": "Storyblok RichText Resolver",
   "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
   "license": "MIT",
@@ -22,29 +23,49 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
-    "./html-parser": {
-      "import": "./dist/html-parser.mjs",
-      "require": "./dist/html-parser.cjs"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "umd": "./dist/index.umd.js"
     },
     "./markdown-parser": {
-      "import": "./dist/markdown-parser.mjs",
-      "require": "./dist/markdown-parser.cjs"
+      "import": {
+        "types": "./dist/markdown-parser.d.mts",
+        "default": "./dist/markdown-parser.mjs"
+      },
+      "require": {
+        "types": "./dist/markdown-parser.d.cts",
+        "default": "./dist/markdown-parser.cjs"
+      },
+      "umd": "./dist/markdown-parser.umd.js"
     },
-    "./package.json": "./package.json"
+    "./html-parser": {
+      "import": {
+        "types": "./dist/html-parser.d.mts",
+        "default": "./dist/html-parser.mjs"
+      },
+      "require": {
+        "types": "./dist/html-parser.d.cts",
+        "default": "./dist/html-parser.cjs"
+      },
+      "umd": "./dist/html-parser.umd.js"
+    }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
+  "types": "./dist/index.d.mts",
   "typesVersions": {
     "*": {
       "markdown-parser": [
-        "./dist/markdown-parser.d.cts"
+        "./dist/markdown-parser.d.mts"
       ],
       "html-parser": [
-        "./dist/html-parser.d.cts"
+        "./dist/html-parser.d.mts"
       ]
     }
   },
@@ -73,33 +94,9 @@
     "release:dry": "release-it --dry-run"
   },
   "dependencies": {
-    "@tiptap/core": "^3.10.2",
-    "@tiptap/extension-blockquote": "^3.10.2",
-    "@tiptap/extension-bold": "^3.10.2",
-    "@tiptap/extension-code": "^3.10.2",
-    "@tiptap/extension-code-block": "^3.10.2",
-    "@tiptap/extension-details": "^3.10.2",
-    "@tiptap/extension-document": "^3.10.2",
-    "@tiptap/extension-emoji": "^3.10.2",
-    "@tiptap/extension-hard-break": "^3.10.2",
-    "@tiptap/extension-heading": "^3.10.2",
-    "@tiptap/extension-highlight": "^3.10.2",
-    "@tiptap/extension-horizontal-rule": "^3.10.2",
-    "@tiptap/extension-image": "^3.10.2",
-    "@tiptap/extension-italic": "^3.10.2",
-    "@tiptap/extension-link": "^3.10.2",
-    "@tiptap/extension-list": "^3.10.2",
-    "@tiptap/extension-paragraph": "^3.10.2",
-    "@tiptap/extension-strike": "^3.10.2",
-    "@tiptap/extension-subscript": "^3.10.2",
-    "@tiptap/extension-superscript": "^3.10.2",
-    "@tiptap/extension-table": "^3.10.2",
-    "@tiptap/extension-text": "^3.10.2",
-    "@tiptap/extension-text-style": "^3.10.2",
-    "@tiptap/extension-underline": "^3.10.2",
-    "@tiptap/html": "^3.10.2",
     "markdown-it": "^14.1.0",
-    "storyblok-js-client": "workspace:*"
+    "markdown-it-github": "^0.5.0",
+    "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",

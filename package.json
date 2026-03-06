@@ -13,10 +13,6 @@
     "lint:fix": "nx run-many --target=lint --fix",
     "lint:affected": "nx affected:lint"
   },
-  "workspaces": [
-    "packages/*",
-    "tools/*"
-  ],
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
@@ -31,5 +27,10 @@
   },
   "dependencies": {
     "cypress": "^14.3.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "cypress"
+    ]
   }
 }

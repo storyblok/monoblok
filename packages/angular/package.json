@@ -1,0 +1,56 @@
+{
+  "name": "angular",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "playground:ssr:start": "ng serve ssr-playground --ssl",
+    "playground:app:start": "ng serve app-playground --ssl",
+    "build": "ng build @storyblok/angular",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.27.0",
+  "dependencies": {
+    "@angular/common": "^21.1.0",
+    "@angular/compiler": "^21.1.0",
+    "@angular/core": "^21.1.0",
+    "@angular/forms": "^21.1.0",
+    "@angular/platform-browser": "^21.1.0",
+    "@angular/platform-server": "^21.1.0",
+    "@angular/router": "^21.1.0",
+    "@angular/ssr": "^21.1.2",
+    "@storyblok/live-preview": "workspace:*",
+    "storyblok-js-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
+    "@storyblok/js": "workspace:*",
+    "@storyblok/preview-bridge": "^2.1.6",
+    "express": "^5.1.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.1.2",
+    "@angular/cli": "^21.1.2",
+    "@angular/compiler-cli": "^21.1.0",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.17.19",
+    "jsdom": "^27.1.0",
+    "ng-packagr": "^21.1.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

@@ -28,7 +28,7 @@
   },
   "release": {
     "projectsRelationship": "independent",
-    "projects": ["packages/*"],
+    "projects": ["packages/*", "packages/angular/projects/*"],
     "version": {
       "conventionalCommits": true,
       "fallbackCurrentVersionResolver": "disk",

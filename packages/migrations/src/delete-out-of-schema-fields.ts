@@ -88,6 +88,10 @@ export function deleteOutOfSchemaFields(
 ): { story: Story; removedFields: RemovedField[] } {
   const removedFields: RemovedField[] = [];
 
+  if (!story.content) {
+    return { story, removedFields };
+  }
+
   const newContent = cleanBlok(
     story.content as Record<string, unknown>,
     schemaDefinition,

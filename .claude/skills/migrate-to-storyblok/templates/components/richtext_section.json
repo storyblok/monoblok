@@ -1,0 +1,13 @@
+{
+  "id": 1012,
+  "name": "richtext_section",
+  "display_name": "Rich text section",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "body": { "type": "richtext", "pos": 0, "display_name": "Body" }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

@@ -113,6 +113,30 @@ importers:
         specifier: ^4.0.8
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.37)(happy-dom@20.7.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(less@4.5.1)(lightningcss@1.31.1)(msw@2.12.10(@types/node@20.19.37)(typescript@5.9.3))(sass@1.97.3)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/angular/projects/sdk:
+    dependencies:
+      '@angular/common':
+        specifier: ^19.0.0 || ^20.0.0 || ^21.0.0
+        version: 21.2.1(@angular/core@21.2.1(@angular/compiler@21.2.1)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@angular/core':
+        specifier: ^19.0.0 || ^20.0.0 || ^21.0.0
+        version: 21.2.1(@angular/compiler@21.2.1)(rxjs@7.8.2)
+      '@storyblok/js':
+        specifier: workspace:*
+        version: link:../../../js
+      '@storyblok/live-preview':
+        specifier: workspace:*
+        version: link:../../../live-preview
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../../../richtext
+      storyblok-js-client:
+        specifier: workspace:*
+        version: link:../../../js-client
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
+
   packages/astro:
     dependencies:
       '@storyblok/js':

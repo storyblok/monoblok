@@ -9,6 +9,30 @@ apis:
     root: resources/mapi/stories/main.yaml
     output: ./dist/mapi/stories.yaml
     title: Stories
+  stories-capi:
+    root: resources/capi/stories/main.yaml
+    output: ./dist/capi/stories.yaml
+    title: Stories
+  links-capi:
+    root: resources/capi/links/main.yaml
+    output: ./dist/capi/links.yaml
+    title: Links
+  spaces-capi:
+    root: resources/capi/spaces/main.yaml
+    output: ./dist/capi/spaces.yaml
+    title: Spaces
+  datasources-capi:
+    root: resources/capi/datasources/main.yaml
+    output: ./dist/capi/datasources.yaml
+    title: Datasources
+  datasource-entries-capi:
+    root: resources/capi/datasource_entries/main.yaml
+    output: ./dist/capi/datasource_entries.yaml
+    title: Datasource Entries
+  tags-capi:
+    root: resources/capi/tags/main.yaml
+    output: ./dist/capi/tags.yaml
+    title: Tags
   components:
     root: resources/mapi/components/main.yaml
     output: ./dist/mapi/components.yaml

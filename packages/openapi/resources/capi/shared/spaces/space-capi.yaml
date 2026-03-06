@@ -1,0 +1,25 @@
+type: object
+required:
+  - id
+  - name
+  - domain
+  - version
+  - language_codes
+properties:
+  id:
+    type: integer
+    description: Unique identifier for the space
+  name:
+    type: string
+    description: Name of the space
+  domain:
+    type: string
+    description: Domain of the space
+  version:
+    type: integer
+    description: Version number of the space
+  language_codes:
+    type: array
+    description: Array of language codes available in the space
+    items:
+      type: string

@@ -1,5 +1,8 @@
+import type { Client } from '../generated/shared/client';
 import type { StoryCapi } from '../generated/stories';
 import type { StoryWithInlinedRelations } from '../resources/stories';
+import { fetchMissingRelations } from './fetch-rel-uuids';
+import type { ThrottleManager } from './rate-limit';
 
 type RelationPath = `${string}.${string}`;
 
@@ -133,4 +136,46 @@ export const inlineStoriesContent = <TStory extends StoryCapi | StoryWithInlined
   const normalizedPaths = new Set(relationPaths);
   const resolved = new Map<string, TStory>();
   return stories.map(story => inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved));
+};
+
+interface ResolveRelationMapOptions {
+  client: Client;
+  throttleManager: ThrottleManager;
+}
+
+export interface ResolvedRelations {
+  relationPaths: RelationPath[];
+  relationMap: Map<string, StoryCapi>;
+}
+
+/**
+ * Parses relation paths from the request query, builds a relation map from the
+ * response's `rels`, and fetches any additional relations referenced by `rel_uuids`.
+ *
+ * Returns `null` when there is nothing to inline (no `resolve_relations` in the query).
+ */
+export const resolveRelationMap = async (
+  responseData: { rels?: StoryCapi[]; rel_uuids?: string[] },
+  requestQuery: Record<string, unknown>,
+  { client, throttleManager }: ResolveRelationMapOptions,
+): Promise<ResolvedRelations | null> => {
+  const relationPaths = parseResolveRelations(requestQuery);
+  if (relationPaths.length === 0) {
+    return null;
+  }
+
+  const relationMap = buildRelationMap(responseData.rels);
+  if (responseData.rel_uuids?.length) {
+    const fetchedRelations = await fetchMissingRelations({
+      client,
+      uuids: responseData.rel_uuids,
+      baseQuery: requestQuery,
+      throttleManager,
+    });
+    for (const relationStory of fetchedRelations) {
+      relationMap.set(relationStory.uuid, relationStory);
+    }
+  }
+
+  return { relationPaths, relationMap };
 };

@@ -9,8 +9,7 @@ import type {
   StoryContent,
   TableField,
 } from '../generated/stories';
-import { fetchMissingRelations } from '../utils/fetch-rel-uuids';
-import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from '../utils/inline-relations';
+import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
 import type { ApiResponse, ResourceDeps } from '../types';
 
 type InlinedStoryContentField =
@@ -87,29 +86,16 @@ export function createStoriesResource<InlineRelations extends boolean>(
           return response;
         }
 
-        const relationPaths = parseResolveRelations(requestQuery);
-        if (relationPaths.length === 0) {
+        const resolved = await resolveRelationMap(response.data, requestQuery, { client, throttleManager });
+        if (!resolved) {
           return response;
-        }
-
-        const relationMap = buildRelationMap(response.data.rels);
-        if (response.data.rel_uuids?.length) {
-          const fetchedRelations = await fetchMissingRelations({
-            client,
-            uuids: response.data.rel_uuids,
-            baseQuery: requestQuery,
-            throttleManager,
-          });
-          for (const relationStory of fetchedRelations) {
-            relationMap.set(relationStory.uuid, relationStory);
-          }
         }
 
         return {
           ...response,
           data: {
             ...response.data,
-            story: inlineStoryContent(response.data.story, relationPaths, relationMap),
+            story: inlineStoryContent(response.data.story, resolved.relationPaths, resolved.relationMap),
           },
         };
       });
@@ -134,29 +120,16 @@ export function createStoriesResource<InlineRelations extends boolean>(
           return response;
         }
 
-        const relationPaths = parseResolveRelations(requestQuery);
-        if (relationPaths.length === 0) {
+        const resolved = await resolveRelationMap(response.data, requestQuery, { client, throttleManager });
+        if (!resolved) {
           return response;
-        }
-
-        const relationMap = buildRelationMap(response.data.rels);
-        if (response.data.rel_uuids?.length) {
-          const fetchedRelations = await fetchMissingRelations({
-            client,
-            uuids: response.data.rel_uuids,
-            baseQuery: requestQuery,
-            throttleManager,
-          });
-          for (const relationStory of fetchedRelations) {
-            relationMap.set(relationStory.uuid, relationStory);
-          }
         }
 
         return {
           ...response,
           data: {
             ...response.data,
-            stories: inlineStoriesContent(response.data.stories, relationPaths, relationMap),
+            stories: inlineStoriesContent(response.data.stories, resolved.relationPaths, resolved.relationMap),
           },
         };
       });

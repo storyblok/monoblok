@@ -76,6 +76,17 @@ export interface ContentApiClientConfig<
    * - `false`: disable rate limiting entirely.
    */
   rateLimit?: RateLimitConfig | number | false;
+  /**
+   * Custom `fetch` function to use for all requests.
+   * Must be fully compatible with the Fetch API standard.
+   *
+   * Use cases:
+   * - SSR framework fetch wrappers (e.g., Next.js `fetch` with caching)
+   * - Custom instrumentation or logging around requests
+   *
+   * @default globalThis.fetch
+   */
+  fetch?: typeof globalThis.fetch;
 }
 
 export const createApiClient = <
@@ -95,6 +106,7 @@ export const createApiClient = <
     retry,
     timeout = 30_000,
     rateLimit,
+    fetch: customFetch,
   } = config;
   const retryOptions: RetryOptions = { limit: 3, backoffLimit: 20_000, jitter: true, ...retry };
   // `rateLimit` defaults to `{}` (auto-detect mode) when not supplied.
@@ -122,6 +134,7 @@ export const createApiClient = <
         throwHttpErrors: true,
         timeout,
         retry: retryOptions,
+        ...(customFetch && { fetch: customFetch }),
       },
     }),
   );

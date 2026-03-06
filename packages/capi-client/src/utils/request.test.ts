@@ -41,6 +41,13 @@ describe('createCacheKey', () => {
     expect(first).not.toBe(second);
   });
 
+  it('should produce the same key regardless of leading slash', () => {
+    const withSlash = createCacheKey('GET', '/v2/cdn/stories', { version: 'published' });
+    const withoutSlash = createCacheKey('GET', 'v2/cdn/stories', { version: 'published' });
+
+    expect(withSlash).toBe(withoutSlash);
+  });
+
   it('should handle nested objects with sorted keys', () => {
     const first = createCacheKey('GET', '/v2/cdn/stories', {
       filter_query: {
@@ -78,5 +85,9 @@ describe('shouldUseCache', () => {
 
   it('should return false for non-cacheable paths', () => {
     expect(shouldUseCache('GET', '/v2/cdn/spaces/me', { version: 'published' })).toBe(false);
+  });
+
+  it('should return false for non-cacheable paths without leading slash', () => {
+    expect(shouldUseCache('GET', 'v2/cdn/spaces/me', { version: 'published' })).toBe(false);
   });
 });

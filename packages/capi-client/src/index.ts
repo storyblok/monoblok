@@ -221,7 +221,7 @@ export const createApiClient = <
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {
-      const networkResult = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      const networkResult = await fetchFn(query);
       throttleManager.adaptToResponse(networkResult.response);
       await updateCv(networkResult);
       return networkResult;
@@ -232,7 +232,7 @@ export const createApiClient = <
     const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
-      const result = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
+      const result = await fetchFn(query);
       throttleManager.adaptToResponse(result.response);
       return cacheSuccessResult(key, result);
     };
@@ -252,7 +252,7 @@ export const createApiClient = <
     const rawQuery = options.query || {};
 
     return requestWithCache(method, path, rawQuery, (query) => {
-      return requestNetwork(method, path, query, options);
+      return throttleManager.execute(path, rawQuery, () => requestNetwork(method, path, query, options));
     });
   };
 
@@ -267,12 +267,12 @@ export const createApiClient = <
     client,
     requestWithCache,
     asApiResponse,
+    throttleManager,
   };
 
   const stories = createStoriesResource<InlineRelations>({
     ...resourceDeps,
     inlineRelations,
-    throttleManager,
   });
 
   /**

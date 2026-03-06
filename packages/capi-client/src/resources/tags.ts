@@ -3,7 +3,7 @@ import type { GetAllData as TagsGetAllData, GetAllResponses as TagsGetAllRespons
 import type { ApiResponse, ResourceDeps } from '../types';
 
 export function createTagsResource(deps: ResourceDeps) {
-  const { client, requestWithCache, asApiResponse } = deps;
+  const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
     getAll: async <ThrowOnError extends boolean = false>(
@@ -12,12 +12,13 @@ export function createTagsResource(deps: ResourceDeps) {
       const { query = {}, signal, throwOnError } = options;
       const requestPath = '/v2/cdn/tags';
       return requestWithCache<TagsGetAllResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
-        return asApiResponse<TagsGetAllResponses[200], ThrowOnError>(getAllTagsApi({
-          client,
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        return throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<TagsGetAllResponses[200], ThrowOnError>(getAllTagsApi({
+            client,
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
       });
     },
   };

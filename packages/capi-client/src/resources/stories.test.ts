@@ -309,6 +309,122 @@ describe('inlineRelations', () => {
     expect(result.data?.story.content.author).toMatchObject({ uuid: 'author-1' });
   });
 
+  it('should not deadlock when fetching rel_uuids with a fixed rateLimit', async () => {
+    vi.useFakeTimers();
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        return HttpResponse.json({
+          rel_uuids: ['author-deadlock'],
+          story: makeStory('page-deadlock', {
+            _uid: 'page-content-deadlock',
+            author: 'author-deadlock',
+            component: 'page',
+          }),
+        });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('by_uuids') === 'author-deadlock') {
+          return HttpResponse.json({
+            stories: [
+              makeStory('author-deadlock', {
+                _uid: 'author-content-deadlock',
+                component: 'author',
+                name: 'DeadlockAuthor',
+              }),
+            ],
+          });
+        }
+
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+
+    // A fixed rateLimit of 1 means a single shared throttle queue with 1 slot.
+    // stories.get() -> requestWithCache -> throttleManager.execute (takes the slot)
+    //   -> fetchMissingRelations -> throttleManager.execute (waits for a slot that never frees)
+    // This causes a deadlock because the outer slot is held while the inner call waits.
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+      rateLimit: 1,
+    });
+
+    const DEADLOCK = Symbol('deadlock');
+    const deadline = new Promise<typeof DEADLOCK>(resolve =>
+      setTimeout(() => resolve(DEADLOCK), 500),
+    );
+    const resultPromise = client.stories.get('test-story', {
+      query: { resolve_relations: 'page.author' },
+    });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    const outcome = await Promise.race([resultPromise, deadline]);
+
+    // If the bug is fixed the request should resolve with data, not hit the deadline.
+    expect(outcome).not.toBe(DEADLOCK);
+    vi.useRealTimers();
+  });
+
+  it('should not deadlock when multiple concurrent requests fetch rel_uuids with a fixed rateLimit', async () => {
+    vi.useFakeTimers();
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/:slug', ({ params }) => {
+        const slug = params.slug as string;
+        return HttpResponse.json({
+          rel_uuids: [`author-${slug}`],
+          story: makeStory(`page-${slug}`, {
+            _uid: `page-content-${slug}`,
+            author: `author-${slug}`,
+            component: 'page',
+          }),
+        });
+      }),
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        const byUuids = url.searchParams.get('by_uuids');
+        if (byUuids) {
+          return HttpResponse.json({
+            stories: [
+              makeStory(byUuids, {
+                _uid: `author-content-${byUuids}`,
+                component: 'author',
+                name: `Author ${byUuids}`,
+              }),
+            ],
+          });
+        }
+
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+
+    // With rateLimit: 3, three concurrent requests will saturate all slots.
+    // Each outer request holds a slot while awaiting fetchMissingRelations,
+    // which needs a slot from the same queue — classic deadlock.
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+      rateLimit: 3,
+    });
+
+    const DEADLOCK = Symbol('deadlock');
+    const deadline = new Promise<typeof DEADLOCK>(resolve =>
+      setTimeout(() => resolve(DEADLOCK), 500),
+    );
+    const resultsPromise = Promise.all([
+      client.stories.get('story-a', { query: { resolve_relations: 'page.author' } }),
+      client.stories.get('story-b', { query: { resolve_relations: 'page.author' } }),
+      client.stories.get('story-c', { query: { resolve_relations: 'page.author' } }),
+    ]);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    const outcome = await Promise.race([resultsPromise, deadline]);
+
+    expect(outcome).not.toBe(DEADLOCK);
+    vi.useRealTimers();
+  });
+
   it('should throw when relation fetching fails', async () => {
     vi.useFakeTimers();
     server.use(

@@ -1,5 +1,6 @@
 import type { Client, RequestOptions } from './generated/shared/client';
 import type { ClientError } from './error';
+import type { ThrottleManager } from './utils/rate-limit';
 
 export type ApiResponse<Data = unknown, ThrowOnError extends boolean = false> =
   ThrowOnError extends true
@@ -25,4 +26,5 @@ export interface ResourceDeps {
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   asApiResponse: <TData, ThrowOnError extends boolean = false>(p: Promise<unknown>) => Promise<ApiResponse<TData, ThrowOnError>>;
+  throttleManager: ThrottleManager;
 }

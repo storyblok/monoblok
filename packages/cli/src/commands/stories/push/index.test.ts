@@ -48,6 +48,10 @@ const server = setupServer(
     { message: 'Not Found' },
     { status: 404 },
   )),
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () => HttpResponse.json(
+    { stories: [] },
+    { headers: { 'Total': '0', 'Per-Page': '100' } },
+  )),
 );
 
 const preconditions = {
@@ -84,15 +88,6 @@ const preconditions = {
     vol.fromJSON({
       [manifestPath]: content,
     });
-  },
-  canFetchStories(stories: MockStory[], space = DEFAULT_SPACE) {
-    for (const story of stories) {
-      server.use(
-        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories/${story.id}`, () => {
-          return HttpResponse.json({ story });
-        }),
-      );
-    }
   },
   canCreateStories(stories: MockStory[], space = DEFAULT_SPACE) {
     const remoteStories = stories.map((s) => {
@@ -138,6 +133,21 @@ const preconditions = {
         }),
       );
     }
+  },
+  canListStories(stories: MockStory[], space = DEFAULT_SPACE) {
+    const perPage = 2;
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, ({ request }) => {
+        const url = new URL(request.url);
+        const page = Number(url.searchParams.get('page') || '1');
+        const start = (page - 1) * perPage;
+        const pageStories = stories.slice(start, start + perPage);
+        return HttpResponse.json(
+          { stories: pageStories },
+          { headers: { 'Total': String(stories.length), 'Per-Page': String(perPage) } },
+        );
+      }),
+    );
   },
 };
 
@@ -586,7 +596,7 @@ describe('stories push command', () => {
       slug: 'story-a',
     });
     preconditions.canLoadStories([storyA]);
-    preconditions.canFetchStories([storyA]);
+    preconditions.canListStories([storyA]);
     const pageComponent = makeMockComponent({ name: 'page' });
     preconditions.canLoadComponents([pageComponent]);
     preconditions.canUpdateStories([storyA]);
@@ -657,7 +667,7 @@ describe('stories push command', () => {
       },
     });
     preconditions.canLoadStories([storyA]);
-    preconditions.canFetchStories([storyA]);
+    preconditions.canListStories([storyA]);
     const pageComponent = makeMockComponent({
       name: 'page',
       schema: {
@@ -745,7 +755,7 @@ describe('stories push command', () => {
     ]);
     preconditions.canCreateStories([storyA]);
     const [remoteStory] = preconditions.canCreateStories([storyA]);
-    preconditions.canFetchStories([remoteStory]);
+    preconditions.canListStories([remoteStory]);
     preconditions.canUpdateStories([remoteStory]);
     const manifest = [
       {
@@ -796,10 +806,11 @@ describe('stories push command', () => {
     preconditions.canLoadStories([storyA]);
     preconditions.canLoadComponents([makeMockComponent()]);
     const remoteStories = preconditions.canCreateStories([storyA]);
-    preconditions.canFetchStories(remoteStories);
     preconditions.canUpdateStories(remoteStories);
 
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+    // After the first push, the remote stories exist in the target space.
+    preconditions.canListStories(remoteStories);
     await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     // Two entries because one entry for the UUID and one for the numeric ID.
@@ -1290,5 +1301,144 @@ describe('stories push command', () => {
     expect(files).not.toContain(stripDriveLetter(storyAFilePath));
     // storyB should remain (failed)
     expect(files).toContain(stripDriveLetter(storyBFilePath));
+  });
+
+  it('should not send is_startpage when creating placeholder stories', async () => {
+    const folder = makeMockStory({
+      slug: 'lang-a',
+      full_slug: 'lang-a',
+      is_folder: true,
+    });
+    const startpage = makeMockStory({
+      slug: 'home',
+      full_slug: 'lang-a/home',
+      parent_id: folder.id,
+      is_startpage: true,
+    });
+
+    preconditions.canLoadStories([folder, startpage]);
+    preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+    const [remoteFolder, remoteStartpage] = preconditions.canCreateStories([folder, startpage]);
+    preconditions.canUpdateStories([remoteFolder, remoteStartpage]);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // Verify is_startpage and parent_id are NOT sent in the creation payload
+    expect(actions.createStory).toHaveBeenCalledWith(
+      DEFAULT_SPACE,
+      expect.objectContaining({
+        story: expect.not.objectContaining({ is_startpage: true }),
+      }),
+    );
+    expect(actions.createStory).toHaveBeenCalledWith(
+      DEFAULT_SPACE,
+      expect.objectContaining({
+        story: expect.not.objectContaining({ parent_id: expect.anything() }),
+      }),
+    );
+  });
+
+  it('should create a new story when same-space slug matches but UUID differs', async () => {
+    // Simulates: user pulled story, deleted it, created a different story at the same slug.
+    const localStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'story-a',
+    });
+    // Target space has a different story at the same slug (different UUID).
+    const targetStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'story-a',
+    });
+
+    preconditions.canLoadStories([localStory]);
+    preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+    preconditions.canListStories([targetStory]);
+    const [createdStory] = preconditions.canCreateStories([localStory]);
+    preconditions.canUpdateStories([createdStory]);
+
+    // Same-space push (no --from flag)
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+    // UUID mismatch: story should be created, not matched by slug.
+    expect(actions.createStory).toHaveBeenCalled();
+  });
+
+  it('should match existing stories by full_slug in a duplicated space', async () => {
+    const sourceSpace = '99999';
+    const targetSpace = DEFAULT_SPACE;
+
+    // Local stories from the source space (different IDs/UUIDs)
+    const localFolder = makeMockStory({
+      slug: 'folder-a',
+      full_slug: 'folder-a',
+      is_folder: true,
+    });
+    const localStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'folder-a/story-a',
+      parent_id: localFolder.id,
+    });
+
+    // Target space already has stories with the same slugs but different IDs/UUIDs
+    const targetFolder = makeMockStory({
+      slug: 'folder-a',
+      full_slug: 'folder-a',
+      is_folder: true,
+    });
+    const targetStory = makeMockStory({
+      slug: 'story-a',
+      full_slug: 'folder-a/story-a',
+      parent_id: targetFolder.id,
+    });
+
+    preconditions.canLoadStories([localFolder, localStory], sourceSpace);
+    preconditions.canLoadComponents([makeMockComponent({ name: 'page' })], sourceSpace);
+    // The target space lists these stories (pre-fetch)
+    preconditions.canListStories([targetFolder, targetStory], targetSpace);
+    // Update endpoints for the target stories
+    preconditions.canUpdateStories([targetFolder, targetStory], targetSpace);
+
+    await storiesCommand.parseAsync(['node', 'test', 'push', '--space', targetSpace, '--from', sourceSpace]);
+
+    // Stories were matched by slug, not created
+    expect(actions.createStory).not.toHaveBeenCalled();
+    // Stories were updated with the target IDs
+    expect(actions.updateStory).toHaveBeenCalledWith(targetSpace, targetFolder.id, expect.anything());
+    expect(actions.updateStory).toHaveBeenCalledWith(targetSpace, targetStory.id, expect.objectContaining({
+      story: expect.objectContaining({
+        parent_id: targetFolder.id,
+      }),
+    }));
+    // Manifest should map source → target
+    const manifestEntries = await parseManifest(sourceSpace);
+    expect(manifestEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ old_id: localFolder.uuid, new_id: targetFolder.uuid }),
+      expect.objectContaining({ old_id: localFolder.id, new_id: targetFolder.id }),
+      expect.objectContaining({ old_id: localStory.uuid, new_id: targetStory.uuid }),
+      expect.objectContaining({ old_id: localStory.id, new_id: targetStory.id }),
+    ]));
+    // Report
+    const report = getReport(targetSpace);
+    expect(report).toMatchObject(expect.objectContaining({
+      status: 'SUCCESS',
+      summary: {
+        creationResults: {
+          total: 2,
+          succeeded: 0,
+          skipped: 2,
+          failed: 0,
+        },
+        processResults: {
+          total: 2,
+          succeeded: 2,
+          failed: 0,
+        },
+        updateResults: {
+          total: 2,
+          succeeded: 2,
+          failed: 0,
+        },
+      },
+    }));
   });
 });

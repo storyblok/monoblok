@@ -5,13 +5,10 @@ import { Sema } from 'async-sema';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
-import type { StoriesQueryParams } from './constants';
+import type { ExistingTargetStories, StoriesQueryParams, TargetStoryRef } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
-import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
-import { FetchError } from '../../utils/fetch';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
-import { getMapiClient } from '../../api';
 import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 
 const apiConcurrencyLock = new Sema(12);
@@ -208,36 +205,15 @@ export const mapReferencesStream = ({
   });
 };
 
-const getRemoteStory = async ({ spaceId, storyId }: {
-  spaceId: string;
-  storyId: number;
-}) => {
-  const { data, response } = await getMapiClient().stories.get({
-    path: {
-      space_id: spaceId,
-      story_id: storyId,
-    },
-  });
-
-  if (!response.ok && response.status !== 404) {
-    handleAPIError('pull_story', new FetchError(response.statusText, response));
-  }
-
-  if (data?.story?.deleted_at) {
-    return undefined;
-  }
-
-  return data?.story;
-};
-
 export type CreateStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeCreateStoryAPITransport = ({ spaceId }: {
   spaceId: string;
 }): CreateStoryTransport => async (localStory) => {
-  // Exclude parent_id from the creation payload. The correct parent_id is set in Pass 2 when the full ID map is available.
-  // This avoids 422 errors from the API.
-  const { id: _id, uuid: _uuid, parent_id: _parentId, content, ...newStoryData } = localStory;
+  // Exclude parent_id and is_startpage from the creation payload.
+  // The correct parent_id is set in Pass 2 when the full ID map is available.
+  // Sending is_startpage without a parent_id causes a 422 from the API.
+  const { id: _id, uuid: _uuid, parent_id: _parentId, is_startpage: _isStartpage, content, ...newStoryData } = localStory;
 
   if (!localStory.is_folder && !content?.component) {
     throw new Error(`Story "${localStory.slug}" is missing a content type (content.component). Every story must define a content field with a valid component.`);
@@ -259,7 +235,7 @@ export const makeCreateStoryAPITransport = ({ spaceId }: {
   return remoteStory;
 };
 
-export type AppendToManifestTransport = (localStory: Story, remoteStory: Story) => Promise<void>;
+export type AppendToManifestTransport = (localStory: Story, remoteStory: TargetStoryRef) => Promise<void>;
 
 export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   manifestFile: string;
@@ -279,7 +255,8 @@ export const makeAppendToManifestFSTransport = ({ manifestFile }: {
 
 export const createStoryPlaceholderStream = ({
   maps,
-  spaceId,
+  existingTargetStories,
+  isCrossSpace,
   transports,
   onIncrement,
   onStorySuccess,
@@ -287,14 +264,15 @@ export const createStoryPlaceholderStream = ({
   onStoryError,
 }: {
   maps: RefMaps;
-  spaceId: string;
+  existingTargetStories: ExistingTargetStories;
+  isCrossSpace: boolean;
   transports: {
     createStory: CreateStoryTransport;
     appendStoryManifest: AppendToManifestTransport;
   };
   onIncrement?: () => void;
   onStorySuccess?: (localStory: Story, remoteStory: Story) => void;
-  onStorySkipped?: (localStory: Story, remoteStory: Story) => void;
+  onStorySkipped?: (localStory: Story, remoteStory: TargetStoryRef) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
   const processing = new Set<Promise<void>>();
@@ -306,27 +284,31 @@ export const createStoryPlaceholderStream = ({
 
       const task = (async () => {
         try {
-          // If a mapped remote story already exists, we must not create a new placeholder.
-          // This can happen when the user resumes a failed push or runs push multiple times.
+          // Primary: check manifest mapping (from a previous push).
           const mappedStoryId = maps.stories?.get(localStory.id);
-          const mappedRemoteStory = mappedStoryId && await getRemoteStory({ spaceId, storyId: Number(mappedStoryId) });
-          // We check the UUID to make sure it is the exact same story and not just a
-          // story with the same numeric ID in a different space.
+          const mappedRemoteStory = mappedStoryId
+            ? existingTargetStories.byId.get(Number(mappedStoryId))
+            : undefined;
           if (mappedRemoteStory) {
             onStorySkipped?.(localStory, mappedRemoteStory);
-            // The story was already mapped so we can stop here.
             return;
           }
 
-          // A user might want to push to the same space they pulled from. In this
-          // case, we don't want to create a new placeholder story.
-          const existingRemoteStory = await getRemoteStory({ spaceId, storyId: localStory.id });
-          // We check the UUID to make sure it is the exact same story and not just a
-          // story with the same numeric ID in a different space.
-          if (existingRemoteStory && existingRemoteStory.uuid === localStory.uuid) {
-            await transports.appendStoryManifest(localStory, existingRemoteStory);
-            onStorySkipped?.(localStory, existingRemoteStory);
-            return;
+          // Fallback: match by full_slug when no manifest entry exists (first push).
+          // Handles same-space pushes and cross-space pushes
+          const existingBySlug = localStory.full_slug
+            ? existingTargetStories.bySlug.get(localStory.full_slug)
+            : undefined;
+          if (existingBySlug) {
+            // Same-space: verify UUID to avoid binding to an unrelated story that
+            // was recreated at the same slug between pull and push.
+            // Cross-space: UUIDs always differ, so we can only match by slug.
+            const isMatchConfirmed = isCrossSpace || existingBySlug.uuid === localStory.uuid;
+            if (isMatchConfirmed) {
+              await transports.appendStoryManifest(localStory, existingBySlug);
+              onStorySkipped?.(localStory, existingBySlug);
+              return;
+            }
           }
 
           const newRemoteStory = await transports.createStory(localStory);

@@ -12,6 +12,7 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
+import { prefetchTargetStories } from '../actions';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const pushCmd = storiesCommand
@@ -99,6 +100,13 @@ pushCmd
         return;
       }
 
+      const fetchProgress = ui.createProgressBar({ title: 'Matching Stories...'.padEnd(21) });
+      const existingTargetStories = await prefetchTargetStories(space, {
+        onTotal: total => fetchProgress.setTotal(total),
+        onIncrement: count => fetchProgress.increment(count),
+      });
+      fetchProgress.stop();
+
       const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
       const creationProgress = ui.createProgressBar({ title: 'Creating Stories...'.padEnd(21) });
       const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(21) });
@@ -132,7 +140,8 @@ pushCmd
         // Create remote stories.
         createStoryPlaceholderStream({
           maps,
-          spaceId: space,
+          existingTargetStories,
+          isCrossSpace: fromSpace !== space,
           transports: {
             createStory: options.dryRun
               ? async (story: Story) => story

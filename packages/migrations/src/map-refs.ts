@@ -144,7 +144,7 @@ const traverseAndMapRichtextDoc = (
           ...asRecord(data.attrs),
           uuid:
             maps.stories?.get(asRecord(data.attrs).uuid)
-            || asRecord(data.attrs).uuid,
+            ?? asRecord(data.attrs).uuid,
         },
       };
     }
@@ -203,7 +203,7 @@ const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
 
   return {
     ...data,
-    id: maps.stories?.get(data.id) || data.id,
+    id: maps.stories?.get(data.id) ?? data.id,
   };
 };
 
@@ -269,7 +269,7 @@ const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
     return data;
   }
 
-  return data.map(d => sourceMap.get(d) || d);
+  return data.map(d => sourceMap.get(d) ?? d);
 };
 
 const fieldRefMappers = {
@@ -325,7 +325,7 @@ export function mapRefs(
     content: mappedContentRaw as unknown as Story['content'],
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
-    parent_id: parentId === undefined ? undefined : Number(parentId),
+    parent_id: parentId != null ? Number(parentId) : null,
     alternates,
   } satisfies Story;
 

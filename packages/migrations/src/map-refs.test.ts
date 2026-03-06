@@ -213,4 +213,28 @@ describe('mapRefs', () => {
     expect(asRecord(mappedStory.content).tag_ids).toEqual([12]);
     expect(asRecord(mappedStory.content).datasource_ids).toEqual([22]);
   });
+
+  it('should preserve null parent_id for root-level stories', () => {
+    const story = { ...makeStory({}), parent_id: null };
+    const maps = { stories: new Map([[1, 99]]) };
+    const { mappedStory } = mapRefs(story as never, { schemas, maps });
+
+    expect(mappedStory.parent_id).toBe(null);
+  });
+
+  it('should remap parent_id when present in stories map', () => {
+    const story = { ...makeStory({}), parent_id: 100 };
+    const maps = { stories: new Map([[100, 200]]) };
+    const { mappedStory } = mapRefs(story as never, { schemas, maps });
+
+    expect(mappedStory.parent_id).toBe(200);
+  });
+
+  it('should preserve parent_id when not in stories map', () => {
+    const story = { ...makeStory({}), parent_id: 999 };
+    const maps = { stories: new Map([[1, 99]]) };
+    const { mappedStory } = mapRefs(story as never, { schemas, maps });
+
+    expect(mappedStory.parent_id).toBe(999);
+  });
 });

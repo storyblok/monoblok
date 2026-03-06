@@ -258,7 +258,6 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
       : story.content,
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
-    // @ts-expect-error Our types are wrong.
     parent_id: parentId != null ? Number(parentId) : null,
     alternates,
   } satisfies Story;

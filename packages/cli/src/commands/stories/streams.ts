@@ -190,7 +190,6 @@ export const mapReferencesStream = ({
     transform(localStory: Story, _encoding, callback) {
       try {
         const { mappedStory, processedFields, missingSchemas } = storyRefMapper(localStory, { schemas, maps });
-        // @ts-expect-error Our types are wrong.
         onStorySuccess?.(mappedStory, processedFields, missingSchemas);
         this.push(mappedStory);
       }

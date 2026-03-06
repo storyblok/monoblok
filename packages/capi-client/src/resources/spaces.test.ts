@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
@@ -98,5 +98,18 @@ describe('spaces.get()', () => {
     await client.spaces.get();
 
     expect(requestCount).toBe(2);
+  });
+
+  it('should use the custom fetch function when provided', async () => {
+    const customFetch = vi.fn(globalThis.fetch);
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: customFetch,
+    });
+
+    const result = await client.spaces.get();
+
+    expect(customFetch).toHaveBeenCalledOnce();
+    expect(result.error).toBeUndefined();
   });
 });

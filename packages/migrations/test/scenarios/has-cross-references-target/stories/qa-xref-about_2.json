@@ -1,0 +1,11 @@
+{
+  "id": 2,
+  "uuid": "2",
+  "name": "QA XRef About Target",
+  "slug": "qa-xref-about",
+  "full_slug": "qa-xref-about",
+  "content": {
+    "component": "qa_xref_page",
+    "title": "About Us (target)"
+  }
+}

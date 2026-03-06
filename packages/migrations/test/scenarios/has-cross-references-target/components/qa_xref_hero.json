@@ -1,0 +1,14 @@
+{
+  "id": 231,
+  "name": "qa_xref_hero",
+  "display_name": "QA XRef Hero",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "heading": { "type": "text", "pos": 0 },
+    "image": { "type": "asset", "pos": 1 }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

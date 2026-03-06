@@ -773,7 +773,9 @@ paths:
                           type: integer
                           description: ID of the release
                         parent_id:
-                          type: integer
+                          oneOf:
+                            - type: integer
+                            - type: 'null'
                           description: ID of the parent folder
                         content:
                           type: object

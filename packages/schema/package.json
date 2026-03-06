@@ -86,11 +86,7 @@
         "inputs": [
           "{projectRoot}/generate.ts",
           "{projectRoot}/templates/**",
-          {
-            "externalDependencies": [
-              "openapi-zod-client"
-            ]
-          }
+          "{projectRoot}/package.json"
         ],
         "outputs": [
           "{projectRoot}/src/generated"

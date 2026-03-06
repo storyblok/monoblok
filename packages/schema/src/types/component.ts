@@ -1,4 +1,4 @@
-import type { component } from '../generated/types';
+import type { Component as ComponentGenerated } from '../generated/mapi-types';
 import type { Prop } from './prop';
 import type { Prettify } from './utils';
 
@@ -11,14 +11,14 @@ export type ComponentSchema = Record<string, Prop>;
  * TSchema is the record of props defining the component's fields.
  *
  * Metadata fields (display_name, is_root, is_nestable, etc.) are derived
- * from the generated `component` type. `name` and `schema` are overridden
+ * from the generated `Component` type. `name` and `schema` are overridden
  * with the generic parameters for type-safe inference.
  */
 export type Component<
   TName extends string = string,
   TSchema extends ComponentSchema = ComponentSchema,
 > = Prettify<
-  Omit<component, 'name' | 'schema'> & {
+  Omit<ComponentGenerated, 'name' | 'schema'> & {
     name: TName;
     schema: TSchema;
   }

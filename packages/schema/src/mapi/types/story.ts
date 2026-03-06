@@ -1,4 +1,4 @@
-import type { story_create, story_mapi, story_update } from '../../generated/types';
+import type { StoryCreate as StoryCreateGenerated, Story as StoryMapi, StoryUpdate as StoryUpdateGenerated } from '../../generated/mapi-types';
 import type { Component } from '../../types/component';
 import type { StoryContent } from '../../types/story';
 import type { Prettify } from '../../types/utils';
@@ -9,7 +9,7 @@ import type { Prettify } from '../../types/utils';
  * beyond the base story fields.
  */
 export type Story<TComponent extends Component = Component> = Prettify<
-  Omit<story_mapi, 'content'> & {
+  Omit<StoryMapi, 'content'> & {
     content: StoryContent<TComponent>;
   }
 >;
@@ -19,7 +19,7 @@ export type Story<TComponent extends Component = Component> = Prettify<
  * `name` is required; `content` is typed to the component's schema when provided.
  */
 export type StoryCreate<TComponent extends Component = Component> = Prettify<
-  Omit<story_create, 'content'> & {
+  Omit<StoryCreateGenerated, 'content'> & {
     content?: StoryContent<TComponent> | undefined;
   }
 >;
@@ -29,7 +29,7 @@ export type StoryCreate<TComponent extends Component = Component> = Prettify<
  * All fields are optional; `content` is typed to the component's schema when provided.
  */
 export type StoryUpdate<TComponent extends Component = Component> = Prettify<
-  Omit<story_update, 'content'> & {
+  Omit<StoryUpdateGenerated, 'content'> & {
     content?: StoryContent<TComponent> | undefined;
   }
 >;

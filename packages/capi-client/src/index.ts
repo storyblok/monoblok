@@ -8,6 +8,7 @@ import { createThrottleManager } from './utils/rate-limit';
 import { applyCvToQuery, extractCv } from './utils/cv';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
+import type { Component } from '@storyblok/schema';
 import type { RetryOptions } from 'ky';
 import type { Client } from './generated/shared/client';
 import type { ApiResponse, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
@@ -99,6 +100,8 @@ export interface ContentApiClientConfig<
 }
 
 export const createApiClient = <
+  Schema extends Component = Component,
+  // TODO seems to be broken
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
 >(
@@ -279,7 +282,7 @@ export const createApiClient = <
     throttleManager,
   };
 
-  const stories = createStoriesResource<InlineRelations>({
+  const stories = createStoriesResource<Schema, InlineRelations>({
     ...resourceDeps,
     inlineRelations,
   });

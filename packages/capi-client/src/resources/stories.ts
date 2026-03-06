@@ -51,6 +51,8 @@ type GetAllResponse<InlineRelations extends boolean> = Omit<GetAllResponses[200]
 /** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
 type StoryIdentifier = GetData['path']['identifier'];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export interface StoriesResourceDeps extends ResourceDeps {
   inlineRelations: boolean;
 }
@@ -66,9 +68,12 @@ export function createStoriesResource<InlineRelations extends boolean>(
       options: { query?: GetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
     ): Promise<ApiResponse<GetResponse<InlineRelations>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError } = options;
+      const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !query.find_by
+        ? { ...query, find_by: 'uuid' as const }
+        : query;
       const requestPath = `/v2/cdn/stories/${identifier}`;
       type Res = ApiResponse<GetResponse<InlineRelations>, ThrowOnError>;
-      return requestWithCache<GetResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<Res> => {
+      return requestWithCache<GetResponse<InlineRelations>, ThrowOnError>('GET', requestPath, resolvedQuery, async (requestQuery: Record<string, unknown>): Promise<Res> => {
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
           asApiResponse<GetResponse<InlineRelations>, ThrowOnError>(get({
             client,

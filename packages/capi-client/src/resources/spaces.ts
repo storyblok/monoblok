@@ -3,7 +3,7 @@ import type { GetResponses as SpacesGetResponses } from '../generated/spaces/typ
 import type { ApiResponse, ResourceDeps } from '../types';
 
 export function createSpacesResource(deps: ResourceDeps) {
-  const { client, requestWithCache, asApiResponse } = deps;
+  const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
     get: async <ThrowOnError extends boolean = false>(
@@ -12,15 +12,16 @@ export function createSpacesResource(deps: ResourceDeps) {
       const { signal, throwOnError } = options;
       const requestPath = '/v2/cdn/spaces/me';
       return requestWithCache<SpacesGetResponses[200], ThrowOnError>('GET', requestPath, {}, (requestQuery: Record<string, unknown>) => {
-        return asApiResponse<SpacesGetResponses[200], ThrowOnError>(getSpaceApi({
-          client,
-          // The OpenAPI spec declares no query params so the generated type
-          // is `query?: never`. At runtime we still need to pass a query object
-          // because `setAuthParams` mutates it in-place to inject the `token`.
-          query: requestQuery as never,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        return throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<SpacesGetResponses[200], ThrowOnError>(getSpaceApi({
+            client,
+            // The OpenAPI spec declares no query params so the generated type
+            // is `query?: never`. At runtime we still need to pass a query object
+            // because `setAuthParams` mutates it in-place to inject the `token`.
+            query: requestQuery as never,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
       });
     },
   };

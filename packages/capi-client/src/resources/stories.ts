@@ -12,7 +12,6 @@ import type {
 import { fetchMissingRelations } from '../utils/fetch-rel-uuids';
 import { buildRelationMap, inlineStoriesContent, inlineStoryContent, parseResolveRelations } from '../utils/inline-relations';
 import type { ApiResponse, ResourceDeps } from '../types';
-import type { ThrottleManager } from '../utils/rate-limit';
 
 type InlinedStoryContentField =
   | string
@@ -54,7 +53,6 @@ type StoryIdentifier = GetData['path']['identifier'];
 
 export interface StoriesResourceDeps extends ResourceDeps {
   inlineRelations: boolean;
-  throttleManager: ThrottleManager;
 }
 
 export function createStoriesResource<InlineRelations extends boolean>(
@@ -71,13 +69,14 @@ export function createStoriesResource<InlineRelations extends boolean>(
       const requestPath = `/v2/cdn/stories/${identifier}`;
       type Res = ApiResponse<GetResponse<InlineRelations>, ThrowOnError>;
       return requestWithCache<GetResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<Res> => {
-        const response = await asApiResponse<GetResponse<InlineRelations>, ThrowOnError>(get({
-          client,
-          path: { identifier },
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        const response = await throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<GetResponse<InlineRelations>, ThrowOnError>(get({
+            client,
+            path: { identifier },
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
 
         if (!inlineRelations || response.data === undefined) {
           return response;
@@ -118,12 +117,13 @@ export function createStoriesResource<InlineRelations extends boolean>(
       const requestPath = '/v2/cdn/stories';
       type ResAll = ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>;
       return requestWithCache<GetAllResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<ResAll> => {
-        const response = await asApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>(getAll({
-          client,
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        const response = await throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>(getAll({
+            client,
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
 
         if (!inlineRelations || response.data === undefined) {
           return response;

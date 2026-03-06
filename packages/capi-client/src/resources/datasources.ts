@@ -8,7 +8,7 @@ import type {
 import type { ApiResponse, ResourceDeps } from '../types';
 
 export function createDatasourcesResource(deps: ResourceDeps) {
-  const { client, requestWithCache, asApiResponse } = deps;
+  const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
     get: async <ThrowOnError extends boolean = false>(
@@ -18,13 +18,14 @@ export function createDatasourcesResource(deps: ResourceDeps) {
       const { query = {}, signal, throwOnError } = options;
       const requestPath = `/v2/cdn/datasources/${id}`;
       return requestWithCache<DatasourcesGetResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
-        return asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceApi({
-          client,
-          path: { id },
-          query: requestQuery as DatasourcesGetData['query'], // bridge generic cache callback (Record<string, unknown>) to typed SDK query
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        return throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceApi({
+            client,
+            path: { id },
+            query: requestQuery as DatasourcesGetData['query'], // bridge generic cache callback (Record<string, unknown>) to typed SDK query
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
       });
     },
 
@@ -34,12 +35,13 @@ export function createDatasourcesResource(deps: ResourceDeps) {
       const { query = {}, signal, throwOnError } = options;
       const requestPath = '/v2/cdn/datasources';
       return requestWithCache<DatasourcesGetAllResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
-        return asApiResponse<DatasourcesGetAllResponses[200], ThrowOnError>(getAllDatasourcesApi({
-          client,
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        return throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<DatasourcesGetAllResponses[200], ThrowOnError>(getAllDatasourcesApi({
+            client,
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
       });
     },
   };

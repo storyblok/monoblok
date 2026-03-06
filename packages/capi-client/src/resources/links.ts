@@ -3,7 +3,7 @@ import type { GetAllData as LinksGetAllData, GetAllResponses as LinksGetAllRespo
 import type { ApiResponse, ResourceDeps } from '../types';
 
 export function createLinksResource(deps: ResourceDeps) {
-  const { client, requestWithCache, asApiResponse } = deps;
+  const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
     getAll: async <ThrowOnError extends boolean = false>(
@@ -12,12 +12,13 @@ export function createLinksResource(deps: ResourceDeps) {
       const { query = {}, signal, throwOnError } = options;
       const requestPath = '/v2/cdn/links';
       return requestWithCache<LinksGetAllResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
-        return asApiResponse<LinksGetAllResponses[200], ThrowOnError>(getAllLinks({
-          client,
-          query: requestQuery,
-          signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-        }));
+        return throttleManager.execute(requestPath, requestQuery, () =>
+          asApiResponse<LinksGetAllResponses[200], ThrowOnError>(getAllLinks({
+            client,
+            query: requestQuery,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+          })));
       });
     },
   };

@@ -39,7 +39,7 @@ export const fetchMissingRelations = async ({
   baseQuery,
   throttleManager,
 }: FetchMissingRelationsOptions): Promise<StoryCapi[]> => {
-  const queryContext = pickQueryContext(baseQuery);
+  const queryContext = { ...pickQueryContext(baseQuery), per_page: UUID_CHUNK_SIZE };
   const chunks = chunkArray(uuids, UUID_CHUNK_SIZE);
 
   const results = await Promise.all(

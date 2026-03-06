@@ -2,6 +2,8 @@
 
 Implement the `define*` helpers and all supporting TypeScript types exported from the root `@storyblok/schema` entry point. This entry point must have **zero runtime dependencies** — everything here is pure TypeScript types and identity functions.
 
+**Core principle: all type shapes must be auto-generated from the OpenAPI spec.** No hand-authored property lists. The only manually-authored type is `FieldTypeValueMap` (domain knowledge mapping config types to runtime value types). Everything else — field config shapes, component metadata, story metadata, asset, datasource — derives from the generated types produced by Part 1's `generate.ts`.
+
 ## Acceptance criteria
 
 - `import { defineField, defineProp, defineComponent, defineStory, defineAsset, defineDatasource } from "@storyblok/schema"` works.
@@ -17,7 +19,28 @@ Implement the `define*` helpers and all supporting TypeScript types exported fro
 
 ## Prerequisite
 
-Part 1 must be complete. The generated file `src/generated/types.ts` (produced by `generate.ts`) must exist and export the raw OpenAPI-derived types for Story, Component, Asset, Datasource, and ComponentSchemaField. The types in this part wrap and extend those generated types.
+Part 1 must be complete. The generated file `src/generated/types.ts` (produced by `generate.ts`) must exist and export the raw OpenAPI-derived types for Story, Component, Asset, Datasource, and ComponentSchemaField.
+
+### Required OpenAPI spec changes
+
+Before the types in this part can work, the `@storyblok/openapi` MAPI components spec must be updated so the generator produces a proper discriminated union for field configs:
+
+1. **Create 17 per-field-type YAML files** in `resources/mapi/components/field-types/`, one for each field type (text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, multilink, bloks, table, section, tab, custom).
+2. **Each YAML file** must be a flat `type: object` with `required: [type]` and a `type` property with `enum: [<literal>]` as the discriminant. All base properties (display_name, description, translatable, required, regex, default_value, pos, rich_text, markdown, size, height, width, use_uuid, multiple, custom_css, custom_js, api_connection, fieldset) must be repeated in each file (no `allOf` composition — `openapi-zod-client` silently falls back to `z.union()` when `allOf` has >1 item). Type-specific properties go after the base ones.
+3. **Replace the flat `ComponentSchemaField`** in `main.yaml` with a `oneOf` + `discriminator` referencing all 17 `$ref`s.
+4. **Rebuild `@storyblok/openapi`** (`pnpm --filter @storyblok/openapi build`) and **regenerate** (`pnpm --filter @storyblok/schema generate`).
+
+After this, the generated output will contain:
+- `ComponentSchemaField` as a TypeScript union of all 17 config types
+- `z.discriminatedUnion("type", [...])` in the Zod schemas
+- Individual named types like `text_field_config`, `bloks_field_config`, etc., each with `type` as a required literal
+
+### Required `generate.ts` changes
+
+The generator must be updated to handle two schemas (`Asset`, `Datasource`) that are invisible to `openapi-zod-client`'s dependency graph (they have no `$ref` cross-references, so they never get TS types):
+
+- After merging all spec contexts, inject `Asset` and `Datasource` into `mergedContext.types` so they appear in the generated `types.ts`.
+- The `.passthrough()` that `openapi-zod-client` adds to every Zod object schema causes `z.infer<typeof X>` to produce types with `& { [k: string]: unknown }`, which breaks structural typing. Avoid using `z.infer` for these types — instead, inject them as proper TypeScript type alias strings derived from the Zod schema structure, or strip `.passthrough()` from the schemas before deriving types.
 
 ---
 
@@ -37,115 +60,108 @@ export type Prettify<T> = {
 
 ## 2.2 Field types — `src/types/field.ts`
 
-This is the most important file in Part 2. It defines the discriminated union type system for component fields.
+This is the most important file in Part 2. It defines the discriminated union type system for component fields. **All field config shapes are derived from the generated types — no manual property definitions.**
 
 ### `FieldType`
 
-The canonical union of all supported Storyblok field types. Derived from the documented types in the CAPI OpenAPI spec and the `ComponentSchemaField` description:
+Derived from the generated `ComponentSchemaField` discriminated union:
 
 ```ts
-export type FieldType =
-  | 'text'
-  | 'textarea'
-  | 'richtext'
-  | 'markdown'
-  | 'number'
-  | 'datetime'
-  | 'boolean'
-  | 'option'
-  | 'options'
-  | 'asset'
-  | 'multiasset'
-  | 'multilink'
-  | 'bloks'
-  | 'table'
-  | 'section'
-  | 'tab'
-  | 'custom';
+import type { ComponentSchemaField } from '../generated/types';
+
+export type FieldType = ComponentSchemaField['type'];
 ```
+
+This produces the union `'text' | 'textarea' | 'richtext' | ... | 'custom'` automatically from the generated types.
 
 ### `FieldTypeConfigMap`
 
-Maps each `FieldType` to its type-specific configuration properties (the keys that are only valid for that field type). These come from the `ComponentSchemaField` OpenAPI schema. Common properties shared across all field types (e.g., `display_name`, `required`, `translatable`) are not included here — they go in the base `Field` type.
+A structural lookup table mapping each field type literal to its generated config type. **This does not define any new type shapes** — it merely maps string literals to the already-generated types:
 
 ```ts
-// Asset value shape used by FieldTypeValueMap
-// (re-exported from generated types)
-import type { AssetField, MultilinkField, RichtextField, TableField, PluginField, StoryContent } from '../generated/types';
+import type {
+  text_field_config,
+  textarea_field_config,
+  richtext_field_config,
+  // ... all 17 generated config types
+} from '../generated/types';
 
-type FieldTypeConfigMap = {
-  text:      { maxlength?: number; minlength?: number; rtl?: boolean; rich_markdown?: boolean };
-  textarea:  { maxlength?: number; minlength?: number; rtl?: boolean };
-  richtext:  { restrict_components?: boolean; component_whitelist?: string[]; customize_toolbar?: boolean };
-  markdown:  { rich_markdown?: boolean; rtl?: boolean };
-  number:    { minimum?: number; maximum?: number; decimals?: number; steps?: number };
-  datetime:  { disable_time?: boolean };
-  boolean:   { inline_label?: string };
-  option:    { options?: Array<{ _uid?: string; name: string; value: string }>; source?: 'self' | 'internal' | 'external'; datasource_slug?: string; exclude_empty_option?: boolean; include_empty_option?: boolean };
-  options:   { options?: Array<{ _uid?: string; name: string; value: string }>; source?: 'self' | 'internal' | 'external'; datasource_slug?: string; minimum_entries?: number; maximum_entries?: number };
-  asset:     { filetypes?: string[]; folder_slug?: string; restrict_assets?: boolean; asset_whitelist?: string[]; allow_external_url?: boolean };
-  multiasset:{ filetypes?: string[]; folder_slug?: string; restrict_assets?: boolean; asset_whitelist?: string[]; minimum_entries?: number; maximum_entries?: number };
-  multilink: { restrict_content_types?: boolean; component_whitelist?: string[]; allow_target_blank?: boolean; force_link_scope?: boolean };
-  bloks:     { restrict_components?: boolean; component_whitelist?: string[]; component_group_whitelist?: string[]; minimum?: number; maximum?: number; restrict_type?: string };
-  table:     Record<string, never>;
-  section:   { keys?: string[] };
-  tab:       { keys?: string[] };
-  custom:    { field_type?: string; options?: unknown };
+export type FieldTypeConfigMap = {
+  text: text_field_config;
+  textarea: textarea_field_config;
+  richtext: richtext_field_config;
+  markdown: markdown_field_config;
+  number: number_field_config;
+  datetime: datetime_field_config;
+  boolean: boolean_field_config;
+  option: option_field_config;
+  options: options_field_config;
+  asset: asset_field_config;
+  multiasset: multiasset_field_config;
+  multilink: multilink_field_config;
+  bloks: bloks_field_config;
+  table: table_field_config;
+  section: section_field_config;
+  tab: tab_field_config;
+  custom: custom_field_config;
 };
 ```
+
+Each generated type (e.g., `text_field_config`) already includes the `type` discriminant, all base properties, and all type-specific properties. There is no separate `BaseFieldProps` type.
 
 ### `FieldTypeValueMap`
 
-Maps each `FieldType` to the shape of its value in story content at runtime. These types come from the shared OpenAPI field-type schemas (`shared/stories/field-types/`) which are used by both the CAPI and MAPI (after Part 0). The generated types (`AssetField`, `MultilinkField`, `RichtextField`, etc.) are available from either the CAPI or MAPI generated output since both now share the same `story-content.yaml` base:
+**The only manually-authored type.** Maps each field type discriminant to its runtime content value shape. This is domain knowledge connecting config schemas to content schemas — not expressible in the OpenAPI spec:
 
 ```ts
-type FieldTypeValueMap = {
-  text:       string;
-  textarea:   string;
-  richtext:   RichtextField;
-  markdown:   string;
-  number:     number;
-  datetime:   string;
-  boolean:    boolean;
-  option:     string;
-  options:    string[];
-  asset:      AssetField;
+import type {
+  asset_field as AssetField,
+  multilink_field as MultilinkField,
+  richtext_field as RichtextField,
+  table_field as TableField,
+  plugin_field as PluginField,
+  story_content as StoryContentGenerated,
+} from '../generated/types';
+
+export type FieldTypeValueMap = {
+  text: string;
+  textarea: string;
+  richtext: RichtextField;
+  markdown: string;
+  number: number;
+  datetime: string;
+  boolean: boolean;
+  option: string;
+  options: string[];
+  asset: AssetField;
   multiasset: AssetField[];
-  multilink:  MultilinkField;
-  bloks:      StoryContent[];
-  table:      TableField;
-  section:    never;   // layout-only, no content value
-  tab:        never;   // layout-only, no content value
-  custom:     PluginField;
+  multilink: MultilinkField;
+  bloks: StoryContentGenerated[];
+  table: TableField;
+  section: never;   // layout-only, no content value
+  tab: never;       // layout-only, no content value
+  custom: PluginField;
 };
 ```
 
-### Base field properties (shared across all field types)
-
-From the `ComponentSchemaField` OpenAPI schema, applicable to all field types:
+### `FieldVariant<TFieldType>` and `Field<TFieldType>`
 
 ```ts
-type BaseFieldProps = {
-  display_name?: string;
-  description?: string;
-  translatable?: boolean;
-  required?: boolean;
-  regex?: string;
-  default_value?: string;
-  pos?: number;
-};
-```
+/**
+ * A single field variant for a specific field type.
+ * Directly aliases the generated config type for that discriminant.
+ */
+export type FieldVariant<TFieldType extends FieldType> = FieldTypeConfigMap[TFieldType];
 
-### `Field<TFieldType>`
-
-The main field type. Discriminated on `type`:
-
-```ts
-export type Field<TFieldType extends FieldType = FieldType> = Prettify<
-  { type: TFieldType } &
-  BaseFieldProps &
-  FieldTypeConfigMap[TFieldType]
->;
+/**
+ * The main field type. Discriminated on `type`.
+ * When used with a specific type (e.g., Field<'text'>), produces a narrowed type.
+ * When used with the default (full FieldType union), produces the full discriminated union.
+ */
+export type Field<TFieldType extends FieldType = FieldType> =
+  TFieldType extends FieldType
+    ? FieldVariant<TFieldType>
+    : never;
 ```
 
 ---
@@ -155,7 +171,7 @@ export type Field<TFieldType extends FieldType = FieldType> = Prettify<
 A prop is a field as configured within a specific component. It merges the field definition with component-level configuration.
 
 ```ts
-import type { Field, FieldType } from './field';
+import type { Field } from './field';
 import type { Prettify } from './utils';
 
 /**
@@ -169,21 +185,25 @@ export type PropConfig = {
 
 /**
  * A field as configured within a component schema.
- * Merges field type + field config + component-level prop config.
+ * Merges field type + component-level prop config.
+ * PropConfig keys override field-level keys (e.g., `required`).
  */
 export type Prop<
   TField extends Field = Field,
   TPropConfig extends PropConfig = PropConfig,
-> = Prettify<TField & TPropConfig>;
+> = Prettify<Omit<TField, keyof TPropConfig> & TPropConfig>;
 ```
 
-Note: `pos` and `required` appear in both `BaseFieldProps` and `PropConfig`. When `defineProp` merges them, the prop-level values win (spread order). This is intentional — the component level can override the field default.
+Note: `Omit<TField, keyof TPropConfig> & TPropConfig` ensures prop-level values override field-level values without producing `never` from conflicting literal intersections (e.g., `required: false & required: true`).
 
 ---
 
 ## 2.4 Component types — `src/types/component.ts`
 
+**Metadata fields are derived from the generated `component` type**, not hand-authored:
+
 ```ts
+import type { component } from '../generated/types';
 import type { Prop } from './prop';
 import type { Prettify } from './utils';
 
@@ -194,24 +214,31 @@ export type ComponentSchema = Record<string, Prop>;
  * A Storyblok component definition.
  * TName is the literal component name (e.g., "hero", "page").
  * TSchema is the record of props defining the component's fields.
+ *
+ * Metadata fields (display_name, is_root, is_nestable, etc.) are derived from
+ * the generated `component` type. They are all Partial because this type is used
+ * for schema authoring (defineComponent), not for API response deserialization.
+ * `name` and `schema` are overridden with generic parameters for type-safe inference.
  */
 export type Component<
   TName extends string = string,
   TSchema extends ComponentSchema = ComponentSchema,
-> = Prettify<{
-  name: TName;
-  display_name?: string;
-  is_root?: boolean;
-  is_nestable?: boolean;
-  schema: TSchema;
-}>;
+> = Prettify<
+  Partial<Omit<component, 'name' | 'schema'>> & {
+    name: TName;
+    schema: TSchema;
+  }
+>;
 ```
 
 ---
 
 ## 2.5 Story types — `src/types/story.ts`
 
+**Metadata fields are derived from the generated `story_mapi` type**, not hand-authored:
+
 ```ts
+import type { story_mapi } from '../generated/types';
 import type { Component, ComponentSchema } from './component';
 import type { FieldTypeValueMap } from './field';
 import type { Prettify } from './utils';
@@ -231,39 +258,26 @@ export type StoryContent<TComponent extends Component = Component> = Prettify<
 
 /**
  * A Storyblok story typed to a specific component.
- * Includes all standard story metadata fields plus typed content.
+ * Metadata fields are derived from the generated story_mapi type.
+ * They are all Partial because this type is used for schema authoring
+ * (defineStory), not for API response deserialization.
+ * The `content` field is overridden with a component-aware generic.
  */
-export type Story<TComponent extends Component = Component> = {
-  // Typed content
-  content: StoryContent<TComponent>;
-  // Standard story metadata (from OpenAPI Story schema)
-  id?: number;
-  name?: string;
-  slug?: string;
-  full_slug?: string;
-  uuid?: string;
-  published?: boolean;
-  published_at?: string | null;
-  first_published_at?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  tag_list?: string[];
-  is_folder?: boolean;
-  parent_id?: number | null;
-  group_id?: string;
-  alternates?: unknown[];
-};
+export type Story<TComponent extends Component = Component> = Prettify<
+  Partial<Omit<story_mapi, 'content'>> & {
+    content: StoryContent<TComponent>;
+  }
+>;
 ```
 
 ---
 
 ## 2.6 Asset and Datasource types — `src/types/asset.ts`, `src/types/datasource.ts`
 
-These re-export and/or refine the generated OpenAPI types:
+**Pure re-exports from the generated types:**
 
 **`src/types/asset.ts`**
 ```ts
-// Re-export from generated types, potentially with refinements
 export type { Asset } from '../generated/types';
 ```
 
@@ -272,7 +286,7 @@ export type { Asset } from '../generated/types';
 export type { Datasource } from '../generated/types';
 ```
 
-If the generated types are not clean enough (e.g., too many `unknown` fields), define refined versions inline here that map to the OpenAPI schema properties explicitly.
+These types must be clean structural types (no `& { [k: string]: unknown }` from Zod's `.passthrough()`). If the generated types use `z.infer` and produce passthrough artifacts, fix the generation in `generate.ts` (see Prerequisite section).
 
 ---
 
@@ -292,7 +306,7 @@ export type { Datasource } from './datasource';
 
 ## 2.8 Define helpers — `src/helpers/`
 
-All helpers are identity functions (or near-identity). Their only job is to let TypeScript infer a precise type from the input. No runtime logic beyond basic object spreading.
+All helpers are hand-authored identity functions (or near-identity). Their only job is to let TypeScript infer a precise type from the input. No runtime logic beyond basic object spreading. **They must import and use only generated/derived types — no manual type definitions.**
 
 ### `src/helpers/define-field.ts`
 
@@ -304,19 +318,22 @@ import type { Field, FieldType } from '../types/field';
  * Returns the input as-is with a narrowed type based on the `type` discriminant.
  * Invalid keys for the given field type will produce a TypeScript error.
  *
+ * Uses Extract<Field, { type: TFieldType }> to resolve the exact discriminated
+ * union member, enabling TypeScript to narrow the return type properly.
+ *
  * @example
  * const headline = defineField({ type: 'text', maxlength: 100 });
- * // type: { type: "text"; maxlength: number; }
+ * // type: text_field_config
  */
 export const defineField = <TFieldType extends FieldType>(
-  field: Field<TFieldType>,
-): Field<TFieldType> => field;
+  field: Extract<Field, { type: TFieldType }>,
+): Extract<Field, { type: TFieldType }> => field;
 ```
 
 ### `src/helpers/define-prop.ts`
 
 ```ts
-import type { Field, FieldType } from '../types/field';
+import type { Field } from '../types/field';
 import type { Prop, PropConfig } from '../types/prop';
 
 /**
@@ -327,12 +344,12 @@ import type { Prop, PropConfig } from '../types/prop';
  * const headlineProp = defineProp(headlineField, { pos: 1, required: true });
  */
 export const defineProp = <
-  TFieldType extends FieldType,
+  TField extends Field,
   TPropConfig extends PropConfig,
 >(
-  field: Field<TFieldType>,
+  field: TField,
   config: TPropConfig,
-): Prop<Field<TFieldType>, TPropConfig> => ({ ...field, ...config });
+): Prop<TField, TPropConfig> => ({ ...field, ...config });
 ```
 
 ### `src/helpers/define-component.ts`
@@ -543,9 +560,29 @@ describe('defineStory type inference', () => {
 
 ## Key design decisions
 
-### Why `NoInfer` is not used in the draft's `defineField`
+### Why all type shapes must come from generated types
 
-The draft implementation used `NoInfer<FieldTypeConfigMap[TFieldType]>` to prevent TypeScript from widening the inferred type. With the `Prettify` approach and `& FieldTypeConfigMap[TFieldType]` intersection, TypeScript narrows correctly without `NoInfer`. Validate during implementation and add `NoInfer` if needed.
+Manually-authored type shapes (like `BaseFieldProps`, `FieldTypeConfigMap` entries, `Story` metadata, `Component` metadata) drift out of sync with the OpenAPI spec as the API evolves. By deriving everything from the generated types, schema changes in `@storyblok/openapi` automatically propagate to all consumers.
+
+### Why `FieldTypeValueMap` is the exception
+
+`FieldTypeValueMap` maps field config types (OpenAPI management API) to their runtime content value types (OpenAPI content API). These are two separate domains — a `text` config produces a `string` value, an `asset` config produces an `AssetField` value. This mapping is domain knowledge that cannot be expressed within a single OpenAPI spec. It is the one manually-authored type that must be kept in sync when new field types are added.
+
+### Why `Extract<Field, { type: TFieldType }>` in `defineField`
+
+The naive signature `<TFieldType extends FieldType>(field: FieldVariant<TFieldType>)` causes TypeScript to infer `TFieldType` as the full `FieldType` union instead of the specific literal (e.g., `'text'`). This happens because `FieldVariant<TFieldType>` is an indexed access type that TypeScript can't "reverse lookup" from. Using `Extract<Field, { type: TFieldType }>` resolves the exact discriminated union member, enabling proper narrowing of the return type.
+
+### Why `Prop` uses `Omit` instead of intersection
+
+`Prop<TField, TPropConfig> = Prettify<Omit<TField, keyof TPropConfig> & TPropConfig>` ensures prop-level values override field-level values cleanly. A plain intersection (`TField & TPropConfig`) produces `never` when literal types conflict — e.g., a field with `required: false` intersected with `{ required: true }` gives `never` because `false & true` is impossible.
+
+### Why `Component` and `Story` use `Partial<Omit<generated, ...>>`
+
+The generated `component` and `story_mapi` types represent **API response** shapes with required fields like `id`, `created_at`, `updated_at`. The `define*` helpers are for **schema authoring** — users provide `name` and `schema`, not `id` or `created_at`. Wrapping in `Partial<Omit<...>>` makes all API-response-only metadata optional while preserving the generic parameters for type-safe inference.
+
+### The `.passthrough()` problem
+
+`openapi-zod-client` adds `.passthrough()` to every Zod object schema (from the `strictObjects: true` option, which generates `.strict()` that is then cleaned up to `.passthrough()`). When TypeScript types are derived via `z.infer<typeof X>`, the `.passthrough()` adds `& { [k: string]: unknown }` to the inferred type, which breaks structural assignability. For types that are injected via `z.infer` (like `Asset` and `Datasource`), this must be resolved — either by stripping `.passthrough()` in `renderOutput()`, or by generating proper TypeScript type strings directly instead of using `z.infer`.
 
 ### Why `section` and `tab` map to `never` in `FieldTypeValueMap`
 

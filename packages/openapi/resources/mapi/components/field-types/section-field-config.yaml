@@ -1,0 +1,16 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Section (layout) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [section]
+        description: Field type discriminant
+      keys:
+        type: array
+        description: Field keys that belong to this section
+        items:
+          type: string

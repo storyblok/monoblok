@@ -1,0 +1,22 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Asset (single asset) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [asset]
+        description: Field type discriminant
+      filetypes:
+        type: array
+        description: Allowed file types (images, videos, audios, texts)
+        items:
+          type: string
+      asset_folder_id:
+        type: integer
+        description: Numeric ID of the allowed asset folder
+      allow_external_url:
+        type: boolean
+        description: Whether to allow external URLs

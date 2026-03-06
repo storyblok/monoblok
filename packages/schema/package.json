@@ -21,6 +21,10 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./mapi": {
+      "import": "./dist/mapi/index.mjs",
+      "require": "./dist/mapi/index.cjs"
+    },
     "./zod": {
       "import": "./dist/zod/index.mjs",
       "require": "./dist/zod/index.cjs"
@@ -32,6 +36,9 @@
   "types": "./dist/index.d.cts",
   "typesVersions": {
     "*": {
+      "mapi": [
+        "./dist/mapi/index.d.mts"
+      ],
       "zod": [
         "./dist/zod/index.d.mts"
       ]

@@ -455,167 +455,27 @@ components:
         schema:
           additionalProperties: true
     ComponentSchemaField:
-      type: object
-      description: A component schema field object
-      properties:
-        type:
-          type: string
-          description: Field type (text, textarea, number, boolean, etc.)
-        pos:
-          type: integer
-          description: Position of the field
-        display_name:
-          type: string
-          description: Human-readable display name
-        required:
-          type: boolean
-          description: Whether the field is required
-        regex:
-          type: string
-          description: Regular expression for validation
-        translatable:
-          type: boolean
-          description: Whether the field is translatable
-        description:
-          type: string
-          description: Field description
-        default_value:
-          type: string
-          description: Default value for the field
-        options:
-          type: array
-          description: Array of datasource entries [{name:"", value:""}]; Effects editor only if source=undefined. For field type option.
-          items:
-            type: object
-            properties:
-              _uid:
-                type: string
-              name:
-                type: string
-              value:
-                type: string
-              
-        source:
-          type: string
-          enum: [option, options, custom]
-        folder_slug:
-          type: string
-          description: Folder slug for asset fields
-        filetypes:
-          type: array
-          description: Allowed file types for asset fields
-          items:
-            type: string
-        maximum:
-          type: number
-          description: Maximum value for number fields
-        minimum:
-          type: number
-          description: Minimum value for number fields
-        maxlength:
-          type: integer
-          description: Maximum length for text fields
-        minlength:
-          type: integer
-          description: Minimum length for text fields
-        rich_markdown:
-          type: boolean
-          description: Whether rich markdown is enabled
-        rich_text:
-          type: boolean
-          description: Whether rich text is enabled
-        markdown:
-          type: boolean
-          description: Whether markdown is enabled
-        size:
-          type: string
-          description: Field size (small, medium, large)
-        height:
-          type: integer
-          description: Field height in pixels
-        width:
-          type: integer
-          description: Field width in pixels
-        use_uuid:
-          type: boolean
-          description: Whether to use UUID for the field
-        restrict_content_types:
-          type: boolean
-          description: Whether to restrict content types
-        restrict_components:
-          type: boolean
-          description: Whether to restrict components
-        component_whitelist:
-          type: array
-          description: List of allowed components
-          items:
-            type: string
-        component_group_whitelist:
-          type: array
-          description: List of allowed component groups
-          items:
-            type: string
-        maximum_entries:
-          type: integer
-          description: Maximum number of entries
-        minimum_entries:
-          type: integer
-          description: Minimum number of entries
-        restrict_assets:
-          type: boolean
-          description: Whether to restrict assets
-        asset_whitelist:
-          type: array
-          description: List of allowed asset types
-          items:
-            type: string
-        exclude_empty_option:
-          type: boolean
-          description: Whether to exclude empty option
-        include_empty_option:
-          type: boolean
-          description: Whether to include empty option
-        datasource_slug:
-          type: string
-          description: Datasource slug for datasource fields
-        multiple:
-          type: boolean
-          description: Whether multiple values are allowed
-        custom_css:
-          type: string
-          description: Custom CSS for the field
-        custom_js:
-          type: string
-          description: Custom JavaScript for the field
-        api_connection:
-          type: object
-          description: API connection configuration
-          properties:
-            url:
-              type: string
-              description: API URL
-            headers:
-              type: object
-              description: API headers
-            params:
-              type: object
-              description: API parameters
-        fieldset:
-          type: object
-          description: Fieldset configuration
-          properties:
-            title:
-              type: string
-              description: Fieldset title
-            description:
-              type: string
-              description: Fieldset description
-            collapsible:
-              type: boolean
-              description: Whether the fieldset is collapsible
-            collapsed:
-              type: boolean
-              description: Whether the fieldset is collapsed by default
+      description: A component schema field — discriminated union on `type`.
+      discriminator:
+        propertyName: type
+      oneOf:
+        - $ref: './field-types/text-field-config.yaml'
+        - $ref: './field-types/textarea-field-config.yaml'
+        - $ref: './field-types/richtext-field-config.yaml'
+        - $ref: './field-types/markdown-field-config.yaml'
+        - $ref: './field-types/number-field-config.yaml'
+        - $ref: './field-types/datetime-field-config.yaml'
+        - $ref: './field-types/boolean-field-config.yaml'
+        - $ref: './field-types/option-field-config.yaml'
+        - $ref: './field-types/options-field-config.yaml'
+        - $ref: './field-types/asset-field-config.yaml'
+        - $ref: './field-types/multiasset-field-config.yaml'
+        - $ref: './field-types/multilink-field-config.yaml'
+        - $ref: './field-types/bloks-field-config.yaml'
+        - $ref: './field-types/table-field-config.yaml'
+        - $ref: './field-types/section-field-config.yaml'
+        - $ref: './field-types/tab-field-config.yaml'
+        - $ref: './field-types/custom-field-config.yaml'
     ComponentCreate:
       $ref: ./component-create.yaml
     ComponentUpdate:

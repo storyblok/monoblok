@@ -1,0 +1,14 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Datetime field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [datetime]
+        description: Field type discriminant
+      disable_time:
+        type: boolean
+        description: Whether to disable time selection (date-only mode)

@@ -34,6 +34,76 @@ function getOpenApiPackagePath() {
   return packages[0].path;
 }
 
+type OpenApiSchema = Record<string, any>;
+
+/**
+ * Converts an OpenAPI schema property to a TypeScript type string.
+ * Handles primitives, arrays, objects, and nested structures.
+ */
+function schemaPropertyToTs(prop: OpenApiSchema): string {
+  if (!prop) {
+    return 'unknown';
+  }
+
+  if (prop.type === 'string') {
+    return 'string';
+  }
+  if (prop.type === 'number' || prop.type === 'integer') {
+    return 'number';
+  }
+  if (prop.type === 'boolean') {
+    return 'boolean';
+  }
+
+  if (prop.type === 'array') {
+    const itemType = prop.items ? schemaPropertyToTs(prop.items) : 'unknown';
+    return `Array<${itemType}>`;
+  }
+
+  if (prop.type === 'object') {
+    if (prop.properties) {
+      return schemaObjectToTs(prop);
+    }
+    // Plain object with no defined properties (e.g., additionalProperties: true)
+    return '{}';
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Converts an OpenAPI object schema to a TypeScript type string.
+ * Produces a clean structural type without index signatures.
+ */
+function schemaObjectToTs(schema: OpenApiSchema): string {
+  const required = new Set<string>(schema.required || []);
+  const props = schema.properties || {};
+  const lines: string[] = [];
+
+  for (const [name, prop] of Object.entries<OpenApiSchema>(props)) {
+    const tsType = schemaPropertyToTs(prop);
+    const isRequired = required.has(name);
+    lines.push(`  ${name}${isRequired ? '' : '?'}: ${tsType}${isRequired ? '' : ' | undefined'};`);
+  }
+
+  return `{\n${lines.join('\n')}\n}`;
+}
+
+/**
+ * Extracts an OpenAPI component schema by name from a bundled OpenAPI document.
+ */
+function extractComponentSchema(doc: OpenApiSchema, schemaName: string): OpenApiSchema | undefined {
+  // OpenAPI 3.x
+  if (doc.components?.schemas?.[schemaName]) {
+    return doc.components.schemas[schemaName];
+  }
+  // OpenAPI 2.x
+  if (doc.definitions?.[schemaName]) {
+    return doc.definitions[schemaName];
+  }
+  return undefined;
+}
+
 function renderOutput(context: Pick<TemplateContext, 'schemas' | 'types'> & { emitSchemas?: boolean; emitTypes?: boolean }) {
   const handlebars = getHandlebars();
   const source = readFileSync(templatePath, 'utf8');
@@ -74,6 +144,14 @@ function renderOutput(context: Pick<TemplateContext, 'schemas' | 'types'> & { em
   // while the TypeScript type stays optional.
   output = output.replace(/\.optional\(\)\.default\([^)]+\)/g, '.optional()');
 
+  // z.discriminatedUnion() requires ZodObject members, but allOf composition
+  // in the OpenAPI spec produces ZodIntersection via .and(). Replace with
+  // z.union() which accepts any Zod type.
+  output = output.replace(
+    /z\.discriminatedUnion\("type",/g,
+    'z.union(',
+  );
+
   return output;
 }
 
@@ -96,8 +174,12 @@ async function main() {
     types: {},
   };
 
+  // Store bundled OpenAPI docs for extracting schemas that openapi-zod-client misses.
+  const bundledDocs: Array<{ name: string; doc: OpenApiSchema }> = [];
+
   for (const spec of specs) {
     const openApiDoc = await SwaggerParser.bundle(spec.path);
+    bundledDocs.push({ name: spec.name, doc: openApiDoc as OpenApiSchema });
     const context = getZodClientTemplateContext(openApiDoc as Parameters<typeof getZodClientTemplateContext>[0], generatorOptions);
 
     for (const [name, schema] of Object.entries(context.schemas)) {
@@ -110,7 +192,37 @@ async function main() {
   }
 
   writeFileSync(resolve(generatedDir, 'zod-schemas.ts'), renderOutput({ ...mergedContext, emitSchemas: true }));
-  writeFileSync(resolve(generatedDir, 'types.ts'), renderOutput({ ...mergedContext, emitTypes: true }));
+
+  // Schemas that are not referenced by any other schema are invisible to
+  // openapi-zod-client's dependency graph and therefore never get TS types.
+  // Instead of using z.infer (which carries .passthrough() artifacts that add
+  // `& { [k: string]: unknown }` and break structural typing), derive proper
+  // TypeScript type alias strings directly from the OpenAPI schema definitions.
+  const missingTypeNames = ['Asset', 'Datasource'] as const;
+
+  for (const typeName of missingTypeNames) {
+    if (mergedContext.types[typeName]) {
+      continue; // Already present
+    }
+
+    let schema: OpenApiSchema | undefined;
+    for (const { doc } of bundledDocs) {
+      schema = extractComponentSchema(doc, typeName);
+      if (schema) {
+        break;
+      }
+    }
+
+    if (!schema) {
+      throw new Error(`Could not find OpenAPI schema for "${typeName}" in any bundled spec.`);
+    }
+
+    const tsBody = schemaObjectToTs(schema);
+    mergedContext.types[typeName] = `type ${typeName} = ${tsBody};`;
+  }
+
+  const typesOutput = renderOutput({ ...mergedContext, emitTypes: true });
+  writeFileSync(resolve(generatedDir, 'types.ts'), typesOutput);
 }
 
 main().catch((error) => {

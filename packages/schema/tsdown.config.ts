@@ -10,6 +10,7 @@ export default defineConfig({
   external: ['zod'],
   entry: {
     'index': './src/index.ts',
+    'mapi/index': './src/mapi/index.ts',
     'zod/index': './src/zod/index.ts',
   },
   outDir: './dist',

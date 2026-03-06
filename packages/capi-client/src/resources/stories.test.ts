@@ -163,6 +163,67 @@ describe('stories.get()', () => {
 
     await expect(client.stories.get('non-existent-story', { throwOnError: true })).rejects.toThrow();
   });
+
+  it('should automatically add find_by=uuid when identifier is a UUID', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ story: makeStory('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', { component: 'page', _uid: 'uid-1' }) });
+      }),
+    );
+    const client = createApiClient({ accessToken: 'test-token' });
+
+    await client.stories.get('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+
+    expect(new URL(capturedUrl!).searchParams.get('find_by')).toBe('uuid');
+  });
+
+  it('should not override an explicit find_by when identifier is a UUID', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ story: makeStory('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', { component: 'page', _uid: 'uid-1' }) });
+      }),
+    );
+    const client = createApiClient({ accessToken: 'test-token' });
+
+    await client.stories.get('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', { query: { find_by: 'uuid' } });
+
+    const params = new URL(capturedUrl!).searchParams;
+    expect(params.getAll('find_by')).toEqual(['uuid']); // exactly once, not duplicated
+  });
+
+  it('should not add find_by for a non-UUID string identifier', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ story: makeStory('test-story', { component: 'page', _uid: 'uid-1' }) });
+      }),
+    );
+    const client = createApiClient({ accessToken: 'test-token' });
+
+    await client.stories.get('test-story');
+
+    expect(new URL(capturedUrl!).searchParams.has('find_by')).toBe(false);
+  });
+
+  it('should not add find_by for a numeric identifier', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ story: makeStory('123', { component: 'page', _uid: 'uid-1' }) });
+      }),
+    );
+    const client = createApiClient({ accessToken: 'test-token' });
+
+    await client.stories.get(123);
+
+    expect(new URL(capturedUrl!).searchParams.has('find_by')).toBe(false);
+  });
 });
 
 describe('stories.getAll()', () => {

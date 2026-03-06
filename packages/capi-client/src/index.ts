@@ -37,9 +37,18 @@ export type { StoryWithInlinedRelations } from './resources/stories';
 
 export { createThrottle, parseRateLimitPolicyHeader } from './utils/rate-limit';
 
+/**
+ * Cache configuration.
+ *
+ * **Note:** Requests with `version: 'draft'` always bypass the cache regardless
+ * of the configured strategy. Only published content is cached.
+ */
 interface CacheConfig {
+  /** Custom cache provider. Defaults to an in-memory LRU cache (1 000 entries). */
   provider?: CacheProvider;
+  /** Cache strategy for published requests. @default 'cache-first' */
   strategy?: CacheStrategy | CacheStrategyHandler;
+  /** Time-to-live in milliseconds for cached entries. @default 60_000 */
   ttlMs?: number;
   /**
    * Controls when the cache is flushed on cv change.

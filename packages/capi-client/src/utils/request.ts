@@ -1,6 +1,7 @@
 export const CACHEABLE_METHODS = new Set(['GET']);
 export const NON_CACHEABLE_PATHS = new Set(['/v2/cdn/spaces/me']);
 
+/** Returns `true` when the query targets draft content (`version: 'draft'`). Draft requests bypass the cache. */
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === 'draft';
 
 /**
@@ -31,6 +32,7 @@ export const createCacheKey = (method: string, path: string, query: Record<strin
   });
 };
 
+/** Returns `false` for non-GET methods, the spaces endpoint, and draft requests — all of which bypass the cache. */
 export const shouldUseCache = (method: string, path: string, query: Record<string, unknown>) => {
   return CACHEABLE_METHODS.has(method)
     && !NON_CACHEABLE_PATHS.has(path)

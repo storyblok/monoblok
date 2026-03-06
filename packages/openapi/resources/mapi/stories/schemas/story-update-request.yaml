@@ -10,7 +10,7 @@ properties:
   force_update:
     type: string
     enum: ["0", "1"]
-    default: 0
+    default: "0"
     description: If this is 1, the request can overwrite a locked story. Note that a user currently editing the story (which is why it was locked) will encounter a content conflict model. Importantly, note that force_update does not work when editing is locked for the workflow stage that the story currently is in
   release_id:
     type: integer

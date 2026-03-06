@@ -1,4 +1,4 @@
-# Part 3: Lightweight Type Helpers
+# Part 2: Lightweight Type Helpers
 
 Implement the `define*` helpers and all supporting TypeScript types exported from the root `@storyblok/schema` entry point. This entry point must have **zero runtime dependencies** — everything here is pure TypeScript types and identity functions.
 
@@ -21,7 +21,7 @@ Part 1 must be complete. The generated file `src/generated/types.ts` (produced b
 
 ---
 
-## 3.1 Utility types — `src/types/utils.ts`
+## 2.1 Utility types — `src/types/utils.ts`
 
 ```ts
 /**
@@ -35,9 +35,9 @@ export type Prettify<T> = {
 
 ---
 
-## 3.2 Field types — `src/types/field.ts`
+## 2.2 Field types — `src/types/field.ts`
 
-This is the most important file in Part 3. It defines the discriminated union type system for component fields.
+This is the most important file in Part 2. It defines the discriminated union type system for component fields.
 
 ### `FieldType`
 
@@ -150,7 +150,7 @@ export type Field<TFieldType extends FieldType = FieldType> = Prettify<
 
 ---
 
-## 3.3 Prop types — `src/types/prop.ts`
+## 2.3 Prop types — `src/types/prop.ts`
 
 A prop is a field as configured within a specific component. It merges the field definition with component-level configuration.
 
@@ -181,7 +181,7 @@ Note: `pos` and `required` appear in both `BaseFieldProps` and `PropConfig`. Whe
 
 ---
 
-## 3.4 Component types — `src/types/component.ts`
+## 2.4 Component types — `src/types/component.ts`
 
 ```ts
 import type { Prop } from './prop';
@@ -209,7 +209,7 @@ export type Component<
 
 ---
 
-## 3.5 Story types — `src/types/story.ts`
+## 2.5 Story types — `src/types/story.ts`
 
 ```ts
 import type { Component, ComponentSchema } from './component';
@@ -257,7 +257,7 @@ export type Story<TComponent extends Component = Component> = {
 
 ---
 
-## 3.6 Asset and Datasource types — `src/types/asset.ts`, `src/types/datasource.ts`
+## 2.6 Asset and Datasource types — `src/types/asset.ts`, `src/types/datasource.ts`
 
 These re-export and/or refine the generated OpenAPI types:
 
@@ -276,7 +276,7 @@ If the generated types are not clean enough (e.g., too many `unknown` fields), d
 
 ---
 
-## 3.7 Types barrel — `src/types/index.ts`
+## 2.7 Types barrel — `src/types/index.ts`
 
 ```ts
 export type { Prettify } from './utils';
@@ -290,7 +290,7 @@ export type { Datasource } from './datasource';
 
 ---
 
-## 3.8 Define helpers — `src/helpers/`
+## 2.8 Define helpers — `src/helpers/`
 
 All helpers are identity functions (or near-identity). Their only job is to let TypeScript infer a precise type from the input. No runtime logic beyond basic object spreading.
 
@@ -433,7 +433,7 @@ export { defineDatasource } from './define-datasource';
 
 ---
 
-## 3.9 Update `src/index.ts`
+## 2.9 Update `src/index.ts`
 
 ```ts
 // Types
@@ -456,7 +456,7 @@ export { defineDatasource } from './helpers/define-datasource';
 
 ---
 
-## 3.10 Tests
+## 2.10 Tests
 
 ### Unit tests — `test/helpers/`
 

@@ -1,4 +1,4 @@
-# Part 5: Integrating Types in CAPI Client
+# Part 4: Integrating Types in CAPI Client
 
 Integrate `@storyblok/schema` types into `@storyblok/api-client` (`packages/capi-client`) so that consumers can get fully typed story content based on their component definitions, and optionally validate CAPI responses at runtime using Zod.
 
@@ -32,7 +32,7 @@ The package currently defines its own content types derived from the CAPI OpenAP
 
 ## What this task involves
 
-### 5.1 Add `@storyblok/schema` dependency
+### 4.1 Add `@storyblok/schema` dependency
 
 Add `@storyblok/schema` as a dependency in `packages/capi-client/package.json`:
 
@@ -48,7 +48,7 @@ Add `@storyblok/schema` as a dependency in `packages/capi-client/package.json`:
 
 Update the nx dependency chain so that `capi-client:build` depends on `@storyblok/schema:build`.
 
-### 5.2 Add component-generic type parameter to story methods
+### 4.2 Add component-generic type parameter to story methods
 
 Augment the existing `stories.get()` and `stories.getAll()` methods to accept an optional component type parameter. When provided, the returned story content is narrowed to the component's schema:
 
@@ -70,7 +70,7 @@ Implementation approach:
 - When a specific component type is provided, map the `content` field to `StoryContent<TComponent>` from `@storyblok/schema`.
 - This is a **type-level only** change — no runtime behavior changes. The actual response data is the same; the type parameter just narrows what TypeScript sees.
 
-### 5.3 Re-export shared types from `@storyblok/schema`
+### 4.3 Re-export shared types from `@storyblok/schema`
 
 The `src/index.ts` currently exports prettified versions of generated types (`Story`, `Link`, `Space`, `Datasource`, `DatasourceEntry`, `Tag`). For the types that overlap with `@storyblok/schema` exports (`Story`, `Asset`, `Datasource`), decide on one of:
 
@@ -80,7 +80,7 @@ The `src/index.ts` currently exports prettified versions of generated types (`St
 
 Option 3 (augment) is recommended — it preserves backward compatibility while adding the typed content capability. The CAPI `Story` type has fields specific to the CDN response (`cv`, `rels`, `rel_uuids`, etc.) that the schema `Story` type may not include.
 
-### 5.4 Optional Zod runtime validation
+### 4.4 Optional Zod runtime validation
 
 Add an optional `validate` configuration option to `createApiClient()` that, when enabled, validates CAPI response payloads using `@storyblok/schema/zod`:
 
@@ -99,7 +99,7 @@ Implementation considerations:
 - On validation failure, either throw a `ZodError` or return it in the error field (depending on `throwOnError` config).
 - This is a lower-priority enhancement — the type-level integration (5.2, 5.3) should land first.
 
-### 5.5 Update tests
+### 4.5 Update tests
 
 - Add type-level tests (`expectTypeOf`) verifying that `stories.get<typeof component>()` returns correctly narrowed types.
 - Add runtime tests for the optional Zod validation path (mock a CAPI response, validate it against a component schema).
@@ -109,12 +109,12 @@ Implementation considerations:
 
 ## Dependency
 
-This task depends on Parts 1, 3, and 4 being complete (so `@storyblok/schema` exists with its types and Zod parsers).
+This task depends on Parts 1, 2, and 3 being complete (so `@storyblok/schema` exists with its types and Zod parsers).
 
 ## Coordination with Part 0
 
 Part 0 (MAPI refactor) aligns the MAPI client with the CAPI's architecture:
 
-- **Shared types become truly shared**: After Part 0, both MAPI and CAPI generate their story types from the same `story-base.yaml` + `story-content.yaml` shared specs. This means `@storyblok/schema`'s generated types will be structurally identical to both clients' generated types, making the type integration in 5.3 cleaner — the `StoryContent`, `AssetField`, `MultilinkField`, etc. types will match exactly.
+- **Shared types become truly shared**: After Part 0, both MAPI and CAPI generate their story types from the same `story-base.yaml` + `story-content.yaml` shared specs. This means `@storyblok/schema`'s generated types will be structurally identical to both clients' generated types, making the type integration in 4.3 cleaner — the `StoryContent`, `AssetField`, `MultilinkField`, etc. types will match exactly.
 - **Consistent API patterns**: Part 0 renames MAPI methods to match CAPI (`getAll`, `get`, `create`, `update`, `delete`) and switches to a factory function (`createManagementApiClient`). This means a future Part 6 could integrate `@storyblok/schema` types into the MAPI client using the same approach described here for the CAPI.
 - **No blocking dependency**: Part 0 does not block this task, but if it lands first, the shared type story simplifies significantly.

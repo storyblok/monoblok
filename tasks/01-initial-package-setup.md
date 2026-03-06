@@ -93,7 +93,7 @@ Create the `packages/schema` package with all build infrastructure, code generat
 ```
 
 Notes:
-- The `./openapi/*` subpath export is intentionally omitted here — it belongs to Part 2 (moving the openapi package).
+- The `./openapi/*` subpath export is intentionally omitted here — it belongs to Part 5 (moving the openapi package).
 - `zod` is a `peerDependency` (optional) so users only need it when importing `@storyblok/schema/zod`. It is also listed under `devDependencies` so the package can test against it.
 - `tsx` is used to run `generate.ts` without a prior compile step.
 
@@ -223,7 +223,7 @@ This script is the bridge between the `@storyblok/openapi` YAML specs and the pa
 
 The raw `openapi-zod-client` output may need transformation for two known issues:
 
-- **`additionalProperties: true` schemas** (e.g., `Component.schema`, `StoryContent`/`Blok`): These map to `z.record(z.string(), z.any())` which is too loose. Add a post-processing step to replace or annotate these with the discriminated-union field schema from `src/zod/schemas/field-schema.ts` (written in Part 4) once available. Note: After Part 0 (MAPI refactor), the MAPI spec will use the shared `story-content.yaml` instead of the simpler `blok.yaml`, so the generated schema name will be `StoryContent` (matching the CAPI output).
+- **`additionalProperties: true` schemas** (e.g., `Component.schema`, `StoryContent`/`Blok`): These map to `z.record(z.string(), z.any())` which is too loose. Add a post-processing step to replace or annotate these with the discriminated-union field schema from `src/zod/schemas/field-schema.ts` (written in Part 3) once available. Note: After Part 0 (MAPI refactor), the MAPI spec will use the shared `story-content.yaml` instead of the simpler `blok.yaml`, so the generated schema name will be `StoryContent` (matching the CAPI output).
 - **`ComponentSchemaField.type` is `z.string()`** (no enum in OpenAPI): Post-process to replace with `z.enum([...all field types...])`.
 
 ### Rough skeleton
@@ -306,14 +306,14 @@ Create the minimum source files so the build succeeds without errors:
 **`packages/schema/src/index.ts`**
 ```ts
 // Types and define helpers (zero runtime dependencies)
-// Populated in Part 3
+// Populated in Part 2
 export {};
 ```
 
 **`packages/schema/src/zod/index.ts`**
 ```ts
 // Zod schemas and parse helpers (requires zod peer dependency)
-// Populated in Part 4
+// Populated in Part 3
 export {};
 ```
 

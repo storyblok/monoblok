@@ -1,4 +1,4 @@
-# Part 2: Moving OpenAPI Package
+# Part 5: Moving OpenAPI Package
 
 ## Context
 
@@ -22,7 +22,7 @@ import capiSpec from '@storyblok/schema/openapi/capi.yaml';
 
 ## Dependency
 
-This task depends on Part 1 being complete (so `@storyblok/schema` exists with its build infrastructure and subpath exports).
+This task depends on Parts 1–4 being complete (so `@storyblok/schema` exists with its build infrastructure, types, Zod parsers, and CAPI integration). Moving the OpenAPI specs into `@storyblok/schema` is the final consolidation step — it can be done last because the earlier parts already reference `@storyblok/openapi` directly via `workspace:*` for code generation.
 
 ## Coordination with Part 0
 

@@ -654,6 +654,6 @@ The README update should also refresh the **Quick Start**, **Authentication**, *
 
 This task has no dependencies on Parts 1–5 — it can be executed independently and in parallel. However, it does affect:
 - **Part 1** (`generate.ts` in `@storyblok/schema`): After this task, the MAPI YAML specs in `@storyblok/openapi` will have different structures. The schema package's code generation should be verified against the new bundled output.
-- **Part 2** (moving OpenAPI package): The spec file paths and structure may change slightly. Coordinate file moves.
-- **Part 5** (integrating types in CAPI): The shared story types will now be used by both MAPI and CAPI, making the type integration more natural.
+- **Part 5** (moving OpenAPI package): The spec file paths and structure may change slightly. Coordinate file moves.
+- **Part 4** (integrating types in CAPI): The shared story types will now be used by both MAPI and CAPI, making the type integration more natural.
 - **`packages/cli`**: The CLI is a `workspace:*` consumer and must be updated in the same PR (see task 0.8). The CLI's own rate-limiter (`async-sema`) can be removed after this task.

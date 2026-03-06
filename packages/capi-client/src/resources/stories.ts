@@ -42,18 +42,12 @@ type StoryResult<InlineRelations extends boolean> = InlineRelations extends true
   ? StoryWithInlinedRelations
   : StoryCapi;
 
-type ReplaceStory<T, InlineRelations extends boolean> = T extends StoryCapi
-  ? StoryResult<InlineRelations>
-  : T extends Array<StoryCapi>
-    ? Array<StoryResult<InlineRelations>>
-    : T extends Array<infer U>
-      ? Array<ReplaceStory<U, InlineRelations>>
-      : T extends object
-        ? { [K in keyof T]: ReplaceStory<T[K], InlineRelations> }
-        : T;
-
-type GetResponse<InlineRelations extends boolean> = ReplaceStory<GetResponses[200], InlineRelations>;
-type GetAllResponse<InlineRelations extends boolean> = ReplaceStory<GetAllResponses[200], InlineRelations>;
+type GetResponse<InlineRelations extends boolean> = Omit<GetResponses[200], 'story'> & {
+  story: StoryResult<InlineRelations>;
+};
+type GetAllResponse<InlineRelations extends boolean> = Omit<GetAllResponses[200], 'stories'> & {
+  stories: Array<StoryResult<InlineRelations>>;
+};
 
 /** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
 type StoryIdentifier = GetData['path']['identifier'];
@@ -86,16 +80,15 @@ export function createStoriesResource<InlineRelations extends boolean>(
         }));
 
         if (!inlineRelations || response.data === undefined) {
-          return response as Res; // TS cannot resolve conditional ApiResponse with generic ThrowOnError
+          return response;
         }
 
         const relationPaths = parseResolveRelations(requestQuery);
         if (relationPaths.length === 0) {
-          return response as Res; // same: conditional type unresolvable with generic ThrowOnError
+          return response;
         }
 
-        // Generated `rels` type is broader; API contract guarantees StoryCapi[] here.
-        const relationMap = buildRelationMap(response.data.rels as StoryCapi[] | undefined);
+        const relationMap = buildRelationMap(response.data.rels);
         if (response.data.rel_uuids?.length) {
           const fetchedRelations = await fetchMissingRelations({
             client,
@@ -112,10 +105,9 @@ export function createStoriesResource<InlineRelations extends boolean>(
           ...response,
           data: {
             ...response.data,
-            // Pre-inlining: story is still raw StoryCapi; the ReplaceStory mapped type is applied by inlineStoryContent.
-            story: inlineStoryContent(response.data.story as StoryCapi, relationPaths, relationMap),
+            story: inlineStoryContent(response.data.story, relationPaths, relationMap),
           },
-        } as Res; // spread loses conditional type precision; result matches Res structurally
+        };
       });
     },
 
@@ -134,16 +126,15 @@ export function createStoriesResource<InlineRelations extends boolean>(
         }));
 
         if (!inlineRelations || response.data === undefined) {
-          return response as ResAll; // TS cannot resolve conditional ApiResponse with generic ThrowOnError
+          return response;
         }
 
         const relationPaths = parseResolveRelations(requestQuery);
         if (relationPaths.length === 0) {
-          return response as ResAll; // same: conditional type unresolvable with generic ThrowOnError
+          return response;
         }
 
-        // Generated `rels` type is broader; API contract guarantees StoryCapi[] here.
-        const relationMap = buildRelationMap(response.data.rels as StoryCapi[] | undefined);
+        const relationMap = buildRelationMap(response.data.rels);
         if (response.data.rel_uuids?.length) {
           const fetchedRelations = await fetchMissingRelations({
             client,
@@ -160,10 +151,9 @@ export function createStoriesResource<InlineRelations extends boolean>(
           ...response,
           data: {
             ...response.data,
-            // Pre-inlining: stories are still raw StoryCapi[]; the ReplaceStory mapped type is applied by inlineStoriesContent.
-            stories: inlineStoriesContent(response.data.stories as StoryCapi[], relationPaths, relationMap),
+            stories: inlineStoriesContent(response.data.stories, relationPaths, relationMap),
           },
-        } as ResAll; // spread loses conditional type precision; result matches ResAll structurally
+        };
       });
     },
   };

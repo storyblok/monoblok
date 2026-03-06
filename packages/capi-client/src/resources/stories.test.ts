@@ -414,9 +414,7 @@ describe('generic GET method', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.get<{
-      query: { starts_with: string | null; token: string | null; version: string | null };
-    }>('v2/cdn/links', {
+    const result = await client.get('v2/cdn/links', {
       query: {
         starts_with: 'docs/',
         version: 'published',
@@ -424,6 +422,7 @@ describe('generic GET method', () => {
     });
 
     expect(result.error).toBeUndefined();
+    // @ts-expect-error generic get request can have any shape or form
     expect(result.data?.query).toEqual({
       starts_with: 'docs/',
       token: 'test-token',
@@ -650,21 +649,24 @@ describe('cache and cv', () => {
       },
     });
 
-    const firstResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+    const firstResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
-    const secondResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+    const secondResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
     await vi.waitFor(() => {
       expect(requestCount).toBe(2);
     });
-    const thirdResult = await client.get<{ requestCount: number }>('v2/cdn/links', {
+    const thirdResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
 
+    // @ts-expect-error generic get request can have any shape or form
     expect(firstResult.data?.requestCount).toBe(1);
+    // @ts-expect-error generic get request can have any shape or form
     expect(secondResult.data?.requestCount).toBe(1);
+    // @ts-expect-error generic get request can have any shape or form
     expect(thirdResult.data?.requestCount).toBe(2);
   });
 
@@ -690,21 +692,24 @@ describe('cache and cv', () => {
       },
     });
 
-    const firstResult = await client.get<{ marker: string }>('v2/cdn/links', {
+    const firstResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
-    const secondResult = await client.get<{ marker: string }>('v2/cdn/links', {
+    const secondResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
     await vi.waitFor(() => {
       expect(requestCount).toBe(2);
     });
-    const thirdResult = await client.get<{ marker: string }>('v2/cdn/links', {
+    const thirdResult = await client.get('v2/cdn/links', {
       query: { version: 'published' },
     });
 
+    // @ts-expect-error generic get request can have any shape or form
     expect(firstResult.data?.marker).toBe('fresh');
+    // @ts-expect-error generic get request can have any shape or form
     expect(secondResult.data?.marker).toBe('fresh');
+    // @ts-expect-error generic get request can have any shape or form
     expect(thirdResult.data?.marker).toBe('fresh');
   });
 });

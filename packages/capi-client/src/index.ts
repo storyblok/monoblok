@@ -9,8 +9,7 @@ import { applyCvToQuery, extractCv } from './utils/cv';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { RetryOptions } from 'ky';
-import type { Client, ResolvedRequestOptions } from './generated/shared/client';
-import type { Middleware } from './generated/shared/client/utils.gen';
+import type { Client } from './generated/shared/client';
 import type { ApiResponse, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
 import { createStoriesResource } from './resources/stories';
 import { createLinksResource } from './resources/links';
@@ -144,7 +143,7 @@ export const createApiClient = <
     },
   ];
 
-  const updateCv = async (result: ApiResponse<unknown>): Promise<boolean> => {
+  const updateCv = async (result: ApiResponse): Promise<boolean> => {
     const nextCv = extractCv(result.data);
     if (nextCv === undefined) {
       return true;
@@ -164,7 +163,7 @@ export const createApiClient = <
     return true;
   };
 
-  const cacheSuccessResult = async <TResponse extends ApiResponse<unknown>>(key: string, result: TResponse) => {
+  const cacheSuccessResult = async <TResponse extends ApiResponse>(key: string, result: TResponse) => {
     const shouldCacheResult = await updateCv(result);
     if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
@@ -175,22 +174,19 @@ export const createApiClient = <
     return result;
   };
 
-  const requestNetwork = async <TData = unknown, TError = unknown>(
+  const requestNetwork = async (
     method: 'GET',
     path: string,
     query: Record<string, unknown>,
     options: HttpRequestOptions,
-  ): Promise<ApiResponse<TData>> => {
-    return client.request<TData, TError, boolean>({
+  ): Promise<ApiResponse> => {
+    return client.request<unknown, ClientError, boolean>({
       ...options,
       method,
       query,
       security,
       url: path,
-      // The error interceptor transforms errors into ClientError instances at
-      // runtime, but the generated types still report `error: unknown`. Cast
-      // here so the rest of the codebase sees the narrowed type.
-    }) as unknown as Promise<ApiResponse<TData>>;
+    });
   };
 
   /**
@@ -214,46 +210,44 @@ export const createApiClient = <
     if (!cacheEnabled) {
       const networkResult = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
       throttleManager.adaptToResponse(networkResult.response);
-      // widen conditional generic — updateCv only reads cv, TData irrelevant
-      await updateCv(networkResult as ApiResponse<unknown>);
+      await updateCv(networkResult);
       return networkResult;
     }
 
     const key = createCacheKey(method, path, rawQuery);
-    const cachedEntry = await cacheProvider.get<ApiResponse<TData>>(key);
+    const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
     const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
       const result = await throttleManager.execute(path, rawQuery, () => fetchFn(query));
       throttleManager.adaptToResponse(result.response);
-      // drop ThrowOnError for cache storage; value is restored after strategy returns
-      return cacheSuccessResult(key, result as ApiResponse<TData>);
+      return cacheSuccessResult(key, result);
     };
 
     return strategy({
       key,
       cachedResult,
       loadNetwork,
-    }) as Promise<ApiResponse<TData, ThrowOnError>>; // restore ThrowOnError erased by the generic CacheStrategyHandler
-  };
-
-  const request = async <TData = unknown, TError = unknown>(
-    method: 'GET',
-    path: string,
-    options: HttpRequestOptions = {},
-  ): Promise<ApiResponse<TData>> => {
-    const rawQuery = options.query || {};
-
-    return requestWithCache<TData>(method, path, rawQuery, (query) => {
-      return requestNetwork<TData, TError>(method, path, query, options);
     });
   };
 
-  const getRequest: HttpRequestMethod = <TData = unknown>(
+  const request = async (
+    method: 'GET',
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse> => {
+    const rawQuery = options.query || {};
+
+    return requestWithCache(method, path, rawQuery, (query) => {
+      return requestNetwork(method, path, query, options);
+    });
+  };
+
+  const getRequest = (
     path: string,
     options: HttpRequestOptions = {},
   ) => {
-    return request<TData>('GET', path, options);
+    return request('GET', path, options);
   };
 
   const resourceDeps: ResourceDeps = {
@@ -284,8 +278,7 @@ export const createApiClient = <
     datasources: createDatasourcesResource(resourceDeps),
     flushCache,
     get: getRequest,
-    // generated client type is broader; narrow for public API surface
-    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    interceptors: client.interceptors,
     links: createLinksResource(resourceDeps),
     spaces: createSpacesResource(resourceDeps),
     stories,

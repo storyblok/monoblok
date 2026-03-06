@@ -1,18 +1,15 @@
 import type { Client, RequestOptions } from './generated/shared/client';
 import type { ClientError } from './error';
 
-export type ApiResponse<T, ThrowOnError extends boolean = false> =
+export type ApiResponse<Data = unknown, ThrowOnError extends boolean = false> =
   ThrowOnError extends true
-    ? { data: T; response: Response; request: Request }
-    : | { data: T; error: undefined; response: Response; request: Request }
-      | { data: undefined; error: ClientError; response: Response; request: Request };
+    ? { data: Data; response: Response; request: Request }
+    : { data?: Data; error?: ClientError; response: Response; request: Request };
 
 export type HttpRequestOptions = Omit<
-  RequestOptions<unknown, 'fields', boolean>,
+  RequestOptions,
   'method' | 'security' | 'url'
 >;
-
-export type RequestConfigOverrides = Pick<HttpRequestOptions, 'throwOnError'>;
 
 export type HttpRequestMethod = <TData = unknown>(
   path: string,

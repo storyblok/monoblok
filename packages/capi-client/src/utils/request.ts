@@ -13,11 +13,9 @@ const normalizeQuery = (value: unknown): unknown => {
   }
 
   if (value && typeof value === 'object') {
-    // TS narrows to `object` which lacks an index signature; one cast needed for key access.
-    const obj = value as Record<string, unknown>;
     const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(obj).sort()) {
-      sorted[key] = normalizeQuery(obj[key]);
+    for (const [key, val] of Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+      sorted[key] = normalizeQuery(val);
     }
     return sorted;
   }

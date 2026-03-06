@@ -1,4 +1,5 @@
 import type { StoryCapi } from '../generated/stories';
+import type { StoryWithInlinedRelations } from '../resources/stories';
 
 type RelationPath = `${string}.${string}`;
 
@@ -8,22 +9,18 @@ interface ComponentNode {
   [key: string]: unknown;
 }
 
-const isComponentNode = (value: unknown): value is ComponentNode => {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
-  // TS narrows to `object` which lacks properties; cast to Partial to access fields in the guard.
-  const node = value as Partial<ComponentNode>;
-  return typeof node.component === 'string' && typeof node._uid === 'string';
-};
+const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
+  typeof value.component === 'string' && typeof value._uid === 'string';
 
-const inlineStoryContentInternal = (
-  story: StoryCapi,
+const inlineStoryContentInternal = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+  story: TStory,
   relationPaths: ReadonlySet<RelationPath>,
-  relationMap: ReadonlyMap<string, StoryCapi>,
-  resolved: Map<string, StoryCapi>,
-): StoryCapi => {
+  relationMap: ReadonlyMap<string, TStory>,
+  resolved: Map<string, TStory>,
+): TStory => {
   const existingStory = resolved.get(story.uuid);
   if (existingStory) {
     return existingStory;
@@ -36,44 +33,40 @@ const inlineStoryContentInternal = (
   return clonedStory;
 };
 
-function resolveNode(
+function resolveNode<TStory extends StoryCapi | StoryWithInlinedRelations>(
   value: unknown,
-  relationMap: ReadonlyMap<string, StoryCapi>,
+  relationMap: ReadonlyMap<string, TStory>,
   relationPaths: ReadonlySet<RelationPath>,
-  resolved: Map<string, StoryCapi>,
+  resolved: Map<string, TStory>,
 ): unknown {
   if (Array.isArray(value)) {
     return value.map(item => resolveNode(item, relationMap, relationPaths, resolved));
   }
 
-  if (!value || typeof value !== 'object') {
+  if (!isRecord(value)) {
     return value;
   }
 
-  // TS narrows to `object` which lacks an index signature; cast needed for property iteration.
-  const result = value as Record<string, unknown>;
-
-  if (isComponentNode(result)) {
-    for (const [fieldName, fieldValue] of Object.entries(result)) {
+  if (isComponentNode(value)) {
+    for (const [fieldName, fieldValue] of Object.entries(value)) {
       if (fieldName === 'component' || fieldName === '_uid') {
         continue;
       }
 
-      // TS cannot verify template literal types from runtime string values.
-      const relationPath = `${result.component}.${fieldName}` as RelationPath;
-      result[fieldName] = relationPaths.has(relationPath)
+      const relationPath: RelationPath = `${value.component}.${fieldName}`;
+      value[fieldName] = relationPaths.has(relationPath)
         ? resolveFieldValue(fieldValue, relationMap, relationPaths, resolved)
         : resolveNode(fieldValue, relationMap, relationPaths, resolved);
     }
 
-    return result;
+    return value;
   }
 
-  for (const [fieldName, fieldValue] of Object.entries(result)) {
-    result[fieldName] = resolveNode(fieldValue, relationMap, relationPaths, resolved);
+  for (const [fieldName, fieldValue] of Object.entries(value)) {
+    value[fieldName] = resolveNode(fieldValue, relationMap, relationPaths, resolved);
   }
 
-  return result;
+  return value;
 }
 
 export const parseResolveRelations = (query: Record<string, unknown>): RelationPath[] => {
@@ -100,11 +93,11 @@ export const buildRelationMap = (rels: Array<StoryCapi> | undefined): Map<string
   return relationMap;
 };
 
-function resolveFieldValue(
+function resolveFieldValue<TStory extends StoryCapi | StoryWithInlinedRelations>(
   value: unknown,
-  relationMap: ReadonlyMap<string, StoryCapi>,
+  relationMap: ReadonlyMap<string, TStory>,
   relationPaths: ReadonlySet<RelationPath>,
-  resolved: Map<string, StoryCapi>,
+  resolved: Map<string, TStory>,
 ): unknown {
   if (typeof value === 'string') {
     const relatedStory = relationMap.get(value);
@@ -122,22 +115,22 @@ function resolveFieldValue(
   return resolveNode(value, relationMap, relationPaths, resolved);
 }
 
-export const inlineStoryContent = (
-  story: StoryCapi,
+export const inlineStoryContent = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+  story: TStory,
   relationPaths: RelationPath[],
-  relationMap: ReadonlyMap<string, StoryCapi>,
-): StoryCapi => {
+  relationMap: ReadonlyMap<string, TStory>,
+): TStory => {
   const normalizedPaths = new Set(relationPaths);
-  const resolved = new Map<string, StoryCapi>();
+  const resolved = new Map<string, TStory>();
   return inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved);
 };
 
-export const inlineStoriesContent = (
-  stories: Array<StoryCapi>,
+export const inlineStoriesContent = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+  stories: Array<TStory>,
   relationPaths: RelationPath[],
-  relationMap: ReadonlyMap<string, StoryCapi>,
-): Array<StoryCapi> => {
+  relationMap: ReadonlyMap<string, TStory>,
+): Array<TStory> => {
   const normalizedPaths = new Set(relationPaths);
-  const resolved = new Map<string, StoryCapi>();
+  const resolved = new Map<string, TStory>();
   return stories.map(story => inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved));
 };

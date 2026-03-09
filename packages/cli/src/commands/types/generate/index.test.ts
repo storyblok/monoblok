@@ -92,10 +92,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --strict flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--strict']);
 
-      // Verify that generateTypes was called with the strict option set to true
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         strict: true,
       }));
@@ -106,10 +104,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --type-prefix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--type-prefix', 'Custom']);
 
-      // Verify that generateTypes was called with the typePrefix option set to 'Custom'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         typePrefix: 'Custom',
       }));
@@ -120,10 +116,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --type-prefix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--type-suffix', 'CustomTypeSuffix']);
 
-      // Verify that generateTypes was called with the typePrefix option set to 'Custom'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         typeSuffix: 'CustomTypeSuffix',
       }));
@@ -134,10 +128,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --suffix flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--suffix', 'Component']);
 
-      // Verify that generateTypes was called with the suffix option set to 'Component'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         suffix: 'Component',
       }));
@@ -148,12 +140,46 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --separate-files flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
 
-      // Verify that generateTypes was called with the separateFiles option set to true
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         separateFiles: true,
+      }));
+    });
+
+    it('should pass separateFiles to readComponentsFiles when --separate-files flag is used', async () => {
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
+
+      expect(readComponentsFiles).toHaveBeenCalledWith(expect.objectContaining({
+        separateFiles: true,
+      }));
+    });
+
+    it('should not pass separateFiles to readComponentsFiles in default mode', async () => {
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
+
+      expect(readComponentsFiles).toHaveBeenCalledWith(expect.objectContaining({
+        separateFiles: undefined,
+      }));
+    });
+
+    it('should pass suffix to readComponentsFiles when --suffix flag is used', async () => {
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--suffix', 'dev']);
+
+      expect(readComponentsFiles).toHaveBeenCalledWith(expect.objectContaining({
+        suffix: 'dev',
       }));
     });
 
@@ -162,10 +188,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --custom-fields-parser flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--custom-fields-parser', '/path/to/parser.ts']);
 
-      // Verify that generateTypes was called with the customFieldsParser option set to '/path/to/parser.ts'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         customFieldsParser: '/path/to/parser.ts',
       }));
@@ -176,10 +200,8 @@ describe('types generate', () => {
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
-      // Run the command with the --compiler-options flag
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--compiler-options', '/path/to/options.json']);
 
-      // Verify that generateTypes was called with the compilerOptions option set to '/path/to/options.json'
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         compilerOptions: '/path/to/options.json',
       }));

@@ -241,7 +241,7 @@ function parseDOMSpec(
     childrenSpec = [maybeAttrs, ...rest];
   }
 
-  const content: SBRichTextSegment[] = [];
+  let content: SBRichTextSegment[] = [];
 
   for (const child of childrenSpec) {
     if (child === 0) {
@@ -262,7 +262,45 @@ function parseDOMSpec(
       });
     }
   }
+  // --- TABLE FIX ---
+  if (tag === 'table') {
+    const headerRows: NodeSegment[] = [];
+    const bodyRows: NodeSegment[] = [];
 
+    for (const row of content as NodeSegment[]) {
+      if (
+        row.tag === 'tr'
+        && row.content.every(cell => (cell as NodeSegment).tag === 'th')
+      ) {
+        headerRows.push(row);
+      }
+      else {
+        bodyRows.push(row as NodeSegment);
+      }
+    }
+
+    content = [];
+
+    if (headerRows.length) {
+      content.push({
+        kind: 'node',
+        type: 'thead',
+        tag: 'thead',
+        attrs: {},
+        content: headerRows,
+      });
+    }
+
+    if (bodyRows.length) {
+      content.push({
+        kind: 'node',
+        type: 'tbody',
+        tag: 'tbody',
+        attrs: {},
+        content: bodyRows,
+      });
+    }
+  }
   return {
     kind: 'node',
     type: nodeType,

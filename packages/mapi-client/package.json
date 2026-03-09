@@ -39,7 +39,7 @@
   "scripts": {
     "generate": "tsx generate.ts",
     "build": "tsdown",
-    "test": "vitest"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",

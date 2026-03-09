@@ -30,9 +30,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "playground": "pnpm run --filter ./playground/vue dev",
-    "test": "pnpm run test:unit:ci && pnpm run test:e2e",
-    "test:unit": "vitest",
-    "test:unit:ci": "vitest run",
+    "test": "pnpm run test:unit && pnpm run test:e2e",
+    "test:unit": "vitest run",
     "test:unit:ui": "vitest --ui",
     "test:e2e": "pnpm run cy:components",
     "build": "vite build",

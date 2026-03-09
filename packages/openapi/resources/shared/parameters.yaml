@@ -1,0 +1,53 @@
+space_id:
+  name: space_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The Storyblok space ID.
+
+story_id:
+  name: story_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The story ID.
+
+component_id:
+  name: component_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The component ID.
+
+component_group_id:
+  name: component_group_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The component folder ID.
+
+preset_id:
+  name: preset_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The preset ID.
+
+asset_id:
+  name: asset_id
+  in: path
+  required: true
+  schema:
+    oneOf:
+      - type: integer
+    description: The asset ID.

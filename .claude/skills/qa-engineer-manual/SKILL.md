@@ -129,7 +129,6 @@ scenarios/
 - Clean up local artifacts with `./scripts/cleanup-local.sh`. Don't hesitate to clean up between tests to start with a clean slate.
 - Place test scripts in `./.claude/tmp/`. Import from the built package: `../../packages/PACKAGE_NAME/dist/index.mjs`.
 - Export env vars before running: `set -a && source ./.env.qa-engineer-manual && set +a && node ./.claude/tmp/test-name.mjs`.
-- Create the MAPI client with `new ManagementApiClient({ token: { accessToken: token } })` — the token must be wrapped in `{ accessToken: ... }`. Do NOT use `createClient` directly.
 - The stories list endpoint does NOT return `content` by default — `story.content?.component` will be `undefined` in list responses. Fetch individual stories for full content.
 - When using two spaces (for example, mapping references between source and target), use `STORYBLOK_SPACE_ID_TARGET` for the target (loaded via `.env.qa-engineer-manual`).
 
@@ -148,7 +147,7 @@ Paths are relative to this `SKILL.md`.
 
 ## Troubleshooting
 
-- Load the `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`, `STORYBLOK_ASSET_TOKEN`, `STORYBLOK_ASSET_TOKEN_TARGET` and `STORYBLOK_TOKEN` environment variables by running `source ./.env.qa-engineer-manual` (do not attempt to read this file).
+- Load the `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`, `STORYBLOK_ASSET_TOKEN`, `STORYBLOK_ASSET_TOKEN_TARGET`, `STORYBLOK_TOKEN`, `STORYBLOK_PREVIEW_TOKEN`, and `STORYBLOK_PREVIEW_TOKEN_TARGET` environment variables by running `source ./.env.qa-engineer-manual` (do not attempt to read this file).
 - When running `.mjs` test files, env vars must be **exported** (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to `node` subprocesses.
 
 **MAPI:**

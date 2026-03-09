@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
-import { FileSystemError, handleError, isVitest, konsola } from '../../../utils';
+import { FileSystemError, handleError, konsola } from '../../../utils';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
@@ -30,10 +30,10 @@ generateCmd
   .action(async (options: GenerateTypesOptions, command: Command) => {
     konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
 
-    const { space, path, verbose } = command.optsWithGlobals();
+    const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
 
     const spinner = new Spinner({
-      verbose: !isVitest,
+      verbose,
     });
 
     try {
@@ -41,7 +41,8 @@ generateCmd
       const componentsData = await readComponentsFiles({
         from: space,
         path,
-        suffix: options.suffix,
+        separateFiles,
+        suffix,
         verbose,
       });
       // Try to read datasources, but make it optional
@@ -50,7 +51,8 @@ generateCmd
         dataSourceData = await readDatasourcesFiles({
           from: space,
           path,
-          suffix: options.suffix,
+          separateFiles,
+          suffix,
           verbose,
         });
       }
@@ -75,19 +77,18 @@ generateCmd
 
       const typedefData = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
-        path,
       });
 
       if (typedefData) {
         await saveTypesToComponentsFile(space, typedefData, {
-          filename: options.filename,
+          filename,
           path,
-          separateFiles: options.separateFiles,
+          separateFiles,
         });
       }
 
       spinner.succeed();
-      if (options.separateFiles && options.filename) {
+      if (separateFiles && filename) {
         konsola.warn(`The --filename option is ignored when using --separate-files`);
       }
 

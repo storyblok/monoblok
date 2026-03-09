@@ -34,11 +34,10 @@ const getDatasourceTypeTitle = (slug: string) =>
 
 const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
   // If a property type is one of the ones provided by Storyblok, return that type
-  // Casting as string[] to avoid TS error on using Array.includes on different narrowed types
   if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
     return { type: property.type };
   }
-  // Initialize property type as any (fallback type)
+
   let type: string | string[] = 'unknown';
 
   const options = property.options && property.options.length > 0 ? property.options.map((item: { value: string }) => item.value) : [];

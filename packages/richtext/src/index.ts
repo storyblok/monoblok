@@ -1,5 +1,6 @@
 export { ComponentBlok } from './extensions/nodes';
 export * from './richtext';
+export * from './richtext-segment';
 export * from './types';
 export * from './utils/segment-richtext';
 

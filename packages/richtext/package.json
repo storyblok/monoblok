@@ -62,7 +62,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
-    "test:ci": "vitest run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
     "playground": "cd playground && npm run dev",

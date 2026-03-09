@@ -42,9 +42,8 @@
     "debug": "node --inspect-brk --loader tsx src/index.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest",
+    "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "test:ci": "vitest run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage"
   },

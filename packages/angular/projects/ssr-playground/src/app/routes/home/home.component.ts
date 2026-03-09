@@ -7,11 +7,11 @@ import {
   OnInit,
 } from '@angular/core';
 import {
-  type ISbStoryData,
   type SbBlokData,
   SbBlokDirective,
   StoryblokService,
   LivePreviewService,
+  Story,
 } from '@storyblok/angular';
 
 @Component({
@@ -36,15 +36,19 @@ import {
 export class HomeComponent implements OnInit {
   private readonly storyblok = inject(StoryblokService);
   private readonly livePreview = inject(LivePreviewService);
-
-  readonly story = signal<ISbStoryData | null>(null);
+  private client = this.storyblok.getClient();
+  readonly story = signal<Story | null>(null);
   readonly loading = signal(true);
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
   async ngOnInit(): Promise<void> {
     try {
-      const data = await this.storyblok.getStory('home');
-      this.story.set(data);
+      const { data } = await this.client.stories.get('home', {
+        query: {
+          version: 'draft',
+        },
+      });
+      this.story.set((data?.story as Story) || null);
     } catch (error) {
       throw error;
     } finally {
@@ -52,7 +56,7 @@ export class HomeComponent implements OnInit {
     }
     // Enable live preview for Visual Editor
     this.livePreview.listen((updatedStory) => {
-      this.story.set(updatedStory);
+      this.story.set((updatedStory as Story) || null);
     });
   }
 }

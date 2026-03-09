@@ -1,4 +1,3 @@
-import { ISbConfig } from 'storyblok-js-client';
 import { StoryblokFeature } from './components.feature';
 import {
   EnvironmentProviders,
@@ -6,7 +5,7 @@ import {
   makeEnvironmentProviders,
   provideAppInitializer,
 } from '@angular/core';
-import { STORYBLOK_CONFIG, StoryblokService } from './storyblok.service';
+import { STORYBLOK_CONFIG, StoryblokClientConfig, StoryblokService } from './storyblok.service';
 
 /**
  * Provides Storyblok configuration at the application level.
@@ -34,7 +33,7 @@ import { STORYBLOK_CONFIG, StoryblokService } from './storyblok.service';
  * ```
  */
 export function provideStoryblok(
-  config: ISbConfig,
+  config: StoryblokClientConfig,
   ...features: StoryblokFeature[]
 ): EnvironmentProviders {
   return makeEnvironmentProviders([

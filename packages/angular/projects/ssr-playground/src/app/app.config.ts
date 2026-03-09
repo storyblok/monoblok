@@ -6,13 +6,14 @@ import {
   provideStoryblok,
   withLivePreview,
   withStoryblokComponents,
-  type ISbConfig,
+  type StoryblokClientConfig,
 } from '@storyblok/angular';
 import { storyblokComponents } from './storyblok.components';
 
-const sbConfig: ISbConfig = {
+const sbConfig: StoryblokClientConfig = {
   accessToken: 'nVjy7VdMK6ObZxyDfTWNwgtt',
   region: 'eu',
+  inlineRelations: true,
 };
 export const appConfig: ApplicationConfig = {
   providers: [

@@ -4,7 +4,6 @@ import {
   type SbBlokData,
   type StoryblokRichTextNode,
 } from '@storyblok/angular';
-import type { StoryblokRichTextOptions } from '@storyblok/richtext';
 
 export interface TeaserBlok extends SbBlokData {
   headline?: string;
@@ -18,20 +17,10 @@ export interface TeaserBlok extends SbBlokData {
   template: `
     <div>
       <h2>{{ blok().headline }}</h2>
-      <sb-rich-text [doc]="blok().text" [options]="richTextOptions" />
+      <sb-rich-text [doc]="blok().text" />
     </div>
   `,
 })
 export class TeaserComponent {
   readonly blok = input.required<TeaserBlok>();
-
-  /** Custom rich text configuration */
-  readonly richTextOptions: StoryblokRichTextOptions<string> = {
-    tiptapExtensions: {
-      link: (node: any) => {
-        console.log(node);
-        return `<p>This is a custom link</p>`;
-      },
-    },
-  };
 }

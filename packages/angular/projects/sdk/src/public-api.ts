@@ -3,7 +3,11 @@
  */
 
 // Core service and provider
-export { StoryblokService, STORYBLOK_CONFIG } from './lib/storyblok.service';
+export {
+  StoryblokService,
+  STORYBLOK_CONFIG,
+  type StoryblokClientConfig,
+} from './lib/storyblok.service';
 export { provideStoryblok } from './lib/storyblok.feature';
 // Component registry
 export {
@@ -34,14 +38,6 @@ export {
   type StoryblokRichTextOptions,
 } from '@storyblok/richtext';
 
-// Re-export useful types from @storyblok/js
-export type {
-  ISbStoriesParams,
-  ISbStoryData,
-  ISbResult,
-  ISbStory,
-  ISbConfig,
-  ISbComponentType,
-} from 'storyblok-js-client';
+export type { SbBlokData, ISbStoryData } from '@storyblok/js';
 
-export type { SbBlokData } from '@storyblok/js';
+export type { Story } from '@storyblok/api-client';

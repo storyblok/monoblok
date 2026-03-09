@@ -1,75 +1,35 @@
 import { Injectable, InjectionToken } from '@angular/core';
-import StoryblokClient, {
-  type ISbConfig,
-  type ISbStoryData,
-  type ISbStoriesParams,
-} from 'storyblok-js-client';
+import type { ContentApiClientConfig } from '@storyblok/api-client';
+import { createApiClient } from '@storyblok/api-client';
 
-/**
- * Injection token for Storyblok configuration
- */
-export const STORYBLOK_CONFIG = new InjectionToken<ISbConfig>('STORYBLOK_CONFIG');
-
-/**
- * Core service for interacting with the Storyblok API.
- * Provides methods for fetching stories and integrating with the Visual Editor.
- *
- * @example
- * ```typescript
- * export class MyComponent {
- *   private storyblok = inject(StoryblokService);
- *
- *   async loadContent() {
- *     const story = await this.storyblok.getStory('home');
- *   }
- * }
- * ```
- */
+export type StoryblokClientConfig = ContentApiClientConfig<boolean, boolean>;
+export const STORYBLOK_CONFIG = new InjectionToken<StoryblokClientConfig>('STORYBLOK_CONFIG');
+type StoryblokClient = ReturnType<typeof createApiClient>;
 @Injectable({
   providedIn: 'root',
 })
 export class StoryblokService {
-  private storyblok: StoryblokClient | null = null;
+  private client: StoryblokClient | null = null;
   private initialized = false;
 
   /**
-   * @internal
-   * Initialize Storyblok SDK with the provided configuration.
-   * This is called automatically by `provideStoryblok()`.
+   * Initialize Storyblok API client with config
    */
-  /** @internal */
-  ɵinit(config: ISbConfig): void {
-    if (this.initialized) {
-      return;
-    }
-    const storyblok = new StoryblokClient(config);
-    this.storyblok = storyblok;
+  ɵinit(config: StoryblokClientConfig): void {
+    if (this.initialized) return;
+    this.client = createApiClient(config);
     this.initialized = true;
   }
 
   /**
-   * Fetch a single story by its slug.
-   *
-   * @param slug - The story slug (e.g., 'home', 'about', 'blog/my-post')
-   * @param options - API options for resolving relations and links
-   * @returns The story data or null if not found
+   * Get the initialized API client instance
    */
-  async getStory(slug: string, options: ISbStoriesParams = {}): Promise<ISbStoryData | null> {
-    if (!this.storyblok) {
-      console.error('Storyblok API not initialized. Call init() first.');
-      return null;
+  getClient(): StoryblokClient {
+    if (!this.client) {
+      throw new Error(
+        'Storyblok API client not initialized. Did you forget to call provideStoryblok()?',
+      );
     }
-    try {
-      const response = await this.storyblok.get(`cdn/stories/${slug}`, {
-        version: options.version ?? 'draft',
-        resolve_relations: options.resolve_relations,
-        resolve_links: options.resolve_links,
-      });
-
-      return response.data?.story ?? null;
-    } catch (error) {
-      console.error(`Failed to fetch story: ${slug}`, error);
-      return null;
-    }
+    return this.client;
   }
 }

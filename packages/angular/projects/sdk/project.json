@@ -9,8 +9,8 @@
   },
   "implicitDependencies": [
     "live-preview",
-    "storyblok-js-client",
     "richtext",
-    "js"
+    "js",
+    "api-client"
   ]
 }

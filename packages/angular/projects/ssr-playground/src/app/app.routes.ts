@@ -14,12 +14,16 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./routes/catch-all/catch-all.component').then((m) => m.CatchAllComponent),
     resolve: {
-      story: (route: ActivatedRouteSnapshot) => {
+      story: async (route: ActivatedRouteSnapshot) => {
         const slug = route.url.map((s) => s.path).join('/') || 'home';
-        return inject(StoryblokService).getStory(slug, {
-          version: 'draft',
-          resolve_relations: 'feature_posts.posts',
+        const client = inject(StoryblokService).getClient();
+        const { data } = await client.stories.get(slug, {
+          query: {
+            version: 'draft',
+            resolve_relations: 'feature_posts.posts',
+          },
         });
+        return data?.story;
       },
     },
   },

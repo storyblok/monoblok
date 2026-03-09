@@ -5,10 +5,9 @@
     "entryFile": "src/public-api.ts"
   },
   "allowedNonPeerDependencies": [
-    "storyblok-js-client",
     "@storyblok/live-preview",
     "@storyblok/richtext",
     "@storyblok/js",
-    "@storyblok/preview-bridge"
+    "@storyblok/api-client"
   ]
 }

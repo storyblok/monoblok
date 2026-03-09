@@ -26,9 +26,9 @@
   "dependencies": {
     "tslib": "^2.8.1",
     "@storyblok/live-preview": "workspace:*",
-    "storyblok-js-client": "workspace:*",
     "@storyblok/richtext": "workspace:*",
-    "@storyblok/js": "workspace:*"
+    "@storyblok/js": "workspace:*",
+    "@storyblok/api-client": "workspace:*"
   },
   "sideEffects": false
 }

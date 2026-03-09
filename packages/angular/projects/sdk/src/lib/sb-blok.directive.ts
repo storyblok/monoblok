@@ -1,7 +1,9 @@
-import { Directive, input, inject, ViewContainerRef, effect, ComponentRef } from '@angular/core';
+import { Directive, input, ViewContainerRef, effect, ComponentRef } from '@angular/core';
 import type { SbBlokData } from '@storyblok/js';
 import { StoryblokComponentResolver } from './sb-blok.feature';
 import { storyblokEditable } from '@storyblok/live-preview';
+import { DestroyRef, inject } from '@angular/core';
+
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.
  * Supports both eager and lazy-loaded components for optimal bundle size.
@@ -42,7 +44,7 @@ export class SbBlokDirective {
   readonly sbBlok = input.required<SbBlokData | null | undefined>();
 
   private componentRef: ComponentRef<unknown> | null = null;
-
+  private destroyRef = inject(DestroyRef);
   constructor() {
     effect(() => {
       this.render(this.sbBlok());
@@ -64,6 +66,9 @@ export class SbBlokDirective {
     }
 
     const Component = await this.resolver.resolve(blok.component);
+
+    // IMPORTANT: stop if directive already destroyed
+    if (this.destroyRef.destroyed) return;
 
     if (!Component) {
       this.viewContainerRef.clear();

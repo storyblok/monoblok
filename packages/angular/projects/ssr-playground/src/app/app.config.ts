@@ -11,7 +11,7 @@ import {
 import { storyblokComponents } from './storyblok.components';
 
 const sbConfig: StoryblokClientConfig = {
-  accessToken: 'nVjy7VdMK6ObZxyDfTWNwgtt',
+  accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
   region: 'eu',
   inlineRelations: true,
 };

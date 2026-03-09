@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "uuid": "abc123",
+  "name": "Hello World",
+  "slug": "hello-world",
+  "full_slug": "hello-world",
+  "content": {
+    "component": "page",
+    "headline": "Hello World"
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "published_at": null,
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

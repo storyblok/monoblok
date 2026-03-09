@@ -12,7 +12,9 @@
           type: string
           description: The complete name provided for the story
         parent_id:
-          type: integer
+          oneOf:
+            - type: integer
+            - type: 'null'
           description: ID of the parent folder
         group_id:
           type: string
@@ -47,14 +49,16 @@
           format: date-time
           description: Creation date yyyy-MM-dd'T'HH:mm:ssZ
         deleted_at:
-          type: string
-          format: date-time
-          nullable: true
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
           description: Deleted date YYYY-mm-dd HH:MM
         sort_by_date:
-          type: string
-          format: date
-          nullable: true
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
           description: Date defined in the story's entry configuration YYYY-mm-dd
         tag_list:
           type: array
@@ -87,15 +91,17 @@
           type: string
           description: The slug specific for the story
         path:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: 'null'
           description: Value of the real path defined in the story's entry configuration (usually, this value is only required for Storyblok's Visual Editor)
         full_slug:
           type: string
           description: The full slug of the story, combining the parent folder(s) and the designated story slug
         default_root:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: 'null'
           description: Component name which will be used as default content type for this folders entries
         disable_fe_editor:
           type: boolean
@@ -111,13 +117,15 @@
           type: boolean
           description: Story has unpublished changes; saved but not published
         meta_data:
-          type: object
-          nullable: true
+          oneOf:
+            - type: object
+            - type: 'null'
           description: Object to store non-editable data that is exclusively maintained with the Management API
         imported_at:
-          type: string
-          format: date-time
-          nullable: true
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
           description: Latest import date YYYY-mm-dd HH:MM
         preview_token:
           type: object
@@ -145,7 +153,9 @@
                 type: string
                 description: The complete name provided for the story
               parent_id:
-                type: integer
+                oneOf:
+                  - type: integer
+                  - type: 'null'
                 description: ID of the parent folder
               disable_fe_editor:
                 type: boolean

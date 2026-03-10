@@ -1,0 +1,113 @@
+name: Release Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-cross-package-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for cross-package changes in feat/fix PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const isBumpCommit = /^(feat|fix)(\(.*\))?[!]?\s*:/.test(title);
+
+            if (!isBumpCommit) {
+              console.log(`PR title "${title}" is not a feat/fix commit. Skipping.`);
+              return;
+            }
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 300,
+            });
+
+            // Find which packages/* directories are touched
+            const touchedPackages = new Set();
+            for (const file of files) {
+              const match = file.filename.match(/^packages\/([^/]+)\//);
+              if (match) {
+                touchedPackages.add(match[1]);
+              }
+            }
+
+            console.log(`Touched packages: ${[...touchedPackages].join(', ')}`);
+
+            if (touchedPackages.size <= 1) {
+              console.log('Only one package touched. All good.');
+
+              // Clean up stale warning if it exists
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              const marker = '### ⚠️ Cross-package changes detected';
+              const existing = comments.find(c => c.body.startsWith(marker));
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                });
+              }
+
+              return;
+            }
+
+            // Extract the scope from the PR title to identify the primary package
+            const scopeMatch = title.match(/^(?:feat|fix)\(([^)]+)\)/);
+            const scope = scopeMatch ? scopeMatch[1] : null;
+
+            const packageList = [...touchedPackages].map(p => `- \`packages/${p}/\``).join('\n');
+
+            const body = [
+              `### ⚠️ Cross-package changes detected`,
+              ``,
+              `This PR is titled as a \`${title.split(':')[0]}\` commit but modifies files across **${touchedPackages.size} packages**:`,
+              ``,
+              packageList,
+              ``,
+              `When this PR is squash-merged, all changes become a single \`${scope ? `feat(${scope})` : 'feat'}\` commit.`,
+              `Nx release uses **file changes** (not the commit scope) to determine which packages to bump,`,
+              `so every package listed above will get a version bump on the next release.`,
+              ``,
+              `**If the changes to other packages are cosmetic** (README fixes, dependency bumps, config cleanup),`,
+              `please split them into a separate PR with a \`chore:\` title. \`chore\` commits don't trigger version bumps.`,
+            ].join('\n');
+
+            // Find existing comment to update instead of creating duplicates
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '### ⚠️ Cross-package changes detected';
+            const existing = comments.find(c => c.body.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+            core.warning(`This feat/fix PR touches ${touchedPackages.size} packages. All will be bumped on release.`);

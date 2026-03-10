@@ -27,10 +27,11 @@ export type { LivePreviewCallback } from './lib/livepreview.service';
 export { SbBlokDirective } from './lib/sb-blok.directive';
 
 // Rich Text (AST-based with custom component overrides)
-export { RichTextComponent } from './lib/rich-text.component';
-export { RichTextNodeComponent } from './lib/rich-text-node.component';
+export { SbRichTextComponent } from './lib/rich-text.component';
+export { SbRichTextNodeComponent } from './lib/rich-text-node.component';
 export {
   STORYBLOK_RICHTEXT_COMPONENTS,
+  StoryblokRichtextResolver,
   withStoryblokRichtextComponents,
   createAngularAdapter,
   isTextNode,

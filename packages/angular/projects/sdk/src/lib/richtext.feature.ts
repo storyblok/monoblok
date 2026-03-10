@@ -1,21 +1,29 @@
-import { InjectionToken, Type } from '@angular/core';
+import { InjectionToken, Type, Injectable, inject } from '@angular/core';
 import type { RendererAdapter, StoryblokSegmentType } from '@storyblok/richtext';
-import type { StoryblokFeature } from './components.feature';
+import { type StoryblokFeature, type StoryblokComponentLoader, isComponentLoader } from './components.feature';
 
 /**
  * Map of Storyblok segment types to Angular components.
- * Use this to override rendering of specific rich text node types.
+ * Supports both eager (direct) and lazy (dynamic import) loading.
  *
  * @example
  * ```typescript
+ * // Eager loading (bundled immediately)
  * const components: StoryblokRichtextComponentsMap = {
  *   link: CustomLinkComponent,
  *   image: OptimizedImageComponent,
- *   heading: CustomHeadingComponent,
+ * };
+ *
+ * // Lazy loading (loaded on-demand) - recommended
+ * const components: StoryblokRichtextComponentsMap = {
+ *   link: () => import('./custom-link').then(m => m.CustomLinkComponent),
+ *   image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
  * };
  * ```
  */
-export type StoryblokRichtextComponentsMap = Partial<Record<StoryblokSegmentType, Type<unknown>>>;
+export type StoryblokRichtextComponentsMap = Partial<
+  Record<StoryblokSegmentType, Type<unknown> | StoryblokComponentLoader>
+>;
 
 /**
  * Injection token for richtext component overrides.
@@ -27,13 +35,95 @@ export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<StoryblokRichtex
 );
 
 /**
+ * Service for resolving richtext components with lazy loading support.
+ * Caches resolved components to avoid repeated dynamic imports.
+ */
+@Injectable({ providedIn: 'root' })
+export class StoryblokRichtextResolver {
+  private readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
+  private readonly cache = new Map<StoryblokSegmentType, Type<unknown>>();
+
+  /**
+   * Check if a component is registered for the given segment type.
+   */
+  has(type: StoryblokSegmentType): boolean {
+    return this.registry[type] != null;
+  }
+
+  /**
+   * Get the component synchronously if it's eagerly loaded or already cached.
+   * Returns null if the component needs to be loaded asynchronously.
+   */
+  getSync(type: StoryblokSegmentType): Type<unknown> | null {
+    // Check cache first
+    if (this.cache.has(type)) {
+      return this.cache.get(type)!;
+    }
+
+    const entry = this.registry[type];
+    if (!entry) return null;
+
+    // If it's not a loader, it's an eager component
+    if (!isComponentLoader(entry)) {
+      this.cache.set(type, entry);
+      return entry;
+    }
+
+    // It's a lazy loader - needs async resolution
+    return null;
+  }
+
+  /**
+   * Resolve a component asynchronously. Handles both eager and lazy components.
+   */
+  async resolve(type: StoryblokSegmentType): Promise<Type<unknown> | null> {
+    // Check cache first
+    if (this.cache.has(type)) {
+      return this.cache.get(type)!;
+    }
+
+    const entry = this.registry[type];
+    if (!entry) return null;
+
+    let component: Type<unknown>;
+
+    if (isComponentLoader(entry)) {
+      component = await entry();
+    } else {
+      component = entry;
+    }
+
+    this.cache.set(type, component);
+    return component;
+  }
+
+  /**
+   * Get all registered segment types (for determining which nodes become component nodes).
+   */
+  getRegisteredTypes(): StoryblokSegmentType[] {
+    return Object.keys(this.registry) as StoryblokSegmentType[];
+  }
+}
+
+/**
  * Registers custom components for richtext node rendering.
+ * Supports both eager and lazy loading of components.
  *
  * @param components - Map of segment types to Angular components
  * @returns A feature to pass to `provideStoryblok()`
  *
  * @example
  * ```typescript
+ * // Lazy loading (recommended)
+ * provideStoryblok(
+ *   { accessToken: 'your-token' },
+ *   withStoryblokRichtextComponents({
+ *     link: () => import('./custom-link').then(m => m.CustomLinkComponent),
+ *     image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
+ *   })
+ * )
+ *
+ * // Eager loading
  * provideStoryblok(
  *   { accessToken: 'your-token' },
  *   withStoryblokRichtextComponents({
@@ -102,11 +192,21 @@ export function isComponentNode(node: AngularRenderNode): node is AngularCompone
 }
 
 /**
- * Creates a renderer adapter that produces Angular-friendly AST nodes.
+ * Singleton Angular adapter instance.
+ * Memoized to avoid creating new objects on every render.
+ */
+let angularAdapterInstance: RendererAdapter<AngularRenderNode> | null = null;
+
+/**
+ * Creates or returns the memoized renderer adapter that produces Angular-friendly AST nodes.
  * This adapter is used by `renderSegments` from `@storyblok/richtext`.
  */
 export function createAngularAdapter(): RendererAdapter<AngularRenderNode> {
-  return {
+  if (angularAdapterInstance) {
+    return angularAdapterInstance;
+  }
+
+  angularAdapterInstance = {
     createElement(tag, attrs = {}, children = []) {
       // Remove 'key' as it's React-specific
       const { key: _key, ...rest } = attrs;
@@ -126,4 +226,26 @@ export function createAngularAdapter(): RendererAdapter<AngularRenderNode> {
       };
     },
   };
+
+  return angularAdapterInstance;
+}
+
+/**
+ * Generates a stable tracking key for an AngularRenderNode.
+ * Used for optimal @for loop performance.
+ */
+export function getNodeTrackingKey(node: AngularRenderNode, index: number): string {
+  if (isTextNode(node)) {
+    // For text nodes, use index + hash of content for stability
+    return `text-${index}-${node.length}`;
+  }
+  if (isTagNode(node)) {
+    // For tag nodes, use tag name + index
+    return `tag-${node.tag}-${index}`;
+  }
+  if (isComponentNode(node)) {
+    // For component nodes, use component type + index
+    return `comp-${node.component}-${index}`;
+  }
+  return `node-${index}`;
 }

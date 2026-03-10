@@ -5,14 +5,14 @@ import {
   computed,
   inject,
 } from '@angular/core';
-import type { StoryblokRichTextNode, StoryblokSegmentType } from '@storyblok/richtext';
+import type { StoryblokRichTextNode } from '@storyblok/richtext';
 import { getRichTextSegments, renderSegments } from '@storyblok/richtext';
 import {
-  STORYBLOK_RICHTEXT_COMPONENTS,
+  StoryblokRichtextResolver,
   createAngularAdapter,
   type AngularRenderNode,
 } from './richtext.feature';
-import { RichTextNodeComponent } from './rich-text-node.component';
+import { SbRichTextNodeComponent } from './rich-text-node.component';
 
 /**
  * Renders Storyblok rich text content with support for custom component overrides.
@@ -23,12 +23,23 @@ import { RichTextNodeComponent } from './rich-text-node.component';
  *
  * @example Basic usage
  * ```html
- * <sb-richtext [doc]="story.content.body" />
+ * <sb-rich-text [doc]="story.content.body" />
  * ```
  *
- * @example With custom component overrides
+ * @example With custom component overrides (lazy loading - recommended)
  * ```typescript
  * // In your providers:
+ * provideStoryblok(
+ *   { accessToken: 'token' },
+ *   withStoryblokRichtextComponents({
+ *     link: () => import('./custom-link').then(m => m.CustomLinkComponent),
+ *     image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
+ *   })
+ * )
+ * ```
+ *
+ * @example With custom component overrides (eager loading)
+ * ```typescript
  * provideStoryblok(
  *   { accessToken: 'token' },
  *   withStoryblokRichtextComponents({
@@ -42,10 +53,11 @@ import { RichTextNodeComponent } from './rich-text-node.component';
  * ```typescript
  * @Component({
  *   selector: 'app-custom-link',
+ *   imports: [SbRichTextNodeComponent],
  *   template: `
  *     <a [href]="href()" [target]="target()">
  *       @for (child of children(); track $index) {
- *         <sb-richtext-node [node]="child" />
+ *         <sb-rich-text-node [node]="child" />
  *       }
  *     </a>
  *   `,
@@ -58,19 +70,19 @@ import { RichTextNodeComponent } from './rich-text-node.component';
  * ```
  */
 @Component({
-  selector: 'sb-richtext',
+  selector: 'sb-rich-text',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RichTextNodeComponent],
+  imports: [SbRichTextNodeComponent],
   template: `
     @for (node of nodes(); track $index) {
-      <sb-richtext-node [node]="node" />
+      <sb-rich-text-node [node]="node" />
     }
   `,
   host: { style: 'display: contents' },
 })
-export class RichTextComponent {
-  private readonly components = inject(STORYBLOK_RICHTEXT_COMPONENTS);
+export class SbRichTextComponent {
+  private readonly resolver = inject(StoryblokRichtextResolver);
 
   /** The Storyblok rich text document to render */
   readonly doc = input.required<StoryblokRichTextNode>();
@@ -87,7 +99,7 @@ export class RichTextComponent {
     const adapter = createAngularAdapter();
 
     // 3. Get keys of custom components (these become "component" nodes)
-    const keys = Object.keys(this.components) as StoryblokSegmentType[];
+    const keys = this.resolver.getRegisteredTypes();
 
     // 4. Render segments to Angular AST
     return renderSegments(segments, adapter, keys);

@@ -9,12 +9,12 @@ export interface TeaserBlok extends SbBlokData {
 @Component({
   selector: 'app-teaser',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // imports: [RichTextComponent],
+  // imports: [SbRichTextComponent],
   template: `
     <div>
       <h2>{{ blok().headline }}</h2>
       <!-- @if (blok().text) {
-        <sb-richtext [doc]="blok().text!" />
+        <sb-rich-text [doc]="blok().text!" />
       } -->
     </div>
   `,

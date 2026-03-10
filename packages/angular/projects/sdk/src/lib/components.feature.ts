@@ -49,7 +49,8 @@ export const STORYBLOK_COMPONENTS = new InjectionToken<StoryblokComponentsMap>(
 
 export type StoryblokFeature =
   | { ɵkind: 'components'; ɵproviders: Provider[] }
-  | { ɵkind: 'livePreview'; ɵproviders: Provider[] };
+  | { ɵkind: 'livePreview'; ɵproviders: Provider[] }
+  | { ɵkind: 'richtext'; ɵproviders: Provider[] };
 
 /**
  * Registers Storyblok components for dynamic rendering.

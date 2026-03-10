@@ -1,9 +1,5 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import {
-  SbRichTextComponent,
-  type SbBlokData,
-  type StoryblokRichTextNode,
-} from '@storyblok/angular';
+import { type SbBlokData, type StoryblokRichTextNode } from '@storyblok/angular';
 
 export interface TeaserBlok extends SbBlokData {
   headline?: string;
@@ -13,11 +9,13 @@ export interface TeaserBlok extends SbBlokData {
 @Component({
   selector: 'app-teaser',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SbRichTextComponent],
+  // imports: [RichTextComponent],
   template: `
     <div>
       <h2>{{ blok().headline }}</h2>
-      <sb-rich-text [doc]="blok().text" />
+      <!-- @if (blok().text) {
+        <sb-richtext [doc]="blok().text!" />
+      } -->
     </div>
   `,
 })

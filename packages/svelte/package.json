@@ -76,7 +76,7 @@
     "pathe": "^2.0.3",
     "publint": "^0.3.9",
     "start-server-and-test": "^2.0.11",
-    "svelte": "^5.25.3",
+    "svelte": "^5.53.5",
     "svelte-check": "^4.1.5",
     "typescript": "5.8.3",
     "typescript-eslint": "^8.28.0",

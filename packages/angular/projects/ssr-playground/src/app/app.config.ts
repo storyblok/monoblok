@@ -6,9 +6,11 @@ import {
   provideStoryblok,
   withLivePreview,
   withStoryblokComponents,
+  withStoryblokRichtextComponents,
   type StoryblokClientConfig,
 } from '@storyblok/angular';
 import { storyblokComponents } from './storyblok.components';
+import { LinkComponent } from './components/link/link';
 
 const sbConfig: StoryblokClientConfig = {
   accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
@@ -25,6 +27,9 @@ export const appConfig: ApplicationConfig = {
       withStoryblokComponents(storyblokComponents),
       withLivePreview({
         resolveRelations: ['feature_posts.posts'],
+      }),
+      withStoryblokRichtextComponents({
+        link: LinkComponent,
       }),
     ),
   ],

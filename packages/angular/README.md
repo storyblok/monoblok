@@ -131,25 +131,6 @@ export class HomeComponent implements OnInit {
 }
 ```
 
-## Region parameter
-
-Set the region based on where your Storyblok space was created:
-
-| Region | Value |
-|--------|-------|
-| Europe | `eu` (default) |
-| United States | `us` |
-| Australia | `ap` |
-| Canada | `ca` |
-| China | `cn` |
-
-```typescript
-provideStoryblok({
-  accessToken: 'YOUR_ACCESS_TOKEN',
-  region: 'us',
-})
-```
-
 > **Note:** For spaces created in the United States or China, the `region` parameter **must** be specified.
 
 ## Live Preview
@@ -321,10 +302,19 @@ For help, discussion about best practices, or any other conversation:
 
 ## Support
 
-For bugs or feature requests, [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> **Important:** Search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT]
+> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+
+### I can't share my company project code
+
+We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+
+### Feedback
+
+If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 
-[MIT License](../../LICENSE)
+[License](/LICENSE)

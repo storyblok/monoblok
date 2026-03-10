@@ -16,6 +16,9 @@ import {
   ApplicationRef,
   ComponentRef,
   reflectComponentType,
+  effect,
+  untracked,
+  signal,
 } from '@angular/core';
 import type { StoryblokRichTextNode } from '@storyblok/richtext';
 import { getRichTextSegments, renderSegments, isVoidElement } from '@storyblok/richtext';
@@ -113,6 +116,9 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
   /** Track dynamically created components for cleanup */
   private readonly componentRefs: ComponentRef<unknown>[] = [];
 
+  /** Tracks whether initial render has completed (for SSR compatibility) */
+  private readonly hasRendered = signal(false);
+
   /** The Storyblok rich text document to render */
   readonly doc = input.required<StoryblokRichTextNode>();
 
@@ -134,8 +140,51 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
     return renderSegments(segments, adapter, keys);
   });
 
+  constructor() {
+    // Watch for doc changes and re-render (client-side only, after initial render)
+    // This enables live preview updates while maintaining SSR compatibility
+    effect(() => {
+      // Track the nodes signal to detect doc changes
+      const nodes = this.nodes();
+
+      // Only re-render after initial render has completed
+      // This prevents double-rendering on initial load and ensures SSR hydration works
+      if (untracked(() => this.hasRendered())) {
+        this.clearContent();
+        this.renderNodes(nodes);
+      }
+    });
+  }
+
   ngAfterViewInit(): void {
     const nodes = this.nodes();
+    this.renderNodes(nodes);
+    this.hasRendered.set(true);
+  }
+
+  /**
+   * Clears all rendered content and destroys dynamic components.
+   */
+  private clearContent(): void {
+    const hostElement = this.el.nativeElement;
+
+    // Remove all child nodes from the host element
+    while (hostElement.firstChild) {
+      this.renderer.removeChild(hostElement, hostElement.firstChild);
+    }
+
+    // Clean up dynamically created components
+    for (const ref of this.componentRefs) {
+      this.appRef.detachView(ref.hostView);
+      ref.destroy();
+    }
+    this.componentRefs.length = 0;
+  }
+
+  /**
+   * Renders AST nodes to the DOM.
+   */
+  private renderNodes(nodes: AngularRenderNode[]): void {
     const hostElement = this.el.nativeElement;
 
     if (!hostElement || !nodes.length) return;
@@ -147,12 +196,7 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Clean up dynamically created components
-    for (const ref of this.componentRefs) {
-      this.appRef.detachView(ref.hostView);
-      ref.destroy();
-    }
-    this.componentRefs.length = 0;
+    this.clearContent();
   }
 
   /**

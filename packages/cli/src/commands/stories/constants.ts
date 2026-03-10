@@ -118,10 +118,11 @@ export interface FetchStoriesResult {
   headers: Headers;
 }
 
-export type TargetStoryRef = Pick<Story, 'id' | 'uuid'>;
+export type TargetStoryRef = Pick<Story, 'id' | 'uuid'> & { is_folder?: boolean };
 
 export interface ExistingTargetStories {
-  bySlug: Map<string, TargetStoryRef>;
+  // folders and start_page can have the same lug, , we need TargetStoryRef[]
+  bySlug: Map<string, TargetStoryRef[]>;
   byId: Map<number, TargetStoryRef>;
 }
 

@@ -352,17 +352,25 @@ export const createStoriesForLevel = async ({
         // Fallback: match by full_slug when no manifest entry exists (first push).
         // Only match if the remote story hasn't already been claimed by another
         // local entry (prevents mis-matching after slug swaps or renames).
+        // A folder and its startpage share the same full_slug, so bySlug stores
+        // an array of candidates. We prefer matching by is_folder to avoid
+        // cross-mapping folders to startpages (which would break parent_id
+        // resolution for children).
         const normalizedSlug = entry.full_slug ? normalizeFullSlug(entry.full_slug) : undefined;
-        const existingBySlug = normalizedSlug
+        const slugCandidates = normalizedSlug
           ? existingTargetStories.bySlug.get(normalizedSlug)
           : undefined;
-        if (existingBySlug && !claimedRemoteIds.has(existingBySlug.id)) {
-          const isMatchConfirmed = isCrossSpace || existingBySlug.uuid === entry.uuid;
-          if (isMatchConfirmed) {
-            claimedRemoteIds.add(existingBySlug.id);
-            await appendToManifest(entry, existingBySlug);
-            onStorySkipped?.(entry, existingBySlug);
-            return;
+        if (slugCandidates) {
+          const unclaimed = slugCandidates.filter(ref => !claimedRemoteIds.has(ref.id));
+          const match = unclaimed.find(ref => ref.is_folder === entry.is_folder) ?? unclaimed[0];
+          if (match) {
+            const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
+            if (isMatchConfirmed) {
+              claimedRemoteIds.add(match.id);
+              await appendToManifest(entry, match);
+              onStorySkipped?.(entry, match);
+              return;
+            }
           }
         }
 
@@ -389,7 +397,7 @@ export const createStoriesForLevel = async ({
             ...(resolvedParentId != null ? { parent_id: Number(resolvedParentId) } : {}),
             ...(entry.is_startpage && resolvedParentId != null ? { is_startpage: true } : {}),
             ...(entry.component
-              ? { content: { _uid: '', component: '__migration_artifact__' } }
+              ? { content: { _uid: '', component: entry.component } }
               : {}),
           },
           publish: 0,

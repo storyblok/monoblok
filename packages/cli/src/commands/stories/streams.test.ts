@@ -329,7 +329,7 @@ describe('createStoriesForLevel', () => {
     it('should skip by full_slug in cross-space push (UUIDs always differ)', async () => {
       const entry = makeEntry({ full_slug: 'blog/post-1' });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set('blog/post-1', { id: 200, uuid: randomUUID() });
+      targetStories.bySlug.set('blog/post-1', [{ id: 200, uuid: randomUUID() }]);
 
       const skipped: StoryIndexEntry[] = [];
       const manifest = vi.fn().mockResolvedValue(undefined);
@@ -356,7 +356,7 @@ describe('createStoriesForLevel', () => {
     // both would map to remote-500 causing data loss.
       const entryB = makeEntry({ full_slug: 'about', component: 'page' });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set('about', { id: 500, uuid: randomUUID() });
+      targetStories.bySlug.set('about', [{ id: 500, uuid: randomUUID() }]);
 
       // remote-500 was already claimed (e.g. by entry-a via manifest in a prior level)
       const claimed = new Set([500]);
@@ -389,7 +389,7 @@ describe('createStoriesForLevel', () => {
       maps.stories!.set(100, 500);
       const targetStories = emptyTargetStories();
       targetStories.byId.set(500, { id: 500, uuid: randomUUID() });
-      targetStories.bySlug.set('about', { id: 600, uuid: randomUUID() });
+      targetStories.bySlug.set('about', [{ id: 600, uuid: randomUUID() }]);
 
       const claimed = new Set<number>();
       await createStoriesForLevel({
@@ -409,10 +409,38 @@ describe('createStoriesForLevel', () => {
       expect(mockCreateStory).not.toHaveBeenCalled();
     });
 
+    it('should match folder and startpage separately when they share the same full_slug', async () => {
+      const folder = makeEntry({ full_slug: 'de-de', is_folder: true, component: undefined });
+      const startpage = makeEntry({ full_slug: 'de-de', is_folder: false, is_startpage: true, component: 'page' });
+      const targetStories = emptyTargetStories();
+      const folderRef = { id: 300, uuid: randomUUID(), is_folder: true };
+      const startpageRef = { id: 301, uuid: randomUUID(), is_folder: false };
+      targetStories.bySlug.set('de-de', [folderRef, startpageRef]);
+
+      const skipped: StoryIndexEntry[] = [];
+      await createStoriesForLevel({
+        level: [folder, startpage],
+        spaceId: SPACE_ID,
+        maps: emptyMaps(),
+        existingTargetStories: targetStories,
+        isCrossSpace: true,
+        claimedRemoteIds: new Set(),
+        dryRun: false,
+        appendToManifest: noopManifest,
+        onStorySkipped(e) { skipped.push(e); },
+      });
+
+      expect(skipped).toHaveLength(2);
+      expect(mockCreateStory).not.toHaveBeenCalled();
+      // Verify folder matched the folder ref and startpage matched the startpage ref
+      expect(noopManifest).toHaveBeenCalledWith(folder, folderRef);
+      expect(noopManifest).toHaveBeenCalledWith(startpage, startpageRef);
+    });
+
     it('should not skip by slug in same-space push when UUID differs', async () => {
       const entry = makeEntry({ full_slug: 'about', component: 'page' });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set('about', { id: 200, uuid: randomUUID() });
+      targetStories.bySlug.set('about', [{ id: 200, uuid: randomUUID() }]);
       fakeCreate();
 
       const successes: StoryIndexEntry[] = [];
@@ -554,7 +582,7 @@ describe('createStoriesForLevel', () => {
       const folderPayload = mockCreateStory.mock.calls.find(c => c[1].story.slug === 'blog')![1];
       const storyPayload = mockCreateStory.mock.calls.find(c => c[1].story.slug === 'post')![1];
       expect(folderPayload.story).not.toHaveProperty('content');
-      expect(storyPayload.story.content).toEqual({ _uid: '', component: '__migration_artifact__' });
+      expect(storyPayload.story.content).toEqual({ _uid: '', component: 'page' });
     });
   });
 });

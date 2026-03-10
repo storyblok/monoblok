@@ -68,6 +68,7 @@
     "playground": "cd playground && npm run dev",
     "playground:vue": "cd playground/vue && npm run dev",
     "playground:react": "cd playground/react && npm run dev",
+    "playground:astro": "pnpm run --filter ./playground/astro dev",
     "playground:all": "pnpm -r --parallel --filter='./playground/*' run dev",
     "release": "release-it",
     "release:dry": "release-it --dry-run"

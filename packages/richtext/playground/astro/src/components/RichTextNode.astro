@@ -1,0 +1,58 @@
+---
+import type { AstroRenderNode, StoryblokComponentMap } from '../utils';
+
+interface Props {
+  node: AstroRenderNode;
+  components?: StoryblokComponentMap;
+}
+
+const { node, components } = Astro.props;
+
+function isText(n: AstroRenderNode): n is string {
+  return typeof n === 'string';
+}
+
+function isComponent(n: AstroRenderNode): n is Extract<AstroRenderNode, { component: unknown }> {
+  return typeof n === 'object' && n !== null && 'component' in n;
+}
+
+function isTag(n: AstroRenderNode): n is Extract<AstroRenderNode, { tag: unknown }> {
+  return typeof n === 'object' && n !== null && 'tag' in n;
+}
+---
+
+{isText(node) && node}
+
+{
+  isComponent(node) &&
+    (() => {
+      if (!components) {
+        console.warn(`No components provided for rendering component node: ${node.component}`);
+        return null;
+      }
+      const Component = components[node.component];
+      if (!Component) return null;
+
+      return (
+        <Component {...node.props}>
+          {node.children?.map((child) => (
+            <Astro.self node={child} components={components} />
+          ))}
+        </Component>
+      );
+    })()
+}
+
+{
+  isTag(node) &&
+    (() => {
+      const Tag = node.tag;
+      return (
+        <Tag {...node.attrs}>
+          {node.children?.map((child) => (
+            <Astro.self node={child} components={components} />
+          ))}
+        </Tag>
+      );
+    })()
+}

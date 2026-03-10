@@ -174,7 +174,6 @@ function callExtensionRenderHTML(
   const ctx = {
     name: ext.name,
     options: ext.options ?? {},
-    storage: ext.storage ?? {},
     parent: null,
   };
 

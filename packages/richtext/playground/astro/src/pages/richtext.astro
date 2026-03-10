@@ -1,0 +1,22 @@
+---
+import { useStoryblokApi, type SbBlokData } from '@storyblok/astro';
+import StoryblokRichtext from '../components/StoryblokRichtext.astro';
+import CustomLink from '../components/CustomLink.astro';
+import BlokRender from '../components/BlokRender.astro';
+
+const storyblokApi = useStoryblokApi();
+const { data } = await storyblokApi.get('cdn/stories/richtext', {
+  version: 'draft',
+});
+const doc = data.story.content.richText;
+---
+
+<h1>Hello Astro</h1>
+<p>Welcome to your new Astro site.</p>
+<StoryblokRichtext
+  doc={doc}
+  components={{
+    link: CustomLink,
+    blok: BlokRender,
+  }}
+/>

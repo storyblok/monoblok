@@ -1,0 +1,8 @@
+---
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import { type SbBlokData } from '@storyblok/astro';
+
+const body = Astro.props.body as SbBlokData[];
+---
+
+{body.map((blok) => <StoryblokComponent blok={blok} />)}

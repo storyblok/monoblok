@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@storyblok/react": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
     "@vitejs/plugin-basic-ssl": "^2.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

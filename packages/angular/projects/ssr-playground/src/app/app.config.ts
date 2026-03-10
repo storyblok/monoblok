@@ -1,0 +1,38 @@
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { routes } from './app.routes';
+import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import {
+  provideStoryblok,
+  withLivePreview,
+  withStoryblokComponents,
+  withStoryblokRichtextComponents,
+  type StoryblokClientConfig,
+} from '@storyblok/angular';
+import { storyblokComponents } from './storyblok.components';
+import { LinkComponent } from './components/link/link';
+import { BlokComponent } from './components/blok/blok';
+
+const sbConfig: StoryblokClientConfig = {
+  accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
+  region: 'eu',
+  inlineRelations: true,
+};
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideRouter(routes, withComponentInputBinding()),
+    provideClientHydration(withEventReplay()),
+    provideStoryblok(
+      sbConfig,
+      withStoryblokComponents(storyblokComponents),
+      withLivePreview({
+        resolveRelations: ['feature_posts.posts'],
+      }),
+      withStoryblokRichtextComponents({
+        link: LinkComponent,
+        blok: BlokComponent,
+      }),
+    ),
+  ],
+};

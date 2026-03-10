@@ -1,0 +1,18 @@
+---
+import type { StoryblokRichTextNode } from '@storyblok/astro';
+import { getRichTextSegments, renderSegments, type StoryblokSegmentType } from '@storyblok/richtext';
+import { createAstroAdapter, type StoryblokComponentMap } from '../utils';
+import RichTextNode from './RichTextNode.astro';
+
+interface Props {
+  doc: StoryblokRichTextNode;
+  components?: StoryblokComponentMap;
+}
+const { doc, components } = Astro.props;
+const segments = getRichTextSegments(doc);
+const adapter = createAstroAdapter();
+const keys = Object.keys(components || {}) as StoryblokSegmentType[];
+const content = renderSegments(segments, adapter, keys);
+---
+
+{content.map((node) => <RichTextNode node={node} components={components} />)}

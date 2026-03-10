@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   integrations: [
     storyblok({
-      accessToken: 'xUMqa0Ka06Cfnrjb4M1e5Qtt',
+      accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
       enableFallbackComponent: true,
     }),
   ],

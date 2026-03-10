@@ -124,3 +124,18 @@ export interface ExistingTargetStories {
   bySlug: Map<string, TargetStoryRef>;
   byId: Map<number, TargetStoryRef>;
 }
+
+export interface StoryIndexEntry {
+  filename: string;
+  id: number | string;
+  uuid: string;
+  slug: string;
+  name: string;
+  full_slug: string;
+  is_folder: boolean;
+  is_startpage: boolean;
+  parent_id: number | string | null;
+  component?: string;
+}
+
+export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');

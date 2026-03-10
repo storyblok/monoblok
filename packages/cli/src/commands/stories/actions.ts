@@ -1,5 +1,6 @@
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, TargetStoryRef } from './constants';
+import { normalizeFullSlug } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 
@@ -160,7 +161,7 @@ export const prefetchTargetStories = async (spaceId: string, options?: {
     for (const story of response.stories) {
       const ref: TargetStoryRef = { id: story.id, uuid: story.uuid };
       if (story.full_slug) {
-        result.bySlug.set(story.full_slug, ref);
+        result.bySlug.set(normalizeFullSlug(story.full_slug), ref);
       }
       result.byId.set(story.id, ref);
     }

@@ -11,6 +11,7 @@ import {
 } from '@storyblok/angular';
 import { storyblokComponents } from './storyblok.components';
 import { LinkComponent } from './components/link/link';
+import { BlokComponent } from './components/blok/blok';
 
 const sbConfig: StoryblokClientConfig = {
   accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
@@ -30,6 +31,7 @@ export const appConfig: ApplicationConfig = {
       }),
       withStoryblokRichtextComponents({
         link: LinkComponent,
+        blok: BlokComponent,
       }),
     ),
   ],

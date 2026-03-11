@@ -36,10 +36,12 @@
   "scripts": {
     "ng": "ng",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
+    "playground:ssr:test": "ng test ssr-playground",
     "playground:app:start": "ng serve app-playground --ssl",
+    "playground:app:test": "ng test app-playground",
     "build": "ng build @storyblok/angular",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test @storyblok/angular"
   },
   "peerDependencies": {
     "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",

@@ -8,12 +8,12 @@ describe('TeaserComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TeaserComponent]
-    })
-    .compileComponents();
+      imports: [TeaserComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(TeaserComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'teaser' });
     await fixture.whenStable();
   });
 

@@ -1,19 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Page } from './page';
+import { PageComponent } from './page';
 
-describe('Page', () => {
-  let component: Page;
-  let fixture: ComponentFixture<Page>;
+describe('PageComponent', () => {
+  let component: PageComponent;
+  let fixture: ComponentFixture<PageComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Page]
-    })
-    .compileComponents();
+      imports: [PageComponent],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(Page);
+    fixture = TestBed.createComponent(PageComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'page' });
     await fixture.whenStable();
   });
 

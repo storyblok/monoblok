@@ -1,19 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Grid } from './grid';
+import { GridComponent } from './grid';
 
-describe('Grid', () => {
-  let component: Grid;
-  let fixture: ComponentFixture<Grid>;
+describe('GridComponent', () => {
+  let component: GridComponent;
+  let fixture: ComponentFixture<GridComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Grid]
-    })
-    .compileComponents();
+      imports: [GridComponent],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(Grid);
+    fixture = TestBed.createComponent(GridComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'grid' });
     await fixture.whenStable();
   });
 

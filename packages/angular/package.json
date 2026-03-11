@@ -1,14 +1,77 @@
 {
-  "name": "angular",
-  "version": "0.0.0",
+  "name": "@storyblok/angular",
+  "version": "0.1.1",
+  "private": false,
+  "description": "Official Angular integration for the Storyblok Headless CMS",
+  "author": "Storyblok",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/angular#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/angular"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [
+    "angular",
+    "storyblok",
+    "angular-sdk"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/storyblok-angular.d.ts",
+      "default": "./dist/fesm2022/storyblok-angular.mjs"
+    }
+  },
+  "module": "./dist/fesm2022/storyblok-angular.mjs",
+  "typings": "./dist/types/storyblok-angular.d.ts",
+  "files": [
+    "dist/fesm2022",
+    "dist/types"
+  ],
   "scripts": {
     "ng": "ng",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
     "playground:app:start": "ng serve app-playground --ssl",
-    "build": "ng build @storyblok/angular && cp README.md LICENSE dist/",
-    "postbuild": "node scripts/resolve-workspace-deps.mjs",
+    "build": "ng build @storyblok/angular",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
+  },
+  "peerDependencies": {
+    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",
+    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@storyblok/live-preview": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
+    "@storyblok/js": "workspace:*",
+    "@storyblok/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@angular/build": "^21.1.2",
+    "@angular/cli": "^21.1.2",
+    "@angular/common": "^21.1.0",
+    "@angular/compiler": "^21.1.0",
+    "@angular/compiler-cli": "^21.1.0",
+    "@angular/core": "^21.1.0",
+    "@angular/forms": "^21.1.0",
+    "@angular/platform-browser": "^21.1.0",
+    "@angular/platform-server": "^21.1.0",
+    "@angular/router": "^21.1.0",
+    "@angular/ssr": "^21.1.2",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.17.19",
+    "express": "^5.1.0",
+    "jsdom": "^27.1.0",
+    "ng-packagr": "^21.1.0",
+    "rxjs": "~7.8.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
   },
   "prettier": {
     "printWidth": 100,
@@ -21,36 +84,5 @@
         }
       }
     ]
-  },
-  "private": true,
-  "type": "module",
-  "packageManager": "pnpm@10.27.0",
-  "dependencies": {
-    "@angular/common": "^21.1.0",
-    "@angular/compiler": "^21.1.0",
-    "@angular/core": "^21.1.0",
-    "@angular/forms": "^21.1.0",
-    "@angular/platform-browser": "^21.1.0",
-    "@angular/platform-server": "^21.1.0",
-    "@angular/router": "^21.1.0",
-    "@angular/ssr": "^21.1.2",
-    "@storyblok/live-preview": "workspace:*",
-    "@storyblok/richtext": "workspace:*",
-    "@storyblok/js": "workspace:*",
-    "@storyblok/api-client": "workspace:*",
-    "express": "^5.1.0",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
-  },
-  "devDependencies": {
-    "@angular/build": "^21.1.2",
-    "@angular/cli": "^21.1.2",
-    "@angular/compiler-cli": "^21.1.0",
-    "@types/express": "^5.0.1",
-    "@types/node": "^20.17.19",
-    "jsdom": "^27.1.0",
-    "ng-packagr": "^21.1.0",
-    "typescript": "~5.9.2",
-    "vitest": "^4.0.8"
   }
 }

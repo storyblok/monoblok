@@ -24,22 +24,22 @@
   "files": [],
   "references": [
     {
-      "path": "./projects/sdk/tsconfig.lib.json"
+      "path": "./tsconfig.lib.json"
     },
     {
-      "path": "./projects/sdk/tsconfig.spec.json"
+      "path": "./tsconfig.spec.json"
     },
     {
-      "path": "./projects/ssr-playground/tsconfig.app.json"
+      "path": "./playground/ssr/tsconfig.app.json"
     },
     {
-      "path": "./projects/ssr-playground/tsconfig.spec.json"
+      "path": "./playground/ssr/tsconfig.spec.json"
     },
     {
-      "path": "./projects/app-playground/tsconfig.app.json"
+      "path": "./playground/app/tsconfig.app.json"
     },
     {
-      "path": "./projects/app-playground/tsconfig.spec.json"
+      "path": "./playground/app/tsconfig.spec.json"
     }
   ]
 }

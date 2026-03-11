@@ -133,9 +133,6 @@ importers:
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../../../richtext
-      tslib:
-        specifier: ^2.8.1
-        version: 2.8.1
 
   packages/astro:
     dependencies:

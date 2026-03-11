@@ -25,7 +25,6 @@
     "play": "jiti playground",
     "lint": "eslint --cache --ext .ts,.js,.mjs,.cjs . && prettier -c src test",
     "lint:fix": "eslint --cache --ext .ts,.js,.mjs,.cjs . --fix && prettier -c src test -w",
-    "prepack": "pnpm run build",
     "test": "vitest run --coverage",
     "test:types": "tsc --noEmit --skipLibCheck"
   },

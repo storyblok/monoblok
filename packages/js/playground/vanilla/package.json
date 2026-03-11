@@ -6,6 +6,9 @@
     "dev": "vite",
     "build": "vite build"
   },
+  "dependencies": {
+    "@tiptap/core": "^3.10.2"
+  },
   "devDependencies": {
     "@storyblok/js": "workspace:*",
     "@vitejs/plugin-basic-ssl": "^1.1.0",

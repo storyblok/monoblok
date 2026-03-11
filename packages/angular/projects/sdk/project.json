@@ -1,6 +1,13 @@
 {
   "name": "@storyblok/angular",
   "targets": {
+    "build": {
+      "dependsOn": ["^build"],
+      "command": "pnpm build",
+      "options": {
+        "cwd": "packages/angular"
+      }
+    },
     "nx-release-publish": {
       "options": {
         "packageRoot": "packages/angular/dist"

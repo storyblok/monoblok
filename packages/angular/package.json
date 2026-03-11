@@ -5,7 +5,7 @@
     "ng": "ng",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
     "playground:app:start": "ng serve app-playground --ssl",
-    "build": "ng build @storyblok/angular",
+    "build": "ng build @storyblok/angular && cp README.md LICENSE dist/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

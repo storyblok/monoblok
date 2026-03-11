@@ -2,7 +2,11 @@
   "name": "@storyblok/region-helper",
   "version": "1.4.0",
   "description": "",
-  "repository": "storyblok/region-helper",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/region-helper"
+  },
   "license": "MIT",
   "sideEffects": false,
   "type": "module",

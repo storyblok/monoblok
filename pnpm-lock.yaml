@@ -133,9 +133,6 @@ importers:
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../../../richtext
-      tslib:
-        specifier: ^2.8.1
-        version: 2.8.1
 
   packages/astro:
     dependencies:
@@ -651,6 +648,10 @@ importers:
         version: 0.2.4(vite@5.4.21(@types/node@24.11.0)(less@4.5.1)(lightningcss@1.31.1)(sass@1.97.3)(terser@5.46.0))
 
   packages/js/playground/vanilla:
+    dependencies:
+      '@tiptap/core':
+        specifier: ^3.10.2
+        version: 3.20.0(@tiptap/pm@3.20.0)
     devDependencies:
       '@storyblok/js':
         specifier: workspace:*

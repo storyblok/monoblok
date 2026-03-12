@@ -355,89 +355,99 @@ export const createStoriesForLevel = async ({
   onStorySkipped?: (entry: StoryIndexEntry, remoteStory: TargetStoryRef, reason: string) => void;
   onStoryError?: (error: Error, entry: StoryIndexEntry) => void;
 }): Promise<void> => {
-  const tasks: Promise<void>[] = [];
-
-  for (const entry of level) {
+  const processEntry = async (entry: StoryIndexEntry) => {
     await apiConcurrencyLock.acquire();
+    try {
+      // Primary: check manifest mapping (from a previous push).
+      const mappedStoryId = maps.stories?.get(entry.id);
+      const mappedRemoteStory = mappedStoryId
+        ? existingTargetStories.byId.get(Number(mappedStoryId))
+        : undefined;
+      if (mappedRemoteStory) {
+        claimedRemoteIds.add(mappedRemoteStory.id);
+        onStorySkipped?.(entry, mappedRemoteStory, 'matched by manifest mapping from a previous push');
+        return;
+      }
 
-    const task = (async () => {
-      try {
-        // Primary: check manifest mapping (from a previous push).
-        const mappedStoryId = maps.stories?.get(entry.id);
-        const mappedRemoteStory = mappedStoryId
-          ? existingTargetStories.byId.get(Number(mappedStoryId))
-          : undefined;
-        if (mappedRemoteStory) {
-          claimedRemoteIds.add(mappedRemoteStory.id);
-          onStorySkipped?.(entry, mappedRemoteStory, 'matched by manifest mapping from a previous push');
+      // Fallback: match by full_slug when no manifest entry exists (first push).
+      // Only match if the remote story hasn't already been claimed by another
+      // local entry (prevents mis-matching after slug swaps or renames).
+      // A folder and its startpage share the same full_slug, so bySlug stores
+      // an array of candidates. We prefer matching by is_folder to avoid
+      // cross-mapping folders to startpages (which would break parent_id
+      // resolution for children).
+      const match = findSlugMatch({ entry, existingTargetStories, claimedRemoteIds });
+      if (match) {
+        const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
+        if (isMatchConfirmed) {
+          claimedRemoteIds.add(match.id);
+          await appendToManifest(entry, match);
+          onStorySkipped?.(entry, match, 'matched by slug in target space');
           return;
         }
-
-        // Fallback: match by full_slug when no manifest entry exists (first push).
-        // Only match if the remote story hasn't already been claimed by another
-        // local entry (prevents mis-matching after slug swaps or renames).
-        // A folder and its startpage share the same full_slug, so bySlug stores
-        // an array of candidates. We prefer matching by is_folder to avoid
-        // cross-mapping folders to startpages (which would break parent_id
-        // resolution for children).
-        const match = findSlugMatch({ entry, existingTargetStories, claimedRemoteIds });
-        if (match) {
-          const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
-          if (isMatchConfirmed) {
-            claimedRemoteIds.add(match.id);
-            await appendToManifest(entry, match);
-            onStorySkipped?.(entry, match, 'matched by slug in target space');
-            return;
-          }
-        }
-
-        if (!entry.is_folder && !entry.component) {
-          throw new Error(`Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`);
-        }
-
-        // Resolve parent_id from the maps (parent was created in a previous level).
-        const resolvedParentId = entry.parent_id != null
-          ? maps.stories?.get(entry.parent_id)
-          : undefined;
-
-        if (dryRun) {
-          const fakeRemote = { id: entry.id, uuid: entry.uuid } as Story;
-          onStorySuccess?.(entry, fakeRemote);
-          return;
-        }
-
-        const remoteStory = await createStory(spaceId, {
-          story: {
-            slug: entry.slug,
-            name: entry.name,
-            is_folder: entry.is_folder,
-            ...(resolvedParentId != null ? { parent_id: Number(resolvedParentId) } : {}),
-            ...(entry.is_startpage && resolvedParentId != null ? { is_startpage: true } : {}),
-            ...(entry.component
-              ? { content: { _uid: '', component: entry.component } }
-              : {}),
-          },
-          publish: 0,
-        });
-        if (!remoteStory) {
-          throw new Error('No response!');
-        }
-
-        await appendToManifest(entry, remoteStory);
-        onStorySuccess?.(entry, remoteStory);
       }
-      catch (maybeError) {
-        onStoryError?.(toError(maybeError), entry);
-      }
-      finally {
-        apiConcurrencyLock.release();
-      }
-    })();
 
-    tasks.push(task);
+      if (!entry.is_folder && !entry.component) {
+        throw new Error(`Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`);
+      }
+
+      // Resolve parent_id from the maps (parent was created in a previous level).
+      const resolvedParentId = entry.parent_id != null
+        ? maps.stories?.get(entry.parent_id)
+        : undefined;
+
+      if (dryRun) {
+        const fakeRemote = { id: entry.id, uuid: entry.uuid } as Story;
+        onStorySuccess?.(entry, fakeRemote);
+        return;
+      }
+
+      const remoteStory = await createStory(spaceId, {
+        story: {
+          slug: entry.slug,
+          name: entry.name,
+          is_folder: entry.is_folder,
+          ...(resolvedParentId != null ? { parent_id: Number(resolvedParentId) } : {}),
+          ...(entry.is_startpage && resolvedParentId != null ? { is_startpage: true } : {}),
+          ...(entry.component
+            ? { content: { _uid: '', component: entry.component } }
+            : {}),
+        },
+        publish: 0,
+      });
+      if (!remoteStory) {
+        throw new Error('No response!');
+      }
+
+      await appendToManifest(entry, remoteStory);
+      onStorySuccess?.(entry, remoteStory);
+    }
+    catch (maybeError) {
+      onStoryError?.(toError(maybeError), entry);
+    }
+    finally {
+      apiConcurrencyLock.release();
+    }
+  };
+
+  // Process folders first and await them before non-folders.
+  // A startpage shares the same full_slug (and depth) as its parent folder,
+  // so both land in the same level. Without this split the folder's ID might
+  // not be mapped yet when the startpage tries to resolve its parent_id.
+  const folders = level.filter(e => e.is_folder);
+  const nonFolders = level.filter(e => !e.is_folder);
+
+  const folderTasks: Promise<void>[] = [];
+  for (const entry of folders) {
+    folderTasks.push(processEntry(entry));
   }
+  await Promise.all(folderTasks);
 
-  await Promise.all(tasks);
+  const storyTasks: Promise<void>[] = [];
+  for (const entry of nonFolders) {
+    storyTasks.push(processEntry(entry));
+  }
+  await Promise.all(storyTasks);
 };
 
 export type WriteStoryTransport = (story: Story) => Promise<Story>;

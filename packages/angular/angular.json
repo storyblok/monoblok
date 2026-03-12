@@ -5,22 +5,22 @@
     "packageManager": "pnpm",
     "analytics": false
   },
-  "newProjectRoot": "projects",
+  "newProjectRoot": "playground",
   "projects": {
     "@storyblok/angular": {
       "projectType": "library",
-      "root": "projects/sdk",
-      "sourceRoot": "projects/sdk/src",
+      "root": ".",
+      "sourceRoot": "src",
       "prefix": "lib",
       "architect": {
         "build": {
           "builder": "@angular/build:ng-packagr",
           "configurations": {
             "production": {
-              "tsConfig": "projects/sdk/tsconfig.lib.prod.json"
+              "tsConfig": "tsconfig.lib.prod.json"
             },
             "development": {
-              "tsConfig": "projects/sdk/tsconfig.lib.json"
+              "tsConfig": "tsconfig.lib.json"
             }
           },
           "defaultConfiguration": "production"
@@ -28,7 +28,9 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/sdk/tsconfig.spec.json"
+            "tsConfig": "tsconfig.spec.json",
+            "include": ["src/**/*.spec.ts"],
+            "exclude": ["playground/**"]
           }
         }
       }
@@ -36,28 +38,28 @@
     "ssr-playground": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/ssr-playground",
-      "sourceRoot": "projects/ssr-playground/src",
+      "root": "playground/ssr",
+      "sourceRoot": "playground/ssr/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/ssr-playground/src/main.ts",
-            "tsConfig": "projects/ssr-playground/tsconfig.app.json",
+            "browser": "playground/ssr/src/main.ts",
+            "tsConfig": "playground/ssr/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/ssr-playground/public"
+                "input": "playground/ssr/public"
               }
             ],
             "styles": [
-              "projects/ssr-playground/src/styles.css"
+              "playground/ssr/src/styles.css"
             ],
-            "server": "projects/ssr-playground/src/main.server.ts",
+            "server": "playground/ssr/src/main.server.ts",
             "outputMode": "server",
             "ssr": {
-              "entry": "projects/ssr-playground/src/server.ts"
+              "entry": "playground/ssr/src/server.ts"
             }
           },
           "configurations": {
@@ -95,32 +97,29 @@
             }
           },
           "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular/build:unit-test"
         }
       }
     },
     "app-playground": {
       "projectType": "application",
       "schematics": {},
-      "root": "projects/app-playground",
-      "sourceRoot": "projects/app-playground/src",
+      "root": "playground/app",
+      "sourceRoot": "playground/app/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "projects/app-playground/src/main.ts",
-            "tsConfig": "projects/app-playground/tsconfig.app.json",
+            "browser": "playground/app/src/main.ts",
+            "tsConfig": "playground/app/tsconfig.app.json",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "projects/app-playground/public"
+                "input": "playground/app/public"
               }
             ],
             "styles": [
-              "projects/app-playground/src/styles.css"
+              "playground/app/src/styles.css"
             ]
           },
           "configurations": {
@@ -158,9 +157,6 @@
             }
           },
           "defaultConfiguration": "development"
-        },
-        "test": {
-          "builder": "@angular/build:unit-test"
         }
       }
     }

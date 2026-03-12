@@ -2,7 +2,6 @@ packages:
   - packages/*
   - packages/*/playground
   - packages/*/playground/*
-  - packages/angular/projects/*
   - tools/*
 onlyBuiltDependencies:
   - cypress

@@ -224,6 +224,10 @@ export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   }));
 };
 
+/**
+ * Scans all local `.json` story files and returns a lightweight index
+ * (metadata only, no full content) used for level-by-level creation ordering.
+ */
 export const scanLocalStoryIndex = async ({
   directoryPath,
   setTotalStories,
@@ -306,6 +310,26 @@ export const groupStoriesByDepth = (entries: StoryIndexEntry[]): StoryIndexEntry
   return levels;
 };
 
+const findSlugMatch = ({
+  entry,
+  existingTargetStories,
+  claimedRemoteIds,
+}: {
+  entry: StoryIndexEntry;
+  existingTargetStories: ExistingTargetStories;
+  claimedRemoteIds: Set<number>;
+}): TargetStoryRef | undefined => {
+  const normalizedSlug = entry.full_slug ? normalizeFullSlug(entry.full_slug) : undefined;
+  const slugCandidates = normalizedSlug
+    ? existingTargetStories.bySlug.get(normalizedSlug)
+    : undefined;
+  if (!slugCandidates) {
+    return undefined;
+  }
+  const unclaimed = slugCandidates.filter(ref => !claimedRemoteIds.has(ref.id));
+  return unclaimed.find(ref => ref.is_folder === entry.is_folder) ?? unclaimed[0];
+};
+
 export const createStoriesForLevel = async ({
   level,
   spaceId,
@@ -328,7 +352,7 @@ export const createStoriesForLevel = async ({
   dryRun: boolean;
   appendToManifest: AppendToManifestTransport;
   onStorySuccess?: (entry: StoryIndexEntry, remoteStory: Story) => void;
-  onStorySkipped?: (entry: StoryIndexEntry, remoteStory: TargetStoryRef) => void;
+  onStorySkipped?: (entry: StoryIndexEntry, remoteStory: TargetStoryRef, reason: string) => void;
   onStoryError?: (error: Error, entry: StoryIndexEntry) => void;
 }): Promise<void> => {
   const tasks: Promise<void>[] = [];
@@ -345,7 +369,7 @@ export const createStoriesForLevel = async ({
           : undefined;
         if (mappedRemoteStory) {
           claimedRemoteIds.add(mappedRemoteStory.id);
-          onStorySkipped?.(entry, mappedRemoteStory);
+          onStorySkipped?.(entry, mappedRemoteStory, 'matched by manifest mapping from a previous push');
           return;
         }
 
@@ -356,26 +380,19 @@ export const createStoriesForLevel = async ({
         // an array of candidates. We prefer matching by is_folder to avoid
         // cross-mapping folders to startpages (which would break parent_id
         // resolution for children).
-        const normalizedSlug = entry.full_slug ? normalizeFullSlug(entry.full_slug) : undefined;
-        const slugCandidates = normalizedSlug
-          ? existingTargetStories.bySlug.get(normalizedSlug)
-          : undefined;
-        if (slugCandidates) {
-          const unclaimed = slugCandidates.filter(ref => !claimedRemoteIds.has(ref.id));
-          const match = unclaimed.find(ref => ref.is_folder === entry.is_folder) ?? unclaimed[0];
-          if (match) {
-            const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
-            if (isMatchConfirmed) {
-              claimedRemoteIds.add(match.id);
-              await appendToManifest(entry, match);
-              onStorySkipped?.(entry, match);
-              return;
-            }
+        const match = findSlugMatch({ entry, existingTargetStories, claimedRemoteIds });
+        if (match) {
+          const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
+          if (isMatchConfirmed) {
+            claimedRemoteIds.add(match.id);
+            await appendToManifest(entry, match);
+            onStorySkipped?.(entry, match, 'matched by slug in target space');
+            return;
           }
         }
 
         if (!entry.is_folder && !entry.component) {
-          throw new Error(`Story "${entry.slug}" is missing a content type (content.component). Every story must define a content field with a valid component.`);
+          throw new Error(`Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`);
         }
 
         // Resolve parent_id from the maps (parent was created in a previous level).

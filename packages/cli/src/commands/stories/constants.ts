@@ -121,7 +121,7 @@ export interface FetchStoriesResult {
 export type TargetStoryRef = Pick<Story, 'id' | 'uuid'> & { is_folder?: boolean };
 
 export interface ExistingTargetStories {
-  // folders and start_page can have the same lug, , we need TargetStoryRef[]
+  // folders and start_page can have the same slug, we need TargetStoryRef[]
   bySlug: Map<string, TargetStoryRef[]>;
   byId: Map<number, TargetStoryRef>;
 }

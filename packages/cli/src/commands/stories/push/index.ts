@@ -171,13 +171,13 @@ pushCmd
             summary.creationResults.succeeded += 1;
             creationProgress.increment();
           },
-          onStorySkipped(entry, remoteStory) {
+          onStorySkipped(entry, remoteStory, reason) {
             if (!entry.uuid || !remoteStory.uuid) {
               throw new Error('Invalid story provided!');
             }
             maps.stories.set(entry.id, remoteStory.id);
             maps.stories.set(entry.uuid, remoteStory.uuid);
-            logger.info('Skipped creating story', { storyId: entry.uuid });
+            logger.info(`Skipped creating story: ${reason}`, { storyId: entry.uuid });
             summary.creationResults.skipped += 1;
             creationProgress.increment();
           },

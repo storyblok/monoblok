@@ -1,0 +1,21 @@
+{
+  "id": 1011,
+  "name": "banner",
+  "display_name": "Banner",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "text": { "type": "text", "pos": 0, "display_name": "Text" },
+    "link": { "type": "multilink", "pos": 1, "display_name": "Link" },
+    "link_label": { "type": "text", "pos": 2, "display_name": "Link label" },
+    "is_dismissible": {
+      "type": "boolean",
+      "pos": 3,
+      "display_name": "Is dismissible",
+      "default_value": "false"
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

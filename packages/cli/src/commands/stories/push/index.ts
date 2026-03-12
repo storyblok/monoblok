@@ -9,7 +9,7 @@ import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { createStoryPlaceholderStream, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeCreateStoryAPITransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, writeStoryStream } from '../streams';
+import { createStoriesForLevel, groupStoriesByDepth, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, scanLocalStoryIndex, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
 import { prefetchTargetStories } from '../actions';
@@ -108,83 +108,96 @@ pushCmd
       fetchProgress.stop();
 
       const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
+
+      /**
+       * Pass 1: Scan local stories, group by depth, and create remote
+       * placeholders level-by-level so that parent folders exist before
+       * their children are created.
+       */
+      const scanProgress = ui.createProgressBar({ title: 'Scanning Stories...'.padEnd(21) });
+      const storyIndex = await scanLocalStoryIndex({
+        directoryPath: storiesDirectoryPath,
+        setTotalStories(total) {
+          scanProgress.setTotal(total);
+        },
+        onIncrement() {
+          scanProgress.increment();
+        },
+        onError(error, filename) {
+          summary.creationResults.failed += 1;
+          handleError(error, verbose, { storyFile: filename });
+        },
+      });
+      const levels = groupStoriesByDepth(storyIndex);
+      scanProgress.stop();
+
       const creationProgress = ui.createProgressBar({ title: 'Creating Stories...'.padEnd(21) });
       const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(21) });
       const updateProgress = ui.createProgressBar({ title: 'Updating Stories...'.padEnd(21) });
+      const totalStories = storyIndex.length + summary.creationResults.failed;
+      summary.creationResults.total = totalStories;
+      summary.processResults.total = totalStories;
+      summary.updateResults.total = totalStories;
+      creationProgress.setTotal(totalStories);
+      processProgress.setTotal(totalStories);
+      updateProgress.setTotal(totalStories);
 
-      /**
-       * Pass 1: Create remote stories and map their (UU)IDs to existing local stories.
-       */
-      await pipeline(
-        // Read local stories from `.json` files.
-        readLocalStoriesStream({
-          directoryPath: storiesDirectoryPath,
-          setTotalStories(total) {
-            summary.creationResults.total = total;
-            summary.processResults.total = total;
-            summary.updateResults.total = total;
-            creationProgress.setTotal(total);
-            processProgress.setTotal(total);
-            updateProgress.setTotal(total);
-          },
-          onStoryError(error, filename) {
-            summary.creationResults.failed += 1;
-            summary.processResults.total -= 1;
-            summary.updateResults.total -= 1;
-            processProgress.setTotal(summary.processResults.total);
-            updateProgress.setTotal(summary.updateResults.total);
-            creationProgress.increment();
-            handleError(error, verbose, { storyFile: filename });
-          },
-        }),
-        // Create remote stories.
-        createStoryPlaceholderStream({
+      const appendToManifest = options.dryRun
+        ? (() => Promise.resolve()) as ReturnType<typeof makeAppendToManifestFSTransport>
+        : makeAppendToManifestFSTransport({ manifestFile });
+
+      // Tracks which remote story IDs have been matched to a local entry,
+      // preventing two local stories from mapping to the same remote
+      // (e.g. after slug swaps or renames between pushes).
+      const claimedRemoteIds = new Set<number>();
+
+      for (const level of levels) {
+        await createStoriesForLevel({
+          level,
+          spaceId: space,
           maps,
           existingTargetStories,
+          claimedRemoteIds,
           isCrossSpace: fromSpace !== space,
-          transports: {
-            createStory: options.dryRun
-              ? async (story: Story) => story
-              : makeCreateStoryAPITransport({
-                  spaceId: space,
-                }),
-            appendStoryManifest: options.dryRun
-              ? () => Promise.resolve()
-              : makeAppendToManifestFSTransport({
-                  manifestFile,
-                }),
-          },
-          onStorySuccess(localStory, remoteStory) {
-            if (!localStory.uuid || !remoteStory.uuid) {
+          dryRun: options.dryRun ?? false,
+          appendToManifest,
+          onStorySuccess(entry, remoteStory) {
+            if (!entry.uuid || !remoteStory.uuid) {
               throw new Error('Invalid story provided!');
             }
-            maps.stories.set(localStory.id, remoteStory.id);
-            maps.stories.set(localStory.uuid, remoteStory.uuid);
+            maps.stories.set(entry.id, remoteStory.id);
+            maps.stories.set(entry.uuid, remoteStory.uuid);
             logger.info('Created story', { storyId: remoteStory.uuid });
             summary.creationResults.succeeded += 1;
+            creationProgress.increment();
           },
-          onStorySkipped(localStory, remoteStory) {
-            if (!localStory.uuid || !remoteStory.uuid) {
+          onStorySkipped(entry, remoteStory, reason) {
+            if (!entry.uuid || !remoteStory.uuid) {
               throw new Error('Invalid story provided!');
             }
-            maps.stories.set(localStory.id, remoteStory.id);
-            maps.stories.set(localStory.uuid, remoteStory.uuid);
-            logger.info('Skipped creating story', { storyId: localStory.uuid });
+            maps.stories.set(entry.id, remoteStory.id);
+            maps.stories.set(entry.uuid, remoteStory.uuid);
+            logger.info(`Skipped creating story: ${reason}`, { storyId: entry.uuid });
             summary.creationResults.skipped += 1;
+            creationProgress.increment();
           },
-          onStoryError(error, localStory) {
+          onStoryError(error, entry) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            handleError(error, verbose, { storyId: localStory?.uuid });
-          },
-          onIncrement() {
             creationProgress.increment();
+            handleError(error, verbose, { storyId: entry?.uuid });
           },
-        }),
-      );
+        });
+      }
+
+      if (summary.creationResults.failed > 0) {
+        const message = `${summary.creationResults.failed} ${summary.creationResults.failed === 1 ? 'story' : 'stories'} failed to create. References to these stories will be left unmapped.`;
+        ui.warn(message);
+        logger.warn(message);
+      }
 
       /**
        * Pass 2: Update remote stories with corrected references.

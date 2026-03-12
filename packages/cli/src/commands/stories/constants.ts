@@ -118,9 +118,25 @@ export interface FetchStoriesResult {
   headers: Headers;
 }
 
-export type TargetStoryRef = Pick<Story, 'id' | 'uuid'>;
+export type TargetStoryRef = Pick<Story, 'id' | 'uuid'> & { is_folder?: boolean };
 
 export interface ExistingTargetStories {
-  bySlug: Map<string, TargetStoryRef>;
+  // folders and start_page can have the same slug, we need TargetStoryRef[]
+  bySlug: Map<string, TargetStoryRef[]>;
   byId: Map<number, TargetStoryRef>;
 }
+
+export interface StoryIndexEntry {
+  filename: string;
+  id: number | string;
+  uuid: string;
+  slug: string;
+  name: string;
+  full_slug: string;
+  is_folder: boolean;
+  is_startpage: boolean;
+  parent_id: number | string | null;
+  component?: string;
+}
+
+export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');

@@ -5,7 +5,8 @@ import { Sema } from 'async-sema';
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
-import type { ExistingTargetStories, StoriesQueryParams, TargetStoryRef } from './constants';
+import type { ExistingTargetStories, StoriesQueryParams, StoryIndexEntry, TargetStoryRef } from './constants';
+import { normalizeFullSlug } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
@@ -205,134 +206,248 @@ export const mapReferencesStream = ({
   });
 };
 
-export type CreateStoryTransport = (story: Story) => Promise<Story>;
-
-export const makeCreateStoryAPITransport = ({ spaceId }: {
-  spaceId: string;
-}): CreateStoryTransport => async (localStory) => {
-  // Exclude parent_id and is_startpage from the creation payload.
-  // The correct parent_id is set in Pass 2 when the full ID map is available.
-  // Sending is_startpage without a parent_id causes a 422 from the API.
-  const { id: _id, uuid: _uuid, parent_id: _parentId, is_startpage: _isStartpage, content, ...newStoryData } = localStory;
-
-  if (!localStory.is_folder && !content?.component) {
-    throw new Error(`Story "${localStory.slug}" is missing a content type (content.component). Every story must define a content field with a valid component.`);
-  }
-
-  const remoteStory = await createStory(spaceId, {
-    story: {
-      ...newStoryData,
-      ...(content?.component
-        ? { content: { _uid: '', component: '__migration_artifact__' } }
-        : {}),
-    },
-    publish: 0,
-  });
-  if (!remoteStory) {
-    throw new Error('No response!');
-  }
-
-  return remoteStory;
-};
-
-export type AppendToManifestTransport = (localStory: Story, remoteStory: TargetStoryRef) => Promise<void>;
+export type AppendToManifestTransport = (entry: StoryIndexEntry, remoteStory: TargetStoryRef) => Promise<void>;
 
 export const makeAppendToManifestFSTransport = ({ manifestFile }: {
   manifestFile: string;
-}): AppendToManifestTransport => async (localStory, remoteStory) => {
+}): AppendToManifestTransport => async (entry, remoteStory) => {
   const createdAt = new Date().toISOString();
   await appendToFile(manifestFile, JSON.stringify({
-    old_id: localStory.uuid,
+    old_id: entry.uuid,
     new_id: remoteStory.uuid,
     created_at: createdAt,
   }));
   await appendToFile(manifestFile, JSON.stringify({
-    old_id: localStory.id,
+    old_id: entry.id,
     new_id: remoteStory.id,
     created_at: createdAt,
   }));
 };
 
-export const createStoryPlaceholderStream = ({
+/**
+ * Scans all local `.json` story files and returns a lightweight index
+ * (metadata only, no full content) used for level-by-level creation ordering.
+ */
+export const scanLocalStoryIndex = async ({
+  directoryPath,
+  setTotalStories,
+  onIncrement,
+  onError,
+}: {
+  directoryPath: string;
+  setTotalStories?: (total: number) => void;
+  onIncrement?: () => void;
+  onError?: (error: Error, filename: string) => void;
+}): Promise<StoryIndexEntry[]> => {
+  const files = (await readDirectory(directoryPath)).filter(f => extname(f) === '.json');
+  setTotalStories?.(files.length);
+  const entries: StoryIndexEntry[] = [];
+
+  for (const file of files) {
+    try {
+      const filePath = join(directoryPath, file);
+      const fileContent = await readFile(filePath, 'utf-8');
+      const story = JSON.parse(fileContent) as Story;
+      entries.push({
+        filename: file,
+        id: story.id,
+        uuid: story.uuid ?? '',
+        slug: story.slug ?? '',
+        name: story.name ?? '',
+        full_slug: story.full_slug ?? '',
+        is_folder: story.is_folder ?? false,
+        is_startpage: (story as Record<string, unknown>).is_startpage === true,
+        parent_id: story.parent_id ?? null,
+        component: story.content?.component,
+      });
+    }
+    catch (maybeError) {
+      onError?.(toError(maybeError), file);
+    }
+    finally {
+      onIncrement?.();
+    }
+  }
+
+  return entries;
+};
+
+export const groupStoriesByDepth = (entries: StoryIndexEntry[]): StoryIndexEntry[][] => {
+  const depthMap = new Map<number, StoryIndexEntry[]>();
+
+  for (const entry of entries) {
+    const slug = normalizeFullSlug(entry.full_slug || '');
+    const depth = slug === '' ? 0 : slug.split('/').length - 1;
+    if (!depthMap.has(depth)) {
+      depthMap.set(depth, []);
+    }
+    depthMap.get(depth)!.push(entry);
+  }
+
+  const maxDepth = depthMap.size > 0 ? Math.max(...depthMap.keys()) : 0;
+  const levels: StoryIndexEntry[][] = [];
+
+  for (let d = 0; d <= maxDepth; d++) {
+    const level = depthMap.get(d);
+    if (!level || level.length === 0) {
+      continue;
+    }
+    // Folders first so that concurrent task ordering is deterministic
+    // (parent-child correctness is guaranteed by the level-by-level iteration,
+    // since a folder is always at a shallower depth than its children).
+    level.sort((a, b) => {
+      if (a.is_folder && !b.is_folder) {
+        return -1;
+      }
+      if (!a.is_folder && b.is_folder) {
+        return 1;
+      }
+      return 0;
+    });
+    levels.push(level);
+  }
+
+  return levels;
+};
+
+const findSlugMatch = ({
+  entry,
+  existingTargetStories,
+  claimedRemoteIds,
+}: {
+  entry: StoryIndexEntry;
+  existingTargetStories: ExistingTargetStories;
+  claimedRemoteIds: Set<number>;
+}): TargetStoryRef | undefined => {
+  const normalizedSlug = entry.full_slug ? normalizeFullSlug(entry.full_slug) : undefined;
+  const slugCandidates = normalizedSlug
+    ? existingTargetStories.bySlug.get(normalizedSlug)
+    : undefined;
+  if (!slugCandidates) {
+    return undefined;
+  }
+  const unclaimed = slugCandidates.filter(ref => !claimedRemoteIds.has(ref.id));
+  return unclaimed.find(ref => ref.is_folder === entry.is_folder) ?? unclaimed[0];
+};
+
+export const createStoriesForLevel = async ({
+  level,
+  spaceId,
   maps,
   existingTargetStories,
+  claimedRemoteIds,
   isCrossSpace,
-  transports,
-  onIncrement,
+  dryRun,
+  appendToManifest,
   onStorySuccess,
   onStorySkipped,
   onStoryError,
 }: {
+  level: StoryIndexEntry[];
+  spaceId: string;
   maps: RefMaps;
   existingTargetStories: ExistingTargetStories;
+  claimedRemoteIds: Set<number>;
   isCrossSpace: boolean;
-  transports: {
-    createStory: CreateStoryTransport;
-    appendStoryManifest: AppendToManifestTransport;
-  };
-  onIncrement?: () => void;
-  onStorySuccess?: (localStory: Story, remoteStory: Story) => void;
-  onStorySkipped?: (localStory: Story, remoteStory: TargetStoryRef) => void;
-  onStoryError?: (error: Error, story: Story) => void;
-}) => {
-  const processing = new Set<Promise<void>>();
+  dryRun: boolean;
+  appendToManifest: AppendToManifestTransport;
+  onStorySuccess?: (entry: StoryIndexEntry, remoteStory: Story) => void;
+  onStorySkipped?: (entry: StoryIndexEntry, remoteStory: TargetStoryRef, reason: string) => void;
+  onStoryError?: (error: Error, entry: StoryIndexEntry) => void;
+}): Promise<void> => {
+  const processEntry = async (entry: StoryIndexEntry) => {
+    await apiConcurrencyLock.acquire();
+    try {
+      // Primary: check manifest mapping (from a previous push).
+      const mappedStoryId = maps.stories?.get(entry.id);
+      const mappedRemoteStory = mappedStoryId
+        ? existingTargetStories.byId.get(Number(mappedStoryId))
+        : undefined;
+      if (mappedRemoteStory) {
+        claimedRemoteIds.add(mappedRemoteStory.id);
+        onStorySkipped?.(entry, mappedRemoteStory, 'matched by manifest mapping from a previous push');
+        return;
+      }
 
-  return new Writable({
-    objectMode: true,
-    async write(localStory: Story, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
-
-      const task = (async () => {
-        try {
-          // Primary: check manifest mapping (from a previous push).
-          const mappedStoryId = maps.stories?.get(localStory.id);
-          const mappedRemoteStory = mappedStoryId
-            ? existingTargetStories.byId.get(Number(mappedStoryId))
-            : undefined;
-          if (mappedRemoteStory) {
-            onStorySkipped?.(localStory, mappedRemoteStory);
-            return;
-          }
-
-          // Fallback: match by full_slug when no manifest entry exists (first push).
-          // Handles same-space pushes and cross-space pushes
-          const existingBySlug = localStory.full_slug
-            ? existingTargetStories.bySlug.get(localStory.full_slug)
-            : undefined;
-          if (existingBySlug) {
-            // Same-space: verify UUID to avoid binding to an unrelated story that
-            // was recreated at the same slug between pull and push.
-            // Cross-space: UUIDs always differ, so we can only match by slug.
-            const isMatchConfirmed = isCrossSpace || existingBySlug.uuid === localStory.uuid;
-            if (isMatchConfirmed) {
-              await transports.appendStoryManifest(localStory, existingBySlug);
-              onStorySkipped?.(localStory, existingBySlug);
-              return;
-            }
-          }
-
-          const newRemoteStory = await transports.createStory(localStory);
-          await transports.appendStoryManifest(localStory, newRemoteStory);
-          onStorySuccess?.(localStory, newRemoteStory);
+      // Fallback: match by full_slug when no manifest entry exists (first push).
+      // Only match if the remote story hasn't already been claimed by another
+      // local entry (prevents mis-matching after slug swaps or renames).
+      // A folder and its startpage share the same full_slug, so bySlug stores
+      // an array of candidates. We prefer matching by is_folder to avoid
+      // cross-mapping folders to startpages (which would break parent_id
+      // resolution for children).
+      const match = findSlugMatch({ entry, existingTargetStories, claimedRemoteIds });
+      if (match) {
+        const isMatchConfirmed = isCrossSpace || match.uuid === entry.uuid;
+        if (isMatchConfirmed) {
+          claimedRemoteIds.add(match.id);
+          await appendToManifest(entry, match);
+          onStorySkipped?.(entry, match, 'matched by slug in target space');
+          return;
         }
-        catch (maybeError) {
-          onStoryError?.(toError(maybeError), localStory);
-        }
-      })();
+      }
 
-      processing.add(task);
-      task.finally(() => {
-        onIncrement?.();
-        apiConcurrencyLock.release();
-        processing.delete(task);
+      if (!entry.is_folder && !entry.component) {
+        throw new Error(`Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`);
+      }
+
+      // Resolve parent_id from the maps (parent was created in a previous level).
+      const resolvedParentId = entry.parent_id != null
+        ? maps.stories?.get(entry.parent_id)
+        : undefined;
+
+      if (dryRun) {
+        const fakeRemote = { id: entry.id, uuid: entry.uuid } as Story;
+        onStorySuccess?.(entry, fakeRemote);
+        return;
+      }
+
+      const remoteStory = await createStory(spaceId, {
+        story: {
+          slug: entry.slug,
+          name: entry.name,
+          is_folder: entry.is_folder,
+          ...(resolvedParentId != null ? { parent_id: Number(resolvedParentId) } : {}),
+          ...(entry.is_startpage && resolvedParentId != null ? { is_startpage: true } : {}),
+          ...(entry.component
+            ? { content: { _uid: '', component: entry.component } }
+            : {}),
+        },
+        publish: 0,
       });
+      if (!remoteStory) {
+        throw new Error('No response!');
+      }
 
-      callback();
-    },
-    final(callback) {
-      Promise.all(processing).finally(() => callback());
-    },
-  });
+      await appendToManifest(entry, remoteStory);
+      onStorySuccess?.(entry, remoteStory);
+    }
+    catch (maybeError) {
+      onStoryError?.(toError(maybeError), entry);
+    }
+    finally {
+      apiConcurrencyLock.release();
+    }
+  };
+
+  // Process folders first and await them before non-folders.
+  // A startpage shares the same full_slug (and depth) as its parent folder,
+  // so both land in the same level. Without this split the folder's ID might
+  // not be mapped yet when the startpage tries to resolve its parent_id.
+  const folders = level.filter(e => e.is_folder);
+  const nonFolders = level.filter(e => !e.is_folder);
+
+  const folderTasks: Promise<void>[] = [];
+  for (const entry of folders) {
+    folderTasks.push(processEntry(entry));
+  }
+  await Promise.all(folderTasks);
+
+  const storyTasks: Promise<void>[] = [];
+  for (const entry of nonFolders) {
+    storyTasks.push(processEntry(entry));
+  }
+  await Promise.all(storyTasks);
 };
 
 export type WriteStoryTransport = (story: Story) => Promise<Story>;
@@ -357,15 +472,28 @@ export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;
 export const makeCleanupStoryFSTransport = ({ directoryPath, maps }: {
   directoryPath: string;
   maps: RefMaps;
-}): CleanupStoryTransport => async (mappedStory: Story) => {
-  const mapEntry = maps.stories?.entries().find(([_, v]) => v === mappedStory.uuid);
-  const originalUuid = mapEntry?.[0] && typeof mapEntry?.[0] === 'string' ? mapEntry?.[0] : mappedStory.uuid;
-  const storyFilename = getStoryFilename({
-    slug: mappedStory.slug,
-    uuid: originalUuid,
-  });
-  const storyFilePath = resolve(directoryPath, storyFilename);
-  await unlink(storyFilePath);
+}): CleanupStoryTransport => {
+  // Pre-build reverse lookup (remoteUuid → localUuid) so each cleanup call
+  // is O(1) instead of scanning the full map.
+  const reverseUuidMap = new Map<string | number, string>();
+  if (maps.stories) {
+    for (const [key, value] of maps.stories.entries()) {
+      if (typeof key === 'string') {
+        reverseUuidMap.set(value, key);
+      }
+    }
+  }
+
+  return async (mappedStory: Story) => {
+    const uuid = mappedStory.uuid ?? '';
+    const originalUuid = reverseUuidMap.get(uuid) ?? uuid;
+    const storyFilename = getStoryFilename({
+      slug: mappedStory.slug,
+      uuid: originalUuid,
+    });
+    const storyFilePath = resolve(directoryPath, storyFilename);
+    await unlink(storyFilePath);
+  };
 };
 
 export const writeStoryStream = ({

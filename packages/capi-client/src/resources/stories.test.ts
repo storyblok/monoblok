@@ -573,6 +573,78 @@ describe('inlineRelations', () => {
   });
 });
 
+describe('fetchOptions', () => {
+  it('should forward non-standard fetchOptions to the underlying fetch call', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ story: makeStory('test', { component: 'page', _uid: 'uid-1' }) }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.get('test-story', {
+      fetchOptions: { next: { revalidate: 60 } },
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).toMatchObject({ next: { revalidate: 60 } });
+  });
+
+  it('should forward fetchOptions in stories.getAll()', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ stories: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.getAll({
+      fetchOptions: { next: { revalidate: 120, tags: ['stories'] } },
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).toMatchObject({ next: { revalidate: 120, tags: ['stories'] } });
+  });
+
+  it('should not pass kyOptions when fetchOptions is omitted', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ story: makeStory('test', { component: 'page', _uid: 'uid-1' }) }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.get('test-story');
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).not.toHaveProperty('next');
+  });
+});
+
 describe('generic GET method', () => {
   it('should perform GET requests with query params', async () => {
     server.use(

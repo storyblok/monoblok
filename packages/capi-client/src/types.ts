@@ -17,6 +17,25 @@ export type HttpRequestMethod = <TData = unknown>(
   options?: HttpRequestOptions,
 ) => Promise<ApiResponse<TData>>;
 
+/**
+ * Arbitrary options forwarded to the underlying `fetch()` call.
+ *
+ * Standard `RequestInit` properties (`cache`, `credentials`, `mode`, …) and
+ * non-standard, vendor-specific properties (Next.js `next`, Cloudflare `cf`, …)
+ * are both supported.
+ *
+ * @example
+ * ```ts
+ * client.stories.get('home', {
+ *   fetchOptions: {
+ *     cache: 'no-store',
+ *     next: { revalidate: 60, tags: ['home'] },
+ *   },
+ * })
+ * ```
+ */
+export type FetchOptions = Record<string, unknown>;
+
 export interface ResourceDeps {
   client: Client;
   requestWithCache: <TData, ThrowOnError extends boolean = false>(

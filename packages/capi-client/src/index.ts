@@ -10,7 +10,7 @@ import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { RetryOptions } from 'ky';
 import type { Client } from './generated/shared/client';
-import type { ApiResponse, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
+import type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
 import { createStoriesResource } from './resources/stories';
 import { createLinksResource } from './resources/links';
 import { createTagsResource } from './resources/tags';
@@ -29,7 +29,7 @@ export type { DatasourceCapi as Datasource } from './generated/datasources/types
 export type { LinkCapi as Link } from './generated/links/types.gen';
 export type { Middleware } from './generated/shared/client/utils.gen';
 export type { SpaceCapi as Space } from './generated/spaces/types.gen';
-export type { ApiResponse, HttpRequestMethod, HttpRequestOptions };
+export type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions };
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler };
 export type { RateLimitConfig };
 export type { TagCapi as Tag } from './generated/tags/types.gen';

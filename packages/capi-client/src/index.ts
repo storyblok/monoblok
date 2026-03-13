@@ -10,7 +10,7 @@ import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { RetryOptions } from 'ky';
 import type { Client } from './generated/shared/client';
-import type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions, ResourceDeps } from './types';
+import type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions, RequestWithCacheOptions, ResourceDeps } from './types';
 import { createStoriesResource } from './resources/stories';
 import { createLinksResource } from './resources/links';
 import { createTagsResource } from './resources/tags';
@@ -57,6 +57,12 @@ interface CacheConfig {
    * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
    */
   flush?: 'auto' | 'manual';
+  /**
+   * Called when SWR background revalidation fails.
+   * Only relevant when `strategy` is `'swr'`.
+   * @default console.warn
+   */
+  onRevalidationError?: (error: unknown) => void;
 }
 
 export interface ContentApiClientConfig<
@@ -121,9 +127,10 @@ export const createApiClient = <
   // `rateLimit` defaults to `{}` (auto-detect mode) when not supplied.
   const throttleManager = createThrottleManager(rateLimit ?? {});
   const cacheProvider = cache.provider ?? createMemoryCacheProvider();
+  const swrOptions = cache.onRevalidationError ? { onRevalidationError: cache.onRevalidationError } : undefined;
   const strategy = cache.strategy
     ? typeof cache.strategy === 'string'
-      ? createStrategy(cache.strategy)
+      ? createStrategy(cache.strategy, swrOptions)
       : cache.strategy
     : createStrategy('cache-first');
   const cacheTtlMs = cache.ttlMs ?? 60_000;
@@ -225,6 +232,7 @@ export const createApiClient = <
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+    cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
     const query = currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
@@ -236,7 +244,8 @@ export const createApiClient = <
       return networkResult;
     }
 
-    const key = createCacheKey(method, path, rawQuery);
+    const baseKey = createCacheKey(method, path, rawQuery);
+    const key = cacheOptions?.cacheKeyPrefix ? `${cacheOptions.cacheKeyPrefix}:${baseKey}` : baseKey;
     const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
     const cachedResult = cachedEntry?.value;
 

@@ -99,7 +99,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             story: inlineStoryContent(response.data.story, resolved.relationPaths, resolved.relationMap),
           },
         };
-      });
+      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
     },
 
     getAll: async <ThrowOnError extends boolean = false>(
@@ -134,7 +134,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             stories: inlineStoriesContent(response.data.stories, resolved.relationPaths, resolved.relationMap),
           },
         };
-      });
+      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
     },
   };
 }

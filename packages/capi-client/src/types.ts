@@ -36,6 +36,11 @@ export type HttpRequestMethod = <TData = unknown>(
  */
 export type FetchOptions = Record<string, unknown>;
 
+export interface RequestWithCacheOptions {
+  /** Prefix added to the cache key to namespace entries (e.g. `'inline'`). */
+  cacheKeyPrefix?: string;
+}
+
 export interface ResourceDeps {
   client: Client;
   requestWithCache: <TData, ThrowOnError extends boolean = false>(
@@ -43,6 +48,7 @@ export interface ResourceDeps {
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+    options?: RequestWithCacheOptions,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   asApiResponse: <TData, ThrowOnError extends boolean = false>(p: Promise<unknown>) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;

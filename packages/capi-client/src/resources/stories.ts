@@ -10,7 +10,7 @@ import type {
   TableField,
 } from '../generated/stories';
 import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
-import type { ApiResponse, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
 
 type InlinedStoryContentField =
   | string
@@ -64,9 +64,9 @@ export function createStoriesResource<InlineRelations extends boolean>(
   return {
     get: async <ThrowOnError extends boolean = false>(
       identifier: StoryIdentifier,
-      options: { query?: GetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
+      options: { query?: GetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<GetResponse<InlineRelations>, ThrowOnError>> => {
-      const { query = {}, signal, throwOnError } = options;
+      const { query = {}, signal, throwOnError, fetchOptions } = options;
       const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !query.find_by
         ? { ...query, find_by: 'uuid' as const }
         : query;
@@ -80,6 +80,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
           })));
 
         if (!inlineRelations || response.data === undefined) {
@@ -98,13 +99,13 @@ export function createStoriesResource<InlineRelations extends boolean>(
             story: inlineStoryContent(response.data.story, resolved.relationPaths, resolved.relationMap),
           },
         };
-      });
+      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
     },
 
     getAll: async <ThrowOnError extends boolean = false>(
-      options: { query?: GetAllData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
+      options: { query?: GetAllData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>> => {
-      const { query = {}, signal, throwOnError } = options;
+      const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/stories';
       type ResAll = ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>;
       return requestWithCache<GetAllResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<ResAll> => {
@@ -114,6 +115,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
           })));
 
         if (!inlineRelations || response.data === undefined) {
@@ -132,7 +134,7 @@ export function createStoriesResource<InlineRelations extends boolean>(
             stories: inlineStoriesContent(response.data.stories, resolved.relationPaths, resolved.relationMap),
           },
         };
-      });
+      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
     },
   };
 }

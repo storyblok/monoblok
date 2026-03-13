@@ -166,14 +166,17 @@ export const resolveRelationMap = async (
 
   const relationMap = buildRelationMap(responseData.rels);
   if (responseData.rel_uuids?.length) {
-    const fetchedRelations = await fetchMissingRelations({
-      client,
-      uuids: responseData.rel_uuids,
-      baseQuery: requestQuery,
-      throttleManager,
-    });
-    for (const relationStory of fetchedRelations) {
-      relationMap.set(relationStory.uuid, relationStory);
+    const missingUuids = responseData.rel_uuids.filter(uuid => !relationMap.has(uuid));
+    if (missingUuids.length > 0) {
+      const fetchedRelations = await fetchMissingRelations({
+        client,
+        uuids: missingUuids,
+        baseQuery: requestQuery,
+        throttleManager,
+      });
+      for (const relationStory of fetchedRelations) {
+        relationMap.set(relationStory.uuid, relationStory);
+      }
     }
   }
 

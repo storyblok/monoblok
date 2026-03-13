@@ -1,15 +1,15 @@
 import { get as getSpaceApi } from '../generated/spaces/sdk.gen';
 import type { GetResponses as SpacesGetResponses } from '../generated/spaces/types.gen';
-import type { ApiResponse, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
 
 export function createSpacesResource(deps: ResourceDeps) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
     get: async <ThrowOnError extends boolean = false>(
-      options: { signal?: AbortSignal; throwOnError?: ThrowOnError } = {},
+      options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<SpacesGetResponses[200], ThrowOnError>> => {
-      const { signal, throwOnError } = options;
+      const { signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/spaces/me';
       return requestWithCache<SpacesGetResponses[200], ThrowOnError>('GET', requestPath, {}, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
@@ -21,6 +21,7 @@ export function createSpacesResource(deps: ResourceDeps) {
             query: requestQuery as never,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
           })));
       });
     },

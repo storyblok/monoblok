@@ -737,14 +737,17 @@ export class Storyblok {
         const isCacheClearable = (this.cache.clear === 'onpreview' && params.version === 'draft')
           || this.cache.clear === 'auto';
 
-        if (params.token && response.data.cv) {
+        // Get cv from story or space
+        const cv = response.data.cv ?? response.data.space?.version;
+
+        if (params.token && cv) {
           if (isCacheClearable
             && cacheVersions[params.token] // there is a cache
-            && cacheVersions[params.token] !== response.data.cv // a new cv is incoming
+            && cacheVersions[params.token] !== cv // a new cv is incoming
           ) {
             await this.flushCache();
           }
-          cacheVersions[params.token] = response.data.cv;
+          cacheVersions[params.token] = cv;
         }
 
         return resolve(response);

@@ -21,6 +21,7 @@ import {
   StoryblokTableCell,
   StoryblokTableHeader,
   StoryblokTableRow,
+  StoryblokTextAlign,
   Text,
 } from './nodes';
 import {
@@ -93,6 +94,7 @@ const defaultExtensions = {
   anchor: StoryblokAnchor,
   styled: StoryblokStyled,
   reporter: Reporter,
+  textAlign: StoryblokTextAlign,
 };
 
 export { defaultExtensions };

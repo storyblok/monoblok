@@ -16,10 +16,14 @@ import { optimizeImage } from '../images-optimization';
 import type { StoryblokRichTextImageOptimizationOptions } from '../types';
 import { cleanObject } from '../utils';
 import { computeTableCellAttrs, processBlockAttrs } from './utils';
+import TextAlign from '@tiptap/extension-text-align';
 
 // Re-export unmodified extensions
 export { Details, DetailsContent, DetailsSummary, Document, Text };
 
+export const StoryblokTextAlign = TextAlign.configure({
+  types: ['heading', 'paragraph'],
+});
 // Blockquote, Paragraph, Heading need processBlockAttrs for textAlign support
 export const StoryblokBlockquote = Blockquote.extend({
   renderHTML({ HTMLAttributes }) {
@@ -59,6 +63,13 @@ export const StoryblokBulletList = BulletList.extend({
 
 export const StoryblokOrderedList = OrderedList.extend({
   name: 'ordered_list',
+  addAttributes() {
+    return {
+      order: {
+        default: 1,
+      },
+    };
+  },
   addOptions() {
     return { ...this.parent!(), itemTypeName: 'list_item' };
   },

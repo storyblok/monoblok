@@ -32,7 +32,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if bash tools/release-guard.sh --ci < /tmp/changed-files.txt > /tmp/touched-packages.txt; then
+          if bash tools/release-guard.sh < /tmp/changed-files.txt > /tmp/touched-packages.txt; then
             echo "cross_package=false" >> "$GITHUB_OUTPUT"
           else
             echo "cross_package=true" >> "$GITHUB_OUTPUT"

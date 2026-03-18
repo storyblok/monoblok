@@ -1,2 +1,1 @@
-bash tools/release-guard.sh
 pnpm exec lint-staged --relative

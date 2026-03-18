@@ -223,6 +223,9 @@ describe('hTML → Richtext: Options & configuration', () => {
         type: 'doc',
         content: [
           {
+            attrs: {
+              textAlign: null,
+            },
             type: 'paragraph',
             content: [
               { type: 'text', text: 'foo ' },
@@ -231,6 +234,9 @@ describe('hTML → Richtext: Options & configuration', () => {
           },
           {
             type: 'paragraph',
+            attrs: {
+              textAlign: null,
+            },
             content: [
               { type: 'text', text: 'baz ' },
               { type: 'text', marks: [{ type: 'styled', attrs: { class: 'style-2' } }], text: 'qux' },
@@ -238,6 +244,9 @@ describe('hTML → Richtext: Options & configuration', () => {
           },
           {
             type: 'paragraph',
+            attrs: {
+              textAlign: null,
+            },
             content: [
               { type: 'text', text: 'corge grault ' },
               {
@@ -265,6 +274,9 @@ describe('hTML → Richtext: Options & configuration', () => {
         content: [
           {
             type: 'paragraph',
+            attrs: {
+              textAlign: null,
+            },
             content: [
               { text: 'Hello ', type: 'text' },
               {
@@ -291,6 +303,9 @@ describe('hTML → Richtext: Options & configuration', () => {
         content: [
           {
             type: 'paragraph',
+            attrs: {
+              textAlign: null,
+            },
             content: [
               { text: 'Hello ', type: 'text' },
               {

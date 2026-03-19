@@ -71,7 +71,8 @@
     "playground:all": "pnpm -r --parallel --filter='./playground/*' run dev",
     "release": "release-it",
     "release:dry": "release-it --dry-run",
-    "generate-types": "tsx src/renderer/generate-attribute-type.ts"
+    "generate-types": "tsx src/static/generate-attribute-type.ts",
+    "generate-render-map": "tsx src/static/generate-render-map.ts"
   },
   "dependencies": {
     "@tiptap/core": "^3.10.2",

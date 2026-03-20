@@ -58,7 +58,7 @@ deleteCmd
         // Delete by id
         const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, options.id);
-        spinner.succeed();
+        spinner.succeed(`Datasource deleted`);
         konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully from space ${space}.`);
       }
       else {
@@ -90,7 +90,7 @@ deleteCmd
         }
         const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, datasource.id.toString());
-        spinner.succeed();
+        spinner.succeed(`Datasource deleted`);
         konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
       }
     }

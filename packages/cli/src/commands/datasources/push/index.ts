@@ -8,7 +8,7 @@ import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { deleteDatasourceEntry, readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
-import { Spinner } from '@topcli/spinner';
+import { getUI } from '../../../utils/ui';
 
 const pushCmd = datasourcesCommand
   .command('push [datasourceName]')
@@ -93,12 +93,10 @@ pushCmd
         failed: [] as Array<{ name: string; error: unknown }>,
       };
 
-      for (const datasource of spaceState.local.datasources) {
-        const spinner = new Spinner({
-          verbose,
-        });
+      const ui = getUI();
 
-        spinner.start(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
+      for (const datasource of spaceState.local.datasources) {
+        const spinner = ui.createSpinner(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
 
         // Check if datasource already exists in target space by name
         const existingDatasource = spaceState.target.datasources.get(datasource.name);

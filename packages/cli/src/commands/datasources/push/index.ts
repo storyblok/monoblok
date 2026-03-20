@@ -9,6 +9,7 @@ import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { deleteDatasourceEntry, readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
 import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pushCmd = datasourcesCommand
   .command('push [datasourceName]')
@@ -41,6 +42,9 @@ pushCmd
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
+    const logger = getLogger();
+    logger.info('Pushing datasources started', { space, fromSpace, datasourceName, filter });
+
     konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
 
@@ -133,6 +137,7 @@ pushCmd
 
             try {
               await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
+              logger.info(existingEntryId ? 'Updated datasource entry' : 'Created datasource entry', { datasource: datasource.name, entry: entry.name, position: i + 1 });
             }
             catch (entryError) {
               results.failed.push({ name: datasource.name, error: entryError });
@@ -146,6 +151,7 @@ pushCmd
           for (const stale of staleEntries) {
             try {
               await deleteDatasourceEntry(space, stale.id);
+              logger.info('Deleted datasource entry', { datasource: datasource.name, entry: stale.name, entryId: stale.id });
             }
             catch (entryError) {
               results.failed.push({ name: datasource.name, error: entryError });
@@ -175,5 +181,8 @@ pushCmd
     }
     catch (error) {
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pushing datasources finished', { space, fromSpace });
     }
   });

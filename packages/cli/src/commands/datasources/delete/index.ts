@@ -9,6 +9,7 @@ import type { DeleteDatasourceOptions } from './constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
 import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
 const deleteCmd = datasourcesCommand
@@ -48,6 +49,8 @@ deleteCmd
     }
 
     const ui = getUI();
+    const logger = getLogger();
+    logger.info('Deleting datasource started', { space, name, id: options.id });
 
     try {
       // Use id if provided, otherwise use name
@@ -93,5 +96,8 @@ deleteCmd
     }
     catch (error) {
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Deleting datasource finished', { space, name, id: options.id });
     }
   });

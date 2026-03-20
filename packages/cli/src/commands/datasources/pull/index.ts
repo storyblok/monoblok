@@ -11,6 +11,7 @@ import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pullCmd = datasourcesCommand
   .command('pull [datasourceName]')
@@ -48,6 +49,8 @@ pullCmd
     }
 
     const ui = getUI();
+    const logger = getLogger();
+    logger.info('Pulling datasources started', { space, datasourceName });
     const spinnerDatasources = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
 
     try {
@@ -105,5 +108,8 @@ pullCmd
       spinnerDatasources.failed(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Failed`);
       konsola.br();
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pulling datasources finished', { space, datasourceName });
     }
   });

@@ -8,6 +8,19 @@ import { colorPalette } from '../../../constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
 
+const loggerInfoMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../lib/logger/logger', () => ({
+  getLogger: () => ({
+    info: loggerInfoMock,
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    transports: [],
+  }),
+  setLoggerTransports: vi.fn(),
+}));
+
 vi.mock('./actions', () => ({
   deleteDatasource: vi.fn(),
 }));
@@ -33,6 +46,7 @@ describe('datasources delete command', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    loggerInfoMock.mockReset();
     // Reset the option values
     (datasourcesCommand as any)._optionValues = {};
     for (const command of datasourcesCommand.commands) {
@@ -45,6 +59,13 @@ describe('datasources delete command', () => {
     await datasourcesCommand.parseAsync(['node', 'test', 'delete', '--space', '12345', '--id', '45678']);
     expect(deleteDatasource).toHaveBeenCalledWith('12345', '45678');
     expect(konsola.ok).toHaveBeenCalledWith(`Datasource ${chalk.hex(colorPalette.DATASOURCES)('45678')} deleted successfully from space 12345.`);
+  });
+
+  it('should log start and finish events', async () => {
+    vi.mocked(deleteDatasource).mockResolvedValue(undefined);
+    await datasourcesCommand.parseAsync(['node', 'test', 'delete', '--space', '12345', '--id', '45678']);
+    expect(loggerInfoMock).toHaveBeenCalledWith('Deleting datasource started', expect.objectContaining({ space: '12345', id: '45678' }));
+    expect(loggerInfoMock).toHaveBeenCalledWith('Deleting datasource finished', expect.objectContaining({ space: '12345', id: '45678' }));
   });
 
   it('should delete a datasource by name', async () => {

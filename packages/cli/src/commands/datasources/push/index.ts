@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
@@ -95,7 +95,7 @@ pushCmd
 
       for (const datasource of spaceState.local.datasources) {
         const spinner = new Spinner({
-          verbose: !isVitest,
+          verbose,
         });
 
         spinner.start(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);

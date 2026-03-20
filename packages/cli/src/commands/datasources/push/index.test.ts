@@ -210,8 +210,8 @@ describe('push datasources', () => {
 
       await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
 
-      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![0], 10, 0);
-      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![1], 11, 1);
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![0], 10, 1);
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![1], 11, 2);
     });
 
     it('should create renamed entry and delete stale entry', async () => {
@@ -239,8 +239,8 @@ describe('push datasources', () => {
 
       await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
 
-      // "navy" doesn't match "blue" by name, so created with position 0
-      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, renamedDatasource.entries![0], undefined, 0);
+      // "navy" doesn't match "blue" by name, so created with position 1
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, renamedDatasource.entries![0], undefined, 1);
       // "blue" is stale and should be deleted
       expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 10);
     });

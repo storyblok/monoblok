@@ -119,7 +119,7 @@ pushCmd
             const entry = localEntries[i];
             const existingEntryId = existingEntries.find(e => e.name === entry.name)?.id;
             try {
-              await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i);
+              await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
             }
             catch (entryError) {
               results.failed.push({ name: datasource.name, error: entryError });

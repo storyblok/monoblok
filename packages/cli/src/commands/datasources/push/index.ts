@@ -6,7 +6,7 @@ import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
-import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
+import { deleteDatasourceEntry, readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
 import { Spinner } from '@topcli/spinner';
 
@@ -111,17 +111,32 @@ pushCmd
         if (result) {
           results.successful.push(datasource.name);
 
-          // Handle entries if they exist
-          if (entries && entries.length > 0) {
-            for (const entry of entries) {
-              const existingEntryId = existingDatasource?.entries?.find(e => e.name === entry.name)?.id;
-              try {
-                await upsertDatasourceEntry(space, result.id, entry, existingEntryId);
-              }
-              catch (entryError) {
-                results.failed.push({ name: datasource.name, error: entryError });
-                spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
-              }
+          // Sync entries: upsert all local entries with position, then delete stale target entries
+          const localEntries = entries ?? [];
+          const existingEntries = existingDatasource?.entries ?? [];
+
+          for (let i = 0; i < localEntries.length; i++) {
+            const entry = localEntries[i];
+            const existingEntryId = existingEntries.find(e => e.name === entry.name)?.id;
+            try {
+              await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i);
+            }
+            catch (entryError) {
+              results.failed.push({ name: datasource.name, error: entryError });
+              spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
+            }
+          }
+
+          // Delete target entries that are not present in the local source
+          const localEntryNames = new Set(localEntries.map(e => e.name));
+          const staleEntries = existingEntries.filter(e => !localEntryNames.has(e.name));
+          for (const stale of staleEntries) {
+            try {
+              await deleteDatasourceEntry(space, stale.id);
+            }
+            catch (entryError) {
+              results.failed.push({ name: datasource.name, error: entryError });
+              spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
             }
           }
 

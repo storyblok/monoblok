@@ -571,6 +571,118 @@ describe('inlineRelations', () => {
     expect(result.data?.rels).toHaveLength(1);
     expect(result.data?.rel_uuids).toEqual(['author-1']);
   });
+
+  it('should not share cache between generic get and stories.get', async () => {
+    let requestCount = 0;
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () => {
+        requestCount++;
+        return HttpResponse.json({
+          story: makeStory('home', {
+            _uid: 'page-content-1',
+            component: 'page',
+            author: 'author-1',
+          }),
+          rels: [
+            makeStory('author-1', {
+              _uid: 'author-content-1',
+              component: 'author',
+              name: 'Ada',
+            }),
+          ],
+          cv: 1,
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      inlineRelations: true,
+    });
+
+    const genericResult = await client.get('v2/cdn/stories/home', {
+      query: { version: 'published', resolve_relations: 'page.author' },
+    });
+    const storiesResult = await client.stories.get('home', {
+      query: { version: 'published', resolve_relations: 'page.author' },
+    });
+
+    expect(requestCount).toBe(2);
+    // @ts-expect-error generic get returns untyped data
+    expect(genericResult.data?.story.content.author).toBe('author-1');
+    expect(storiesResult.data?.story.content.author).toMatchObject({ uuid: 'author-1' });
+  });
+});
+
+describe('fetchOptions', () => {
+  it('should forward non-standard fetchOptions to the underlying fetch call', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ story: makeStory('test', { component: 'page', _uid: 'uid-1' }) }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.get('test-story', {
+      fetchOptions: { next: { revalidate: 60 } },
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).toMatchObject({ next: { revalidate: 60 } });
+  });
+
+  it('should forward fetchOptions in stories.getAll()', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ stories: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.getAll({
+      fetchOptions: { next: { revalidate: 120, tags: ['stories'] } },
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).toMatchObject({ next: { revalidate: 120, tags: ['stories'] } });
+  });
+
+  it('should not pass kyOptions when fetchOptions is omitted', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ story: makeStory('test', { component: 'page', _uid: 'uid-1' }) }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = createApiClient({
+      accessToken: 'test-token',
+      fetch: fetchSpy,
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    await client.stories.get('test-story');
+
+    expect(fetchSpy).toHaveBeenCalled();
+    const [, fetchInit] = fetchSpy.mock.calls[0];
+    expect(fetchInit).not.toHaveProperty('next');
+  });
 });
 
 describe('generic GET method', () => {

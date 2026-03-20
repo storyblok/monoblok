@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import type { StoryCapi } from '../generated/stories';
+import { createClient, createConfig } from '../generated/shared/client';
+import { createThrottleManager } from './rate-limit';
 import {
   buildRelationMap,
   inlineStoriesContent,
   inlineStoryContent,
   parseResolveRelations,
+  resolveRelationMap,
 } from './inline-relations';
 
 let storyId = 1;
@@ -97,5 +102,69 @@ describe('inlineStoriesContent', () => {
     expect(related?.[1].uuid).toBe('tag-2');
     // @ts-expect-error dynamic typing
     expect(related?.[2]).toBe('missing');
+  });
+});
+
+const server = setupServer();
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+const createTestClient = () => createClient(createConfig({
+  auth: 'test-token',
+  baseUrl: 'https://api.storyblok.com',
+}));
+
+describe('resolveRelationMap', () => {
+  it('should not fetch rel_uuids already present in rels', async () => {
+    const requestedByUuids: string[] = [];
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        requestedByUuids.push(url.searchParams.get('by_uuids') ?? '');
+        return HttpResponse.json({ stories: [{ uuid: 'missing-uuid' }] });
+      }),
+    );
+
+    const rels = [
+      makeStory('existing-uuid', { _uid: 'e1', component: 'author' }),
+    ];
+
+    const result = await resolveRelationMap(
+      { rels, rel_uuids: ['existing-uuid', 'missing-uuid'] },
+      { resolve_relations: 'page.author' },
+      { client: createTestClient(), throttleManager: createThrottleManager(false) },
+    );
+
+    expect(result).not.toBeNull();
+    // Only 'missing-uuid' should have been fetched, not 'existing-uuid'.
+    expect(requestedByUuids).toEqual(['missing-uuid']);
+    expect(result!.relationMap.has('existing-uuid')).toBe(true);
+    expect(result!.relationMap.has('missing-uuid')).toBe(true);
+  });
+
+  it('should skip fetch entirely when all rel_uuids are already in rels', async () => {
+    const fetchSpy = vi.fn();
+
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories', () => {
+        fetchSpy();
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+
+    const rels = [
+      makeStory('uuid-a', { _uid: 'a', component: 'author' }),
+      makeStory('uuid-b', { _uid: 'b', component: 'author' }),
+    ];
+
+    await resolveRelationMap(
+      { rels, rel_uuids: ['uuid-a', 'uuid-b'] },
+      { resolve_relations: 'page.author' },
+      { client: createTestClient(), throttleManager: createThrottleManager(false) },
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

@@ -284,7 +284,8 @@ describe('cache strategies', () => {
   });
 
   it('should not block on refresh failures with swr', async () => {
-    const strategy = createSwrStrategy();
+    const onRevalidationError = vi.fn();
+    const strategy = createSwrStrategy({ onRevalidationError });
     const loadNetwork = vi.fn().mockRejectedValue(new Error('refresh failed'));
 
     const result = await strategy({
@@ -294,6 +295,28 @@ describe('cache strategies', () => {
     });
 
     expect(result).toBe('cached');
+    // Wait for the background revalidation to settle.
+    await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+    expect(onRevalidationError).toHaveBeenCalledWith(expect.objectContaining({ message: 'refresh failed' }));
+  });
+
+  it('should call console.warn by default when swr revalidation fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const strategy = createSwrStrategy();
+    const loadNetwork = vi.fn().mockRejectedValue(new Error('network down'));
+
+    await strategy({
+      key: 'k',
+      cachedResult: 'cached',
+      loadNetwork,
+    });
+
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalledTimes(1));
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[storyblok/api-client] SWR background revalidation failed:',
+      expect.objectContaining({ message: 'network down' }),
+    );
+    warnSpy.mockRestore();
   });
 
   it('should load from network with swr when no cached result exists', async () => {

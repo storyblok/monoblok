@@ -17,6 +17,30 @@ export type HttpRequestMethod = <TData = unknown>(
   options?: HttpRequestOptions,
 ) => Promise<ApiResponse<TData>>;
 
+/**
+ * Arbitrary options forwarded to the underlying `fetch()` call.
+ *
+ * Standard `RequestInit` properties (`cache`, `credentials`, `mode`, …) and
+ * non-standard, vendor-specific properties (Next.js `next`, Cloudflare `cf`, …)
+ * are both supported.
+ *
+ * @example
+ * ```ts
+ * client.stories.get('home', {
+ *   fetchOptions: {
+ *     cache: 'no-store',
+ *     next: { revalidate: 60, tags: ['home'] },
+ *   },
+ * })
+ * ```
+ */
+export type FetchOptions = Record<string, unknown>;
+
+export interface RequestWithCacheOptions {
+  /** Prefix added to the cache key to namespace entries (e.g. `'inline'`). */
+  cacheKeyPrefix?: string;
+}
+
 export interface ResourceDeps {
   client: Client;
   requestWithCache: <TData, ThrowOnError extends boolean = false>(
@@ -24,6 +48,7 @@ export interface ResourceDeps {
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
+    options?: RequestWithCacheOptions,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   asApiResponse: <TData, ThrowOnError extends boolean = false>(p: Promise<unknown>) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;

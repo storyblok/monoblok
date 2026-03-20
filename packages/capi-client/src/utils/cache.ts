@@ -104,14 +104,27 @@ export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
   };
 };
 
-export const createSwrStrategy = (): CacheStrategyHandler => {
+export interface SwrStrategyOptions {
+  /** Called when a background revalidation fails. Defaults to `console.warn`. */
+  onRevalidationError?: (error: unknown) => void;
+}
+
+const defaultOnRevalidationError = (error: unknown): void => {
+  console.warn('[storyblok/api-client] SWR background revalidation failed:', error);
+};
+
+export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrategyHandler => {
+  const { onRevalidationError = defaultOnRevalidationError } = options;
   const revalidations = new Map<string, Promise<unknown>>();
 
   return async <TData>({ key, cachedResult, loadNetwork }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
       if (!revalidations.has(key)) {
         const revalidation = loadNetwork()
-          .catch(() => undefined)
+          .catch((error: unknown) => {
+            onRevalidationError(error);
+            return undefined;
+          })
           .finally(() => {
             revalidations.delete(key);
           });
@@ -125,13 +138,13 @@ export const createSwrStrategy = (): CacheStrategyHandler => {
   };
 };
 
-export const createStrategy = (strategy: CacheStrategy): CacheStrategyHandler => {
+export const createStrategy = (strategy: CacheStrategy, options?: SwrStrategyOptions): CacheStrategyHandler => {
   if (strategy === 'network-first') {
     return createNetworkFirstStrategy();
   }
 
   if (strategy === 'swr') {
-    return createSwrStrategy();
+    return createSwrStrategy(options);
   }
 
   return createCacheFirstStrategy();

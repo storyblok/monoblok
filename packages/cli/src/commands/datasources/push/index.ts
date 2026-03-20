@@ -113,9 +113,24 @@ pushCmd
           const localEntries = entries ?? [];
           const existingEntries = existingDatasource?.entries ?? [];
 
+          // Index existing entries by name with their position for O(1) lookup
+          const existingEntryMap = new Map(existingEntries.map((e, idx) => [e.name, { entry: e, position: idx + 1 }]));
+
           for (let i = 0; i < localEntries.length; i++) {
             const entry = localEntries[i];
-            const existingEntryId = existingEntries.find(e => e.name === entry.name)?.id;
+            const existing = existingEntryMap.get(entry.name);
+            const existingEntryId = existing?.entry.id;
+            const targetPosition = i + 1;
+
+            // Skip update when all mutable fields and position are identical
+            if (existing
+              && existing.entry.value === entry.value
+              && existing.entry.dimension_value === entry.dimension_value
+              && existing.position === targetPosition) {
+              logger.info('Skipped datasource entry (unchanged)', { datasource: datasource.name, entry: entry.name, position: targetPosition });
+              continue;
+            }
+
             try {
               await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
             }

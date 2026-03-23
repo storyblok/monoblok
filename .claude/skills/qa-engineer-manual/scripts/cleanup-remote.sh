@@ -45,7 +45,7 @@ cleanup_resource() {
 
   while true; do
     pass_deleted=0
-    response=$(curl -s "${api_base}/?page=1&per_page=${per_page}" \
+    response=$(curl -s --retry 3 --retry-delay 1 "${api_base}/?page=1&per_page=${per_page}" \
       -H "Authorization: ${STORYBLOK_TOKEN}")
     ids=$(printf '%s' "${response}" | node -e '
       const fs = require("fs");
@@ -63,14 +63,15 @@ cleanup_resource() {
     while IFS= read -r id; do
       [ -z "${id}" ] && continue
       found_total=$((found_total + 1))
-      status=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "${api_base}/${id}" \
+      status=$(curl -s -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 1 \
+        -X DELETE "${api_base}/${id}" \
         -H "Authorization: ${STORYBLOK_TOKEN}")
-      if [[ "${status}" != 2* ]]; then
-        printf "failed to delete %s/%s (status %s)\n" "${label}" "${id}" "${status}" >&2
-      fi
-      if [[ "${status}" == 2* ]]; then
+      # 404 = already gone (cascade-deleted by a parent folder), treat as success.
+      if [[ "${status}" == 2* || "${status}" == "404" ]]; then
         deleted_total=$((deleted_total + 1))
         pass_deleted=$((pass_deleted + 1))
+      else
+        printf "failed to delete %s/%s (status %s)\n" "${label}" "${id}" "${status}" >&2
       fi
     done <<< "${ids}"
     if [ "${pass_deleted}" -eq 0 ]; then

@@ -94,7 +94,7 @@ page=1
 total=0
 
 while true; do
-  response=$(curl -s \
+  response=$(curl -s --retry 3 --retry-delay 1 \
     "https://mapi.storyblok.com/v1/spaces/${space_id}/${resource}/?page=${page}&per_page=${per_page}" \
     -H "Authorization: ${STORYBLOK_TOKEN}")
 

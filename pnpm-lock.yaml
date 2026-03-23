@@ -121,6 +121,9 @@ importers:
       camelcase:
         specifier: ^8.0.0
         version: 8.0.0
+      morphdom:
+        specifier: ^2.7.8
+        version: 2.7.8
     devDependencies:
       '@cypress/vite-dev-server':
         specifier: ^6.0.3
@@ -11783,6 +11786,9 @@ packages:
 
   mocked-exports@0.1.1:
     resolution: {integrity: sha512-aF7yRQr/Q0O2/4pIXm6PZ5G+jAd7QS4Yu8m+WEeEHGnbo+7mE36CbLSDQiXYV8bVL3NfmdeqPJct0tUlnjVSnA==}
+
+  morphdom@2.7.8:
+    resolution: {integrity: sha512-D/fR4xgGUyVRbdMGU6Nejea1RFzYxYtyurG4Fbv2Fi/daKlWKuXGLOdXtl+3eIwL110cI2hz1ZojGICjjFLgTg==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -28172,6 +28178,8 @@ snapshots:
   mobx@6.15.0: {}
 
   mocked-exports@0.1.1: {}
+
+  morphdom@2.7.8: {}
 
   mri@1.2.0: {}
 

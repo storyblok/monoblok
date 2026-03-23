@@ -313,13 +313,13 @@ describe('stories push command', () => {
             failed: 0,
           },
           processResults: {
-            total: 5,
-            succeeded: 5,
+            total: 4,
+            succeeded: 4,
             failed: 0,
           },
           updateResults: {
-            total: 5,
-            succeeded: 5,
+            total: 4,
+            succeeded: 4,
             failed: 0,
           },
         },
@@ -340,8 +340,9 @@ describe('stories push command', () => {
       expect(logFile).toMatch(new RegExp(`Updated story.*?"storyId":"${storyDRemote.uuid}"`));
       expect(logFile).toContain('Pushing stories finished');
       expect(logFile).toContain('"creationResults":{"total":5,"succeeded":5,"skipped":0,"failed":0}');
-      expect(logFile).toContain('"processResults":{"total":5,"succeeded":5,"failed":0}');
-      expect(logFile).toContain('"updateResults":{"total":5,"succeeded":5,"failed":0}');
+      // Folders are excluded from Pass 2, so processResults and updateResults count only non-folder stories (4)
+      expect(logFile).toContain('"processResults":{"total":4,"succeeded":4,"failed":0}');
+      expect(logFile).toContain('"updateResults":{"total":4,"succeeded":4,"failed":0}');
       // UI
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 5 stories pushed, 0 stories failed'),
@@ -350,10 +351,10 @@ describe('stories push command', () => {
         expect.stringContaining('Creating stories: 5/5 succeeded, 0 failed.'),
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Processing stories: 5/5 succeeded, 0 failed.'),
+        expect.stringContaining('Processing stories: 4/4 succeeded, 0 failed.'),
       );
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Updating stories: 5/5 succeeded, 0 failed.'),
+        expect.stringContaining('Updating stories: 4/4 succeeded, 0 failed.'),
       );
     });
 
@@ -648,15 +649,18 @@ describe('stories push command', () => {
       preconditions.canLoadComponents([
         makeMockComponent({ name: 'page' }),
       ]);
-      const remoteStories = preconditions.canCreateStories([folder]);
-      preconditions.canUpdateStories(remoteStories);
+      preconditions.canCreateStories([folder]);
+      // No canUpdateStories — folders are excluded from Pass 2
 
       await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
+      expect(actions.updateStory).not.toHaveBeenCalled();
       const report = getReport();
       expect(report?.status).toBe('SUCCESS');
       expect(report?.summary).toMatchObject({
         creationResults: { total: 1, succeeded: 1, failed: 0 },
+        processResults: { total: 0, succeeded: 0, failed: 0 },
+        updateResults: { total: 0, succeeded: 0, failed: 0 },
       });
     });
 
@@ -676,7 +680,8 @@ describe('stories push command', () => {
       preconditions.canLoadStories([folder, startpage]);
       preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
       const [remoteFolder, remoteStartpage] = preconditions.canCreateStories([folder, startpage]);
-      preconditions.canUpdateStories([remoteFolder, remoteStartpage]);
+      // Folders are excluded from Pass 2, so only the startpage gets an update call
+      preconditions.canUpdateStories([remoteStartpage]);
 
       await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
@@ -696,6 +701,37 @@ describe('stories push command', () => {
       const startpageCall = calls.find((c: unknown[]) => (c[1] as { story: { slug: string } }).story.slug === 'home')!;
       expect(startpageCall[1].story.parent_id).toBe(remoteFolder.id);
       expect(startpageCall[1].story.is_startpage).toBe(true);
+    });
+
+    it('should not call updateStory for folders in Pass 2', async () => {
+      const folder = makeMockStory({
+        slug: 'my-folder',
+        is_folder: true,
+      });
+      const story = makeMockStory({
+        slug: 'my-story',
+        parent_id: folder.id,
+      });
+
+      preconditions.canLoadStories([folder, story]);
+      preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+      const [remoteFolder, remoteStory] = preconditions.canCreateStories([folder, story]);
+      preconditions.canUpdateStories([remoteStory]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      // updateStory must be called exactly once — for the story only, not the folder
+      expect(actions.updateStory).toHaveBeenCalledTimes(1);
+      expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, remoteStory.id, expect.anything());
+      expect(actions.updateStory).not.toHaveBeenCalledWith(DEFAULT_SPACE, remoteFolder.id, expect.anything());
+
+      // Report: creation covers both, but process/update only covers the non-folder story
+      const report = getReport();
+      expect(report?.summary).toMatchObject({
+        creationResults: { total: 2, succeeded: 2, skipped: 0, failed: 0 },
+        processResults: { total: 1, succeeded: 1, failed: 0 },
+        updateResults: { total: 1, succeeded: 1, failed: 0 },
+      });
     });
   });
 
@@ -846,15 +882,15 @@ describe('stories push command', () => {
       preconditions.canLoadComponents([makeMockComponent({ name: 'page' })], sourceSpace);
       // The target space lists these stories (pre-fetch)
       preconditions.canListStories([targetFolder, targetStory], targetSpace);
-      // Update endpoints for the target stories
-      preconditions.canUpdateStories([targetFolder, targetStory], targetSpace);
+      // Only the non-folder story gets an update call — folders are excluded from Pass 2
+      preconditions.canUpdateStories([targetStory], targetSpace);
 
       await storiesCommand.parseAsync(['node', 'test', 'push', '--space', targetSpace, '--from', sourceSpace]);
 
       // Stories were matched by slug, not created
       expect(actions.createStory).not.toHaveBeenCalled();
-      // Stories were updated with the target IDs
-      expect(actions.updateStory).toHaveBeenCalledWith(targetSpace, targetFolder.id, expect.anything());
+      // Only the non-folder story is updated in Pass 2; folders are excluded
+      expect(actions.updateStory).not.toHaveBeenCalledWith(targetSpace, targetFolder.id, expect.anything());
       expect(actions.updateStory).toHaveBeenCalledWith(targetSpace, targetStory.id, expect.objectContaining({
         story: expect.objectContaining({
           parent_id: targetFolder.id,
@@ -879,14 +915,15 @@ describe('stories push command', () => {
             skipped: 2,
             failed: 0,
           },
+          // Folders are excluded from Pass 2
           processResults: {
-            total: 2,
-            succeeded: 2,
+            total: 1,
+            succeeded: 1,
             failed: 0,
           },
           updateResults: {
-            total: 2,
-            succeeded: 2,
+            total: 1,
+            succeeded: 1,
             failed: 0,
           },
         },

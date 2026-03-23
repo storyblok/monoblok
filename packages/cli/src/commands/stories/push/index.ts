@@ -134,13 +134,17 @@ pushCmd
       const creationProgress = ui.createProgressBar({ title: 'Creating Stories...'.padEnd(21) });
       const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(21) });
       const updateProgress = ui.createProgressBar({ title: 'Updating Stories...'.padEnd(21) });
+      // Folders are only processed in Pass 1 (creation). They are excluded from
+      // Pass 2 (reference mapping + update) because they have no content to remap.
+      const folderUuids = new Set(storyIndex.filter(e => e.is_folder).map(e => e.uuid));
       const totalStories = storyIndex.length + summary.creationResults.failed;
+      const totalNonFolderStories = totalStories - folderUuids.size;
       summary.creationResults.total = totalStories;
-      summary.processResults.total = totalStories;
-      summary.updateResults.total = totalStories;
+      summary.processResults.total = totalNonFolderStories;
+      summary.updateResults.total = totalNonFolderStories;
       creationProgress.setTotal(totalStories);
-      processProgress.setTotal(totalStories);
-      updateProgress.setTotal(totalStories);
+      processProgress.setTotal(totalNonFolderStories);
+      updateProgress.setTotal(totalNonFolderStories);
 
       const appendToManifest = options.dryRun
         ? (() => Promise.resolve()) as ReturnType<typeof makeAppendToManifestFSTransport>
@@ -183,10 +187,13 @@ pushCmd
           },
           onStoryError(error, entry) {
             summary.creationResults.failed += 1;
-            summary.processResults.total -= 1;
-            summary.updateResults.total -= 1;
-            processProgress.setTotal(summary.processResults.total);
-            updateProgress.setTotal(summary.updateResults.total);
+            // Folders are excluded from Pass 2 totals, so only decrement for non-folders.
+            if (!entry.is_folder) {
+              summary.processResults.total -= 1;
+              summary.updateResults.total -= 1;
+              processProgress.setTotal(summary.processResults.total);
+              updateProgress.setTotal(summary.updateResults.total);
+            }
             creationProgress.increment();
             handleError(error, verbose, { storyId: entry?.uuid });
           },
@@ -210,6 +217,9 @@ pushCmd
         readLocalStoriesStream({
           directoryPath: storiesDirectoryPath,
           fileFilter({ uuid }) {
+            // Folders are excluded from Pass 2: they have no content references to
+            // remap, so updating them would only waste API rate-limit capacity.
+            if (folderUuids.has(uuid)) { return false; }
             // Only load files that were successfully created and mapped.
             return Boolean(maps.stories.get(uuid));
           },

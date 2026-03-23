@@ -20,7 +20,6 @@ const REQUIRED_STORYBLOK_PARAMS = ['_storyblok', '_storyblok_c', '_storyblok_tk[
  * This function performs a multi-layered validation to ensure the request originates from
  * the Storyblok Visual Editor by checking for required query parameters and optionally
  * validating the space ID.
- *
  * @param url - The URL object to validate.
  * @param options - Optional validation configuration.
  * @param options.spaceId - If provided, validates that the request's space ID matches this value.
@@ -42,10 +41,11 @@ const REQUIRED_STORYBLOK_PARAMS = ['_storyblok', '_storyblok_c', '_storyblok_tk[
  *   console.log('Valid request for specific space');
  * }
  * ```
+ * @todo Move this to `@storyblok/live-preview` to keep live preview logic centralized.
  */
 export function isEditorRequest(
   url: URL,
-  options: StoryblokValidationOptions = {},
+  options?: StoryblokValidationOptions,
 ): boolean {
   const params = url.searchParams;
 
@@ -57,7 +57,7 @@ export function isEditorRequest(
   }
 
   // Optional space ID validation
-  if (options.spaceId && params.get('_storyblok_tk[space_id]') !== options.spaceId) {
+  if (options?.spaceId && params.get('_storyblok_tk[space_id]') !== options.spaceId) {
     return false;
   }
 

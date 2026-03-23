@@ -45,7 +45,8 @@
     "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test:ui": "vitest --ui",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "benchmark:stories-push": "bash __benchmarks__/stories-push/scripts/run-benchmark.sh"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",

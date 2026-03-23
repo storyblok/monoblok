@@ -30,7 +30,7 @@ const story =
 const users = payload?.serverData?.users ?? (await getUsers());
 const inEditor = isEditorRequest(Astro.url);
 const slugs = ['test', 'about-us', 'contact'];
-const disableLivePreview = slugs.includes(slug);
+const disableLivePreview = slugs.includes(slug || '');
 ---
 
 <BaseLayout>

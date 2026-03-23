@@ -50,7 +50,7 @@ export function useStoryblokApi(): StoryblokClient {
  * ```
  */
 export async function getLiveStory(
-  Astro: Readonly<AstroGlobal>,
+  Astro: { locals: AstroGlobal['locals'] },
 ): Promise<ISbStoryData | null> {
   let story: ISbStoryData | null = null;
   if (Astro && Astro.locals._storyblok_preview_data) {

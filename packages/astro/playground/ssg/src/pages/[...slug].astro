@@ -9,7 +9,7 @@ export async function getStaticPaths() {
     version: 'draft',
   });
   let linksObj = data.links;
-  let links = Object.values(linksObj);
+  let links = Object.values(linksObj ?? {});
 
   return links.map((link) => {
     return {

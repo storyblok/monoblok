@@ -1,0 +1,35 @@
+{
+  "id": 1006,
+  "name": "blog_post",
+  "display_name": "Blog post",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "title": { "type": "text", "pos": 0, "display_name": "Title" },
+    "author": { "type": "text", "pos": 1, "display_name": "Author" },
+    "date": { "type": "datetime", "pos": 2, "display_name": "Date" },
+    "featured_image": {
+      "type": "asset",
+      "pos": 3,
+      "display_name": "Featured image",
+      "filetypes": ["images"]
+    },
+    "excerpt": { "type": "textarea", "pos": 4, "display_name": "Excerpt" },
+    "body": { "type": "richtext", "pos": 5, "display_name": "Body" },
+    "category": {
+      "type": "option",
+      "pos": 6,
+      "display_name": "Category",
+      "source": "internal_datasources"
+    },
+    "tags": {
+      "type": "options",
+      "pos": 7,
+      "display_name": "Tags",
+      "source": "internal_datasources"
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

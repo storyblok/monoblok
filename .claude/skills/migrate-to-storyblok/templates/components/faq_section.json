@@ -1,0 +1,21 @@
+{
+  "id": 1010,
+  "name": "faq_section",
+  "display_name": "FAQ section",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "headline": { "type": "text", "pos": 0, "display_name": "Headline" },
+    "intro": { "type": "textarea", "pos": 1, "display_name": "Intro" },
+    "items": {
+      "type": "bloks",
+      "pos": 2,
+      "display_name": "Items",
+      "restrict_components": true,
+      "component_whitelist": ["faq_item"]
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

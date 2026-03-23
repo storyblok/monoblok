@@ -10,7 +10,10 @@ declare namespace App {
   import type { ISbStoryData } from '@storyblok/js';
 
   interface Locals {
-    _storyblok_preview_data?: ISbStoryData;
+    _storyblok_preview_data?: {
+      story: ISbStoryData;
+      serverData?: unknown;
+    };
   }
 }
 
@@ -39,6 +42,8 @@ declare module 'virtual:storyblok-init' {
 declare module '@storyblok/astro' {
   /** Converts a string to camelCase (internal helper). */
   export function toCamelCase(input: string): string;
+  export function sanitizeJSON(data: unknown): string;
+  export function isEditorRequest(url: URL, options: StoryblokValidationOptions = {}): boolean;
 
   export type { SbBlokData } from '@storyblok/js';
   // add more exports as needed

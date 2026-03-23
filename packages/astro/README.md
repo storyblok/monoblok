@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/astro</h1>
  <p>
-     The Astro SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-astro" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-astro" target="_blank">Real-time Visual Editing Experience</a>.
+     The Astro SDK to interact with <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guides/astro/visual-preview#enable-live-preview-in-the-visual-editor" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>

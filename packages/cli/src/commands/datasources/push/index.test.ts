@@ -7,6 +7,21 @@ import type { SpaceDatasource } from '../constants';
 import '../index';
 import { datasourcesCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
+import { fetchDatasources } from '../pull/actions';
+import { deleteDatasourceEntry, upsertDatasource, upsertDatasourceEntry } from './actions';
+
+const loggerInfoMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../lib/logger/logger', () => ({
+  getLogger: () => ({
+    info: loggerInfoMock,
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    transports: [],
+  }),
+  setLoggerTransports: vi.fn(),
+}));
 
 vi.mock('./actions', async () => {
   const actual = await vi.importActual('./actions');
@@ -18,6 +33,7 @@ vi.mock('./actions', async () => {
     pushDatasourceEntry: vi.fn(),
     updateDatasourceEntry: vi.fn(),
     upsertDatasourceEntry: vi.fn(),
+    deleteDatasourceEntry: vi.fn(),
   };
 });
 
@@ -49,6 +65,7 @@ describe('push datasources', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    loggerInfoMock.mockReset();
     vol.reset();
     // Reset the option values
     (datasourcesCommand as any)._optionValues = {};
@@ -90,6 +107,17 @@ describe('push datasources', () => {
       expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('target-space'));
     });
 
+    it('should log start and finish events', async () => {
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([mockDatasource]),
+      });
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(loggerInfoMock).toHaveBeenCalledWith('Pushing datasources started', expect.objectContaining({ space: '12345' }));
+      expect(loggerInfoMock).toHaveBeenCalledWith('Pushing datasources finished', expect.objectContaining({ space: '12345' }));
+    });
+
     it('should throw an error if the user is not logged in', async () => {
       preconditions.loggedOut();
 
@@ -126,6 +154,215 @@ describe('push datasources', () => {
 
       // Should proceed without errors if files are found
       expect(konsola.info).toHaveBeenCalled();
+    });
+  });
+
+  describe('entry sync', () => {
+    const localDatasource: SpaceDatasource = {
+      id: 1,
+      name: 'colors',
+      slug: 'colors',
+      created_at: '2021-01-01T00:00:00Z',
+      updated_at: '2021-01-01T00:00:00Z',
+      dimensions: [],
+      entries: [
+        { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+      ],
+    };
+
+    it('should delete target entries that are not in the local source', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+
+      // Target has an extra entry "red" that was removed locally
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+            { id: 11, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 11);
+      expect(deleteDatasourceEntry).toHaveBeenCalledTimes(1);
+      expect(loggerInfoMock).toHaveBeenCalledWith('Skipped datasource entry (unchanged)', expect.objectContaining({ datasource: 'colors', entry: 'blue' }));
+      expect(loggerInfoMock).toHaveBeenCalledWith('Deleted datasource entry', expect.objectContaining({ datasource: 'colors', entry: 'red', entryId: 11 }));
+    });
+
+    it('should not delete any entries when local and target match', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(deleteDatasourceEntry).not.toHaveBeenCalled();
+    });
+
+    it('should pass position to upsertDatasourceEntry to preserve ordering', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+      const multiEntryDatasource: SpaceDatasource = {
+        ...localDatasource,
+        entries: [
+          { id: 10, name: 'blue', value: '#0000ee', dimension_value: '', datasource_id: 1 },
+          { id: 11, name: 'red', value: '#ee0000', dimension_value: '', datasource_id: 1 },
+        ],
+      };
+
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([multiEntryDatasource]),
+      });
+
+      // Target has same names but different values so entries get updated
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+            { id: 11, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![0], 10, 1);
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, multiEntryDatasource.entries![1], 11, 2);
+    });
+
+    it('should skip unchanged entries', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+
+      // Target has identical entries
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(upsertDatasourceEntry).not.toHaveBeenCalled();
+      expect(loggerInfoMock).toHaveBeenCalledWith('Skipped datasource entry (unchanged)', expect.objectContaining({ datasource: 'colors', entry: 'blue' }));
+    });
+
+    it('should update entries when only position changes', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+      // Local has entries in reversed order compared to target
+      const reorderedDatasource: SpaceDatasource = {
+        ...localDatasource,
+        entries: [
+          { id: 11, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
+          { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+        ],
+      };
+
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([reorderedDatasource]),
+      });
+
+      // Target has blue at position 1, red at position 2
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+            { id: 11, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      // Both entries have same values but different positions, so both should be updated
+      expect(upsertDatasourceEntry).toHaveBeenCalledTimes(2);
+      expect(loggerInfoMock).toHaveBeenCalledWith('Updated datasource entry', expect.objectContaining({ entry: 'red', position: 1 }));
+      expect(loggerInfoMock).toHaveBeenCalledWith('Updated datasource entry', expect.objectContaining({ entry: 'blue', position: 2 }));
+    });
+
+    it('should create renamed entry and delete stale entry', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+      const renamedDatasource: SpaceDatasource = {
+        ...localDatasource,
+        entries: [
+          { id: 10, name: 'navy', value: '#000080', dimension_value: '', datasource_id: 1 },
+        ],
+      };
+
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([renamedDatasource]),
+      });
+
+      // Target still has old entry name "blue"
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      // "navy" doesn't match "blue" by name, so created with position 1
+      expect(upsertDatasourceEntry).toHaveBeenCalledWith('12345', 1, renamedDatasource.entries![0], undefined, 1);
+      // "blue" is stale and should be deleted
+      expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 10);
+      expect(loggerInfoMock).toHaveBeenCalledWith('Created datasource entry', expect.objectContaining({ datasource: 'colors', entry: 'navy' }));
+      expect(loggerInfoMock).toHaveBeenCalledWith('Deleted datasource entry', expect.objectContaining({ datasource: 'colors', entry: 'blue' }));
+    });
+
+    it('should delete all stale entries when local has no entries', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'colors', slug: 'colors', created_at: '', updated_at: '' });
+
+      const emptyDatasource: SpaceDatasource = {
+        ...localDatasource,
+        entries: [],
+      };
+
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([emptyDatasource]),
+      });
+
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          entries: [
+            { id: 10, name: 'blue', value: '#0000ff', dimension_value: '', datasource_id: 1 },
+            { id: 11, name: 'red', value: '#ff0000', dimension_value: '', datasource_id: 1 },
+          ],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 10);
+      expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 11);
+      expect(deleteDatasourceEntry).toHaveBeenCalledTimes(2);
     });
   });
 });

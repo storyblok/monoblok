@@ -1,16 +1,17 @@
 import type { Command } from 'commander';
-import { Spinner } from '@topcli/spinner';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 
 import { datasourcesCommand } from '../command';
 import type { PullDatasourcesOptions } from './constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import chalk from 'chalk';
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pullCmd = datasourcesCommand
   .command('pull [datasourceName]')
@@ -47,18 +48,17 @@ pullCmd
       return;
     }
 
-    const spinnerDatasources = new Spinner({
-      verbose: !isVitest,
-    });
+    const ui = getUI();
+    const logger = getLogger();
+    logger.info('Pulling datasources started', { space, datasourceName });
+    const spinnerDatasources = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
 
     try {
-      spinnerDatasources.start(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
-
       let datasources;
       if (datasourceName) {
         const datasource = await fetchDatasource(space, datasourceName);
         if (!datasource) {
-          konsola.warn(`No datasource found with name "${datasourceName}"`);
+          spinnerDatasources.failed(`No datasource found with name "${datasourceName}"`);
           return;
         }
         datasources = [datasource];
@@ -66,7 +66,7 @@ pullCmd
       else {
         datasources = await fetchDatasources(space);
         if (!datasources || datasources.length === 0) {
-          konsola.warn(`No datasources found in the space ${space}`);
+          spinnerDatasources.failed(`No datasources found in the space ${space}`);
           return;
         }
       }
@@ -108,5 +108,8 @@ pullCmd
       spinnerDatasources.failed(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Failed`);
       konsola.br();
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pulling datasources finished', { space, datasourceName });
     }
   });

@@ -276,7 +276,7 @@ pushCmd
       );
     }
     catch (maybeError) {
-      handleError(toError(maybeError));
+      handleError(toError(maybeError), verbose);
     }
     finally {
       logger.info('Pushing stories finished', summary);

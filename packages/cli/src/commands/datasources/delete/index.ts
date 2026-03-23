@@ -1,14 +1,15 @@
 import type { Command } from 'commander';
 import { datasourcesCommand } from '../command';
 import { deleteDatasource } from './actions';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { colorPalette, commands } from '../../../constants';
 import chalk from 'chalk';
-import { Spinner } from '@topcli/spinner';
 import type { DeleteDatasourceOptions } from './constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
 const deleteCmd = datasourcesCommand
@@ -47,17 +48,17 @@ deleteCmd
       return;
     }
 
-    const spinner = new Spinner({
-      verbose: !isVitest,
-    });
+    const ui = getUI();
+    const logger = getLogger();
+    logger.info('Deleting datasource started', { space, name, id: options.id });
 
     try {
       // Use id if provided, otherwise use name
       if (options.id) {
         // Delete by id
-        spinner.start(`Deleting datasource...`);
+        const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, options.id);
-        spinner.succeed();
+        spinner.succeed(`Datasource deleted`);
         konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully from space ${space}.`);
       }
       else {
@@ -83,21 +84,20 @@ deleteCmd
             default: false,
           });
           if (!confirmed) {
-            spinner.failed('Deletion aborted by user.');
             konsola.warn('Deletion aborted by user.');
             return;
           }
         }
-        spinner.start(`Deleting datasource...`);
+        const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, datasource.id.toString());
-        spinner.succeed();
+        spinner.succeed(`Datasource deleted`);
         konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
       }
     }
     catch (error) {
-      spinner.failed(
-        `Failed to delete datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id ? options.id : name)}`,
-      );
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Deleting datasource finished', { space, name, id: options.id });
     }
   });

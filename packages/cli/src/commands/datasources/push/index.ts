@@ -1,14 +1,15 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
-import { readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
+import { deleteDatasourceEntry, readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
-import { Spinner } from '@topcli/spinner';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pushCmd = datasourcesCommand
   .command('push [datasourceName]')
@@ -41,6 +42,9 @@ pushCmd
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
+    const logger = getLogger();
+    logger.info('Pushing datasources started', { space, fromSpace, datasourceName, filter });
+
     konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
     konsola.br();
 
@@ -93,12 +97,10 @@ pushCmd
         failed: [] as Array<{ name: string; error: unknown }>,
       };
 
-      for (const datasource of spaceState.local.datasources) {
-        const spinner = new Spinner({
-          verbose: !isVitest,
-        });
+      const ui = getUI();
 
-        spinner.start(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
+      for (const datasource of spaceState.local.datasources) {
+        const spinner = ui.createSpinner(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
 
         // Check if datasource already exists in target space by name
         const existingDatasource = spaceState.target.datasources.get(datasource.name);
@@ -111,17 +113,49 @@ pushCmd
         if (result) {
           results.successful.push(datasource.name);
 
-          // Handle entries if they exist
-          if (entries && entries.length > 0) {
-            for (const entry of entries) {
-              const existingEntryId = existingDatasource?.entries?.find(e => e.name === entry.name)?.id;
-              try {
-                await upsertDatasourceEntry(space, result.id, entry, existingEntryId);
-              }
-              catch (entryError) {
-                results.failed.push({ name: datasource.name, error: entryError });
-                spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
-              }
+          // Sync entries: upsert all local entries with position, then delete stale target entries
+          const localEntries = entries ?? [];
+          const existingEntries = existingDatasource?.entries ?? [];
+
+          // Index existing entries by name with their position for O(1) lookup
+          const existingEntryMap = new Map(existingEntries.map((e, idx) => [e.name, { entry: e, position: idx + 1 }]));
+
+          for (let i = 0; i < localEntries.length; i++) {
+            const entry = localEntries[i];
+            const existing = existingEntryMap.get(entry.name);
+            const existingEntryId = existing?.entry.id;
+            const targetPosition = i + 1;
+
+            // Skip update when all mutable fields and position are identical
+            if (existing
+              && existing.entry.value === entry.value
+              && existing.entry.dimension_value === entry.dimension_value
+              && existing.position === targetPosition) {
+              logger.info('Skipped datasource entry (unchanged)', { datasource: datasource.name, entry: entry.name, position: targetPosition });
+              continue;
+            }
+
+            try {
+              await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
+              logger.info(existingEntryId ? 'Updated datasource entry' : 'Created datasource entry', { datasource: datasource.name, entry: entry.name, position: i + 1 });
+            }
+            catch (entryError) {
+              results.failed.push({ name: datasource.name, error: entryError });
+              spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
+            }
+          }
+
+          // Delete target entries that are not present in the local source
+          const localEntryNames = new Set(localEntries.map(e => e.name));
+          const staleEntries = existingEntries.filter(e => !localEntryNames.has(e.name));
+          for (const stale of staleEntries) {
+            try {
+              await deleteDatasourceEntry(space, stale.id);
+              logger.info('Deleted datasource entry', { datasource: datasource.name, entry: stale.name, entryId: stale.id });
+            }
+            catch (entryError) {
+              results.failed.push({ name: datasource.name, error: entryError });
+              spinner.failed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Failed in ${spinner.elapsedTime.toFixed(2)}ms`);
             }
           }
 
@@ -147,5 +181,8 @@ pushCmd
     }
     catch (error) {
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pushing datasources finished', { space, fromSpace });
     }
   });

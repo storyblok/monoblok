@@ -64,9 +64,10 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
  * @param spaceId - The space ID
  * @param datasourceId - The datasource ID to add the entry to
  * @param entry - The datasource entry to create
+ * @param position - Optional position index to control ordering
  * @returns The created datasource entry
  */
-export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry): Promise<SpaceDatasourceEntry | undefined> => {
+export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry, position?: number): Promise<SpaceDatasourceEntry | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -78,8 +79,9 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
         datasource_entry: {
           ...entry,
           datasource_id: datasourceId,
+          ...(position != null && { position }),
         },
-      },
+      } as any,
       throwOnError: true,
     });
 
@@ -95,9 +97,9 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  * @param spaceId - The space ID
  * @param entryId - The ID of the entry to update
  * @param entry - The updated datasource entry data
- * @returns it does not return anything
+ * @param position - Optional position index to control ordering
  */
-export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry): Promise<void> => {
+export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry, position?: number): Promise<void> => {
   try {
     const client = getMapiClient();
     await client.datasourceEntries.updateDatasourceEntry({
@@ -106,8 +108,11 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
         datasource_entry_id: entryId,
       },
       body: {
-        datasource_entry: entry,
-      },
+        datasource_entry: {
+          ...entry,
+          ...(position != null && { position }),
+        },
+      } as any,
       throwOnError: true,
     });
   }
@@ -122,6 +127,7 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
  * @param datasourceId - The datasource ID (only needed for creation)
  * @param entry - The datasource entry to upsert
  * @param existingId - The existing entry ID if updating
+ * @param position - Optional position index to control ordering
  * @returns The created or updated datasource entry
  */
 export const upsertDatasourceEntry = async (
@@ -129,13 +135,35 @@ export const upsertDatasourceEntry = async (
   datasourceId: number,
   entry: SpaceDatasourceEntry,
   existingId?: number,
+  position?: number,
 ): Promise<SpaceDatasourceEntry | undefined> => {
   if (existingId) {
-    await updateDatasourceEntry(space, existingId, entry);
+    await updateDatasourceEntry(space, existingId, entry, position);
     return undefined;
   }
   else {
-    return await pushDatasourceEntry(space, datasourceId, entry);
+    return await pushDatasourceEntry(space, datasourceId, entry, position);
+  }
+};
+
+/**
+ * Deletes a datasource entry from the specified space.
+ * @param spaceId - The space ID
+ * @param entryId - The ID of the entry to delete
+ */
+export const deleteDatasourceEntry = async (spaceId: string, entryId: number): Promise<void> => {
+  try {
+    const client = getMapiClient();
+    await client.datasourceEntries.delete({
+      path: {
+        space_id: spaceId,
+        datasource_entry_id: entryId,
+      },
+      throwOnError: true,
+    });
+  }
+  catch (error) {
+    handleAPIError('delete_datasource_entry', error as Error, `Failed to delete datasource entry ${entryId}`);
   }
 };
 

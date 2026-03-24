@@ -193,6 +193,24 @@ export const upsertComponentPreset = async (
   }
 };
 
+// Component preset deletion
+export const deleteComponentPreset = async (space: string, presetId: number): Promise<void> => {
+  try {
+    const client = getMapiClient();
+
+    await client.presets.delete({
+      path: {
+        space_id: Number(space),
+        preset_id: presetId,
+      },
+      throwOnError: true,
+    });
+  }
+  catch (error) {
+    handleAPIError('delete_component_preset', error as Error, `Failed to delete component preset ${presetId}`);
+  }
+};
+
 // Component internal tag actions
 
 export const pushComponentInternalTag = async (space: string, componentInternalTag: SpaceComponentInternalTag): Promise<SpaceComponentInternalTag | undefined> => {

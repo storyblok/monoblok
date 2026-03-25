@@ -1,5 +1,5 @@
-import type { Story } from '@storyblok/management-api-client/resources/stories';
-import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, TargetStoryRef } from './constants';
+import type { StoryCreate, StoryUpdate } from '../../types';
+import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, Story, TargetStoryRef } from './constants';
 import { normalizeFullSlug } from './constants';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -18,7 +18,7 @@ export const fetchStories = async (
     const client = getMapiClient();
     const { data, response } = await client.stories.list({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       query: {
         ...params,
@@ -29,7 +29,7 @@ export const fetchStories = async (
     });
 
     return {
-      stories: data?.stories || [],
+      stories: data.stories || [],
       headers: response.headers,
     };
   }
@@ -40,15 +40,14 @@ export const fetchStories = async (
 
 export const fetchStory = async (
   spaceId: string,
-  storyId: string,
+  storyId: string | number,
 ) => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.stories.get({
+    const { data } = await client.stories.get(storyId, {
       path: {
-        space_id: spaceId,
-        story_id: storyId,
+        space_id: Number(spaceId),
       },
       throwOnError: true,
     });
@@ -63,7 +62,7 @@ export const fetchStory = async (
 export const createStory = async (
   spaceId: string,
   payload: {
-    story: Omit<Story, 'id' | 'uuid'>;
+    story: StoryCreate;
     publish?: number;
   },
 ): Promise<Story | void> => {
@@ -72,11 +71,15 @@ export const createStory = async (
 
     const { data } = await client.stories.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: {
-        story: payload.story as Story,
-        ...(payload.publish ? { publish: payload.publish } : { }),
+        story: {
+          ...payload.story,
+          // StoryCreate2 expects `parent_id?: number`; normalize null → undefined.
+          parent_id: payload.story.parent_id ?? undefined,
+        },
+        ...(payload.publish ? { publish: payload.publish } : {}),
       },
       throwOnError: true,
     });
@@ -102,22 +105,25 @@ export const updateStory = async (
   spaceId: string,
   storyId: number,
   payload: {
-    story: Story;
+    story: StoryUpdate;
     force_update?: string;
     publish?: number;
   },
 ) => {
   try {
     const client = getMapiClient();
-    const { data } = await client.stories.updateStory({
+    const { data } = await client.stories.update(storyId, {
       path: {
-        space_id: spaceId,
-        story_id: storyId,
+        space_id: Number(spaceId),
       },
       body: {
-        story: payload.story as Story,
+        story: {
+          ...payload.story,
+          // StoryUpdate2 expects `parent_id?: number`; normalize null → undefined.
+          parent_id: payload.story.parent_id ?? undefined,
+        },
         force_update: payload.force_update === '1' ? '1' : '0',
-        ...(payload.publish ? { publish: payload.publish } : { }),
+        ...(payload.publish ? { publish: payload.publish } : {}),
       },
       throwOnError: true,
     });

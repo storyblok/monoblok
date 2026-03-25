@@ -1,4 +1,5 @@
 import type { StoryblokPropertyType } from './storyblok';
+import type { ComponentSchemaField } from '.';
 
 export type ComponentPropertySchemaType =
   | StoryblokPropertyType
@@ -21,21 +22,8 @@ export interface ComponentPropertySchemaOption {
   value: string;
 }
 
-export interface ComponentPropertySchema {
-  asset_link_type?: boolean;
-  component_group_whitelist?: string[];
-  component_tag_whitelist?: number[];
-  component_whitelist?: string[];
-  email_link_type?: boolean;
-  exclude_empty_option?: boolean;
-  filter_content_type?: string | string[];
+export type ComponentPropertySchema = Omit<ComponentSchemaField, 'type' | 'options'> & {
   key: string;
-  options?: ComponentPropertySchemaOption[];
-  pos: number;
-  restrict_components?: boolean;
-  restrict_type?: 'groups' | 'components' | 'tags' | '';
-  source?: 'internal' | 'external' | 'internal_stories' | 'internal_languages';
-  datasource_slug?: string;
   type: ComponentPropertySchemaType;
-  use_uuid?: boolean;
+  options?: ComponentPropertySchemaOption[];
 };

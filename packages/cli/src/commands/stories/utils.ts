@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { extname, join } from 'pathe';
-import type { Component } from '@storyblok/management-api-client/resources/components';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Component } from '../components/constants';
+import type { Story } from './constants';
 
 /**
  * @method isStoryPublishedWithoutChanges

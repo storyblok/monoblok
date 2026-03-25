@@ -1,8 +1,7 @@
 import { pipeline, Readable, Transform } from 'node:stream';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
-import type { StoriesQueryParams } from '../../../stories/constants';
+import type { StoriesQueryParams, Story } from '../../../stories/constants';
 import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../lib/logger/logger';
 import { ERROR_CODES } from '../constants';

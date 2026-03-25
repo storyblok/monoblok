@@ -1,7 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'pathe';
 import chalk from 'chalk';
-import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
+import type { DatasourceEntry, SpaceDatasource, SpaceDatasourcesData } from '../constants';
+import type { DatasourceCreate, DatasourceUpdate } from '../../../types';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
 import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
@@ -9,13 +10,13 @@ import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils/error/api-error';
 import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
 
-export const pushDatasource = async (spaceId: string, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+export const pushDatasource = async (spaceId: string, datasource: DatasourceCreate): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
 
     const { data } = await client.datasources.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: { datasource },
       throwOnError: true,
@@ -28,14 +29,13 @@ export const pushDatasource = async (spaceId: string, datasource: SpaceDatasourc
   }
 };
 
-export const updateDatasource = async (spaceId: string, datasourceId: number, datasource: SpaceDatasource): Promise<SpaceDatasource | undefined> => {
+export const updateDatasource = async (spaceId: string, datasourceId: number, datasource: DatasourceUpdate): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.datasources.update({
+    const { data } = await client.datasources.update(datasourceId, {
       path: {
-        space_id: spaceId,
-        datasource_id: datasourceId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource,
@@ -50,7 +50,7 @@ export const updateDatasource = async (spaceId: string, datasourceId: number, da
   }
 };
 
-export const upsertDatasource = async (space: string, datasource: SpaceDatasource, existingId?: number): Promise<SpaceDatasource | undefined> => {
+export const upsertDatasource = async (space: string, datasource: DatasourceCreate, existingId?: number): Promise<SpaceDatasource | undefined> => {
   if (existingId) {
     return await updateDatasource(space, existingId, datasource);
   }
@@ -67,17 +67,18 @@ export const upsertDatasource = async (space: string, datasource: SpaceDatasourc
  * @param position - Optional position index to control ordering
  * @returns The created datasource entry
  */
-export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry, position?: number): Promise<SpaceDatasourceEntry | undefined> => {
+export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: DatasourceEntry, position?: number): Promise<DatasourceEntry | undefined> => {
   try {
     const client = getMapiClient();
 
     const { data } = await client.datasourceEntries.create({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource_entry: {
           ...entry,
+          value: entry.value ?? '',
           datasource_id: datasourceId,
           ...(position != null && { position }),
         },
@@ -99,13 +100,12 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  * @param entry - The updated datasource entry data
  * @param position - Optional position index to control ordering
  */
-export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry, position?: number): Promise<void> => {
+export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: DatasourceEntry, position?: number): Promise<void> => {
   try {
     const client = getMapiClient();
-    await client.datasourceEntries.updateDatasourceEntry({
+    await client.datasourceEntries.update(entryId, {
       path: {
-        space_id: spaceId,
-        datasource_entry_id: entryId,
+        space_id: Number(spaceId),
       },
       body: {
         datasource_entry: {
@@ -133,10 +133,10 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
 export const upsertDatasourceEntry = async (
   space: string,
   datasourceId: number,
-  entry: SpaceDatasourceEntry,
+  entry: DatasourceEntry,
   existingId?: number,
   position?: number,
-): Promise<SpaceDatasourceEntry | undefined> => {
+): Promise<DatasourceEntry | undefined> => {
   if (existingId) {
     await updateDatasourceEntry(space, existingId, entry, position);
     return undefined;
@@ -154,10 +154,9 @@ export const upsertDatasourceEntry = async (
 export const deleteDatasourceEntry = async (spaceId: string, entryId: number): Promise<void> => {
   try {
     const client = getMapiClient();
-    await client.datasourceEntries.delete({
+    await client.datasourceEntries.remove(entryId, {
       path: {
-        space_id: spaceId,
-        datasource_entry_id: entryId,
+        space_id: Number(spaceId),
       },
       throwOnError: true,
     });

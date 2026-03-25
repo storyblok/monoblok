@@ -87,8 +87,8 @@ function collectAllDependencies(
 
   // Filter to only include required resources
   const filteredComponents = allComponents.filter(component => requiredComponents.has(component.name));
-  const filteredGroups = allGroups.filter(group => requiredGroupUuids.has(group.uuid));
-  const filteredTags = allTags.filter(tag => requiredTagIds.has(tag.id));
+  const filteredGroups = allGroups.filter(group => group.uuid !== undefined && requiredGroupUuids.has(group.uuid));
+  const filteredTags = allTags.filter(tag => tag.id !== undefined && requiredTagIds.has(tag.id));
 
   return { filteredComponents, filteredGroups, filteredTags };
 }

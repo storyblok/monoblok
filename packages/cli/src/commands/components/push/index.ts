@@ -11,7 +11,7 @@ import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
+import type { Component, ComponentFolder, InternalTag, Preset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
@@ -100,21 +100,21 @@ pushCmd
       const [components, groups, presets, internalTags] = await Promise.all(promises);
 
       if (components) {
-        (components as SpaceComponent[]).forEach((component) => {
+        (components as Component[]).forEach((component) => {
           spaceState.target.components.set(component.name, component);
         });
       }
 
       if (groups) {
-        (groups as SpaceComponentFolder[]).forEach((group) => {
+        (groups as ComponentFolder[]).forEach((group) => {
           spaceState.target.groups.set(group.name, group);
         });
       }
 
       if (presets) {
-        (presets as SpaceComponentPreset[]).forEach((preset) => {
+        (presets as Preset[]).forEach((preset) => {
           // Find the parent component for this nested preset resource
-          const targetComponent = (components as SpaceComponent[])?.find(c => c.id === preset.component_id);
+          const targetComponent = (components as Component[])?.find(c => c.id === preset.component_id);
           if (targetComponent) {
             // Store presets using hierarchical key: component.name:preset.name (parent:child)
             // This reflects the nested resource relationship where presets are scoped to components
@@ -125,7 +125,7 @@ pushCmd
       }
 
       if (internalTags) {
-        (internalTags as SpaceComponentInternalTag[]).forEach((tag) => {
+        (internalTags as InternalTag[]).forEach((tag) => {
           spaceState.target.tags.set(tag.name, tag);
         });
       }

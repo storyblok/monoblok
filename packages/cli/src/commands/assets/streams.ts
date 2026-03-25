@@ -8,7 +8,7 @@ import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
 import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, sha256, updateAsset, updateAssetFolder } from './actions';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetMap, AssetsQueryParams, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetListQuery, AssetMap, AssetUpdate, AssetUpload } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
@@ -26,7 +26,7 @@ export const fetchAssetsStream = ({
   onPageError,
 }: {
   spaceId: string;
-  params?: AssetsQueryParams;
+  params?: AssetListQuery;
   setTotalAssets?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
   onIncrement?: () => void;
@@ -345,21 +345,20 @@ export const makeCreateAssetFolderAPITransport = ({ spaceId }: {
   spaceId,
 });
 
-export type UpdateAssetFolderTransport = (folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
+export type UpdateAssetFolderTransport = (id: number, folder: AssetFolderUpdate) => Promise<AssetFolderUpdate>;
 
 export const makeUpdateAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
-}): UpdateAssetFolderTransport => folder => updateAssetFolder(folder, { spaceId });
+}): UpdateAssetFolderTransport => (id, folder) => updateAssetFolder(id, folder, { spaceId });
 
 export type GetAssetFolderTransport = (folderId: number) => Promise<AssetFolder | undefined>;
 
 export const makeGetAssetFolderAPITransport = ({ spaceId }: {
   spaceId: string;
 }): GetAssetFolderTransport => async (folderId) => {
-  const { data, response } = await getMapiClient().assetFolders.get({
+  const { data, response } = await getMapiClient().assetFolders.get(folderId, {
     path: {
-      asset_folder_id: folderId,
-      space_id: spaceId,
+      space_id: Number(spaceId),
     },
   });
 
@@ -391,7 +390,7 @@ export const upsertAssetFolderStream = ({
   };
   maps: { assetFolders: AssetFolderMap };
   onIncrement?: () => void;
-  onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | AssetFolderUpdate) => void;
+  onFolderSuccess?: (localFolder: AssetFolder, remoteFolder: AssetFolder | (AssetFolderUpdate & { id: number })) => void;
   onFolderError?: (error: Error, folder: AssetFolder) => void;
 }) => {
   return new Writable({
@@ -409,7 +408,7 @@ export const upsertAssetFolderStream = ({
         // This can happen when the user resumes a failed push or runs push multiple times.
         const existingRemoteFolder = await transports.getAssetFolder(remoteFolderId);
         const newRemoteFolder = existingRemoteFolder
-          ? await transports.updateAssetFolder({ ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined })
+          ? { id: remoteFolderId, ...await transports.updateAssetFolder(remoteFolderId, { ...upsertFolder, parent_id: remoteParentId !== null ? remoteParentId : undefined }) }
           : await transports.createAssetFolder(upsertFolder);
 
         // If folder is already mapped it must also be in the manifest already.
@@ -433,7 +432,7 @@ export const upsertAssetFolderStream = ({
 };
 
 export interface LocalAssetPayload {
-  asset: Asset | AssetCreate | AssetUpload;
+  asset: Asset | AssetUpload;
   context: {
     fileBuffer: ArrayBuffer;
     assetBinaryPath: string;
@@ -522,21 +521,19 @@ export const readSingleAssetStream = ({
   return Readable.from(iterator());
 };
 
-export type CreateAssetTransport = (asset: AssetCreate, fileBuffer: ArrayBuffer) => Promise<Asset>;
+export type CreateAssetTransport = (asset: AssetUpload, fileBuffer: ArrayBuffer) => Promise<Asset>;
 
 export const makeCreateAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport =>
   (asset, fileBuffer) => createAsset(asset, fileBuffer, { spaceId });
 
-export type UpdateAssetTransport = (asset: AssetUpdate, fileBuffer: ArrayBuffer) => Promise<Asset>;
+export type UpdateAssetTransport = (id: number, asset: AssetUpdate & { short_filename?: string }, fileBuffer?: ArrayBuffer) => Promise<void>;
 
 export const makeUpdateAssetAPITransport = ({
   spaceId,
 }: {
   spaceId: string;
 }): UpdateAssetTransport =>
-  (asset, fileBuffer) => updateAsset(asset, fileBuffer, {
-    spaceId,
-  });
+  (id, asset, fileBuffer) => updateAsset(id, asset, { spaceId, fileBuffer });
 
 export type AppendAssetManifestTransport = (
   localAsset: { id: Asset['id']; filename?: string },
@@ -574,10 +571,9 @@ export type GetAssetTransport = (assetId: number) => Promise<Asset | undefined>;
 
 export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
   async (assetId: number) => {
-    const { data, response } = await getMapiClient().assets.get({
+    const { data, response } = await getMapiClient().assets.get(assetId, {
       path: {
-        space_id: spaceId,
-        asset_id: assetId,
+        space_id: Number(spaceId),
       },
     });
 
@@ -585,12 +581,11 @@ export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetA
       handleAPIError('pull_asset', new FetchError(response.statusText, response));
     }
 
-    // @ts-expect-error Our types are wrong
     if (data?.deleted_at) {
       return undefined;
     }
 
-    return data as Asset;
+    return data;
   };
 
 export type CleanupAssetTransport = (context: { assetBinaryPath: string; assetPath?: string }) => Promise<void>;
@@ -619,50 +614,26 @@ const hasShortFilename = (a: unknown): a is { short_filename: string } => {
 /**
  * Compares data (metadata and folder id) between local and remote assets.
  * Returns true if the data is identical (no update needed).
+ *
+ * Iterates over every key in the update payload so that newly added
+ * AssetUpdate fields are automatically covered without manual changes.
  */
 const isDataUnchanged = (localAsset: AssetUpdate, remoteAsset: Asset): boolean => {
-  if (localAsset.asset_folder_id !== remoteAsset.asset_folder_id) {
-    return false;
+  for (const key of Object.keys(localAsset) as Array<keyof AssetUpdate>) {
+    const local = localAsset[key];
+    const remote = remoteAsset[key as keyof Asset];
+
+    if (typeof local === 'object' || typeof remote === 'object') {
+      if (JSON.stringify(local) !== JSON.stringify(remote)) {
+        return false;
+      }
+    }
+    else if (local !== remote) {
+      return false;
+    }
   }
 
-  if (
-    localAsset.alt !== remoteAsset.alt
-    || localAsset.title !== remoteAsset.title
-    || localAsset.copyright !== remoteAsset.copyright
-    || localAsset.source !== remoteAsset.source
-    || localAsset.is_private !== remoteAsset.is_private
-  ) {
-    return false;
-  }
-
-  const localAssetMetadataEntries = Object.entries(localAsset.meta_data || {});
-  const remoteAssetMetadataEntries = Object.entries(remoteAsset.meta_data || {});
-  if (localAssetMetadataEntries.length !== remoteAssetMetadataEntries.length) {
-    return false;
-  }
-
-  const hasChanges = localAssetMetadataEntries.some(([k, v]) =>
-    remoteAsset.meta_data && remoteAsset.meta_data[k] !== v);
-
-  return !hasChanges;
-};
-
-/**
- * Checks if an asset update should be skipped because both file and metadata are unchanged.
- */
-const isAssetUnchanged = async (
-  localAsset: AssetUpdate,
-  remoteAsset: Asset,
-  localFileBuffer: ArrayBuffer,
-  downloadAssetFileTransport: DownloadAssetFileTransport,
-): Promise<boolean> => {
-  const remoteFileBuffer = await downloadAssetFileTransport(remoteAsset);
-  const isFileUnchanged = sha256(localFileBuffer) === sha256(remoteFileBuffer);
-  if (!isFileUnchanged) {
-    return false;
-  }
-
-  return isDataUnchanged(localAsset, remoteAsset);
+  return true;
 };
 
 export type DownloadAssetFileTransport = (asset: { filename: string; is_private?: boolean }) => Promise<ArrayBuffer>;
@@ -683,7 +654,7 @@ const processAsset = async ({
   transports,
   maps,
 }: {
-  localAsset: Asset | AssetCreate | AssetUpload;
+  localAsset: Asset | AssetUpload;
   fileBuffer: ArrayBuffer;
   assetBinaryPath: string;
   assetPath?: string;
@@ -707,25 +678,40 @@ const processAsset = async ({
   let newRemoteAsset: Asset;
   let status: 'skipped' | 'created' | 'updated';
   if (remoteAsset) {
-    const updatePayload = {
-      ...remoteAsset,
-      ...localAsset,
-      id: remoteAsset.id,
+    // Build only the writable metadata fields for comparison and API update.
+    // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
+    const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
-    } satisfies AssetUpdate;
-    const canSkip = await isAssetUnchanged(
-      updatePayload,
-      remoteAsset,
-      fileBuffer,
-      transports.downloadAssetFile,
-    );
+      alt: 'alt' in localAsset ? localAsset.alt : remoteAsset.alt,
+      title: 'title' in localAsset ? localAsset.title : remoteAsset.title,
+      copyright: 'copyright' in localAsset ? localAsset.copyright : remoteAsset.copyright,
+      source: 'source' in localAsset ? localAsset.source : remoteAsset.source,
+      is_private: 'is_private' in localAsset ? localAsset.is_private : remoteAsset.is_private,
+      focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
+      expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
+      publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
+      internal_tag_ids: 'internal_tag_ids' in localAsset ? localAsset.internal_tag_ids : remoteAsset.internal_tag_ids,
+      meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
+    };
 
-    if (canSkip) {
+    const remoteFileBuffer = await transports.downloadAssetFile(remoteAsset);
+    const isFileUnchanged = sha256(fileBuffer) === sha256(remoteFileBuffer);
+
+    if (isFileUnchanged && isDataUnchanged(updatePayload, remoteAsset)) {
       newRemoteAsset = remoteAsset;
       status = 'skipped';
     }
     else {
-      newRemoteAsset = await transports.updateAsset(updatePayload, fileBuffer);
+      // Pass fileBuffer when the file changed so mapi-client performs the
+      // full replace flow (sign → S3 upload → finalize) before updating metadata.
+      // short_filename is required alongside fileBuffer for the sign request.
+      await transports.updateAsset(
+        remoteAsset.id,
+        { ...updatePayload, short_filename: remoteAsset.short_filename },
+        isFileUnchanged ? undefined : fileBuffer,
+      );
+      // updateAsset returns void; the remote asset's readonly fields are unchanged.
+      newRemoteAsset = { ...remoteAsset, ...updatePayload };
       status = 'updated';
     }
   }
@@ -733,7 +719,7 @@ const processAsset = async ({
     const createPayload = {
       ...localAsset,
       asset_folder_id: remoteFolderId,
-    } satisfies AssetCreate;
+    } satisfies AssetUpload;
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';
   }
@@ -771,8 +757,8 @@ export const upsertAssetStream = ({
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   onIncrement?: () => void;
-  onAssetSuccess?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
-  onAssetSkipped?: (localAsset: Asset | AssetCreate | AssetUpload, remoteAsset: Asset) => void;
+  onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
+  onAssetSkipped?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
   const processing = new Set<Promise<void>>();

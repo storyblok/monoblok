@@ -1,8 +1,7 @@
-import type { Component } from '@storyblok/management-api-client/resources/components';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
-import { normalizeAssetUrl } from '@storyblok/management-api-client';
-
+import type { Component } from '../components/constants';
+import type { Story } from './constants';
 import type { AssetMap } from '../assets/types';
+import { normalizeAssetUrl } from '@storyblok/management-api-client';
 
 export interface RefMaps {
   assets?: AssetMap;
@@ -269,7 +268,7 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
       : story.content,
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
-    parent_id: parentId != null ? Number(parentId) : null,
+    parent_id: parentId != null ? Number(parentId) : 0,
     alternates,
   } satisfies Story;
 

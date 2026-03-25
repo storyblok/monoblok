@@ -3,7 +3,7 @@ import type { DependencyGraph, NodeProcessingResult, ProcessingLevel, PushResult
 import { determineProcessingOrder } from './dependency-graph';
 import { progressDisplay } from '../progress-display';
 import { pushComponent } from '../actions';
-import type { SpaceComponent } from '../../constants';
+import type { ComponentCreate } from '../../../../types';
 import chalk from 'chalk';
 import { getActiveConfig } from '../../../../lib/config';
 
@@ -127,16 +127,11 @@ async function createStubComponents(
 /**
  * Creates a minimal stub component with only required fields.
  */
-function createMinimalStubComponent(name: string): SpaceComponent {
+function createMinimalStubComponent(name: string): ComponentCreate {
   return {
     name,
     display_name: name,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    id: 0, // Will be set by API
     schema: {}, // Minimal empty schema
-    internal_tags_list: [],
-    internal_tag_ids: [],
   };
 }
 

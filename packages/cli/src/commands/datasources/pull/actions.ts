@@ -2,7 +2,7 @@ import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { getMapiClient } from '../../../api';
 import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import type { SpaceDatasource, SpaceDatasourceEntry } from '../constants';
+import type { DatasourceEntry, SpaceDatasource } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
 
@@ -47,13 +47,13 @@ async function fetchAllPages<T, R>(
 export const fetchDatasourceEntries = async (
   spaceId: string,
   datasourceId: number,
-): Promise<SpaceDatasourceEntry[] | undefined> => {
+): Promise<DatasourceEntry[] | undefined> => {
   try {
     const client = getMapiClient();
     return await fetchAllPages(
       (page: number) => client.datasourceEntries.list({
         path: {
-          space_id: spaceId,
+          space_id: Number(spaceId),
         },
         query: {
           datasource_id: datasourceId,
@@ -76,18 +76,18 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
     const datasources = await fetchAllPages(
       (page: number) => client.datasources.list({
         path: {
-          space_id: spaceId,
+          space_id: Number(spaceId),
         },
         query: {
           page,
         },
         throwOnError: true,
       }),
-      data => data?.datasources || [],
+      data => data.datasources || [],
     );
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
-      datasources.map(async (ds: any) => {
+      datasources.map(async (ds: SpaceDatasource) => {
         if (!ds.id) {
           return { ...ds, entries: [] };
         }
@@ -107,14 +107,14 @@ export const fetchDatasource = async (spaceId: string, datasourceName: string): 
     const client = getMapiClient();
     const { data } = await client.datasources.list({
       path: {
-        space_id: spaceId,
+        space_id: Number(spaceId),
       },
       query: {
         search: datasourceName,
       },
       throwOnError: true,
     });
-    const found = data?.datasources?.find(d => d.name === datasourceName);
+    const found = data.datasources?.find((d: SpaceDatasource) => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
     const entries = await fetchDatasourceEntries(spaceId, found.id as number);

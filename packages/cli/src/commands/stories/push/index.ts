@@ -1,6 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import { join } from 'pathe';
-import type { Component } from '@storyblok/management-api-client/resources/components';
+import type { Component } from '../../components/constants';
+import type { Story } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
@@ -13,7 +14,6 @@ import { createStoriesForLevel, groupStoriesByDepth, makeAppendToManifestFSTrans
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
 import { prefetchTargetStories } from '../actions';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const pushCmd = storiesCommand
   .command('push')

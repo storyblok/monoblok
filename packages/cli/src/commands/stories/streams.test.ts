@@ -30,7 +30,7 @@ describe('readLocalStoriesStream', () => {
       name: 'Story A',
       id: 100,
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'story-a',
     };
@@ -57,7 +57,7 @@ describe('readLocalStoriesStream', () => {
       name: 'Valid',
       id: 1,
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'valid',
     };
@@ -103,7 +103,7 @@ describe('scanLocalStoryIndex', () => {
       name: 'About',
       full_slug: 'about',
       is_folder: false,
-      parent_id: null,
+      parent_id: 0,
       content: { _uid: '1', component: 'page' },
     });
 
@@ -118,7 +118,7 @@ describe('scanLocalStoryIndex', () => {
       full_slug: 'about',
       is_folder: false,
       is_startpage: false,
-      parent_id: null,
+      parent_id: 0,
       component: 'page',
     });
     expect(entries[0].filename).toMatch(/\.json$/);
@@ -152,7 +152,7 @@ describe('scanLocalStoryIndex', () => {
       name: 'Valid',
       full_slug: 'valid',
       is_folder: false,
-      parent_id: null,
+      parent_id: 0,
       content: { _uid: '1', component: 'page' },
     });
     vol.fromJSON({ [join(STORIES_DIR, 'broken.json')]: '{bad' });
@@ -178,7 +178,7 @@ describe('scanLocalStoryIndex', () => {
       name: 'Story',
       full_slug: 'story',
       is_folder: false,
-      parent_id: null,
+      parent_id: 0,
       content: { _uid: '1', component: 'page' },
     });
     vol.fromJSON({ [join(STORIES_DIR, 'readme.txt')]: 'not a story' });
@@ -199,7 +199,7 @@ describe('groupStoriesByDepth', () => {
     full_slug: 'test',
     is_folder: false,
     is_startpage: false,
-    parent_id: null,
+    parent_id: 0,
     component: 'page',
     ...overrides,
   });
@@ -286,7 +286,7 @@ describe('createStoriesForLevel', () => {
     full_slug: 'test',
     is_folder: false,
     is_startpage: false,
-    parent_id: null,
+    parent_id: 0,
     component: 'page',
     ...overrides,
   });
@@ -612,7 +612,7 @@ describe('push pipeline: scan -> group -> create level-by-level', () => {
     //   blog/2024/recap  (story, depth 2)
     const blogId = 1;
     const subId = 4;
-    writeStory({ id: blogId, uuid: randomUUID(), slug: 'blog', name: 'Blog', full_slug: 'blog', is_folder: true, parent_id: null });
+    writeStory({ id: blogId, uuid: randomUUID(), slug: 'blog', name: 'Blog', full_slug: 'blog', is_folder: true, parent_id: 0 });
     writeStory({ id: 2, uuid: randomUUID(), slug: 'home', name: 'Home', full_slug: 'blog/home', is_folder: false, is_startpage: true, parent_id: blogId, content: { _uid: '1', component: 'page' } });
     writeStory({ id: 3, uuid: randomUUID(), slug: 'post-1', name: 'Post 1', full_slug: 'blog/post-1', is_folder: false, parent_id: blogId, content: { _uid: '2', component: 'page' } });
     writeStory({ id: subId, uuid: randomUUID(), slug: '2024', name: '2024', full_slug: 'blog/2024', is_folder: true, parent_id: blogId });

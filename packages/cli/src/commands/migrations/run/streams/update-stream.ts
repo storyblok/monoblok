@@ -1,6 +1,6 @@
 import { Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { StoryUpdate } from '../../../../types';
 import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
@@ -68,7 +68,7 @@ export class UpdateStream extends Writable {
 
     try {
       const payload: {
-        story: Story;
+        story: StoryUpdate;
         force_update?: string;
         publish?: number;
       } = {

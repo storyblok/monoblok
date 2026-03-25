@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { readComponentsFiles } from '../../components/push/actions';
 import { generateTypes } from './actions';
-import type { SpaceComponent } from '../../components/constants';
+import type { Component } from '../../components/constants';
 
-const mockComponent1: SpaceComponent = {
+const mockComponent1: Component = {
   name: 'hero',
   display_name: 'Hero',
   created_at: '2025-10-10T12:12:18.056Z',
@@ -26,7 +26,7 @@ const mockComponent1: SpaceComponent = {
   internal_tag_ids: [],
 };
 
-const mockComponent2: SpaceComponent = {
+const mockComponent2: Component = {
   name: 'feature',
   display_name: 'Feature',
   created_at: '2025-10-09T06:29:14.630Z',

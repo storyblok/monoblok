@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node';
 import { vol } from 'memfs';
 import '../index';
 import { assetsCommand } from '../command';
-import type { AssetsQueryParams } from '../types';
+import type { AssetListQuery } from '../types';
 import { getLogFileContents } from '../../__tests__/helpers';
 import {
   assetFileExists,
@@ -24,7 +24,7 @@ const LOG_PREFIX = 'storyblok-assets-pull-';
 
 const server = setupServer();
 const preconditions = {
-  canFetchRemoteAssetPages(assetPages: MockAsset[][], params: AssetsQueryParams = {}) {
+  canFetchRemoteAssetPages(assetPages: MockAsset[][], params: AssetListQuery = {}) {
     server.use(
       http.get(
         'https://mapi.storyblok.com/v1/spaces/12345/assets',
@@ -232,7 +232,7 @@ describe('assets pull command', () => {
     const assets = [makeMockAsset(), makeMockAsset(), makeMockAsset()];
     preconditions.canFetchRemoteFolders([]);
     preconditions.canFetchRemoteAssetPages([assets], {
-      in_folder: '-1',
+      in_folder: -1,
     });
     preconditions.canDownloadAssets(assets);
 

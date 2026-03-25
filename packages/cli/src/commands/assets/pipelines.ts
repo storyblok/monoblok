@@ -1,5 +1,6 @@
 import { pipeline } from 'node:stream/promises';
-import type { Component } from '@storyblok/management-api-client/resources/components';
+import type { Component } from '../components/constants';
+import type { Story } from '../stories/constants';
 import type { UI } from '../../utils/ui';
 import type { WriteStoryTransport } from '../stories/streams';
 import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStoryStream } from '../stories/streams';
@@ -21,7 +22,6 @@ import type {
 } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
 import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
 
 const PROGRESS_BAR_PADDING = 23;
 

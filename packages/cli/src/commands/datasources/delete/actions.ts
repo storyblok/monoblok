@@ -10,10 +10,9 @@ export async function deleteDatasource(spaceId: string, id: string): Promise<voi
   try {
     const client = getMapiClient();
     // Call the Storyblok Management API to delete the datasource by id
-    await client.datasources.delete({
+    await client.datasources.remove(Number(id), {
       path: {
-        space_id: spaceId,
-        datasource_id: Number(id),
+        space_id: Number(spaceId),
       },
       throwOnError: true,
     });

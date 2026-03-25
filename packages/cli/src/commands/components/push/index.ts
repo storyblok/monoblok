@@ -159,7 +159,6 @@ pushCmd
       };
 
       // Build local preset keys BEFORE graph processing (which mutates component_id references)
-      const pushedComponentNames = new Set(spaceState.local.components.map(c => c.name));
       const localComponentById = new Map(spaceState.local.components.map(c => [c.id, c.name]));
       const localPresetKeys = new Set<string>();
       for (const preset of spaceState.local.presets) {
@@ -175,12 +174,13 @@ pushCmd
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
 
-      // Reconcile presets: delete stale presets from target for components being pushed
+      // Reconcile presets: delete stale presets only for components that were pushed successfully
+      const successfulNames = new Set(results.successful);
       for (const [compositeKey, targetPreset] of spaceState.target.presets) {
         const separatorIndex = compositeKey.indexOf(':');
         const componentName = compositeKey.substring(0, separatorIndex);
 
-        if (pushedComponentNames.has(componentName) && !localPresetKeys.has(compositeKey)) {
+        if (successfulNames.has(componentName) && !localPresetKeys.has(compositeKey)) {
           try {
             await deleteComponentPreset(space, targetPreset.id);
             ui.info(`Deleted stale preset: ${chalk.hex(colorPalette.PRESETS)(compositeKey)}`);

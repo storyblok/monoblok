@@ -1,241 +1,74 @@
-# @storyblok/management-api-client
+<div align="center">
 
-A comprehensive TypeScript SDK for the Storyblok Management API with automatic region resolution and built-in retry logic.
+![Storyblok ImagoType](https://raw.githubusercontent.com/storyblok/.github/refs/heads/main/profile/public/github-banner.png)
+
+<h1 align="center">@storyblok/management-api-client</h1>
+ <p>
+    A modern TypeScript client for the Storyblok Management API with automatic region resolution, built-in preventive rate limiting, and configurable retry logic
+  </p>
+  <br />
+</div>
+
+<p align="center">
+  <a href="https://npmjs.com/package/@storyblok/management-api-client">
+    <img src="https://img.shields.io/npm/v/@storyblok/management-api-client/latest.svg?style=flat-square&color=8d60ff" alt="@storyblok/management-api-client" />
+  </a>
+  <a href="https://npmjs.com/package/@storyblok/management-api-client" rel="nofollow">
+    <img src="https://img.shields.io/npm/dt/@storyblok/management-api-client.svg?style=appveyor&color=8d60ff" alt="npm">
+  </a>
+  <a href="https://storyblok.com/join-discord">
+   <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
+   </a>
+  <a href="https://twitter.com/intent/follow?screen_name=storyblok">
+    <img src="https://img.shields.io/badge/Follow-%40storyblok-8d60ff?style=appveyor&logo=twitter" alt="Follow @Storyblok" />
+  </a><br/>
+  <a href="https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=@storyblok/management-api-client">
+    <img src="https://img.shields.io/badge/Try%20Storyblok-Free-8d60ff?style=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAHqADAAQAAAABAAAAHgAAAADpiRU/AAACRElEQVRIDWNgGGmAEd3D3Js3LPrP8D8WXZwSPiMjw6qvPoHhyGYwIXNAbGpbCjbzP0MYuj0YFqMroBV/wCxmIeSju64eDNzMBJUxvP/9i2Hnq5cM1devMnz984eQsQwETeRhYWHgIcJiXqC6VHlFBjUeXgav40cIWkz1oLYXFmGwFBImaDFBHyObcOzdW4aSq5eRhRiE2dgYlpuYoYSKJi8vw3GgWnyAJIs/AuPu4scPGObd/fqVQZ+PHy7+6udPOBsXgySLDfn5GRYYmaKYJcXBgWLpsx8/GPa8foWiBhuHJIsl2DkYQqWksZkDFgP5PObcKYZff//iVAOTIDlx/QPqRMb/YSYBaWlOToZIaVkGZmAZSQiQ5OPtwHwacuo4iplMQEu6tXUZMhSUGDiYmBjylFQYvv/7x9B04xqKOnQOyT5GN+Df//8M59ASXKyMHLoyDD5JPtbj42OYrm+EYgg70JfuYuIoYmLs7AwMjIzA+uY/zjAnyWJpDk6GOFnCvrn86SOwmsNtKciVFAc1ileBHFDC67lzG10Yg0+SjzF0ownsf/OaofvOLYaDQJoQIGix94ljv1gIZI8Pv38zPvj2lQWYf3HGKbpDCFp85v07NnRN1OBTPY6JdRSGxcCw2k6sZuLVMZ5AV4s1TozPnGGFKbz+/PE7IJsHmC//MDMyhXBw8e6FyRFLv3Z0/IKuFqvFyIqAzd1PwBzJw8jAGPfVx38JshwlbIygxmYY43/GQmpais0ODDHuzevLMARHBcgIAQAbOJHZW0/EyQAAAABJRU5ErkJggg==" alt="Follow @Storyblok" />
+  </a>
+</p>
 
 ## Features
 
 - **Type-Safe**: Generated from OpenAPI specifications with full TypeScript support
+- **Factory Function**: `createManagementApiClient(config)` with no class instantiation
 - **Region Resolution**: Automatic regional endpoint selection based on space ID
-- **Retry Logic**: Built-in retry with exponential backoff and `retry-after` header support
-- **Multi-Resource**: Unified client for many MAPI resources (stories, datasources, components, etc.)
+- **Preventive Rate Limiting**: Token-bucket throttling to avoid hitting API rate limits before they occur
+- **Retry Logic**: Built-in retry with exponential backoff and `Retry-After` header support
+- **Multi-Resource**: Unified client for all Storyblok Management API resources
 
-## Installation
+## Documentation
 
-```bash
-npm install @storyblok/management-api-client
-# or
-pnpm add @storyblok/management-api-client
-```
-
-## Quick Start
-
-```typescript
-import { ManagementApiClient } from '@storyblok/management-api-client';
-
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-personal-access-token' },
-  // Optional configuration
-  region: 'us', // 'eu' | 'us' | 'ap' | 'ca' | 'cn'
-});
-
-// Get stories with full type safety
-const stories = await client.stories.list({
-  path: { space_id: 123456 },
-  query: { per_page: 10 }
-});
-
-// Create a datasource
-const datasource = await client.datasources.create({
-  path: { space_id: 123456 },
-  body: {
-    datasource: {
-      name: 'My Datasource',
-      slug: 'my-datasource'
-    }
-  }
-});
-```
-
-## Authentication
-
-### Personal Access Token
-```typescript
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-personal-access-token' }
-});
-```
-
-### OAuth Token
-```typescript
-const client = new ManagementApiClient({
-  token: { oauthToken: 'your-oauth-token' }
-});
-```
-
-## Configuration
-
-```typescript
-interface ManagementApiClientConfig {
-  token: { accessToken: string } | { oauthToken: string };
-  region?: 'eu' | 'us' | 'ap' | 'ca' | 'cn'; // Auto-detected from space_id if not provided
-  baseUrl?: string; // Override automatic region resolution
-  headers?: Record<string, string>; // Additional headers
-  throwOnError?: boolean; // Throw on HTTP errors (default: false)
-}
-```
-
-## Available Resources
-
-The client provides access to all Storyblok Management API resources:
-
-```typescript
-// Stories
-await client.stories.list({ path: { space_id } });
-await client.stories.get({ path: { space_id, story_id } });
-await client.stories.create({ path: { space_id }, body: { story: {...} } });
-await client.stories.updateStory({ path: { space_id, story_id }, body: { story: {...} } });
-await client.stories.delete({ path: { space_id, story_id } });
-
-// Datasources
-await client.datasources.list({ path: { space_id } });
-await client.datasources.create({ path: { space_id }, body: { datasource: {...} } });
-
-// Components
-await client.components.list({ path: { space_id } });
-await client.components.create({ path: { space_id }, body: { component: {...} } });
-
-// Spaces
-await client.spaces.list({});
-await client.spaces.get({ path: { space_id } });
-
-// Datasource Entries
-await client.datasourceEntries.list({ path: { space_id, datasource_id } });
-
-// Internal Tags
-await client.internalTags.list({ path: { space_id } });
-```
-
-## Region Resolution
-
-The client automatically determines the correct regional endpoint based on your space ID:
-
-```typescript
-// These will automatically route to the correct regional endpoints:
-await client.stories.list({ path: { space_id: 564469716905585 } }); 
-// → https://api-us.storyblok.com
-
-await client.stories.list({ path: { space_id: 845944693616241 } }); 
-// → https://api-ca.storyblok.com
-
-await client.stories.list({ path: { space_id: 1127419670326897 } }); 
-// → https://api-ap.storyblok.com
-```
-
-### Override Region Resolution
-```typescript
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-token' },
-  baseUrl: 'https://custom-api.example.com' // Bypasses automatic region detection
-});
-```
-
-## Retry Logic
-
-The client includes built-in retry handling for rate limits and network errors:
-
-- **429 Retry Handling**: Automatically retries on rate limit responses
-- **Retry-After Support**: Respects `retry-after` headers from the API
-- **Exponential Backoff**: Smart retry delays to avoid overwhelming the API
-- **Network Error Retry**: Retries on network failures
-
-```typescript
-// The client automatically handles retries with these defaults:
-// - maxRetries: 12
-// - retryDelay: 1000ms
-// - Respects retry-after headers from 429 responses
-
-const stories = await client.stories.list({ 
-  path: { space_id: 123456 },
-  query: { per_page: 10 }
-});
-// If rate limited, will automatically retry up to 12 times
-```
-
-## Runtime Configuration
-
-Update client configuration at runtime:
-
-```typescript
-// Update region/baseUrl
-client.setConfig({ 
-  region: 'us',
-  headers: { 'Custom-Header': 'value' }
-});
-
-// Update authentication
-client.setToken({ accessToken: 'new-token' });
-```
-
-## Error Handling
-
-```typescript
-try {
-  const story = await client.stories.get({
-    path: { space_id: 123456, story_id: 'non-existent' }
-  });
-} catch (error) {
-  if (error.status === 404) {
-    console.log('Story not found');
-  }
-}
-
-// Or configure to not throw errors
-const client = new ManagementApiClient({
-  token: { accessToken: 'your-token' },
-  throwOnError: false
-});
-
-const result = await client.stories.get({
-  path: { space_id: 123456, story_id: 'non-existent' }
-});
-
-if (result.error) {
-  console.log('Error:', result.error);
-} else {
-  console.log('Story:', result.data);
-}
-```
-
-## TypeScript Support
-
-The client provides full TypeScript support with generated types:
-
-```typescript
-import type { 
-  StoriesTypes,
-  DatasourcesTypes,
-  ComponentsTypes 
-} from '@storyblok/management-api-client';
-
-// Full type safety for request/response data
-const createStory = async (storyData: StoriesTypes.CreateRequestBody) => {
-  const response = await client.stories.create({
-    path: { space_id: 123456 },
-    body: storyData
-  });
-  
-  // Response is fully typed
-  return response.data; // StoriesTypes.Story
-};
-```
-
-## Development
-
-```bash
-# Generate SDKs from OpenAPI specs
-pnpm generate
-
-# Build the package
-pnpm build
-
-# Run tests
-pnpm test
-```
+For complete documentation, please visit [package reference](https://www.storyblok.com/docs/libraries/js/management-api-client)
 
 ## Contributing
 
-This package is generated from OpenAPI specifications in `packages/openapi/`. To add new endpoints or modify existing ones, update the OpenAPI specs and regenerate the client.
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
+
+## Community
+
+For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
+
+For community support, chatting with other users, please visit:
+
+- [Discuss Storyblok on Discord](https://storyblok.com/join-discord)
+
+## Support
+
+For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+
+> [!IMPORTANT]
+> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+
+### I can't share my company project code
+
+We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+
+### Feedback
+
+If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 
-MIT
+[License](/LICENSE)

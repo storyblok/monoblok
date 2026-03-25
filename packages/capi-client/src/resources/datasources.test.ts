@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
@@ -19,13 +19,13 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('datasources.getAll()', () => {
+describe('datasources.list()', () => {
   it('should successfully retrieve multiple datasources', async () => {
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.datasources.getAll();
+    const result = await client.datasources.list();
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.datasources)).toBe(true);
@@ -42,7 +42,7 @@ describe('datasources.getAll()', () => {
       accessToken: 'invalid-token',
     });
 
-    const resultPromise = client.datasources.getAll();
+    const resultPromise = client.datasources.list();
     await vi.runOnlyPendingTimersAsync();
     const result = await resultPromise;
 
@@ -103,7 +103,7 @@ describe('datasources.get()', () => {
       accessToken: 'test-token',
     });
 
-    await client.links.getAll({ query: { version: 'published' } });
+    await client.links.list({ query: { version: 'published' } });
     const result = await client.datasources.get(123);
 
     expect(result.error).toBeUndefined();

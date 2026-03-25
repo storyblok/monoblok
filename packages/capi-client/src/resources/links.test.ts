@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
@@ -19,13 +19,13 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('links.getAll()', () => {
+describe('links.list()', () => {
   it('should successfully retrieve multiple links', async () => {
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.links.getAll();
+    const result = await client.links.list();
 
     expect(result.error).toBeUndefined();
     expect(typeof result.data?.links).toBe('object');
@@ -58,7 +58,7 @@ describe('links.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.links.getAll();
+    const result = await client.links.list();
 
     expect(result.error).toBeUndefined();
     expect(result.data?.links[linkUuid]).toBeDefined();
@@ -79,7 +79,7 @@ describe('links.getAll()', () => {
       accessToken: 'invalid-token',
     });
 
-    const result = await client.links.getAll();
+    const result = await client.links.list();
 
     expect(result.error).toBeDefined();
     expect(result.data).toBeUndefined();
@@ -101,8 +101,8 @@ describe('links.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    await client.links.getAll({ query: { version: 'published' } });
-    await client.links.getAll({ query: { version: 'published' } });
+    await client.links.list({ query: { version: 'published' } });
+    await client.links.list({ query: { version: 'published' } });
 
     expect(requestCount).toBe(1);
   });
@@ -119,8 +119,8 @@ describe('links.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    await client.links.getAll({ query: { version: 'draft' } });
-    await client.links.getAll({ query: { version: 'draft' } });
+    await client.links.list({ query: { version: 'draft' } });
+    await client.links.list({ query: { version: 'draft' } });
 
     expect(requestCount).toBe(2);
   });

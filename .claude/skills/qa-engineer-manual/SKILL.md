@@ -129,7 +129,7 @@ scenarios/
 - Clean up local artifacts with `./scripts/cleanup-local.sh`. Don't hesitate to clean up between tests to start with a clean slate.
 - Place test scripts in `./.claude/tmp/`. Import from the built package: `../../packages/PACKAGE_NAME/dist/index.mjs`.
 - Export env vars before running: `set -a && source ./.env.qa-engineer-manual && set +a && node ./.claude/tmp/test-name.mjs`.
-- The stories list endpoint does NOT return `content` by default — `story.content?.component` will be `undefined` in list responses. Fetch individual stories for full content.
+- The stories `cdn/links` endpoint does NOT return `content` — `story.content?.component` will be `undefined` in `cdn/links` responses. Fetch individual stories for full content.
 - When using two spaces (for example, mapping references between source and target), use `STORYBLOK_SPACE_ID_TARGET` for the target (loaded via `.env.qa-engineer-manual`).
 
 ## Helper scripts

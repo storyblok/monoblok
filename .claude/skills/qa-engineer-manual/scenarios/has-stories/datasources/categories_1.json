@@ -3,7 +3,7 @@
   "name": "Categories",
   "slug": "categories",
   "dimensions": [],
-  "datasource_entries": [
+  "entries": [
     { "id": 1, "name": "Technology", "value": "technology", "dimension_value": null },
     { "id": 2, "name": "Design", "value": "design", "dimension_value": null }
   ]

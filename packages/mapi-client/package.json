@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/management-api-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Storyblok Management API Client",
   "main": "./dist/index.cjs",

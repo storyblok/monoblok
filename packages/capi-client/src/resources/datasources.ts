@@ -1,9 +1,9 @@
-import { getAll as getAllDatasourcesApi, get as getDatasourceApi } from '../generated/datasources/sdk.gen';
+import { get as getDatasourceApi, list as listDatasourcesApi } from '../generated/datasources/sdk.gen';
 import type {
-  GetAllData as DatasourcesGetAllData,
-  GetAllResponses as DatasourcesGetAllResponses,
   GetData as DatasourcesGetData,
   GetResponses as DatasourcesGetResponses,
+  ListData as DatasourcesListData,
+  ListResponses as DatasourcesListResponses,
 } from '../generated/datasources/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
 
@@ -30,14 +30,14 @@ export function createDatasourcesResource(deps: ResourceDeps) {
       });
     },
 
-    getAll: async <ThrowOnError extends boolean = false>(
-      options: { query?: DatasourcesGetAllData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourcesGetAllResponses[200], ThrowOnError>> => {
+    list: async <ThrowOnError extends boolean = false>(
+      options: { query?: DatasourcesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<DatasourcesListResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/datasources';
-      return requestWithCache<DatasourcesGetAllResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<DatasourcesListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourcesGetAllResponses[200], ThrowOnError>(getAllDatasourcesApi({
+          asApiResponse<DatasourcesListResponses[200], ThrowOnError>(listDatasourcesApi({
             client,
             query: requestQuery,
             signal,

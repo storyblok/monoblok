@@ -1,4 +1,4 @@
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from './types';
 
 import { readLocalJsonFiles, writeLocalJsonFile } from './local-utils';
 

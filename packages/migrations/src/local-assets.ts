@@ -1,4 +1,4 @@
-import type { Asset } from '@storyblok/management-api-client/resources/assets';
+import type { Asset } from './types';
 
 import { readLocalJsonFiles, writeLocalJsonFile } from './local-utils';
 

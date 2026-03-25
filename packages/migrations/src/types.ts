@@ -1,10 +1,3 @@
-export type StoryblokPropertyType =
-  | 'asset'
-  | 'multiasset'
-  | 'multilink'
-  | 'table'
-  | 'richtext';
-
 export interface StoryblokAsset {
   alt: string | null;
   copyright: string | null;

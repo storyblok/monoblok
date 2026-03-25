@@ -38,7 +38,7 @@
 
 ## Documentation
 
-For complete documentation, please visit [package reference](https://www.storyblok.com/docs/packages/storyblok-api-client)
+For complete documentation, please visit [package reference](https://www.storyblok.com/docs/libraries/js/api-client)
 
 ## Contributing
 

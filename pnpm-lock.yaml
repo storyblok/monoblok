@@ -317,6 +317,9 @@ importers:
       msw:
         specifier: ^2.12.9
         version: 2.12.10(@types/node@24.11.0)(typescript@5.9.3)
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       tsdown:
         specifier: ^0.20.3
         version: 0.20.3(@arethetypeswrong/core@0.18.2)(publint@0.3.18)(synckit@0.11.12)(typescript@5.9.3)

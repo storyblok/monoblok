@@ -1,5 +1,4 @@
-import type { Component } from '@storyblok/management-api-client/resources/components';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Component, Story } from './types';
 
 export interface RefMaps {
   assets?: Map<unknown, string | number>;
@@ -308,7 +307,7 @@ export function mapRefs(
   // mapped ids may be string|number at runtime but shape is compatible
   const alternates = alternatesRaw as Story['alternates'];
 
-  const parentId = maps.stories?.get(story.parent_id) ?? story.parent_id;
+  const parentId = maps.stories?.get(story.parent_id);
   const mappedContentRaw = story.content?.component
     ? traverseAndMapBySchema(story.content, {
         schemas,
@@ -325,7 +324,7 @@ export function mapRefs(
     content: mappedContentRaw as unknown as Story['content'],
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
-    parent_id: parentId != null ? Number(parentId) : null,
+    parent_id: parentId != null ? Number(parentId) : story.parent_id,
     alternates,
   } satisfies Story;
 

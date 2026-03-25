@@ -1,4 +1,4 @@
-import type { Datasource } from '@storyblok/management-api-client/resources/datasources';
+import type { Datasource } from './types';
 
 import { readLocalJsonFiles, writeLocalJsonFile } from './local-utils';
 

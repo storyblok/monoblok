@@ -1,0 +1,13 @@
+type: object
+description: Input for creating an asset folder.
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: The name of the asset folder
+  parent_id:
+    type:
+      - integer
+      - "null"
+    description: ID of the parent folder for hierarchical structure. Use 0 or null to move to root level.

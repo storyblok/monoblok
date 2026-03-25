@@ -1,0 +1,15 @@
+type: object
+description: Input for updating a datasource entry.
+properties:
+  name:
+    type: string
+    description: The key name of the datasource entry
+  value:
+    type: string
+    description: Given value in the default dimension
+  datasource_id:
+    type: integer
+    description: The numeric ID of the datasource this entry belongs to
+  dimension_value:
+    type: string
+    description: Given value in the requested dimension

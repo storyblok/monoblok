@@ -10,7 +10,7 @@ security:
 paths:
   /v2/cdn/tags:
     get:
-      operationId: getAll
+      operationId: list
       summary: Retrieve All Tags
       description: Returns an array of all available tags. Tags can be filtered by prefix and version.
       parameters:

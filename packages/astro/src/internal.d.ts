@@ -32,12 +32,6 @@ declare module 'virtual:storyblok-options' {
   export default options;
 }
 
-declare module 'virtual:storyblok-init' {
-  import type { StoryblokClient } from '@storyblok/astro';
-
-  export const storyblokApiInstance: StoryblokClient;
-}
-
 // Dev stub. Real types come from the built package.
 declare module '@storyblok/astro' {
   /** Converts a string to camelCase (internal helper). */

@@ -1,126 +1,241 @@
-// Import generated SDKs with shared client support
-import { createClient } from './client';
-import type { Client } from './client/types';
-import { getManagementBaseUrl, type Region } from '@storyblok/region-helper';
-import { sdkRegistry, SdkRegistryInstance } from './sdk-registry.generated';
+import type { Client, ResolvedRequestOptions } from './generated/shared/client';
+import type { Middleware } from './generated/shared/client/utils.gen';
+import { createClient, createConfig } from './generated/shared/client';
+import { getManagementBaseUrl } from '@storyblok/region-helper';
+import { ClientError } from './error';
+import { createThrottleManager } from './utils/rate-limit';
+import { createAssetFoldersResource } from './resources/asset-folders';
+import { createAssetsResource } from './resources/assets';
+import { createComponentFoldersResource } from './resources/component-folders';
+import { createComponentsResource } from './resources/components';
+import { createDatasourceEntriesResource } from './resources/datasource-entries';
+import { createDatasourcesResource } from './resources/datasources';
+import { createInternalTagsResource } from './resources/internal-tags';
+import { createPresetsResource } from './resources/presets';
+import { createSpacesResource } from './resources/spaces';
+import { createStoriesResource } from './resources/stories';
+import { createUsersResource } from './resources/users';
+import type {
+  ApiResponse,
+  HttpRequestOptions,
+  ManagementApiClientConfig,
+  MapiResourceDeps,
+} from './types';
 
-type PersonalAccessToken = {
-  accessToken: string;
+function getAuthorizationHeader(config: ManagementApiClientConfig): string | undefined {
+  if (config.accessToken) {
+    return config.accessToken;
+  }
+  if (config.oauthToken) {
+    return `Bearer ${config.oauthToken}`;
+  }
+  return undefined;
 }
 
-type OAuthToken = {
-  oauthToken: string;
-}
-
-export interface ManagementApiClientConfig<ThrowOnError extends boolean = false> {
-  token: PersonalAccessToken | OAuthToken;
-  region?: Region;
-  baseUrl?: string; // Override for custom endpoints
-  headers?: Record<string, string>;
-  throwOnError?: ThrowOnError;
-}
-
-export interface ManagementApiClient<ThrowOnError extends boolean = false> extends SdkRegistryInstance {}
-export class ManagementApiClient<ThrowOnError extends boolean = false> {
-  protected client: Client;
-  protected config: ManagementApiClientConfig<ThrowOnError>;
-  protected sdkCache: Record<string, Promise<any>> = {};
-
-  constructor(config: ManagementApiClientConfig<ThrowOnError>) {
-    this.config = config;
-    this.client = createClientInstance(config);
-
-    Object.entries(sdkRegistry).forEach(([name, Sdk]) => {
-      Object.defineProperty(this, name, {
-        get: () => new Sdk({ client: this.client as any }),
-        enumerable: true,
-        configurable: true
-      });
-    });
-  }
-
-
-  /**
-   * @returns The client's interceptors
-   * @example
-   * client.interceptors.request.use((request, options) => {
-   *   console.log('Request:', request);
-   *   return request;
-   * });
-   */
-  public get interceptors(): Client['interceptors'] {
-    return this.client.interceptors;
-  }
-
-  /**
-   * @param config - The configuration to set
-   * @example
-   * client.setConfig({ region: 'eu' });
-   */
-  setConfig(config: Partial<Omit<ManagementApiClientConfig, 'token'>>): void {
-    const { region, baseUrl, headers } = config;
-    
-    if (headers) {
-      this.client.setConfig({
-        baseUrl: baseUrl || this.config.baseUrl,
-        region: region || this.config.region!,
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(this.config.token),
-          ...headers
-        }
-      });
-    }
-  }
-
-  /**
-   * @param token - The token to set
-   * @example
-   * client.setToken({ accessToken: '123' });
-   */
-  setToken(token: PersonalAccessToken | OAuthToken): void {
-    this.config.token = token;
-    this.client.setConfig({
-      region: this.config.region ?? "eu",
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(token),
-        ...this.config.headers
-      }
-    });
-  }
-}
-
-// Pure functions for client creation and setup
-function createClientInstance<ThrowOnError extends boolean = false>(
-  config: ManagementApiClientConfig<ThrowOnError>
-): Client {
-  const { token, region = "eu", baseUrl, headers = {}, throwOnError = false } = config;
-  
-  return createClient({
+export const createManagementApiClient = (config: ManagementApiClientConfig) => {
+  const {
+    spaceId,
+    region = 'eu',
     baseUrl,
-    region,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(token),
-      ...headers
+    headers = {},
+    throwOnError = false,
+    retry = {
+      limit: 12,
+      backoffLimit: 20_000,
+      methods: ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'],
+      statusCodes: [429],
     },
-    throwOnError: throwOnError ?? false
-  });
-}
+    timeout = 30_000,
+    rateLimit,
+  } = config;
 
-function getAuthHeader(token: PersonalAccessToken | OAuthToken): Record<string, string> {
-  return 'accessToken' in token ? {
-    'Authorization': token.accessToken
-  } : {
-    'Authorization': token.oauthToken
+  const throttleManager = createThrottleManager(rateLimit ?? {});
+  const authHeader = getAuthorizationHeader(config);
+
+  const client: Client = createClient(
+    createConfig({
+      baseUrl: baseUrl || getManagementBaseUrl(region),
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...headers,
+      },
+      throwOnError,
+      kyOptions: {
+        throwHttpErrors: true,
+        timeout,
+        retry,
+      },
+    }),
+  );
+
+  client.interceptors.error.use(
+    (error: unknown, response: Response) =>
+      new ClientError(response?.statusText || 'API request failed', {
+        status: response?.status ?? 0,
+        statusText: response?.statusText ?? '',
+        data: error,
+      }),
+  );
+
+  /**
+   * Wraps an SDK call with throttling and response adaptation.
+   * The throttle slot is held for the entire duration of the request.
+   * When throwOnError is true, errors throw and data is guaranteed non-null.
+   */
+  function wrapRequest<TData, ThrowOnError extends boolean = false>(
+    fn: () => Promise<unknown>,
+    _throwOnError?: ThrowOnError,
+  ): Promise<ApiResponse<TData, ThrowOnError>> {
+    return throttleManager.execute(async () => {
+      const result = await fn() as ApiResponse<TData, ThrowOnError>;
+      throttleManager.adaptToResponse((result as { response: Response }).response);
+      return result;
+    }) as Promise<ApiResponse<TData, ThrowOnError>>;
   }
-}
 
-// Export client utilities
-export { ClientError } from './client/error';
-export { createClient } from './client';
-export type { Client } from './client/types';
+  const deps: MapiResourceDeps = { client, spaceId, wrapRequest };
 
-// Export all generated types
-export * from './types.generated';
+  /**
+   * Escape hatch: send a GET request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpGet = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    const { fetchOptions, ...rest } = options;
+    return wrapRequest<TData>(() =>
+      client.get({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a POST request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpPost = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    const { fetchOptions, ...rest } = options;
+    return wrapRequest<TData>(() =>
+      client.post({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a PUT request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpPut = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    const { fetchOptions, ...rest } = options;
+    return wrapRequest<TData>(() =>
+      client.put({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a PATCH request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpPatch = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    const { fetchOptions, ...rest } = options;
+    return wrapRequest<TData>(() =>
+      client.patch({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+    );
+  };
+
+  /**
+   * Escape hatch: send a DELETE request to any MAPI endpoint not yet wrapped
+   * in a dedicated resource method.
+   */
+  const httpDelete = <TData = unknown>(
+    path: string,
+    options: HttpRequestOptions = {},
+  ): Promise<ApiResponse<TData>> => {
+    const { fetchOptions, ...rest } = options;
+    return wrapRequest<TData>(() =>
+      client.delete({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+    );
+  };
+
+  return {
+    assetFolders: createAssetFoldersResource(deps),
+    assets: createAssetsResource(deps),
+    componentFolders: createComponentFoldersResource(deps),
+    components: createComponentsResource(deps),
+    datasourceEntries: createDatasourceEntriesResource(deps),
+    datasources: createDatasourcesResource(deps),
+    delete: httpDelete,
+    get: httpGet,
+    patch: httpPatch,
+    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    internalTags: createInternalTagsResource(deps),
+    post: httpPost,
+    presets: createPresetsResource(deps),
+    put: httpPut,
+    spaces: createSpacesResource(deps),
+    stories: createStoriesResource(deps),
+    users: createUsersResource({ client, wrapRequest }),
+  };
+};
+
+export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
+
+export { ClientError } from './error';
+export type {
+  ApiResponse,
+  Asset,
+  AssetCreate,
+  AssetField,
+  AssetFolder,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetListQuery,
+  AssetSignRequest,
+  AssetUpdate,
+  AssetUpdateRequest,
+  AssetUploadRequest,
+  Component,
+  ComponentCreate,
+  ComponentFolder,
+  ComponentSchemaField,
+  ComponentUpdate,
+  Datasource,
+  DatasourceCreate,
+  DatasourceEntry,
+  DatasourceEntryCreate,
+  DatasourceEntryUpdate,
+  DatasourceUpdate,
+  FetchOptions,
+  HttpRequestOptions,
+  InternalTag,
+  ManagementApiClientConfig,
+  MapiResourceDeps,
+  MultilinkField,
+  PluginField,
+  Preset,
+  RateLimitConfig,
+  RequestConfigOverrides,
+  RichtextField,
+  SignedResponseObject,
+  Space,
+  SpaceCreate,
+  SpaceUpdate,
+  Story,
+  StoryAlternate,
+  StoryContent,
+  StoryCreate,
+  StoryListQuery,
+  StoryLocalizedPath,
+  StoryTranslatedSlug,
+  StoryUpdate,
+  TableField,
+  User,
+} from './types';

@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 

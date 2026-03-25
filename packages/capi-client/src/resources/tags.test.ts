@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
@@ -19,13 +19,13 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('tags.getAll()', () => {
+describe('tags.list()', () => {
   it('should return tags array', async () => {
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.tags.getAll();
+    const result = await client.tags.list();
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.tags)).toBe(true);
@@ -47,7 +47,7 @@ describe('tags.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.tags.getAll({ query: { starts_with: 'blog' } });
+    const result = await client.tags.list({ query: { starts_with: 'blog' } });
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.tags)).toBe(true);
@@ -64,7 +64,7 @@ describe('tags.getAll()', () => {
       accessToken: 'invalid-token',
     });
 
-    const result = await client.tags.getAll();
+    const result = await client.tags.list();
 
     expect(result.error).toBeDefined();
     expect(result.data).toBeUndefined();

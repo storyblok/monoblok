@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
@@ -19,13 +19,13 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('datasourceEntries.getAll()', () => {
+describe('datasourceEntries.list()', () => {
   it('should successfully retrieve datasource entries', async () => {
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.datasourceEntries.getAll();
+    const result = await client.datasourceEntries.list();
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);
@@ -52,7 +52,7 @@ describe('datasourceEntries.getAll()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.datasourceEntries.getAll({ query: { datasource: 'my-datasource' } });
+    const result = await client.datasourceEntries.list({ query: { datasource: 'my-datasource' } });
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);
@@ -76,7 +76,7 @@ describe('datasourceEntries.getAll()', () => {
       accessToken: 'invalid-token',
     });
 
-    const result = await client.datasourceEntries.getAll();
+    const result = await client.datasourceEntries.list();
 
     expect(result.error).toBeDefined();
     expect(result.data).toBeUndefined();

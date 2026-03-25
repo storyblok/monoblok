@@ -3,7 +3,7 @@
 import { createClient } from '@hey-api/openapi-ts';
 import { execSync } from 'node:child_process';
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { glob } from 'glob';
 

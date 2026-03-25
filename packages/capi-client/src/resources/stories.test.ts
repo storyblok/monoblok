@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { fromOpenApi } from '@msw/source/open-api';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
@@ -226,13 +226,13 @@ describe('stories.get()', () => {
   });
 });
 
-describe('stories.getAll()', () => {
+describe('stories.list()', () => {
   it('should successfully retrieve multiple stories', async () => {
     const client = createApiClient({
       accessToken: 'test-token',
     });
 
-    const result = await client.stories.getAll();
+    const result = await client.stories.list();
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.stories)).toBe(true);
@@ -517,7 +517,7 @@ describe('inlineRelations', () => {
     vi.useRealTimers();
   });
 
-  it('should merge inline relations from rels and rel_uuids for stories.getAll()', async () => {
+  it('should merge inline relations from rels and rel_uuids for stories.list()', async () => {
     server.use(
       http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }: { request: Request }) => {
         const url = new URL(request.url);
@@ -559,7 +559,7 @@ describe('inlineRelations', () => {
       inlineRelations: true,
     });
 
-    const result = await client.stories.getAll({
+    const result = await client.stories.list({
       query: { resolve_relations: 'page.authors' },
     });
 
@@ -638,7 +638,7 @@ describe('fetchOptions', () => {
     expect(fetchInit).toMatchObject({ next: { revalidate: 60 } });
   });
 
-  it('should forward fetchOptions in stories.getAll()', async () => {
+  it('should forward fetchOptions in stories.list()', async () => {
     const fetchSpy = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ stories: [] }), {
         status: 200,
@@ -653,7 +653,7 @@ describe('fetchOptions', () => {
       retry: { limit: 0 },
     });
 
-    await client.stories.getAll({
+    await client.stories.list({
       fetchOptions: { next: { revalidate: 120, tags: ['stories'] } },
     });
 

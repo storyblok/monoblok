@@ -38,10 +38,10 @@ generateCmd
 
     try {
       spinner.start(`Generating types...`);
+      // Input format is auto-detected based on files on disk
       const componentsData = await readComponentsFiles({
         from: space,
         path,
-        separateFiles,
         suffix,
         verbose,
       });
@@ -51,7 +51,6 @@ generateCmd
         dataSourceData = await readDatasourcesFiles({
           from: space,
           path,
-          separateFiles,
           suffix,
           verbose,
         });

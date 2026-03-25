@@ -147,14 +147,14 @@ describe('types generate', () => {
       }));
     });
 
-    it('should pass separateFiles to readComponentsFiles when --separate-files flag is used', async () => {
+    it('should not pass separateFiles to readComponentsFiles even when --separate-files flag is used (auto-detect input)', async () => {
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
       vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345', '--separate-files']);
 
-      expect(readComponentsFiles).toHaveBeenCalledWith(expect.objectContaining({
+      expect(readComponentsFiles).toHaveBeenCalledWith(expect.not.objectContaining({
         separateFiles: true,
       }));
     });
@@ -166,8 +166,8 @@ describe('types generate', () => {
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
 
-      expect(readComponentsFiles).toHaveBeenCalledWith(expect.objectContaining({
-        separateFiles: undefined,
+      expect(readComponentsFiles).toHaveBeenCalledWith(expect.not.objectContaining({
+        separateFiles: expect.anything(),
       }));
     });
 

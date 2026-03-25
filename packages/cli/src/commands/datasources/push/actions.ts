@@ -4,7 +4,7 @@ import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
-import { readJsonFile, resolvePath } from '../../../utils/filesystem';
+import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
 import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils/error/api-error';
 import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
@@ -168,7 +168,7 @@ export const deleteDatasourceEntry = async (spaceId: string, entryId: number): P
 };
 
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
-  const { from, path, separateFiles = false, suffix } = options;
+  const { from, path, separateFiles, suffix } = options;
   const resolvedPath = resolvePath(path, `datasources/${from}`);
 
   // Check if directory exists first
@@ -192,7 +192,8 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
     );
   }
 
-  if (separateFiles) {
+  // Determine read mode: explicit flag takes precedence, otherwise auto-detect
+  if (await shouldUseSeparateFiles(resolvedPath, DEFAULT_DATASOURCES_FILENAME, separateFiles, suffix)) {
     return await readSeparateFiles(resolvedPath, suffix);
   }
 

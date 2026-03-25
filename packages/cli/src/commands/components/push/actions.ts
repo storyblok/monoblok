@@ -4,7 +4,7 @@ import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_F
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'pathe';
 import { readdir } from 'node:fs/promises';
-import { readJsonFile, resolvePath } from '../../../utils/filesystem';
+import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 
@@ -251,7 +251,7 @@ export const upsertComponentInternalTag = async (
 
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<ComponentsData> => {
-  const { from, path, separateFiles = false, suffix } = options;
+  const { from, path, separateFiles, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
@@ -275,7 +275,8 @@ export const readComponentsFiles = async (
     );
   }
 
-  if (separateFiles) {
+  // Determine read mode: explicit flag takes precedence, otherwise auto-detect
+  if (await shouldUseSeparateFiles(resolvedPath, DEFAULT_COMPONENTS_FILENAME, separateFiles, suffix)) {
     return await readSeparateFiles(resolvedPath, suffix);
   }
 

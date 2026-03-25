@@ -1,0 +1,151 @@
+type: object
+description: Storyblok story object from the Management API.
+allOf:
+  - $ref: ../../../shared/stories/story-base.yaml
+  - type: object
+    properties:
+      # --- MAPI-specific fields ---
+      deleted_at:
+        type:
+          - string
+          - "null"
+        format: date-time
+        description: Deletion date and time.
+      is_folder:
+        type: boolean
+        description: Whether the entry is a folder.
+      published:
+        type: boolean
+        description: Whether the story is currently published.
+      default_root:
+        type:
+          - string
+          - "null"
+        description: Default content type for stories in this folder.
+      disable_fe_editor:
+        type: boolean
+        description: Whether the Visual Editor is disabled.
+      parent:
+        type: object
+        additionalProperties: true
+        description: Subset of parent folder info (resolved from parent_id).
+      unpublished_changes:
+        type: boolean
+        description: Whether the story has unpublished changes.
+      imported_at:
+        type:
+          - string
+          - "null"
+        format: date-time
+        description: Latest import date.
+      preview_token:
+        type: object
+        properties:
+          token:
+            type: string
+          timestamp:
+            type: string
+      pinned:
+        type: boolean
+        description: Legacy UI feature replaced by favourite_for_user_ids.
+      breadcrumbs:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            parent_id:
+              type: integer
+            disable_fe_editor:
+              type: boolean
+            path:
+              type: string
+            slug:
+              type: string
+            translated_slugs:
+              type: array
+              items:
+                $ref: ../../../shared/stories/story-translated-slug.yaml
+      last_author:
+        type: object
+        properties:
+          id:
+            type: integer
+          userid:
+            type: string
+          friendly_name:
+            type: string
+      last_author_id:
+        type: integer
+        description: ID of the last user who interacted with the story.
+      translated_slugs_attributes:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            lang:
+              type: string
+            slug:
+              type: string
+            name:
+              type: string
+            published:
+              type: boolean
+      release_id:
+        type: integer
+        description: ID of the current release.
+      scheduled_dates:
+        type: string
+        format: date-time
+        description: Scheduled publishing date.
+      favourite_for_user_ids:
+        type: array
+        items:
+          type: integer
+        description: User IDs who saved the story as Favorite.
+      # --- Fields from official docs missing in original spec ---
+      user_ids:
+        type: array
+        items:
+          type: integer
+        description: User IDs assigned to a workflow stage.
+      space_role_ids:
+        type: array
+        items:
+          type: integer
+        description: Space role IDs assigned to a workflow stage.
+      release_ids:
+        type: array
+        items:
+          type: integer
+        description: Release IDs associated with the story.
+      current_version_id:
+        type: integer
+        description: Version ID of the story's latest content within the release.
+      base_version_id:
+        type: integer
+        description: Version ID of the story's content when first added to a release.
+      main_version_id:
+        type: integer
+        description: Version ID of the story's current content outside the release.
+      stage:
+        type: object
+        description: Current workflow stage details.
+        properties:
+          workflow_id:
+            type: integer
+          workflow_stage_id:
+            type: integer
+          story_id:
+            type: integer
+          due_date:
+            type: string
+            format: date-time
+          created_at:
+            type: string
+            format: date-time

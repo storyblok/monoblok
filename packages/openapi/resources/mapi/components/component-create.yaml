@@ -1,0 +1,41 @@
+type: object
+description: Input for creating a component.
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: Technical name used for component property in entries
+  display_name:
+    type:
+      - string
+      - "null"
+    description: Name that will be used in the editor interface
+  schema:
+    type: object
+    description: Component schema definition containing fields and their configurations
+    additionalProperties: true
+  is_root:
+    type: boolean
+    description: Whether the component can be used as a root component
+  is_nestable:
+    type: boolean
+    description: Whether the component is nestable in block field types
+  component_group_uuid:
+    type: string
+    format: uuid
+    description: The component folder UUID
+  color:
+    type: string
+    description: Icon color
+  icon:
+    type: string
+    description: Icon name
+  preview_field:
+    type: string
+    description: The field used for preview in the interface
+  internal_tag_ids:
+    type: array
+    description: IDs of internal tags to assign
+    items:
+      type: string

@@ -10,7 +10,7 @@ security:
 paths:
   /v2/cdn/stories:
     get:
-      operationId: getAll
+      operationId: list
       summary: Retrieve Multiple Stories
       description: Returns an array of all stories. The API response can be filtered using the query parameters, including specific filter queries.
       parameters:

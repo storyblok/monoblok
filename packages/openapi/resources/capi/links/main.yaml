@@ -10,7 +10,7 @@ security:
 paths:
   /v2/cdn/links:
     get:
-      operationId: getAll
+      operationId: list
       summary: Retrieve Multiple Links
       description: Returns a map of all links. The API response can be filtered using the query parameters.
       parameters:

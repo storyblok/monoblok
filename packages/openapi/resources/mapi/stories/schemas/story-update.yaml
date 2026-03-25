@@ -1,0 +1,72 @@
+type: object
+description: Input for updating a story.
+properties:
+  id:
+    type: integer
+    description: The numeric ID of the story. Can be passed in the update body per the MAPI docs.
+  name:
+    type: string
+    description: The complete name provided for the story.
+  slug:
+    type: string
+    description: The slug specific for the story.
+  content:
+    $ref: ../../../shared/stories/story-content.yaml
+  parent_id:
+    type: integer
+    description: ID of the parent folder.
+  path:
+    type:
+      - string
+      - "null"
+    description: Value of the real path defined in the story's entry configuration (usually required for the Visual Editor).
+  is_startpage:
+    type: boolean
+    description: true if the story is defined as root for the folder.
+  tag_list:
+    type: array
+    description: Array of tag names.
+    items:
+      type: string
+  sort_by_date:
+    type:
+      - string
+      - "null"
+    format: date
+    description: Date defined in the story's entry configuration YYYY-mm-dd.
+  position:
+    type: integer
+    description: Numeric representation of the story's position in the folder.
+  meta_data:
+    type:
+      - object
+      - "null"
+    additionalProperties: true
+    description: Object to store non-editable data that is exclusively maintained with the Management API.
+  is_folder:
+    type: boolean
+    description: Whether the entry is a folder.
+  default_root:
+    type:
+      - string
+      - "null"
+    description: Default content type for stories in this folder.
+  disable_fe_editor:
+    type: boolean
+    description: Whether the Visual Editor is disabled.
+  translated_slugs_attributes:
+    type: array
+    description: Translated slug entries to create, update, or delete.
+    items:
+      type: object
+      properties:
+        id:
+          type: integer
+        lang:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        published:
+          type: boolean

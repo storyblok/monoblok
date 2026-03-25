@@ -30,7 +30,5 @@ properties:
     type: boolean
     description: true if the instance constitutes a folder
   parent_id:
-    type:
-      - integer
-      - "null"
-    description: ID of the parent folder
+    type: integer
+    description: ID of the parent folder. 0 for root-level stories.

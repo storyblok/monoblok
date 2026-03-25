@@ -1,5 +1,5 @@
-import { get, getAll } from '../generated/stories/sdk.gen';
-import type { GetAllData, GetAllResponses, GetData, GetResponses } from '../generated/stories/types.gen';
+import { get, list } from '../generated/stories/sdk.gen';
+import type { GetData, GetResponses, ListData, ListResponses } from '../generated/stories/types.gen';
 import type {
   AssetField,
   MultilinkField,
@@ -43,7 +43,7 @@ type StoryResult<InlineRelations extends boolean> = InlineRelations extends true
 type GetResponse<InlineRelations extends boolean> = Omit<GetResponses[200], 'story'> & {
   story: StoryResult<InlineRelations>;
 };
-type GetAllResponse<InlineRelations extends boolean> = Omit<GetAllResponses[200], 'stories'> & {
+type ListResponse<InlineRelations extends boolean> = Omit<ListResponses[200], 'stories'> & {
   stories: Array<StoryResult<InlineRelations>>;
 };
 
@@ -102,15 +102,15 @@ export function createStoriesResource<InlineRelations extends boolean>(
       }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
     },
 
-    getAll: async <ThrowOnError extends boolean = false>(
-      options: { query?: GetAllData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>> => {
+    list: async <ThrowOnError extends boolean = false>(
+      options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<ListResponse<InlineRelations>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/stories';
-      type ResAll = ApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>;
-      return requestWithCache<GetAllResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<ResAll> => {
+      type ResAll = ApiResponse<ListResponse<InlineRelations>, ThrowOnError>;
+      return requestWithCache<ListResponse<InlineRelations>, ThrowOnError>('GET', requestPath, query, async (requestQuery: Record<string, unknown>): Promise<ResAll> => {
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<GetAllResponse<InlineRelations>, ThrowOnError>(getAll({
+          asApiResponse<ListResponse<InlineRelations>, ThrowOnError>(list({
             client,
             query: requestQuery,
             signal,

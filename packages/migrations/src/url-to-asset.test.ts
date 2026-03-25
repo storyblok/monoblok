@@ -2,17 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { urlToAsset } from './url-to-asset';
 
 describe('urlToAsset', () => {
-  it('should convert a URL to an asset with is_external_url true', () => {
+  it('should convert a URL to an Asset with the filename set', () => {
     const result = urlToAsset('https://example.com/image.jpg');
-    expect(result.fieldtype).toBe('asset');
     expect(result.filename).toBe('https://example.com/image.jpg');
-    expect(result.src).toBe('https://example.com/image.jpg');
-    expect(result.is_external_url).toBe(true);
   });
 
-  it('should derive name from URL last path segment', () => {
+  it('should derive short_filename from URL last path segment', () => {
     const result = urlToAsset('https://example.com/images/photo.jpg');
-    expect(result.name).toBe('photo.jpg');
+    expect(result.short_filename).toBe('photo.jpg');
   });
 
   it('should apply alt option', () => {
@@ -35,16 +32,12 @@ describe('urlToAsset', () => {
 
   it('should work with non-image URLs', () => {
     const result = urlToAsset('https://example.com/document.pdf');
-    expect(result.fieldtype).toBe('asset');
     expect(result.filename).toBe('https://example.com/document.pdf');
   });
 
-  it('should set nullable fields to null by default', () => {
+  it('should set id to 0 and is_private to false by default', () => {
     const result = urlToAsset('https://example.com/image.jpg');
-    expect(result.alt).toBeNull();
-    expect(result.title).toBeNull();
-    expect(result.copyright).toBeNull();
-    expect(result.focus).toBeNull();
     expect(result.id).toBe(0);
+    expect(result.is_private).toBe(false);
   });
 });

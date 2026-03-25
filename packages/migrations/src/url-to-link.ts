@@ -1,25 +1,19 @@
-import type { StoryblokMultilink } from './types';
+import type { MultilinkField } from './types';
 
-export interface UrlToLinkOptions {
-  target?: '_blank' | '_self';
-  title?: string;
-  rel?: string;
-  anchor?: string;
-}
+export type UrlToLinkOptions = Partial<Omit<MultilinkField, 'fieldtype' | 'id' | 'url' | 'cached_url' | 'linktype'>>;
 
 export function urlToLink(
   url: string,
   options?: UrlToLinkOptions,
-): StoryblokMultilink {
+): MultilinkField {
   // Detect mailto: links
   if (url.startsWith('mailto:')) {
     return {
       fieldtype: 'multilink',
       id: '',
-      url: '',
-      cached_url: '',
+      url: url.slice('mailto:'.length),
+      cached_url: url.slice('mailto:'.length),
       linktype: 'email',
-      email: url.slice('mailto:'.length),
       ...options,
     };
   }

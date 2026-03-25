@@ -8,6 +8,7 @@ export { type ComponentSchemas, mapRefs, type MapRefsOptions, type RefMaps } fro
 export { renameDataSourceValue } from './rename-datasource-value';
 export type * from './types';
 export { urlToAsset, type UrlToAssetOptions } from './url-to-asset';
+export { urlToAssetField, type UrlToAssetFieldOptions } from './url-to-asset-field';
 export { urlToLink, type UrlToLinkOptions } from './url-to-link';
 export { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
 export { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';

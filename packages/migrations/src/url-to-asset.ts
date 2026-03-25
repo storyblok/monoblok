@@ -1,40 +1,25 @@
-import type { StoryblokAsset } from './types';
+import type { Asset } from './types';
 
-export interface UrlToAssetOptions {
-  alt?: string | null;
-  title?: string | null;
-  copyright?: string | null;
-  focus?: string | null;
-}
+export type UrlToAssetOptions = Partial<Omit<Asset, 'id' | 'filename' | 'space_id' | 'created_at' | 'updated_at' | 'short_filename' | 'content_type' | 'content_length'>>;
 
 export function urlToAsset(
   url: string,
   options?: UrlToAssetOptions,
-): StoryblokAsset {
+): Asset {
   // Derive name from last path segment
   const pathSegments = url.split('/');
-  const name = pathSegments.at(-1) || url;
+  const short_filename = pathSegments.at(-1) || url;
 
   return {
-    fieldtype: 'asset',
     id: 0,
     filename: url,
-    src: url,
-    name,
-    alt: null,
-    title: null,
-    copyright: null,
-    focus: null,
-    meta_data: {},
-    source: null,
-    is_external_url: true,
-    is_private: false,
+    space_id: 0,
+    created_at: '',
     updated_at: '',
-    width: null,
-    height: null,
-    aspect_ratio: null,
-    public_id: null,
+    short_filename,
     content_type: '',
+    content_length: 0,
+    is_private: false,
     ...options,
   };
 }

@@ -23,19 +23,18 @@ describe('urlToLink', () => {
     expect(result.cached_url).toBe('https://example.com?foo=bar&baz=qux');
   });
 
-  it('should convert mailto: URL to email linktype', () => {
+  it('should convert mailto: URL to email linktype with email in url field', () => {
     const result = urlToLink('mailto:user@example.com');
     expect(result.linktype).toBe('email');
-    expect(result.email).toBe('user@example.com');
+    expect(result.url).toBe('user@example.com');
+    expect(result.cached_url).toBe('user@example.com');
   });
 
-  it('should apply options target and title', () => {
+  it('should apply options target', () => {
     const result = urlToLink('https://example.com', {
       target: '_blank',
-      title: 'My Link',
     });
     expect(result.target).toBe('_blank');
-    expect(result.title).toBe('My Link');
   });
 
   it('should handle empty string URL', () => {

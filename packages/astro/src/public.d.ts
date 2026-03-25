@@ -3,6 +3,12 @@
  * Provides IntelliSense, JSDoc, and type safety for SDK consumers.
  */
 
+declare module 'virtual:storyblok-init' {
+  import type { StoryblokClient } from '@storyblok/astro';
+
+  export const storyblokApiInstance: StoryblokClient;
+}
+
 declare module '@storyblok/astro/StoryblokComponent.astro' {
   import type { SbBlokData } from '@storyblok/astro';
 
@@ -28,7 +34,7 @@ declare module '@storyblok/astro/client' {
   import type {
     StoryblokClient,
     StoryblokRichTextNode,
-    StoryblokRichTextResolvers,
+    StoryblokRichTextOptions,
   } from '@storyblok/astro';
   /**
    * @experimental Converts a Storyblok RichText field into an HTML string.
@@ -39,7 +45,7 @@ declare module '@storyblok/astro/client' {
    *
    * @async
    * @param {StoryblokRichTextNode} richTextField - The root RichText node to convert.
-   * @param {StoryblokRichTextResolvers} [customResolvers] - Optional custom resolvers
+   * @param {StoryblokRichTextOptions['tiptapExtensions']} [tiptapExtensions] - Optional custom resolvers
    *   for customizing how specific nodes or marks are transformed into HTML.
    * @returns {Promise<string>} A promise that resolves to the HTML string representation
    *   of the provided RichText content.
@@ -57,7 +63,7 @@ declare module '@storyblok/astro/client' {
    */
   export function richTextToHTML(
     richTextField: StoryblokRichTextNode,
-    customResolvers?: StoryblokRichTextResolvers
+    tiptapExtensions?: StoryblokRichTextOptions['tiptapExtensions'],
   ): Promise<string>;
 
   /**

@@ -1,5 +1,5 @@
 import type { Client } from '../generated/shared/client';
-import { getAll } from '../generated/stories/sdk.gen';
+import { list } from '../generated/stories/sdk.gen';
 import type { StoryCapi } from '../generated/stories/types.gen';
 import type { ThrottleManager } from './rate-limit';
 import { chunkArray } from './array';
@@ -45,7 +45,7 @@ export const fetchMissingRelations = async ({
   const results = await Promise.all(
     chunks.map(chunk =>
       throttleManager.execute('/v2/cdn/stories', queryContext, async () => {
-        const response = await getAll({
+        const response = await list({
           client,
           query: {
             ...queryContext,

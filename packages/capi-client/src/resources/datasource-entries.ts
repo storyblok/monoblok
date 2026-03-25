@@ -1,7 +1,7 @@
-import { getAll as getAllDatasourceEntriesApi } from '../generated/datasource_entries/sdk.gen';
+import { list as listDatasourceEntriesApi } from '../generated/datasource_entries/sdk.gen';
 import type {
-  GetAllData as DatasourceEntriesGetAllData,
-  GetAllResponses as DatasourceEntriesGetAllResponses,
+  ListData as DatasourceEntriesListData,
+  ListResponses as DatasourceEntriesListResponses,
 } from '../generated/datasource_entries/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
 
@@ -9,14 +9,14 @@ export function createDatasourceEntriesResource(deps: ResourceDeps) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    getAll: async <ThrowOnError extends boolean = false>(
-      options: { query?: DatasourceEntriesGetAllData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourceEntriesGetAllResponses[200], ThrowOnError>> => {
+    list: async <ThrowOnError extends boolean = false>(
+      options: { query?: DatasourceEntriesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<DatasourceEntriesListResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/datasource_entries';
-      return requestWithCache<DatasourceEntriesGetAllResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<DatasourceEntriesListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourceEntriesGetAllResponses[200], ThrowOnError>(getAllDatasourceEntriesApi({
+          asApiResponse<DatasourceEntriesListResponses[200], ThrowOnError>(listDatasourceEntriesApi({
             client,
             query: requestQuery,
             signal,

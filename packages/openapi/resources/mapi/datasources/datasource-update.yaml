@@ -1,0 +1,9 @@
+type: object
+description: Input for updating a datasource.
+properties:
+  name:
+    type: string
+    description: The complete name provided for a datasource
+  slug:
+    type: string
+    description: Slug of a datasource

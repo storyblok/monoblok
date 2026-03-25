@@ -55,9 +55,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/DatasourceEntry'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -73,7 +73,7 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntry'
+                  $ref: '#/components/schemas/DatasourceEntryCreate'
       responses:
         '201':
           description: Datasource entry created
@@ -85,9 +85,9 @@ paths:
                   datasource_entry:
                     $ref: '#/components/schemas/DatasourceEntry'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/datasource_entries/{datasource_entry_id}:
@@ -113,13 +113,13 @@ paths:
                   datasource_entry:
                     $ref: '#/components/schemas/DatasourceEntry'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource entry not found
     put:
-      operationId: updateDatasourceEntry
+      operationId: update
       summary: Update a Datasource Entry
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -137,7 +137,7 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntry'
+                  $ref: '#/components/schemas/DatasourceEntryUpdate'
       responses:
         '200':
           description: Datasource entry updated
@@ -149,13 +149,13 @@ paths:
                   datasource_entry:
                     $ref: '#/components/schemas/DatasourceEntry'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource entry not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete a Datasource Entry
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -169,9 +169,9 @@ paths:
         '204':
           description: Datasource entry deleted
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource entry not found
 components:
@@ -201,3 +201,7 @@ components:
         dimension_value:
           type: string
           description: Given value in the requested dimension
+    DatasourceEntryCreate:
+      $ref: ./datasource-entry-create.yaml
+    DatasourceEntryUpdate:
+      $ref: ./datasource-entry-update.yaml

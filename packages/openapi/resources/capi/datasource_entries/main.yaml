@@ -10,7 +10,7 @@ security:
 paths:
   /v2/cdn/datasource_entries:
     get:
-      operationId: getAll
+      operationId: list
       summary: Retrieve Multiple Datasource Entries
       description: Returns an array of all datasource entries. The API response can be filtered using the query parameters.
       parameters:

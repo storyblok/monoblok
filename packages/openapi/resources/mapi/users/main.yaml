@@ -24,7 +24,7 @@ paths:
                   user:
                     $ref: '#/components/schemas/User'
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
     put:
       operationId: updateMe
       summary: Update Current User
@@ -51,9 +51,9 @@ paths:
                   user:
                     $ref: '#/components/schemas/User'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '422':
           description: Unprocessable entity - validation errors
 components:

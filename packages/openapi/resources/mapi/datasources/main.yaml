@@ -41,9 +41,9 @@ paths:
                     items:
                       $ref: '#/components/schemas/Datasource'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
     post:
@@ -59,7 +59,7 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/Datasource'
+                  $ref: '#/components/schemas/DatasourceCreate'
       responses:
         '201':
           description: Datasource created
@@ -71,9 +71,9 @@ paths:
                   datasource:
                     $ref: '#/components/schemas/Datasource'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Space not found
   /v1/spaces/{space_id}/datasources/{datasource_id}:
@@ -99,9 +99,9 @@ paths:
                   datasource:
                     $ref: '#/components/schemas/Datasource'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource not found
     put:
@@ -123,7 +123,7 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/Datasource'
+                  $ref: '#/components/schemas/DatasourceUpdate'
       responses:
         '200':
           description: Datasource updated
@@ -135,13 +135,13 @@ paths:
                   datasource:
                     $ref: '#/components/schemas/Datasource'
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource not found
     delete:
-      operationId: delete
+      operationId: remove
       summary: Delete a Datasource
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
@@ -155,9 +155,9 @@ paths:
         '204':
           description: Datasource deleted
         '400':
-          description: Bad request
+          $ref: ../../shared/responses.yaml#/BadRequest
         '401':
-          description: Unauthorized
+          $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Datasource not found
 components:
@@ -217,3 +217,7 @@ components:
           type: string
           format: date-time
           description: Latest update date
+    DatasourceCreate:
+      $ref: ./datasource-create.yaml
+    DatasourceUpdate:
+      $ref: ./datasource-update.yaml

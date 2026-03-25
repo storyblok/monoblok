@@ -1,4 +1,4 @@
-import type { Component } from '@storyblok/management-api-client/resources/components';
+import type { Component } from './types';
 
 import { readLocalJsonFiles, writeLocalJsonFile } from './local-utils';
 

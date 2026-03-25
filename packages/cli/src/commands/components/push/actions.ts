@@ -1,6 +1,7 @@
 import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
 import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
+import type { ComponentCreate, ComponentUpdate } from '../../../types';
 import type { ReadComponentsOptions } from './constants';
 import { join } from 'pathe';
 import { readdir } from 'node:fs/promises';
@@ -10,20 +11,20 @@ import { getMapiClient } from '../../../api';
 
 // Define a type for components data without datasources
 export interface ComponentsData {
-  components: SpaceComponent[];
-  groups: SpaceComponentFolder[];
-  presets: SpaceComponentPreset[];
-  internalTags: SpaceComponentInternalTag[];
+  components: Component[];
+  groups: ComponentFolder[];
+  presets: Preset[];
+  internalTags: InternalTag[];
 }
 
 // Component actions
-export const pushComponent = async (space: string, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
+export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
     const { data } = await client.components.create({
       path: {
-        space_id: space,
+        space_id: Number(space),
       },
       body: {
         component,
@@ -37,14 +38,13 @@ export const pushComponent = async (space: string, component: SpaceComponent): P
   }
 };
 
-export const updateComponent = async (space: string, componentId: number, component: SpaceComponent): Promise<SpaceComponent | undefined> => {
+export const updateComponent = async (space: string, componentId: number, component: ComponentUpdate): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.components.update({
+    const { data } = await client.components.update(componentId, {
       path: {
         space_id: Number(space),
-        component_id: componentId,
       },
       body: {
         component,
@@ -61,9 +61,9 @@ export const updateComponent = async (space: string, componentId: number, compon
 
 export const upsertComponent = async (
   space: string,
-  component: SpaceComponent,
+  component: ComponentCreate,
   existingId?: number,
-): Promise<SpaceComponent | undefined> => {
+): Promise<Component | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponent(space, existingId, component);
@@ -76,7 +76,7 @@ export const upsertComponent = async (
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
+export const pushComponentGroup = async (space: string, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -97,14 +97,13 @@ export const pushComponentGroup = async (space: string, componentGroup: SpaceCom
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: SpaceComponentFolder): Promise<SpaceComponentFolder | undefined> => {
+export const updateComponentGroup = async (space: string, groupId: number, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.componentFolders.update({
+    const { data } = await client.componentFolders.update(groupId, {
       path: {
         space_id: Number(space),
-        component_group_id: String(groupId),
       },
       body: {
         component_group: componentGroup,
@@ -121,9 +120,9 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
 
 export const upsertComponentGroup = async (
   space: string,
-  group: SpaceComponentFolder,
+  group: ComponentFolder,
   existingId?: number,
-): Promise<SpaceComponentFolder | undefined> => {
+): Promise<ComponentFolder | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentGroup(space, existingId, group);
@@ -135,7 +134,7 @@ export const upsertComponentGroup = async (
 };
 
 // Component preset actions
-export const pushComponentPreset = async (space: string, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
+export const pushComponentPreset = async (space: string, preset: Preset): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -156,14 +155,13 @@ export const pushComponentPreset = async (space: string, preset: SpaceComponentP
   }
 };
 
-export const updateComponentPreset = async (space: string, presetId: number, preset: SpaceComponentPreset): Promise<SpaceComponentPreset | undefined> => {
+export const updateComponentPreset = async (space: string, presetId: number, preset: Preset): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.presets.update({
+    const { data } = await client.presets.update(presetId, {
       path: {
         space_id: Number(space),
-        preset_id: presetId,
       },
       body: {
         preset,
@@ -180,9 +178,9 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
 
 export const upsertComponentPreset = async (
   space: string,
-  preset: SpaceComponentPreset,
+  preset: Preset,
   existingId?: number,
-): Promise<SpaceComponentPreset | undefined> => {
+): Promise<Preset | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentPreset(space, existingId, preset);
@@ -198,11 +196,8 @@ export const deleteComponentPreset = async (space: string, presetId: number): Pr
   try {
     const client = getMapiClient();
 
-    await client.presets.delete({
-      path: {
-        space_id: Number(space),
-        preset_id: presetId,
-      },
+    await client.presets.remove(presetId, {
+      path: { space_id: Number(space) },
       throwOnError: true,
     });
   }
@@ -213,7 +208,7 @@ export const deleteComponentPreset = async (space: string, presetId: number): Pr
 
 // Component internal tag actions
 
-export const pushComponentInternalTag = async (space: string, componentInternalTag: SpaceComponentInternalTag): Promise<SpaceComponentInternalTag | undefined> => {
+export const pushComponentInternalTag = async (space: string, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -232,14 +227,13 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
   }
 };
 
-export const updateComponentInternalTag = async (space: string, tagId: number, componentInternalTag: SpaceComponentInternalTag): Promise<SpaceComponentInternalTag | undefined> => {
+export const updateComponentInternalTag = async (space: string, tagId: number, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
-    const { data } = await client.internalTags.update({
+    const { data } = await client.internalTags.update(tagId, {
       path: {
         space_id: Number(space),
-        internal_tag_id: tagId,
       },
       body: componentInternalTag,
       throwOnError: true,
@@ -254,9 +248,9 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
 
 export const upsertComponentInternalTag = async (
   space: string,
-  tag: SpaceComponentInternalTag,
+  tag: InternalTag,
   existingId?: number,
-): Promise<SpaceComponentInternalTag | undefined> => {
+): Promise<InternalTag | undefined> => {
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentInternalTag(space, existingId, tag);
@@ -303,10 +297,10 @@ export const readComponentsFiles = async (
 
 async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   const files = await readdir(resolvedPath);
-  const components: SpaceComponent[] = [];
-  const presets: SpaceComponentPreset[] = [];
-  let groups: SpaceComponentFolder[] = [];
-  let internalTags: SpaceComponentInternalTag[] = [];
+  const components: Component[] = [];
+  const presets: Preset[] = [];
+  let groups: ComponentFolder[] = [];
+  let internalTags: InternalTag[] = [];
 
   const filteredFiles = files.filter((file) => {
     if (suffix) {
@@ -322,7 +316,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
     const filePath = join(resolvedPath, file);
 
     if (file === `${DEFAULT_GROUPS_FILENAME}.json` || file === `${DEFAULT_GROUPS_FILENAME}.${suffix}.json`) {
-      const result = await readJsonFile<SpaceComponentFolder>(filePath);
+      const result = await readJsonFile<ComponentFolder>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -330,7 +324,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       groups = result.data;
     }
     else if (file === `${DEFAULT_TAGS_FILENAME}.json` || file === `${DEFAULT_TAGS_FILENAME}.${suffix}.json`) {
-      const result = await readJsonFile<SpaceComponentInternalTag>(filePath);
+      const result = await readJsonFile<InternalTag>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -338,7 +332,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       internalTags = result.data;
     }
     else if (file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.json`) || file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.${suffix}.json`)) {
-      const result = await readJsonFile<SpaceComponentPreset>(filePath);
+      const result = await readJsonFile<Preset>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -349,7 +343,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
       if (file === `${DEFAULT_COMPONENTS_FILENAME}.json` || file === `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`) {
         continue;
       }
-      const result = await readJsonFile<SpaceComponent>(filePath);
+      const result = await readJsonFile<Component>(filePath);
       if (result.error) {
         handleFileSystemError('read', result.error);
         continue;
@@ -369,7 +363,7 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
 async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
   // Read required components file
   const componentsPath = join(resolvedPath, suffix ? `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json` : `${DEFAULT_COMPONENTS_FILENAME}.json`);
-  const componentsResult = await readJsonFile<SpaceComponent>(componentsPath);
+  const componentsResult = await readJsonFile<Component>(componentsPath);
 
   if (componentsResult.error || !componentsResult.data.length) {
     throw new FileSystemError(
@@ -382,9 +376,9 @@ async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Pro
 
   // Read optional files
   const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<SpaceComponentFolder>(join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`)),
-    readJsonFile<SpaceComponentPreset>(join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`)),
-    readJsonFile<SpaceComponentInternalTag>(join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`)),
+    readJsonFile<ComponentFolder>(join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`)),
+    readJsonFile<Preset>(join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`)),
+    readJsonFile<InternalTag>(join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`)),
   ]);
 
   return {

@@ -1,5 +1,5 @@
 import { pipeline } from 'node:stream/promises';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';

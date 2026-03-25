@@ -3,7 +3,7 @@ import { generateMigration } from './actions';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import { join, resolve } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
-import type { SpaceComponent } from '../../components';
+import type { Component } from '../../components';
 
 // Mock the filesystem utils
 vi.mock('../../../utils/filesystem', () => ({
@@ -19,7 +19,7 @@ vi.mock('../../../utils', () => ({
 describe('generateMigration', () => {
   const mockSpace = '295017';
   const mockPath = '';
-  const mockComponent: SpaceComponent = {
+  const mockComponent: Component = {
     name: 'test_component',
     display_name: 'Test Component',
     created_at: '2024-01-01',

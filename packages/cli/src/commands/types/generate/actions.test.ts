@@ -3,7 +3,7 @@ import { vol } from 'memfs';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'pathe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
+import type { Component, SpaceComponentsData } from '../../../commands/components/constants';
 import type { GenerateTypesOptions } from './constants';
 
 // Import the mocked functions
@@ -574,7 +574,7 @@ describe('getStoryType', () => {
 describe('component property type annotations', () => {
   it('should handle text property type', async () => {
     // Create a component with text property type
-    const componentWithTextType: SpaceComponent = {
+    const componentWithTextType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -608,7 +608,7 @@ describe('component property type annotations', () => {
 
   it('should handle textarea property type', async () => {
     // Create a component with textarea property type
-    const componentWithTextareaType: SpaceComponent = {
+    const componentWithTextareaType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -642,7 +642,7 @@ describe('component property type annotations', () => {
 
   it('should handle number property type', async () => {
     // Create a component with number property type
-    const componentWithNumberType: SpaceComponent = {
+    const componentWithNumberType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -676,7 +676,7 @@ describe('component property type annotations', () => {
 
   it('should handle boolean property type', async () => {
     // Create a component with boolean property type
-    const componentWithBooleanType: SpaceComponent = {
+    const componentWithBooleanType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -709,7 +709,7 @@ describe('component property type annotations', () => {
   });
 
   it('should handle multilink property type', async () => {
-    const componentWithMultilinkEmail: SpaceComponent = {
+    const componentWithMultilinkEmail: Component = {
       name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
@@ -733,7 +733,7 @@ describe('component property type annotations', () => {
     expect(await generateTypes(spaceData1, { strict: false }))
       .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;');
 
-    const componentWithMultilinkBoth: SpaceComponent = {
+    const componentWithMultilinkBoth: Component = {
       name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
@@ -757,7 +757,7 @@ describe('component property type annotations', () => {
     expect(await generateTypes(spaceData2, { strict: false }))
       .toContain('link?: StoryblokMultilink;');
 
-    const componentWithMultilinkNone: SpaceComponent = {
+    const componentWithMultilinkNone: Component = {
       name: 'test_component',
       created_at: '2023-01-01T00:00:00Z',
       updated_at: '2023-01-01T00:00:00Z',
@@ -784,7 +784,7 @@ describe('component property type annotations', () => {
 
   it('should handle bloks property type with component restrictions', async () => {
     // Create a component with bloks property type and component restrictions
-    const componentWithBloksType: SpaceComponent = {
+    const componentWithBloksType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -820,7 +820,7 @@ describe('component property type annotations', () => {
 
   it('should handle bloks property type with tag-based restrictions', async () => {
     // Create components with different tag IDs
-    const buttonComponent: SpaceComponent = {
+    const buttonComponent: Component = {
       name: 'button',
       display_name: 'Button',
       created_at: '2023-01-01T00:00:00Z',
@@ -831,7 +831,7 @@ describe('component property type annotations', () => {
       internal_tag_ids: ['1', '2'], // Has tags 1 and 2
     };
 
-    const imageComponent: SpaceComponent = {
+    const imageComponent: Component = {
       name: 'image',
       display_name: 'Image',
       created_at: '2023-01-01T00:00:00Z',
@@ -842,7 +842,7 @@ describe('component property type annotations', () => {
       internal_tag_ids: ['2', '3'], // Has tags 2 and 3
     };
 
-    const textComponent: SpaceComponent = {
+    const textComponent: Component = {
       name: 'text',
       display_name: 'Text',
       created_at: '2023-01-01T00:00:00Z',
@@ -854,7 +854,7 @@ describe('component property type annotations', () => {
     };
 
     // Create a component with bloks property type and tag-based restrictions
-    const componentWithTagBasedBloks: SpaceComponent = {
+    const componentWithTagBasedBloks: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -893,7 +893,7 @@ describe('component property type annotations', () => {
 
   it('should handle tabbed properties correctly', async () => {
     // Create a component with tabbed properties
-    const componentWithTabbedProperties: SpaceComponent = {
+    const componentWithTabbedProperties: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -932,7 +932,7 @@ describe('component property type annotations', () => {
 
   it('should handle custom property type with customFieldsParser', async () => {
     // Create a component with custom property type
-    const componentWithCustomType: SpaceComponent = {
+    const componentWithCustomType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',
@@ -979,7 +979,7 @@ describe('component property type annotations', () => {
   });
   it('should handle datasource property type', async () => {
     // Create a component with boolean property type
-    const componentWithDatasourceType: SpaceComponent = {
+    const componentWithDatasourceType: Component = {
       name: 'test_component',
       display_name: 'Test Component',
       created_at: '2023-01-01T00:00:00Z',

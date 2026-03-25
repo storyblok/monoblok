@@ -1,17 +1,14 @@
 import chalk from 'chalk';
-import type { Users } from '@storyblok/management-api-client';
 import { handleAPIError, maskToken } from '../../utils';
-import { creategetMapiClient } from '../../api';
+import { createMapiClient } from '../../api';
 import type { RegionCode } from '../../constants';
 
-export type User = Users.User;
+export type { User } from '../../types';
 
 export const getUser = async (token: string, region: RegionCode) => {
   try {
-    const client = creategetMapiClient({
-      token: {
-        accessToken: token,
-      },
+    const client = createMapiClient({
+      accessToken: token,
       region,
     });
 

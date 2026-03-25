@@ -62,18 +62,18 @@ const isValidManifestEntry = (entry: ManifestEntry) =>
     && entry.old_filename
     && entry.new_filename);
 
-export const loadAssetMap = async (manifestFile: string) => {
+export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {
   const manifest = await loadManifest(manifestFile);
-  return new Map<number, { old: Asset; new: AssetMapped }>([
-    ...manifest.filter(isValidManifestEntry)
-      .map(e => [
-        Number(e.old_id),
-        {
-          old: { id: Number(e.old_id), filename: e.old_filename || '' },
-          new: { id: Number(e.new_id), filename: e.new_filename || '' },
-        },
-      ] as const),
-  ]) as AssetMap;
+  const entries: [number, { old: AssetMapped; new: AssetMapped }][] = manifest
+    .filter(isValidManifestEntry)
+    .map(e => [
+      Number(e.old_id),
+      {
+        old: { id: Number(e.old_id), filename: e.old_filename || '' },
+        new: { id: Number(e.new_id), filename: e.new_filename || '' },
+      },
+    ]);
+  return new Map(entries);
 };
 
 export const loadAssetFolderMap = async (manifestFile: string) => {

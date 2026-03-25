@@ -1,8 +1,8 @@
 import type {
-  SpaceComponent,
-  SpaceComponentFolder,
-  SpaceComponentInternalTag,
-  SpaceComponentPreset,
+  Component,
+  ComponentFolder,
+  InternalTag,
+  Preset,
   SpaceComponentsDataState,
 } from '../../../constants';
 
@@ -10,7 +10,7 @@ import type {
 // TEST DATA BUILDERS
 // =============================================================================
 
-export function createTestTag(overrides: Partial<SpaceComponentInternalTag> = {}): SpaceComponentInternalTag {
+export function createTestTag(overrides: Partial<InternalTag> = {}): InternalTag {
   return {
     id: 1,
     name: 'test-tag',
@@ -19,7 +19,7 @@ export function createTestTag(overrides: Partial<SpaceComponentInternalTag> = {}
   };
 }
 
-export function createTestGroup(overrides: Partial<SpaceComponentFolder> = {}): SpaceComponentFolder {
+export function createTestGroup(overrides: Partial<ComponentFolder> = {}): ComponentFolder {
   return {
     id: 1,
     name: 'test-group',
@@ -30,7 +30,7 @@ export function createTestGroup(overrides: Partial<SpaceComponentFolder> = {}): 
   };
 }
 
-export function createTestComponent(overrides: Partial<SpaceComponent> = {}): SpaceComponent {
+export function createTestComponent(overrides: Partial<Component> = {}): Component {
   return {
     id: 1,
     name: 'test-component',
@@ -45,7 +45,7 @@ export function createTestComponent(overrides: Partial<SpaceComponent> = {}): Sp
   };
 }
 
-export function createTestPreset(overrides: Partial<SpaceComponentPreset> = {}): SpaceComponentPreset {
+export function createTestPreset(overrides: Partial<Preset> = {}): Preset {
   return {
     id: 1,
     name: 'test-preset',
@@ -215,16 +215,16 @@ export function createSourceTargetReconciliationScenario() {
  */
 export function createTestSpaceDataState(
   localData: {
-    components?: SpaceComponent[];
-    groups?: SpaceComponentFolder[];
-    tags?: SpaceComponentInternalTag[];
-    presets?: SpaceComponentPreset[];
+    components?: Component[];
+    groups?: ComponentFolder[];
+    tags?: InternalTag[];
+    presets?: Preset[];
   } = {},
   targetData: {
-    components?: SpaceComponent[];
-    groups?: SpaceComponentFolder[];
-    tags?: SpaceComponentInternalTag[];
-    presets?: SpaceComponentPreset[];
+    components?: Component[];
+    groups?: ComponentFolder[];
+    tags?: InternalTag[];
+    presets?: Preset[];
   } = {},
 ): SpaceComponentsDataState {
   const targetComponents = targetData.components || [];
@@ -232,7 +232,7 @@ export function createTestSpaceDataState(
 
   // Create preset map with hierarchical keys reflecting nested resource structure
   // Presets are scoped to components: component.name:preset.name (parent:child)
-  const presetMap = new Map<string, SpaceComponentPreset>();
+  const presetMap = new Map<string, Preset>();
   targetPresets.forEach((preset) => {
     const targetComponent = targetComponents.find(c => c.id === preset.component_id);
     if (targetComponent) {

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
 import { vol } from 'memfs';
-import type { SpaceComponent } from '../constants';
+import type { Component } from '../constants';
 // Import the main module first to ensure proper initialization
 import '../index';
 import { componentsCommand } from '../command';
@@ -41,7 +41,7 @@ vi.mock('../actions', () => ({
 // konsola mock still needed: handleError (shared utility) uses konsola internally
 vi.mock('../../../utils/konsola');
 
-const mockComponent: SpaceComponent = {
+const mockComponent: Component = {
   name: 'test-component',
   display_name: 'Test Component',
   created_at: '2021-08-09T12:00:00Z',

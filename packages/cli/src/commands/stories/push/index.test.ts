@@ -412,6 +412,7 @@ describe('stories push command', () => {
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyARemote.id, expect.objectContaining({
         story: {
           ...storyARemote,
+          parent_id: 0,
           content: {
             ...storyARemote.content,
             hero_image: {
@@ -520,6 +521,7 @@ describe('stories push command', () => {
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyARemote.id, expect.objectContaining({
         story: {
           ...storyARemote,
+          parent_id: 0,
           content: {
             ...storyARemote.content,
             richtext: {
@@ -611,6 +613,7 @@ describe('stories push command', () => {
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyARemote.id, expect.objectContaining({
         story: {
           ...storyARemote,
+          parent_id: 0,
           content: {
             ...storyARemote.content,
             references: [
@@ -622,6 +625,7 @@ describe('stories push command', () => {
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyBRemote.id, expect.objectContaining({
         story: {
           ...storyBRemote,
+          parent_id: 0,
           content: {
             ...storyBRemote.content,
             references: [
@@ -715,7 +719,7 @@ describe('stories push command', () => {
 
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyA.id, expect.objectContaining({
-        story: storyA,
+        story: { ...storyA, parent_id: 0 },
       }));
       // Manifest
       const manifestEntries = await parseManifest();
@@ -1263,7 +1267,7 @@ describe('stories push command', () => {
 
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyA.id, expect.objectContaining({
-        story: storyA,
+        story: { ...storyA, parent_id: 0 },
       }));
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);

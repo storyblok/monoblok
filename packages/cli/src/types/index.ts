@@ -1,4 +1,35 @@
 import type { RegionCode } from '../constants';
+import type { Space } from '@storyblok/management-api-client';
+
+export type {
+  Asset,
+  AssetCreate,
+  AssetFolder,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetListQuery,
+  AssetUpdate,
+  Component,
+  ComponentCreate,
+  ComponentFolder,
+  ComponentSchemaField,
+  ComponentUpdate,
+  Datasource,
+  DatasourceCreate,
+  DatasourceEntry,
+  DatasourceUpdate,
+  InternalTag,
+  Preset,
+  Space,
+  SpaceCreate,
+  SpaceUpdate,
+  Story,
+  StoryContent,
+  StoryCreate,
+  StoryListQuery,
+  StoryUpdate,
+  User,
+} from '@storyblok/management-api-client';
 
 /**
  * Interface representing the default options for a CLI command.
@@ -10,20 +41,13 @@ export interface CommandOptions {
   verbose: boolean;
 }
 
-// All these types should come from a general package
-
 /**
  * Interface representing a language in Storyblok
  */
-export interface Language {
-  name?: string;
-  code?: string;
-  fallback_code?: string;
-  ai_translation_code?: string;
-}
+export type Language = NonNullable<Space['languages']>[number];
 
 export interface SpaceInternationalization {
-  languages: Language[];
+  languages: NonNullable<Space['languages']>;
   default_lang_name: string;
 }
 

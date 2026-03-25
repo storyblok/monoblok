@@ -1,34 +1,31 @@
 import type { SpaceDatasource } from '../datasources/constants';
 
-import type { ComponentFolders, Components, InternalTags, Presets } from '@storyblok/management-api-client';
+import type { Component, ComponentFolder, InternalTag, Preset } from '../../types';
+
+export type { Component, ComponentFolder, InternalTag, Preset };
 
 export const DEFAULT_COMPONENTS_FILENAME = 'components';
 export const DEFAULT_GROUPS_FILENAME = 'groups';
 export const DEFAULT_PRESETS_FILENAME = 'presets';
 export const DEFAULT_TAGS_FILENAME = 'tags';
 
-export type SpaceComponent = Components.Component;
-
-export type SpaceComponentFolder = ComponentFolders.ComponentFolder;
-export type SpaceComponentPreset = Presets.Preset;
-export type SpaceComponentInternalTag = InternalTags.InternalTag;
 // There is no create or update type for internal tags
 
 export interface SpaceComponentsData {
-  components: SpaceComponent[];
-  groups: SpaceComponentFolder[];
-  presets: SpaceComponentPreset[];
-  internalTags: SpaceComponentInternalTag[];
+  components: Component[];
+  groups: ComponentFolder[];
+  presets: Preset[];
+  internalTags: InternalTag[];
   datasources: SpaceDatasource[];
 }
 
 export interface SpaceComponentsDataState {
   local: SpaceComponentsData;
   target: {
-    components: Map<string, SpaceComponent>;
-    tags: Map<string, SpaceComponentInternalTag>;
-    groups: Map<string, SpaceComponentFolder>;
-    presets: Map<string, SpaceComponentPreset>;
+    components: Map<string, Component>;
+    tags: Map<string, InternalTag>;
+    groups: Map<string, ComponentFolder>;
+    presets: Map<string, Preset>;
     datasources: Map<string, SpaceDatasource>;
   };
 }

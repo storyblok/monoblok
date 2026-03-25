@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readComponentsFiles } from './actions';
-import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset } from '../constants';
+import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
 import { vol } from 'memfs';
 import { FileSystemError } from '../../../utils';
 
 // Mock components data
-const mockComponent1: SpaceComponent = {
+const mockComponent1: Component = {
   name: 'author',
   display_name: undefined,
   created_at: '2025-10-10T12:12:18.056Z',
@@ -42,7 +42,7 @@ const mockComponent1: SpaceComponent = {
   content_type_asset_preview: undefined,
 };
 
-const mockComponent2: SpaceComponent = {
+const mockComponent2: Component = {
   name: 'feature',
   display_name: undefined,
   created_at: '2025-10-09T06:29:14.630Z',
@@ -70,21 +70,21 @@ const mockComponent2: SpaceComponent = {
   content_type_asset_preview: undefined,
 };
 
-const mockGroup1: SpaceComponentFolder = {
+const mockGroup1: ComponentFolder = {
   id: 1,
   name: 'Content',
   uuid: 'group-uuid-1',
   parent_id: undefined,
 };
 
-const mockGroup2: SpaceComponentFolder = {
+const mockGroup2: ComponentFolder = {
   id: 2,
   name: 'Layout',
   uuid: 'group-uuid-2',
   parent_id: undefined,
 };
 
-const mockPreset1: SpaceComponentPreset = {
+const mockPreset1: Preset = {
   id: 1,
   name: 'Hero Preset',
   component_id: 1,
@@ -98,7 +98,7 @@ const mockPreset1: SpaceComponentPreset = {
   description: undefined,
 };
 
-const mockTag1: SpaceComponentInternalTag = {
+const mockTag1: InternalTag = {
   id: 1,
   name: 'internal-tag',
   object_type: 'component',

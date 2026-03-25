@@ -1,7 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
 import { fetchStories } from './actions';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -12,7 +11,7 @@ vi.mock('../../utils/error/api-error', () => ({
 }));
 
 // Mock stories data
-const mockStories: Story[] = [
+const mockStories = [
   {
     id: 1,
     name: 'Story 1',
@@ -32,7 +31,7 @@ const mockStories: Story[] = [
     is_startpage: false,
     is_folder: false,
     pinned: false,
-    parent_id: null,
+    parent_id: 0,
     group_id: 'group-1',
     parent: null,
     path: null,
@@ -75,7 +74,7 @@ const mockStories: Story[] = [
     is_startpage: false,
     is_folder: false,
     pinned: false,
-    parent_id: null,
+    parent_id: 0,
     group_id: 'group-2',
     parent: null,
     path: null,
@@ -176,9 +175,7 @@ const server = setupServer(...handlers);
 beforeAll(() => server.listen());
 beforeEach(() => {
   getMapiClient({
-    token: {
-      accessToken: 'valid-token',
-    },
+    accessToken: 'valid-token',
     region: 'eu',
   });
 });
@@ -243,9 +240,7 @@ describe('stories/actions', () => {
     it('should handle unauthorized errors', async () => {
       // Temporarily create a client with invalid token
       getMapiClient({
-        token: {
-          accessToken: 'invalid-token',
-        },
+        accessToken: 'invalid-token',
         region: 'eu',
       });
 
@@ -258,9 +253,7 @@ describe('stories/actions', () => {
 
       // Restore valid client
       getMapiClient({
-        token: {
-          accessToken: 'valid-token',
-        },
+        accessToken: 'valid-token',
         region: 'eu',
       });
     });

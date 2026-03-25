@@ -772,8 +772,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(actions.createAssetFolder).not.toHaveBeenCalled();
-    expect(actions.updateAssetFolder).toHaveBeenCalledWith(expect.objectContaining({
-      id: remoteFolder.id,
+    expect(actions.updateAssetFolder).toHaveBeenCalledWith(remoteFolder.id, expect.objectContaining({
       name: localFolder.name,
     }), expect.anything());
     expect(await parseFoldersManifest()).toEqual([{
@@ -792,8 +791,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(actions.createAssetFolder).not.toHaveBeenCalled();
-    expect(actions.updateAssetFolder).toHaveBeenCalledWith(expect.objectContaining({
-      id: remoteFolder.id,
+    expect(actions.updateAssetFolder).toHaveBeenCalledWith(remoteFolder.id, expect.objectContaining({
       name: remoteFolder.name,
     }), expect.anything());
     expect(await parseFoldersManifest()).toEqual([
@@ -1179,9 +1177,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(actions.createAsset).not.toHaveBeenCalled();
-    expect(actions.updateAsset).toHaveBeenCalledWith(expect.objectContaining({
-      id: remoteAsset.id,
-    }), expect.anything(), expect.anything());
+    expect(actions.updateAsset).toHaveBeenCalledWith(remoteAsset.id, expect.anything(), expect.anything());
     expect(await parseManifest()).toEqual([
       {
         old_id: localAsset.id,

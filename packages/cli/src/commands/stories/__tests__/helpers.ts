@@ -38,7 +38,7 @@ export const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => 
       references: [],
     },
     is_folder: overrides.is_folder ?? false,
-    parent_id: overrides.parent_id ?? null,
+    parent_id: overrides.parent_id ?? 0,
     ...overrides,
   };
 };

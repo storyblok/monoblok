@@ -66,9 +66,7 @@ afterAll(() => server.close());
 describe('pull components actions', () => {
   beforeEach(() => {
     getMapiClient({
-      token: {
-        accessToken: 'valid-token',
-      },
+      accessToken: 'valid-token',
       region: 'eu',
     });
   });

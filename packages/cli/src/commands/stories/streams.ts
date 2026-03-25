@@ -2,10 +2,9 @@ import { readFile, unlink } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import type { Component } from '@storyblok/management-api-client/resources/components';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Component } from '../components/constants';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
-import type { ExistingTargetStories, StoriesQueryParams, StoryIndexEntry, TargetStoryRef } from './constants';
+import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry, TargetStoryRef } from './constants';
 import { normalizeFullSlug } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
@@ -462,7 +461,10 @@ export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
   spaceId: string;
   publish?: number;
 }): WriteStoryTransport => mappedLocalStory => updateStory(spaceId, mappedLocalStory.id, {
-  story: mappedLocalStory,
+  story: {
+    ...mappedLocalStory,
+    parent_id: mappedLocalStory.parent_id ?? undefined,
+  },
   publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
 });
 

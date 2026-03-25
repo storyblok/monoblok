@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import type { StoryUpdate } from '../../../types';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { migrationsCommand } from '../command';
@@ -64,7 +65,7 @@ rollbackCmd
       for (const story of rollbackData.stories) {
         const spinner = ui.createSpinner(`Restoring story ${chalk.hex(colorPalette.PRIMARY)(story.name || story.storyId)}...`);
         try {
-          const payload: any = {
+          const payload: { story: StoryUpdate; force_update?: string; publish?: number } = {
             story: {
               content: story.content,
               id: story.storyId,

@@ -29,9 +29,7 @@ describe('delete datasources actions', () => {
   beforeEach(() => {
     // Reset and configure the MAPI client before each test
     getMapiClient({
-      token: {
-        accessToken: 'valid-token',
-      },
+      accessToken: 'valid-token',
       region: 'eu',
     });
   });

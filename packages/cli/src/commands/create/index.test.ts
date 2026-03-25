@@ -531,9 +531,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       expect(getMapiClient).toHaveBeenCalledWith({
-        token: {
-          accessToken: 'valid-token',
-        },
+        accessToken: 'valid-token',
         region: 'eu',
       });
     });

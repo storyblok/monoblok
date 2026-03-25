@@ -17,6 +17,10 @@ export interface MockAsset {
   title?: string;
   copyright?: string;
   source?: string;
+  focus?: string;
+  expire_at?: string;
+  publish_at?: string;
+  internal_tag_ids?: string[];
   meta_data?: Record<string, unknown>;
 }
 

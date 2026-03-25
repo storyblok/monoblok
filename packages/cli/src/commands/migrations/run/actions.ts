@@ -122,15 +122,15 @@ export function applyMigrationToAllBlocks(content: StoryContent, migrationFuncti
     // Process arrays (might contain blocks)
     if (Array.isArray(content[key])) {
       for (const value of content[key]) {
-        if (value && typeof value === 'object') {
-          const blockProcessed = applyMigrationToAllBlocks(value, migrationFunction, targetComponent);
+        if (value && typeof value === 'object' && '_uid' in value && 'component' in value) {
+          const blockProcessed = applyMigrationToAllBlocks(value as StoryContent, migrationFunction, targetComponent);
           processed = processed || blockProcessed;
         }
       }
     }
     // Process nested objects (might be blocks)
-    else if (content[key] && typeof content[key] === 'object') {
-      const blockProcessed = applyMigrationToAllBlocks(content[key], migrationFunction, targetComponent);
+    else if (content[key] && typeof content[key] === 'object' && '_uid' in (content[key] as object) && 'component' in (content[key] as object)) {
+      const blockProcessed = applyMigrationToAllBlocks(content[key] as unknown as StoryContent, migrationFunction, targetComponent);
       processed = processed || blockProcessed;
     }
   }

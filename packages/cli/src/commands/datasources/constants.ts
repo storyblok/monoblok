@@ -1,10 +1,11 @@
-import type { DatasourceEntries, Datasources } from '@storyblok/management-api-client';
+import type { Datasource, DatasourceEntry } from '../../types';
+
+export type { DatasourceEntry };
 
 export const DEFAULT_DATASOURCES_FILENAME = 'datasources';
 
-export type SpaceDatasourceEntry = DatasourceEntries.DatasourceEntry;
-export type SpaceDatasource = Datasources.Datasource & {
-  entries?: SpaceDatasourceEntry[];
+export type SpaceDatasource = Datasource & {
+  entries?: DatasourceEntry[];
 };
 
 export interface SpaceDatasourcesData {

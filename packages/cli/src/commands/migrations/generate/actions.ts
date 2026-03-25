@@ -1,5 +1,5 @@
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
-import type { SpaceComponent } from '../../components/constants';
+import type { Component } from '../../components/constants';
 import { join, resolve } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
 
@@ -19,7 +19,7 @@ const getMigrationTemplate = () => {
 `;
 };
 
-export const generateMigration = async (space: string, path: string | undefined, component: SpaceComponent, suffix?: string) => {
+export const generateMigration = async (space: string, path: string | undefined, component: Component, suffix?: string) => {
   const resolvedPath = path
     ? resolve(process.cwd(), path, 'migrations', space)
     : resolvePath(path, `migrations/${space}`);

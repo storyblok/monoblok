@@ -22,11 +22,11 @@ import {
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpdate, AssetUpload } from '../types';
+import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpload } from '../types';
 import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
-import type { Story } from '@storyblok/management-api-client/resources/stories';
+import type { Story } from '../../stories/constants';
 import { makeWriteStoryAPITransport } from '../../stories/streams';
 
 const pushCmd = assetsCommand
@@ -97,7 +97,7 @@ pushCmd
         ? async (folder: AssetFolderCreate) => folder as AssetFolder
         : makeCreateAssetFolderAPITransport({ spaceId: targetSpace });
       const assetFolderUpdateTransport = options.dryRun
-        ? async (folder: AssetFolderUpdate) => folder
+        ? async (_id: number, folder: AssetFolderUpdate) => folder
         : makeUpdateAssetFolderAPITransport({ spaceId: targetSpace });
       const assetFolderManifestTransport = options.dryRun
         ? () => Promise.resolve()
@@ -147,10 +147,10 @@ pushCmd
 
       const getAssetTransport = makeGetAssetAPITransport({ spaceId: targetSpace });
       const createAssetTransport = options.dryRun
-        ? async (asset: AssetCreate) => asset as Asset
+        ? async (asset: AssetUpload) => asset as Asset
         : makeCreateAssetAPITransport({ spaceId: targetSpace });
       const updateAssetTransport = options.dryRun
-        ? async (asset: AssetUpdate) => asset as Asset
+        ? async () => {}
         : makeUpdateAssetAPITransport({ spaceId: targetSpace });
       const downloadAssetFileTransport = makeDownloadAssetFileTransport({
         assetToken,
@@ -183,9 +183,9 @@ pushCmd
       /**
        * Map Asset References in Stories
        */
-      const hasUpdatedFilename = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+      const hasUpdatedFilename = (entry: { old: Asset | AssetMapped | AssetUpload; new: AssetMapped }) =>
         'filename' in entry.old && entry.old.filename !== entry.new.filename;
-      const hasMetadata = (entry: { old: Asset | AssetUpload; new: AssetMapped }) =>
+      const hasMetadata = (entry: { old: Asset | AssetMapped | AssetUpload; new: AssetMapped }) =>
         'meta_data' in entry.new && entry.new.meta_data;
       const hasUpdatedAssets = maps.assets.values().some(v => hasUpdatedFilename(v) || hasMetadata(v));
       if (hasUpdatedAssets && options.updateStories) {

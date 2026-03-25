@@ -1,8 +1,8 @@
 import type {
-  SpaceComponent,
-  SpaceComponentFolder,
-  SpaceComponentInternalTag,
-  SpaceComponentPreset,
+  Component,
+  ComponentFolder,
+  InternalTag,
+  Preset,
 } from '../../constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
@@ -87,6 +87,9 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const compositeKey = `${sourceComponent.name}:${preset.name}`;
     const targetPreset = spaceState.target.presets.get(compositeKey);
 
+    if (targetPreset && targetPreset.id === undefined) {
+      throw new Error(`Target preset "${preset.name}" is missing an id`);
+    }
     const targetData = targetPreset
       ? {
           resource: targetPreset,
@@ -559,8 +562,8 @@ class GraphNode<TSource extends NodeData> implements UnifiedNode<TSource> {
   }
 }
 
-export class TagNode extends GraphNode<SpaceComponentInternalTag> {
-  constructor(id: string, data: SpaceComponentInternalTag, targetTag?: SpaceComponentInternalTag) {
+export class TagNode extends GraphNode<InternalTag> {
+  constructor(id: string, data: InternalTag, targetTag?: InternalTag) {
     super(id, 'tag', data.name, data, targetTag);
   }
 
@@ -568,7 +571,7 @@ export class TagNode extends GraphNode<SpaceComponentInternalTag> {
     // Tags don't have references to resolve
   }
 
-  async upsert(space: string): Promise<SpaceComponentInternalTag> {
+  async upsert(space: string): Promise<InternalTag> {
     const existingId = this.targetData?.id;
     const result = await upsertComponentInternalTag(space, this.sourceData, existingId as number | undefined);
     if (!result) {
@@ -578,8 +581,8 @@ export class TagNode extends GraphNode<SpaceComponentInternalTag> {
   }
 }
 
-export class GroupNode extends GraphNode<SpaceComponentFolder> {
-  constructor(id: string, data: SpaceComponentFolder, targetGroup?: SpaceComponentFolder) {
+export class GroupNode extends GraphNode<ComponentFolder> {
+  constructor(id: string, data: ComponentFolder, targetGroup?: ComponentFolder) {
     super(id, 'group', data.name, data, targetGroup);
   }
 
@@ -599,7 +602,7 @@ export class GroupNode extends GraphNode<SpaceComponentFolder> {
     }
   }
 
-  async upsert(space: string): Promise<SpaceComponentFolder> {
+  async upsert(space: string): Promise<ComponentFolder> {
     const existingId = this.targetData?.id;
     const result = await upsertComponentGroup(space, this.sourceData, existingId as number | undefined);
     if (!result) {
@@ -609,8 +612,8 @@ export class GroupNode extends GraphNode<SpaceComponentFolder> {
   }
 }
 
-export class ComponentNode extends GraphNode<SpaceComponent> {
-  constructor(id: string, data: SpaceComponent, targetComponent?: SpaceComponent) {
+export class ComponentNode extends GraphNode<Component> {
+  constructor(id: string, data: Component, targetComponent?: Component) {
     super(id, 'component', data.name, data, targetComponent);
   }
 
@@ -671,11 +674,11 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
     this.sourceData = updatedData;
   }
 
-  private findPresetById(presetId: number, graph: DependencyGraph): SpaceComponentPreset | null {
+  private findPresetById(presetId: number, graph: DependencyGraph): Preset | null {
     // Find preset by matching source preset_id
     for (const [_nodeId, node] of graph.nodes) {
-      if (node.type === 'preset' && (node.sourceData as SpaceComponentPreset).id === presetId) {
-        return node.sourceData as SpaceComponentPreset;
+      if (node.type === 'preset' && (node.sourceData as Preset).id === presetId) {
+        return node.sourceData as Preset;
       }
     }
     return null;
@@ -740,7 +743,7 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
     return result;
   }
 
-  async upsert(space: string): Promise<SpaceComponent> {
+  async upsert(space: string): Promise<Component> {
     const existingId = this.targetData?.id;
     const result = await upsertComponent(space, this.sourceData, existingId as number | undefined);
     if (!result) {
@@ -754,16 +757,16 @@ export class ComponentNode extends GraphNode<SpaceComponent> {
  * Preset node implementation
  * Presets depend on components (via component_id)
  */
-class PresetNode implements UnifiedNode<SpaceComponentPreset> {
+class PresetNode implements UnifiedNode<Preset> {
   public readonly id: string;
   public readonly name: string;
   public readonly type: NodeType = 'preset';
-  public readonly sourceData: SpaceComponentPreset;
-  public targetData?: TargetResourceInfo<SpaceComponentPreset>;
+  public readonly sourceData: Preset;
+  public targetData?: TargetResourceInfo<Preset>;
   public readonly dependencies = new Set<string>();
   public readonly dependents = new Set<string>();
 
-  constructor(preset: SpaceComponentPreset, targetData?: TargetResourceInfo<SpaceComponentPreset>) {
+  constructor(preset: Preset, targetData?: TargetResourceInfo<Preset>) {
     this.sourceData = preset;
     this.targetData = targetData;
     this.id = `preset:${preset.id}`;
@@ -788,14 +791,14 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
   private findComponentNameById(componentId: number, graph: DependencyGraph): string | null {
     // Find component by matching source component_id
     for (const [_nodeId, node] of graph.nodes) {
-      if (node.type === 'component' && (node.sourceData as SpaceComponent).id === componentId) {
+      if (node.type === 'component' && (node.sourceData as Component).id === componentId) {
         return node.name;
       }
     }
     return null;
   }
 
-  async upsert(space: string): Promise<SpaceComponentPreset> {
+  async upsert(space: string): Promise<Preset> {
     const existingId = this.targetData?.id as number | undefined;
     const result = await upsertComponentPreset(space, this.sourceData, existingId);
     if (!result) {
@@ -804,7 +807,10 @@ class PresetNode implements UnifiedNode<SpaceComponentPreset> {
     return result;
   }
 
-  updateTargetData(result: SpaceComponentPreset): void {
+  updateTargetData(result: Preset): void {
+    if (result.id === undefined) {
+      throw new Error(`Preset "${this.name}" is missing an id after upsert`);
+    }
     this.targetData = {
       resource: result,
       id: result.id,

@@ -150,7 +150,25 @@ describe('storyRefMapper', () => {
     expect(Array.from(missingSchemas)).toEqual(['page_with_everything']);
   });
 
-  it('should preserve parent_id of 0 instead of converting it to null', () => {
+  it('should handle null parent_id for root-level stories', () => {
+    const story = {
+      name: 'Root Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: null,
+      is_folder: false,
+      slug: 'root-story',
+      content: { _uid: randomUUID(), component: 'page_with_everything' },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Partial story for testing
+    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.parent_id).toBe(0);
+  });
+
+  it('should preserve parent_id of 0 for root-level stories', () => {
     const story = {
       name: 'Root Story',
       id: getID(),
@@ -162,7 +180,7 @@ describe('storyRefMapper', () => {
     };
     const maps = { assets: new Map(), stories: new Map() };
 
-    // @ts-expect-error Our types are wrong.
+    // @ts-expect-error Partial story for testing
     const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.parent_id).toBe(0);
@@ -173,7 +191,7 @@ describe('storyRefMapper', () => {
       name: 'No Content Story',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'no-content',
     };
@@ -192,7 +210,7 @@ describe('storyRefMapper', () => {
       name: 'Folder',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: true,
       slug: 'folder',
       content: { _uid: randomUUID() },
@@ -211,7 +229,7 @@ describe('storyRefMapper', () => {
       name: 'Richtext Story',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'richtext-story',
       content: {
@@ -236,7 +254,7 @@ describe('storyRefMapper', () => {
       name: 'Blok Story',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'blok-story',
       content: {
@@ -262,7 +280,7 @@ describe('storyRefMapper', () => {
       name: 'Bad Bloks',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'bad-bloks',
       content: {
@@ -283,7 +301,7 @@ describe('storyRefMapper', () => {
       name: 'Bad Multiasset',
       id: getID(),
       uuid: randomUUID(),
-      parent_id: null,
+      parent_id: 0,
       is_folder: false,
       slug: 'bad-multiasset',
       content: {

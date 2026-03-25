@@ -1,5 +1,5 @@
 import { compile, type JSONSchema } from 'json-schema-to-typescript';
-import type { SpaceComponent, SpaceComponentsData } from '../../../commands/components/constants';
+import type { Component, SpaceComponentsData } from '../../../commands/components/constants';
 import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase, toPascalCase } from '../../../utils';
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
@@ -50,12 +50,6 @@ const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: s
   if (property.source === 'internal_stories') {
     // Only if there is a filter_content_type, we can return a proper type
     if (property.filter_content_type) {
-      if (typeof property.filter_content_type === 'string') {
-        return {
-          tsType: `(${getStoryType(property.filter_content_type, prefix, suffix)} | string )${property.type === 'options' ? '[]' : ''}`,
-        };
-      }
-
       return {
         tsType: `(${property.filter_content_type
           .map(type2 => getStoryType(type2, prefix, suffix))
@@ -163,7 +157,7 @@ export const getComponentType = (
 };
 
 const getComponentPropertiesTypeAnnotations = async (
-  component: SpaceComponent,
+  component: Component,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
   customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,

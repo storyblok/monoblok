@@ -2,7 +2,6 @@
 name: triage
 description: Quick triage assessment of GitHub issues. Use when asked to triage, assess, or categorize issues.
 model: haiku
-allowed-tools: Bash, Read
 disable-model-invocation: true
 ---
 

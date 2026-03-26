@@ -2,9 +2,9 @@ import type { PushComponentsOptions } from './constants';
 import type { Command } from 'commander';
 
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
-import { readComponentsFiles } from './actions';
+import { deleteComponentPreset, readComponentsFiles } from './actions';
 import { componentsCommand } from '../command';
 import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
@@ -12,6 +12,8 @@ import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { SpaceComponent, SpaceComponentFolder, SpaceComponentInternalTag, SpaceComponentPreset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pushCmd = componentsCommand
   .command('push [componentName]')
@@ -25,7 +27,10 @@ const pushCmd = componentsCommand
 
 pushCmd
   .action(async (componentName: string | undefined, options: PushComponentsOptions, command: Command) => {
-    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
+    const ui = getUI();
+    const logger = getLogger();
+
+    ui.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pushing component ${componentName}...` : 'Pushing components...');
 
     const { space, path, verbose } = command.optsWithGlobals();
 
@@ -44,8 +49,11 @@ pushCmd
       handleError(new CommandError(`Please provide the target space as argument --space TARGET_SPACE_ID.`), verbose);
       return;
     }
-    konsola.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
-    konsola.br();
+
+    logger.info('Pushing components started', { space, fromSpace, componentName });
+
+    ui.info(`Attempting to push components ${chalk.bold('from')} space ${chalk.hex(colorPalette.COMPONENTS)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.COMPONENTS)(space)}`);
+    ui.br();
 
     let requestCount = 0;
 
@@ -137,11 +145,11 @@ pushCmd
           handleError(new CommandError(`No components found matching pattern "${filter}".`), verbose);
           return;
         }
-        konsola.info(`Filter applied: ${filter}`);
+        ui.info(`Filter applied: ${filter}`);
       }
 
       if (!spaceState.local.components.length) {
-        konsola.warn('No components found. Please make sure you have pulled the components first.');
+        ui.warn('No components found. Please make sure you have pulled the components first.');
         return;
       }
 
@@ -150,16 +158,43 @@ pushCmd
         failed: [] as Array<{ name: string; error: unknown }>,
       };
 
+      // Build local preset keys BEFORE graph processing (which mutates component_id references)
+      const localComponentById = new Map(spaceState.local.components.map(c => [c.id, c.name]));
+      const localPresetKeys = new Set<string>();
+      for (const preset of spaceState.local.presets) {
+        const componentName = localComponentById.get(preset.component_id);
+        if (componentName) {
+          localPresetKeys.add(`${componentName}:${preset.name}`);
+        }
+      }
+
       // Use optimized graph-based dependency resolution with colocated target data
-      konsola.info('Using graph-based dependency resolution');
+      ui.info('Using graph-based dependency resolution');
       const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
 
+      // Reconcile presets: delete stale presets only for components that were pushed successfully
+      const successfulNames = new Set(results.successful);
+      for (const [compositeKey, targetPreset] of spaceState.target.presets) {
+        const separatorIndex = compositeKey.indexOf(':');
+        const componentName = compositeKey.substring(0, separatorIndex);
+
+        if (successfulNames.has(componentName) && !localPresetKeys.has(compositeKey)) {
+          try {
+            await deleteComponentPreset(space, targetPreset.id);
+            ui.info(`Deleted stale preset: ${chalk.hex(colorPalette.PRESETS)(compositeKey)}`);
+          }
+          catch (error) {
+            results.failed.push({ name: compositeKey, error });
+          }
+        }
+      }
+
       if (results.failed.length > 0) {
         if (!verbose) {
-          konsola.br();
-          konsola.info('For more information about the error, run the command with the `--verbose` flag');
+          ui.br();
+          ui.info('For more information about the error, run the command with the `--verbose` flag');
         }
         else {
           results.failed.forEach((failed) => {
@@ -187,12 +222,15 @@ pushCmd
       });
 
       if (referencedDatasources.size > 0) {
-        konsola.br();
-        konsola.info(`Components reference datasources: ${chalk.yellow(Array.from(referencedDatasources).join(', '))}`);
-        konsola.info(`To manage datasources, use: ${chalk.cyan('storyblok datasources push')}`);
+        ui.br();
+        ui.info(`Components reference datasources: ${chalk.yellow(Array.from(referencedDatasources).join(', '))}`);
+        ui.info(`To manage datasources, use: ${chalk.cyan('storyblok datasources push')}`);
       }
     }
     catch (error) {
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pushing components finished', { space, fromSpace, componentName });
     }
   });

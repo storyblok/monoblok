@@ -101,9 +101,8 @@ describe('types generate integration', () => {
       expect(result).toContain('export interface Feature');
     });
 
-    it('should fail when using consolidated mode on separate files', async () => {
-      // This is the exact scenario from issue #432:
-      // Components pulled with --sf, but types generate called without --sf
+    it('should fail when explicitly using consolidated mode on separate files', async () => {
+      // Passing separateFiles: false explicitly should NOT auto-detect
       vol.fromJSON({
         '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
         '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
@@ -117,6 +116,84 @@ describe('types generate integration', () => {
           verbose: false,
         }),
       ).rejects.toThrow('No components found');
+    });
+  });
+
+  describe('auto-detecting input format', () => {
+    it('should auto-detect separate files when components.json is absent', async () => {
+      vol.fromJSON({
+        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
+        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+      });
+
+      const componentsData = await readComponentsFiles({
+        from: '12345',
+        path: '/project',
+        // separateFiles not specified - auto-detect
+        verbose: false,
+      });
+
+      expect(componentsData.components).toHaveLength(2);
+    });
+
+    it('should auto-detect consolidated mode when components.json exists', async () => {
+      vol.fromJSON({
+        '/project/components/12345/components.json': JSON.stringify([mockComponent1, mockComponent2]),
+      });
+
+      const componentsData = await readComponentsFiles({
+        from: '12345',
+        path: '/project',
+        // separateFiles not specified - auto-detect
+        verbose: false,
+      });
+
+      expect(componentsData.components).toHaveLength(2);
+    });
+
+    it('should auto-detect separate files with suffix', async () => {
+      vol.fromJSON({
+        '/project/components/12345/hero.dev.json': JSON.stringify([mockComponent1]),
+        '/project/components/12345/feature.dev.json': JSON.stringify([mockComponent2]),
+      });
+
+      const componentsData = await readComponentsFiles({
+        from: '12345',
+        path: '/project',
+        suffix: 'dev',
+        verbose: false,
+      });
+
+      expect(componentsData.components).toHaveLength(2);
+    });
+
+    it('should generate a single type file from auto-detected separate component files (#530)', async () => {
+      // This is the exact scenario from issue #530:
+      // Components pulled with --sf (separate JSON files), but user wants single .d.ts output
+      vol.fromJSON({
+        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
+        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+      });
+
+      // Read without separateFiles - auto-detect picks separate files mode
+      const componentsData = await readComponentsFiles({
+        from: '12345',
+        path: '/project',
+        verbose: false,
+      });
+
+      expect(componentsData.components).toHaveLength(2);
+
+      // Generate a single combined output (no separateFiles in options)
+      const result = await generateTypes(
+        { ...componentsData, datasources: [] },
+        { strict: false },
+      );
+
+      // Should be a single string, not an array of files
+      expect(typeof result).toBe('string');
+      expect(result).toContain('export interface Hero');
+      expect(result).toContain('export interface Feature');
     });
   });
 

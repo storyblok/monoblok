@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { appendToFile, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
+import { appendToFile, consolidatedFilename, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile, shouldUseSeparateFiles } from './filesystem';
 import { join, resolve } from 'pathe';
 
 beforeEach(() => {
@@ -175,6 +175,52 @@ describe('filesystem utils', async () => {
 
     it('should handle filenames with paths', () => {
       expect(getComponentNameFromFilename('/path/to/my_component.js')).toBe('/path/to/my_component');
+    });
+  });
+
+  describe('consolidatedFilename', () => {
+    it('should return filename with .json when no suffix', () => {
+      expect(consolidatedFilename('components')).toBe('components.json');
+    });
+
+    it('should return filename with suffix and .json', () => {
+      expect(consolidatedFilename('components', 'v2')).toBe('components.v2.json');
+    });
+  });
+
+  describe('shouldUseSeparateFiles', () => {
+    it('should return true when separateFiles is explicitly true', async () => {
+      const result = await shouldUseSeparateFiles('/some/path', 'components', true);
+      expect(result).toBe(true);
+    });
+
+    it('should return false when separateFiles is explicitly false', async () => {
+      const result = await shouldUseSeparateFiles('/some/path', 'components', false);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when consolidated file exists', async () => {
+      vol.fromJSON({ '/space/components.json': '[]' });
+      const result = await shouldUseSeparateFiles('/space', 'components');
+      expect(result).toBe(false);
+    });
+
+    it('should return true when consolidated file does not exist', async () => {
+      vol.fromJSON({ '/space/other.json': '[]' });
+      const result = await shouldUseSeparateFiles('/space', 'components');
+      expect(result).toBe(true);
+    });
+
+    it('should check suffixed consolidated file when suffix is provided', async () => {
+      vol.fromJSON({ '/space/components.v2.json': '[]' });
+      const result = await shouldUseSeparateFiles('/space', 'components', undefined, 'v2');
+      expect(result).toBe(false);
+    });
+
+    it('should return true when suffixed consolidated file does not exist', async () => {
+      vol.fromJSON({ '/space/components.json': '[]' });
+      const result = await shouldUseSeparateFiles('/space', 'components', undefined, 'v2');
+      expect(result).toBe(true);
     });
   });
 

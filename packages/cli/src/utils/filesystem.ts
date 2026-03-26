@@ -247,3 +247,16 @@ export async function fileExists(path: string) {
     return false;
   }
 }
+
+export function consolidatedFilename(defaultFilename: string, suffix?: string): string {
+  return suffix
+    ? `${defaultFilename}.${suffix}.json`
+    : `${defaultFilename}.json`;
+}
+
+export async function shouldUseSeparateFiles(resolvedPath: string, defaultFilename: string, separateFiles?: boolean, suffix?: string): Promise<boolean> {
+  if (separateFiles !== undefined) {
+    return separateFiles;
+  }
+  return !(await fileExists(join(resolvedPath, consolidatedFilename(defaultFilename, suffix))));
+}

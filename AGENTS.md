@@ -23,6 +23,13 @@ pnpm --filter storyblok test -- --watch                             # Watch mode
 
 Branch naming: `[fix|feat|chore]/WDX-XXX-[title]`
 
+## Code conventions
+
+- **Naming:** Files `kebab-case.ts`, functions/variables `camelCase`, classes/types `PascalCase`, constants `UPPER_SNAKE_CASE`
+- **Types:** Use `type` for object shapes, `interface` for extendable contracts. Explicit return types on public APIs.
+- **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths). Prefer named imports.
+- **Linting:** Run `pnpm nx lint <pkg> --fix` first before fixing lint errors manually.
+
 ## API Reference
 
 The **source of truth** for Storyblok Management API schemas is the **storyrails** repo (`spec/integration/openapi/`), not the local `packages/openapi` spec which may lag behind. Flag inconsistencies to the user.

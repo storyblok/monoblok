@@ -2,7 +2,6 @@
 name: plan
 description: Create an implementation plan for a task. Use when asked to plan, design, or architect a solution.
 model: sonnet
-allowed-tools: Bash, Read, Grep, Glob
 effort: high
 ---
 

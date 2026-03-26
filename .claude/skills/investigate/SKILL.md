@@ -2,7 +2,6 @@
 name: investigate
 description: Deep investigation of GitHub issues with root cause analysis and proposed solutions. Use when asked to investigate, analyze, or dig into an issue.
 model: opus
-allowed-tools: Bash, Read, Grep, Glob, WebFetch, WebSearch
 context: fork
 agent: investigator
 effort: high

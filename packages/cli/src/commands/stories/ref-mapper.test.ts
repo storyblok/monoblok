@@ -97,6 +97,21 @@ describe('storyRefMapper', () => {
     expect(mappedStory.content.multi_assets[0].filename).toBe(asset3New.filename);
   });
 
+  it('should normalize S3 asset URLs to CDN URLs when mapping asset fields', () => {
+    const story = makeStoryWithAllFieldTypes();
+    const assetMap = new Map<number, any>();
+    const s3Filename = 'https://s3.amazonaws.com/a.storyblok.com/f/99999/abc123/image.png';
+    const expectedCdnFilename = 'https://a.storyblok.com/f/99999/abc123/image.png';
+    const newAsset = { id: getID(), filename: s3Filename };
+    assetMap.set(story.content.asset.id, { new: newAsset });
+    const maps = { assets: assetMap, stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content.asset.filename).toBe(expectedCdnFilename);
+  });
+
   it('should track all the components it processed', () => {
     const story = makeStoryWithAllFieldTypes();
     const maps = { assets: new Map(), stories: new Map() };

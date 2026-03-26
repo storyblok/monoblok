@@ -122,5 +122,8 @@ export { ClientError } from './client/error';
 export { createClient } from './client';
 export type { Client } from './client/types';
 
+// Export asset utilities
+export { normalizeAssetUrl } from './utils/normalize-asset-url';
+
 // Export all generated types
 export * from './types.generated';

@@ -16,6 +16,7 @@ import { resetReporter } from '../../../lib/reporter/reporter';
 import { getAssetBinaryFilename, getAssetFilename, getFolderFilename } from '../utils';
 import * as actions from '../actions';
 import * as storyActions from '../../stories/actions';
+import { normalizeAssetUrl } from '@storyblok/management-api-client';
 import {
   DEFAULT_SPACE,
   getID,
@@ -557,7 +558,7 @@ describe('assets push command', () => {
           content: expect.objectContaining({
             asset: expect.objectContaining({
               id: remoteAsset.id,
-              filename: remoteAsset.filename,
+              filename: normalizeAssetUrl(remoteAsset.filename),
             }),
           }),
         }),

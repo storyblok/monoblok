@@ -48,4 +48,5 @@ vite.config.ts.timestamp-*
 .cursor
 .zed
 .rules
-.worktrees
+claude-output
+.storyblok

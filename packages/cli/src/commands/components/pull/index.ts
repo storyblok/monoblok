@@ -1,9 +1,8 @@
 import type { PullComponentsOptions } from './constants';
 import type { Command } from 'commander';
 
-import { Spinner } from '@topcli/spinner';
 import { colorPalette, commands, directories } from '../../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents, saveComponentsToFiles } from '../actions';
 import { componentsCommand } from '../command';
@@ -11,6 +10,8 @@ import chalk from 'chalk';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
+import { getUI } from '../../../utils/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const pullCmd = componentsCommand
   .command('pull [componentName]')
@@ -23,7 +24,10 @@ const pullCmd = componentsCommand
 
 pullCmd
   .action(async (componentName: string | undefined, options: PullComponentsOptions, command: Command) => {
-    konsola.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
+    const ui = getUI();
+    const logger = getLogger();
+
+    ui.title(`${commands.COMPONENTS}`, colorPalette.COMPONENTS, componentName ? `Pulling component ${componentName}...` : 'Pulling components...');
 
     const { space, path, verbose } = command.optsWithGlobals();
     const {
@@ -47,46 +51,33 @@ pullCmd
       return;
     }
 
-    const spinnerGroups = new Spinner({
-      verbose: !isVitest,
-    });
-    const spinnerPresets = new Spinner({
-      verbose: !isVitest,
-    });
-    const spinnerInternalTags = new Spinner({
-      verbose: !isVitest,
-    });
-    const spinnerComponents = new Spinner({
-      verbose: !isVitest,
-    });
+    logger.info('Pulling components started', { space, componentName });
+
+    const spinnerGroups = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components groups')}`);
+    const spinnerPresets = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components presets')}`);
+    const spinnerInternalTags = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components internal tags')}`);
+    const spinnerComponents = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components')}`);
 
     try {
       // Fetch components groups
-      spinnerGroups.start(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components groups')}`);
-
       const groups = await fetchComponentGroups(space);
       spinnerGroups.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Completed in ${spinnerGroups.elapsedTime.toFixed(2)}ms`);
 
       // Fetch components presets
-      spinnerPresets.start(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components presets')}`);
-
       const presets = await fetchComponentPresets(space);
       spinnerPresets.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Completed in ${spinnerPresets.elapsedTime.toFixed(2)}ms`);
 
       // Fetch components internal tags
-      spinnerInternalTags.start(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components internal tags')}`);
-
       const internalTags = await fetchComponentInternalTags(space);
       spinnerInternalTags.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Completed in ${spinnerInternalTags.elapsedTime.toFixed(2)}ms`);
 
       // Save everything using the new structure
       let components;
-      spinnerComponents.start(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components')}`);
 
       if (componentName) {
         const component = await fetchComponent(space, componentName);
         if (!component) {
-          konsola.warn(`No component found with name "${componentName}"`);
+          spinnerComponents.failed(`No component found with name "${componentName}"`);
           return;
         }
         components = [component];
@@ -94,7 +85,7 @@ pullCmd
       else {
         components = await fetchComponents(space);
         if (!components || components.length === 0) {
-          konsola.warn(`No components found in the space ${space}`);
+          spinnerComponents.failed(`No components found in the space ${space}`);
           return;
         }
       }
@@ -104,23 +95,23 @@ pullCmd
         { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
         { ...options, path, separateFiles: separateFiles || !!componentName },
       );
-      konsola.br();
+      ui.br();
       if (separateFiles) {
         if (filename && filename !== DEFAULT_COMPONENTS_FILENAME) {
-          konsola.warn(`The --filename option is ignored when using --separate-files`);
+          ui.warn(`The --filename option is ignored when using --separate-files`);
         }
         const filePath = `${componentsOutputDir}/`;
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), componentsOutputDir)}/`;
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else if (componentName) {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${componentName}.json`;
         const filePath = join(componentsOutputDir, fileName);
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
-        konsola.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Component ${chalk.hex(colorPalette.PRIMARY)(componentName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
@@ -128,16 +119,19 @@ pullCmd
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
 
-        konsola.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
-      konsola.br();
+      ui.br();
     }
     catch (error) {
       spinnerGroups.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Failed`);
       spinnerPresets.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Failed`);
       spinnerInternalTags.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Failed`);
       spinnerComponents.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Components')} - Failed`);
-      konsola.br();
+      ui.br();
       handleError(error as Error, verbose);
+    }
+    finally {
+      logger.info('Pulling components finished', { space, componentName });
     }
   });

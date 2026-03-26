@@ -8,6 +8,7 @@ import { colorPalette } from '../../../constants';
 import '../index';
 import { componentsCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
+import { getUI } from '../../../utils/ui';
 
 vi.mock('./actions', () => ({
   fetchComponents: vi.fn(),
@@ -29,9 +30,16 @@ const preconditions = {
 };
 
 describe('pull', () => {
+  let ui: ReturnType<typeof getUI>;
+
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    ui = getUI();
+    vi.spyOn(ui, 'ok');
+    vi.spyOn(ui, 'warn');
+    vi.spyOn(ui, 'br');
+    vi.spyOn(ui, 'title');
     // Reset the option values
     (componentsCommand as any)._optionValues = {};
     (componentsCommand as any)._optionValueSources = {};
@@ -79,7 +87,7 @@ describe('pull', () => {
       }, expect.objectContaining({
         separateFiles: false,
       }));
-      expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/components.json`)}`);
+      expect(ui.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/components.json`)}`);
     });
 
     it('should fetch a component by name', async () => {
@@ -106,11 +114,16 @@ describe('pull', () => {
       }, expect.objectContaining({ separateFiles: true }));
     });
 
-    it('should throw an error if the component is not found', async () => {
-      const componentName = 'component-name';
+    it('should return early without saving if the component is not found', async () => {
       vi.mocked(fetchComponent).mockResolvedValue(undefined);
       await componentsCommand.parseAsync(['node', 'test', 'pull', 'component-name', '--space', '12345']);
-      expect(konsola.warn).toHaveBeenCalledWith(`No component found with name "${componentName}"`);
+      expect(saveComponentsToFiles).not.toHaveBeenCalled();
+    });
+
+    it('should return early without saving if no components exist in the space', async () => {
+      vi.mocked(fetchComponents).mockResolvedValue([]);
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
+      expect(saveComponentsToFiles).not.toHaveBeenCalled();
     });
 
     it('should throw an error if the user is not logged in', async () => {
@@ -156,7 +169,7 @@ describe('pull', () => {
         internalTags: [],
         datasources: [],
       }, expect.objectContaining({ path: '/path/to/components', separateFiles: false }));
-      expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`/path/to/components/components/12345/components.json`)}`);
+      expect(ui.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`/path/to/components/components/12345/components.json`)}`);
     });
   });
 
@@ -185,7 +198,7 @@ describe('pull', () => {
         internalTags: [],
         datasources: [],
       }, expect.objectContaining({ filename: 'custom', separateFiles: false }));
-      expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/custom.json`)}`);
+      expect(ui.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/custom.json`)}`);
     });
   });
 
@@ -224,7 +237,7 @@ describe('pull', () => {
         internalTags: [],
         datasources: [],
       }, expect.objectContaining({ separateFiles: true }));
-      expect(konsola.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/`)}`);
+      expect(ui.ok).toHaveBeenCalledWith(`Components downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(`.storyblok/components/12345/`)}`);
     });
 
     it('should warn the user if the --filename is used along', async () => {
@@ -251,7 +264,7 @@ describe('pull', () => {
         internalTags: [],
         datasources: [],
       }, expect.objectContaining({ separateFiles: true, filename: 'custom' }));
-      expect(konsola.warn).toHaveBeenCalledWith(`The --filename option is ignored when using --separate-files`);
+      expect(ui.warn).toHaveBeenCalledWith(`The --filename option is ignored when using --separate-files`);
     });
   });
 });

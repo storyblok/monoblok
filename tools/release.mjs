@@ -48,7 +48,7 @@ function hasUncommittedChanges() {
 function fetchFromRemote() {
   log('\n📡 Fetching latest changes from remote...', BLUE);
   try {
-    execCommand('git fetch origin');
+    execCommand('git fetch origin --tags --force');
     return true;
   } catch (error) {
     log('⚠️  Warning: Failed to fetch from remote', YELLOW);

@@ -1,0 +1,38 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Custom (field plugin) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [custom]
+        description: Field type discriminant
+      field_type:
+        type: string
+        description: Technical name of the field plugin
+      options:
+        description: Plugin-specific options
+      required_fields:
+        type: string
+        description: Comma-separated list of required field names in the plugin
+      custom_css:
+        type: string
+        description: Custom CSS for the field
+      custom_js:
+        type: string
+        description: Custom JavaScript for the field
+      api_connection:
+        type: object
+        description: API connection configuration
+        properties:
+          url:
+            type: string
+            description: API URL
+          headers:
+            type: object
+            description: API headers
+          params:
+            type: object
+            description: API parameters

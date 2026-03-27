@@ -1,0 +1,59 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Bloks (nested components) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [bloks]
+        description: Field type discriminant
+      restrict_type:
+        type: string
+        description: Restriction type for component selection (groups, tags, or empty for specific blocks)
+      restrict_components:
+        type: boolean
+        description: Whether to restrict which components can be inserted
+      component_whitelist:
+        type: array
+        description: List of allowed component names
+        items:
+          type: string
+      component_denylist:
+        type: array
+        description: List of denied component names
+        items:
+          type: string
+      component_tag_whitelist:
+        type: array
+        description: List of allowed tag IDs for component filtering
+        items:
+          type: integer
+      component_tag_denylist:
+        type: array
+        description: List of denied tag IDs for component filtering
+        items:
+          type: integer
+      component_group_whitelist:
+        type: array
+        description: List of allowed component group UUIDs
+        items:
+          type: string
+      component_group_denylist:
+        type: array
+        description: List of denied component group UUIDs
+        items:
+          type: string
+      minimum:
+        type: integer
+        description: Minimum number of bloks
+      maximum:
+        type: integer
+        description: Maximum number of bloks
+      maximum_entries:
+        type: integer
+        description: Maximum number of entries
+      minimum_entries:
+        type: integer
+        description: Minimum number of entries

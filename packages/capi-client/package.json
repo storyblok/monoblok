@@ -33,9 +33,11 @@
     "generate": "tsx scripts/generate.ts",
     "build": "tsdown",
     "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:e2e": "vitest run -c vitest.config.e2e.ts",
+    "coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@storyblok/region-helper": "workspace:*",

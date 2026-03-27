@@ -1,9 +1,5 @@
 # Guidelines for Storyblok monoblok
 
-Adhere strictly to these guidelines to ensure consistency and code quality. Use relevant skills if applicable.
-
-## Project context
-
 The `monoblok` repository is the official home for Storyblok open-source packages. It hosts core libraries, CLI tools, and various framework integrations.
 
 Inspect the root `package.json` and the `packages/` directory to identify active projects and their current versions.
@@ -15,7 +11,7 @@ Inspect the root `package.json` and the `packages/` directory to identify active
   - `tools/`: Internal development tools and scripts.
 - **Package naming**: Internal and published packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 - **Dependencies**: Cross-package dependencies within the monorepo use the `workspace:*` protocol.
-- **Tooling consistency**: Packages primarily use `vitest` for testing and `unbuild` for bundling.
+- **Tooling consistency**: Packages primarily use `vitest` for testing and `tsdown` for bundling.
 
 ## Code style and conventions
 
@@ -37,3 +33,4 @@ Always use linting and type-checking scripts for affected packages after making 
 ## General
 
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
+- ALWAYS: look up the latest npm package version before installing a new package.

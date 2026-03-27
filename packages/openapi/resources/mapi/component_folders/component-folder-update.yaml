@@ -1,0 +1,9 @@
+type: object
+description: Input for updating a component folder.
+properties:
+  name:
+    type: string
+    description: The name of the component folder
+  parent_id:
+    type: integer
+    description: ID of the parent folder

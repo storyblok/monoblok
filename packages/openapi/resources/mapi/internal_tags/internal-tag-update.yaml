@@ -1,0 +1,10 @@
+type: object
+description: Input for updating an internal tag.
+properties:
+  name:
+    type: string
+    description: Name of the internal tag
+  object_type:
+    type: string
+    enum: [asset, component]
+    description: The object type of an internal tag. Can be `asset` or `component`

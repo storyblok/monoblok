@@ -6,7 +6,8 @@
 - Review command documentation in `./src/commands/COMMAND/README.md` or `./src/commands/COMMAND/ACTION/README.md`.
 - Verify changes in the local file system or the Storyblok space.
 - Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test. Create files in this directory when necessary. For example, when pushing a story, create it in `./.storyblok/stories/$STORYBLOK_SPACE_ID/SLUG_FAKE_UUID.json`.
-- **Testing `assets push`**: run `assets pull` first to populate `.storyblok/assets/$STORYBLOK_SPACE_ID/` with local files, then run `assets push` against those files. If testing `--update-stories`, also run `components pull` beforehand — without local component schemas the story scan is silently skipped.
+- **Testing `assets push`**: run `assets pull` first to populate `.storyblok/assets/$STORYBLOK_SPACE_ID/` with local files, then run `assets push` against those files.
+- IMPORTANT: When running `assets push --update-stories` or `stories push`, make sure you run `components pull` first!
 
 ### Scenario seeds
 

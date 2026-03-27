@@ -40,7 +40,7 @@ export const makeMockAsset = (overrides: Partial<MockAsset> = {}, space = DEFAUL
   const shortFilename = overrides.short_filename || `asset-${assetId}.png`;
   return {
     id: assetId,
-    filename: overrides.filename || `https://a.storyblok.com/f/${space}/500x500/${shortFilename}`,
+    filename: overrides.filename || `https://s3.amazonaws.com/a.storyblok.com/f/${space}/500x500/${shortFilename}`,
     short_filename: shortFilename,
     asset_folder_id: undefined,
     ...overrides,

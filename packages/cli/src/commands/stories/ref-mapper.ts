@@ -1,5 +1,6 @@
 import type { Component } from '@storyblok/management-api-client/resources/components';
 import type { Story } from '@storyblok/management-api-client/resources/stories';
+import { normalizeAssetUrl } from '@storyblok/management-api-client';
 
 import type { AssetMap } from '../assets/types';
 
@@ -185,13 +186,23 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, 
 
 /**
  * Asset field reference mapper.
+ *
+ * Normalizes asset filenames from S3 origin URLs to CDN URLs. The MAPI returns
+ * asset filenames as S3 URLs (https://s3.amazonaws.com/a.storyblok.com/f/...)
+ * but story content must reference the CDN URL (https://a.storyblok.com/f/...)
+ * so that the Storyblok Image Service (/m/...) works correctly.
  */
 const assetFieldRefMapper: RefMapper = (data, { maps }) => {
   const mappedAsset = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;
 
+  if (!mappedAsset) {
+    return data;
+  }
+
   return {
     ...data,
-    ...mappedAsset?.new,
+    ...mappedAsset.new,
+    filename: normalizeAssetUrl(mappedAsset.new.filename),
   };
 };
 

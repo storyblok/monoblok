@@ -12,7 +12,7 @@ export function urlToAssetField(
 
   return {
     fieldtype: 'asset',
-    id: 0,
+    id: 1,
     filename: url,
     name,
     alt: null,

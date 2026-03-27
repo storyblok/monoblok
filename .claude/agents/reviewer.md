@@ -4,7 +4,7 @@ description: Expert code review with QA test plan generation. Use when reviewing
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit
 model: opus
-memory: project
+memory: local
 effort: high
 ---
 

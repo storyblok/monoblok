@@ -1,0 +1,32 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Section (layout) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [section]
+        description: Field type discriminant
+      keys:
+        type: array
+        description: Field keys that belong to this section
+        items:
+          type: string
+      fieldset:
+        type: object
+        description: Fieldset configuration
+        properties:
+          title:
+            type: string
+            description: Fieldset title
+          description:
+            type: string
+            description: Fieldset description
+          collapsible:
+            type: boolean
+            description: Whether the fieldset is collapsible
+          collapsed:
+            type: boolean
+            description: Whether the fieldset is collapsed by default

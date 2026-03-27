@@ -1,0 +1,12 @@
+type: object
+description: Input for creating an internal tag.
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: Name of the internal tag
+  object_type:
+    type: string
+    enum: [asset, component]
+    description: The object type of an internal tag. Can be `asset` or `component`

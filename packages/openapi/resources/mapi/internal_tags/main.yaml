@@ -59,7 +59,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTag'
+              type: object
+              properties:
+                internal_tag:
+                  $ref: '#/components/schemas/internal-tag-create'
       responses:
         '201':
           description: Internal tag created
@@ -93,7 +96,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTag'
+              type: object
+              properties:
+                internal_tag:
+                  $ref: '#/components/schemas/internal-tag-update'
       responses:
         '200':
           description: Internal tag updated
@@ -134,6 +140,10 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
+    internal-tag-create:
+      $ref: ./internal-tag-create.yaml
+    internal-tag-update:
+      $ref: ./internal-tag-update.yaml
     InternalTag:
       type: object
       required:

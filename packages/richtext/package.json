@@ -98,6 +98,10 @@
     "@tiptap/extension-text-style": "^3.10.2",
     "@tiptap/extension-underline": "^3.10.2",
     "@tiptap/html": "^3.10.2",
+    "@tiptap/pm": "^3.10.2",
+    "@tiptap/suggestion": "^3.10.2",
+    "emojibase": "^17.0.0",
+    "happy-dom": "^20.8.8",
     "markdown-it": "^14.1.0",
     "storyblok-js-client": "workspace:*"
   },

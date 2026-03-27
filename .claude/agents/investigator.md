@@ -4,7 +4,7 @@ description: Deep investigation of GitHub issues, bugs, and unexpected behavior.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 disallowedTools: Edit, Write, NotebookEdit
 model: opus
-memory: project
+memory: local
 effort: high
 ---
 

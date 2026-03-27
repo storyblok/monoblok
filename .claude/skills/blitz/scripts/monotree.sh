@@ -66,6 +66,13 @@ add_worktree() {
   pnpm install
   pnpm nx run-many -p="tag:npm:public" -t build
 
+  # Open worktree in editor (prefer Zed, fall back to VS Code)
+  if command -v zed &>/dev/null; then
+    zed .
+  elif command -v code &>/dev/null; then
+    code .
+  fi
+
   cd "$MONOBLOK_ROOT"
   echo "Worktree ready at $(cd "$worktree_path" && pwd)"
 }
@@ -87,6 +94,14 @@ remove_worktree() {
         [ -L "$wt_project_dir/$cfg" ] && rm "$wt_project_dir/$cfg"
       done
     fi
+  fi
+
+  # Copy claude-output artifacts back to the main repo
+  local worktree_path="../$name"
+  if [ -d "$worktree_path/claude-output" ]; then
+    mkdir -p "$MONOBLOK_ROOT/claude-output"
+    cp -r "$worktree_path/claude-output/." "$MONOBLOK_ROOT/claude-output/"
+    echo "Copied claude-output artifacts back to main repo"
   fi
 
   git worktree remove --force "../$name"

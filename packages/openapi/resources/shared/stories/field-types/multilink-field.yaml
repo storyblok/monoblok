@@ -31,8 +31,8 @@ properties:
       - "null"
     description: Anchor/fragment identifier for the link
   target:
-    type:
-      - string
-      - "null"
-    enum: [_self, _blank, null]
+    oneOf:
+      - type: string
+        enum: [_self, _blank]
+      - type: "null"
     description: Link target attribute

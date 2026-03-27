@@ -15,7 +15,7 @@
     "@astrojs/vercel": "^10.0.2",
     "@astrojs/vue": "^6.0.1",
     "@storyblok/astro": "workspace:*",
-    "astro": "^6.0.8",
+    "astro": "^5.18.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "svelte": "^5.54.1",

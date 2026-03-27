@@ -91,7 +91,7 @@ describe('internalTags.create()', () => {
       rateLimit: false,
     });
 
-    const result = await client.internalTags.create({ body: { name: 'New Tag', object_type: 'asset' } });
+    const result = await client.internalTags.create({ body: { internal_tag: { name: 'New Tag', object_type: 'asset' } } });
 
     expect(result.error).toBeUndefined();
     expect(result.data?.internal_tag).toBeDefined();

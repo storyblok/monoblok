@@ -77,8 +77,6 @@ describe('users.updateMe()', () => {
           email: 'updated@example.com',
           firstname: 'Jane',
           lastname: 'Doe',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-02T00:00:00Z',
         },
       },
     });

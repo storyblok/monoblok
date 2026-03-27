@@ -1,0 +1,56 @@
+type: object
+description: Input for updating the current user's profile.
+properties:
+  email:
+    type: string
+    format: email
+    description: User's email address
+  alt_email:
+    type: string
+    format: email
+    description: User's alternative email address
+  firstname:
+    type: string
+    description: User's first name
+  lastname:
+    type: string
+    description: User's last name
+  username:
+    type: string
+    description: User's username
+  avatar:
+    type: string
+    description: User's avatar URL
+  lang:
+    type: string
+    description: User's preferred language
+  timezone:
+    type: string
+    description: User's timezone
+  phone:
+    type: string
+    description: User's phone number
+  job_role:
+    type: string
+    description: User's job role
+  job_title:
+    type: string
+    description: User's job title
+  company_name:
+    type: string
+    description: User's company name
+  company_size:
+    type: string
+    description: User's company size
+  usage_type:
+    type: string
+    description: User's usage type
+  framework_used:
+    type: string
+    description: Framework used by user
+  track_statistics:
+    type: boolean
+    description: Whether user allows statistics tracking
+  ui_theme:
+    type: object
+    description: User's UI theme preferences

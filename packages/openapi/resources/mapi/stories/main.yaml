@@ -288,7 +288,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StoryCreateRequest'
+              $ref: '#/components/schemas/story-create-request'
       responses:
         '201':
           description: Story created
@@ -375,7 +375,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StoryUpdateRequest'
+              $ref: '#/components/schemas/story-update-request'
       responses:
         '200':
           description: Story updated
@@ -900,13 +900,13 @@ components:
   schemas:
     Story:
       $ref: ./schemas/story-mapi.yaml
-    StoryCreate:
+    story-create:
       $ref: ./schemas/story-create.yaml
-    StoryUpdate:
+    story-update:
       $ref: ./schemas/story-update.yaml
-    StoryCreateRequest:
+    story-create-request:
       $ref: ./schemas/story-create-request.yaml
-    StoryUpdateRequest:
+    story-update-request:
       $ref: ./schemas/story-update-request.yaml
     StoryDuplicateRequest:
       type: object
@@ -923,7 +923,7 @@ components:
         same_path:
           type: boolean
           description: If set to true, the current story's path attribute will used for the duplicated story
-    StoryVersion:
+    story-version:
       $ref: ./schemas/story-version.yaml
     StoryVersionComparison:
       type: object

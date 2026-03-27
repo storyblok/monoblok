@@ -331,6 +331,8 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
+    asset-create:
+      $ref: ./asset-create.yaml
     Asset:
       type: object
       description: A single asset object

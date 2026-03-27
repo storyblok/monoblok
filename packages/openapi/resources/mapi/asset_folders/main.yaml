@@ -72,7 +72,7 @@ paths:
               type: object
               properties:
                 asset_folder:
-                  $ref: '#/components/schemas/AssetFolderCreate'
+                  $ref: '#/components/schemas/asset-folder-create'
       responses:
         '201':
           description: Asset folder created successfully
@@ -127,7 +127,7 @@ paths:
               type: object
               properties:
                 asset_folder:
-                  $ref: '#/components/schemas/AssetFolderUpdate'
+                  $ref: '#/components/schemas/asset-folder-update'
       responses:
         '204':
           description: Asset folder updated successfully
@@ -193,7 +193,7 @@ components:
             - "null"
           format: uuid
           description: The UUID of the parent folder
-    AssetFolderCreate:
+    asset-folder-create:
       $ref: ./asset-folder-create.yaml
-    AssetFolderUpdate:
+    asset-folder-update:
       $ref: ./asset-folder-update.yaml

@@ -60,7 +60,7 @@ paths:
               type: object
               properties:
                 component_group:
-                  $ref: '#/components/schemas/ComponentFolder'
+                  $ref: '#/components/schemas/component-folder-create'
       responses:
         '201':
           description: Component folder created successfully
@@ -115,7 +115,7 @@ paths:
               type: object
               properties:
                 component_group:
-                  $ref: '#/components/schemas/ComponentFolder'
+                  $ref: '#/components/schemas/component-folder-update'
       responses:
         '200':
           description: Component folder updated successfully
@@ -151,6 +151,10 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
+    component-folder-create:
+      $ref: ./component-folder-create.yaml
+    component-folder-update:
+      $ref: ./component-folder-update.yaml
     ComponentFolder:
       type: object
       required:

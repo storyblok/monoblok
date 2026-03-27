@@ -1,0 +1,11 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Table field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [table]
+        description: Field type discriminant

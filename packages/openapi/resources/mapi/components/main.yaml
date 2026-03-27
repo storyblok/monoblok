@@ -76,7 +76,7 @@ paths:
                   components:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Component'
+                      $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -96,7 +96,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentCreate'
+                  $ref: '#/components/schemas/component-create'
       responses:
         '201':
           description: Component created
@@ -106,7 +106,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -130,7 +130,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -151,7 +151,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentUpdate'
+                  $ref: '#/components/schemas/component-update'
                 update_content:
                   type: boolean
                   description: Update component name in stories when component name changes
@@ -164,7 +164,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -186,7 +186,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -210,7 +210,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -353,7 +353,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -364,7 +364,7 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
-    Component:
+    component:
       $ref: component.yaml
     ComponentVersion:
       type: object
@@ -394,7 +394,7 @@ components:
         - $ref: './field-types/section-field-config.yaml'
         - $ref: './field-types/tab-field-config.yaml'
         - $ref: './field-types/custom-field-config.yaml'
-    ComponentCreate:
+    component-create:
       $ref: ./component-create.yaml
-    ComponentUpdate:
+    component-update:
       $ref: ./component-update.yaml

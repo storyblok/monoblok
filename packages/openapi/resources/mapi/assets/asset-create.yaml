@@ -1,0 +1,56 @@
+type: object
+description: Input for creating an asset via the full upload flow. Combines upload fields with optional metadata.
+required:
+  - filename
+properties:
+  filename:
+    type: string
+    description: The filename of the asset to upload (e.g. "hero.png")
+  id:
+    type: number
+    description: Numeric ID of an existing asset. When provided, the upload replaces the file of the specified asset.
+  asset_folder_id:
+    type: number
+    description: Optional asset folder ID to place the asset in
+  is_private:
+    type: boolean
+    description: Defines if the asset should be inaccessible to the public
+  size:
+    type: string
+    description: The dimensions of the asset in the format "<width>X<height>" (e.g., "400X500")
+  validate_upload:
+    type: number
+    enum: [0, 1]
+    description: Determines whether the upload has to be validated. 1 to validate, 0 to not validate.
+  alt:
+    type: string
+    description: Alt text for the asset (default language)
+  copyright:
+    type: string
+    description: Copyright text for the asset (default language)
+  title:
+    type: string
+    description: Title of the asset (default language)
+  source:
+    type: string
+    description: Source text for the asset (default language)
+  expire_at:
+    type: string
+    format: date-time
+    description: Date when the asset should expire (Format yyyy-MM-dd'T'HH:mm:ssZ)
+  focus:
+    type: string
+    description: The focus point of the image (Only for image assets)
+  internal_tag_ids:
+    type: array
+    items:
+      type: string
+    description: List of ids of the tags assigned to the asset
+  publish_at:
+    type: string
+    format: date-time
+    description: Date when the asset should be made public (Format yyyy-MM-dd'T'HH:mm:ssZ)
+  meta_data:
+    type: object
+    description: Custom metadata fields for the asset
+    additionalProperties: true

@@ -1,0 +1,14 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Boolean field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [boolean]
+        description: Field type discriminant
+      inline_label:
+        type: boolean
+        description: Whether to display the label next to the toggle

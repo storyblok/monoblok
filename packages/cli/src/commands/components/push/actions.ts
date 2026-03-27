@@ -208,7 +208,7 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
       path: {
         space_id: Number(space),
       },
-      body: componentInternalTag,
+      body: { internal_tag: componentInternalTag },
       throwOnError: true,
     });
 
@@ -227,7 +227,7 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
       path: {
         space_id: Number(space),
       },
-      body: componentInternalTag,
+      body: { internal_tag: componentInternalTag },
       throwOnError: true,
     });
 

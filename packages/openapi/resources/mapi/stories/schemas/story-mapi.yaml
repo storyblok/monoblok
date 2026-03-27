@@ -26,9 +26,11 @@ allOf:
         type: boolean
         description: Whether the Visual Editor is disabled.
       parent:
-        type: object
+        type:
+          - object
+          - "null"
         additionalProperties: true
-        description: Subset of parent folder info (resolved from parent_id).
+        description: Subset of parent folder info (resolved from parent_id). Null when the story has no parent folder.
       unpublished_changes:
         type: boolean
         description: Whether the story has unpublished changes.
@@ -100,9 +102,11 @@ allOf:
         type: integer
         description: ID of the current release.
       scheduled_dates:
-        type: string
+        type:
+          - string
+          - "null"
         format: date-time
-        description: Scheduled publishing date.
+        description: Scheduled publishing date. Null when no publishing date is scheduled.
       favourite_for_user_ids:
         type: array
         items:
@@ -134,8 +138,10 @@ allOf:
         type: integer
         description: Version ID of the story's current content outside the release.
       stage:
-        type: object
-        description: Current workflow stage details.
+        type:
+          - object
+          - "null"
+        description: Current workflow stage details. Null when the story is not assigned to a workflow stage.
         properties:
           workflow_id:
             type: integer

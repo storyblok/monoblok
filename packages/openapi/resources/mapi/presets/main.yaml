@@ -55,7 +55,7 @@ paths:
               type: object
               properties:
                 preset:
-                  $ref: '#/components/schemas/Preset'
+                  $ref: '#/components/schemas/preset-create'
       responses:
         '201':
           description: Successfully created preset
@@ -111,7 +111,7 @@ paths:
               type: object
               properties:
                 preset:
-                  $ref: '#/components/schemas/Preset'
+                  $ref: '#/components/schemas/preset-update'
       responses:
         '200':
           description: Successfully updated preset
@@ -155,6 +155,10 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
+    preset-create:
+      $ref: ./preset-create.yaml
+    preset-update:
+      $ref: ./preset-update.yaml
     Preset:
       type: object
       description: A Preset Object representing a content preset

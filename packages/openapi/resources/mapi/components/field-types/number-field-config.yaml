@@ -1,0 +1,23 @@
+allOf:
+  - $ref: './base-field-config.yaml'
+  - type: object
+    description: Number field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [number]
+        description: Field type discriminant
+      min_value:
+        type: number
+        description: Minimum value allowed
+      max_value:
+        type: number
+        description: Maximum value allowed
+      decimals:
+        type: integer
+        description: Number of decimal places
+      steps:
+        type: number
+        description: Step size for the number input

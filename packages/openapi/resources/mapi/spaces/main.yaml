@@ -52,7 +52,7 @@ paths:
                 - space
               properties:
                 space:
-                  $ref: '#/components/schemas/SpaceCreate'
+                  $ref: '#/components/schemas/space-create'
                 dup_id:
                   type: integer
                   description: The numeric id of the original space to duplicate. When provided, the new space will be a duplicate of the specified space.
@@ -124,7 +124,7 @@ paths:
                 - space
               properties:
                 space:
-                  $ref: '#/components/schemas/SpaceUpdate'
+                  $ref: '#/components/schemas/space-update'
       responses:
         '200':
           description: Space updated
@@ -416,7 +416,7 @@ components:
           type: integer
           description: Numeric id of the collaborator space 
 
-    SpaceCreate:
+    space-create:
       type: object
       description: Input for creating a space
       required:
@@ -477,7 +477,7 @@ components:
           type: boolean
           description: Whether the space is assigned to a partner 
 
-    SpaceUpdate:
+    space-update:
       type: object
       description: Input for updating a space
       properties:

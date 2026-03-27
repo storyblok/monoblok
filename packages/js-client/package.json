@@ -48,7 +48,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "playground": "pnpm run --filter ./playground/vanilla dev",
-    "playground:svelte": "pnpm run --filter ./playground/svelte dev",
     "playground:next": "pnpm run --filter ./playground/nextjs dev",
     "dev:umd": "npx serve ./",
     "coverage": "vitest run --coverage"

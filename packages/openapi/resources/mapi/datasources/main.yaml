@@ -59,7 +59,7 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/DatasourceCreate'
+                  $ref: '#/components/schemas/datasource-create'
       responses:
         '201':
           description: Datasource created
@@ -123,7 +123,7 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/DatasourceUpdate'
+                  $ref: '#/components/schemas/datasource-update'
       responses:
         '200':
           description: Datasource updated
@@ -217,7 +217,8 @@ components:
           type: string
           format: date-time
           description: Latest update date
-    DatasourceCreate:
+    datasource-create:
       $ref: ./datasource-create.yaml
-    DatasourceUpdate:
+    datasource-update:
       $ref: ./datasource-update.yaml
+

@@ -20,6 +20,7 @@ import type {
   UpdateResponses,
 } from '../generated/assets/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+import { ClientError } from '../error';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 /**
@@ -61,7 +62,11 @@ async function uploadToS3(
   filename: string,
 ): Promise<void> {
   if (!signedResponse.post_url || !signedResponse.fields) {
-    throw new Error('Invalid signed response: missing post_url or fields');
+    throw new ClientError('Invalid signed response: missing post_url or fields', {
+      status: 0,
+      statusText: 'Invalid signed response',
+      data: signedResponse,
+    });
   }
   const formData = new FormData();
   for (const [key, value] of Object.entries(signedResponse.fields)) {
@@ -72,7 +77,11 @@ async function uploadToS3(
   formData.append('file', new File([blob], filename, { type: contentType }));
   const response = await fetch(signedResponse.post_url, { method: 'POST', body: formData });
   if (!response.ok) {
-    throw new Error(`Failed to upload asset to S3: ${response.statusText}`);
+    throw new ClientError(`Failed to upload asset to S3: ${response.statusText}`, {
+      status: response.status,
+      statusText: response.statusText,
+      data: undefined,
+    });
   }
 }
 

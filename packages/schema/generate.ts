@@ -202,6 +202,7 @@ const MAPI_NAMES = new Set([
   'Component',
   'ComponentCreate',
   'ComponentUpdate',
+  'Datasource',
   'DatasourceCreate',
   'DatasourceUpdate',
   'ComponentSchemaField',
@@ -226,7 +227,9 @@ const MAPI_NAMES = new Set([
   'datasource_create',
   'datasource_update',
   // New MAPI entity and write-payload types (injected via manual extraction below)
+  'Asset',
   'AssetCreate',
+  'AssetUpdate',
   'AssetFolder',
   'AssetFolderCreate',
   'AssetFolderUpdate',
@@ -485,6 +488,7 @@ async function main() {
     { typeName: 'User', schemaName: 'User' },
     // MAPI write-payload types (kebab-case schema names → PascalCase type names)
     { typeName: 'AssetCreate', schemaName: 'asset-create' },
+    { typeName: 'AssetUpdate', schemaName: 'AssetUpdate' },
     { typeName: 'AssetFolderCreate', schemaName: 'asset-folder-create' },
     { typeName: 'AssetFolderUpdate', schemaName: 'asset-folder-update' },
     { typeName: 'ComponentFolderCreate', schemaName: 'component-folder-create' },
@@ -579,7 +583,7 @@ async function main() {
     if (CAPI_NAMES.has(oldName)) {
       capiTypes.push({ name: newName, body });
     }
-    else if (MAPI_NAMES.has(oldName)) {
+    if (MAPI_NAMES.has(oldName)) {
       mapiTypes.push({ name: newName, body });
     }
   }
@@ -664,7 +668,7 @@ async function main() {
     if (isCAPIZod(oldName)) {
       capiZod.push({ name: newName, body });
     }
-    else if (isMAPIZod(oldName)) {
+    if (isMAPIZod(oldName)) {
       mapiZod.push({ name: newName, body });
     }
   }

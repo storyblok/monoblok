@@ -2,7 +2,7 @@
   "name": "@storyblok/schema",
   "type": "module",
   "version": "0.0.1",
-  "description": "Storyblok schema types, helpers, and Zod parsers",
+  "description": "Storyblok schema types, helpers, and Zod schemas",
   "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
   "repository": {
@@ -29,6 +29,10 @@
       "import": "./dist/zod/index.mjs",
       "require": "./dist/zod/index.cjs"
     },
+    "./zod/mapi": {
+      "import": "./dist/zod/mapi/index.mjs",
+      "require": "./dist/zod/mapi/index.cjs"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
@@ -41,6 +45,9 @@
       ],
       "zod": [
         "./dist/zod/index.d.mts"
+      ],
+      "zod/mapi": [
+        "./dist/zod/mapi/index.d.mts"
       ]
     }
   },

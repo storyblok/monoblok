@@ -9,7 +9,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/capi-client#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/capi-client"
   },
   "bugs": {

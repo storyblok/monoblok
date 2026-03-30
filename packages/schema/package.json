@@ -7,7 +7,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/schema"
   },
   "bugs": {

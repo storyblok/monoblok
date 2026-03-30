@@ -29,6 +29,11 @@
   "resolutions": {
     "cypress": "^14.3.3"
   },
+  "pnpm": {
+    "overrides": {
+      "happy-dom": "^20.8.8"
+    }
+  },
   "dependencies": {
     "cypress": "^14.3.3"
   }

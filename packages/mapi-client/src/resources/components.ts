@@ -1,14 +1,11 @@
 import * as componentsApi from '../generated/components/sdk.gen';
 import type {
-  BulkMoveData,
-  BulkMoveResponses,
   CreateData,
   CreateResponses,
   GetResponses,
   ListData,
   ListResponses,
   RemoveResponses,
-  RenameAttributeData,
   RestoreResponses,
   RestoreVersionData,
   RestoreVersionResponses,
@@ -60,26 +57,11 @@ export function createComponentsResource(deps: MapiResourceDeps) {
       return wrapRequest<RemoveResponses[200], ThrowOnError>(() =>
         componentsApi.remove({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    renameAttribute<ThrowOnError extends boolean = false>(
-      componentId: number | string,
-      options: { query: RenameAttributeData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<void, ThrowOnError>> {
-      const { query, signal, path, throwOnError, fetchOptions } = options;
-      const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<void, ThrowOnError>(() =>
-        componentsApi.renameAttribute({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
-    },
     restore<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RestoreResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<RestoreResponses[200], ThrowOnError>(() =>
         componentsApi.restore({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
-    },
-    bulkMove<ThrowOnError extends boolean = false>(options: { body: BulkMoveData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkMoveResponses[200], ThrowOnError>> {
-      const { body, signal, path, throwOnError, fetchOptions } = options;
-      const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<BulkMoveResponses[200], ThrowOnError>(() =>
-        componentsApi.bulkMove({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     versions<ThrowOnError extends boolean = false>(options: { query?: VersionsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<VersionsResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;

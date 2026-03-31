@@ -193,41 +193,6 @@ paths:
           $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
-  /v1/spaces/{space_id}/components/{component_id}/rename_attribute:
-    post:
-      operationId: renameAttribute
-      summary: Rename Component Attribute
-      description: Rename an attribute within a component's schema
-      parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/parameters.yaml#/component_id
-        - name: old_name
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Current name of the attribute
-        - name: new_name
-          in: query
-          required: true
-          schema:
-            type: string
-          description: New name for the attribute
-        - name: story_id
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Optional story ID to update the attribute in a specific story
-      responses:
-        '204':
-          description: Attribute renamed successfully
-        '400':
-          $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
-          $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
-          description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/restore:
     post:
       operationId: restore
@@ -252,53 +217,6 @@ paths:
           $ref: ../../shared/responses.yaml#/Unauthorized
         '404':
           description: Component not found
-  /v1/spaces/{space_id}/components/bulk_update:
-    post:
-      operationId: bulkMove
-      summary: Bulk Move Components
-      description: Update multiple components' group assignment
-      parameters:
-        - $ref: ../shared/parameters.yaml#/space_id
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - ids
-                - component
-              properties:
-                ids:
-                  type: array
-                  items:
-                    type: integer
-                  description: Array of component IDs to update
-                component:
-                  type: object
-                  required:
-                    - component_group_id
-                  properties:
-                    component_group_id:
-                      type: integer
-                      description: ID of the component group to assign components to
-      responses:
-        '200':
-          description: Components updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Success message
-        '400':
-          $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
-          $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
-          description: Component group not found
   /v1/spaces/{space_id}/versions:
     description: Retrieve component versions. This endpoint's response is paginated.
     get:

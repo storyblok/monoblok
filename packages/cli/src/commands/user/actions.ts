@@ -8,7 +8,7 @@ export type { User } from '../../types';
 export const getUser = async (token: string, region: RegionCode) => {
   try {
     const client = createMapiClient({
-      accessToken: token,
+      personalAccessToken: token,
       region,
     });
 

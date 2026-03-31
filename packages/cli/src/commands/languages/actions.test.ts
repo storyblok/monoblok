@@ -39,7 +39,7 @@ afterAll(() => server.close());
 describe('pull languages actions', () => {
   beforeEach(() => {
     getMapiClient({
-      accessToken: 'valid-token',
+      personalAccessToken: 'valid-token',
       region: 'eu',
     });
     vi.clearAllMocks();

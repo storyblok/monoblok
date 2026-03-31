@@ -22,7 +22,7 @@ afterAll(() => server.close());
 describe('componentFolders.list()', () => {
   it('should successfully retrieve multiple component folders', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -41,7 +41,7 @@ describe('componentFolders.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -63,7 +63,7 @@ describe('componentFolders.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       region: 'eu',
       rateLimit: false,
     });
@@ -78,7 +78,7 @@ describe('componentFolders.list()', () => {
 describe('componentFolders.get()', () => {
   it('should successfully retrieve a single component folder', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -101,7 +101,7 @@ describe('componentFolders.create()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -124,7 +124,7 @@ describe('componentFolders.remove()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,

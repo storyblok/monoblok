@@ -76,7 +76,7 @@ export function getProgram(): Command {
       await initializeSession();
       if (state.password) {
         getMapiClient({
-          accessToken: state.password,
+          personalAccessToken: state.password,
           region: state.region ?? resolvedConfig.region,
         });
       }

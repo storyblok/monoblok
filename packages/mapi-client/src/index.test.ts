@@ -29,7 +29,7 @@ describe('createManagementApiClient - region base URLs', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region,
       rateLimit: false,
@@ -50,7 +50,7 @@ describe('createManagementApiClient - region base URLs', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       baseUrl: 'https://custom.example.com',
@@ -70,7 +70,7 @@ describe('createManagementApiClient - HTTP requests', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -100,7 +100,7 @@ describe('createManagementApiClient - HTTP requests', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -115,7 +115,7 @@ describe('createManagementApiClient - HTTP requests', () => {
     expect(result.data?.spaces).toBeDefined();
   });
 
-  it('should send Authorization header for accessToken', async () => {
+  it('should send Authorization header for personalAccessToken', async () => {
     let capturedAuth = '';
     server.use(
       http.get('https://mapi.storyblok.com/v1/spaces', ({ request }) => {
@@ -125,7 +125,7 @@ describe('createManagementApiClient - HTTP requests', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'my-access-token',
+      personalAccessToken: 'my-access-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -166,8 +166,8 @@ describe('createManagementApiClient - HTTP requests', () => {
       }),
     );
 
-    const client1 = createManagementApiClient({ accessToken: 'token-a', spaceId: 123, region: 'eu', rateLimit: false });
-    const client2 = createManagementApiClient({ accessToken: 'token-b', spaceId: 123, region: 'eu', rateLimit: false });
+    const client1 = createManagementApiClient({ personalAccessToken: 'token-a', spaceId: 123, region: 'eu', rateLimit: false });
+    const client2 = createManagementApiClient({ personalAccessToken: 'token-b', spaceId: 123, region: 'eu', rateLimit: false });
 
     await client1.spaces.list();
     await client2.spaces.list();
@@ -183,7 +183,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -205,7 +205,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -226,7 +226,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -251,7 +251,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -276,7 +276,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -301,7 +301,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -319,7 +319,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -344,7 +344,7 @@ describe('createManagementApiClient - spaceId injection', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 42,
       rateLimit: false,
     });
@@ -371,7 +371,7 @@ describe('createManagementApiClient - rate limit slot', () => {
     );
 
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       rateLimit: 2,
     });
@@ -396,7 +396,7 @@ describe('createManagementApiClient - throwOnError', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -419,7 +419,7 @@ describe('createManagementApiClient - throwOnError', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -439,7 +439,7 @@ describe('createManagementApiClient - throwOnError', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,

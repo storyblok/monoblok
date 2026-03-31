@@ -22,7 +22,7 @@ afterAll(() => server.close());
 describe('internalTags.list()', () => {
   it('should successfully retrieve multiple internal tags', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -41,7 +41,7 @@ describe('internalTags.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -63,7 +63,7 @@ describe('internalTags.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       region: 'eu',
       rateLimit: false,
     });
@@ -85,7 +85,7 @@ describe('internalTags.create()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -106,7 +106,7 @@ describe('internalTags.remove()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,

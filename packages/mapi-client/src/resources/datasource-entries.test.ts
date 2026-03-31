@@ -22,7 +22,7 @@ afterAll(() => server.close());
 describe('datasourceEntries.list()', () => {
   it('should successfully retrieve datasource entries', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -44,7 +44,7 @@ describe('datasourceEntries.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -66,7 +66,7 @@ describe('datasourceEntries.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       region: 'eu',
       rateLimit: false,
     });
@@ -81,7 +81,7 @@ describe('datasourceEntries.list()', () => {
 describe('datasourceEntries.get()', () => {
   it('should successfully retrieve a single datasource entry', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -104,7 +104,7 @@ describe('datasourceEntries.update()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,

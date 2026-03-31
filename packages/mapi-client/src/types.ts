@@ -62,12 +62,12 @@ export interface MapiResourceDeps {
 export interface ManagementApiClientConfig {
   /**
    * Personal access token for authentication.
-   * Provide either `accessToken` or `oauthToken`.
+   * Provide either `personalAccessToken` or `oauthToken`.
    */
-  accessToken?: string;
+  personalAccessToken?: string;
   /**
    * OAuth bearer token for authentication.
-   * Provide either `accessToken` or `oauthToken`.
+   * Provide either `personalAccessToken` or `oauthToken`.
    */
   oauthToken?: string;
   /**

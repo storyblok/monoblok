@@ -25,11 +25,11 @@ import type {
 export { ClientError } from './error';
 
 function getAuthorizationHeader(config: ManagementApiClientConfig): string | undefined {
-  if (config.accessToken) {
-    return config.accessToken;
+  if (config.personalAccessToken) {
+    return config.personalAccessToken;
   }
   if (config.oauthToken) {
-    return `Bearer ${config.oauthToken}`;
+    return `Bearer ${config.oauthToken.replace(/^Bearer\s+/i, '')}`;
   }
   return undefined;
 }

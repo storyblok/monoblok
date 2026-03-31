@@ -6,7 +6,6 @@ import type {
   ListData,
   ListResponses,
   UpdateData,
-  UpdateResponses,
 } from '../generated/datasource_entries/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
@@ -46,10 +45,10 @@ export function createDatasourceEntriesResource(deps: MapiResourceDeps) {
     update<ThrowOnError extends boolean = false>(
       datasourceEntryId: number,
       options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+    ): Promise<ApiResponse<void, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
+      return wrapRequest<void, ThrowOnError>(() =>
         datasourceEntriesApi.update({
           client,
           path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },

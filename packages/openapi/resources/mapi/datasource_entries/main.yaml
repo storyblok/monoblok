@@ -139,15 +139,8 @@ paths:
                 datasource_entry:
                   $ref: '#/components/schemas/DatasourceEntryUpdate'
       responses:
-        '200':
+        '204':
           description: Datasource entry updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  datasource_entry:
-                    $ref: '#/components/schemas/DatasourceEntry'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':

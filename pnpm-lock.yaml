@@ -684,9 +684,6 @@ importers:
 
   packages/mapi-client:
     dependencies:
-      '@storyblok/api-client':
-        specifier: workspace:*
-        version: link:../capi-client
       '@storyblok/region-helper':
         specifier: workspace:*
         version: link:../region-helper

@@ -98,9 +98,7 @@ describe('datasourceEntries.update()', () => {
   it('should update a datasource entry', async () => {
     server.use(
       http.put('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id', () => {
-        return HttpResponse.json({
-          datasource_entry: { id: 456, name: 'Updated Entry', value: 'updated-value' },
-        });
+        return new HttpResponse(null, { status: 204 });
       }),
     );
     const client = createManagementApiClient({
@@ -121,6 +119,6 @@ describe('datasourceEntries.update()', () => {
     });
 
     expect(result.error).toBeUndefined();
-    expect(result.data?.datasource_entry).toBeDefined();
+    expect(result.data).toBeNull();
   });
 });

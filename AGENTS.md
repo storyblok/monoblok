@@ -34,6 +34,13 @@ Always use linting and type-checking scripts for affected packages after making 
   2. Internal/Workspace dependencies (e.g., `@storyblok/...`).
   3. Local imports (relative paths).
 
+### JSDoc
+
+- Add JSDoc to exported functions and non-trivial internal helpers.
+- Use concise one-liners (`/** Does X. */`) for simple functions.
+- Use multi-line JSDoc with `@param`, `@returns`, and `@example` only for public-facing utilities where the signature isn't self-explanatory.
+- Skip JSDoc on trivial code where the name and types already tell the full story.
+
 ## General
 
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!

@@ -1,6 +1,6 @@
 import { getStoryblokExtensions } from './extensions';
 import type { BlockAttributes, MarkNode, StoryblokRichTextDocumentNode, StoryblokRichTextNode, StoryblokRichTextOptions, TextNode } from './types';
-import { attrsToString, escapeHtml, SELF_CLOSING_TAGS } from './utils';
+import { attrsToString, collectMarkedTextGroup, escapeHtml, getUniqueMarks, SELF_CLOSING_TAGS } from './utils';
 
 /**
  * Default render function that creates an HTML string for a given tag, attributes, and children.
@@ -132,6 +132,55 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     return renderFn(tag, attrs, children);
   };
 
+  // --- Mark merging (ProseMirror-style adjacent text node grouping) ---
+
+  /** Renders a group of text nodes with shared marks wrapped once around unique-mark content. */
+  function renderMergedTextNodes(group: TextNode<T>[], shared: MarkNode<T>[]): T {
+    const innerRendered = group.map((node) => {
+      return renderText({ ...node, marks: getUniqueMarks(node.marks || [], shared) } as TextNode<T>);
+    });
+
+    let content: T = isExternalRenderFn
+      ? innerRendered as unknown as T
+      : innerRendered.join('') as unknown as T;
+
+    // Forward order: matches renderText's marks.reduce() where marks[0] wraps first
+    // (innermost) and marks[last] wraps last (outermost).
+    for (const mark of shared) {
+      const ext = markExtMap.get(mark.type);
+      if (!ext?.config?.renderHTML) {
+        continue;
+      }
+      const markAttrs = mark.attrs || {};
+      const spec = callExtensionRenderHTML(ext, 'mark', markAttrs);
+      content = specToRender(spec, contextRenderFn, content);
+    }
+
+    return content;
+  }
+
+  /** Groups adjacent text nodes with shared marks and renders them merged. */
+  function groupAndRenderChildren(children: StoryblokRichTextNode<T>[]): T[] {
+    const result: T[] = [];
+    let i = 0;
+    while (i < children.length) {
+      const match = collectMarkedTextGroup(children, i);
+      if (!match) {
+        result.push(render(children[i]));
+        i++;
+        continue;
+      }
+      if (match.group.length === 1) {
+        result.push(renderText(match.group[0]));
+      }
+      else {
+        result.push(renderMergedTextNodes(match.group, match.shared));
+      }
+      i = match.endIndex;
+    }
+    return result;
+  }
+
   function renderNode(node: StoryblokRichTextNode<T>): T {
     // Text nodes — apply marks via reduce
     if (node.type === 'text') {
@@ -187,7 +236,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       return specToRender(spec, contextRenderFn, parts as T | undefined) as T;
     }
 
-    const children = node.content ? node.content.map(render) : undefined;
+    const children = node.content ? groupAndRenderChildren(node.content) : undefined;
 
     const nodeAttrs = node.attrs || {};
     const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);

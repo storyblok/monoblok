@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { richTextResolver } from './richtext';
+import { getRichTextSegments } from './richtext-segment';
+import { renderSegments } from './render-segments';
+import type { RendererAdapter } from './render-segments';
 import { createTextVNode, h } from 'vue';
 import type { VNode } from 'vue';
 import type { StoryblokRichTextNode } from './types';
@@ -1905,5 +1908,227 @@ describe('renderComponent (blok extension option)', () => {
       'textStyle',
       'underline',
     ].sort());
+  });
+
+  describe('mark merging (adjacent text nodes with shared marks)', () => {
+    it('should merge link with bold and italic inner marks', () => {
+      const { render } = richTextResolver({});
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+            { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+            { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+            { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+            { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+          ],
+        }],
+      };
+
+      const html = render(doc as StoryblokRichTextNode<string>);
+      expect(html).toBe('<p><a href="/url">normal <strong>bold</strong> and <em>italic</em> end</a></p>');
+    });
+
+    it('should handle non-text node breaking a link group', () => {
+      const { render } = richTextResolver({});
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Before ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
+            { type: 'hard_break' },
+            { type: 'text', text: 'After', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
+          ],
+        }],
+      };
+
+      const html = render(doc as StoryblokRichTextNode<string>);
+      expect(html).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
+    });
+
+    it('should separate groups when any link attr differs', () => {
+      const { render } = richTextResolver({});
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            // Group 1: href /a
+            { type: 'text', text: 'A', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
+            { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
+            // Group 2: same href, different target → separate group
+            { type: 'text', text: 'C', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
+            { type: 'text', text: 'D', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
+          ],
+        }],
+      };
+
+      const html = render(doc as StoryblokRichTextNode<string>);
+      expect(html).toBe('<p><a href="/a">A<strong>B</strong></a><a href="/a" target="_blank">C<em>D</em></a></p>');
+    });
+
+    it('should merge adjacent links into a single VNode with Vue renderFn', () => {
+      const { render } = richTextResolver<VNode | VNode[]>({
+        renderFn: h,
+        textFn: createTextVNode,
+        keyedResolvers: true,
+      });
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Visit our ', marks: [{ type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
+            { type: 'text', text: 'awesome', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
+            { type: 'text', text: ' page', marks: [{ type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
+          ],
+        }],
+      };
+
+      const vnodes = render(doc as StoryblokRichTextNode<VNode | VNode[]>);
+      const result = Array.isArray(vnodes) ? vnodes : [vnodes];
+      expect(result).toHaveLength(1);
+      const p = result[0] as VNode;
+      expect(p.type).toBe('p');
+      const pChildren = p.children as VNode[];
+      const linkNodes = (Array.isArray(pChildren) ? pChildren : [pChildren]).filter(
+        (c: any) => typeof c === 'object' && c?.type === 'a',
+      );
+      expect(linkNodes).toHaveLength(1);
+    });
+
+    it('should merge marks when using a custom link extension (Vue router-link)', () => {
+      const CustomLink = Mark.create({
+        name: 'link',
+        renderHTML({ mark }) {
+          return ['router-link', { to: mark.attrs.href }, 0];
+        },
+      });
+
+      const { render } = richTextResolver({
+        tiptapExtensions: { link: CustomLink },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Go to ', marks: [{ type: 'link', attrs: { href: '/about' } }] },
+            { type: 'text', text: 'about', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/about' } }] },
+          ],
+        }],
+      };
+
+      const html = render(doc as StoryblokRichTextNode<string>);
+      expect(html).toBe('<p><router-link to="/about">Go to <strong>about</strong></router-link></p>');
+    });
+
+    it('should merge marks with a renderFn that intercepts link tags (Next.js pattern)', () => {
+      interface MockElement { tag: string; attrs: Record<string, any>; children: any }
+      const el = (tag: string, attrs: Record<string, any>, children?: any): MockElement =>
+        ({ tag, attrs, children });
+
+      const { render } = richTextResolver<MockElement>({
+        renderFn: (tag, attrs = {}, children) => {
+          // Simulate Next.js pattern: replace <a> with <Link>
+          if (tag === 'a') {
+            return el('Link', { href: attrs.href }, children);
+          }
+          return el(tag, attrs, children);
+        },
+        textFn: text => text as any,
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Visit ', marks: [{ type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
+            { type: 'text', text: 'about', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
+            { type: 'text', text: ' page', marks: [{ type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
+          ],
+        }],
+      };
+
+      const result = render(doc as any) as unknown as MockElement[];
+      const p = result[0];
+      expect(p.tag).toBe('p');
+      const pChildren = Array.isArray(p.children) ? p.children : [p.children];
+      const linkNodes = pChildren.filter((c: any) => c?.tag === 'Link');
+      expect(linkNodes).toHaveLength(1);
+      expect(linkNodes[0].attrs.href).toBe('/about');
+    });
+  });
+});
+
+describe('getRichTextSegments mark merging', () => {
+  function segmentsToHtml(segments: any[]): string {
+    const adapter: RendererAdapter<string> = {
+      createElement: (tag, attrs, children) => {
+        const attrStr = attrs
+          ? Object.entries(attrs)
+              .filter(([k, v]) => k !== 'key' && v != null)
+              .map(([k, v]) => ` ${k}="${v}"`)
+              .join('')
+          : '';
+        const inner = children ? children.join('') : '';
+        return `<${tag}${attrStr}>${inner}</${tag}>`;
+      },
+      createText: text => text,
+    };
+    return renderSegments(segments, adapter, []).join('');
+  }
+
+  it('should merge link with bold and italic inner marks', () => {
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+          { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+          { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+          { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+          { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
+        ],
+      }],
+    };
+
+    const segments = getRichTextSegments(doc as StoryblokRichTextNode);
+    const html = segmentsToHtml(segments);
+    expect(html.match(/<a /g)?.length).toBe(1);
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).toContain('<em>italic</em>');
+  });
+
+  it('should produce correct segment structure for merged marks', () => {
+    const doc = {
+      type: 'doc',
+      content: [{
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'A ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
+          { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
+        ],
+      }],
+    };
+
+    const segments = getRichTextSegments(doc as StoryblokRichTextNode);
+    expect(segments).toHaveLength(1);
+    const paragraph = segments[0] as any;
+    expect(paragraph.kind).toBe('node');
+    expect(paragraph.tag).toBe('p');
+    const linkSegments = paragraph.content.filter((s: any) => s.kind === 'mark' && s.type === 'link');
+    expect(linkSegments).toHaveLength(1);
+    const linkContent = linkSegments[0].content;
+    expect(linkContent).toHaveLength(2);
+    expect(linkContent[0]).toEqual({ kind: 'text', text: 'A ' });
+    expect(linkContent[1].kind).toBe('mark');
+    expect(linkContent[1].type).toBe('bold');
   });
 });

@@ -31,7 +31,7 @@ export interface RateLimitConfig {
    * When set, disables automatic per_page tier detection and all requests
    * share a single queue at this limit. Capped at 1000.
    */
-  maxConcurrent?: number;
+  maxConcurrency?: number;
   /**
    * Dynamically adjust the rate limit based on the `X-RateLimit-Policy`
    * response header returned by the Storyblok API.
@@ -153,7 +153,7 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
  *
  * - `false`                     → no throttling (passthrough)
  * - `number`                    → fixed single queue at that limit
- * - `{ maxConcurrent: n }`      → fixed single queue at n req/s
+ * - `{ maxConcurrency: n }`      → fixed single queue at n req/s
  * - `{}` / `undefined` (default)→ auto-detect tier from path + per_page
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
@@ -165,12 +165,12 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrent: config } : config;
-  const { maxConcurrent, adaptToServerHeaders = true } = resolvedConfig;
+  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
+  const { maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
 
   // Fixed-limit mode — single queue, optional server-header adaptation.
-  if (maxConcurrent !== undefined) {
-    const cappedLimit = Math.min(maxConcurrent, MAX_RATE_LIMIT);
+  if (maxConcurrency !== undefined) {
+    const cappedLimit = Math.min(maxConcurrency, MAX_RATE_LIMIT);
     const throttle = createThrottle(cappedLimit);
 
     return {

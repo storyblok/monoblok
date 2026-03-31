@@ -105,9 +105,9 @@ export interface ManagementApiClientConfig {
   /**
    * Preventive rate limiting to avoid hitting the Storyblok Management API rate limits.
    *
-   * - `undefined` (default): single bucket at maxConcurrent: 6.
+   * - `undefined` (default): single bucket at maxConcurrency: 6.
    * - `number`: fixed max concurrent requests per second.
-   * - `{ maxConcurrent?: number; adaptToServerHeaders?: boolean }`: full config.
+   * - `{ maxConcurrency?: number; adaptToServerHeaders?: boolean }`: full config.
    * - `false`: disable rate limiting entirely.
    */
   rateLimit?: RateLimitConfig | number | false;

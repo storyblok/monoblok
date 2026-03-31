@@ -6,7 +6,7 @@ export interface RateLimitConfig {
    * Maximum number of concurrent in-flight requests.
    * Defaults to 6. Capped at 1000.
    */
-  maxConcurrent?: number;
+  maxConcurrency?: number;
   /**
    * Dynamically adjust the rate limit based on the `X-RateLimit-Policy`
    * response header returned by the Storyblok API.
@@ -96,7 +96,7 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
  *
  * - `false`                     -> no throttling (passthrough)
  * - `number`                    -> fixed single queue at that concurrency
- * - `{ maxConcurrent: n }`      -> fixed single queue at n concurrent requests
+ * - `{ maxConcurrency: n }`      -> fixed single queue at n concurrent requests
  * - `{}` / `undefined` (default)-> single queue at DEFAULT_MAX_CONCURRENT
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
@@ -108,10 +108,10 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrent: config } : config;
-  const { maxConcurrent = DEFAULT_MAX_CONCURRENT, adaptToServerHeaders = true } = resolvedConfig;
+  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
+  const { maxConcurrency = DEFAULT_MAX_CONCURRENT, adaptToServerHeaders = true } = resolvedConfig;
 
-  const cappedLimit = Math.min(maxConcurrent, MAX_RATE_LIMIT);
+  const cappedLimit = Math.min(maxConcurrency, MAX_RATE_LIMIT);
   const throttle = createThrottle(cappedLimit);
 
   return {

@@ -13,7 +13,7 @@ export function createMapiClient(options: ManagementApiClientConfig) {
   const { api } = getActiveConfig();
   return createManagementApiClient({
     ...options,
-    rateLimit: options.rateLimit ?? (api.maxConcurrency > 0 ? { maxConcurrent: api.maxConcurrency } : false),
+    rateLimit: options.rateLimit ?? (api.maxConcurrency > 0 ? { maxConcurrency: api.maxConcurrency } : false),
   });
 }
 

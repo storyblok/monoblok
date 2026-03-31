@@ -22,7 +22,7 @@ import type {
   MapiResourceDeps,
 } from './types';
 
-export { normalizeAssetUrl } from './utils/normalize-asset-url';
+export { ClientError } from './error';
 
 function getAuthorizationHeader(config: ManagementApiClientConfig): string | undefined {
   if (config.accessToken) {
@@ -190,7 +190,6 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
 
 export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
 
-export { ClientError } from './error';
 export type {
   ApiResponse,
   Asset,
@@ -241,3 +240,4 @@ export type {
   TableField,
   User,
 } from './types';
+export { normalizeAssetUrl } from './utils/normalize-asset-url';

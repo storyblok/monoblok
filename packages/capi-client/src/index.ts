@@ -87,7 +87,7 @@ export interface ContentApiClientConfig<
    *
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
    * - `number`: fixed max concurrent requests per second (single queue).
-   * - `{ maxConcurrent?: number; adaptToServerHeaders?: boolean }`: full config.
+   * - `{ maxConcurrency?: number; adaptToServerHeaders?: boolean }`: full config.
    * - `false`: disable rate limiting entirely.
    */
   rateLimit?: RateLimitConfig | number | false;

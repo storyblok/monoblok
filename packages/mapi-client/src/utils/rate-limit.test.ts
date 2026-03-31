@@ -105,7 +105,7 @@ describe('createThrottleManager(number)', () => {
 describe('createThrottleManager({})', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should use default maxConcurrent of 6', async () => {
+  it('should use default maxConcurrency of 6', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 

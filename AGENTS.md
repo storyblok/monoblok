@@ -41,6 +41,10 @@ Always use linting and type-checking scripts for affected packages after making 
 - Use multi-line JSDoc with `@param`, `@returns`, and `@example` only for public-facing utilities where the signature isn't self-explanatory.
 - Skip JSDoc on trivial code where the name and types already tell the full story.
 
+## Architecture Decision Records
+
+The `adr/` directory contains Architecture Decision Records (ADRs) documenting major technical decisions. When a significant architectural or dependency decision is made, add a new ADR following the existing numbering convention (`0001-`, `0002-`, …).
+
 ## General
 
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!

@@ -39,7 +39,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@storyblok/api-client": "workspace:*",
     "@storyblok/region-helper": "workspace:*",
     "ky": "^1.14.3"
   },

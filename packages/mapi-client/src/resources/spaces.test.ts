@@ -22,7 +22,7 @@ afterAll(() => server.close());
 describe('spaces.list()', () => {
   it('should successfully retrieve multiple spaces', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -41,7 +41,7 @@ describe('spaces.list()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -58,7 +58,7 @@ describe('spaces.list()', () => {
 describe('spaces.get()', () => {
   it('should successfully retrieve the current space', async () => {
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -77,7 +77,7 @@ describe('spaces.get()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'invalid-token',
+      personalAccessToken: 'invalid-token',
       spaceId: 123,
       region: 'eu',
       rateLimit: false,
@@ -101,7 +101,7 @@ describe('spaces.get()', () => {
       }),
     );
     const client = createManagementApiClient({
-      accessToken: 'test-token',
+      personalAccessToken: 'test-token',
       region: 'eu',
       rateLimit: false,
     });

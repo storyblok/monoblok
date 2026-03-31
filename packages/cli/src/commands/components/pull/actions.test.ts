@@ -66,7 +66,7 @@ afterAll(() => server.close());
 describe('pull components actions', () => {
   beforeEach(() => {
     getMapiClient({
-      accessToken: 'valid-token',
+      personalAccessToken: 'valid-token',
       region: 'eu',
     });
   });
@@ -117,7 +117,7 @@ describe('pull components actions', () => {
   /* it('should throw an masked error for invalid token', async () => {
     getMapiClient({
       token: {
-        accessToken: 'invalid-token',
+        personalAccessToken: 'invalid-token',
       },
       region: 'eu',
     });

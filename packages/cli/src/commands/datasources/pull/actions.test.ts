@@ -72,7 +72,7 @@ describe('pull datasources actions', () => {
     datasourcesPageRequests = 0;
     entriesPageRequests = 0;
     getMapiClient({
-      accessToken: 'valid-token',
+      personalAccessToken: 'valid-token',
       region: 'eu',
     });
   });
@@ -170,7 +170,7 @@ describe('pull datasources actions', () => {
       // Re-initialise the client with retries disabled so the network error
       // surfaces immediately instead of triggering the default 12-retry backoff.
       getMapiClient({
-        accessToken: 'valid-token',
+        personalAccessToken: 'valid-token',
         region: 'eu',
         retry: { limit: 0 },
       });
@@ -195,7 +195,7 @@ describe('pull datasources actions', () => {
       // Configure client with invalid token
       getMapiClient({
         token: {
-          accessToken: 'invalid-token',
+          personalAccessToken: 'invalid-token',
         },
         region: 'eu',
       });

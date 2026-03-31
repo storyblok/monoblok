@@ -175,7 +175,7 @@ const server = setupServer(...handlers);
 beforeAll(() => server.listen());
 beforeEach(() => {
   getMapiClient({
-    accessToken: 'valid-token',
+    personalAccessToken: 'valid-token',
     region: 'eu',
   });
 });
@@ -240,7 +240,7 @@ describe('stories/actions', () => {
     it('should handle unauthorized errors', async () => {
       // Temporarily create a client with invalid token
       getMapiClient({
-        accessToken: 'invalid-token',
+        personalAccessToken: 'invalid-token',
         region: 'eu',
       });
 
@@ -253,7 +253,7 @@ describe('stories/actions', () => {
 
       // Restore valid client
       getMapiClient({
-        accessToken: 'valid-token',
+        personalAccessToken: 'valid-token',
         region: 'eu',
       });
     });

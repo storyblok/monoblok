@@ -1,0 +1,61 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for a Storyblok SDK package
+title: "[Feature]: "
+labels: ["type: feature", "status: triage"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package(s) is this feature related to?
+      multiple: true
+      options:
+        - "@storyblok/react"
+        - "@storyblok/vue"
+        - "@storyblok/nuxt"
+        - "@storyblok/svelte"
+        - "@storyblok/astro"
+        - "@storyblok/angular"
+        - "@storyblok/js"
+        - "storyblok-js-client"
+        - "@storyblok/richtext"
+        - "storyblok (CLI)"
+        - "@storyblok/api-client"
+        - "@storyblok/management-api-client"
+        - "@storyblok/live-preview"
+        - "@storyblok/migrations"
+        - "Other / Unknown"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this feature solve? What's the use case?
+      placeholder: "I want to... but currently..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work?
+      placeholder: Describe the API or behavior you'd expect...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you've considered
+      placeholder: "I've tried... but..."
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other context, screenshots, or code samples
+      placeholder: Any additional information...

@@ -1,4 +1,4 @@
-name: Bug Report
+name: 🐛 Bug Report
 description: Report a bug in any of the Storyblok SDK packages
 title: "[Bug]: "
 labels: ["type: bug", "status: triage"]

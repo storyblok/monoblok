@@ -5,7 +5,15 @@
 - Run CLI commands with `./dist/index.mjs` (for available commands, run `./dist/index.mjs --help`).
 - Review command documentation in `./src/commands/COMMAND/README.md` or `./src/commands/COMMAND/ACTION/README.md`.
 - Verify changes in the local file system or the Storyblok space.
-- Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test. Create files in this directory when necessary. For example, when pushing a story, create it in `./.storyblok/stories/$STORYBLOK_SPACE_ID/SLUG_FAKE_UUID.json`.
+- Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test. Create files in this directory when necessary. For example, when pushing a story, create it in `./.storyblok/stories/$STORYBLOK_SPACE_ID/SLUG_FAKE_UUID.json`. **The `{uuid}` suffix must exactly match the `uuid` field inside the JSON** (use hyphens, not underscores). A mismatch causes `stories push` to silently skip the content-update pass — stories are created as empty placeholders with no error reported.
+
+  ```
+  # filename:
+  .storyblok/stories/$STORYBLOK_SPACE_ID/my-story_my-fake-uuid.json
+
+  # file content:
+  { "slug": "my-story", "uuid": "my-fake-uuid", "name": "My Story", "content": { ... } }
+  ```
 - **Testing `assets push`**: run `assets pull` first to populate `.storyblok/assets/$STORYBLOK_SPACE_ID/` with local files, then run `assets push` against those files.
 - IMPORTANT: When running `assets push --update-stories` or `stories push`, make sure you run `components pull` first!
 

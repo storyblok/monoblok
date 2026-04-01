@@ -38,6 +38,7 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 
 ## Git
 
+- **ALWAYS:** look up the latest npm package version before installing a new package.
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
 - **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.

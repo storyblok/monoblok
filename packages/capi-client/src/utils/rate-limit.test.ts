@@ -2,52 +2,52 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from './rate-limit';
 
 describe('determineTier()', () => {
-  it('returns SINGLE_OR_SMALL for a single story path', () => {
+  it('should return SINGLE_OR_SMALL for a single story path', () => {
     expect(determineTier('/v2/cdn/stories/my-story', {})).toBe('SINGLE_OR_SMALL');
     // Nested slugs — per_page > 25 is supplied to confirm it's the regex, not the per_page default.
     expect(determineTier('/v2/cdn/stories/folder/nested-story', { per_page: 100 })).toBe('SINGLE_OR_SMALL');
   });
 
-  it('returns SINGLE_OR_SMALL when per_page is absent (default 25)', () => {
+  it('should return SINGLE_OR_SMALL when per_page is absent (default 25)', () => {
     expect(determineTier('/v2/cdn/stories', {})).toBe('SINGLE_OR_SMALL');
   });
 
-  it('returns SINGLE_OR_SMALL for per_page ≤ 25', () => {
+  it('should return SINGLE_OR_SMALL for per_page ≤ 25', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: 1 })).toBe('SINGLE_OR_SMALL');
     expect(determineTier('/v2/cdn/stories', { per_page: 25 })).toBe('SINGLE_OR_SMALL');
   });
 
-  it('returns MEDIUM for per_page 26–50', () => {
+  it('should return MEDIUM for per_page 26–50', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: 26 })).toBe('MEDIUM');
     expect(determineTier('/v2/cdn/stories', { per_page: 50 })).toBe('MEDIUM');
   });
 
-  it('returns LARGE for per_page 51–75', () => {
+  it('should return LARGE for per_page 51–75', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: 51 })).toBe('LARGE');
     expect(determineTier('/v2/cdn/stories', { per_page: 75 })).toBe('LARGE');
   });
 
-  it('returns VERY_LARGE for per_page > 75', () => {
+  it('should return VERY_LARGE for per_page > 75', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: 76 })).toBe('VERY_LARGE');
     expect(determineTier('/v2/cdn/stories', { per_page: 100 })).toBe('VERY_LARGE');
   });
 
-  it('parses per_page when provided as a string', () => {
+  it('should parse per_page when provided as a string', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: '26' })).toBe('MEDIUM');
   });
 
-  it('falls back to SINGLE_OR_SMALL for an unparseable per_page string', () => {
+  it('should fall back to SINGLE_OR_SMALL for an unparseable per_page string', () => {
     expect(determineTier('/v2/cdn/stories', { per_page: 'invalid' })).toBe('SINGLE_OR_SMALL');
   });
 
-  it('does NOT treat /v2/cdn/stories (no trailing identifier) as single story', () => {
+  it('should not treat /v2/cdn/stories (no trailing identifier) as single story', () => {
     expect(determineTier('/v2/cdn/stories', {})).toBe('SINGLE_OR_SMALL');
     // Still SINGLE_OR_SMALL here because per_page defaults to 25, but it's
     // because of per_page, not single-story detection.
     expect(determineTier('/v2/cdn/stories', { per_page: 50 })).toBe('MEDIUM');
   });
 
-  it('works for non-story paths (links, tags, etc.)', () => {
+  it('should work for non-story paths (links, tags, etc.)', () => {
     expect(determineTier('/v2/cdn/links', { per_page: 100 })).toBe('VERY_LARGE');
     expect(determineTier('/v2/cdn/tags', {})).toBe('SINGLE_OR_SMALL');
   });
@@ -59,25 +59,25 @@ describe('parseRateLimitPolicyHeader()', () => {
       headers: headerValue ? { 'x-ratelimit-policy': headerValue } : {},
     });
 
-  it('parses the q= value from the header', () => {
+  it('should parse the q= value from the header', () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBe(30);
   });
 
-  it('returns undefined when the header is absent', () => {
+  it('should return undefined when the header is absent', () => {
     expect(parseRateLimitPolicyHeader(makeResponse(null))).toBeUndefined();
   });
 
-  it('returns undefined when the header has no q= value', () => {
+  it('should return undefined when the header has no q= value', () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";r=5'))).toBeUndefined();
   });
 
-  it('caps the parsed value at 1000', () => {
+  it('should cap the parsed value at 1000', () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=9999'))).toBe(1000);
   });
 });
 
 describe('createThrottleManager(false)', () => {
-  it('executes the function immediately without queuing', async () => {
+  it('should execute the function immediately without queuing', async () => {
     const manager = createThrottleManager(false);
     const fn = vi.fn().mockResolvedValue('result');
     const result = await manager.execute('/v2/cdn/stories', {}, fn);
@@ -85,7 +85,7 @@ describe('createThrottleManager(false)', () => {
     expect(fn).toHaveBeenCalledOnce();
   });
 
-  it('adaptToResponse is a no-op', () => {
+  it('should treat adaptToResponse as a no-op', () => {
     const manager = createThrottleManager(false);
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });
@@ -94,7 +94,7 @@ describe('createThrottleManager(false)', () => {
 describe('createThrottleManager(number)', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('limits concurrent requests to the specified number', async () => {
+  it('should limit concurrent requests to the specified number', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(2);
 
@@ -120,7 +120,7 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(2);
   });
 
-  it('adapts limit from server headers, respecting user ceiling', async () => {
+  it('should adapt limit from server headers, respecting user ceiling', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
 
@@ -150,7 +150,7 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(5);
   });
 
-  it('does not exceed user ceiling even if server reports higher', async () => {
+  it('should not exceed user ceiling even if server reports higher', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(3);
 
@@ -182,7 +182,7 @@ describe('createThrottleManager(number)', () => {
 describe('createThrottleManager({})', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('routes single-story paths to the SINGLE_OR_SMALL tier (50 req/s)', async () => {
+  it('should route single-story paths to the SINGLE_OR_SMALL tier (50 req/s)', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
@@ -207,7 +207,7 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBe(50);
   });
 
-  it('routes large per_page to the VERY_LARGE tier (6 req/s)', async () => {
+  it('should route large per_page to the VERY_LARGE tier (6 req/s)', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
@@ -231,7 +231,7 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBeLessThanOrEqual(6);
   });
 
-  it('adapts SINGLE_OR_SMALL tier from server headers', async () => {
+  it('should adapt SINGLE_OR_SMALL tier from server headers', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
@@ -261,7 +261,7 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBeLessThanOrEqual(10);
   });
 
-  it('ignores server headers when adaptToServerHeaders is false', async () => {
+  it('should ignore server headers when adaptToServerHeaders is false', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ adaptToServerHeaders: false });
 
@@ -291,7 +291,7 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBe(50);
   });
 
-  it('propagates errors from the wrapped function', async () => {
+  it('should propagate errors from the wrapped function', async () => {
     const manager = createThrottleManager({});
     const error = new Error('boom');
     await expect(
@@ -299,7 +299,7 @@ describe('createThrottleManager({})', () => {
     ).rejects.toThrow('boom');
   });
 
-  it('adaptToResponse is a no-op when response is undefined', () => {
+  it('should treat adaptToResponse as a no-op when response is undefined', () => {
     const manager = createThrottleManager({});
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });

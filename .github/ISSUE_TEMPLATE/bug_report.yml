@@ -1,35 +1,30 @@
 name: 🐛 Bug Report
 description: Report a bug in any of the Storyblok SDK packages
-title: "🐛 [Bug]: "
-labels: ["bug", "needs-triage"]
+title: "[Bug]: "
+labels: ["type: bug", "status: triage"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this bug report! 
-        
-        **🚨 Issues are primarily for bug reports.** For questions, feature requests, and general discussions, please use [GitHub Discussions](https://github.com/storyblok/monoblok/discussions) instead.
-        
-        Please provide as much detail as possible to help us investigate and fix the issue.
-
   - type: dropdown
     id: package
     attributes:
       label: Package
-      description: Which Storyblok package is this bug related to?
+      description: Which package(s) is this bug related to?
+      multiple: true
       options:
+        - "@storyblok/react"
+        - "@storyblok/vue"
+        - "@storyblok/nuxt"
+        - "@storyblok/svelte"
+        - "@storyblok/astro"
+        - "@storyblok/angular"
+        - "@storyblok/js"
+        - "storyblok-js-client"
+        - "@storyblok/richtext"
         - "storyblok (CLI)"
-        - "@storyblok/region-helper"
-        - "@storyblok/js (Core JavaScript SDK)"
-        - "storyblok-js-client (Client SDK)"
-        - "@storyblok/richtext (Rich Text Renderer)"
-        - "@storyblok/react (React Integration)"
-        - "@storyblok/vue (Vue Integration)"
-        - "@storyblok/nuxt (Nuxt Module)"
-        - "@storyblok/svelte (Svelte Integration)"
-        - "@storyblok/astro (Astro Integration)"
-        - "Multiple packages"
-        - "Other/Unknown"
+        - "@storyblok/api-client"
+        - "@storyblok/management-api-client"
+        - "@storyblok/live-preview"
+        - "@storyblok/migrations"
+        - "Other / Unknown"
     validations:
       required: true
 
@@ -54,11 +49,18 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: reproduction-url
+    attributes:
+      label: Reproduction URL
+      description: A link to a minimal reproduction (StackBlitz, CodeSandbox, GitHub repo)
+      placeholder: "https://stackblitz.com/..."
+
   - type: textarea
     id: expected
     attributes:
       label: Expected Behavior
-      description: A clear and concise description of what you expected to happen
+      description: What you expected to happen
       placeholder: What should have happened?
     validations:
       required: true
@@ -67,22 +69,10 @@ body:
     id: actual
     attributes:
       label: Actual Behavior
-      description: A clear and concise description of what actually happened
+      description: What actually happened
       placeholder: What actually happened?
     validations:
       required: true
-
-  - type: textarea
-    id: code-sample
-    attributes:
-      label: Code Sample
-      description: If applicable, add a minimal code sample that reproduces the issue
-      render: javascript
-      placeholder: |
-        // Your code here
-        import { storyblokInit } from '@storyblok/js'
-        
-        // ...
 
   - type: textarea
     id: environment
@@ -90,7 +80,7 @@ body:
       label: Environment
       description: |
         Please run the following command in your project directory and paste the output:
-        
+
         ```
         npx envinfo --system --npmPackages '{react,vue,svelte,astro,next,nuxt,@storyblok/*,storyblok}' --binaries --browsers
         ```
@@ -113,5 +103,3 @@ body:
       label: Additional Context
       description: Add any other context about the problem here (screenshots, related issues, etc.)
       placeholder: Any additional information that might help...
-
- 

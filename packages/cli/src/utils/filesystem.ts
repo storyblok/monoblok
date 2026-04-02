@@ -248,15 +248,24 @@ export async function fileExists(path: string) {
   }
 }
 
-export function consolidatedFilename(defaultFilename: string, suffix?: string): string {
-  return suffix
-    ? `${defaultFilename}.${suffix}.json`
-    : `${defaultFilename}.json`;
-}
-
-export async function shouldUseSeparateFiles(resolvedPath: string, defaultFilename: string, separateFiles?: boolean, suffix?: string): Promise<boolean> {
-  if (separateFiles !== undefined) {
-    return separateFiles;
-  }
-  return !(await fileExists(join(resolvedPath, consolidatedFilename(defaultFilename, suffix))));
+/**
+ * Filters a list of filenames to only include JSON files matching the suffix convention.
+ *
+ * When `suffix` is set (e.g. "dev"), only `*.dev.json` files are included.
+ * When unset, files with a `.<word>.json` pattern are excluded (they belong to other environments),
+ * except for known sub-resource patterns like `.presets.json`.
+ */
+export function filterJsonBySuffix(files: string[], suffix?: string, subResourcePatterns: string[] = []): string[] {
+  return files.filter((file) => {
+    if (!file.endsWith('.json')) {
+      return false;
+    }
+    if (suffix) {
+      return file.endsWith(`.${suffix}.json`);
+    }
+    if (!/\.\w+\.json$/.test(file)) {
+      return true;
+    }
+    return subResourcePatterns.some(pattern => file.endsWith(`.${pattern}.json`));
+  });
 }

@@ -123,7 +123,6 @@ describe('push components actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           }),
         ).rejects.toThrow(FileSystemError);
@@ -133,7 +132,6 @@ describe('push components actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           });
         }
@@ -150,8 +148,8 @@ describe('push components actions', () => {
       it('should read components from separate files without suffix', async () => {
         // Create mock filesystem with separate files
         vol.fromJSON({
-          '/mock/path/components/source-space/hero.json': JSON.stringify([mockComponent1]),
-          '/mock/path/components/source-space/feature.json': JSON.stringify([mockComponent2]),
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/feature.json': JSON.stringify(mockComponent2),
           '/mock/path/components/source-space/groups.json': JSON.stringify([mockGroup1, mockGroup2]),
           '/mock/path/components/source-space/tags.json': JSON.stringify([mockTag1]),
         });
@@ -160,7 +158,6 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -174,17 +171,16 @@ describe('push components actions', () => {
       it('should read components from separate files with suffix', async () => {
         // Create mock filesystem with suffixed files
         vol.fromJSON({
-          '/mock/path/components/source-space/hero.dev.json': JSON.stringify([mockComponent1]),
-          '/mock/path/components/source-space/feature.dev.json': JSON.stringify([mockComponent2]),
+          '/mock/path/components/source-space/hero.dev.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/feature.dev.json': JSON.stringify(mockComponent2),
           '/mock/path/components/source-space/groups.dev.json': JSON.stringify([mockGroup1]),
-          '/mock/path/components/source-space/other.json': JSON.stringify([mockComponent1]), // Should be ignored
+          '/mock/path/components/source-space/other.json': JSON.stringify(mockComponent1), // Should be ignored (wrong suffix)
         });
 
         const result = await readComponentsFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           suffix: 'dev',
           verbose: false,
         });
@@ -198,7 +194,7 @@ describe('push components actions', () => {
       it('should read component presets from separate preset files', async () => {
         // Create mock filesystem with component and preset files
         vol.fromJSON({
-          '/mock/path/components/source-space/hero.json': JSON.stringify([mockComponent1]),
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
           '/mock/path/components/source-space/hero.presets.json': JSON.stringify([mockPreset1]),
         });
 
@@ -206,7 +202,6 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -215,58 +210,31 @@ describe('push components actions', () => {
         expect(result.presets[0]).toEqual(mockPreset1);
       });
 
-      it('should filter out consolidated files when reading separate files', async () => {
-        // Create mock filesystem with mixed files
-        vol.fromJSON({
-          '/mock/path/components/source-space/hero.json': JSON.stringify([mockComponent1]),
-          '/mock/path/components/source-space/components.json': JSON.stringify([mockComponent1, mockComponent2]), // Should be ignored
-        });
-
-        const result = await readComponentsFiles({
-          from: 'source-space',
-          path: '/mock/path',
-          space: 'target-space',
-          separateFiles: true,
-          verbose: false,
-        });
-
-        // Should only include the separate file, not the consolidated file
-        expect(result.components).toHaveLength(1);
-        expect(result.components[0]).toEqual(mockComponent1);
-      });
-
-      it('should handle empty directory in separate files mode', async () => {
+      it('should handle empty directory', async () => {
         // Create empty directory
         vol.fromJSON({
           '/mock/path/components/source-space/': null,
         });
 
-        const result = await readComponentsFiles({
+        await expect(readComponentsFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
-        });
-
-        expect(result.components).toHaveLength(0);
-        expect(result.groups).toHaveLength(0);
-        expect(result.presets).toHaveLength(0);
-        expect(result.internalTags).toHaveLength(0);
+        })).rejects.toThrow(FileSystemError);
       });
 
       it('should handle files without suffix pattern correctly', async () => {
         // Create files with various patterns
         vol.fromJSON({
-          '/mock/path/components/source-space/hero.json': JSON.stringify([mockComponent1]),
-          '/mock/path/components/source-space/feature.dev.json': JSON.stringify([mockComponent2]), // Has suffix pattern, should be ignored
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/feature.dev.json': JSON.stringify(mockComponent2), // Has suffix pattern, should be ignored
         });
 
         const result = await readComponentsFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -278,7 +246,7 @@ describe('push components actions', () => {
       it('should handle non-JSON files gracefully', async () => {
         // Create directory with mixed file types
         vol.fromJSON({
-          '/mock/path/components/source-space/hero.json': JSON.stringify([mockComponent1]),
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
           '/mock/path/components/source-space/readme.txt': 'This is a text file',
           '/mock/path/components/source-space/config.yaml': 'key: value',
         });
@@ -287,7 +255,6 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -310,13 +277,12 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: false,
           verbose: false,
         });
 
         expect(result.components).toHaveLength(2);
-        expect(result.components[0]).toEqual(mockComponent1);
-        expect(result.components[1]).toEqual(mockComponent2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
         expect(result.groups).toHaveLength(2);
         expect(result.presets).toHaveLength(1);
         expect(result.internalTags).toHaveLength(1);
@@ -333,19 +299,35 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: false,
           suffix: 'dev',
           verbose: false,
         });
 
         expect(result.components).toHaveLength(2);
-        expect(result.components[0]).toEqual(mockComponent1);
-        expect(result.components[1]).toEqual(mockComponent2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
         expect(result.groups).toHaveLength(1);
       });
 
-      it('should throw error when consolidated components file does not exist', async () => {
-        // Create directory but no consolidated file
+      it('should read consolidated file with custom filename', async () => {
+        // Custom filename (e.g., --filename my-schema) creates my-schema.json instead of components.json
+        vol.fromJSON({
+          '/mock/path/components/source-space/my-schemas.json': JSON.stringify([mockComponent1, mockComponent2]),
+        });
+
+        const result = await readComponentsFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        // Content-based detection reads any JSON file — filename doesn't matter
+        expect(result.components).toHaveLength(2);
+      });
+
+      it('should throw error when no component data exists', async () => {
+        // Create directory but no component files
         vol.fromJSON({
           '/mock/path/components/source-space/': null,
         });
@@ -355,42 +337,9 @@ describe('push components actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           }),
         ).rejects.toThrow(FileSystemError);
-      });
-
-      it('should throw error when consolidated components file is empty', async () => {
-        // Create empty consolidated file
-        vol.fromJSON({
-          '/mock/path/components/source-space/components.json': JSON.stringify([]),
-        });
-
-        await expect(
-          readComponentsFiles({
-            from: 'source-space',
-            path: '/mock/path',
-            space: 'target-space',
-            separateFiles: false,
-            verbose: false,
-          }),
-        ).rejects.toThrow(FileSystemError);
-
-        try {
-          await readComponentsFiles({
-            from: 'source-space',
-            path: '/mock/path',
-            space: 'target-space',
-            separateFiles: false,
-            verbose: false,
-          });
-        }
-        catch (error) {
-          expect(error).toBeInstanceOf(FileSystemError);
-          expect((error as FileSystemError).message).toContain('No components found');
-          expect((error as FileSystemError).message).toContain('Please make sure you have pulled the components first');
-        }
       });
 
       it('should handle optional files gracefully in consolidated mode', async () => {
@@ -403,7 +352,6 @@ describe('push components actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: false,
           verbose: false,
         });
 
@@ -424,10 +372,116 @@ describe('push components actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           }),
         ).rejects.toThrow();
+      });
+    });
+
+    describe('duplicate detection', () => {
+      it('should throw when the same component exists in multiple files', async () => {
+        vol.fromJSON({
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/components.json': JSON.stringify([mockComponent1, mockComponent2]),
+        });
+
+        await expect(
+          readComponentsFiles({
+            from: 'source-space',
+            path: '/mock/path',
+            space: 'target-space',
+            verbose: false,
+          }),
+        ).rejects.toThrow('Duplicate components found in');
+      });
+
+      it('should allow mixed formats when there are no duplicate components', async () => {
+        // hero.json has mockComponent1, components.json has only mockComponent2 — no overlap
+        vol.fromJSON({
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/components.json': JSON.stringify([mockComponent2]),
+        });
+
+        const result = await readComponentsFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        expect(result.components).toHaveLength(2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
+      });
+
+      it('should not error when groups/tags arrays coexist with separate component files', async () => {
+        // groups.json is always an array — this is NOT a duplicate conflict
+        vol.fromJSON({
+          '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
+          '/mock/path/components/source-space/groups.json': JSON.stringify([mockGroup1, mockGroup2]),
+          '/mock/path/components/source-space/tags.json': JSON.stringify([mockTag1]),
+        });
+
+        const result = await readComponentsFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        expect(result.components).toHaveLength(1);
+        expect(result.groups).toHaveLength(2);
+        expect(result.internalTags).toHaveLength(1);
+      });
+    });
+
+    describe('content-based classification', () => {
+      it('should classify all entity types from a single mixed file', async () => {
+        // A single file containing components, groups, presets, and tags mixed together
+        const mixedData = [mockComponent1, mockGroup1, mockPreset1, mockTag1, mockComponent2, mockGroup2];
+
+        vol.fromJSON({
+          '/mock/path/components/source-space/everything.json': JSON.stringify(mixedData),
+        });
+
+        const result = await readComponentsFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        expect(result.components).toHaveLength(2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
+        expect(result.groups).toHaveLength(2);
+        expect(result.presets).toHaveLength(1);
+        expect(result.internalTags).toHaveLength(1);
+      });
+
+      it('should skip unrecognized items without error', async () => {
+        const dataWithUnknown = [
+          mockComponent1,
+          { foo: 'bar', baz: 42 },
+          { unknown_field: true },
+        ];
+
+        vol.fromJSON({
+          '/mock/path/components/source-space/data.json': JSON.stringify(dataWithUnknown),
+        });
+
+        const result = await readComponentsFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        expect(result.components).toHaveLength(1);
+        expect(result.components[0]).toEqual(mockComponent1);
+        expect(result.groups).toHaveLength(0);
+        expect(result.presets).toHaveLength(0);
+        expect(result.internalTags).toHaveLength(0);
       });
     });
 
@@ -442,7 +496,6 @@ describe('push components actions', () => {
           from: 'my-source-space',
           path: '/custom/base/path',
           space: 'target-space',
-          separateFiles: false,
           verbose: false,
         });
 
@@ -462,7 +515,6 @@ describe('push components actions', () => {
           from: 'production-space',
           path: '/mock/path',
           space: 'staging-space',
-          separateFiles: false,
           verbose: false,
         });
 

@@ -73,7 +73,6 @@ describe('push datasources actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: true,
             verbose: false,
           }),
         ).rejects.toThrow(FileSystemError);
@@ -83,7 +82,6 @@ describe('push datasources actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: true,
             verbose: false,
           });
         }
@@ -96,19 +94,18 @@ describe('push datasources actions', () => {
       });
     });
 
-    describe('separate files mode', () => {
+    describe('separate files (content-detected)', () => {
       it('should read datasources from separate files without suffix', async () => {
         // Create mock filesystem with separate files
         vol.fromJSON({
-          '/mock/path/datasources/source-space/countries.json': JSON.stringify([mockDatasource1]),
-          '/mock/path/datasources/source-space/categories.json': JSON.stringify([mockDatasource2]),
+          '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
+          '/mock/path/datasources/source-space/categories.json': JSON.stringify(mockDatasource2),
         });
 
         const result = await readDatasourcesFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -121,16 +118,15 @@ describe('push datasources actions', () => {
       it('should read datasources from separate files with suffix', async () => {
         // Create mock filesystem with suffixed files
         vol.fromJSON({
-          '/mock/path/datasources/source-space/countries.dev.json': JSON.stringify([mockDatasource1]),
-          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify([mockDatasource2]),
-          '/mock/path/datasources/source-space/other.json': JSON.stringify([mockDatasource1]), // Should be ignored
+          '/mock/path/datasources/source-space/countries.dev.json': JSON.stringify(mockDatasource1),
+          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify(mockDatasource2),
+          '/mock/path/datasources/source-space/other.json': JSON.stringify(mockDatasource1), // Should be ignored
         });
 
         const result = await readDatasourcesFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           suffix: 'dev',
           verbose: false,
         });
@@ -141,68 +137,43 @@ describe('push datasources actions', () => {
         expect(result.datasources).toContainEqual(mockDatasource2);
       });
 
-      it('should filter out consolidated files when reading separate files', async () => {
-        // Create mock filesystem with mixed files
-        vol.fromJSON({
-          '/mock/path/datasources/source-space/countries.json': JSON.stringify([mockDatasource1]),
-          '/mock/path/datasources/source-space/datasources.json': JSON.stringify([mockDatasource1, mockDatasource2]), // Should be ignored
-          '/mock/path/datasources/source-space/datasources.dev.json': JSON.stringify([mockDatasource1, mockDatasource2]), // Should be ignored
-        });
-
-        const result = await readDatasourcesFiles({
-          from: 'source-space',
-          path: '/mock/path',
-          space: 'target-space',
-          separateFiles: true,
-          verbose: false,
-        });
-
-        // Should only include the separate file, not the consolidated files
-        expect(result.datasources).toHaveLength(1);
-        expect(result.datasources[0]).toEqual(mockDatasource1);
-      });
-
-      it('should handle empty directory in separate files mode', async () => {
+      it('should handle empty directory', async () => {
         // Create empty directory
         vol.fromJSON({
           '/mock/path/datasources/source-space/': null,
         });
 
-        const result = await readDatasourcesFiles({
+        await expect(readDatasourcesFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
-        });
-
-        expect(result.datasources).toHaveLength(0);
+        })).rejects.toThrow(FileSystemError);
       });
 
       it('should handle files without suffix pattern correctly', async () => {
         // Create files with various patterns
         vol.fromJSON({
-          '/mock/path/datasources/source-space/countries.json': JSON.stringify([mockDatasource1]),
-          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify([mockDatasource2]), // Has suffix pattern, should be ignored when no suffix specified
-          '/mock/path/datasources/source-space/simple.json': JSON.stringify([mockDatasource1]),
+          '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
+          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify(mockDatasource2), // Has suffix pattern, should be ignored when no suffix specified
         });
 
         const result = await readDatasourcesFiles({
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
         // Should only include files without suffix pattern
-        expect(result.datasources).toHaveLength(2);
+        expect(result.datasources).toHaveLength(1);
+        expect(result.datasources[0]).toEqual(mockDatasource1);
       });
 
       it('should handle non-JSON files gracefully', async () => {
         // Create directory with mixed file types
         vol.fromJSON({
-          '/mock/path/datasources/source-space/countries.json': JSON.stringify([mockDatasource1]),
+          '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
           '/mock/path/datasources/source-space/readme.txt': 'This is a text file',
           '/mock/path/datasources/source-space/config.yaml': 'key: value',
         });
@@ -211,7 +182,6 @@ describe('push datasources actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: true,
           verbose: false,
         });
 
@@ -220,7 +190,7 @@ describe('push datasources actions', () => {
       });
     });
 
-    describe('consolidated files mode', () => {
+    describe('consolidated files (content-detected)', () => {
       it('should read datasources from consolidated file without suffix', async () => {
         // Create mock filesystem with consolidated file
         vol.fromJSON({
@@ -231,14 +201,12 @@ describe('push datasources actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: false,
           verbose: false,
         });
 
         expect(result.datasources).toHaveLength(2);
-        // For consolidated files, the order should be preserved as stored in JSON
-        expect(result.datasources[0]).toEqual(mockDatasource1);
-        expect(result.datasources[1]).toEqual(mockDatasource2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
       });
 
       it('should read datasources from consolidated file with suffix', async () => {
@@ -251,19 +219,34 @@ describe('push datasources actions', () => {
           from: 'source-space',
           path: '/mock/path',
           space: 'target-space',
-          separateFiles: false,
           suffix: 'dev',
           verbose: false,
         });
 
         expect(result.datasources).toHaveLength(2);
-        // For consolidated files, the order should be preserved as stored in JSON
-        expect(result.datasources[0]).toEqual(mockDatasource1);
-        expect(result.datasources[1]).toEqual(mockDatasource2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
       });
 
-      it('should throw error when consolidated file does not exist', async () => {
-        // Create directory but no consolidated file
+      it('should read consolidated file with custom filename', async () => {
+        // Custom filename (e.g., --filename my-data) creates my-data.json instead of datasources.json
+        vol.fromJSON({
+          '/mock/path/datasources/source-space/my-data.json': JSON.stringify([mockDatasource1, mockDatasource2]),
+        });
+
+        const result = await readDatasourcesFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        // Content-based detection reads any JSON file — filename doesn't matter
+        expect(result.datasources).toHaveLength(2);
+      });
+
+      it('should throw error when no datasource data exists', async () => {
+        // Create directory but no datasource files
         vol.fromJSON({
           '/mock/path/datasources/source-space/': null,
         });
@@ -273,42 +256,9 @@ describe('push datasources actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           }),
         ).rejects.toThrow(FileSystemError);
-      });
-
-      it('should throw error when consolidated file is empty', async () => {
-        // Create empty consolidated file
-        vol.fromJSON({
-          '/mock/path/datasources/source-space/datasources.json': JSON.stringify([]),
-        });
-
-        await expect(
-          readDatasourcesFiles({
-            from: 'source-space',
-            path: '/mock/path',
-            space: 'target-space',
-            separateFiles: false,
-            verbose: false,
-          }),
-        ).rejects.toThrow(FileSystemError);
-
-        try {
-          await readDatasourcesFiles({
-            from: 'source-space',
-            path: '/mock/path',
-            space: 'target-space',
-            separateFiles: false,
-            verbose: false,
-          });
-        }
-        catch (error) {
-          expect(error).toBeInstanceOf(FileSystemError);
-          expect((error as FileSystemError).message).toContain('No datasources found');
-          expect((error as FileSystemError).message).toContain('Please make sure you have pulled the datasources first');
-        }
       });
 
       it('should throw error when consolidated file contains invalid JSON', async () => {
@@ -322,10 +272,46 @@ describe('push datasources actions', () => {
             from: 'source-space',
             path: '/mock/path',
             space: 'target-space',
-            separateFiles: false,
             verbose: false,
           }),
         ).rejects.toThrow();
+      });
+    });
+
+    describe('duplicate detection', () => {
+      it('should throw when the same datasource exists in multiple files', async () => {
+        vol.fromJSON({
+          '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
+          '/mock/path/datasources/source-space/datasources.json': JSON.stringify([mockDatasource1, mockDatasource2]),
+        });
+
+        await expect(
+          readDatasourcesFiles({
+            from: 'source-space',
+            path: '/mock/path',
+            space: 'target-space',
+            verbose: false,
+          }),
+        ).rejects.toThrow('Duplicate datasources found in');
+      });
+
+      it('should allow mixed formats when there are no duplicate datasources', async () => {
+        // countries.json has mockDatasource1, datasources.json has only mockDatasource2 — no overlap
+        vol.fromJSON({
+          '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
+          '/mock/path/datasources/source-space/datasources.json': JSON.stringify([mockDatasource2]),
+        });
+
+        const result = await readDatasourcesFiles({
+          from: 'source-space',
+          path: '/mock/path',
+          space: 'target-space',
+          verbose: false,
+        });
+
+        expect(result.datasources).toHaveLength(2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
       });
     });
 
@@ -340,7 +326,6 @@ describe('push datasources actions', () => {
           from: 'my-space',
           path: '/custom/base/path',
           space: 'target-space',
-          separateFiles: false,
           verbose: false,
         });
 
@@ -360,7 +345,6 @@ describe('push datasources actions', () => {
           from: 'production-space',
           path: '/mock/path',
           space: 'staging-space',
-          separateFiles: false,
           verbose: false,
         });
 

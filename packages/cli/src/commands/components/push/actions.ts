@@ -1,21 +1,13 @@
-import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
+import { FileSystemError, handleAPIError } from '../../../utils';
 import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { ComponentCreate, ComponentUpdate } from '../../../types';
 import type { ReadComponentsOptions } from './constants';
-import { join } from 'pathe';
-import { readdir } from 'node:fs/promises';
-import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
+import { resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
+import { type ComponentsData, loadComponents } from '../loader';
 
-// Define a type for components data without datasources
-export interface ComponentsData {
-  components: Component[];
-  groups: ComponentFolder[];
-  presets: Preset[];
-  internalTags: InternalTag[];
-}
+export type { ComponentsData };
 
 // Component actions
 export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
@@ -263,14 +255,17 @@ export const upsertComponentInternalTag = async (
 
 export const readComponentsFiles = async (
   options: ReadComponentsOptions): Promise<ComponentsData> => {
-  const { from, path, separateFiles, suffix } = options;
+  const { from, path, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
-  // Check if directory exists first
+  let result: ComponentsData;
   try {
-    await readdir(resolvedPath);
+    result = await loadComponents(resolvedPath, { suffix });
   }
   catch (error) {
+    if (error instanceof FileSystemError) {
+      throw error;
+    }
     const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:
 
 1. Pull the components from your source space:
@@ -287,104 +282,14 @@ export const readComponentsFiles = async (
     );
   }
 
-  // Determine read mode: explicit flag takes precedence, otherwise auto-detect
-  if (await shouldUseSeparateFiles(resolvedPath, DEFAULT_COMPONENTS_FILENAME, separateFiles, suffix)) {
-    return await readSeparateFiles(resolvedPath, suffix);
-  }
-
-  return await readConsolidatedFiles(resolvedPath, suffix);
-};
-
-async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
-  const files = await readdir(resolvedPath);
-  const components: Component[] = [];
-  const presets: Preset[] = [];
-  let groups: ComponentFolder[] = [];
-  let internalTags: InternalTag[] = [];
-
-  const filteredFiles = files.filter((file) => {
-    if (suffix) {
-      return file.endsWith(`.${suffix}.json`);
-    }
-    else {
-      // Regex to match files with a pattern like .<suffix>.json
-      return !/\.\w+\.json$/.test(file) || file.endsWith('.presets.json'); ;
-    }
-  });
-
-  for (const file of filteredFiles) {
-    const filePath = join(resolvedPath, file);
-
-    if (file === `${DEFAULT_GROUPS_FILENAME}.json` || file === `${DEFAULT_GROUPS_FILENAME}.${suffix}.json`) {
-      const result = await readJsonFile<ComponentFolder>(filePath);
-      if (result.error) {
-        handleFileSystemError('read', result.error);
-        continue;
-      }
-      groups = result.data;
-    }
-    else if (file === `${DEFAULT_TAGS_FILENAME}.json` || file === `${DEFAULT_TAGS_FILENAME}.${suffix}.json`) {
-      const result = await readJsonFile<InternalTag>(filePath);
-      if (result.error) {
-        handleFileSystemError('read', result.error);
-        continue;
-      }
-      internalTags = result.data;
-    }
-    else if (file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.json`) || file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.${suffix}.json`)) {
-      const result = await readJsonFile<Preset>(filePath);
-      if (result.error) {
-        handleFileSystemError('read', result.error);
-        continue;
-      }
-      presets.push(...result.data);
-    }
-    else if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
-      if (file === `${DEFAULT_COMPONENTS_FILENAME}.json` || file === `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`) {
-        continue;
-      }
-      const result = await readJsonFile<Component>(filePath);
-      if (result.error) {
-        handleFileSystemError('read', result.error);
-        continue;
-      }
-      components.push(...result.data);
-    }
-  }
-
-  return {
-    components,
-    groups,
-    presets,
-    internalTags,
-  };
-}
-
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
-  // Read required components file
-  const componentsPath = join(resolvedPath, suffix ? `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json` : `${DEFAULT_COMPONENTS_FILENAME}.json`);
-  const componentsResult = await readJsonFile<Component>(componentsPath);
-
-  if (componentsResult.error || !componentsResult.data.length) {
+  if (!result.components.length) {
     throw new FileSystemError(
       'file_not_found',
       'read',
-      componentsResult.error || new Error('Components file is empty'),
-      `No components found in ${componentsPath}. Please make sure you have pulled the components first.`,
+      new Error('No component data found'),
+      `No components found in ${resolvedPath}. Please make sure you have pulled the components first.`,
     );
   }
 
-  // Read optional files
-  const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<ComponentFolder>(join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`)),
-    readJsonFile<Preset>(join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`)),
-    readJsonFile<InternalTag>(join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`)),
-  ]);
-
-  return {
-    components: componentsResult.data,
-    groups: groupsResult.data,
-    presets: presetsResult.data,
-    internalTags: tagsResult.data,
-  };
-}
+  return result;
+};

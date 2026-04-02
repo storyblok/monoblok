@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/react",
   "type": "module",
-  "version": "6.1.1",
+  "version": "6.1.2",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using React.",
   "author": "Storyblok",

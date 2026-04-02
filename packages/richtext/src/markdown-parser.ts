@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import { type HTMLParserOptions, htmlToStoryblokRichtext } from './html-parser';
+import type { StoryblokRichTextDocumentNode } from './types';
 
 export interface MarkdownParserOptions {
   tiptapExtensions?: HTMLParserOptions['tiptapExtensions'];
@@ -12,3 +13,5 @@ export function markdownToStoryblokRichtext(
   const html = new MarkdownIt({ html: false, linkify: true, typographer: true, breaks: true }).render(md);
   return htmlToStoryblokRichtext(html, options);
 }
+
+export type { StoryblokRichTextDocumentNode };

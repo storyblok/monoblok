@@ -17,12 +17,27 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-js.mjs",
-      "require": "./dist/storyblok-js.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.mjs",
+      "require": "./dist/api.js"
+    },
+    "./bridge": {
+      "types": "./dist/bridge.d.ts",
+      "import": "./dist/bridge.mjs",
+      "require": "./dist/bridge.js"
+    },
+    "./editable": {
+      "types": "./dist/editable.d.ts",
+      "import": "./dist/editable.mjs",
+      "require": "./dist/editable.js"
     }
   },
-  "main": "./dist/storyblok-js.js",
-  "module": "./dist/storyblok-js.mjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"

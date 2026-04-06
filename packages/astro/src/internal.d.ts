@@ -21,7 +21,10 @@ declare namespace App {
 declare module 'virtual:import-storyblok-components' {
   import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 
-  export const storyblokComponents: Record<string, AstroComponentFactory>;
+  export const storyblokComponents: Record<
+    string,
+    () => Promise<AstroComponentFactory>
+  >;
 }
 
 /** Integration options provided to the Astro SDK. */

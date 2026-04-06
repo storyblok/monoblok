@@ -90,40 +90,31 @@ function generateModuleCode(
   return `
     // Import utilities and fallback component
     import { toCamelCase } from '@storyblok/astro';
-    ${fallbackImport}
-    ${manualImports.join('\n')}
 
     // Dynamically import all Storyblok components using Vite's glob import
-    const modules = import.meta.glob('${globPattern}', { eager: true });
+    const modules = import.meta.glob('${globPattern}');
     // Process imported modules into a components object
     const storyblokComponents = {};
-    
     for (const filePath in modules) {
       // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
       const componentName = fileName?.replace(/\\.[^/.]+$/, '');
       
       if (componentName) {
-        // Get the component (handle both default and named exports)
-        const component = modules[filePath].default || modules[filePath];
-        
         // Convert filename to camelCase for Storyblok component naming
         const camelCaseName = toCamelCase(componentName);
-        storyblokComponents[camelCaseName] = component;
+
+        storyblokComponents[camelCaseName] = async () => {
+        const module = await modules[filePath]();
+        return module.default || module;
+        };
       }
     }
     
-    // Manual imports (overwrite auto if same key exists)
-    ${manualImports
-      .map((imp) => {
-        const varName = imp.match(/import\s+(\w+)\s+from/)?.[1];
-        return `storyblokComponents['${varName}'] = ${varName};`;
-      })
-      .join('\n')}
-
+    // Manual components
+    ${manualImports.join('\n')}
     // Add fallback component if enabled
-    ${fallbackImport ? `storyblokComponents['FallbackComponent'] = FallbackComponent;` : ''}
-    
+    ${fallbackImport}    
     // Export the components object for use in Storyblok initialization
     export { storyblokComponents };
   `.trim();
@@ -150,10 +141,19 @@ async function resolveFallbackComponent(
         `Custom fallback component could not be found. Does "${customPath}" exist?`,
       );
     }
-    return `import FallbackComponent from '${customPath}';`;
+
+    return `
+      storyblokComponents['FallbackComponent'] = async () => {
+        const module = await import('${resolved.id}');
+        return module.default || module;
+      };`;
   }
 
-  return `import FallbackComponent from '@storyblok/astro/FallbackComponent.astro';`;
+  return `
+    storyblokComponents['FallbackComponent'] = async () => {
+      const module = await import('@storyblok/astro/FallbackComponent.astro');
+      return module.default || module;
+    };`;
 }
 /**
  * Resolves user-provided Storyblok components into import statements.
@@ -184,7 +184,13 @@ async function resolveUserComponents(
       }
     }
     else {
-      imports.push(`import ${toCamelCase(key)} from "${resolvedId.id}"`);
+      const camelCaseName = toCamelCase(key);
+
+      imports.push(`
+      storyblokComponents['${camelCaseName}'] = async () => {
+        const module = await import('${resolvedId.id}');
+        return module.default || module;
+      };`);
     }
   }
 

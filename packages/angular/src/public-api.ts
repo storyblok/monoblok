@@ -20,7 +20,7 @@ export { SbBlokDirective } from './lib/sb-blok.directive';
 export { SbRichTextComponent } from './lib/rich-text.component';
 export { SbRichTextNodeComponent } from './lib/rich-text-node.component';
 export { StoryblokRichtextResolver, withStoryblokRichtextComponents } from './lib/richtext.feature';
-export type { StoryblokRichtextComponentsMap } from './lib/richtext.feature';
+export type { StoryblokRichtextComponentsMap, AngularRenderNode } from './lib/richtext.feature';
 
 // Re-export richtext types for convenience
 export {

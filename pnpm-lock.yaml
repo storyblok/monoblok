@@ -43,9 +43,6 @@ importers:
       '@storyblok/api-client':
         specifier: workspace:*
         version: link:../capi-client
-      '@storyblok/js':
-        specifier: workspace:*
-        version: link:../js
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../live-preview
@@ -107,6 +104,9 @@ importers:
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
+      storyblok-js-client:
+        specifier: workspace:*
+        version: link:../js-client
       typescript:
         specifier: ~5.9.2
         version: 5.9.3

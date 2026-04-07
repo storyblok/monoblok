@@ -1,8 +1,8 @@
 import { Directive, input, ViewContainerRef, effect, ComponentRef } from '@angular/core';
-import type { SbBlokData } from '@storyblok/js';
 import { StoryblokComponentResolver } from './sb-blok.feature';
 import { storyblokEditable } from '@storyblok/live-preview';
 import { DestroyRef, inject } from '@angular/core';
+import { SbBlokData } from './types';
 
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.

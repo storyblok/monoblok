@@ -51,10 +51,10 @@
     "tslib": "^2.3.0",
     "@storyblok/live-preview": "workspace:*",
     "@storyblok/richtext": "workspace:*",
-    "@storyblok/js": "workspace:*",
     "@storyblok/api-client": "workspace:*"
   },
   "devDependencies": {
+    "storyblok-js-client": "workspace:*",
     "@angular/build": "^21.1.2",
     "@angular/cli": "^21.1.2",
     "@angular/common": "^21.1.0",

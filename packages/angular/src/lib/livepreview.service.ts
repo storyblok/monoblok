@@ -1,5 +1,5 @@
 import { InjectionToken, inject, NgZone, Injectable } from '@angular/core';
-import type { ISbStoryData } from '@storyblok/js';
+import type { ISbStoryData } from './types';
 import { type BridgeParams, onStoryblokEditorEvent } from '@storyblok/live-preview';
 
 /**å

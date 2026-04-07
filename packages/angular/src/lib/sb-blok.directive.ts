@@ -1,7 +1,16 @@
-import { Directive, input, ViewContainerRef, effect, ComponentRef } from '@angular/core';
-import { StoryblokComponentResolver } from './sb-blok.feature';
+import {
+  ComponentRef,
+  DestroyRef,
+  Directive,
+  effect,
+  inject,
+  input,
+  untracked,
+  ViewContainerRef,
+} from '@angular/core';
 import { storyblokEditable } from '@storyblok/live-preview';
-import { DestroyRef, inject } from '@angular/core';
+
+import { StoryblokComponentResolver } from './sb-blok.feature';
 import { SbBlokData } from './types';
 
 /**
@@ -38,81 +47,70 @@ import { SbBlokData } from './types';
   selector: '[sbBlok]',
 })
 export class SbBlokDirective {
-  private viewContainerRef = inject(ViewContainerRef);
-  private resolver = inject(StoryblokComponentResolver);
+  private readonly viewContainerRef = inject(ViewContainerRef);
+  private readonly resolver = inject(StoryblokComponentResolver);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly sbBlok = input.required<SbBlokData | null | undefined>();
 
   private componentRef: ComponentRef<unknown> | null = null;
-  private destroyRef = inject(DestroyRef);
-
-  private renderVersion = 0;
   private currentComponentType: string | null = null;
+  private renderVersion = 0;
 
   constructor() {
-    effect(
-      () => {
-        this.render(this.sbBlok());
-      },
-      { allowSignalWrites: true },
-    );
-    // Clean up dynamically created component when directive is destroyed
-    this.destroyRef.onDestroy(() => {
-      if (this.componentRef) {
-        this.componentRef.destroy();
-        this.componentRef = null;
-      }
+    effect(() => {
+      const blok = this.sbBlok();
+      untracked(() => this.render(blok));
     });
+
+    this.destroyRef.onDestroy(() => this.componentRef?.destroy());
+  }
+
+  private clearComponent(): void {
+    this.componentRef?.destroy();
+    this.componentRef = null;
+    this.currentComponentType = null;
+    this.viewContainerRef.clear();
   }
 
   private applyEditableAttributes(componentRef: ComponentRef<unknown>, blok: SbBlokData): void {
     const editable = storyblokEditable(blok);
     const host = componentRef.location.nativeElement;
-    if (editable['data-blok-c'] && host && typeof host.setAttribute === 'function') {
+    if (editable['data-blok-c'] && host?.setAttribute) {
       host.setAttribute('data-blok-c', editable['data-blok-c']);
       host.setAttribute('data-blok-uid', editable['data-blok-uid']);
     }
   }
 
-  private async render(blok: SbBlokData | null | undefined) {
+  private async render(blok: SbBlokData | null | undefined): Promise<void> {
     const myVersion = ++this.renderVersion;
+
     if (!blok?.component) {
-      this.currentComponentType = null;
-      if (this.componentRef) {
-        this.componentRef.destroy();
-        this.componentRef = null;
-      }
-      this.viewContainerRef.clear();
+      this.clearComponent();
       return;
     }
 
     const componentType = blok.component;
     const Component = await this.resolver.resolve(componentType);
 
-    // Only continue if this is still the latest render
-    if (myVersion !== this.renderVersion) return;
-    // Stop if directive already destroyed
-    if (this.destroyRef.destroyed) return;
-    if (!Component) {
-      this.currentComponentType = null;
-      if (this.componentRef) {
-        this.componentRef.destroy();
-        this.componentRef = null;
-      }
-      this.viewContainerRef.clear();
+    // Bail if a newer render was triggered or directive was destroyed
+    if (myVersion !== this.renderVersion || this.destroyRef.destroyed) {
       return;
     }
 
-    // Destroy and recreate component if type changed
-    if (this.componentRef && this.currentComponentType !== componentType) {
-      this.viewContainerRef.clear();
-      this.componentRef = null;
+    if (!Component) {
+      this.clearComponent();
+      return;
     }
-    if (!this.componentRef) {
+
+    // Recreate component only if type changed
+    if (this.currentComponentType !== componentType) {
+      this.clearComponent();
       this.componentRef = this.viewContainerRef.createComponent(Component);
     }
+
     this.currentComponentType = componentType;
-    this.componentRef.setInput('blok', blok);
-    this.componentRef.changeDetectorRef.markForCheck();
-    this.applyEditableAttributes(this.componentRef, blok);
+    this.componentRef!.setInput('blok', blok);
+    this.applyEditableAttributes(this.componentRef!, blok);
   }
 }

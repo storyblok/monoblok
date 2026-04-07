@@ -73,7 +73,7 @@ export interface StoryblokMultilinkUrl {
   full_slug: string;
 }
 
-export interface StoryblokMultilink {
+interface StoryblokMultilinkBase {
   fieldtype: 'multilink';
   id: string;
   url: string;
@@ -83,10 +83,24 @@ export interface StoryblokMultilink {
   rel?: string;
   title?: string;
   prep?: string;
-  linktype: 'story' | 'url' | 'email' | 'asset';
-  story?: StoryblokMultilinkStory | StoryblokMultilinkLink | StoryblokMultilinkUrl;
-  email?: string;
 }
+
+export type StoryblokMultilink =
+  | (StoryblokMultilinkBase & {
+    linktype: 'story';
+    story?: StoryblokMultilinkStory;
+  })
+  | (StoryblokMultilinkBase & {
+    linktype: 'url';
+    story?: StoryblokMultilinkUrl;
+  })
+  | (StoryblokMultilinkBase & {
+    linktype: 'email';
+    email?: string;
+  })
+  | (StoryblokMultilinkBase & {
+    linktype: 'asset';
+  });
 
 export interface StoryblokTable {
   fieldtype: 'table';

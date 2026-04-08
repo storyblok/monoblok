@@ -12,7 +12,8 @@ properties:
   schema:
     type: object
     description: Component schema definition containing fields and their configurations
-    additionalProperties: true
+    additionalProperties:
+      $ref: 'main.yaml#/components/schemas/ComponentSchemaField'
   is_root:
     type: boolean
     description: Whether the component can be used as a root component

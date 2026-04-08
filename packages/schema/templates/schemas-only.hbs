@@ -1,0 +1,19 @@
+// Auto-generated. Do not edit manually.
+{{#if emitSchemas}}
+import { z } from 'zod';
+
+{{/if}}
+
+{{#if emitSchemas}}
+{{#each schemas}}
+export const {{@key}} = {{{this}}};
+
+{{/each}}
+{{/if}}
+
+{{#if emitTypes}}
+{{#each types}}
+export {{{this}}}
+
+{{/each}}
+{{/if}}

@@ -1,12 +1,12 @@
 import { list as listLinks } from '../generated/links/sdk.gen';
 import type { ListData as LinksListData, ListResponses as LinksListResponses } from '../generated/links/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createLinksResource(deps: ResourceDeps) {
+export function createLinksResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    list: async <ThrowOnError extends boolean = false>(
+    list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: { query?: LinksListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<LinksListResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;

@@ -3,13 +3,13 @@ import type {
   ListData as DatasourceEntriesListData,
   ListResponses as DatasourceEntriesListResponses,
 } from '../generated/datasource_entries/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createDatasourceEntriesResource(deps: ResourceDeps) {
+export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    list: async <ThrowOnError extends boolean = false>(
+    list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: { query?: DatasourceEntriesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<DatasourceEntriesListResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;

@@ -957,4 +957,4 @@ components:
     UnpublishedStory:
       $ref: ./schemas/unpublished-story.yaml
     ComponentContent:
-      $ref: ../../shared/stories/story-content.yaml
+      $ref: ../../shared/stories/blok-content.yaml

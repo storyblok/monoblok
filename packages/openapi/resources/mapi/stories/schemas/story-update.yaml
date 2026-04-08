@@ -11,7 +11,7 @@ properties:
     type: string
     description: The slug specific for the story.
   content:
-    $ref: ../../../shared/stories/story-content.yaml
+    $ref: ../../../shared/stories/blok-content-input.yaml
   parent_id:
     type: integer
     description: ID of the parent folder.

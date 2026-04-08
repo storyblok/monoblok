@@ -10,6 +10,14 @@ catalog:
   # namespace), otherwise a duplicate ReactNode causes type errors.
   "@types/react": 19.2.3
   "@types/react-dom": 19.2.3
+
+injectWorkspacePackages: true
+syncInjectedDepsAfterScripts:
+  - build
+
 onlyBuiltDependencies:
   - cypress
   - esbuild
+
+patchedDependencies:
+  openapi-zod-client@1.18.3: patches/openapi-zod-client@1.18.3.patch

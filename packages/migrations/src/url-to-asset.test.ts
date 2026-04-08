@@ -35,9 +35,9 @@ describe('urlToAsset', () => {
     expect(result.filename).toBe('https://example.com/document.pdf');
   });
 
-  it('should set id to 0 and is_private to false by default', () => {
+  it('should set id to 1 and is_private to false by default', () => {
     const result = urlToAsset('https://example.com/image.jpg');
-    expect(result.id).toBe(0);
+    expect(result.id).toBe(1);
     expect(result.is_private).toBe(false);
   });
 });

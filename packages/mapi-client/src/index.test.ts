@@ -157,6 +157,27 @@ describe('createManagementApiClient - HTTP requests', () => {
     expect(capturedAuth).toBe('Bearer my-oauth-token');
   });
 
+  it('should not double-prefix Bearer when oauthToken already includes it', async () => {
+    let capturedAuth = '';
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces', ({ request }) => {
+        capturedAuth = request.headers.get('authorization') ?? '';
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+
+    const client = createManagementApiClient({
+      oauthToken: 'Bearer my-oauth-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(capturedAuth).toBe('Bearer my-oauth-token');
+  });
+
   it('should keep each client instance independent', async () => {
     const requestsByToken: string[] = [];
     server.use(

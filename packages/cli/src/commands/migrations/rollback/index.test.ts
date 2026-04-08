@@ -6,7 +6,7 @@ import { migrationsCommand } from '../command';
 import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
 import type { RollbackData } from './actions';
-import type { StoryContent } from '../../stories/constants';
+import type { BlokContent } from '../../stories/constants';
 import { getLogFileContents } from '../../__tests__/helpers';
 import { session } from '../../../session';
 import { loggedOutSessionState } from '../../../../test/setup';
@@ -25,7 +25,7 @@ vi.spyOn(console, 'log');
 
 const LOG_PREFIX = 'storyblok-migrations-rollback-';
 
-const mockStoryContent: StoryContent = {
+const mockBlokContent: BlokContent = {
   _uid: 'test-uid',
   component: 'test',
   body: [],
@@ -35,12 +35,12 @@ const mockRollbackData: RollbackData = {
     {
       storyId: 1,
       name: 'Test Story',
-      content: mockStoryContent,
+      content: mockBlokContent,
     },
     {
       storyId: 2,
       name: 'Another Story',
-      content: mockStoryContent,
+      content: mockBlokContent,
     },
   ],
 };
@@ -100,7 +100,7 @@ describe('migrations rollback command', () => {
       1,
       {
         story: {
-          content: mockStoryContent,
+          content: mockBlokContent,
           id: 1,
           name: 'Test Story',
         },
@@ -112,7 +112,7 @@ describe('migrations rollback command', () => {
       2,
       {
         story: {
-          content: mockStoryContent,
+          content: mockBlokContent,
           id: 2,
           name: 'Another Story',
         },

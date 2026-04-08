@@ -1,5 +1,5 @@
 import { Transform } from 'node:stream';
-import type { Story, StoryContent } from '../../../stories/constants';
+import type { BlokContent, Story } from '../../../stories/constants';
 import { ERROR_CODES, type FailedMigration, type MigrationFile, type SkippedMigration, type SuccessfulMigration } from '../constants';
 import { applyMigrationToAllBlocks, getMigrationFunction } from '../actions';
 import { getComponentNameFromFilename } from '../../../../utils/filesystem';
@@ -87,7 +87,7 @@ export class MigrationStream extends Transform {
     return migrationFunction;
   }
 
-  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }>> {
+  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }>> {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
       ? this.options.migrationFiles.filter((file) => {
@@ -109,7 +109,7 @@ export class MigrationStream extends Transform {
       return [];
     }
 
-    const successfulResults: Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }> = [];
+    const successfulResults: Array<{ storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }> = [];
 
     // Process each relevant migration
     const result = await this.applyMigrationsToStory(story, relevantMigrations);
@@ -120,11 +120,11 @@ export class MigrationStream extends Transform {
     return successfulResults;
   }
 
-  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean } | null> {
+  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean } | null> {
     const migrationNames = migrationFiles.map(f => f.name);
 
     try {
-      const storyContent = structuredClone(story.content) as StoryContent;
+      const storyContent = structuredClone(story.content) as BlokContent;
       const originalContentHash = hash(storyContent);
 
       let processed = false;
@@ -159,7 +159,7 @@ export class MigrationStream extends Transform {
           story: {
             id: story.id,
             name: story.name || '',
-            content: story.content as StoryContent,
+            content: story.content as BlokContent,
             published: story.published,
             unpublished_changes: story.unpublished_changes,
           },

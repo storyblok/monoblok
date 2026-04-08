@@ -1,14 +1,16 @@
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate } from '../../types';
+import type { AssetUploadRequest } from '@storyblok/management-api-client';
 
 export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate };
 
 /**
- * CLI extension of mapi-client's AssetCreate.
- * Adds an optional `id` field used for manifest-based local↔remote ID mapping.
- * The `id` identifies the local/source asset and is stripped before the
- * mapi-client create/upload call so it does not leak into the metadata update.
+ * CLI extension of mapi-client's AssetUploadRequest.
+ * Uses `AssetUploadRequest` (which combines `AssetUpdate` metadata fields with
+ * `short_filename` for uploads) rather than the schema `AssetCreate` (which has
+ * `filename`). Adds an optional `id` field used for manifest-based local↔remote
+ * ID mapping. The `id` is stripped before the mapi-client create/upload call.
  */
-export type AssetUpload = AssetCreate & { id?: number };
+export type AssetUpload = AssetUploadRequest & { id?: number };
 
 export type AssetMapped = Pick<Asset, 'id' | 'filename' | 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>;
 

@@ -1,13 +1,13 @@
 import { join } from 'pathe';
 import { appendToFile, getComponentNameFromFilename, resolvePath } from '../../../utils/filesystem';
-import type { StoryContent } from '../../stories/constants';
+import type { BlokContent } from '../../stories/constants';
 import { readFile } from 'node:fs/promises';
 import { CommandError } from '../../../utils';
 
 export interface RollbackDataStory {
   storyId: number;
   name: string;
-  content: StoryContent;
+  content: BlokContent;
   published?: boolean;
   unpublished_changes?: boolean;
 }
@@ -39,7 +39,7 @@ export async function saveRollbackData({
 }: {
   space: string;
   path: string;
-  story: { id: number; name: string; content: StoryContent; published?: boolean; unpublished_changes?: boolean };
+  story: { id: number; name: string; content: BlokContent; published?: boolean; unpublished_changes?: boolean };
   migrationTimestamp: number;
   migrationNames: string[];
 }): Promise<void> {

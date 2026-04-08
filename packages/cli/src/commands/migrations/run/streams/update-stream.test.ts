@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpdateStream } from './update-stream';
 import { updateStory } from '../../../stories/actions';
-import type { StoryContent } from '../../../stories/constants';
+import type { BlokContent } from '../../../stories/constants';
 
 // Mock the updateStory action
 vi.mock('../../../stories/actions', () => ({
@@ -15,7 +15,7 @@ describe('updateStream', () => {
   });
 
   describe('publish flag behavior', () => {
-    const mockContent: StoryContent = {
+    const mockContent: BlokContent = {
       _uid: 'test-uid',
       component: 'page',
       title: 'Test Content',

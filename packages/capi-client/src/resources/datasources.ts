@@ -5,13 +5,13 @@ import type {
   ListData as DatasourcesListData,
   ListResponses as DatasourcesListResponses,
 } from '../generated/datasources/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createDatasourcesResource(deps: ResourceDeps) {
+export function createDatasourcesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    get: async <ThrowOnError extends boolean = false>(
+    get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       id: DatasourcesGetData['path']['id'],
       options: { query?: DatasourcesGetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<DatasourcesGetResponses[200], ThrowOnError>> => {
@@ -30,7 +30,7 @@ export function createDatasourcesResource(deps: ResourceDeps) {
       });
     },
 
-    list: async <ThrowOnError extends boolean = false>(
+    list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: { query?: DatasourcesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<DatasourcesListResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;

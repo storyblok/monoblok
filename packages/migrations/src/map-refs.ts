@@ -18,14 +18,15 @@ export interface MapRefsOptions {
   maps: RefMaps;
 }
 
-type ProcessedFields = Set<Component['schema']>;
+type FieldSchema = ComponentSchemas[string][string];
+type ProcessedFields = Set<FieldSchema>;
 type MissingSchemas = Set<Component['name']>;
 type UnknownRecord = Record<string, unknown>;
 
 type RefMapper = (
   data: unknown,
   options: {
-    schema: Component['schema'];
+    schema: FieldSchema;
     schemas: ComponentSchemas;
     maps: RefMaps;
     fieldRefMappers: FieldRefMappers;
@@ -79,7 +80,7 @@ const traverseAndMapBySchema = (
   for (const [fieldName, fieldValue] of Object.entries(data)) {
     const fieldSchema = schema[
       fieldName.replace(/__i18n__.*/, '')
-    ] as Component['schema'];
+    ];
     const fieldType
       = fieldSchema
         && typeof fieldSchema === 'object'
@@ -263,7 +264,7 @@ const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
   };
 
   const sourceMap
-    = sourceMapBySchema[(schema as { source?: string }).source ?? ''];
+    = sourceMapBySchema[schema.source ?? ''];
   if (!sourceMap) {
     return data;
   }

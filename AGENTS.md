@@ -18,6 +18,7 @@ Inspect the root `package.json` and the `packages/` directory to identify active
 - **Package naming**: Internal and published packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 - **Dependencies**: Cross-package dependencies within the monorepo use the `workspace:*` protocol.
 - **Tooling consistency**: Packages primarily use `vitest` for testing and `tsdown` for bundling.
+- **Running tasks**: Always use `nx` (e.g., `pnpm nx build <package>`) instead of `pnpm --filter` for build/test/generate commands. This ensures `dependsOn` prerequisites run automatically.
 
 ## Code style and conventions
 

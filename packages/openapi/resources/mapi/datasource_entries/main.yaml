@@ -176,7 +176,6 @@ components:
       required:
         - id
         - name
-        - datasource_id
       properties:
         id:
           readOnly: true

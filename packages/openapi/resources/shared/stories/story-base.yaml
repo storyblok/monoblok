@@ -74,7 +74,7 @@ properties:
     description: Generated UUID string
     readOnly: true
   content:
-    $ref: ./story-content.yaml
+    $ref: ./blok-content.yaml
   slug:
     type: string
     description: The slug specific for the story

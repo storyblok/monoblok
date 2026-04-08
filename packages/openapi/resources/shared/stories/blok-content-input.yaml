@@ -1,0 +1,49 @@
+# Write-side variant of story-content.yaml for create/update payloads.
+# _uid is optional here because Storyblok auto-generates it when omitted.
+type: object
+description: >-
+  Content object for creating or updating a component instance. Contains a
+  component technical name and dynamic fields whose values depend on the
+  component's schema field types. The _uid is optional — Storyblok will
+  auto-generate one if not provided.
+required:
+  - component
+properties:
+  _uid:
+    type: string
+    description: Unique identifier for this component instance (auto-generated when omitted)
+  component:
+    type: string
+    description: Technical name of the component (content type or nestable block)
+  _editable:
+    type: string
+    description: Storyblok editor markup string for inline editing (present in draft/preview mode)
+additionalProperties:
+  oneOf:
+    # Null — allowed for non-required fields when sending create/update payloads
+    - type: "null"
+      description: Null value for non-required fields that have no value set
+    # Simple field types (primitives)
+    - type: string
+      description: Text, textarea, markdown, datetime, or single-option field
+    - type: number
+      description: Number field
+    - type: boolean
+      description: Boolean field
+    # Array field types
+    - type: array
+      description: Multi-options (array of strings), multi-assets, references (array of UUIDs), or bloks (array of components)
+      items:
+        oneOf:
+          - type: string
+            description: Option value or UUID reference
+          - $ref: ./field-types/asset-field-value.yaml
+            description: Multi-asset item
+          - $ref: ./blok-content-input.yaml
+            description: Nested component (blok)
+    # Complex field types (objects with fieldtype discriminator)
+    - $ref: ./field-types/asset-field-value.yaml
+    - $ref: ./field-types/multilink-field-value.yaml
+    - $ref: ./field-types/table-field-value.yaml
+    - $ref: ./field-types/richtext-field-value.yaml
+    - $ref: ./field-types/plugin-field-value.yaml

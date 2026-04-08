@@ -1,12 +1,12 @@
 import { get as getSpaceApi } from '../generated/spaces/sdk.gen';
 import type { GetResponses as SpacesGetResponses } from '../generated/spaces/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createSpacesResource(deps: ResourceDeps) {
+export function createSpacesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    get: async <ThrowOnError extends boolean = false>(
+    get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<SpacesGetResponses[200], ThrowOnError>> => {
       const { signal, throwOnError, fetchOptions } = options;

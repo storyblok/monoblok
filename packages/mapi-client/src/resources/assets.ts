@@ -19,8 +19,11 @@ import type {
   UpdateData,
   UpdateResponses,
 } from '../generated/assets/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
+import { ClientError } from '../error';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
+
+export type AssetListQuery = NonNullable<ListData['query']>;
 
 /**
  * Fields for initiating an asset upload. Pass this to `upload()`, `create()`,
@@ -61,7 +64,11 @@ async function uploadToS3(
   filename: string,
 ): Promise<void> {
   if (!signedResponse.post_url || !signedResponse.fields) {
-    throw new Error('Invalid signed response: missing post_url or fields');
+    throw new ClientError('Invalid signed response: missing post_url or fields', {
+      status: 0,
+      statusText: 'Invalid signed response',
+      data: signedResponse,
+    });
   }
   const formData = new FormData();
   for (const [key, value] of Object.entries(signedResponse.fields)) {
@@ -72,16 +79,20 @@ async function uploadToS3(
   formData.append('file', new File([blob], filename, { type: contentType }));
   const response = await fetch(signedResponse.post_url, { method: 'POST', body: formData });
   if (!response.ok) {
-    throw new Error(`Failed to upload asset to S3: ${response.statusText}`);
+    throw new ClientError(`Failed to upload asset to S3: ${response.statusText}`, {
+      status: response.status,
+      statusText: response.statusText,
+      data: undefined,
+    });
   }
 }
 
-export function createAssetsResource(deps: MapiResourceDeps) {
+export function createAssetsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<ListResponses[200], ThrowOnError>(() =>
@@ -94,7 +105,7 @@ export function createAssetsResource(deps: MapiResourceDeps) {
      * In most cases, prefer `upload()` or `create()` which handle all three
      * steps automatically.
      */
-    signResponseObject<ThrowOnError extends boolean = false>(options: { body: SignResponseObjectData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SignResponseObjectResponses[200], ThrowOnError>> {
+    signResponseObject<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: SignResponseObjectData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SignResponseObjectResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<SignResponseObjectResponses[200], ThrowOnError>(() =>
@@ -177,7 +188,7 @@ export function createAssetsResource(deps: MapiResourceDeps) {
 
       return asset;
     },
-    get<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<GetResponses[200], ThrowOnError>(() =>
@@ -236,13 +247,13 @@ export function createAssetsResource(deps: MapiResourceDeps) {
           assetsApi.update({ client, path: { space_id: resolvedSpaceId, asset_id: assetId }, body, signal, throwOnError: true, ...kyOpts }), true);
       }
     },
-    delete<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = DefaultThrowOnError>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
         assetsApi.delete_({ client, path: { space_id: resolvedSpaceId, asset_id: assetId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    finalize<ThrowOnError extends boolean = false>(signedResponseObjectId: string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<FinalizeResponses[200], ThrowOnError>> {
+    finalize<ThrowOnError extends boolean = DefaultThrowOnError>(signedResponseObjectId: string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<FinalizeResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<FinalizeResponses[200], ThrowOnError>(() =>
@@ -254,19 +265,19 @@ export function createAssetsResource(deps: MapiResourceDeps) {
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    deleteMany<ThrowOnError extends boolean = false>(options: { body: DeleteManyData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<DeleteManyResponses[200], ThrowOnError>> {
+    deleteMany<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: DeleteManyData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<DeleteManyResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<DeleteManyResponses[200], ThrowOnError>(() =>
         assetsApi.deleteMany({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    bulkMove<ThrowOnError extends boolean = false>(options: { body: BulkMoveData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkMoveResponses[200], ThrowOnError>> {
+    bulkMove<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: BulkMoveData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkMoveResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<BulkMoveResponses[200], ThrowOnError>(() =>
         assetsApi.bulkMove({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    bulkRestore<ThrowOnError extends boolean = false>(options: { body: BulkRestoreData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkRestoreResponses[200], ThrowOnError>> {
+    bulkRestore<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: BulkRestoreData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkRestoreResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<BulkRestoreResponses[200], ThrowOnError>(() =>

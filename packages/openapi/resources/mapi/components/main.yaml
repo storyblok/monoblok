@@ -371,29 +371,48 @@ components:
       description: A component version object
       properties:
         schema:
-          additionalProperties: true
+          additionalProperties:
+            $ref: '#/components/schemas/ComponentSchemaField'
     ComponentSchemaField:
       description: A component schema field — discriminated union on `type`.
       discriminator:
         propertyName: type
+        mapping:
+          text: './field-types/text-field.yaml'
+          textarea: './field-types/textarea-field.yaml'
+          richtext: './field-types/richtext-field.yaml'
+          markdown: './field-types/markdown-field.yaml'
+          number: './field-types/number-field.yaml'
+          datetime: './field-types/datetime-field.yaml'
+          boolean: './field-types/boolean-field.yaml'
+          option: './field-types/option-field.yaml'
+          options: './field-types/options-field.yaml'
+          asset: './field-types/asset-field.yaml'
+          multiasset: './field-types/multiasset-field.yaml'
+          multilink: './field-types/multilink-field.yaml'
+          bloks: './field-types/bloks-field.yaml'
+          table: './field-types/table-field.yaml'
+          section: './field-types/section-field.yaml'
+          tab: './field-types/tab-field.yaml'
+          custom: './field-types/custom-field.yaml'
       oneOf:
-        - $ref: './field-types/text-field-config.yaml'
-        - $ref: './field-types/textarea-field-config.yaml'
-        - $ref: './field-types/richtext-field-config.yaml'
-        - $ref: './field-types/markdown-field-config.yaml'
-        - $ref: './field-types/number-field-config.yaml'
-        - $ref: './field-types/datetime-field-config.yaml'
-        - $ref: './field-types/boolean-field-config.yaml'
-        - $ref: './field-types/option-field-config.yaml'
-        - $ref: './field-types/options-field-config.yaml'
-        - $ref: './field-types/asset-field-config.yaml'
-        - $ref: './field-types/multiasset-field-config.yaml'
-        - $ref: './field-types/multilink-field-config.yaml'
-        - $ref: './field-types/bloks-field-config.yaml'
-        - $ref: './field-types/table-field-config.yaml'
-        - $ref: './field-types/section-field-config.yaml'
-        - $ref: './field-types/tab-field-config.yaml'
-        - $ref: './field-types/custom-field-config.yaml'
+        - $ref: './field-types/text-field.yaml'
+        - $ref: './field-types/textarea-field.yaml'
+        - $ref: './field-types/richtext-field.yaml'
+        - $ref: './field-types/markdown-field.yaml'
+        - $ref: './field-types/number-field.yaml'
+        - $ref: './field-types/datetime-field.yaml'
+        - $ref: './field-types/boolean-field.yaml'
+        - $ref: './field-types/option-field.yaml'
+        - $ref: './field-types/options-field.yaml'
+        - $ref: './field-types/asset-field.yaml'
+        - $ref: './field-types/multiasset-field.yaml'
+        - $ref: './field-types/multilink-field.yaml'
+        - $ref: './field-types/bloks-field.yaml'
+        - $ref: './field-types/table-field.yaml'
+        - $ref: './field-types/section-field.yaml'
+        - $ref: './field-types/tab-field.yaml'
+        - $ref: './field-types/custom-field.yaml'
     component-create:
       $ref: ./component-create.yaml
     component-update:

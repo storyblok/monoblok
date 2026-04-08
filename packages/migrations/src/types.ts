@@ -1,10 +1,11 @@
 export type {
   Asset,
-  AssetField,
+  AssetFieldValue,
+  BlokContent,
   Component,
   Datasource,
-  MultilinkField,
-  RichtextField,
+  MultilinkFieldValue,
+  RichtextFieldValue,
   Story,
-  TableField,
+  TableFieldValue,
 } from '@storyblok/management-api-client';

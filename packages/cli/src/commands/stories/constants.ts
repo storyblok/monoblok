@@ -1,6 +1,6 @@
-import type { Story, StoryContent, StoryListQuery } from '../../types';
+import type { BlokContent, Story, StoryListQuery } from '../../types';
 
-export type { Story, StoryContent };
+export type { BlokContent, Story };
 
 /**
  * Query parameters for retrieving multiple stories from the Management API.

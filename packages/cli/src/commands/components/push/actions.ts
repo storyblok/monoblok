@@ -1,6 +1,6 @@
 import { FileSystemError, handleAPIError } from '../../../utils';
 import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import type { ComponentCreate, ComponentUpdate } from '../../../types';
+import type { ComponentCreate, ComponentSchemaField, ComponentUpdate } from '../../../types';
 import type { ReadComponentsOptions } from './constants';
 import { resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
@@ -8,6 +8,28 @@ import { getMapiClient } from '../../../api';
 import { type ComponentsData, loadComponents } from '../loader';
 
 export type { ComponentsData };
+
+/**
+ * Extracts a clean schema record from a `Component` (which uses `Partial` with
+ * possible `undefined` values and special `_uid`/`component` keys) into the
+ * `Record<string, ComponentSchemaField>` shape expected by create/update.
+ */
+function isSchemaField(value: unknown): value is ComponentSchemaField {
+  return typeof value === 'object' && value !== null && 'type' in value;
+}
+
+function toWritableSchema(
+  schema: Component['schema'] | Record<string, ComponentSchemaField> | undefined,
+): Record<string, ComponentSchemaField> | undefined {
+  if (!schema) { return undefined; }
+  const result: Record<string, ComponentSchemaField> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (isSchemaField(value)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 // Component actions
 export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
@@ -53,16 +75,31 @@ export const updateComponent = async (space: string, componentId: number, compon
 
 export const upsertComponent = async (
   space: string,
-  component: ComponentCreate,
+  component: Component | ComponentCreate,
   existingId?: number,
 ): Promise<Component | undefined> => {
+  // Extract only the fields relevant for create/update, dropping read-only
+  // properties (`id`, `created_at`, `updated_at`, etc.) that exist on
+  // `Component` but not on `ComponentCreate`/`ComponentUpdate`.
+  const { name, display_name, schema, is_root, is_nestable, component_group_uuid, color, icon, preview_field, internal_tag_ids } = component;
+  const payload = {
+    name,
+    display_name,
+    schema: toWritableSchema(schema),
+    is_root,
+    is_nestable,
+    component_group_uuid,
+    color: color ?? undefined,
+    icon: icon ?? undefined,
+    preview_field: preview_field ?? undefined,
+    internal_tag_ids,
+  };
+
   if (existingId) {
-    // We know it exists, update directly
-    return await updateComponent(space, existingId, component);
+    return await updateComponent(space, existingId, payload);
   }
   else {
-    // New resource, create directly
-    return await pushComponent(space, component);
+    return await pushComponent(space, payload);
   }
 };
 

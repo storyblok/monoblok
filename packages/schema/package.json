@@ -1,0 +1,114 @@
+{
+  "name": "@storyblok/schema",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "Storyblok schema types, helpers, and Zod schemas",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "directory": "packages/schema"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./mapi": {
+      "import": "./dist/mapi/index.mjs",
+      "require": "./dist/mapi/index.cjs"
+    },
+    "./zod": {
+      "import": "./dist/zod/index.mjs",
+      "require": "./dist/zod/index.cjs"
+    },
+    "./zod/mapi": {
+      "import": "./dist/zod/mapi/index.mjs",
+      "require": "./dist/zod/mapi/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "mapi": [
+        "./dist/mapi/index.d.mts"
+      ],
+      "zod": [
+        "./dist/zod/index.d.mts"
+      ],
+      "zod/mapi": [
+        "./dist/zod/mapi/index.d.mts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate": "tsx generate.ts",
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^10.1.1",
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi": "workspace:*",
+    "@types/node": "^24.5.2",
+    "eslint": "^9.26.0",
+    "openapi-zod-client": "^1.18.3",
+    "tsdown": "^0.20.3",
+    "tsx": "^4.21.0",
+    "typescript": "5.8.3",
+    "vitest": "^4.1.3",
+    "zod": "^3.25.76"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "dependsOn": [
+          {
+            "projects": [
+              "@storyblok/openapi"
+            ],
+            "target": "build"
+          }
+        ],
+        "inputs": [
+          "{projectRoot}/generate.ts",
+          "{projectRoot}/templates/**",
+          "{projectRoot}/package.json"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "generate"
+        ]
+      }
+    }
+  }
+}

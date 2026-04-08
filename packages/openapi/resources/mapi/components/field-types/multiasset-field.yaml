@@ -1,0 +1,42 @@
+allOf:
+  - $ref: './base-field.yaml'
+  - type: object
+    description: Multiasset (multiple assets) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [multiasset]
+        description: Field type discriminant
+      filetypes:
+        type: array
+        description: Allowed file types (images, videos, audios, texts)
+        items:
+          type: string
+      asset_folder_id:
+        type: integer
+        description: Numeric ID of the allowed asset folder
+      allow_external_url:
+        type: boolean
+        description: Whether to allow external URLs
+      height:
+        type: integer
+        description: Field height in pixels
+      width:
+        type: integer
+        description: Field width in pixels
+      restrict_assets:
+        type: boolean
+        description: Whether to restrict assets
+      asset_whitelist:
+        type: array
+        description: List of allowed asset types
+        items:
+          type: string
+      maximum_entries:
+        type: integer
+        description: Maximum number of entries
+      minimum_entries:
+        type: integer
+        description: Minimum number of entries

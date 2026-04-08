@@ -1,6 +1,11 @@
 import { InjectionToken, Type, Injectable, inject } from '@angular/core';
 import type { RendererAdapter, StoryblokSegmentType } from '@storyblok/richtext';
-import { type StoryblokFeature, type StoryblokComponentLoader, isComponentLoader } from './components.feature';
+
+import {
+  type StoryblokFeature,
+  type StoryblokComponentLoader,
+  BaseComponentResolver,
+} from './components.feature';
 
 /**
  * Map of Storyblok segment types to Angular components.
@@ -39,69 +44,12 @@ export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<StoryblokRichtex
  * Caches resolved components to avoid repeated dynamic imports.
  */
 @Injectable({ providedIn: 'root' })
-export class StoryblokRichtextResolver {
-  private readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
-  private readonly cache = new Map<StoryblokSegmentType, Type<unknown>>();
+export class StoryblokRichtextResolver extends BaseComponentResolver<StoryblokSegmentType> {
+  protected readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
 
-  /**
-   * Check if a component is registered for the given segment type.
-   */
-  has(type: StoryblokSegmentType): boolean {
-    return this.registry[type] != null;
-  }
-
-  /**
-   * Get the component synchronously if it's eagerly loaded or already cached.
-   * Returns null if the component needs to be loaded asynchronously.
-   */
-  getSync(type: StoryblokSegmentType): Type<unknown> | null {
-    // Check cache first
-    if (this.cache.has(type)) {
-      return this.cache.get(type)!;
-    }
-
-    const entry = this.registry[type];
-    if (!entry) return null;
-
-    // If it's not a loader, it's an eager component
-    if (!isComponentLoader(entry)) {
-      this.cache.set(type, entry);
-      return entry;
-    }
-
-    // It's a lazy loader - needs async resolution
-    return null;
-  }
-
-  /**
-   * Resolve a component asynchronously. Handles both eager and lazy components.
-   */
-  async resolve(type: StoryblokSegmentType): Promise<Type<unknown> | null> {
-    // Check cache first
-    if (this.cache.has(type)) {
-      return this.cache.get(type)!;
-    }
-
-    const entry = this.registry[type];
-    if (!entry) return null;
-
-    let component: Type<unknown>;
-
-    if (isComponentLoader(entry)) {
-      component = await entry();
-    } else {
-      component = entry;
-    }
-
-    this.cache.set(type, component);
-    return component;
-  }
-
-  /**
-   * Get all registered segment types (for determining which nodes become component nodes).
-   */
+  /** Get all registered segment types (for determining which nodes become component nodes). */
   getRegisteredTypes(): StoryblokSegmentType[] {
-    return Object.keys(this.registry) as StoryblokSegmentType[];
+    return this.getRegisteredKeys();
   }
 }
 

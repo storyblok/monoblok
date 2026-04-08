@@ -1,4 +1,4 @@
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 export type AccessLevel = 'read' | 'write';
@@ -19,7 +19,7 @@ export interface SharedAssetFolder {
   name: string;
   parent_id: number | null;
   uuid: string;
-  parent_uuid?: string | null;
+  parent_uuid: string | null;
   description?: string | null;
   color?: string | null;
   regions?: string[];
@@ -45,7 +45,7 @@ export interface SharedAssetFolderGetResponse {
   shared_asset_folder: SharedAssetFolder;
 }
 
-export function createSharedAssetFoldersResource(deps: MapiResourceDeps) {
+export function createSharedAssetFoldersResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
   const kyOpts = (fetchOptions?: FetchOptions) =>

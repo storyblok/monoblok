@@ -39,7 +39,8 @@ properties:
       component:
         type: object
         description: Component type field configuration
-    additionalProperties: true
+    additionalProperties:
+      $ref: 'main.yaml#/components/schemas/ComponentSchemaField'
   image:
     type:
       - string

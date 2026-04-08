@@ -15,7 +15,7 @@
     "next": "^13.5.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "storyblok-js-client": "file:..",
+    "storyblok-js-client": "workspace:*",
     "swr": "^2.2.5"
   },
   "nx": {

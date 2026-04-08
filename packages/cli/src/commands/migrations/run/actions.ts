@@ -4,7 +4,7 @@ import { FileSystemError, toError } from '../../../utils/error';
 import { join } from 'pathe';
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from './constants';
 import { createRegexFromGlob } from '../../../utils';
-import type { StoryContent } from '../../stories/constants';
+import type { BlokContent } from '../../stories/constants';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
@@ -91,7 +91,7 @@ export async function getMigrationFunction(fileName: string, space: string, base
  * @param targetComponent - The component name to target for migration
  * @returns Whether any blocks were modified
  */
-export function applyMigrationToAllBlocks(content: StoryContent, migrationFunction: (block: StoryContent) => StoryContent, targetComponent: string): boolean {
+export function applyMigrationToAllBlocks(content: BlokContent, migrationFunction: (block: BlokContent) => BlokContent, targetComponent: string): boolean {
   let processed = false;
 
   if (!content || typeof content !== 'object') {
@@ -123,14 +123,14 @@ export function applyMigrationToAllBlocks(content: StoryContent, migrationFuncti
     if (Array.isArray(content[key])) {
       for (const value of content[key]) {
         if (value && typeof value === 'object' && '_uid' in value && 'component' in value) {
-          const blockProcessed = applyMigrationToAllBlocks(value as StoryContent, migrationFunction, targetComponent);
+          const blockProcessed = applyMigrationToAllBlocks(value as BlokContent, migrationFunction, targetComponent);
           processed = processed || blockProcessed;
         }
       }
     }
     // Process nested objects (might be blocks)
     else if (content[key] && typeof content[key] === 'object' && '_uid' in (content[key] as object) && 'component' in (content[key] as object)) {
-      const blockProcessed = applyMigrationToAllBlocks(content[key] as unknown as StoryContent, migrationFunction, targetComponent);
+      const blockProcessed = applyMigrationToAllBlocks(content[key] as unknown as BlokContent, migrationFunction, targetComponent);
       processed = processed || blockProcessed;
     }
   }

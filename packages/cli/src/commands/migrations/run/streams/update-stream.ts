@@ -1,7 +1,7 @@
 import { Writable } from 'node:stream';
 import { Sema } from 'async-sema';
 import type { StoryUpdate } from '../../../../types';
-import type { StoryContent } from '../../../stories/constants';
+import type { BlokContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../lib/logger/logger';
@@ -47,7 +47,7 @@ export class UpdateStream extends Writable {
     this.semaphore = new Sema(this.batchSize);
   }
 
-  async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {
+  async _write(chunk: { storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {
     try {
       await this.semaphore.acquire();
 
@@ -62,7 +62,7 @@ export class UpdateStream extends Writable {
     }
   }
 
-  private async updateStory(migrationResult: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }): Promise<void> {
+  private async updateStory(migrationResult: { storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }): Promise<void> {
     const { storyId, name, content, published, unpublished_changes } = migrationResult;
     const storyName = name || storyId.toString();
 

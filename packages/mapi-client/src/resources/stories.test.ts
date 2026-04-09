@@ -192,7 +192,7 @@ describe('stories.update()', () => {
   });
 });
 
-describe('stories.remove()', () => {
+describe('stories.delete()', () => {
   it('should delete a story', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/stories/:story_id', () => {
@@ -206,7 +206,7 @@ describe('stories.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.stories.remove(456);
+    const result = await client.stories.delete(456);
 
     expect(result.error).toBeUndefined();
   });

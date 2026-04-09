@@ -98,7 +98,7 @@ describe('internalTags.create()', () => {
   });
 });
 
-describe('internalTags.remove()', () => {
+describe('internalTags.delete()', () => {
   it('should successfully delete an internal tag', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/internal_tags/:internal_tag_id', () => {
@@ -112,7 +112,7 @@ describe('internalTags.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.internalTags.remove(1);
+    const result = await client.internalTags.delete(1);
 
     expect(result.error).toBeUndefined();
   });

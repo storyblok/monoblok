@@ -154,7 +154,7 @@ export const upsertDatasourceEntry = async (
 export const deleteDatasourceEntry = async (spaceId: string, entryId: number): Promise<void> => {
   try {
     const client = getMapiClient();
-    await client.datasourceEntries.remove(entryId, {
+    await client.datasourceEntries.delete(entryId, {
       path: {
         space_id: Number(spaceId),
       },

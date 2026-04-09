@@ -146,7 +146,7 @@ paths:
         '422':
           description: Unprocessable entity - validation errors
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete a Space
       description: Delete a space by its numeric id.
       parameters:

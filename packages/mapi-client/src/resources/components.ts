@@ -2,10 +2,10 @@ import * as componentsApi from '../generated/components/sdk.gen';
 import type {
   CreateData,
   CreateResponses,
+  DeleteResponses,
   GetResponses,
   ListData,
   ListResponses,
-  RemoveResponses,
   RestoreResponses,
   RestoreVersionData,
   RestoreVersionResponses,
@@ -51,11 +51,11 @@ export function createComponentsResource(deps: MapiResourceDeps) {
       return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
         componentsApi.update({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RemoveResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RemoveResponses[200], ThrowOnError>(() =>
-        componentsApi.remove({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
+        componentsApi.delete_({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     restore<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RestoreResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;

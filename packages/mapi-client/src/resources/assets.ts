@@ -7,13 +7,13 @@ import type {
   BulkMoveResponses,
   BulkRestoreData,
   BulkRestoreResponses,
+  DeleteManyData,
+  DeleteManyResponses,
+  DeleteResponses,
   FinalizeResponses,
   GetResponses,
   ListData,
   ListResponses,
-  RemoveManyData,
-  RemoveManyResponses,
-  RemoveResponses,
   SignResponseObjectData,
   SignResponseObjectResponses,
   UpdateData,
@@ -236,11 +236,11 @@ export function createAssetsResource(deps: MapiResourceDeps) {
           assetsApi.update({ client, path: { space_id: resolvedSpaceId, asset_id: assetId }, body, signal, throwOnError: true, ...kyOpts }), true);
       }
     },
-    remove<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RemoveResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RemoveResponses[200], ThrowOnError>(() =>
-        assetsApi.remove({ client, path: { space_id: resolvedSpaceId, asset_id: assetId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
+        assetsApi.delete_({ client, path: { space_id: resolvedSpaceId, asset_id: assetId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     finalize<ThrowOnError extends boolean = false>(signedResponseObjectId: string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<FinalizeResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
@@ -254,11 +254,11 @@ export function createAssetsResource(deps: MapiResourceDeps) {
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    removeMany<ThrowOnError extends boolean = false>(options: { body: RemoveManyData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<RemoveManyResponses[200], ThrowOnError>> {
+    deleteMany<ThrowOnError extends boolean = false>(options: { body: DeleteManyData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<DeleteManyResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RemoveManyResponses[200], ThrowOnError>(() =>
-        assetsApi.removeMany({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteManyResponses[200], ThrowOnError>(() =>
+        assetsApi.deleteMany({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     bulkMove<ThrowOnError extends boolean = false>(options: { body: BulkMoveData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<BulkMoveResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;

@@ -43,11 +43,11 @@ export function createDatasourcesResource(deps: MapiResourceDeps) {
       return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
         datasourcesApi.update({ client, path: { space_id: resolvedSpaceId, datasource_id: datasourceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(datasourceId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(datasourceId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        datasourcesApi.remove({ client, path: { space_id: resolvedSpaceId, datasource_id: datasourceId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        datasourcesApi.delete_({ client, path: { space_id: resolvedSpaceId, datasource_id: datasourceId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

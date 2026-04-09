@@ -43,11 +43,11 @@ export function createInternalTagsResource(deps: MapiResourceDeps) {
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(internalTagId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(internalTagId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        internalTagsApi.remove({
+        internalTagsApi.delete_({
           client,
           path: { space_id: resolvedSpaceId, internal_tag_id: internalTagId },
           signal,

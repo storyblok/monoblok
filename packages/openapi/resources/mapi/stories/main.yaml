@@ -393,7 +393,7 @@ paths:
         '404':
           description: Story not found
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete a Story
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id

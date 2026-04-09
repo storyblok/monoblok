@@ -116,7 +116,7 @@ describe('presets.create()', () => {
   });
 });
 
-describe('presets.remove()', () => {
+describe('presets.delete()', () => {
   it('should successfully delete a preset', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/presets/:preset_id', () => {
@@ -130,7 +130,7 @@ describe('presets.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.presets.remove(456);
+    const result = await client.presets.delete(456);
 
     expect(result.error).toBeUndefined();
   });

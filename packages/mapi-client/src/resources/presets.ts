@@ -2,10 +2,10 @@ import * as presetsApi from '../generated/presets/sdk.gen';
 import type {
   CreateData,
   CreateResponses,
+  DeleteResponses,
   GetResponses,
   ListData,
   ListResponses,
-  RemoveResponses,
   UpdateData,
   UpdateResponses,
 } from '../generated/presets/types.gen';
@@ -44,11 +44,11 @@ export function createPresetsResource(deps: MapiResourceDeps) {
       return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
         presetsApi.update({ client, path: { space_id: resolvedSpaceId, preset_id: presetId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(presetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RemoveResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(presetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RemoveResponses[200], ThrowOnError>(() =>
-        presetsApi.remove({ client, path: { space_id: resolvedSpaceId, preset_id: presetId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
+        presetsApi.delete_({ client, path: { space_id: resolvedSpaceId, preset_id: presetId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

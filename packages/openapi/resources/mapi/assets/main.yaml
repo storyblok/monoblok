@@ -153,7 +153,7 @@ paths:
         '404':
           description: Asset not found
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete an Asset
       description: Delete an asset by using its numeric id.
       parameters:
@@ -208,7 +208,7 @@ paths:
           description: Asset not found
   /v1/spaces/{space_id}/assets/bulk_destroy:
     post:
-      operationId: removeMany
+      operationId: deleteMany
       summary: Delete Multiple Assets
       description: Delete multiple assets by using their numeric IDs.
       parameters:

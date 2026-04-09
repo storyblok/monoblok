@@ -58,11 +58,11 @@ export function createDatasourceEntriesResource(deps: MapiResourceDeps) {
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        datasourceEntriesApi.remove({
+        datasourceEntriesApi.delete_({
           client,
           path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },
           signal,

@@ -2,6 +2,7 @@ import * as storiesApi from '../generated/stories/sdk.gen';
 import type {
   CreateData,
   CreateResponses,
+  DeleteResponses,
   DuplicateData,
   DuplicateResponses,
   GetData,
@@ -10,7 +11,6 @@ import type {
   ListResponses,
   PublishData,
   PublishResponses,
-  RemoveResponses,
   UpdateData,
   UpdateResponses,
   VersionsData,
@@ -51,11 +51,11 @@ export function createStoriesResource(deps: MapiResourceDeps) {
       return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
         storiesApi.update({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, body, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(storyId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RemoveResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(storyId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RemoveResponses[200], ThrowOnError>(() =>
-        storiesApi.remove({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
+        storiesApi.delete_({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     duplicate<ThrowOnError extends boolean = false>(
       storyId: number | string,

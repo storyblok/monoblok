@@ -148,7 +148,7 @@ paths:
         '404':
           description: Datasource entry not found
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete a Datasource Entry
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id

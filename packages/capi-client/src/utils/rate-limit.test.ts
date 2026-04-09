@@ -59,8 +59,12 @@ describe('parseRateLimitPolicyHeader()', () => {
       headers: headerValue ? { 'x-ratelimit-policy': headerValue } : {},
     });
 
-  it('should parse the q= value from the header', () => {
-    expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBe(30);
+  it('should ignore concurrent-requests policies', () => {
+    expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBeUndefined();
+  });
+
+  it('should parse the q= value from a rate-limit policy', () => {
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=50'))).toBe(50);
   });
 
   it('should return undefined when the header is absent', () => {
@@ -68,11 +72,11 @@ describe('parseRateLimitPolicyHeader()', () => {
   });
 
   it('should return undefined when the header has no q= value', () => {
-    expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";r=5'))).toBeUndefined();
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";r=5'))).toBeUndefined();
   });
 
   it('should cap the parsed value at 1000', () => {
-    expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=9999'))).toBe(1000);
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=9999'))).toBe(1000);
   });
 });
 
@@ -120,7 +124,36 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(2);
   });
 
-  it('should adapt limit from server headers, respecting user ceiling', async () => {
+  it('should ignore concurrent-requests headers (not a rate limit)', async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager(50);
+
+    const serverResponse = new Response(null, {
+      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=5' },
+    });
+    manager.adaptToResponse(serverResponse);
+
+    let activeCount = 0;
+    let maxActive = 0;
+
+    const makeSlowFn = () => async () => {
+      activeCount++;
+      maxActive = Math.max(maxActive, activeCount);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      activeCount--;
+      return 'done';
+    };
+
+    // concurrent-requests header is ignored, so the full limit of 50 is available.
+    const promises = Array.from({ length: 50 }, () => manager.execute('/v2/cdn/stories', {}, makeSlowFn()));
+
+    await vi.runAllTimersAsync();
+    await Promise.all(promises);
+
+    expect(maxActive).toBe(50);
+  });
+
+  it('should adapt limit from rate-limit server headers, respecting user ceiling', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
 
@@ -128,9 +161,8 @@ describe('createThrottleManager(number)', () => {
     let maxActive = 0;
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=5' },
+      headers: { 'x-ratelimit-policy': '"rate-limit";q=5' },
     });
-    // Tell the manager the server reported a limit of 5.
     manager.adaptToResponse(serverResponse);
 
     const makeSlowFn = () => async () => {
@@ -155,7 +187,7 @@ describe('createThrottleManager(number)', () => {
     const manager = createThrottleManager(3);
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=100' },
+      headers: { 'x-ratelimit-policy': '"rate-limit";q=100' },
     });
     manager.adaptToResponse(serverResponse);
 
@@ -231,12 +263,42 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBeLessThanOrEqual(6);
   });
 
-  it('should adapt SINGLE_OR_SMALL tier from server headers', async () => {
+  it('should ignore concurrent-requests headers in auto-detect mode', async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
     const serverResponse = new Response(null, {
       headers: { 'x-ratelimit-policy': '"concurrent-requests";q=10' },
+    });
+    manager.adaptToResponse(serverResponse);
+
+    let activeCount = 0;
+    let maxActive = 0;
+
+    const makeSlowFn = () => async () => {
+      activeCount++;
+      maxActive = Math.max(maxActive, activeCount);
+      await new Promise(resolve => setTimeout(resolve, 50));
+      activeCount--;
+      return 'done';
+    };
+
+    // concurrent-requests header is ignored, so the full SINGLE_OR_SMALL limit of 50 is available.
+    const promises = Array.from({ length: 50 }, () =>
+      manager.execute('/v2/cdn/stories/my-story', {}, makeSlowFn()));
+
+    await vi.runAllTimersAsync();
+    await Promise.all(promises);
+
+    expect(maxActive).toBe(50);
+  });
+
+  it('should adapt SINGLE_OR_SMALL tier from rate-limit server headers', async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    const serverResponse = new Response(null, {
+      headers: { 'x-ratelimit-policy': '"rate-limit";q=10' },
     });
     manager.adaptToResponse(serverResponse);
 
@@ -266,7 +328,7 @@ describe('createThrottleManager({})', () => {
     const manager = createThrottleManager({ adaptToServerHeaders: false });
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=1' },
+      headers: { 'x-ratelimit-policy': '"rate-limit";q=1' },
     });
     manager.adaptToResponse(serverResponse);
 

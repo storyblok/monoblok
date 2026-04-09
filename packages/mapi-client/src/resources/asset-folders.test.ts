@@ -115,7 +115,7 @@ describe('assetFolders.create()', () => {
   });
 });
 
-describe('assetFolders.remove()', () => {
+describe('assetFolders.delete()', () => {
   it('should successfully delete an asset folder', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/asset_folders/:asset_folder_id', () => {
@@ -129,7 +129,7 @@ describe('assetFolders.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.assetFolders.remove(456);
+    const result = await client.assetFolders.delete(456);
 
     expect(result.error).toBeUndefined();
   });

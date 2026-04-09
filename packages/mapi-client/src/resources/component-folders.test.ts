@@ -116,7 +116,7 @@ describe('componentFolders.create()', () => {
   });
 });
 
-describe('componentFolders.remove()', () => {
+describe('componentFolders.delete()', () => {
   it('should successfully delete a component folder', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/component_groups/:component_group_id', () => {
@@ -130,7 +130,7 @@ describe('componentFolders.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.componentFolders.remove(456);
+    const result = await client.componentFolders.delete(456);
 
     expect(result.error).toBeUndefined();
   });

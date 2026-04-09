@@ -129,7 +129,7 @@ paths:
         '404':
           $ref: ../../shared/responses.yaml#/NotFound
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete a Preset
       description: Delete a preset by using its numeric id.
       parameters:

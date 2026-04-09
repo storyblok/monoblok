@@ -91,7 +91,7 @@ describe('components.get()', () => {
   });
 });
 
-describe('components.remove()', () => {
+describe('components.delete()', () => {
   it('should delete a component', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/:space_id/components/:component_id', () => {
@@ -105,7 +105,7 @@ describe('components.remove()', () => {
       rateLimit: false,
     });
 
-    const result = await client.components.remove(456);
+    const result = await client.components.delete(456);
 
     expect(result.error).toBeUndefined();
   });

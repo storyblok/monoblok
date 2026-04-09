@@ -2,10 +2,10 @@ import * as assetFoldersApi from '../generated/asset_folders/sdk.gen';
 import type {
   CreateData,
   CreateResponses,
+  DeleteData,
   GetResponses,
   ListData,
   ListResponses,
-  RemoveData,
   UpdateData,
 } from '../generated/asset_folders/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
@@ -43,14 +43,14 @@ export function createAssetFoldersResource(deps: MapiResourceDeps) {
       return wrapRequest<void, ThrowOnError>(() =>
         assetFoldersApi.update({ client, path: { space_id: resolvedSpaceId, asset_folder_id: assetFolderId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(
+    delete<ThrowOnError extends boolean = false>(
       assetFolderId: number | string,
-      options: { query?: RemoveData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+      options: { query?: DeleteData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
     ): Promise<ApiResponse<void, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        assetFoldersApi.remove({ client, path: { space_id: resolvedSpaceId, asset_folder_id: assetFolderId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        assetFoldersApi.delete_({ client, path: { space_id: resolvedSpaceId, asset_folder_id: assetFolderId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

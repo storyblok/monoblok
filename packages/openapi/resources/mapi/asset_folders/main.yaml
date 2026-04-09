@@ -138,7 +138,7 @@ paths:
         '404':
           description: Asset folder not found
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete an Asset Folder
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id

@@ -56,11 +56,11 @@ export function createComponentFoldersResource(deps: MapiResourceDeps) {
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(componentGroupId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(componentGroupId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        componentFoldersApi.remove({
+        componentFoldersApi.delete_({
           client,
           path: { space_id: resolvedSpaceId, component_group_id: componentGroupId },
           signal,

@@ -172,7 +172,7 @@ paths:
         '404':
           description: Component not found
     delete:
-      operationId: remove
+      operationId: delete
       summary: Delete a Component
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id

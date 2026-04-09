@@ -196,7 +196,7 @@ export const deleteComponentPreset = async (space: string, presetId: number): Pr
   try {
     const client = getMapiClient();
 
-    await client.presets.remove(presetId, {
+    await client.presets.delete(presetId, {
       path: { space_id: Number(space) },
       throwOnError: true,
     });

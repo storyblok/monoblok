@@ -40,7 +40,7 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 
 - **ALWAYS:** look up the latest npm package version before installing a new package.
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
-- **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
+- **IMPORTANT:** Never add a `Co-Authored-By` line or any AI attribution to commit messages or PRs.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Branch naming:** `[fix|feat|chore]/WDX-XXX-[title]` e.g. `feat/WDX-351-type-safe-schema-support`, `fix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
 - **Commits:** If information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.

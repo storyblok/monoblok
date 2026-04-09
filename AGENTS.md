@@ -52,7 +52,7 @@ The `adr/` directory contains Architecture Decision Records (ADRs) documenting m
 
 - **ALWAYS:** look up the latest npm package version before installing a new package.
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
-- **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
+- **IMPORTANT:** Never add a `Co-Authored-By` line or any AI attribution to commit messages or PRs.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Commits:** If ticket or issue information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
 - **Branches:** Follow this branch naming pattern: `<type>/<ticket-or-scope>-<short-description>`, e.g. `feature/WDX-351-type-safe-schema-support`, `bugfix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.

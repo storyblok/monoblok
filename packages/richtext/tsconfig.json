@@ -1,15 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "useDefineForClassFields": true,
     "module": "ESNext",
-
     /* Bundler mode */
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "types": [
+      "node"
+    ],
     "allowImportingTsExtensions": true,
-
     /* Linting */
     "strict": true,
     "noFallthroughCasesInSwitch": true,
@@ -19,6 +24,12 @@
     "isolatedModules": true,
     "skipLibCheck": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "src/**/*.cy.ts", "src/**/*.test.ts"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/**/*.cy.ts",
+    "src/**/*.test.ts"
+  ]
 }

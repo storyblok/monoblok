@@ -53,6 +53,11 @@ export default [
   }),
   defineConfig({
     ...sharedConfig,
+    entry: { static: './src/static/index.ts' },
+    format: ['esm', 'cjs'],
+  }),
+  defineConfig({
+    ...sharedConfig,
     entry: { 'html-parser': './src/html-parser.ts' },
     format: 'esm',
   }),

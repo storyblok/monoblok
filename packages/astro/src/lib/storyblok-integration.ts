@@ -92,6 +92,9 @@ export default function storyblokIntegration(
       }) => {
         updateConfig({
           vite: {
+            optimizeDeps: {
+              include: ['@storyblok/astro', '@storyblok/astro/toolbarApp.ts'],
+            },
             plugins: [
               vitePluginStoryblokInit(accessToken, useCustomApi, apiOptions),
               vitePluginImportStoryblokComponents(

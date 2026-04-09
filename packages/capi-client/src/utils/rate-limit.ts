@@ -131,14 +131,24 @@ export function determineTier(path: string, query: Record<string, unknown>): Tie
 }
 
 /**
- * Extracts the quota (`q=`) value from the `X-RateLimit-Policy` response header.
- * Returns `undefined` if the header is absent or unparseable.
+ * Extracts the quota (`q=`) value from the `X-RateLimit-Policy` response header,
+ * but only when the policy describes a rate limit — not a concurrency limit.
  *
- * Example header: `"concurrent-requests";q=30`
+ * The Storyblok CDN currently returns `"concurrent-requests";q=30` which is a
+ * concurrency limit (always ~30), not a rate limit. Applying that value to the
+ * tier-based rate limiter would incorrectly cap throughput below what the API
+ * allows. This function therefore ignores concurrency policies and only returns
+ * a value for rate-limit policies (e.g. `"rate-limit";q=50`), which the API
+ * does not send yet but may in the future.
  */
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
   const policy = response.headers.get('x-ratelimit-policy');
   if (!policy) {
+    return undefined;
+  }
+  // Only act on rate-limit policies — skip concurrency limits like
+  // "concurrent-requests";q=30 which represent a different constraint.
+  if (policy.includes('"concurrent-requests"')) {
     return undefined;
   }
   const match = policy.match(/q=(\d+)/);

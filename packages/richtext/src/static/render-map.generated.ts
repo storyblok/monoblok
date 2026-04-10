@@ -4,27 +4,165 @@ import type { TiptapNodeAttributes } from './index';
  * Render config for Tiptap nodes
  */
 export const NODE_RENDER_MAP = {
-  paragraph: null,
+  paragraph: {
+    tag: 'p',
+    content: true,
+  },
   doc: null,
   text: null,
-  blockquote: null,
+  blockquote: {
+    tag: 'blockquote',
+    content: true,
+  },
   heading: {
     resolve: (attrs: TiptapNodeAttributes['heading']) => `h${attrs?.level || 1}`,
   },
-  bullet_list: null,
-  ordered_list: null,
-  list_item: null,
-  code_block: null,
-  hard_break: null,
-  horizontal_rule: null,
-  image: null,
-  emoji: null,
-  table: null,
-  tableRow: null,
-  tableCell: null,
-  tableHeader: null,
-  blok: null,
-  details: null,
-  detailsContent: null,
-  detailsSummary: null,
+  bullet_list: {
+    tag: 'ul',
+    content: true,
+  },
+  ordered_list: {
+    tag: 'ol',
+    attrs: {
+      start: 1,
+    },
+    content: true,
+  },
+  list_item: {
+    tag: 'li',
+    content: true,
+  },
+  code_block: {
+    tag: 'pre',
+    children: [
+      {
+        tag: 'code',
+        content: true,
+      },
+    ],
+  },
+  hard_break: {
+    tag: 'br',
+  },
+  horizontal_rule: {
+    tag: 'hr',
+  },
+  image: {
+    tag: 'img',
+  },
+  emoji: {
+    tag: 'span',
+    attrs: {
+      'data-type': 'emoji',
+    },
+    children: [
+      {
+        tag: 'img',
+        attrs: {
+          style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
+          draggable: 'false',
+          loading: 'lazy',
+        },
+      },
+    ],
+  },
+  table: {
+    tag: 'table',
+    content: true,
+  },
+  tableRow: {
+    tag: 'tr',
+    content: true,
+  },
+  tableCell: {
+    tag: 'td',
+    content: true,
+  },
+  tableHeader: {
+    tag: 'th',
+    content: true,
+  },
+  blok: {
+    tag: 'span',
+    attrs: {
+      'data-blok': 'null',
+      'style': 'display: none',
+    },
+  },
+  details: {
+    tag: 'details',
+    content: true,
+  },
+  detailsContent: {
+    tag: 'div',
+    attrs: {
+      'data-type': 'detailsContent',
+    },
+    content: true,
+  },
+  detailsSummary: {
+    tag: 'summary',
+    content: true,
+  },
+} as const;
+
+/**
+ * Render config for Tiptap marks
+ */
+export const MARK_RENDER_MAP = {
+  link: {
+    tag: 'a',
+    content: true,
+  },
+  bold: {
+    tag: 'strong',
+    content: true,
+  },
+  italic: {
+    tag: 'em',
+    content: true,
+  },
+  strike: {
+    tag: 's',
+    content: true,
+  },
+  underline: {
+    tag: 'u',
+    content: true,
+  },
+  code: {
+    tag: 'code',
+    content: true,
+  },
+  superscript: {
+    tag: 'sup',
+    content: true,
+  },
+  subscript: {
+    tag: 'sub',
+    content: true,
+  },
+  highlight: {
+    tag: 'mark',
+    content: true,
+  },
+  textStyle: {
+    tag: 'span',
+    attrs: {
+      style: 'color: null',
+    },
+    content: true,
+  },
+  anchor: {
+    tag: 'span',
+    attrs: {
+      id: null,
+    },
+    content: true,
+  },
+  styled: {
+    tag: 'span',
+    content: true,
+  },
+  reporter: null,
 } as const;

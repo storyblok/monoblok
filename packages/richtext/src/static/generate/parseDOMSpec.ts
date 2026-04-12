@@ -1,18 +1,23 @@
 import type { DOMOutputSpec } from 'prosemirror-model';
+import type { RenderSpec } from '../types';
 
-export interface RenderSpec {
-  tag: string;
-  attrs?: Record<string, any>;
-  content?: boolean;
-  children?: RenderSpec[];
-  resolve?: (attrs: unknown) => string;
-};
+// Custom DOM specs for nodes that need special handling (e.g. table)
+const CUSTOM_SPECS = {
+  table: ['table', ['tbody', 0]],
+} as const;
+
 export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {
   // string
   if (typeof spec === 'string') {
     return { tag: spec };
   }
-
+  // custom override
+  if (Array.isArray(spec) && typeof spec[0] === 'string') {
+    const custom = CUSTOM_SPECS[spec[0] as keyof typeof CUSTOM_SPECS];
+    if (custom) {
+      spec = custom as DOMOutputSpec;
+    }
+  }
   // { dom, contentDOM }
   if (isDOMObject(spec)) {
     return {
@@ -31,7 +36,6 @@ export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {
 function parseArraySpec(spec: readonly any[]): RenderSpec {
   try {
     const [tag, maybeAttrs, ...rest] = spec;
-
     let attrs: Record<string, any> | undefined;
     let children: any[];
 

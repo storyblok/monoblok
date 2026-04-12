@@ -1,8 +1,7 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import type { MarkType, NodeType, Schema } from 'prosemirror-model';
-
-import { defaultExtensions } from '../../extensions';
+import { getStoryblokExtensions } from '../../extensions';
 import { hints } from './type-hints';
 
 /**
@@ -65,6 +64,7 @@ function genPMMark(schema: Schema): string {
 }
 
 export function generateTypes() {
+  const defaultExtensions = getStoryblokExtensions();
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   let output = '';
@@ -82,8 +82,8 @@ export function generateTypes() {
   // --- Node name unions
   output += 'export type TiptapNodeName = keyof TiptapNodeAttributes;\n';
   output += 'export type TiptapMarkName = keyof TiptapMarkAttributes;\n';
-  output += 'export type TiptapComponentName = TiptapNodeName | TiptapMarkName;\n\n';
-
+  // Remove 'text' from component names since user dont need to provide a component for text nodes
+  output += `export type TiptapComponentName = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;\n\n`;
   // --- PMNode/PMMark
   output += `${genPMNode(schema)}\n\n`;
   output += `${genPMMark(schema)}\n\n`;

@@ -1,15 +1,15 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type { RichTextComponentProps } from './types';
 import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
 
 export function resolveComponent<
   K extends TiptapComponentName,
-  M extends Partial<Record<TiptapComponentName, (props: any) => any>>,
->(type: K, components?: M) {
-  return components?.[type] as
-    | ((props: RichTextComponentProps<K>) => any)
-    | undefined;
+  M extends Partial<Record<TiptapComponentName, any>>,
+>(
+  type: K,
+  components?: M,
+) {
+  return components?.[type] as M[K] | undefined;
 }
 
 export function resolveTag(node: PMNode | PMMark): string {
@@ -35,4 +35,10 @@ export function resolveTag(node: PMNode | PMMark): string {
 }
 export function isSelfClosing(tag: string): boolean {
   return SELF_CLOSING_TAGS.includes(tag);
+}
+
+export function getStaticChildren(node: PMNode) {
+  const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
+  const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
+  return staticChildren;
 }

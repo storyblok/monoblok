@@ -63,6 +63,14 @@ export const StoryblokBulletList = BulletList.extend({
 
 export const StoryblokOrderedList = OrderedList.extend({
   name: 'ordered_list',
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      order: {
+        default: 1,
+      },
+    };
+  },
   addOptions() {
     return { ...this.parent!(), itemTypeName: 'list_item' };
   },
@@ -83,6 +91,13 @@ export const StoryblokListItem = ListItem.extend({
 
 export const StoryblokCodeBlock = CodeBlock.extend({
   name: 'code_block',
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+      },
+    };
+  },
   renderHTML({ node, HTMLAttributes }) {
     const { language: _, ...rest } = HTMLAttributes;
     const attrs = processBlockAttrs(rest);
@@ -106,6 +121,27 @@ export const StoryblokTable = Table.extend({
 
 // Table cell with custom style handling
 export const StoryblokTableCell = TableCell.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      colspan: {
+        default: 1,
+      },
+      rowspan: {
+        default: 1,
+      },
+      colwidth: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const colwidth = element.getAttribute('colwidth');
+          return colwidth ? colwidth.split(',').map(Number) : null;
+        },
+      },
+      backgroundColor: {
+        default: null,
+      },
+    };
+  },
   renderHTML({ HTMLAttributes }) {
     return ['td', computeTableCellAttrs(HTMLAttributes), 0];
   },

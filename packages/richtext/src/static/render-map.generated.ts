@@ -25,6 +25,7 @@ export const NODE_RENDER_MAP = {
     tag: 'ol',
     attrs: {
       start: 1,
+      order: 1,
     },
     content: true,
   },
@@ -68,7 +69,12 @@ export const NODE_RENDER_MAP = {
   },
   table: {
     tag: 'table',
-    content: true,
+    children: [
+      {
+        tag: 'tbody',
+        content: true,
+      },
+    ],
   },
   tableRow: {
     tag: 'tr',

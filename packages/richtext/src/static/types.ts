@@ -5,8 +5,17 @@ export interface SbBlokData {
   component: string;
   [otherKey: string]: any;
 }
+
+export interface RenderSpec {
+  tag: string;
+  attrs?: Record<string, any>;
+  content?: boolean;
+  children?: RenderSpec[];
+  resolve?: (attrs: unknown) => string;
+};
+
 /** Canonical type for a Storyblok RichText JSON root */
-export type StoryblokRichTextJson = Extract<PMNode, { type: 'doc' }>;
+export type StoryblokRichTextJson = PMNode;
 
 /** Typed override map for node/mark components */
 export type RichTextComponentProps<T extends TiptapComponentName> =

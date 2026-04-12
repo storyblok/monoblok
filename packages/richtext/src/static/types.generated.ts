@@ -9,16 +9,16 @@ export interface TiptapNodeAttributes {
   blockquote: Record<string, never>;
   heading: { textAlign?: 'left' | 'center' | 'right' | 'justify' | null; level?: 1 | 2 | 3 | 4 | 5 | 6 };
   bullet_list: Record<string, never>;
-  ordered_list: { start?: any; type?: any };
+  ordered_list: { start?: any; type?: any; order?: number };
   list_item: Record<string, never>;
-  code_block: { language?: any };
+  code_block: { class?: string | null };
   hard_break: Record<string, never>;
   horizontal_rule: Record<string, never>;
   image: { src?: string; alt?: string; title?: string | null; width?: number | string | null; height?: number | string | null };
   emoji: { name?: string | null };
   table: Record<string, never>;
   tableRow: Record<string, never>;
-  tableCell: { colspan?: number; rowspan?: number; colwidth?: number[] | null };
+  tableCell: { colspan?: number; rowspan?: number; colwidth?: number[] | null; backgroundColor?: string | null };
   tableHeader: { colspan?: number; rowspan?: number; colwidth?: number[] | null };
   blok: { id?: string | null; body?: SbBlokData[] };
   details: Record<string, never>;
@@ -45,7 +45,7 @@ export interface TiptapMarkAttributes {
 
 export type TiptapNodeName = keyof TiptapNodeAttributes;
 export type TiptapMarkName = keyof TiptapMarkAttributes;
-export type TiptapComponentName = TiptapNodeName | TiptapMarkName;
+export type TiptapComponentName = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
 
 export type PMNode =
   | { type: 'paragraph'; attrs?: TiptapNodeAttributes['paragraph']; content?: PMNode[]; marks?: PMMark[] }

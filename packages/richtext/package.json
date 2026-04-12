@@ -167,7 +167,6 @@
       "build": {
         "dependsOn": [
           "generate",
-          "lint:fix",
           "^build"
         ],
         "outputs": [

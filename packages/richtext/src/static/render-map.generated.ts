@@ -1,174 +1,175 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
 import type { TiptapNodeAttributes } from './index';
 /**
- * Render config for Tiptap nodes
- */
-export const NODE_RENDER_MAP = {
+  * Render config for Tiptap nodes
+  */
+  export const NODE_RENDER_MAP = {
   paragraph: {
-    tag: 'p',
-    content: true,
-  },
+  "tag": "p",
+  "content": true
+},
   doc: null,
   text: null,
   blockquote: {
-    tag: 'blockquote',
-    content: true,
-  },
+  "tag": "blockquote",
+  "content": true
+},
   heading: {
-    resolve: (attrs: TiptapNodeAttributes['heading']) => `h${attrs?.level || 1}`,
-  },
+      resolve: (attrs: TiptapNodeAttributes['heading']) => `h${attrs?.level || 1}`,
+      },
   bullet_list: {
-    tag: 'ul',
-    content: true,
-  },
+  "tag": "ul",
+  "content": true
+},
   ordered_list: {
-    tag: 'ol',
-    attrs: {
-      start: 1,
-      order: 1,
-    },
-    content: true,
+  "tag": "ol",
+  "attrs": {
+    "start": 1,
+    "order": 1
   },
+  "content": true
+},
   list_item: {
-    tag: 'li',
-    content: true,
-  },
+  "tag": "li",
+  "content": true
+},
   code_block: {
-    tag: 'pre',
-    children: [
-      {
-        tag: 'code',
-        content: true,
-      },
-    ],
-  },
+  "tag": "pre",
+  "children": [
+    {
+      "tag": "code",
+      "content": true
+    }
+  ]
+},
   hard_break: {
-    tag: 'br',
-  },
+  "tag": "br"
+},
   horizontal_rule: {
-    tag: 'hr',
-  },
+  "tag": "hr"
+},
   image: {
-    tag: 'img',
-  },
+  "tag": "img"
+},
   emoji: {
-    tag: 'span',
-    attrs: {
-      'data-type': 'emoji',
-    },
-    children: [
-      {
-        tag: 'img',
-        attrs: {
-          style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
-          draggable: 'false',
-          loading: 'lazy',
-        },
-      },
-    ],
+  "tag": "span",
+  "attrs": {
+    "data-type": "emoji"
   },
+  "children": [
+    {
+      "tag": "img",
+      "attrs": {
+        "style": "width: 1.25em; height: 1.25em; vertical-align: text-top",
+        "draggable": "false",
+        "loading": "lazy"
+      }
+    }
+  ]
+},
   table: {
-    tag: 'table',
-    children: [
-      {
-        tag: 'tbody',
-        content: true,
-      },
-    ],
-  },
+  "tag": "table",
+  "children": [
+    {
+      "tag": "tbody",
+      "content": true
+    }
+  ]
+},
   tableRow: {
-    tag: 'tr',
-    content: true,
-  },
+  "tag": "tr",
+  "content": true
+},
   tableCell: {
-    tag: 'td',
-    content: true,
-  },
+  "tag": "td",
+  "content": true
+},
   tableHeader: {
-    tag: 'th',
-    content: true,
-  },
+  "tag": "th",
+  "content": true
+},
   blok: {
-    tag: 'span',
-    attrs: {
-      'data-blok': 'null',
-      'style': 'display: none',
-    },
-  },
+  "tag": "span",
+  "attrs": {
+    "data-blok": "null",
+    "style": "display: none"
+  }
+},
   details: {
-    tag: 'details',
-    content: true,
-  },
+  "tag": "details",
+  "content": true
+},
   detailsContent: {
-    tag: 'div',
-    attrs: {
-      'data-type': 'detailsContent',
-    },
-    content: true,
+  "tag": "div",
+  "attrs": {
+    "data-type": "detailsContent"
   },
+  "content": true
+},
   detailsSummary: {
-    tag: 'summary',
-    content: true,
-  },
+  "tag": "summary",
+  "content": true
+},
 } as const;
 
 /**
- * Render config for Tiptap marks
- */
-export const MARK_RENDER_MAP = {
+  * Render config for Tiptap marks
+  */
+  export const MARK_RENDER_MAP = {
   link: {
-    tag: 'a',
-    content: true,
-  },
+  "tag": "a",
+  "content": true
+},
   bold: {
-    tag: 'strong',
-    content: true,
-  },
+  "tag": "strong",
+  "content": true
+},
   italic: {
-    tag: 'em',
-    content: true,
-  },
+  "tag": "em",
+  "content": true
+},
   strike: {
-    tag: 's',
-    content: true,
-  },
+  "tag": "s",
+  "content": true
+},
   underline: {
-    tag: 'u',
-    content: true,
-  },
+  "tag": "u",
+  "content": true
+},
   code: {
-    tag: 'code',
-    content: true,
-  },
+  "tag": "code",
+  "content": true
+},
   superscript: {
-    tag: 'sup',
-    content: true,
-  },
+  "tag": "sup",
+  "content": true
+},
   subscript: {
-    tag: 'sub',
-    content: true,
-  },
+  "tag": "sub",
+  "content": true
+},
   highlight: {
-    tag: 'mark',
-    content: true,
-  },
+  "tag": "mark",
+  "content": true
+},
   textStyle: {
-    tag: 'span',
-    attrs: {
-      style: 'color: null',
-    },
-    content: true,
+  "tag": "span",
+  "attrs": {
+    "style": "color: null"
   },
+  "content": true
+},
   anchor: {
-    tag: 'span',
-    attrs: {
-      id: null,
-    },
-    content: true,
+  "tag": "span",
+  "attrs": {
+    "id": null
   },
+  "content": true
+},
   styled: {
-    tag: 'span',
-    content: true,
-  },
+  "tag": "span",
+  "content": true
+},
   reporter: null,
 } as const;
+

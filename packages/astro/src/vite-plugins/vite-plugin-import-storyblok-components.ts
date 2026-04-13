@@ -99,14 +99,14 @@ function generateModuleCode(
       // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
       const componentName = fileName?.replace(/\\.[^/.]+$/, '');
-      
-      if (componentName) {
-        // Convert filename to camelCase for Storyblok component naming
-        const camelCaseName = toCamelCase(componentName);
 
-        storyblokComponents[camelCaseName] = async () => {
-        const module = await modules[filePath]();
-        return module.default || module;
+        if (componentName) {
+          // Convert filename to camelCase for Storyblok component naming
+          const camelCaseName = toCamelCase(componentName);
+
+          storyblokComponents[camelCaseName] = async () => {
+          const module = await modules[filePath]();
+          return module.default || module;
         };
       }
     }

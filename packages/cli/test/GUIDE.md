@@ -27,6 +27,59 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario-dir packages/cli/test/scenarios
 ```
 
+## Schema command
+
+The `schema` command uses TypeScript entry files (not JSON). When test files live outside a workspace package (e.g. `.claude/tmp/`), they can't resolve `@storyblok/schema` — rewrite the imports to absolute source paths before pushing.
+
+### Test patterns
+
+**Round-trip (pull → push idempotency):**
+```bash
+# 1. Seed space with has-default-components
+# 2. Pull
+node ./dist/index.mjs schema pull --space "$STORYBLOK_SPACE_ID" --out-dir ../../.claude/tmp/schema-test
+
+# 3. Rewrite @storyblok/schema imports to absolute source paths (only needed when
+#    the generated files live outside a workspace package, e.g. .claude/tmp/):
+#    import { defineBlock } from '@storyblok/schema'
+#    -> import { defineBlock } from '/abs/path/to/monoblok/packages/schema/src/index'
+#    import { defineBlockFolder } from '@storyblok/schema/mapi'
+#    -> import { defineBlockFolder } from '/abs/path/to/monoblok/packages/schema/src/mapi/index'
+
+# 4. Push back — should show all entities as "unchanged"
+node ./dist/index.mjs schema push ../../.claude/tmp/schema-test/schema.ts --space "$STORYBLOK_SPACE_ID" --dry-run --no-migrations
+```
+
+**Breaking changes & migrations:**
+```bash
+# Push a modified schema with --migrations to auto-generate migration files
+node ./dist/index.mjs schema push ./schema-v2.ts --space "$STORYBLOK_SPACE_ID" --migrations --path ../../.claude/tmp/schema-test
+# Inspect generated files in migrations/{spaceId}/
+```
+
+**Stale entity deletion:**
+```bash
+# Push a reduced schema with --delete to remove entities not in local schema
+node ./dist/index.mjs schema push ./schema-reduced.ts --space "$STORYBLOK_SPACE_ID" --delete --no-migrations
+```
+
+**Rollback:**
+```bash
+# After a push, rollback using the changeset
+node ./dist/index.mjs schema rollback .storyblok/schema/changesets/TIMESTAMP.json --space "$STORYBLOK_SPACE_ID"
+```
+
+### Changeset and migration storage
+
+By default, changesets are saved to `.storyblok/schema/changesets/` relative to the CLI working directory. Use `--path` to redirect to a test directory (e.g., `--path ../../.claude/tmp/schema-test`). Migrations go to `migrations/{spaceId}/` under the same base path.
+
+### Component-folder assignment
+
+Assigning components to folders requires the folder's UUID (API-assigned). To test:
+1. Push a schema with folders.
+2. Pull to get UUIDs, or query MAPI: `components pull --space $STORYBLOK_SPACE_ID` then inspect `groups.json`.
+3. Add `component_group_uuid: '<uuid>'` to component definitions and push again.
+
 ## Known quirks
 
 - **Progress bar titles show `{title}` literally** — all progress bars render the raw `{title}` placeholder instead of the actual label. This is a known rendering issue and does not affect functionality. Ignore it when reading command output.

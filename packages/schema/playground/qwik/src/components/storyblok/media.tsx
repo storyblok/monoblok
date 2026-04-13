@@ -1,10 +1,10 @@
 import { component$ } from '@builder.io/qwik';
 import { marked } from 'marked';
-import type { BlokContent } from '@storyblok/schema';
+import type { BlockContent } from '@storyblok/schema';
 import type { StoryblokTypes } from '~/schema/types';
 import type { mediaBlock } from '../../schema/components/media';
 
-type MediaContent = BlokContent<typeof mediaBlock, StoryblokTypes['components']>;
+type MediaContent = BlockContent<typeof mediaBlock, StoryblokTypes['components']>;
 
 interface MediaProps {
   blok: MediaContent;

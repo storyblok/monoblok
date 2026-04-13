@@ -1,0 +1,20 @@
+{
+  "id": 200,
+  "name": "landing_page",
+  "display_name": "Landing Page",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "title": { "type": "text", "pos": 0, "required": true, "max_length": 120 },
+    "slug_override": { "type": "text", "pos": 1, "regex": "^[a-z0-9-]+$" },
+    "body": { "type": "bloks", "pos": 2, "restrict_components": true, "component_whitelist": ["hero_banner", "feature_grid", "testimonial"] },
+    "seo_image": { "type": "asset", "pos": 3, "filetypes": ["images"] },
+    "seo_description": { "type": "textarea", "pos": 4, "max_length": 160 },
+    "published_at": { "type": "datetime", "pos": 5, "disable_time": false },
+    "is_featured": { "type": "boolean", "pos": 6 },
+    "category": { "type": "option", "pos": 7, "source": "internal", "datasource_slug": "page-categories" }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

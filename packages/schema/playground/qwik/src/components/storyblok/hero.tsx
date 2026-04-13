@@ -1,9 +1,9 @@
 import { component$ } from '@builder.io/qwik';
-import type { BlokContent } from '@storyblok/schema';
+import type { BlockContent } from '@storyblok/schema';
 import type { StoryblokTypes } from '~/schema/types';
 import type { heroBlock } from '../../schema/components/hero';
 
-type HeroContent = BlokContent<typeof heroBlock, StoryblokTypes['components']>;
+type HeroContent = BlockContent<typeof heroBlock, StoryblokTypes['components']>;
 
 interface HeroProps {
   blok: HeroContent;

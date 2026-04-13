@@ -1,9 +1,9 @@
 import { component$ } from '@builder.io/qwik';
-import type { BlokContent } from '@storyblok/schema';
+import type { BlockContent } from '@storyblok/schema';
 import type { StoryblokTypes } from '~/schema/types';
 import type { teaserBlock } from '../../schema/components/teaser';
 
-type TeaserContent = BlokContent<typeof teaserBlock, StoryblokTypes['components']>;
+type TeaserContent = BlockContent<typeof teaserBlock, StoryblokTypes['components']>;
 
 interface TeaserProps {
   blok: TeaserContent;

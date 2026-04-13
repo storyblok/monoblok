@@ -1,0 +1,78 @@
+{
+  "name": "Home",
+  "parent_id": 0,
+  "id": 1001,
+  "uuid": "story-home",
+  "is_folder": false,
+  "content": {
+    "_uid": "2798e7a6-279b-4002-8fc0-39971ff0e50b",
+    "blocks": [
+      {
+        "_uid": "9c83aa58-ac71-471d-9349-4e443f2a0f67",
+        "image": null,
+        "eyebrow": "Built with Storyblok",
+        "headline": "Code-driven content, fully typed.",
+        "component": "hero"
+      },
+      {
+        "_uid": "41de9cd0-3bec-4e90-93f6-74bd6ba7eb2f",
+        "body": "Define your components in TypeScript using `@storyblok/schema`, push them to Storyblok with the Management API, and fetch content with full type safety using `@storyblok/api-client`.",
+        "eyebrow": "How it works",
+        "headline": "Schema-first Storyblok development",
+        "component": "intro"
+      },
+      {
+        "_uid": "f1d23309-8ef0-4076-a1b0-bac7299b3b7d",
+        "text": "### Why schema-first?\n\nDefining your Storyblok components in TypeScript means your content model and your application code stay in sync. Rename a field in your schema and the compiler tells you every place that needs updating.\n\nNo more runtime surprises — just confidence from editor to production.",
+        "image": {
+          "id": 2000,
+          "alt": "About image",
+          "filename": "",
+          "fieldtype": "asset"
+        },
+        "caption": "The monoblok monorepo — schema-first Storyblok development.",
+        "component": "media"
+      },
+      {
+        "_uid": "961f4643-c93a-412e-bbf1-a3fad9d0c098",
+        "items": [
+          {
+            "_uid": "5192c63b-b6e8-4755-a39b-79f4057368ec",
+            "link": null,
+            "image": null,
+            "title": "Type-safe schema",
+            "component": "teaser",
+            "description": "Define reusable fields and components in TypeScript. Types flow from schema to fetch calls."
+          },
+          {
+            "_uid": "0114f9d9-e017-4237-9fa3-1320484a612a",
+            "link": null,
+            "image": null,
+            "title": "Management API client",
+            "component": "teaser",
+            "description": "Push components and stories to Storyblok programmatically using @storyblok/management-api-client."
+          },
+          {
+            "_uid": "13f71fcf-1614-4db2-b0ff-b72d55c09634",
+            "link": null,
+            "image": null,
+            "title": "Content Delivery API client",
+            "component": "teaser",
+            "description": "Fetch stories with a typed client that understands your schema's discriminated unions."
+          }
+        ],
+        "headline": "Explore the features",
+        "component": "teaser_list"
+      }
+    ],
+    "component": "page",
+    "seo_title": "Welcome — Storyblok + Qwik Demo",
+    "seo_description": "A demo site built with Storyblok, @storyblok/schema, and Qwik."
+  },
+  "published": true,
+  "slug": "home",
+  "path": null,
+  "full_slug": "home",
+  "is_startpage": false,
+  "position": 0
+}

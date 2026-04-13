@@ -13,6 +13,7 @@ export type {
   Component,
   ComponentCreate,
   ComponentFolder,
+  ComponentFolderCreate,
   ComponentSchemaField,
   ComponentUpdate,
   Datasource,

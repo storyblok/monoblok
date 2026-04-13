@@ -255,7 +255,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.content.asset).toBeNull();
   });
@@ -277,7 +277,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.content.link).toBeNull();
   });

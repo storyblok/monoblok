@@ -1,7 +1,13 @@
 import { defineBlock, defineField, defineProp } from '@storyblok/schema';
+import { articleBlock } from './article';
+import { bannerBlock } from './banner';
+import { comparisonTableBlock } from './comparison-table';
+import { faqBlock } from './faq';
+import { galleryBlock } from './gallery';
 import { heroBlock } from './hero';
 import { introBlock } from './intro';
 import { mediaBlock } from './media';
+import { statsBlock } from './stats';
 import { teaserListBlock } from './teaser-list';
 
 export const pageBlock = defineBlock({
@@ -19,6 +25,12 @@ export const pageBlock = defineBlock({
           introBlock.name,
           mediaBlock.name,
           teaserListBlock.name,
+          articleBlock.name,
+          bannerBlock.name,
+          galleryBlock.name,
+          faqBlock.name,
+          statsBlock.name,
+          comparisonTableBlock.name,
         ],
       }),
       { pos: 2 },

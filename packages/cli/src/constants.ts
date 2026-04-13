@@ -14,6 +14,7 @@ export const commands = {
   REPORTS: 'reports',
   ASSETS: 'assets',
   STORIES: 'stories',
+  SCHEMA: 'schema',
 } as const;
 
 export const colorPalette = {
@@ -35,6 +36,7 @@ export const colorPalette = {
   REPORTS: '#4ade80',
   ASSETS: '#f97316',
   STORIES: '#a185ff',
+  SCHEMA: '#e91e63',
 } as const;
 
 export interface ReadonlyArray<T> {

@@ -49,3 +49,8 @@ vite.config.ts.timestamp-*
 .zed
 .rules
 .worktrees
+
+.playwright-mcp
+/.storyblok
+docs/superpowers
+DOCS.md

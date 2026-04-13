@@ -7,6 +7,7 @@ const BLOCK_DEFAULTS = {
   updated_at: '',
   is_root: false,
   is_nestable: true,
+  component_group_uuid: null,
 };
 
 export type BlockSchema = ComponentGenerated['schema'];
@@ -19,12 +20,14 @@ export type Block<
   TBlockSchema extends BlockSchema = BlockSchema,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
+  TComponentGroupUuid extends string | null = string | null,
 > = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable'> & {
+  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
     name: TName;
     schema: TBlockSchema;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
+    component_group_uuid?: TComponentGroupUuid;
   }
 >;
 
@@ -44,9 +47,10 @@ type BlockInput<
   TBlockSchema extends BlockSchema = BlockSchema,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  TComponentGroupUuid extends string | null = null,
 > = Prettify<
-  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, BlockOptional>
-  & Partial<Pick<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, BlockOptional>>
+  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable, TComponentGroupUuid>, BlockOptional>
+  & Partial<Pick<Block<TName, TBlockSchema, TIsRoot, TIsNestable, TComponentGroupUuid>, BlockOptional>>
 >;
 
 type DefinedBlock<
@@ -54,10 +58,12 @@ type DefinedBlock<
   TBlockSchema extends BlockSchema = BlockSchema,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
+  TComponentGroupUuid extends string | null = string | null,
 > = Prettify<
-  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, 'is_root' | 'is_nestable'> & {
+  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable, TComponentGroupUuid>, 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
     is_root: TIsRoot;
     is_nestable: TIsNestable;
+    component_group_uuid: TComponentGroupUuid;
   }
 >;
 
@@ -81,9 +87,10 @@ export function defineBlock<
   TBlockSchema extends BlockSchema,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  TComponentGroupUuid extends string | null = null,
 >(
-  block: BlockInput<TName, TBlockSchema, TIsRoot, TIsNestable>,
-): DefinedBlock<TName, TBlockSchema, TIsRoot, TIsNestable>;
+  block: BlockInput<TName, TBlockSchema, TIsRoot, TIsNestable, TComponentGroupUuid>,
+): DefinedBlock<TName, TBlockSchema, TIsRoot, TIsNestable, TComponentGroupUuid>;
 
 // Implementation signature: uses a loose parameter type because
 // TypeScript requires the implementation signature to be assignable

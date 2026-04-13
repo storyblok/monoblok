@@ -27,3 +27,4 @@ export { defineStory } from './helpers/define-story';
 export type { Story, StoryAlternate, StoryLocalizedPath, StoryTranslatedSlug } from './helpers/define-story';
 export { defineTag } from './helpers/define-tag';
 export type { Tag } from './helpers/define-tag';
+export type { Schema } from './helpers/schema-type';

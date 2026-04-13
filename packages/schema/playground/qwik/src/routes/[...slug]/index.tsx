@@ -3,9 +3,9 @@ import { type DocumentHead, routeLoader$ } from '@builder.io/qwik-city';
 
 import { StoryblokComponent } from '~/components/storyblok/storyblok-component';
 import { createStoryblokClient } from '~/lib/storyblok';
-import type { AppStory } from '~/schema/types';
+import type { Story } from '~/schema/schema';
 
-export const useStory = routeLoader$<AppStory | null>(async ({ params, status }) => {
+export const useStory = routeLoader$<Story | null>(async ({ params, status }) => {
   const slug = params.slug || 'home';
 
   const client = createStoryblokClient();

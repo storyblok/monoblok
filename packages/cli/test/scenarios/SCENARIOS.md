@@ -19,3 +19,4 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-s
 | `has-nested-stories` | 1 story folder and 2 nested stories inside that folder (4 components, 3 stories). |
 | `has-private-assets` | 1 public asset and 1 private asset (4 components, 2 assets). |
 | `has-nested-asset-folders` | 2 nested asset folders (A → B) and 3 assets: 1 at root, 1 in Folder A, 1 in Folder B (4 components, 2 folders, 3 assets). |
+| `has-diverse-components` | 5 components (1 root, 4 nestable) using text, textarea, richtext, number, datetime, boolean, option, options, asset, multilink, bloks field types, plus 1 datasource. Good baseline for `schema pull` and round-trip testing. |

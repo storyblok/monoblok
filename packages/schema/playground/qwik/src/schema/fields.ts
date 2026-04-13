@@ -17,3 +17,9 @@ export const markdownField = defineField({
   toolbar: ['bold', 'italic', 'link', 'h2', 'h3', 'list', 'olist', 'code'],
   allow_multiline: true,
 });
+
+export const richtextField = defineField({
+  type: 'richtext',
+  customize_toolbar: true,
+  toolbar: ['bold', 'italic', 'link', 'h2', 'h3', 'list', 'olist', 'quote', 'code'],
+});

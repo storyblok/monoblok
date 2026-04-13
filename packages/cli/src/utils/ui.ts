@@ -114,6 +114,11 @@ export class UI {
     }
   }
 
+  /** Plain console.log passthrough — use for preformatted or multi-line text. */
+  log(message: string) {
+    this.console?.log(message);
+  }
+
   list(items: string[]) {
     for (const item of items) {
       this.console?.log(`  ${item}`);

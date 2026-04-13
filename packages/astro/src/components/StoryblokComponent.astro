@@ -11,34 +11,25 @@ export interface Props {
 const { blok, ...props } = Astro.props;
 
 if (!blok) {
-  throw new Error(
-    "Cannot render StoryblokComponent. 'blok' prop is undefined."
-  );
+  throw new Error("Cannot render StoryblokComponent. 'blok' prop is undefined.");
 }
 /**
  * convert blok components to camel case to match vite-plugin-import-storyblok-components
  */
 let key = toCamelCase(blok.component as string);
 
-const componentFound: boolean = key in storyblokComponents;
+const loader = storyblokComponents[key] || storyblokComponents['FallbackComponent'];
 
-let Component: AstroComponentFactory;
-
-if (!componentFound) {
-  if (!options.enableFallbackComponent)
-    throw new Error(
-      `No component found for blok "${blok.component}". 
+if (!loader) {
+  throw new Error(
+    `No component found for blok "${blok.component}". 
       Make sure the component is:
       • Registered in your astro.config.mjs, or
       • Placed in the "/${options.componentsDir}/storyblok" folder, or
-      • Enable the "fallbackComponent" option to handle missing components.`
-    );
-  else {
-    Component = storyblokComponents['FallbackComponent'];
-  }
-} else {
-  Component = storyblokComponents[key];
+      • Enable the "fallbackComponent" option to handle missing components.`,
+  );
 }
+const Component: AstroComponentFactory = await loader();
 ---
 
 <Component blok={blok} {...props} />

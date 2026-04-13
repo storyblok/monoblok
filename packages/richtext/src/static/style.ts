@@ -28,7 +28,7 @@ const STYLE_MAP: StyleMap = {
 
 type AttrMap = Record<string, string>;
 
-const ATTR_MAP: AttrMap = {
+const DEFAULT_ATTR_MAP: AttrMap = {
   fallbackImage: 'src',
   level: 'data-level',
   meta_data: 'data-meta_data',
@@ -37,14 +37,26 @@ const ATTR_MAP: AttrMap = {
   rowspan: 'rowSpan',
 };
 
+/**
+ * Process Tiptap attributes into HTML attributes and inline styles.
+ * Applies internal style mappings and allows extending or overriding
+ * default attribute mappings via `extendAttrMap`.
+ *
+ * @param type - {@link TiptapComponentName}
+ * @param attrs - Attributes from the node/mark
+ * @param extendAttrMap - {@link AttrMap} Additional attribute mappings (overrides defaults)
+ * @returns Processed attributes with optional `style` object
+ */
 export function processAttrs(
   type: TiptapComponentName,
   attrs: Record<string, any> = {},
+  extendAttrMap: AttrMap = {},
 ) {
   const style: Record<string, any> = {};
   const rest: Record<string, any> = {};
 
   const styleMap = STYLE_MAP[type] || {};
+  const attrMap = { ...DEFAULT_ATTR_MAP, ...extendAttrMap }; // user overrides
 
   for (const [key, value] of Object.entries(attrs)) {
     if (value == null) {
@@ -65,7 +77,7 @@ export function processAttrs(
     }
 
     // Resolve attribute name first
-    const attrName = ATTR_MAP[key] ?? key;
+    const attrName = attrMap[key] ?? key;
 
     // stringify objects
     if (typeof value === 'object' && value !== null) {

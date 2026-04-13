@@ -29,8 +29,11 @@ export type RichTextComponentProps<T extends TiptapComponentName> =
     components?: StoryblokRichTextComponentMap;
   };
 
-export type StoryblokRichTextComponentMap = {
+export type StoryblokRichTextComponentMap<
+  R = any,
+  ExtraProps extends object = object,
+> = {
   [K in TiptapComponentName]?: (
-    props: RichTextComponentProps<K>
-  ) => any;
+    props: RichTextComponentProps<K> & ExtraProps
+  ) => R;
 };

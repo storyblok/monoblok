@@ -13,5 +13,5 @@ const TYPES_PATH = path.join(__dirname, '../types.generated.ts');
 const types = generateTypes();
 const renderMaps = generateRenderMap();
 
-fs.writeFileSync(RENDER_MAP_PATH, renderMaps, 'utf-8');
 fs.writeFileSync(TYPES_PATH, types, 'utf-8');
+fs.writeFileSync(RENDER_MAP_PATH, renderMaps, 'utf-8');

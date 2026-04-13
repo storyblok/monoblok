@@ -1,5 +1,5 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
-import type { TiptapNodeAttributes } from './index';
+import type { TiptapNodeAttributes } from './types.generated.ts';
 /**
   * Render config for Tiptap nodes
   */

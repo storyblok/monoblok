@@ -81,7 +81,7 @@ export function generateRenderMap() {
   const schema = getSchema(extensions as AnyExtension[]);
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
-  output += `import type { TiptapNodeAttributes } from './index';\n`;
+  output += `import type { TiptapNodeAttributes } from './types.generated.ts';\n`;
   output += `/**
   * Render config for Tiptap nodes
   */

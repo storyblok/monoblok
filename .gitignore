@@ -48,3 +48,4 @@ vite.config.ts.timestamp-*
 .cursor
 .zed
 .rules
+.worktrees

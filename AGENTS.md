@@ -1,5 +1,7 @@
 # Guidelines for Storyblok monoblok
 
+> **Note:** `AGENTS.md` is the source of truth. `CLAUDE.md` is a symlink to `AGENTS.md` for Claude Code compatibility.
+
 Adhere strictly to these guidelines to ensure consistency and code quality. Use relevant skills if applicable.
 
 ## Project context
@@ -48,3 +50,5 @@ The `adr/` directory contains Architecture Decision Records (ADRs) documenting m
 ## General
 
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
+- **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
+- **Worktrees:** Always use the `.worktrees/` directory when creating git worktrees.

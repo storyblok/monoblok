@@ -52,6 +52,15 @@ pushCmd
 
     const pendingWarnings: string[] = [];
 
+    const formatStoryLabel = (info: { slug?: string; uuid?: string; filename?: string }): string => {
+      const parts: string[] = [];
+      if (info.slug) { parts.push(`"${info.slug}"`); }
+      if (info.uuid) { parts.push(`(${info.uuid})`); }
+      if (info.filename) { parts.push(`[${info.filename}]`); }
+      return parts.join(' ') || 'unknown story';
+    };
+
+    const failedStoryLabels: string[] = [];
     const summary = {
       creationResults: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
       processResults: { total: 0, succeeded: 0, failed: 0 },
@@ -141,6 +150,9 @@ pushCmd
         },
         onError(error, filename) {
           summary.creationResults.failed += 1;
+          const label = formatStoryLabel({ filename });
+          failedStoryLabels.push(label);
+          ui.error(`Story failed: ${label}`, null, { header: false, margin: false });
           handleError(error, verbose, { storyFile: filename });
         },
       });
@@ -204,6 +216,9 @@ pushCmd
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
             creationProgress.increment();
+            const label = formatStoryLabel({ slug: entry?.slug, uuid: entry?.uuid, filename: entry?.filename });
+            failedStoryLabels.push(label);
+            ui.error(`Story failed: ${label}`, null, { header: false, margin: false });
             handleError(error, verbose, { storyId: entry?.uuid });
           },
         });
@@ -241,6 +256,9 @@ pushCmd
             summary.updateResults.total -= 1;
             processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
+            const label = formatStoryLabel({ filename });
+            failedStoryLabels.push(label);
+            ui.error(`Story failed: ${label}`, null, { header: false, margin: false });
             handleError(error, verbose, { storyFile: filename });
           },
         }),
@@ -260,6 +278,9 @@ pushCmd
             summary.processResults.failed += 1;
             summary.updateResults.total -= 1;
             updateProgress.setTotal(summary.updateResults.total);
+            const label = formatStoryLabel({ slug: localStory.slug, uuid: localStory.uuid });
+            failedStoryLabels.push(label);
+            ui.error(`Story failed: ${label}`, null, { header: false, margin: false });
             handleError(error, verbose, { storyId: localStory.uuid });
           },
         }),
@@ -285,6 +306,9 @@ pushCmd
           },
           onStoryError(error, localStory) {
             summary.updateResults.failed += 1;
+            const label = formatStoryLabel({ slug: localStory.slug, uuid: localStory.uuid });
+            failedStoryLabels.push(label);
+            ui.error(`Story failed: ${label}`, null, { header: false, margin: false });
             handleError(error, verbose, { storyId: localStory.uuid });
           },
         }),
@@ -307,9 +331,17 @@ pushCmd
         `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed.`,
       ]);
 
+      if (failedStoryLabels.length > 0) {
+        ui.warn('Failed stories:');
+        ui.list(failedStoryLabels);
+      }
+
       reporter.addSummary('creationResults', summary.creationResults);
       reporter.addSummary('processResults', summary.processResults);
       reporter.addSummary('updateResults', summary.updateResults);
+      if (failedStoryLabels.length > 0) {
+        reporter.addMeta('failedStories', failedStoryLabels);
+      }
       reporter.finalize();
     }
   });

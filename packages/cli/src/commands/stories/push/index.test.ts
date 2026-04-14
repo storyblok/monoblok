@@ -1181,6 +1181,18 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('Permission denied while accessing the file');
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`"story-a"`),
+        expect.anything(),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories:'),
+      );
       // UI
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1619,6 +1631,18 @@ describe('stories push command', () => {
       expect(logFile).toContain(
         'Expected property name or \'}\' in JSON at position 1',
       );
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('[story-a.json]'),
+        expect.anything(),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories:'),
+      );
       // UI
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1655,6 +1679,18 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('The server returned an error');
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`"story-a"`),
+        expect.anything(),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories:'),
+      );
       // UI
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1706,6 +1742,18 @@ describe('stories push command', () => {
         expect.stringContaining('Invalid bloks field: expected an array'),
         expect.anything(),
       );
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`"story-a"`),
+        expect.anything(),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories:'),
+      );
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
@@ -1738,6 +1786,15 @@ describe('stories push command', () => {
       expect(report?.status).toBe('FAILURE');
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('is missing a content type (content.component)');
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`"story-a"`),
+        expect.anything(),
+      );
     });
 
     it('should handle errors when updating stories fails', async () => {
@@ -1768,6 +1825,18 @@ describe('stories push command', () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('The server returned an error'),
         expect.anything(),
+      );
+      // UI — story identification
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Story failed:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`"story-a"`),
+        expect.anything(),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories:'),
       );
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),

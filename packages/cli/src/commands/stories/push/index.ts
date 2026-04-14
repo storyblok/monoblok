@@ -51,8 +51,10 @@ pushCmd
       return;
     }
 
+    const pendingWarnings: string[] = [];
+
+    const warnedPlugins = new Set<string>();
     const warnAboutCustomPlugins = (fields: Set<Component['schema']>, story: Story) => {
-      const warnedPlugins = new Set<string>();
       for (const field of fields) {
         if (field.type === 'custom' && typeof field.field_type === 'string') {
           if (warnedPlugins.has(field.field_type)) {
@@ -60,19 +62,19 @@ pushCmd
           }
           warnedPlugins.add(field.field_type);
           const message = `The custom plugin "${field.field_type}" may contain references that require manual updates.`;
-          ui.warn(message);
+          pendingWarnings.push(message);
           logger.warn(message, { storyId: story.uuid });
         }
       }
     };
+    const missingSchemaWarnings = new Set<string>();
     const warnAboutMissingSchemas = (missingSchemas: Set<Component['name']>, story: Story) => {
-      const missingSchemaWarnings = new Set<string>();
       for (const schemaName of missingSchemas) {
         if (missingSchemaWarnings.has(schemaName)) {
           continue;
         }
         const message = `The component "${schemaName}" was not found. Please run \`storyblok components pull\` to fetch the latest components.`;
-        ui.warn(message);
+        pendingWarnings.push(message);
         logger.warn(message, { storyId: story.uuid });
         missingSchemaWarnings.add(schemaName);
       }
@@ -195,7 +197,7 @@ pushCmd
 
       if (summary.creationResults.failed > 0) {
         const message = `${summary.creationResults.failed} ${summary.creationResults.failed === 1 ? 'story' : 'stories'} failed to create. References to these stories will be left unmapped.`;
-        ui.warn(message);
+        pendingWarnings.push(message);
         logger.warn(message);
       }
 
@@ -281,6 +283,9 @@ pushCmd
     finally {
       logger.info('Pushing stories finished', summary);
       ui.stopAllProgressBars();
+      for (const warning of pendingWarnings) {
+        ui.warn(warning);
+      }
       const failedStories = Math.max(summary.creationResults.failed, summary.processResults.failed, summary.updateResults.failed);
       ui.info(`Push results: ${summary.creationResults.total} ${summary.creationResults.total === 1 ? 'story' : 'stories'} pushed, ${failedStories} ${failedStories === 1 ? 'story' : 'stories'} failed`);
       ui.list([

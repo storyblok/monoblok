@@ -14,7 +14,6 @@ import type {
   CleanupAssetTransport,
   CreateAssetFolderTransport,
   CreateAssetTransport,
-  DownloadAssetFileTransport,
   GetAssetFolderTransport,
   GetAssetTransport,
   UpdateAssetFolderTransport,
@@ -98,14 +97,13 @@ export const upsertAssetsPipeline = async ({
     getAsset: GetAssetTransport;
     createAsset: CreateAssetTransport;
     updateAsset: UpdateAssetTransport;
-    downloadAssetFile: DownloadAssetFileTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset: CleanupAssetTransport;
   };
   ui: UI;
 }): Promise<Summaries> => {
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
-  const summary = { total: 0, succeeded: 0, failed: 0, skipped: 0 };
+  const summary = { total: 0, succeeded: 0, failed: 0 };
 
   const steps = [];
   // Use the asset provided via the CLI.
@@ -157,21 +155,6 @@ export const upsertAssetsPipeline = async ({
 
       summary.succeeded += 1;
       logger.info('Uploaded asset', { assetId: remoteAsset.id });
-    },
-    onAssetSkipped: (localAssetResult, remoteAsset) => {
-      if ('id' in localAssetResult && localAssetResult.id) {
-        maps.assets.set(localAssetResult.id, {
-          old: localAssetResult,
-          new: {
-            id: remoteAsset.id,
-            filename: remoteAsset.filename,
-            meta_data: remoteAsset.meta_data,
-          },
-        });
-      }
-
-      summary.skipped += 1;
-      logger.debug('Skipped asset (unchanged)', { assetId: remoteAsset.id });
     },
     onAssetError: (error, asset) => {
       summary.failed += 1;

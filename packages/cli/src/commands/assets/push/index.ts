@@ -16,7 +16,6 @@ import {
   makeCleanupAssetFSTransport,
   makeCreateAssetAPITransport,
   makeCreateAssetFolderAPITransport,
-  makeDownloadAssetFileTransport,
   makeGetAssetAPITransport,
   makeGetAssetFolderAPITransport,
   makeUpdateAssetAPITransport,
@@ -40,7 +39,6 @@ const pushCmd = assetsCommand
   .option('--folder <folderId>', 'destination asset folder ID')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
-  .option('--asset-token <token>', 'asset token for accessing private assets')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Push local assets to a Storyblok space.`);
 
@@ -60,7 +58,6 @@ pushCmd
 
     const { space: targetSpace, path: basePath, verbose } = command.optsWithGlobals();
     const fromSpace = (options.from as string | undefined) || targetSpace;
-    const assetToken = options.assetToken as string | undefined;
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
@@ -72,8 +69,6 @@ pushCmd
       process.exitCode = 2;
       return;
     }
-
-    const { region } = state;
 
     const summaries: [string, Report['summary'][string]][] = [];
     let fatalError = false;
@@ -152,10 +147,6 @@ pushCmd
       const updateAssetTransport = options.dryRun
         ? async () => {}
         : makeUpdateAssetAPITransport({ spaceId: targetSpace });
-      const downloadAssetFileTransport = makeDownloadAssetFileTransport({
-        assetToken,
-        region,
-      });
       const assetManifestTransport = options.dryRun
         ? () => Promise.resolve()
         : makeAppendAssetManifestFSTransport({ manifestFile });
@@ -173,7 +164,6 @@ pushCmd
           getAsset: getAssetTransport,
           createAsset: createAssetTransport,
           updateAsset: updateAssetTransport,
-          downloadAssetFile: downloadAssetFileTransport,
           appendAssetManifest: assetManifestTransport,
           cleanupAsset: cleanupAssetTransport,
         },
@@ -221,13 +211,12 @@ pushCmd
       logger.info('Pushing assets finished', { summary });
       const assetsTotal = summary.assetResults?.total ?? 0;
       const assetsSucceeded = summary.assetResults?.succeeded ?? 0;
-      const assetsSkipped = summary.assetResults?.skipped ?? 0;
       const assetsFailed = summary.assetResults?.failed ?? 0;
 
       ui.info(`Push results: ${assetsTotal} processed, ${assetsFailed} assets failed`);
       ui.list([
         `Folders: ${summary.assetFolderResults?.succeeded ?? 0}/${summary.assetFolderResults?.total ?? 0} succeeded, ${summary.assetFolderResults?.failed ?? 0} failed.`,
-        `Assets: ${assetsSucceeded}/${assetsTotal} succeeded, ${assetsSkipped} skipped, ${assetsFailed} failed.`,
+        `Assets: ${assetsSucceeded}/${assetsTotal} succeeded, ${assetsFailed} failed.`,
       ]);
       for (const [name, reportSummary] of summaries) {
         reporter.addSummary(name, reportSummary);

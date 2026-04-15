@@ -1,11 +1,9 @@
-import { Buffer } from 'node:buffer';
 import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, AssetUpload } from './types';
-import { createHash } from 'node:crypto';
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
@@ -143,19 +141,7 @@ export const updateAssetFolder = async (id: number, folder: AssetFolderUpdate, {
   }
 };
 
-/**
- * Computes the SHA-256 hash of a file buffer.
- * Used for comparing local and remote file contents.
- */
-export const sha256 = (data: ArrayBuffer | Buffer) => {
-  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
-  return createHash('sha256').update(buffer).digest('hex');
-};
-
-/**
- * Downloads a remote asset file for comparison purposes.
- * Handles both public and private assets.
- */
+/** Downloads a remote asset file. Handles both public and private assets. */
 export const downloadAssetFile = async (
   asset: { filename: string; is_private?: boolean },
   options: { assetToken?: string; region?: RegionCode },

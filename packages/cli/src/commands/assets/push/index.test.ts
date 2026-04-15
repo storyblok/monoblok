@@ -320,21 +320,6 @@ const preconditions = {
       return HttpResponse.arrayBuffer(content.buffer as ArrayBuffer);
     }));
   },
-  canDownloadAssets(assets: MockAsset[], { content = 'binary-content' }: { content?: string } = {}) {
-    for (const asset of assets) {
-      server.use(http.get(asset.filename, () => HttpResponse.text(content)));
-    }
-  },
-  canDownloadPrivateAsset(signedUrl: string, content = 'private-binary-content') {
-    server.use(http.get(signedUrl, () => HttpResponse.text(content)));
-  },
-  canFetchSignedUrl(signedUrl: string) {
-    server.use(
-      http.get('https://api.storyblok.com/v2/cdn/assets/me', () => {
-        return HttpResponse.json({ asset: { signed_url: signedUrl } });
-      }),
-    );
-  },
   canFetchRemoteStoryPages(storyPages: MockStory[][]) {
     server.use(
       http.get(
@@ -458,7 +443,6 @@ describe('assets push command', () => {
         assetResults: {
           total: 1,
           succeeded: 1,
-          skipped: 0,
           failed: 0,
         },
       },
@@ -469,11 +453,11 @@ describe('assets push command', () => {
     expect(logFile).toMatch(/Uploaded asset/);
     expect(logFile).toContain('Pushing assets finished');
     expect(logFile).toContain('"assetFolderResults":{"total":1,"succeeded":1,"failed":0}');
-    expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0,"skipped":0}');
+    expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
     // UI
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -571,7 +555,7 @@ describe('assets push command', () => {
       meta: expect.any(Object),
       summary: {
         assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
-        assetResults: { total: 1, succeeded: 1, skipped: 0, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, failed: 0 },
         fetchStoryPages: { total: 1, succeeded: 1, failed: 0 },
         fetchStories: { total: 1, succeeded: 1, failed: 0 },
         storyProcessResults: { total: 1, succeeded: 1, failed: 0 },
@@ -581,7 +565,7 @@ describe('assets push command', () => {
     // UI
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -719,7 +703,7 @@ describe('assets push command', () => {
       meta: expect.any(Object),
       summary: {
         assetFolderResults: { total: 0, succeeded: 0, failed: 0 },
-        assetResults: { total: 1, succeeded: 1, skipped: 0, failed: 0 },
+        assetResults: { total: 1, succeeded: 1, failed: 0 },
       },
     });
     // UI
@@ -727,7 +711,7 @@ describe('assets push command', () => {
     expect(console.error).not.toHaveBeenCalled();
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 skipped, 0 failed.'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -839,7 +823,7 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
@@ -883,7 +867,7 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
@@ -963,31 +947,17 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when updating assets fails', async () => {
-    const localAsset = makeMockAsset({
-      meta_data: {
-        alt: 'New alt',
-        title: 'New title',
-        copyright: 'New copyright',
-      },
-    });
+    const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
-      ...localAsset,
-      meta_data: {
-        alt: 'Old alt',
-        title: 'Old title',
-        copyright: 'Old copyright',
-      },
-    }]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
     preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset]);
     preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
     preconditions.failsToUpdateRemoteAssets();
 
@@ -1008,7 +978,7 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
@@ -1036,7 +1006,7 @@ describe('assets push command', () => {
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('Assets: 0/1 succeeded, 0 skipped, 1 failed.'),
+      expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
@@ -1062,31 +1032,13 @@ describe('assets push command', () => {
     }));
   });
 
-  it('should skip update when both file and metadata are unchanged', async () => {
-    const localAsset = makeMockAsset();
-    preconditions.canLoadFolders([]);
-    preconditions.canLoadAssets([localAsset]);
-    const finishUploadSpy = vi.fn();
-    const updateSpy = vi.fn();
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy, updateSpy });
-    preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset]);
-    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
-
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-    expect(finishUploadSpy).not.toHaveBeenCalled();
-    expect(updateSpy).not.toHaveBeenCalled();
-  });
-
-  it('should upload a new asset file when updating an existing asset with a different binary hash', async () => {
+  it('should always upload when updating an existing asset', async () => {
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const finishUploadSpy = vi.fn();
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
     preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
@@ -1102,39 +1054,13 @@ describe('assets push command', () => {
     ]);
   });
 
-  it('should upload a new private asset file when updating an existing asset with a different binary hash', async () => {
-    const localAsset = makeMockAsset({ is_private: true });
-    preconditions.canLoadFolders([]);
-    preconditions.canLoadAssets([localAsset]);
-    const finishUploadSpy = vi.fn();
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
-    preconditions.canFetchRemoteAssets([remoteAsset]);
-    const signedUrl = 'https://signed-download-url.s3.amazonaws.com/asset.png?signature=xyz';
-    preconditions.canFetchSignedUrl(signedUrl);
-    preconditions.canDownloadPrivateAsset(signedUrl);
-
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--asset-token', 'test-asset-token']);
-
-    expect(finishUploadSpy).toHaveBeenCalled();
-    expect(await parseManifest()).toEqual([
-      {
-        old_id: localAsset.id,
-        old_filename: localAsset.filename,
-        new_id: remoteAsset.id,
-        new_filename: remoteAsset.filename,
-        created_at: expect.any(String),
-      },
-    ]);
-  });
-
-  it('should upload a new asset file when updating an existing asset with a different binary hash when resuming from manifest', async () => {
+  it('should upload when resuming from manifest', async () => {
     const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const finishUploadSpy = vi.fn();
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { finishUploadSpy });
     preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset], { content: 'new-binary-content' });
     preconditions.canLoadAssetsManifest([{
       old_id: localAsset.id,
       old_filename: localAsset.filename,
@@ -1155,25 +1081,11 @@ describe('assets push command', () => {
   });
 
   it('should update existing remote assets even when no manifest exists', async () => {
-    const localAsset = makeMockAsset({
-      meta_data: {
-        alt: 'New alt',
-        title: 'New title',
-        copyright: 'New copyright',
-      },
-    });
+    const localAsset = makeMockAsset();
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
-      ...localAsset,
-      meta_data: {
-        alt: 'Old alt',
-        title: 'Old title',
-        copyright: 'Old copyright',
-      },
-    }]);
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
     preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset]);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
@@ -1188,27 +1100,6 @@ describe('assets push command', () => {
         created_at: expect.any(String),
       },
     ]);
-  });
-
-  it('should not skip update when top-level metadata changed but meta_data object is empty', async () => {
-    const localAsset = makeMockAsset({
-      alt: 'New alt',
-      meta_data: {},
-    });
-    preconditions.canLoadFolders([]);
-    preconditions.canLoadAssets([localAsset]);
-    const [remoteAsset] = preconditions.canUpsertRemoteAssets([{
-      ...localAsset,
-      alt: 'Old alt',
-      meta_data: {},
-    }]);
-    preconditions.canFetchRemoteAssets([remoteAsset]);
-    preconditions.canDownloadAssets([remoteAsset]);
-    preconditions.canLoadAssetsManifest([{ old_id: localAsset.id, new_id: remoteAsset.id }]);
-
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-    expect(actions.updateAsset).toHaveBeenCalled();
   });
 
   it('should use sidecar json data when pushing a single local asset without --data', async () => {
@@ -1304,7 +1195,6 @@ describe('assets push command', () => {
     preconditions.canLoadAssets([asset]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
     preconditions.canFetchRemoteAssets([remoteAsset], { space: targetSpace });
-    preconditions.canDownloadAssets([remoteAsset]);
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
@@ -1479,7 +1369,6 @@ describe('assets push command', () => {
     });
     preconditions.canLoadComponents([pageComponent]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
-    preconditions.canDownloadAssets([remoteAsset]);
     preconditions.canFetchRemoteAssets([remoteAsset]);
     preconditions.canFetchRemoteStoryPages([]);
 

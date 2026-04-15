@@ -151,7 +151,12 @@ Paths are relative to this `SKILL.md`.
 - When running `.mjs` test files, env vars must be **exported** (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to `node` subprocesses.
 
 **MAPI:**
+- **Auth uses `personalAccessToken`** — The MAPI client config property is `personalAccessToken` (or `oauthToken` for OAuth).
+  ```js
+  createManagementApiClient({ personalAccessToken: process.env.STORYBLOK_TOKEN, spaceId })
+  ```
 - **Assets list does NOT support `sort_by`** — passing `sort_by: 'id:asc'` returns HTTP 422 and `data: undefined`.
+- **Story `content.body` is not always an array** — `body` can be a string or other type depending on the component schema. Never spread it directly (e.g., `...content.body`). Use `Array.isArray(content.body)` or walk content recursively to find nested blocks.
 
 **CLI:**
 - **`--asset-token` requires an `asset`-type API key** — Only a token with access type `asset` works. Use `STORYBLOK_ASSET_TOKEN` or `STORYBLOK_ASSET_TOKEN_TARGET` environment variables.

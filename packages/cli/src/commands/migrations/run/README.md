@@ -42,7 +42,8 @@ This will run migrations for the specified component:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to run migrations in | - |
+| `-s, --space <space>` | (Required) The ID of the space to run migrations on | - |
+| `-f, --from <from>` | Source space ID to read migration files from (useful for multi-space workflows where migrations are created in one space and applied to others) | Same as `--space` |
 | `--fi, --filter <filter>` | Glob pattern to filter migration filenames (e.g., "hero*" will match all migration files starting with "hero") | - |
 | `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
 | `-q, --query <query>` | Filter stories by content attributes using Storyblok filter query syntax (e.g., `--query="[highlighted][in]=true"`) | - |
@@ -97,6 +98,18 @@ storyblok migrations run --space 12345 --starts-with "/en/blog/"
 storyblok migrations run --space 12345 --query "[highlighted][in]=true"
 ```
 
+10. Run migrations from a different space (cross-space workflow):
+```bash
+# Generate migrations against your DEV space
+storyblok migrations generate hero --space 11111
+
+# Apply those same migrations to STAGING
+storyblok migrations run hero --space 22222 --from 11111
+
+# Apply to PRODUCTION
+storyblok migrations run hero --space 33333 --from 11111
+```
+
 ## File Structure
 
 The command reads from the following file structure:
@@ -123,6 +136,7 @@ Where:
   - Apply the migrations to the stories
   - Update the stories in Storyblok (unless `--dry-run` is used)
   - Create a snapshot of each story's content in `.storyblok/migrations/{spaceId}/rollbacks` with a timestamp for potential rollbacks
+- Use `--from` to read migration files from a different space's directory — this is useful for DEV/STAGING/PRODUCTION workflows where you create migrations once and apply them across spaces
 - Use `--dry-run` to preview changes before applying them
 - Use `--publish` to control which stories are affected
 - Use `--starts-with` and `--query` to filter which stories are affected

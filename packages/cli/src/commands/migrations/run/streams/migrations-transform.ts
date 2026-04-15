@@ -11,6 +11,8 @@ import { toError } from '../../../../utils/error';
 export interface MigrationStreamOptions {
   migrationFiles: MigrationFile[];
   space: string;
+  /** Space id to read migration files from. Defaults to `space` when not set. */
+  sourceSpace: string;
   path: string;
   componentName?: string;
   onProgress: (current: number) => void;
@@ -77,7 +79,7 @@ export class MigrationStream extends Transform {
 
     const migrationFunction = await getMigrationFunction(
       migrationFile.name,
-      this.options.space,
+      this.options.sourceSpace,
       this.options.path,
     );
     this.migrationFunctions.set(migrationFile.name, migrationFunction);

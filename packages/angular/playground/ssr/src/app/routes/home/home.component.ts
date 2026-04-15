@@ -43,9 +43,10 @@ export class HomeComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      const { data } = await this.client.stories.get('home', {
+      const { data } = await this.client.stories.get('angular/home', {
         query: {
           version: 'draft',
+          resolve_relations: 'featured-articles.articles',
         },
       });
       this.story.set((data?.story as Story) || null);

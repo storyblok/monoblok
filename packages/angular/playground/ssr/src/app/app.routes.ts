@@ -16,11 +16,14 @@ export const routes: Routes = [
     resolve: {
       story: async (route: ActivatedRouteSnapshot) => {
         const slug = route.url.map((s) => s.path).join('/') || 'home';
+        //This is just because we are using one playground with diffrent framework folder
+        const path = slug.includes('angular/') ? slug : `angular/${slug}`;
+
         const client = inject(StoryblokService).getClient();
-        const { data } = await client.stories.get(slug, {
+        const { data } = await client.stories.get(path, {
           query: {
             version: 'draft',
-            resolve_relations: 'feature_posts.posts',
+            resolve_relations: 'featured-articles.articles',
           },
         });
         return data?.story;

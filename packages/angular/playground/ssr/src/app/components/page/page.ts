@@ -17,7 +17,7 @@ export interface PageBlok extends SbBlokData {
   imports: [SbBlokDirective, SbRichTextComponent],
   template: `
     <div class="space-y-8">
-      @for (blok of blok().body ?? []; track blok._uid) {
+      @for (blok of blok().body ?? []; track blok['_uid']) {
         <ng-container [sbBlok]="blok" />
       }
       <div>

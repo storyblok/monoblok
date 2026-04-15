@@ -18,8 +18,7 @@ const pushCmd = datasourcesCommand
   .option('--fi, --filter <filter>', 'glob filter to apply to the datasources before pushing')
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
   .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 pushCmd
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions, command: Command) => {

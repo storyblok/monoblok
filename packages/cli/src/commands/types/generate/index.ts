@@ -23,8 +23,7 @@ const generateCmd = typesCommand
   .option('--suffix <suffix>', 'Components suffix')
   .option('--custom-fields-parser <path>', 'Path to the parser file for Custom Field Types')
   .option('--compiler-options <options>', 'path to the compiler options from json-schema-to-typescript')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 generateCmd
   .action(async (options: GenerateTypesOptions, command: Command) => {

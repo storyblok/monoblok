@@ -8,11 +8,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loggedOutSessionState } from '../../../test/setup';
 import { join, relative } from 'pathe';
 import { resolveCommandPath } from '../../utils/filesystem';
+import { getProgram } from '../../program';
 
 vi.mock('./actions', () => ({
   fetchLanguages: vi.fn(),
   saveLanguagesToFile: vi.fn(),
 }));
+
+beforeEach(() => {
+  getProgram().setOptionValueWithSource('path', undefined, 'default');
+});
 
 vi.mock('../../creds', () => ({
   getCredentials: vi.fn(),
@@ -118,7 +123,9 @@ describe('languagesCommand', () => {
         };
 
         vi.mocked(fetchLanguages).mockResolvedValue(mockResponse);
-        await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--path', '/tmp']);
+        const program = getProgram();
+        program.setOptionValueWithSource('path', '/tmp', 'cli');
+        await languagesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
         expect(fetchLanguages).toHaveBeenCalledWith('12345');
         expect(saveLanguagesToFile).toHaveBeenCalledWith('12345', mockResponse, expect.objectContaining({
           path: '/tmp',

@@ -6,6 +6,7 @@ import '../index';
 import { migrationsCommand } from '../command';
 import { fetchComponent } from '../../../commands/components';
 import { getLogFileContents } from '../../__tests__/helpers';
+import { getProgram } from '../../../program';
 
 vi.mock('../../../commands/components', () => ({
   fetchComponent: vi.fn(),
@@ -49,6 +50,7 @@ describe('migrations generate command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
+    getProgram().setOptionValueWithSource('path', undefined, 'default');
   });
 
   it('should generate a migration using default path', async () => {
@@ -68,7 +70,10 @@ describe('migrations generate command', () => {
   it('should generate a migration using custom path', async () => {
     preconditions.componentExists();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'generate', 'component-name', '--space', '12345', '--path', 'custom']);
+    const program = getProgram();
+    program.setOptionValueWithSource('path', 'custom', 'cli');
+
+    await migrationsCommand.parseAsync(['node', 'test', 'generate', 'component-name', '--space', '12345']);
 
     expect(generateMigration).toHaveBeenCalledWith('12345', 'custom', expect.objectContaining({ name: 'component-name' }), undefined);
     const logFile = getLogFileContents(LOG_PREFIX);

@@ -7,8 +7,7 @@ import { reportsCommand } from '../command';
 
 const listCmd = reportsCommand.command('list')
   .description('List reports')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 listCmd
   .action(async (_options: unknown, command: Command) => {

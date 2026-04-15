@@ -19,7 +19,6 @@ const pushCmd = storiesCommand
   .command('push')
   .option('-s, --space <space>', 'space ID')
   .option('-f, --from <from>', 'source space id')
-  .option('-p, --path <path>', 'base path for stories and components (default .storyblok)')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('--publish', 'Publish stories after pushing')
   .option('--cleanup', 'delete local stories after a successful push (note: does not cleanup manifests)')

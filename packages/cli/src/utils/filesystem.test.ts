@@ -156,6 +156,18 @@ describe('filesystem utils', async () => {
       const resolvedPathWithoutPath = resolvePath(undefined, folder);
       expect(resolvedPathWithoutPath).toBe(resolve(process.cwd(), '.storyblok', folder));
     });
+
+    it('should preserve dot-prefixed directory names', async () => {
+      const resolvedPath = resolvePath('.storyblok', 'migrations/12345');
+      expect(resolvedPath).toBe(resolve(process.cwd(), '.storyblok', 'migrations/12345'));
+    });
+
+    it('should not duplicate migrations when path does not include it', async () => {
+      const resolvedPath = resolvePath('.storyblok', 'migrations/12345');
+      const parts = resolvedPath.split('/');
+      const migrationsCount = parts.filter(p => p === 'migrations').length;
+      expect(migrationsCount).toBe(1);
+    });
   });
 
   describe('getComponentNameFromFilename', async () => {

@@ -11,6 +11,11 @@ export function parseNumber(value: string): number {
 
 export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
   {
+    flags: '-p, --path <path>',
+    description: 'Base directory for file storage (default: .storyblok)',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.path,
+  },
+  {
     flags: '--verbose',
     description: 'Enable verbose output',
     defaultValue: DEFAULT_GLOBAL_CONFIG.verbose,

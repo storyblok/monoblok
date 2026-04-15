@@ -12,6 +12,7 @@ import { directories } from '../../../constants';
 import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
 import * as actions from '../actions';
 import { resetReporter } from '../../../lib/reporter/reporter';
+import { getProgram } from '../../../program';
 import {
   DEFAULT_SPACE,
   getID,
@@ -158,6 +159,7 @@ describe('stories push command', () => {
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
+    getProgram().setOptionValueWithSource('path', undefined, 'default');
     resetReporter();
   });
   afterAll(() => server.close());
@@ -1010,7 +1012,9 @@ describe('stories push command', () => {
       const remoteStories = preconditions.canCreateStories([storyA]);
       preconditions.canUpdateStories(remoteStories);
 
-      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--path', customPath]);
+      const program = getProgram();
+      program.setOptionValueWithSource('path', customPath, 'cli');
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
       const [remoteStory] = remoteStories;
       expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, remoteStory.id, expect.anything());

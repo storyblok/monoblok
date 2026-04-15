@@ -47,6 +47,9 @@ export function applyCliOverrides(commandChain: CommanderCommand[], globalResolv
       const value = command.getOptionValue(attrName);
       if (isRoot) {
         setValueAtPath(globalResolved, getOptionPath(option), value);
+        // Global CLI overrides must also win over module-level config that may have
+        // set the same key in localResolved (e.g. --path overriding modules.*.path).
+        delete localResolved[attrName];
       }
       else {
         localResolved[attrName] = value;

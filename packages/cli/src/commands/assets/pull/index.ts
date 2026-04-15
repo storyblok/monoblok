@@ -22,7 +22,6 @@ import {
 const pullCmd = assetsCommand
   .command('pull')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('--asset-token <token>', 'Asset token for accessing private assets')

@@ -17,6 +17,7 @@ import { getAssetBinaryFilename, getAssetFilename, getFolderFilename } from '../
 import * as actions from '../actions';
 import * as storyActions from '../../stories/actions';
 import { normalizeAssetUrl } from '@storyblok/management-api-client';
+import { getProgram } from '../../../program';
 import {
   DEFAULT_SPACE,
   getID,
@@ -401,6 +402,7 @@ describe('assets push command', () => {
     vol.reset();
     server.resetHandlers();
     resetReporter();
+    getProgram().setOptionValueWithSource('path', undefined, 'default');
     process.exitCode = undefined;
   });
   afterAll(() => server.close());
@@ -741,7 +743,9 @@ describe('assets push command', () => {
     const folderMap = new Map<number, number>([[folder.id, remoteFolder.id]]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([asset], { folderMap });
 
-    await assetsCommand.parseAsync(['node', 'test', 'push', '--path', customPath, '--space', DEFAULT_SPACE]);
+    const program = getProgram();
+    program.setOptionValueWithSource('path', customPath, 'cli');
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
     expect(actions.createAssetFolder).toHaveBeenCalled();
     expect(actions.createAsset).toHaveBeenCalled();

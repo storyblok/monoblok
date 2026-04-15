@@ -9,6 +9,7 @@ import '../index';
 import { componentsCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
 import { getUI } from '../../../utils/ui';
+import { getProgram } from '../../../program';
 
 vi.mock('./actions', () => ({
   fetchComponents: vi.fn(),
@@ -41,6 +42,7 @@ describe('pull', () => {
     vi.spyOn(ui, 'br');
     vi.spyOn(ui, 'title');
     // Reset the option values
+    getProgram().setOptionValueWithSource('path', undefined, 'default');
     (componentsCommand as any)._optionValues = {};
     (componentsCommand as any)._optionValueSources = {};
     for (const command of componentsCommand.commands) {
@@ -160,7 +162,9 @@ describe('pull', () => {
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
 
-      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--path', '/path/to/components']);
+      const program = getProgram();
+      program.setOptionValueWithSource('path', '/path/to/components', 'cli');
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
       expect(fetchComponents).toHaveBeenCalledWith('12345');
       expect(saveComponentsToFiles).toHaveBeenCalledWith('12345', {
         components: mockResponse,

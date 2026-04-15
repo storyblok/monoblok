@@ -1,6 +1,6 @@
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
 import type { Component } from '../../components/constants';
-import { join, resolve } from 'pathe';
+import { join } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
 
 const getMigrationTemplate = () => {
@@ -20,9 +20,7 @@ const getMigrationTemplate = () => {
 };
 
 export const generateMigration = async (space: string, path: string | undefined, component: Component, suffix?: string) => {
-  const resolvedPath = path
-    ? resolve(process.cwd(), path, 'migrations', space)
-    : resolvePath(path, `migrations/${space}`);
+  const resolvedPath = resolvePath(path, `migrations/${space}`);
 
   const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
   const migrationPath = join(resolvedPath, fileName);

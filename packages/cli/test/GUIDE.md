@@ -22,6 +22,7 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 ## Known quirks
 
 - **Progress bar titles show `{title}` literally** — all progress bars render the raw `{title}` placeholder instead of the actual label. This is a known rendering issue and does not affect functionality. Ignore it when reading command output.
+- **Spinner continues after error in `migrations run`** — when `readMigrationFiles` throws (e.g., missing directory), the spinner is not stopped before the error handler runs. The error message is still displayed correctly.
 
 ## Troubleshooting
 

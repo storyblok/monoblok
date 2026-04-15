@@ -103,7 +103,7 @@
     "@tiptap/extension-superscript": "^3.10.2",
     "@tiptap/extension-table": "^3.10.2",
     "@tiptap/extension-text": "^3.10.2",
-    "@tiptap/extension-text-align": "^3.22.3",
+    "@tiptap/extension-text-align": "^3.10.2",
     "@tiptap/extension-text-style": "^3.10.2",
     "@tiptap/extension-underline": "^3.10.2",
     "@tiptap/html": "^3.10.2",

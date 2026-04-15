@@ -1186,7 +1186,7 @@ importers:
         specifier: ^3.10.2
         version: 3.20.0(@tiptap/core@3.20.0(@tiptap/pm@3.20.0))
       '@tiptap/extension-text-align':
-        specifier: ^3.22.3
+        specifier: ^3.10.2
         version: 3.22.3(@tiptap/core@3.20.0(@tiptap/pm@3.20.0))
       '@tiptap/extension-text-style':
         specifier: ^3.10.2

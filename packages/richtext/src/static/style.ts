@@ -52,27 +52,31 @@ export function processAttrs(
   attrs: Record<string, any> = {},
   extendAttrMap: AttrMap = {},
 ) {
-  const style: Record<string, any> = {};
-  const rest: Record<string, any> = {};
+  const style: Record<string, string | number> = {};
+  const rest: Record<string, string | number> = {};
 
   const styleMap = STYLE_MAP[type] || {};
   const attrMap = { ...DEFAULT_ATTR_MAP, ...extendAttrMap }; // user overrides
-
   for (const [key, value] of Object.entries(attrs)) {
-    if (value == null) {
+    if (!isValidStyleValue(value)) {
       continue;
     }
-
     // STYLE MAP
     if (key in styleMap) {
-      const cssProp = styleMap[key as keyof typeof styleMap];
+      const cssProp = styleMap[key]!;
       if (Array.isArray(value)) {
-        style[cssProp] = value[0] != null ? `${value[0]}px` : undefined;
+        const cssValue = value[0] != null ? `${value[0]}px` : undefined;
+        if (cssValue && isValidStyleValue(cssValue)) {
+          style[cssProp] = cssValue;
+        }
       }
       else {
-        style[cssProp] = value;
-      }
+        const cssValue = typeof value === 'number' || typeof value === 'string'
+          ? value
+          : String(value);
 
+        style[cssProp] = cssValue;
+      }
       continue;
     }
 
@@ -94,9 +98,10 @@ export function processAttrs(
     ...(Object.keys(style).length && { style }),
   };
 }
-export function styleToString(style: Record<string, any>) {
+export function styleToString(style: Record<string, string | number>) {
   return Object.entries(style)
-    .map(([k, v]) => `${k.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}: ${v}`)
+    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([k, v]) => `${camelToKebab(k)}: ${v}`)
     .join('; ');
 }
 export function stringToStyle(style: string): Record<string, string> {
@@ -105,14 +110,31 @@ export function stringToStyle(style: string): Record<string, string> {
     .map(rule => rule.trim())
     .filter(Boolean)
     .reduce<Record<string, string>>((acc, rule) => {
-      const [key, value] = rule.split(':').map(s => s.trim());
-      if (key && value) {
-        acc[kebabToCamel(key)] = value;
+      const colonIdx = rule.indexOf(':');
+
+      // ignore invalid declarations like "color" or ": red"
+      if (colonIdx === -1) {
+        return acc;
       }
+
+      const key = rule.slice(0, colonIdx).trim();
+      const value = rule.slice(colonIdx + 1).trim();
+
+      if (!key || !value) {
+        return acc;
+      }
+
+      acc[kebabToCamel(key)] = value;
       return acc;
     }, {});
 }
 
 function kebabToCamel(str: string) {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+function camelToKebab(str: string) {
+  return str.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+}
+function isValidStyleValue(value: unknown) {
+  return value !== null && value !== undefined && value !== '';
 }

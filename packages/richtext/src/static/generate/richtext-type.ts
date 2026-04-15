@@ -8,7 +8,7 @@ import { hints } from './type-hints';
  * Converts a schema attrs object to a TS property string (with type from hints)
  * E.g. { color: { default: null } } -> 'color?: string | null;'
  */
-function getAttrType(attrName: string, _def: any): string {
+function getAttrType(attrName: string): string {
   return hints[attrName] || 'any';
 }
 
@@ -17,8 +17,8 @@ function genAttrsType(attrs: Record<string, any> | undefined): string {
     return 'Record<string, never>';
   }
   let out = '{ ';
-  for (const [attrName, attrVal] of Object.entries(attrs)) {
-    const typeStr = getAttrType(attrName, attrVal);
+  for (const [attrName] of Object.entries(attrs)) {
+    const typeStr = getAttrType(attrName);
     out += `${attrName}?: ${typeStr}; `;
   }
   out += '}';
@@ -67,17 +67,18 @@ export function generateTypes() {
   const defaultExtensions = getStoryblokExtensions();
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
+  const attributeTypes = genAttributeTypes(schema);
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
   output += `import type { SbBlokData } from './types';\n\n`;
   // --- Attribute types
   output += '/** Attribute types for all Tiptap node extensions */\n';
   output += 'export interface TiptapNodeAttributes {\n';
-  output += genAttributeTypes(schema).nodeAttrs;
+  output += attributeTypes.nodeAttrs;
   output += '}\n\n';
   output += '/** Attribute types for all Tiptap mark extensions */\n';
   output += 'export interface TiptapMarkAttributes {\n';
-  output += genAttributeTypes(schema).markAttrs;
+  output += attributeTypes.markAttrs;
   output += '}\n\n';
   // --- Node name unions
   output += 'export type TiptapNodeName = keyof TiptapNodeAttributes;\n';

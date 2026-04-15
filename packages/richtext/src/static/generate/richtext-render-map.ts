@@ -2,13 +2,14 @@ import { type AnyExtension, getSchema } from '@tiptap/core';
 import { getStoryblokExtensions } from '../../extensions';
 import type { Schema } from 'prosemirror-model';
 import { MarkType, NodeType } from 'prosemirror-model';
-import { parseDOMSpec } from './parseDOMSpec';
+import { parseDOMSpec } from './parse-dom-spec';
+
 /**
  * Known dynamic resolvers (hand-written, minimal set)
  * These handle cases where toDOM depends on attrs
  */
 const DYNAMIC_NODE_RESOLVERS: Record<string, string> = {
-  heading: `(attrs: TiptapNodeAttributes['heading']) => \`h\${attrs?.level || 1}\``,
+  heading: `resolveHeadingTag`,
 };
 
 function getMockAttrs(type: MarkType | NodeType) {
@@ -81,7 +82,7 @@ export function generateRenderMap() {
   const schema = getSchema(extensions as AnyExtension[]);
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
-  output += `import type { TiptapNodeAttributes } from './types.generated.ts';\n`;
+  output += `import { resolveHeadingTag } from './dynamic-resolvers';\n`;
   output += `/**
   * Render config for Tiptap nodes
   */

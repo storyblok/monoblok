@@ -36,7 +36,7 @@ export interface TiptapMarkAttributes {
   code: Record<string, never>;
   superscript: Record<string, never>;
   subscript: Record<string, never>;
-  highlight: Record<string, never>;
+  highlight: { color?: string | null; };
   textStyle: { class?: string | null; id?: string | null; color?: string | null; };
   anchor: { id?: string | null; };
   styled: { class?: string | null; };

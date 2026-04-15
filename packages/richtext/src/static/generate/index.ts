@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import path from 'node:path';
+import path from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { generateTypes } from './richtext-type';
 import { generateRenderMap } from './richtext-render-map';

@@ -1,5 +1,5 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
-import type { TiptapNodeAttributes } from './types.generated.ts';
+import { resolveHeadingTag } from './dynamic-resolvers';
 /**
   * Render config for Tiptap nodes
   */
@@ -15,7 +15,7 @@ import type { TiptapNodeAttributes } from './types.generated.ts';
   "content": true
 },
   heading: {
-      resolve: (attrs: TiptapNodeAttributes['heading']) => `h${attrs?.level || 1}`,
+      resolve: resolveHeadingTag,
       },
   bullet_list: {
   "tag": "ul",
@@ -150,6 +150,9 @@ import type { TiptapNodeAttributes } from './types.generated.ts';
 },
   highlight: {
   "tag": "mark",
+  "attrs": {
+    "color": null
+  },
   "content": true
 },
   textStyle: {

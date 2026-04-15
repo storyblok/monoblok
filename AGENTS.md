@@ -51,4 +51,7 @@ The `adr/` directory contains Architecture Decision Records (ADRs) documenting m
 
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
 - **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
+- **Branches:** Follow the current branch naming pattern: `<type>/<ticket-or-scope>-<short-description>`, e.g. `feature/WDX-351-type-safe-schema-support`, `bugfix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
+- **Commits:** If ticket or issue information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
+- **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Worktrees:** Always use the `.worktrees/` directory when creating git worktrees.

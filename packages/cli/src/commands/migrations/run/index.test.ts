@@ -62,6 +62,7 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => ({
 const mockStory = createMockStory();
 
 const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-component.js';
+const FROM_SPACE_MIGRATION_FILE_PATH = './.storyblok/migrations/67890/migration-component.js';
 const LOG_PREFIX = 'storyblok-migrations-run-';
 
 const preconditions = {
@@ -111,6 +112,16 @@ const preconditions = {
     this.canFetchStory();
     this.canUpdateStory();
     this.canLoadMigrationFunction((block: any) => block);
+  },
+  canMigrateFromSpace() {
+    this.canFetchStories();
+    this.canFetchStory();
+    this.canUpdateStory();
+    vol.fromJSON({
+      [FROM_SPACE_MIGRATION_FILE_PATH]: 'only the filename matters!',
+    });
+    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
+    importModuleSpy.mockImplementation(() => Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }));
   },
 };
 
@@ -312,5 +323,63 @@ describe('migrations run command', () => {
       }),
     );
     expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+  });
+
+  it('should read migration files from --from space and apply to --space', async () => {
+    preconditions.canMigrateFromSpace();
+
+    resetLogger();
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+
+    // Stories should be fetched from the target space (--space)
+    expect(fetchStories).toHaveBeenCalledWith(
+      '12345',
+      expect.objectContaining({
+        per_page: 500,
+        page: 1,
+        story_only: true,
+      }),
+    );
+    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+
+    // Migration module should be loaded from the --from space directory, not --space
+    expect(filesystem.importModule).toHaveBeenCalledWith(
+      expect.stringContaining('/migrations/67890/'),
+    );
+    expect(filesystem.importModule).not.toHaveBeenCalledWith(
+      expect.stringContaining('/migrations/12345/'),
+    );
+
+    // Migration should be applied successfully
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Migration Results:'),
+    );
+  });
+
+  it('should show info message when --from is provided', async () => {
+    preconditions.canMigrateFromSpace();
+
+    resetLogger();
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('from'),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('67890'),
+    );
+  });
+
+  it('should reference --from space in error when migration directory does not exist', async () => {
+    preconditions.migrationDirectoryDoesNotExist();
+
+    resetLogger();
+
+    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+
+    const logFile = getLogFileContents(LOG_PREFIX);
+    expect(logFile).toContain('No directory found for space \\"67890\\".');
   });
 });

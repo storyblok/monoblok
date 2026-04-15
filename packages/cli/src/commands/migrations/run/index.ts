@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import chalk from 'chalk';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
@@ -20,6 +21,7 @@ const runCmd = migrationsCommand.command('run [componentName]')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
+  .option('-f, --from <from>', 'source space id')
   .option('-s, --space <space>', 'space ID');
 
 runCmd
@@ -47,13 +49,19 @@ runCmd
       return;
     }
 
-    const { filter, dryRun = false, query, startsWith, publish } = options;
+    const { filter, from, dryRun = false, query, startsWith, publish } = options;
+    const fromSpace = from || space;
+
+    if (from) {
+      ui.info(`Running migrations ${chalk.bold('from')} space ${chalk.hex(colorPalette.MIGRATIONS)(fromSpace)} ${chalk.bold('on')} space ${chalk.hex(colorPalette.MIGRATIONS)(space)}`);
+      ui.br();
+    }
 
     try {
       const spinner = ui.createSpinner(`Fetching migration files and stories...`);
 
       const migrationFiles = await readMigrationFiles({
-        space,
+        space: fromSpace,
         path,
         filter,
       });
@@ -66,7 +74,7 @@ runCmd
         : migrationFiles;
 
       if (filteredMigrations.length === 0) {
-        spinner.failed(`No migration files found${componentName ? ` for component "${componentName}"` : ''}${filter ? ` matching filter "${filter}"` : ''} in space "${space}".`);
+        spinner.failed(`No migration files found${componentName ? ` for component "${componentName}"` : ''}${filter ? ` matching filter "${filter}"` : ''} in space "${fromSpace}".`);
         logger.warn('No migration files found');
         logger.info('Migration finished');
         return;
@@ -98,6 +106,7 @@ runCmd
       const migrationStream = new MigrationStream({
         migrationFiles: filteredMigrations,
         space,
+        sourceSpace: fromSpace,
         path,
         componentName,
         onTotal: (total) => {

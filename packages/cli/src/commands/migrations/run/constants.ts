@@ -4,6 +4,10 @@ import type { StoryContent } from '../../stories/constants';
 export interface MigrationsRunOptions extends CommandOptions {
   dryRun?: boolean;
   filter?: string;
+  /**
+   * The source space id to read migration files from.
+   */
+  from?: string;
   query?: string;
   startsWith?: string;
   publish?: 'all' | 'published' | 'published-with-changes';

@@ -11,7 +11,7 @@ export interface GridBlok extends SbBlokData {
   imports: [SbBlokDirective],
   template: `
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      @for (column of blok().columns ?? []; track column._uid) {
+      @for (column of blok().columns ?? []; track column['_uid']) {
         <ng-container [sbBlok]="column" />
       }
     </div>

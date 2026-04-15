@@ -11,6 +11,7 @@ export const storyblokComponents: StoryblokComponentsMap = {
   teaser: () => import('./components/teaser/teaser').then((m) => m.TeaserComponent),
   grid: () => import('./components/grid/grid').then((m) => m.GridComponent),
   feature: () => import('./components/feature/feature').then((m) => m.FeatureComponent),
-  feature_posts: () =>
+  'featured-articles': () =>
     import('./components/feature-posts/feature-posts').then((m) => m.FeaturePostsComponent),
+  article: () => import('./components/article/article.component').then((m) => m.ArticleComponent),
 };

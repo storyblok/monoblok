@@ -91,7 +91,6 @@ import { resolveHeadingTag } from './dynamic-resolvers';
   blok: {
   "tag": "span",
   "attrs": {
-    "data-blok": "null",
     "style": "display: none"
   }
 },
@@ -150,23 +149,14 @@ import { resolveHeadingTag } from './dynamic-resolvers';
 },
   highlight: {
   "tag": "mark",
-  "attrs": {
-    "color": null
-  },
   "content": true
 },
   textStyle: {
   "tag": "span",
-  "attrs": {
-    "style": "color: null"
-  },
   "content": true
 },
   anchor: {
   "tag": "span",
-  "attrs": {
-    "id": null
-  },
   "content": true
 },
   styled: {

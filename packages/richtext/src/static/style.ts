@@ -1,3 +1,4 @@
+import type { AttrValue } from './generate/parse-dom-spec';
 import type { TiptapComponentName } from './types.generated';
 
 type StyleMap = Partial<{
@@ -98,7 +99,7 @@ export function processAttrs(
     ...(Object.keys(style).length && { style }),
   };
 }
-export function styleToString(style: Record<string, string | number>) {
+export function styleToString(style: Record<string, AttrValue>) {
   return Object.entries(style)
     .filter(([, v]) => v !== null && v !== undefined && v !== '')
     .map(([k, v]) => `${camelToKebab(k)}: ${v}`)

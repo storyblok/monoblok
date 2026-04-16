@@ -8,11 +8,11 @@ export interface SbBlokData {
 
 export interface RenderSpec {
   tag: string;
-  attrs?: Record<string, any>;
+  attrs?: Record<string, string | number | boolean>;
   content?: boolean;
   children?: RenderSpec[];
   resolve?: (attrs: unknown) => string;
-};
+}
 
 /** Canonical type for a Storyblok RichText JSON root */
 export type StoryblokRichTextJson = PMNode;

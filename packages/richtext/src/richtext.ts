@@ -129,6 +129,11 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       keyCounters.set(tag, currentCount + 1);
       attrs = { ...attrs, key: `${tag}-${currentCount}` };
     }
+    // Wrap children in a function for component tags to avoid Vue slot warning:
+    // "Non-function value encountered for default slot."
+    if (isExternalRenderFn && typeof tag !== 'string' && children !== undefined) {
+      return renderFn(tag, attrs, (() => children) as unknown as T);
+    }
     return renderFn(tag, attrs, children);
   };
 

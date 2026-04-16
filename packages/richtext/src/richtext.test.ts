@@ -3,8 +3,9 @@ import { richTextResolver } from './richtext';
 import { getRichTextSegments } from './richtext-segment';
 import { renderSegments } from './render-segments';
 import type { RendererAdapter } from './render-segments';
-import { createTextVNode, h } from 'vue';
+import { createSSRApp, createTextVNode, h } from 'vue';
 import type { VNode } from 'vue';
+import { renderToString } from 'vue/server-renderer';
 import type { StoryblokRichTextNode } from './types';
 import { Mark, Node } from '@tiptap/core';
 import Heading from '@tiptap/extension-heading';
@@ -1080,6 +1081,100 @@ describe('richtext', () => {
       expect(vnode.__v_isVNode).toBeTruthy();
       expect(vnode.type).toBe(CustomAlert);
       expect(vnode.props?.class).toBe('alert');
+    });
+
+    it('should not emit Vue slot warning when rendering component marks', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const RouterLink = {
+        name: 'RouterLink',
+        props: { to: String },
+        setup(props: { to: string }, { slots }: any) {
+          return () => h('a', { href: props.to }, slots.default?.());
+        },
+      };
+      const CustomLink = Mark.create({
+        name: 'link',
+        renderHTML({ HTMLAttributes }: any) {
+          if (HTMLAttributes.linktype === 'story') {
+            return [RouterLink, { to: HTMLAttributes.href }, 0];
+          }
+          return ['a', { href: HTMLAttributes.href }, 0];
+        },
+      });
+
+      const { render } = richTextResolver<VNode>({
+        renderFn: h,
+        textFn: createTextVNode,
+        keyedResolvers: true,
+        tiptapExtensions: { link: CustomLink },
+      });
+
+      const doc = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [{
+            type: 'text',
+            text: 'click here',
+            marks: [{ type: 'link', attrs: { href: '/about', linktype: 'story' } }],
+          }],
+        }],
+      };
+
+      const vnodes = render(doc as any);
+      // SSR rendering triggers the Vue slot warning
+      const app = createSSRApp({ render: () => vnodes });
+      await renderToString(app);
+
+      const slotWarnings = warnSpy.mock.calls.filter(
+        call => typeof call[0] === 'string' && call[0].includes('Non-function value encountered for default slot'),
+      );
+      expect(slotWarnings).toHaveLength(0);
+
+      warnSpy.mockRestore();
+    });
+
+    it('should not emit Vue slot warning when rendering component nodes', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const CustomAlert = {
+        name: 'CustomAlert',
+        setup(_props: any, { slots }: any) {
+          return () => h('div', { class: 'alert' }, slots.default?.());
+        },
+      };
+      const AlertNode = Node.create({
+        name: 'paragraph',
+        content: 'inline*',
+        group: 'block',
+        renderHTML() {
+          return [CustomAlert, { class: 'alert' }, 0];
+        },
+      });
+
+      const { render } = richTextResolver<VNode>({
+        renderFn: h,
+        textFn: createTextVNode,
+        keyedResolvers: true,
+        tiptapExtensions: { paragraph: AlertNode },
+      });
+
+      const doc = {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Alert content' }],
+      };
+
+      const vnodes = render(doc as any);
+      const app = createSSRApp({ render: () => vnodes });
+      await renderToString(app);
+
+      const slotWarnings = warnSpy.mock.calls.filter(
+        call => typeof call[0] === 'string' && call[0].includes('Non-function value encountered for default slot'),
+      );
+      expect(slotWarnings).toHaveLength(0);
+
+      warnSpy.mockRestore();
     });
   });
 });

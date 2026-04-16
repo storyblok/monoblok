@@ -7,8 +7,7 @@ import { directories } from '../../../constants';
 
 const listCmd = logsCommand.command('list')
   .description('List logs')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 listCmd
   .action(async (_options: unknown, command: Command) => {

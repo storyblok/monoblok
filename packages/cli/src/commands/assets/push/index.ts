@@ -33,7 +33,6 @@ const pushCmd = assetsCommand
   .command('push')
   .argument('[asset]', 'path or URL of a single asset to push')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .option('-f, --from <from>', 'source space id')
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')

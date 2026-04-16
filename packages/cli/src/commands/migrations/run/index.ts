@@ -20,8 +20,7 @@ const runCmd = migrationsCommand.command('run [componentName]')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
   .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
   .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 runCmd
   .action(async (componentName: string | undefined, options: MigrationsRunOptions, command: Command) => {

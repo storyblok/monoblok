@@ -17,8 +17,7 @@ const deleteCmd = datasourcesCommand
   .description('Delete a datasource from your space by name or id')
   .option('--id <id>', 'Delete by datasource id instead of name')
   .option('--force', 'Skip confirmation prompt for deletion (useful for CI)')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 deleteCmd
   .action(async (name: string, options: DeleteDatasourceOptions, command: Command) => {

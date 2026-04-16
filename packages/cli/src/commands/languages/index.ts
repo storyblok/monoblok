@@ -22,8 +22,7 @@ const pullCmd = languagesCommand
   .description(`Download your space's languages schema as json`)
   .option('-f, --filename <filename>', 'filename to save the file as <filename>.<suffix>.json')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. languages.<suffix>.json). By default, the space ID is used.')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 pullCmd
   .action(async (options: PullLanguagesOptions, command: Command) => {

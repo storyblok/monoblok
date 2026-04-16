@@ -12,8 +12,7 @@ import chalk from 'chalk';
 
 const rollbackCmd = migrationsCommand.command('rollback [migrationFile]')
   .description('Rollback a migration')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 rollbackCmd
   .action(async (migrationFile: string, _options: unknown, command: Command) => {

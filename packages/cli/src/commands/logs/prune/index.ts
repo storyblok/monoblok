@@ -8,8 +8,7 @@ import { directories } from '../../../constants';
 const pruneCmd = logsCommand.command('prune')
   .description('Prune logs')
   .option('--keep <number>', 'Max number of log files to keep (default `0`, meaning remove all)', Number.parseInt, 0)
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 pruneCmd
   .action(async (options: { keep: number }, command: Command) => {

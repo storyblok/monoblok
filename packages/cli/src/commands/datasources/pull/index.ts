@@ -19,7 +19,6 @@ const pullCmd = datasourcesCommand
   .option('--sf, --separate-files', 'Argument to create a single file for each datasource')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. datasources.<suffix>.json)')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .description('Pull datasources from your space');
 
 pullCmd

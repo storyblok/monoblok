@@ -15,8 +15,7 @@ const generateCmd = migrationsCommand
   .command('generate [componentName]')
   .description('Generate a migration file')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. {component-name}.<suffix>.js)')
-  .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage');
+  .option('-s, --space <space>', 'space ID');
 
 generateCmd
   .action(async (componentName: string | undefined, options: MigrationsGenerateOptions, command: Command) => {

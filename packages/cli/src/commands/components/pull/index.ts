@@ -19,7 +19,6 @@ const pullCmd = componentsCommand
   .option('--sf, --separate-files', 'Argument to create a single file for each component')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`);
 
 pullCmd

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateMigration } from './actions';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
-import { join, resolve } from 'pathe';
+import { join } from 'pathe';
 import { handleFileSystemError } from '../../../utils';
 import type { Component } from '../../components';
 
@@ -80,18 +80,15 @@ describe('generateMigration', () => {
   it('should use custom path when provided', async () => {
     // Arrange
     const customPath = '/custom/path';
-    const expectedPath = resolve(process.cwd(), customPath, 'migrations', mockSpace);
+    const expectedPath = join(process.cwd(), '.storyblok', `migrations/${mockSpace}`);
     const expectedFilePath = join(expectedPath, `${mockComponent.name}.js`);
 
     // Act
     await generateMigration(mockSpace, customPath, mockComponent);
 
     // Assert
-    expect(saveToFile).toHaveBeenCalledTimes(1);
-    expect(saveToFile).toHaveBeenCalledWith(
-      expectedFilePath,
-      expect.any(String),
-    );
+    expect(resolvePath).toHaveBeenCalledWith(customPath, `migrations/${mockSpace}`);
+    expect(saveToFile).toHaveBeenCalledWith(expectedFilePath, expect.any(String));
   });
 
   it('should handle filesystem errors properly', async () => {

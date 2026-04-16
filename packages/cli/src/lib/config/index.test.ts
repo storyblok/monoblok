@@ -44,14 +44,12 @@ function createCommandHierarchy(): CommandHierarchy {
     .option('--separate-files', 'Separate output per component', false)
     .option('--filename <filename>', 'Filename used for exports', 'components')
     .option('--suffix <suffix>', 'Optional filename suffix')
-    .option('-s, --space <space>', 'space ID')
-    .option('-p, --path <path>', 'path for file storage');
+    .option('-s, --space <space>', 'space ID');
 
   const push = components
     .command('push')
     .option('--dry-run', 'Preview component push', false)
-    .option('-s, --space <space>', 'space ID')
-    .option('-p, --path <path>', 'path for file storage');
+    .option('-s, --space <space>', 'space ID');
 
   return { root, components, pull, push };
 }
@@ -125,6 +123,24 @@ describe('config resolver', () => {
     expect(resolved.dryRun).toBe(true);
   });
 
+  it('module-level path overrides global path from config', async () => {
+    loadConfigLayersSpy.mockResolvedValue([
+      {
+        path: 'global-path',
+        modules: {
+          components: {
+            path: 'module-path',
+          },
+        },
+      },
+    ]);
+
+    const { root, components, pull } = createCommandHierarchy();
+    const resolved = await resolveConfig(pull, [root, components, pull]);
+
+    expect(resolved.path).toBe('module-path');
+  });
+
   it('prefers specific config layers but leaves CLI overrides as the final word', async () => {
     loadConfigLayersSpy.mockResolvedValue([
       {
@@ -149,7 +165,7 @@ describe('config resolver', () => {
 
     const { root, components, pull } = createCommandHierarchy();
     root.setOptionValueWithSource('region', 'cn', 'cli');
-    pull.setOptionValueWithSource('path', './from-cli', 'cli');
+    root.setOptionValueWithSource('path', './from-cli', 'cli');
     pull.setOptionValueWithSource('separateFiles', true, 'cli');
 
     const resolved = await resolveConfig(pull, [root, components, pull]);
@@ -201,13 +217,13 @@ describe('config resolver', () => {
 
     const defaultConfig = createDefaultResolvedConfig();
     expect(root.getOptionValue('region')).toBe(defaultConfig.region);
-    expect(pull.getOptionValue('path')).toBeUndefined();
+    expect(root.getOptionValue('path')).toBeUndefined();
     expect(pull.getOptionValue('suffix')).toBeUndefined();
 
     applyConfigToCommander(ancestry, resolved);
 
     expect(root.getOptionValue('region')).toBe('us');
-    expect(pull.getOptionValue('path')).toBe('.storyblok');
+    expect(root.getOptionValue('path')).toBe('.storyblok');
     expect(pull.getOptionValue('suffix')).toBe('resolved');
   });
 
@@ -454,8 +470,7 @@ describe('deeply nested command structures', () => {
     const pull = components
       .command('pull')
       .option('--filename <filename>', 'Filename', 'components')
-      .option('-s, --space <space>', 'space ID')
-      .option('-p, --path <path>', 'path for file storage');
+      .option('-s, --space <space>', 'space ID');
 
     const show = pull
       .command('show')

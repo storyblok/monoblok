@@ -10,6 +10,7 @@ import type { StoryContent } from '../../stories/constants';
 import { getLogFileContents } from '../../__tests__/helpers';
 import { session } from '../../../session';
 import { loggedOutSessionState } from '../../../../test/setup';
+import { getProgram } from '../../../program';
 
 vi.mock('./actions', () => ({
   readRollbackFile: vi.fn(),
@@ -73,6 +74,7 @@ describe('migrations rollback command', () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
+    getProgram().setOptionValueWithSource('path', undefined, 'default');
   });
 
   it('should rollback a migration successfully', async () => {
@@ -210,6 +212,9 @@ describe('migrations rollback command', () => {
   it('should handle custom path option', async () => {
     preconditions.canRollback();
 
+    const program = getProgram();
+    program.setOptionValueWithSource('path', '/custom/path', 'cli');
+
     await migrationsCommand.parseAsync([
       'node',
       'test',
@@ -217,8 +222,6 @@ describe('migrations rollback command', () => {
       'test-migration',
       '--space',
       '12345',
-      '--path',
-      '/custom/path',
     ]);
 
     expect(readRollbackFile).toHaveBeenCalledWith({

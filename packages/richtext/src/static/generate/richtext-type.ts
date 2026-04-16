@@ -1,6 +1,6 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
-import type { MarkType, NodeType, Schema } from 'prosemirror-model';
+import type { AttributeSpec, MarkType, NodeType, Schema } from 'prosemirror-model';
 import { getStoryblokExtensions } from '../../extensions';
 import { hints } from './type-hints';
 
@@ -9,10 +9,9 @@ import { hints } from './type-hints';
  * E.g. { color: { default: null } } -> 'color?: string | null;'
  */
 function getAttrType(attrName: string): string {
-  return hints[attrName] || 'any';
+  return hints[attrName] || 'unknown';
 }
-
-function genAttrsType(attrs: Record<string, any> | undefined): string {
+function genAttrsType(attrs: Record<string, AttributeSpec> | undefined): string {
   if (!attrs || Object.keys(attrs).length === 0) {
     return 'Record<string, never>';
   }

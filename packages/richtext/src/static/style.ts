@@ -50,11 +50,11 @@ const DEFAULT_ATTR_MAP: AttrMap = {
  */
 export function processAttrs(
   type: TiptapComponentName,
-  attrs: Record<string, any> = {},
+  attrs: Record<string, AttrValue> = {},
   extendAttrMap: AttrMap = {},
 ) {
-  const style: Record<string, string | number> = {};
-  const rest: Record<string, string | number> = {};
+  const style: Record<string, AttrValue> = {};
+  const rest: Record<string, AttrValue> = {};
 
   const styleMap = STYLE_MAP[type] || {};
   const attrMap = { ...DEFAULT_ATTR_MAP, ...extendAttrMap }; // user overrides

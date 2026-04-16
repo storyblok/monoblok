@@ -2,7 +2,7 @@ import { type AnyExtension, getSchema } from '@tiptap/core';
 import { getStoryblokExtensions } from '../../extensions';
 import type { Schema } from 'prosemirror-model';
 import { MarkType, NodeType } from 'prosemirror-model';
-import { parseDOMSpec } from './parse-dom-spec';
+import { type AttrValue, parseDOMSpec } from './parse-dom-spec';
 
 /**
  * Known dynamic resolvers (hand-written, minimal set)
@@ -13,10 +13,9 @@ const DYNAMIC_NODE_RESOLVERS: Record<string, string> = {
 };
 
 function getMockAttrs(type: MarkType | NodeType) {
-  const result: Record<string, any> = {};
+  const result: Record<string, AttrValue> = {};
   for (const [key, val] of Object.entries(type.spec.attrs || {})) {
-    const attr: any = val;
-    result[key] = attr.default ?? null;
+    result[key] = val.default ?? null;
   }
 
   return result;

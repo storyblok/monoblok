@@ -17,23 +17,29 @@ export interface RenderSpec {
 /** Canonical type for a Storyblok RichText JSON root */
 export type StoryblokRichTextJson = PMNode;
 
+/** Base props for node/mark components */
+export type RichTextBaseProps<T extends TiptapComponentName> =
+  T extends PMNode['type']
+    ? Extract<PMNode, { type: T }>
+    : T extends PMMark['type']
+      ? Extract<PMMark, { type: T }>
+      : never;
+
 /** Typed override map for node/mark components */
-export type RichTextComponentProps<T extends TiptapComponentName> =
-  (
-    T extends PMNode['type']
-      ? Extract<PMNode, { type: T }>
-      : T extends PMMark['type']
-        ? Extract<PMMark, { type: T }>
-        : never
-  ) & {
-    components?: StoryblokRichTextComponentMap;
+export type RichTextComponentProps<
+  T extends TiptapComponentName,
+  TComponent = unknown,
+  ExtraProps extends Record<string, unknown> = Record<string, never>,
+> = RichTextBaseProps<T> &
+  ExtraProps & {
+    components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>;
   };
 
 export type StoryblokRichTextComponentMap<
-  R = any,
-  ExtraProps extends object = object,
+  TComponent = unknown,
+  ExtraProps extends Record<string, unknown> = Record<string, never>,
 > = {
   [K in TiptapComponentName]?: (
-    props: RichTextComponentProps<K> & ExtraProps
-  ) => R;
+    props: RichTextComponentProps<K, TComponent, ExtraProps>
+  ) => TComponent;
 };

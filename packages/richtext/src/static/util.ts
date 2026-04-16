@@ -1,15 +1,17 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
 import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
+import type { StoryblokRichTextComponentMap } from './types';
 
 export function resolveComponent<
   K extends TiptapComponentName,
-  M extends Partial<Record<TiptapComponentName, any>>,
+  TComponent,
+  ExtraProps extends Record<string, unknown> = Record<string, never>,
 >(
   type: K,
-  components?: M,
-) {
-  return components?.[type] as M[K] | undefined;
+  components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>,
+): StoryblokRichTextComponentMap<TComponent, ExtraProps>[K] | undefined {
+  return components?.[type];
 }
 
 export function resolveTag(node: PMNode | PMMark): string {

@@ -27,6 +27,15 @@ export default defineConfig({
         return format === 'es' ? `${name}.mjs` : `${name}.js`;
       },
     },
+    rollupOptions: {
+      external: ['@storyblok/richtext', 'storyblok-js-client'],
+      output: {
+        globals: {
+          '@storyblok/richtext': 'StoryblokRichtext',
+          'storyblok-js-client': 'StoryblokClient',
+        },
+      },
+    },
   },
   test: {
     globals: true,

@@ -8,7 +8,9 @@ export interface SbBlokData {
 
 export interface RenderSpec {
   tag: string;
-  attrs?: Record<string, string | number | boolean>;
+  attrs?: Record<string, string | number | boolean> & {
+    style?: string;
+  };
   content?: boolean;
   children?: RenderSpec[];
   resolve?: (attrs: unknown) => string;

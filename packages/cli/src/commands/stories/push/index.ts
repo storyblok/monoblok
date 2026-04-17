@@ -1,6 +1,5 @@
 import { pipeline } from 'node:stream/promises';
 import { join } from 'pathe';
-import type { Component } from '../../components/constants';
 import type { Story } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
@@ -14,6 +13,7 @@ import { createStoriesForLevel, groupStoriesByDepth, makeAppendToManifestFSTrans
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
 import { prefetchTargetStories } from '../actions';
+import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from '../validate-story';
 
 const pushCmd = storiesCommand
   .command('push')
@@ -52,33 +52,6 @@ pushCmd
 
     const pendingWarnings: string[] = [];
 
-    const warnedPlugins = new Set<string>();
-    const warnAboutCustomPlugins = (fields: Set<Component['schema']>, story: Story) => {
-      for (const field of fields) {
-        if (field.type === 'custom' && typeof field.field_type === 'string') {
-          if (warnedPlugins.has(field.field_type)) {
-            continue;
-          }
-          warnedPlugins.add(field.field_type);
-          const message = `The custom plugin "${field.field_type}" may contain references that require manual updates.`;
-          pendingWarnings.push(message);
-          logger.warn(message, { storyId: story.uuid });
-        }
-      }
-    };
-    const missingSchemaWarnings = new Set<string>();
-    const warnAboutMissingSchemas = (missingSchemas: Set<Component['name']>, story: Story) => {
-      for (const schemaName of missingSchemas) {
-        if (missingSchemaWarnings.has(schemaName)) {
-          continue;
-        }
-        const message = `The component "${schemaName}" was not found. Please run \`storyblok components pull\` to fetch the latest components.`;
-        pendingWarnings.push(message);
-        logger.warn(message, { storyId: story.uuid });
-        missingSchemaWarnings.add(schemaName);
-      }
-    };
-
     const summary = {
       creationResults: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
       processResults: { total: 0, succeeded: 0, failed: 0 },
@@ -101,14 +74,56 @@ pushCmd
         return;
       }
 
+      const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
+
+      // Pre-flight schema validation. Aborts before any API call if a story's
+      // content references a missing component, or has fields that the local
+      // schema does not declare (schema drift).
+      const schemaIssues = await collectSchemaIssues({ directoryPath: storiesDirectoryPath, schemas });
+      if (hasSchemaIssues(schemaIssues)) {
+        const message = formatSchemaIssues(schemaIssues);
+        ui.error(message);
+        logger.error(message);
+        // Surface the failure in the run summary so the report status is
+        // FAILURE rather than a trivial zero-counts SUCCESS.
+        const total = Math.max(schemaIssues.total, 1);
+        summary.creationResults.total = total;
+        summary.creationResults.failed = total;
+        return;
+      }
+
+      // Warn when story content includes custom plugin payloads. References
+      // embedded inside a plugin's opaque JSON can't be auto-remapped, so the
+      // user may need to update them manually. Emitted once per plugin name
+      // per story during Pass 2, after schema validation has confirmed the
+      // content shape is trustworthy.
+      const warnAboutCustomPlugins = (story: Story) => {
+        const warned = new Set<string>();
+        const visit = (node: unknown): void => {
+          if (Array.isArray(node)) {
+            for (const item of node) { visit(item); }
+            return;
+          }
+          if (!node || typeof node !== 'object') { return; }
+          const obj = node as Record<string, unknown>;
+          const plugin = obj.plugin;
+          if (typeof plugin === 'string' && !warned.has(plugin)) {
+            warned.add(plugin);
+            const message = `The custom plugin "${plugin}" may contain references that require manual updates.`;
+            pendingWarnings.push(message);
+            logger.warn(message, { storyId: story.uuid });
+          }
+          for (const value of Object.values(obj)) { visit(value); }
+        };
+        visit(story.content);
+      };
+
       const fetchProgress = ui.createProgressBar({ title: 'Matching Stories...'.padEnd(21) });
       const existingTargetStories = await prefetchTargetStories(space, {
         onTotal: total => fetchProgress.setTotal(total),
         onIncrement: count => fetchProgress.increment(count),
       });
       fetchProgress.stop();
-
-      const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
 
       /**
        * Pass 1: Scan local stories, group by depth, and create remote
@@ -236,9 +251,8 @@ pushCmd
           onIncrement() {
             processProgress.increment();
           },
-          onStorySuccess(localStory, processedFields, missingSchemas) {
-            warnAboutCustomPlugins(processedFields, localStory);
-            warnAboutMissingSchemas(missingSchemas, localStory);
+          onStorySuccess(localStory) {
+            warnAboutCustomPlugins(localStory);
             logger.info('Processed story', { storyId: localStory.uuid });
             summary.processResults.succeeded += 1;
           },

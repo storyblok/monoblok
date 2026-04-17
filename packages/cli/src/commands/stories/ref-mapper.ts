@@ -9,16 +9,12 @@ export interface RefMaps {
 }
 
 export type ComponentSchemas = Record<Component['name'], Component['schema']>;
-type ProcessedFields = Set<Component['schema']>;
-type MissingSchemas = Set<Component['name']>;
 
 type RefMapper = <const T extends Record<string, unknown>>(data: T, options: {
   schema: Component['schema'];
   schemas: ComponentSchemas;
   maps: RefMaps;
   fieldRefMappers: FieldRefMappers;
-  processedFields: ProcessedFields;
-  missingSchemas: MissingSchemas;
 }) => T;
 
 type FieldRefMappers = Record<string, RefMapper>;
@@ -29,14 +25,10 @@ const traverseAndMapBySchema = (
     schemas,
     maps,
     fieldRefMappers,
-    processedFields,
-    missingSchemas,
   }: {
     schemas: ComponentSchemas;
     maps: RefMaps;
     fieldRefMappers: FieldRefMappers;
-    processedFields: ProcessedFields;
-    missingSchemas: MissingSchemas;
   },
 ): any => {
   if (!data?.component) {
@@ -44,7 +36,6 @@ const traverseAndMapBySchema = (
   }
   const schema = schemas[data.component];
   if (!schema) {
-    missingSchemas.add(data.component);
     return data;
   }
   const dataNew = { ...data };
@@ -54,18 +45,12 @@ const traverseAndMapBySchema = (
     const fieldType = fieldSchema && typeof fieldSchema === 'object' && 'type' in fieldSchema && fieldSchema.type;
     const fieldRefMapper = typeof fieldType === 'string' && fieldRefMappers[fieldType];
 
-    if (fieldSchema) {
-      processedFields.add(fieldSchema);
-    }
-
     if (fieldRefMapper) {
       dataNew[fieldName] = fieldRefMapper(fieldValue as any, {
         schema: fieldSchema,
         schemas,
         maps,
         fieldRefMappers,
-        processedFields,
-        missingSchemas,
       });
     }
   }
@@ -79,14 +64,10 @@ const traverseAndMapRichtextDoc = (
     schemas,
     maps,
     fieldRefMappers,
-    processedFields,
-    missingSchemas,
   }: {
     schemas: ComponentSchemas;
     maps: RefMaps;
     fieldRefMappers: FieldRefMappers;
-    processedFields: ProcessedFields;
-    missingSchemas: MissingSchemas;
   },
 ): any => {
   if (Array.isArray(data)) {
@@ -94,8 +75,6 @@ const traverseAndMapRichtextDoc = (
       schemas,
       maps,
       fieldRefMappers,
-      processedFields,
-      missingSchemas,
     }));
   }
 
@@ -118,8 +97,6 @@ const traverseAndMapRichtextDoc = (
             schemas,
             maps,
             fieldRefMappers,
-            processedFields,
-            missingSchemas,
           })),
         },
       };
@@ -131,8 +108,6 @@ const traverseAndMapRichtextDoc = (
         schemas,
         maps,
         fieldRefMappers,
-        processedFields,
-        missingSchemas,
       });
     }
     return newData;
@@ -144,12 +119,10 @@ const traverseAndMapRichtextDoc = (
 /**
  * Richtext field reference mapper.
  */
-const richtextFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, processedFields, missingSchemas }) => traverseAndMapRichtextDoc(data, {
+const richtextFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }) => traverseAndMapRichtextDoc(data, {
   schemas,
   maps,
   fieldRefMappers,
-  processedFields,
-  missingSchemas,
 });
 
 /**
@@ -169,7 +142,7 @@ const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
 /**
  * Bloks field reference mapper.
  */
-const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, processedFields, missingSchemas }) => {
+const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }) => {
   if (!Array.isArray(data)) {
     throw new TypeError(`Invalid bloks field: expected an array, but received ${JSON.stringify(data)}. Please make sure your bloks field value is an array of components (e.g. [{ component: "my_blok", ... }]).`);
   }
@@ -178,8 +151,6 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers, 
     schemas,
     maps,
     fieldRefMappers,
-    processedFields,
-    missingSchemas,
   })) as any;
 };
 
@@ -243,9 +214,6 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
   schemas: ComponentSchemas;
   maps: RefMaps;
 }) => {
-  const processedFields: ProcessedFields = new Set();
-  const missingSchemas: MissingSchemas = new Set();
-
   const alternates = story.alternates
     ? (story.alternates as Required<Story>['alternates']).map((a: any) => ({
         ...a,
@@ -255,15 +223,13 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
     : story.alternates;
 
   const parentId = maps.stories?.get(story.parent_id) ?? story.parent_id;
-  const mappedStory = {
+  return {
     ...story,
     content: story.content?.component
       ? traverseAndMapBySchema(story.content, {
           schemas,
           maps,
           fieldRefMappers,
-          processedFields,
-          missingSchemas,
         })
       : story.content,
     id: Number(maps.stories?.get(story.id) ?? story.id),
@@ -271,10 +237,4 @@ export const storyRefMapper = (story: Story, { schemas, maps }: {
     parent_id: parentId != null ? Number(parentId) : 0,
     alternates,
   } satisfies Story;
-
-  return {
-    mappedStory,
-    processedFields,
-    missingSchemas,
-  };
 };

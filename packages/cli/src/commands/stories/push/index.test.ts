@@ -962,7 +962,7 @@ describe('stories push command', () => {
     it('should not end up with duplicate entries in the manifest after multiple runs', async () => {
       const storyA = makeMockStory();
       preconditions.canLoadStories([storyA]);
-      preconditions.canLoadComponents([makeMockComponent()]);
+      preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
       const remoteStories = preconditions.canCreateStories([storyA]);
       preconditions.canUpdateStories(remoteStories);
 
@@ -1217,17 +1217,376 @@ describe('stories push command', () => {
       expect(actions.updateStory).not.toHaveBeenCalled();
     });
 
-    it('should show a helpful warning when a component schema is missing', async () => {
+    it('should abort with a hard error when a story references a missing component schema', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: { _uid: randomUUID(), component: 'page' },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'article' }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Missing component schemas:'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('- page (in stories: story-a)'),
+        expect.anything(),
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('run `storyblok components pull` to sync them locally'),
+        expect.anything(),
+      );
+      const report = getReport();
+      expect(report?.status).toBe('FAILURE');
+      const logFile = getLogFileContents(LOG_PREFIX);
+      expect(logFile).toContain('Schema validation failed');
+    });
+
+    it('should abort with a hard error when a story has a field not declared in the component schema', async () => {
       const storyA = makeMockStory({
         slug: 'story-a',
         content: {
+          _uid: randomUUID(),
           component: 'page',
+          color: {
+            _uid: randomUUID(),
+            plugin: 'official-colorpicker',
+            color: '#4c1130',
+          },
         },
       });
       preconditions.canLoadStories([storyA]);
       preconditions.canLoadComponents([
         makeMockComponent({
-          name: 'article',
+          name: 'page',
+          schema: { headline: { type: 'text' } },
+        }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('- page.color (in stories: story-a)'),
+        expect.anything(),
+      );
+      const report = getReport();
+      expect(report?.status).toBe('FAILURE');
+    });
+
+    it('should report every drift field across multiple components in a single aggregated error', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          color: '#4c1130',
+          extra_page_field: 'x',
+        },
+      });
+      const storyB = makeMockStory({
+        slug: 'story-b',
+        content: {
+          _uid: randomUUID(),
+          component: 'article',
+          orphan: 'y',
+          leftover: 'z',
+        },
+      });
+      preconditions.canLoadStories([storyA, storyB]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: {} }),
+        makeMockComponent({ name: 'article', schema: {} }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).not.toHaveBeenCalled();
+      const errorCalls = (console.error as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const message = errorCalls.map(call => call[0]).join('\n');
+      expect(message).toContain('- article.leftover (in stories: story-b)');
+      expect(message).toContain('- article.orphan (in stories: story-b)');
+      expect(message).toContain('- page.color (in stories: story-a)');
+      expect(message).toContain('- page.extra_page_field (in stories: story-a)');
+    });
+
+    it('should abort when a drift field lives inside a nested blok', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          body: [
+            {
+              _uid: randomUUID(),
+              component: 'hero',
+              title: 'Ok',
+              bg_color: '#ff0000',
+            },
+          ],
+        },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: { body: { type: 'bloks' } } }),
+        makeMockComponent({ name: 'hero', schema: { title: { type: 'text' } } }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('- hero.bg_color (in stories: story-a)'),
+        expect.anything(),
+      );
+    });
+
+    it('should abort when a drift field lives inside a blok embedded in a richtext field', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          rt: {
+            type: 'doc',
+            content: [
+              {
+                type: 'blok',
+                attrs: {
+                  id: randomUUID(),
+                  body: [
+                    {
+                      _uid: randomUUID(),
+                      component: 'hero',
+                      title: 'Ok',
+                      undeclared: 42,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: { rt: { type: 'richtext' } } }),
+        makeMockComponent({ name: 'hero', schema: { title: { type: 'text' } } }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('- hero.undeclared (in stories: story-a)'),
+        expect.anything(),
+      );
+    });
+
+    it('should report both missing schemas and drift fields together', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          stray: 'x',
+        },
+      });
+      const storyB = makeMockStory({
+        slug: 'story-b',
+        content: { _uid: randomUUID(), component: 'unknown_component' },
+      });
+      preconditions.canLoadStories([storyA, storyB]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: {} }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      const errorCalls = (console.error as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const message = errorCalls.map(call => call[0]).join('\n');
+      expect(message).toContain('Missing component schemas:');
+      expect(message).toContain('- unknown_component (in stories: story-b)');
+      expect(message).toContain('- page.stray (in stories: story-a)');
+    });
+
+    it('should validate before dry-run and abort on drift', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: { _uid: randomUUID(), component: 'page', stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: {} }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--dry-run']);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('- page.stray (in stories: story-a)'),
+        expect.anything(),
+      );
+    });
+
+    it('should not delete local stories when validation fails even if --cleanup is passed', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: { _uid: randomUUID(), component: 'page', stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: {} }),
+      ]);
+      const storyFilePath = join(
+        resolveCommandPath(directories.stories, DEFAULT_SPACE),
+        `${storyA.slug}_${storyA.uuid}.json`,
+      );
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--cleanup']);
+
+      const files = vol.toJSON();
+      const hasStoryFile = Object.keys(files).some(f => stripDriveLetter(f) === stripDriveLetter(storyFilePath));
+      expect(hasStoryFile).toBe(true);
+    });
+
+    it('should emit a FAILURE report with failed creation counts when validation fails', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: { _uid: randomUUID(), component: 'page', stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({ name: 'page', schema: {} }),
+      ]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      const report = getReport();
+      expect(report?.status).toBe('FAILURE');
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Creating stories: 0/1 succeeded, 1 failed.'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Processing stories: 0/0 succeeded, 0 failed.'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
+      );
+    });
+
+    it('should proceed with the push when every content field is declared in its schema', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          headline: 'Hi',
+          color: {
+            _uid: randomUUID(),
+            plugin: 'official-colorpicker',
+            color: '#4c1130',
+          },
+        },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: 'page',
+          schema: {
+            headline: { type: 'text' },
+            color: { type: 'custom', field_type: 'official-colorpicker' },
+          },
+        }),
+      ]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      expect(actions.createStory).toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+      const report = getReport();
+      expect(report?.status).toBe('SUCCESS');
+    });
+
+    it('should warn once per plugin name when story content carries a custom plugin payload', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          color: {
+            _uid: randomUUID(),
+            plugin: 'official-colorpicker',
+            color: '#4c1130',
+          },
+          secondary_color: {
+            _uid: randomUUID(),
+            plugin: 'official-colorpicker',
+            color: '#ffffff',
+          },
+        },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: 'page',
+          schema: {
+            color: { type: 'custom', field_type: 'official-colorpicker' },
+            secondary_color: { type: 'custom', field_type: 'official-colorpicker' },
+          },
+        }),
+      ]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      const warnCalls = (console.warn as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(call => typeof call[0] === 'string' && call[0].includes('official-colorpicker'));
+      expect(warnCalls).toHaveLength(1);
+      const logFile = getLogFileContents(LOG_PREFIX);
+      expect(logFile).toContain('The custom plugin \\"official-colorpicker\\" may contain references that require manual updates.');
+    });
+
+    it('should warn about plugin content nested inside a bloks field', async () => {
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          body: [
+            {
+              _uid: randomUUID(),
+              component: 'hero',
+              bg_color: {
+                _uid: randomUUID(),
+                plugin: 'official-colorpicker',
+                color: '#aabbcc',
+              },
+            },
+          ],
+        },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: 'page',
+          schema: { body: { type: 'bloks' } },
+        }),
+        makeMockComponent({
+          name: 'hero',
+          schema: { bg_color: { type: 'custom', field_type: 'official-colorpicker' } },
         }),
       ]);
       const remoteStories = preconditions.canCreateStories([storyA]);
@@ -1236,49 +1595,7 @@ describe('stories push command', () => {
       await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('The component "page" was not found. Please run `storyblok components pull` to fetch the latest components.'),
-      );
-    });
-
-    it('should warn the user that references in custom plugin fields can\'t be processed', async () => {
-      const storyA = makeMockStory({
-        uuid: randomUUID(),
-        slug: 'story-a',
-        content: {
-          _uid: randomUUID(),
-          component: 'page',
-          plugin: {
-            type: 'custom',
-            field_type: 'my_custom_field',
-          },
-        },
-      });
-      preconditions.canLoadStories([storyA]);
-      preconditions.canListStories([storyA]);
-      const pageComponent = makeMockComponent({
-        name: 'page',
-        schema: {
-          plugin: {
-            type: 'custom',
-            field_type: 'my_custom_field',
-          },
-        },
-      });
-      preconditions.canLoadComponents([pageComponent]);
-      preconditions.canUpdateStories([storyA]);
-
-      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
-
-      expect(actions.createStory).not.toHaveBeenCalled();
-      expect(actions.updateStory).toHaveBeenCalledWith(DEFAULT_SPACE, storyA.id, expect.objectContaining({
-        story: { ...storyA, parent_id: 0 },
-      }));
-      // Logging
-      const logFile = getLogFileContents(LOG_PREFIX);
-      expect(logFile).toMatch(new RegExp(`The custom plugin \\\\"my_custom_field\\\\" may contain references that require manual updates.*?"storyId":"${storyA.uuid}"`));
-      // UI
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('The custom plugin "my_custom_field" may contain references that require manual updates.'),
+        expect.stringContaining('The custom plugin "official-colorpicker" may contain references that require manual updates.'),
       );
     });
 

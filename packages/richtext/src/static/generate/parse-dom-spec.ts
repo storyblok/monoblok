@@ -1,5 +1,5 @@
 import type { DOMOutputSpec } from 'prosemirror-model';
-import type { RenderSpec } from '../types';
+import type { AttrValue, RenderSpec } from '../types';
 import { stringToStyle, styleToString } from '../style';
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
@@ -10,9 +10,6 @@ interface DOMObjectSpec {
   dom: Node;
   contentDOM?: HTMLElement;
 }
-
-/** Valid attribute values for DOM elements */
-export type AttrValue = string | number | boolean;
 
 /** Attribute object in a DOM spec */
 type AttrsObject = Record<string, AttrValue>;

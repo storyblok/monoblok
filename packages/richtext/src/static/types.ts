@@ -1,5 +1,8 @@
 import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 
+/** Valid attribute values for DOM elements */
+export type AttrValue = string | number | boolean;
+
 export interface SbBlokData {
   _key: string;
   component: string;
@@ -8,7 +11,7 @@ export interface SbBlokData {
 
 export interface RenderSpec {
   tag: string;
-  attrs?: Record<string, string | number | boolean> & {
+  attrs?: Record<string, AttrValue> & {
     style?: string;
   };
   content?: boolean;

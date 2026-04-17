@@ -2,7 +2,7 @@ import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 
 /** Valid attribute values for DOM elements */
 export type AttrValue = string | number | boolean;
-
+export type HtmlTag = keyof HTMLElementTagNameMap;
 export interface SbBlokData {
   _key: string;
   component: string;

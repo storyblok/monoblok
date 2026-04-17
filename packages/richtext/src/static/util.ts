@@ -1,7 +1,7 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
 import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
-import type { StoryblokRichTextComponentMap } from './types';
+import type { HtmlTag, StoryblokRichTextComponentMap } from './types';
 
 /**
  * Resolves a component from the provided components map based on the type.
@@ -18,7 +18,7 @@ import type { StoryblokRichTextComponentMap } from './types';
 export function resolveComponent<
   K extends TiptapComponentName,
   TComponent,
-  ExtraProps extends Record<string, unknown> = Record<string, never>,
+  ExtraProps extends Record<string, unknown> = Record<string, unknown>,
 >(
   type: K,
   components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>,
@@ -35,7 +35,7 @@ export function resolveComponent<
  * const tag = resolveTag(node);
  * console.log(tag); // Output: "p"
  */
-export function resolveTag(node: PMNode | PMMark): string | null {
+export function resolveTag(node: PMNode | PMMark): HtmlTag | null {
   const type = node.type;
 
   const entry
@@ -47,11 +47,11 @@ export function resolveTag(node: PMNode | PMMark): string | null {
   }
 
   if ('resolve' in entry && typeof entry.resolve === 'function') {
-    return entry.resolve(node.attrs as Parameters<typeof entry.resolve>[0]);
+    return entry.resolve(node.attrs as Parameters<typeof entry.resolve>[0]) as HtmlTag;
   }
 
   if ('tag' in entry && typeof entry.tag === 'string') {
-    return entry.tag;
+    return entry.tag as HtmlTag;
   }
 
   return null;
@@ -66,7 +66,7 @@ export function resolveTag(node: PMNode | PMMark): string | null {
  * console.log(isSelfClosing('div')); // Output: false
  *
  */
-export function isSelfClosing(tag: string): boolean {
+export function isSelfClosing(tag: HtmlTag | string): boolean {
   return SELF_CLOSING_TAGS.includes(tag);
 }
 

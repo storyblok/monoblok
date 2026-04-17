@@ -24,5 +24,8 @@ export const hints: Record<string, string> = {
   name: 'string | null',
   fallbackImage: 'string | null',
   reporter: 'never',
+  custom: 'Record<string, string | null>',
+  uuid: 'string',
+  anchor: 'string',
   // Expand as needed
 };

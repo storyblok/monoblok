@@ -63,7 +63,9 @@ function genPMMark(schema: Schema): string {
 }
 
 export function generateTypes() {
-  const defaultExtensions = getStoryblokExtensions();
+  const defaultExtensions = getStoryblokExtensions({
+    allowCustomAttributes: true,
+  });
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   const attributeTypes = genAttributeTypes(schema);

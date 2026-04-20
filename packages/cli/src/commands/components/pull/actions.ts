@@ -4,21 +4,25 @@ import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_F
 import type { SaveComponentsOptions } from './constants';
 import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
+import { fetchAllPages } from '../../../utils/pagination';
 import { getMapiClient } from '../../../api';
 
 // Components
 export const fetchComponents = async (spaceId: string): Promise<Component[] | undefined> => {
   try {
     const client = getMapiClient();
-
-    const { data } = await client.components.list({
-      path: {
-        space_id: Number(spaceId),
-      },
-      throwOnError: true,
-    });
-
-    return data?.components;
+    return await fetchAllPages(
+      (page: number) => client.components.list({
+        path: {
+          space_id: Number(spaceId),
+        },
+        query: {
+          page,
+        },
+        throwOnError: true,
+      }),
+      data => data?.components ?? [],
+    );
   }
   catch (error) {
     handleAPIError('pull_components', error as Error);
@@ -28,18 +32,20 @@ export const fetchComponents = async (spaceId: string): Promise<Component[] | un
 export const fetchComponent = async (spaceId: string, componentName: string): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
-
-    const { data } = await client.components.list({
-      path: {
-        space_id: Number(spaceId),
-      },
-      query: {
-        search: componentName,
-      },
-      throwOnError: true,
-    });
-
-    return data?.components?.find((c: Component) => c.name === componentName);
+    const matches = await fetchAllPages(
+      (page: number) => client.components.list({
+        path: {
+          space_id: Number(spaceId),
+        },
+        query: {
+          page,
+          search: componentName,
+        },
+        throwOnError: true,
+      }),
+      data => data?.components ?? [],
+    );
+    return matches.find((c: Component) => c.name === componentName);
   }
   catch (error) {
     handleAPIError('pull_components', error as Error, `Failed to fetch component ${componentName}`);
@@ -86,14 +92,19 @@ export const fetchComponentPresets = async (spaceId: string): Promise<Preset[] |
 export const fetchComponentInternalTags = async (spaceId: string): Promise<InternalTag[] | undefined> => {
   try {
     const client = getMapiClient();
-
-    const { data } = await client.internalTags.list({
-      path: {
-        space_id: Number(spaceId),
-      },
-    });
-
-    return data?.internal_tags?.filter((tag: InternalTag) => tag.object_type === 'component');
+    return await fetchAllPages(
+      (page: number) => client.internalTags.list({
+        path: {
+          space_id: Number(spaceId),
+        },
+        query: {
+          page,
+          by_object_type: 'component',
+        },
+        throwOnError: true,
+      }),
+      data => data?.internal_tags ?? [],
+    );
   }
   catch (error) {
     handleAPIError('pull_component_internal_tags', error as Error);

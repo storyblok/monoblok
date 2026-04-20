@@ -53,7 +53,7 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 ```
 
-Seeding always cleans the space first (deletes all stories, components, assets, and asset folders), then pushes the scenario data. The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from `.env.qa-engineer-manual`). You can override it with `--space <id>`.
+Seeding always cleans the space first (deletes all stories, components, assets, asset folders, and internal tags), then pushes the scenario data. The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from `.env.qa-engineer-manual`). You can override it with `--space <id>`.
 
 Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scenarios`. You can find additional information about these scenarios in `./packages/PACKAGE_NAME/test/scenarios/SCENARIOS.md`.
 
@@ -98,7 +98,7 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 ```
 
-Deletes all stories, components (except the default `page` component), assets, and asset folders in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
+Deletes all stories, components (except the default `page` component), assets, asset folders, and internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
 
 ### Scenario structure
 
@@ -140,7 +140,7 @@ Paths are relative to this `SKILL.md`.
 | Script | Purpose |
 | --- | --- |
 | `./scripts/cleanup-local.sh` | Deletes local QA artifacts in `.storyblok/`. |
-| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, and asset folders in the space. Accepts `--space <id>`. |
+| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. |
 | `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. |
 | `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`. |
 | `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path. |

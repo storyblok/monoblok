@@ -84,6 +84,7 @@ cleanup_resource "stories"
 cleanup_resource "components" "page"
 cleanup_resource "assets"
 cleanup_resource "asset_folders"
+cleanup_resource "internal_tags"
 
 if [ "${found_total}" -eq 0 ]; then
   printf "clean\n"

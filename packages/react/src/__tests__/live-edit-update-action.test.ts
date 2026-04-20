@@ -44,6 +44,22 @@ describe('liveEditUpdateAction', () => {
     expect(globalThis.storyCache.get('123')).not.toBe(oldStory);
   });
 
+  it('should cache under the provided cacheKey when given', async () => {
+    const story = { id: 42, content: { headline: 'historic' } };
+    await liveEditUpdateAction({ story, pathToRevalidate: '/path', cacheKey: 'id:42' });
+    expect(globalThis.storyCache.get('id:42')).toBe(story);
+    // uuid is undefined, so it must not be written under the uuid
+    expect(globalThis.storyCache.has('undefined')).toBe(false);
+  });
+
+  it('should skip caching when both cacheKey and story.uuid are missing', async () => {
+    const story = { id: 99, content: {} };
+    const before = globalThis.storyCache.size;
+    await liveEditUpdateAction({ story, pathToRevalidate: '/path' });
+    expect(globalThis.storyCache.size).toBe(before);
+    expect(globalThis.storyCache.has('undefined')).toBe(false);
+  });
+
   it('should attempt to revalidate path when in Next.js environment', async () => {
     // Mock Next.js environment
     process.env.NEXT_RUNTIME = 'nodejs';
@@ -60,6 +76,22 @@ describe('liveEditUpdateAction', () => {
     await actionWithMocks({ story, pathToRevalidate: '/test-path' });
 
     expect(mockRevalidatePath).toHaveBeenCalledWith('/test-path');
+  });
+
+  it('should revalidate path for history events keyed by cacheKey', async () => {
+    process.env.NEXT_RUNTIME = 'nodejs';
+
+    vi.doMock('next/cache', async () => {
+      return { revalidatePath: mockRevalidatePath };
+    });
+
+    const { liveEditUpdateAction: actionWithMocks } = await import('../rsc/live-edit-update-action');
+
+    const story = { id: 7, content: { headline: 'history' } };
+    await actionWithMocks({ story, pathToRevalidate: '/vh-path', cacheKey: 'id:7' });
+
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/vh-path');
+    expect(globalThis.storyCache.get('id:7')).toBe(story);
   });
 
   it('should catch and log errors during revalidation', async () => {

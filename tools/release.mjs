@@ -86,13 +86,21 @@ function getBranchEligiblePackages(branch) {
   const eligible = [];
   const excluded = [];
 
-  for (const entry of readdirSync(packagesDir)) {
+  for (const entry of readdirSync(packagesDir).sort()) {
     const pkgPath = join(packagesDir, entry, 'package.json');
+    let stat;
+    try {
+      stat = statSync(pkgPath);
+    } catch {
+      continue;
+    }
+    if (!stat.isFile()) continue;
+
     let pkg;
     try {
-      if (!statSync(pkgPath).isFile()) continue;
       pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-    } catch {
+    } catch (err) {
+      log(`⚠️  Warning: failed to parse ${pkgPath} — skipping (${err.message})`, YELLOW);
       continue;
     }
 

@@ -35,7 +35,6 @@ export const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => 
     content: overrides.content ?? {
       _uid: randomUUID(),
       component: 'page',
-      references: [],
     },
     is_folder: overrides.is_folder ?? false,
     parent_id: overrides.parent_id ?? 0,

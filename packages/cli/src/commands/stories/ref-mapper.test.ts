@@ -25,7 +25,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: storyMap };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.id).toBe(storyMap.get(story.id));
     expect(mappedStory.uuid).toBe(storyMap.get(story.uuid));
@@ -68,7 +68,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: assetMap, stories: storyMap };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     // Bloks > multilink
     expect(mappedStory.content.bloks[0].link.id).toBe(storyMap.get(story.content.bloks[0].link.id));
@@ -107,47 +107,9 @@ describe('storyRefMapper', () => {
     const maps = { assets: assetMap, stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.content.asset.filename).toBe(expectedCdnFilename);
-  });
-
-  it('should track all the components it processed', () => {
-    const story = makeStoryWithAllFieldTypes();
-    const maps = { assets: new Map(), stories: new Map() };
-
-    // @ts-expect-error Our types are wrong.
-    const { processedFields } = storyRefMapper(story, { schemas: componentSchemas, maps });
-
-    expect(Array.from(processedFields)).toEqual([
-      expect.objectContaining({ type: 'datetime' }),
-      expect.objectContaining({ type: 'multilink' }),
-      expect.objectContaining({ type: 'text' }),
-      expect.objectContaining({ type: 'asset' }),
-      expect.objectContaining({ type: 'table' }),
-      expect.objectContaining({ type: 'bloks' }),
-      expect.objectContaining({ type: 'number' }),
-      expect.objectContaining({ type: 'custom' }),
-      expect.objectContaining({ type: 'boolean' }),
-      expect.objectContaining({ type: 'markdown' }),
-      expect.objectContaining({ type: 'richtext' }),
-      expect.objectContaining({ type: 'textarea' }),
-      expect.objectContaining({ type: 'options' }),
-      expect.objectContaining({ type: 'multiasset' }),
-      expect.objectContaining({ type: 'options' }),
-      expect.objectContaining({ type: 'option' }),
-    ]);
-  });
-
-  it('should track missing component schemas', () => {
-    const story = makeStoryWithAllFieldTypes();
-    const maps = { assets: new Map(), stories: new Map() };
-    const schemasWithoutPage = {};
-
-    // @ts-expect-error Our types are wrong.
-    const { missingSchemas } = storyRefMapper(story, { schemas: schemasWithoutPage, maps });
-
-    expect(Array.from(missingSchemas)).toEqual(['page_with_everything']);
   });
 
   it('should handle null parent_id for root-level stories', () => {
@@ -163,7 +125,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Partial story for testing
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.parent_id).toBe(0);
   });
@@ -181,7 +143,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Partial story for testing
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.parent_id).toBe(0);
   });
@@ -198,7 +160,7 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.content).toBeUndefined();
     expect(mappedStory.id).toBe(story.id);
@@ -218,10 +180,9 @@ describe('storyRefMapper', () => {
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    const { mappedStory, missingSchemas } = storyRefMapper(story, { schemas: componentSchemas, maps });
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
 
     expect(mappedStory.content).toEqual(story.content);
-    expect(Array.from(missingSchemas)).toEqual([]);
   });
 
   it('should handle richtext with missing attrs on link nodes', () => {

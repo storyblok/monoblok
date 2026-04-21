@@ -4,6 +4,7 @@ import type { Story } from '../stories/constants';
 import type { UI } from '../../utils/ui';
 import type { WriteStoryTransport } from '../stories/streams';
 import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStoryStream } from '../stories/streams';
+import { validateStoryAgainstSchemas } from '../stories/validate-story';
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
 import { logOnlyError } from '../../utils/error/error';
@@ -271,7 +272,8 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       onIncrement() {
         processProgress.increment();
       },
-      onStorySuccess(localStory, _, missingSchemas) {
+      onStorySuccess(localStory) {
+        const { missingSchemas } = validateStoryAgainstSchemas(localStory, schemas);
         warnAboutMissingSchemas(missingSchemas, localStory);
         logger.info('Processed story', { storyId: localStory.uuid });
         summaries.storyProcessResults.succeeded += 1;

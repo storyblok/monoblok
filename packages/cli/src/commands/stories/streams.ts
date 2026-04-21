@@ -2,7 +2,6 @@ import { readFile, unlink } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
-import type { Component } from '../components/constants';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
 import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry, TargetStoryRef } from './constants';
 import { normalizeFullSlug } from './constants';
@@ -182,15 +181,15 @@ export const mapReferencesStream = ({
   schemas: ComponentSchemas;
   maps: RefMaps;
   onIncrement?: () => void;
-  onStorySuccess?: (localStory: Story, processedFields: Set<Component['schema']>, missingSchemas: Set<Component['name']>) => void;
+  onStorySuccess?: (localStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
   return new Transform({
     objectMode: true,
     transform(localStory: Story, _encoding, callback) {
       try {
-        const { mappedStory, processedFields, missingSchemas } = storyRefMapper(localStory, { schemas, maps });
-        onStorySuccess?.(mappedStory, processedFields, missingSchemas);
+        const mappedStory = storyRefMapper(localStory, { schemas, maps });
+        onStorySuccess?.(mappedStory);
         this.push(mappedStory);
       }
       catch (maybeError) {

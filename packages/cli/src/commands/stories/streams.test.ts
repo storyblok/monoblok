@@ -247,6 +247,35 @@ describe('scanLocalStoryIndex', () => {
 
     expect(entries).toHaveLength(1);
   });
+
+  it('should report an error for stories missing a uuid', async () => {
+    // Story JSON with no `uuid` field — multiple such stories would otherwise
+    // collide on an empty-string key when the push command builds its maps.
+    vol.fromJSON({
+      [join(STORIES_DIR, 'no-uuid_unknown.json')]: JSON.stringify({
+        id: 50,
+        slug: 'no-uuid',
+        name: 'No UUID',
+        full_slug: 'no-uuid',
+        is_folder: false,
+        parent_id: 0,
+        content: { _uid: '1', component: 'page' },
+      }),
+    });
+
+    const errors: Array<{ filename: string; message: string }> = [];
+    const entries = await scanLocalStoryIndex({
+      directoryPath: STORIES_DIR,
+      onError(error, filename) {
+        errors.push({ filename, message: error.message });
+      },
+    });
+
+    expect(entries).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].filename).toBe('no-uuid_unknown.json');
+    expect(errors[0].message).toMatch(/uuid/i);
+  });
 });
 
 describe('groupStoriesByDepth', () => {

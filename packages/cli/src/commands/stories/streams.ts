@@ -244,10 +244,15 @@ export const scanLocalStoryIndex = async ({
       const filePath = join(directoryPath, file);
       const fileContent = await readFile(filePath, 'utf-8');
       const story = JSON.parse(fileContent) as Story;
+      if (!story.uuid) {
+        // A missing uuid would otherwise collapse multiple stories onto the
+        // same empty-string key in downstream maps and silently lose content.
+        throw new Error(`Story "${file}" is missing a uuid and cannot be pushed.`);
+      }
       entries.push({
         filename: file,
         id: story.id,
-        uuid: story.uuid ?? '',
+        uuid: story.uuid,
         slug: story.slug ?? '',
         name: story.name ?? '',
         full_slug: story.full_slug ?? '',

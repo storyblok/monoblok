@@ -26,6 +26,7 @@ const tiptapGlobals: Record<string, string> = {
   '@tiptap/extension-text': 'TiptapText',
   '@tiptap/extension-text-style': 'TiptapTextStyle',
   '@tiptap/extension-underline': 'TiptapUnderline',
+  '@tiptap/extension-text-align': 'TiptapTextAlign',
 };
 
 const sharedConfig = {
@@ -50,6 +51,11 @@ export default [
     ...sharedConfig,
     entry: { 'markdown-parser': './src/markdown-parser.ts' },
     format: 'esm',
+  }),
+  defineConfig({
+    ...sharedConfig,
+    entry: { static: './src/static/index.ts' },
+    format: ['esm', 'cjs'],
   }),
   defineConfig({
     ...sharedConfig,

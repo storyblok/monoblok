@@ -13,7 +13,18 @@ import { attrsToStyle, cleanObject } from '../utils';
 import { getAllowedStylesForElement, resolveStoryblokLink, supportedAttributesByTagName } from './utils';
 
 // Unmodified mark extensions
-export { Bold, Code, Highlight, Italic, Strike, Subscript, Superscript, TextStyleKit, Underline };
+export { Bold, Code, Italic, Strike, Subscript, Superscript, TextStyleKit, Underline };
+
+// Highlight
+export const StoryblokHighlight = Highlight.extend({
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+      },
+    };
+  },
+});
 
 // Link with Storyblok-specific attributes and renderHTML
 export const StoryblokLink = LinkOriginal.extend({

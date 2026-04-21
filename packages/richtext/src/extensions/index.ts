@@ -21,15 +21,16 @@ import {
   StoryblokTableCell,
   StoryblokTableHeader,
   StoryblokTableRow,
+  StoryblokTextAlign,
   Text,
 } from './nodes';
 import {
   Bold,
   Code,
-  Highlight,
   Italic,
   Reporter,
   StoryblokAnchor,
+  StoryblokHighlight,
   StoryblokLink,
   StoryblokLinkWithCustomAttributes,
   StoryblokStyled,
@@ -87,12 +88,13 @@ const defaultExtensions = {
   code: Code,
   superscript: Superscript,
   subscript: Subscript,
-  highlight: Highlight,
+  highlight: StoryblokHighlight,
   textStyle: StoryblokTextStyle,
   link: StoryblokLink as typeof StoryblokLink,
   anchor: StoryblokAnchor,
   styled: StoryblokStyled,
   reporter: Reporter,
+  textAlign: StoryblokTextAlign,
 };
 
 export { defaultExtensions };

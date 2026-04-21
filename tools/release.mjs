@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 import { exit, argv, stdin, stdout } from 'process';
 import * as readline from 'readline';
 
@@ -71,6 +73,49 @@ function isUpToDateWithRemote(branch) {
     log('⚠️  Warning: Could not verify if branch is up to date with remote', YELLOW);
     return true; // Assume up to date if we can't verify
   }
+}
+
+/**
+ * Reads `packages/*​/package.json` and splits packages by whether their
+ * `release.branches` field allows releasing from the given branch.
+ * Packages without a `release.branches` field are treated as eligible on
+ * every release branch (current default behaviour).
+ */
+function getBranchEligiblePackages(branch) {
+  const packagesDir = join(process.cwd(), 'packages');
+  const eligible = [];
+  const excluded = [];
+
+  for (const entry of readdirSync(packagesDir)) {
+    const pkgPath = join(packagesDir, entry, 'package.json');
+    let pkg;
+    try {
+      if (!statSync(pkgPath).isFile()) continue;
+      pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    } catch {
+      continue;
+    }
+
+    if (!pkg.name) continue;
+
+    const branches = pkg.release?.branches;
+    if (!Array.isArray(branches)) {
+      eligible.push(pkg.name);
+      continue;
+    }
+
+    const branchNames = branches
+      .map(b => (typeof b === 'string' ? b : b?.name))
+      .filter(Boolean);
+
+    if (branchNames.includes(branch)) {
+      eligible.push(pkg.name);
+    } else {
+      excluded.push(pkg.name);
+    }
+  }
+
+  return { eligible, excluded };
 }
 
 function askConfirmation(question) {
@@ -190,6 +235,39 @@ async function main() {
 
   log(`✅ Up to date with origin/${currentBranch}`, GREEN);
 
+  // Filter packages by their `release.branches` config.
+  const { eligible, excluded } = getBranchEligiblePackages(currentBranch);
+
+  if (excluded.length > 0) {
+    log(`\n⏭️  Skipping packages not configured to release from ${currentBranch}:`, YELLOW);
+    for (const name of excluded) log(`   - ${name}`, YELLOW);
+  }
+
+  let effectiveProjects;
+  if (projectsArg) {
+    const requested = projectsArg.split(',').map(s => s.trim()).filter(Boolean);
+    const droppedByBranch = requested.filter(p => excluded.includes(p));
+    const kept = requested.filter(p => !excluded.includes(p));
+
+    if (droppedByBranch.length > 0) {
+      log(`\n⚠️  Removing requested projects not eligible on ${currentBranch}: ${droppedByBranch.join(', ')}`, YELLOW);
+    }
+    if (kept.length === 0) {
+      log(`\n❌ Error: None of the requested projects are configured to release from ${currentBranch}`, RED);
+      log('\n📋 Instructions:', BLUE);
+      log(`  1. Check each package's ${YELLOW}release.branches${RESET} in its package.json`);
+      log(`  2. Switch to a branch the project(s) support, or add ${YELLOW}${currentBranch}${RESET} to their ${YELLOW}release.branches${RESET}\n`);
+      exit(1);
+    }
+    effectiveProjects = kept.join(',');
+  } else {
+    if (eligible.length === 0) {
+      log(`\n❌ Error: No packages are configured to release from ${currentBranch}`, RED);
+      exit(1);
+    }
+    effectiveProjects = eligible.join(',');
+  }
+
   // All checks passed, run the release command
   log('\n✨ All checks passed! Running release command...\n', GREEN);
   log('━'.repeat(50), BLUE);
@@ -200,7 +278,7 @@ async function main() {
     if (versionArg) releaseCommand += ` ${versionArg}`;
     releaseCommand += ' --skip-publish';
     if (isPrerelease) releaseCommand += ` --preid=${currentBranch}`;
-    if (projectsArg) releaseCommand += ` --projects=${projectsArg}`;
+    releaseCommand += ` --projects=${effectiveProjects}`;
     if (firstRelease) releaseCommand += ' --first-release';
     if (isDryRun) releaseCommand += ' --dry-run';
 

@@ -71,7 +71,6 @@
   },
   "release": {
     "branches": [
-      "main",
       {
         "name": "alpha",
         "prerelease": true

@@ -15,7 +15,6 @@ This document provides instructions for AI agents operating in the `packages/cli
 | :------------- | :---------------- | :---------------------------- |
 | **Lint Fix**   | `pnpm lint:fix`   | Auto-fixes linting issues.    |
 | **Type Check** | `pnpm test:types` | Checks types.                 |
-| **Test (CI)**  | `pnpm test:ci`    | Runs tests in non-watch mode. |
 
 ## Code style & conventions
 
@@ -38,7 +37,7 @@ This document provides instructions for AI agents operating in the `packages/cli
 ## Development workflow
 
 - **Step 1:** Create/Modify Test (see `qa-engineer-integration` or `qa-engineer-unit` skills).
-- **Step 2:** Verify Test Fails (`pnpm test:ci <filename>`).
+- **Step 2:** Verify Test Fails (`pnpm test <filename>`).
 - **Step 3:** Write Implementation.
-- **Step 4:** Verify Test Passes (`pnpm test:ci <filename>`).
+- **Step 4:** Verify Test Passes (`pnpm test <filename>`).
 - **Step 5:** Run Fix & Check (`pnpm test:types && pnpm lint:fix`) before finishing.

@@ -1,8 +1,17 @@
-import { Directive, input, ViewContainerRef, effect, ComponentRef } from '@angular/core';
-import type { SbBlokData } from '@storyblok/js';
-import { StoryblokComponentResolver } from './sb-blok.feature';
+import {
+  ComponentRef,
+  DestroyRef,
+  Directive,
+  effect,
+  inject,
+  input,
+  untracked,
+  ViewContainerRef,
+} from '@angular/core';
 import { storyblokEditable } from '@storyblok/live-preview';
-import { DestroyRef, inject } from '@angular/core';
+
+import { StoryblokComponentResolver } from './sb-blok.feature';
+import { SbBlokData } from './types';
 
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.
@@ -38,49 +47,70 @@ import { DestroyRef, inject } from '@angular/core';
   selector: '[sbBlok]',
 })
 export class SbBlokDirective {
-  private viewContainerRef = inject(ViewContainerRef);
-  private resolver = inject(StoryblokComponentResolver);
+  private readonly viewContainerRef = inject(ViewContainerRef);
+  private readonly resolver = inject(StoryblokComponentResolver);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly sbBlok = input.required<SbBlokData | null | undefined>();
 
   private componentRef: ComponentRef<unknown> | null = null;
-  private destroyRef = inject(DestroyRef);
+  private currentComponentType: string | null = null;
+  private renderVersion = 0;
+
   constructor() {
     effect(() => {
-      this.render(this.sbBlok());
+      const blok = this.sbBlok();
+      untracked(() => this.render(blok));
     });
+
+    this.destroyRef.onDestroy(() => this.componentRef?.destroy());
   }
+
+  private clearComponent(): void {
+    this.componentRef?.destroy();
+    this.componentRef = null;
+    this.currentComponentType = null;
+    this.viewContainerRef.clear();
+  }
+
   private applyEditableAttributes(componentRef: ComponentRef<unknown>, blok: SbBlokData): void {
     const editable = storyblokEditable(blok);
-    const host = componentRef.location.nativeElement as HTMLElement;
-
-    if (editable['data-blok-c']) {
+    const host = componentRef.location.nativeElement;
+    if (editable['data-blok-c'] && host?.setAttribute) {
       host.setAttribute('data-blok-c', editable['data-blok-c']);
       host.setAttribute('data-blok-uid', editable['data-blok-uid']);
     }
   }
-  private async render(blok: SbBlokData | null | undefined) {
+
+  private async render(blok: SbBlokData | null | undefined): Promise<void> {
+    const myVersion = ++this.renderVersion;
+
     if (!blok?.component) {
-      this.viewContainerRef.clear();
+      this.clearComponent();
       return;
     }
 
-    const Component = await this.resolver.resolve(blok.component);
+    const componentType = blok.component;
+    const Component = await this.resolver.resolve(componentType);
 
-    // IMPORTANT: stop if directive already destroyed
-    if (this.destroyRef.destroyed) return;
+    // Bail if a newer render was triggered or directive was destroyed
+    if (myVersion !== this.renderVersion || this.destroyRef.destroyed) {
+      return;
+    }
 
     if (!Component) {
-      this.viewContainerRef.clear();
+      this.clearComponent();
       return;
     }
 
-    if (!this.componentRef) {
+    // Recreate component only if type changed
+    if (this.currentComponentType !== componentType) {
+      this.clearComponent();
       this.componentRef = this.viewContainerRef.createComponent(Component);
     }
 
-    this.componentRef.setInput('blok', blok);
-    this.componentRef.changeDetectorRef.detectChanges();
-    this.applyEditableAttributes(this.componentRef, blok);
+    this.currentComponentType = componentType;
+    this.componentRef!.setInput('blok', blok);
+    this.applyEditableAttributes(this.componentRef!, blok);
   }
 }

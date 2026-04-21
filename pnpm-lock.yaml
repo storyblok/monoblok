@@ -43,15 +43,15 @@ importers:
       '@storyblok/api-client':
         specifier: workspace:*
         version: link:../capi-client
-      '@storyblok/js':
-        specifier: workspace:*
-        version: link:../js
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../live-preview
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../richtext
+      storyblok-js-client:
+        specifier: workspace:*
+        version: link:../js-client
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

@@ -68,5 +68,14 @@
     "tsdown": "^0.20.3",
     "typescript": "5.8.3",
     "vitest": "^3.1.3"
+  },
+  "release": {
+    "branches": [
+      "main",
+      {
+        "name": "alpha",
+        "prerelease": true
+      }
+    ]
   }
 }

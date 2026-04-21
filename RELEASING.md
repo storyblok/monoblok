@@ -120,6 +120,9 @@ Not all packages have pre-release channels configured. Check the `release.branch
 | `@storyblok/astro` | `alpha`, `next` |
 | `@storyblok/nuxt` | `next` |
 | `storyblok-js-client` | `beta`, `next` |
+| `@storyblok/api-client` | `alpha` |
+| `@storyblok/management-api-client` | `alpha` |
+| `@storyblok/migrations` | `alpha` |
 
 #### Promoting Pre-release to Stable
 

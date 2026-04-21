@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { readdirSync, readFileSync, statSync } from 'fs';
-import { join } from 'path';
 import { exit, argv, stdin, stdout } from 'process';
 import * as readline from 'readline';
+
+import { getBranchEligiblePackages } from './release-branches.mjs';
 
 const MAIN_BRANCH = 'main';
 const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
@@ -73,57 +73,6 @@ function isUpToDateWithRemote(branch) {
     log('⚠️  Warning: Could not verify if branch is up to date with remote', YELLOW);
     return true; // Assume up to date if we can't verify
   }
-}
-
-/**
- * Reads `packages/*​/package.json` and splits packages by whether their
- * `release.branches` field allows releasing from the given branch.
- * Packages without a `release.branches` field are treated as eligible on
- * every release branch (current default behaviour).
- */
-function getBranchEligiblePackages(branch) {
-  const packagesDir = join(process.cwd(), 'packages');
-  const eligible = [];
-  const excluded = [];
-
-  for (const entry of readdirSync(packagesDir).sort()) {
-    const pkgPath = join(packagesDir, entry, 'package.json');
-    let stat;
-    try {
-      stat = statSync(pkgPath);
-    } catch {
-      continue;
-    }
-    if (!stat.isFile()) continue;
-
-    let pkg;
-    try {
-      pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-    } catch (err) {
-      log(`⚠️  Warning: failed to parse ${pkgPath} — skipping (${err.message})`, YELLOW);
-      continue;
-    }
-
-    if (!pkg.name) continue;
-
-    const branches = pkg.release?.branches;
-    if (!Array.isArray(branches)) {
-      eligible.push(pkg.name);
-      continue;
-    }
-
-    const branchNames = branches
-      .map(b => (typeof b === 'string' ? b : b?.name))
-      .filter(Boolean);
-
-    if (branchNames.includes(branch)) {
-      eligible.push(pkg.name);
-    } else {
-      excluded.push(pkg.name);
-    }
-  }
-
-  return { eligible, excluded };
 }
 
 function askConfirmation(question) {

@@ -37,27 +37,53 @@ jobs:
       - name: Print Environment Info
         run: pnpm nx report
 
-      # Workaround for Nx bugs:
+      # Compute the list of projects to publish. Always filter by each
+      # package's `release.branches` so alpha-only packages can never be
+      # published to `latest` from main (or to `beta`/`next` from the wrong
+      # branch), regardless of how versioning was performed.
+      #
+      # On main: publish every eligible package. `nx release publish` is a
+      # no-op for versions already on npm, so this restores catch-up semantics
+      # if a previous release cycle skipped the publish step.
+      #
+      # On prereleases: intersect eligibility with the packages bumped in the
+      # latest `chore(release): publish` commit. The intersection is needed
+      # as a workaround for nx publish bugs that would otherwise try to
+      # publish unrelated packages:
       #   - https://github.com/nrwl/nx/issues/34000
       #   - https://github.com/nrwl/nx/issues/27822
-      # For prereleases, only publish packages that were bumped in the release commit
-      - name: Detect packages to publish (prerelease)
+      - name: Determine projects to publish
         id: detect-packages
-        if: steps.npm-tag.outputs.tag != 'latest'
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
         run: |
-          # Find the latest "chore(release): publish" commit and extract package names
-          RELEASE_COMMIT=$(git log --grep='^chore(release): publish' --format=%H -1)
-          echo "Release commit: $RELEASE_COMMIT"
-          PACKAGES=$(git log -1 --format=%B "$RELEASE_COMMIT" | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
-          echo "Packages to publish: $PACKAGES"
-          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
+          ELIGIBLE=$(node tools/release-branches.mjs "$BRANCH_NAME")
+          echo "Eligible on $BRANCH_NAME: $ELIGIBLE"
+
+          if [ "$BRANCH_NAME" = "main" ]; then
+            echo "packages=$ELIGIBLE" >> "$GITHUB_OUTPUT"
+          else
+            RELEASE_COMMIT=$(git log --grep='^chore(release): publish' --format=%H -1)
+            echo "Release commit: $RELEASE_COMMIT"
+            BUMPED=$(git log -1 --format=%B "$RELEASE_COMMIT" | grep '^- project:' | awk '{print $3}' | paste -sd ',' -)
+            echo "Bumped in release commit: $BUMPED"
+            PACKAGES=$(ELIGIBLE="$ELIGIBLE" BUMPED="$BUMPED" node -e '
+              const eligible = new Set((process.env.ELIGIBLE || "").split(",").filter(Boolean));
+              const bumped = (process.env.BUMPED || "").split(",").filter(Boolean);
+              process.stdout.write(bumped.filter(p => eligible.has(p)).join(","));
+            ')
+            echo "Packages to publish: $PACKAGES"
+            echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
 
       - name: Publish packages
+        env:
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
+          PACKAGES: ${{ steps.detect-packages.outputs.packages }}
         run: |
-          if [ "${{ steps.npm-tag.outputs.tag }}" = "latest" ]; then
-            pnpm nx release publish --excludeTaskDependencies --tag=latest
-          elif [ -n "${{ steps.detect-packages.outputs.packages }}" ]; then
-            pnpm nx release publish --excludeTaskDependencies --tag=${{ steps.npm-tag.outputs.tag }} --projects=${{ steps.detect-packages.outputs.packages }}
+          if [ -n "$PACKAGES" ]; then
+            pnpm nx release publish --excludeTaskDependencies --tag="$NPM_TAG" --projects="$PACKAGES"
           else
             echo "No packages to publish"
           fi

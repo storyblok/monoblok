@@ -113,16 +113,23 @@ To release a pre-release version (e.g., for testing before stable release):
 
 #### Supported Pre-release Channels by Package
 
-Not all packages have pre-release channels configured. Check the `release.branches` field in each package's `package.json`:
+Each package's `release.branches` in its `package.json` is the source of truth for which branches it may release from. Packages without a `release.branches` field release from every release branch (`main`, `alpha`, `beta`, `next`).
+
+The gate is enforced in two places:
+
+1. `pnpm release` skips ineligible packages when creating version commits and tags.
+2. The **Publish** workflow re-computes the eligible list from `release.branches` before running `nx release publish`. This means raw flows like `pnpm nx release version` — which bypass `pnpm release` — still cannot accidentally publish an ineligible package to npm, because the workflow will filter them out.
+
+To keep a package out of stable releases, omit `"main"` from its `release.branches`. To promote an alpha-only package to stable, add `"main"` back.
 
 | Package | Channels |
 |---------|----------|
-| `@storyblok/astro` | `alpha`, `next` |
-| `@storyblok/nuxt` | `next` |
-| `storyblok-js-client` | `beta`, `next` |
-| `@storyblok/api-client` | `alpha` |
-| `@storyblok/management-api-client` | `alpha` |
-| `@storyblok/migrations` | `alpha` |
+| `@storyblok/astro` | `main`, `alpha`, `next` |
+| `@storyblok/nuxt` | `main`, `next` |
+| `storyblok-js-client` | `main`, `beta`, `next` |
+| `@storyblok/api-client` | `alpha` only — stable disabled until promoted |
+| `@storyblok/management-api-client` | `alpha` only — stable disabled until promoted |
+| `@storyblok/migrations` | `alpha` only — stable disabled until promoted |
 
 #### Promoting Pre-release to Stable
 

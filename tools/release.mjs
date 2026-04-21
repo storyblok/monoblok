@@ -4,6 +4,8 @@ import { execSync } from 'child_process';
 import { exit, argv, stdin, stdout } from 'process';
 import * as readline from 'readline';
 
+import { getBranchEligiblePackages } from './release-branches.mjs';
+
 const MAIN_BRANCH = 'main';
 const RELEASE_BRANCHES = ['main', 'alpha', 'beta', 'next'];
 
@@ -190,6 +192,39 @@ async function main() {
 
   log(`✅ Up to date with origin/${currentBranch}`, GREEN);
 
+  // Filter packages by their `release.branches` config.
+  const { eligible, excluded } = getBranchEligiblePackages(currentBranch);
+
+  if (excluded.length > 0) {
+    log(`\n⏭️  Skipping packages not configured to release from ${currentBranch}:`, YELLOW);
+    for (const name of excluded) log(`   - ${name}`, YELLOW);
+  }
+
+  let effectiveProjects;
+  if (projectsArg) {
+    const requested = projectsArg.split(',').map(s => s.trim()).filter(Boolean);
+    const droppedByBranch = requested.filter(p => excluded.includes(p));
+    const kept = requested.filter(p => !excluded.includes(p));
+
+    if (droppedByBranch.length > 0) {
+      log(`\n⚠️  Removing requested projects not eligible on ${currentBranch}: ${droppedByBranch.join(', ')}`, YELLOW);
+    }
+    if (kept.length === 0) {
+      log(`\n❌ Error: None of the requested projects are configured to release from ${currentBranch}`, RED);
+      log('\n📋 Instructions:', BLUE);
+      log(`  1. Check each package's ${YELLOW}release.branches${RESET} in its package.json`);
+      log(`  2. Switch to a branch the project(s) support, or add ${YELLOW}${currentBranch}${RESET} to their ${YELLOW}release.branches${RESET}\n`);
+      exit(1);
+    }
+    effectiveProjects = kept.join(',');
+  } else {
+    if (eligible.length === 0) {
+      log(`\n❌ Error: No packages are configured to release from ${currentBranch}`, RED);
+      exit(1);
+    }
+    effectiveProjects = eligible.join(',');
+  }
+
   // All checks passed, run the release command
   log('\n✨ All checks passed! Running release command...\n', GREEN);
   log('━'.repeat(50), BLUE);
@@ -200,7 +235,7 @@ async function main() {
     if (versionArg) releaseCommand += ` ${versionArg}`;
     releaseCommand += ' --skip-publish';
     if (isPrerelease) releaseCommand += ` --preid=${currentBranch}`;
-    if (projectsArg) releaseCommand += ` --projects=${projectsArg}`;
+    releaseCommand += ` --projects=${effectiveProjects}`;
     if (firstRelease) releaseCommand += ' --first-release';
     if (isDryRun) releaseCommand += ' --dry-run';
 

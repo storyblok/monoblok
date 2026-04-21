@@ -7,7 +7,7 @@ import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
-import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, sha256, updateAsset, updateAssetFolder } from './actions';
+import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetListQuery, AssetMap, AssetUpdate, AssetUpload } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -611,41 +611,6 @@ const hasShortFilename = (a: unknown): a is { short_filename: string } => {
   return !!a && typeof a === 'object' && 'short_filename' in a && typeof (a as any).short_filename === 'string';
 };
 
-/**
- * Compares data (metadata and folder id) between local and remote assets.
- * Returns true if the data is identical (no update needed).
- *
- * Iterates over every key in the update payload so that newly added
- * AssetUpdate fields are automatically covered without manual changes.
- */
-const isDataUnchanged = (localAsset: AssetUpdate, remoteAsset: Asset): boolean => {
-  for (const key of Object.keys(localAsset) as Array<keyof AssetUpdate>) {
-    const local = localAsset[key];
-    const remote = remoteAsset[key as keyof Asset];
-
-    if (typeof local === 'object' || typeof remote === 'object') {
-      if (JSON.stringify(local) !== JSON.stringify(remote)) {
-        return false;
-      }
-    }
-    else if (local !== remote) {
-      return false;
-    }
-  }
-
-  return true;
-};
-
-export type DownloadAssetFileTransport = (asset: { filename: string; is_private?: boolean }) => Promise<ArrayBuffer>;
-
-export const makeDownloadAssetFileTransport = ({
-  assetToken,
-  region,
-}: {
-  assetToken?: string;
-  region?: RegionCode;
-}): DownloadAssetFileTransport => asset => downloadAssetFile(asset, { assetToken, region });
-
 const processAsset = async ({
   localAsset,
   fileBuffer,
@@ -662,12 +627,11 @@ const processAsset = async ({
     getAsset: GetAssetTransport;
     createAsset: CreateAssetTransport;
     updateAsset: UpdateAssetTransport;
-    downloadAssetFile: DownloadAssetFileTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
-}): Promise<{ status: 'skipped' | 'created' | 'updated'; remoteAsset: Asset }> => {
+}): Promise<{ status: 'created' | 'updated'; remoteAsset: Asset }> => {
   const remoteFolderId = localAsset.asset_folder_id
     && (maps.assetFolders.get(localAsset.asset_folder_id) || localAsset.asset_folder_id);
   const remoteAssetId = hasId(localAsset)
@@ -676,9 +640,9 @@ const processAsset = async ({
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   let newRemoteAsset: Asset;
-  let status: 'skipped' | 'created' | 'updated';
+  let status: 'created' | 'updated';
   if (remoteAsset) {
-    // Build only the writable metadata fields for comparison and API update.
+    // Build only the writable metadata fields for the API update.
     // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
     const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
@@ -694,26 +658,16 @@ const processAsset = async ({
       meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
     };
 
-    const remoteFileBuffer = await transports.downloadAssetFile(remoteAsset);
-    const isFileUnchanged = sha256(fileBuffer) === sha256(remoteFileBuffer);
-
-    if (isFileUnchanged && isDataUnchanged(updatePayload, remoteAsset)) {
-      newRemoteAsset = remoteAsset;
-      status = 'skipped';
-    }
-    else {
-      // Pass fileBuffer when the file changed so mapi-client performs the
-      // full replace flow (sign → S3 upload → finalize) before updating metadata.
-      // short_filename is required alongside fileBuffer for the sign request.
-      await transports.updateAsset(
-        remoteAsset.id,
-        { ...updatePayload, short_filename: remoteAsset.short_filename },
-        isFileUnchanged ? undefined : fileBuffer,
-      );
-      // updateAsset returns void; the remote asset's readonly fields are unchanged.
-      newRemoteAsset = { ...remoteAsset, ...updatePayload };
-      status = 'updated';
-    }
+    // Always perform the full replace flow (sign → S3 upload → finalize)
+    // and update metadata. No change detection — see ADR-0003.
+    await transports.updateAsset(
+      remoteAsset.id,
+      { ...updatePayload, short_filename: remoteAsset.short_filename },
+      fileBuffer,
+    );
+    // updateAsset returns void; the remote asset's readonly fields are unchanged.
+    newRemoteAsset = { ...remoteAsset, ...updatePayload };
+    status = 'updated';
   }
   else if (hasShortFilename(localAsset)) {
     const createPayload = {
@@ -744,21 +698,18 @@ export const upsertAssetStream = ({
   maps,
   onIncrement,
   onAssetSuccess,
-  onAssetSkipped,
   onAssetError,
 }: {
   transports: {
     getAsset: GetAssetTransport;
     createAsset: CreateAssetTransport;
     updateAsset: UpdateAssetTransport;
-    downloadAssetFile: DownloadAssetFileTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
-  onAssetSkipped?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
 }) => {
   const processing = new Set<Promise<void>>();
@@ -769,7 +720,7 @@ export const upsertAssetStream = ({
       await apiConcurrencyLock.acquire();
       const task = (async () => {
         try {
-          const { status, remoteAsset } = await processAsset({
+          const { remoteAsset } = await processAsset({
             localAsset,
             fileBuffer: context.fileBuffer,
             assetBinaryPath: context.assetBinaryPath,
@@ -778,12 +729,7 @@ export const upsertAssetStream = ({
             maps,
           });
 
-          if (status === 'skipped') {
-            onAssetSkipped?.(localAsset, remoteAsset);
-          }
-          else {
-            onAssetSuccess?.(localAsset, remoteAsset);
-          }
+          onAssetSuccess?.(localAsset, remoteAsset);
         }
         catch (maybeError) {
           onAssetError?.(toError(maybeError), localAsset);

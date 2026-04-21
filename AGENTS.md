@@ -2,7 +2,7 @@
 
 > **Note:** `AGENTS.md` is the source of truth. `CLAUDE.md` is a symlink to `AGENTS.md` for Claude Code compatibility.
 
-Adhere strictly to these guidelines to ensure consistency and code quality. Use relevant skills if applicable.
+Adhere strictly to these guidelines to ensure consistency and code quality. Be concise. Drop: filler, pleasantries, hedging.
 
 ## Project context
 

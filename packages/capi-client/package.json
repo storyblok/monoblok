@@ -55,6 +55,15 @@
     "tsx": "^4.21.0",
     "vitest": "^4.0.18"
   },
+  "release": {
+    "branches": [
+      "main",
+      {
+        "name": "alpha",
+        "prerelease": true
+      }
+    ]
+  },
   "nx": {
     "targets": {
       "generate": {

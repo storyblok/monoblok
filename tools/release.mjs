@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 import { exit, argv, stdin, stdout } from 'process';
 import * as readline from 'readline';
 
@@ -200,6 +202,13 @@ async function main() {
     for (const name of excluded) log(`   - ${name}`, YELLOW);
   }
 
+  // Snapshot the on-disk `version` of each excluded package so we can detect
+  // if `nx release` bumps one of them. See the abort check after the release
+  // command below — this prevents the regression that produced commit
+  // f824b398e and the subsequent ETARGET failures for downstream consumers.
+  const baseSha = execCommand('git rev-parse HEAD', { silent: true });
+  const excludedSnapshot = snapshotPackageVersions(excluded);
+
   let effectiveProjects;
   if (projectsArg) {
     const requested = projectsArg.split(',').map(s => s.trim()).filter(Boolean);
@@ -247,6 +256,24 @@ async function main() {
       log('\n✅ Dry run completed successfully!', GREEN);
       log('\nNo changes were made. Run without --dry-run to perform the actual release.\n', YELLOW);
     } else {
+      const mutated = detectMutatedVersions(excludedSnapshot);
+      if (mutated.length > 0) {
+        log('\n❌ Release aborted: nx release bumped package(s) that will not be', RED);
+        log(`   published on ${currentBranch} (release.branches excludes it):`, RED);
+        for (const { name, oldVersion, newVersion } of mutated) {
+          log(`   - ${name}: ${oldVersion} -> ${newVersion}`, RED);
+        }
+        log('\nPushing this release would publish downstream packages with', YELLOW);
+        log('unresolvable dependency references (see RELEASING.md for the', YELLOW);
+        log('original incident — commit f824b398e).', YELLOW);
+        log('\nRecover with:', BLUE);
+        log(`   git reset --hard ${baseSha}`, YELLOW);
+        log(`   for t in $(git tag --points-at HEAD); do git tag -d "$t"; done`, YELLOW);
+        log('\nThen either run from a branch the package(s) allow, or revert', BLUE);
+        log('the conventional-commit changes that are driving the bump.\n', BLUE);
+        exit(1);
+      }
+
       log('\n✅ Release completed successfully!', GREEN);
       log('\n📋 Next steps:', BLUE);
       log('  1. Go to the GitHub Actions tab');
@@ -260,6 +287,45 @@ async function main() {
     log('Check the error message above for details\n', YELLOW);
     exit(1);
   }
+}
+
+/**
+ * Reads the current on-disk `version` for each package name in `names`.
+ * Returns a map of `name -> { path, version }` for packages that exist under
+ * `packages/`. Packages not found are silently skipped (they may live
+ * elsewhere in the workspace, which this guard does not try to cover).
+ */
+function snapshotPackageVersions(names, packagesDir = 'packages') {
+  if (!names || names.length === 0) return new Map();
+  const wanted = new Set(names);
+  const snapshot = new Map();
+  for (const entry of readdirSync(packagesDir)) {
+    const pkgPath = join(packagesDir, entry, 'package.json');
+    let stat;
+    try { stat = statSync(pkgPath); } catch { continue; }
+    if (!stat.isFile()) continue;
+    let pkg;
+    try { pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')); } catch { continue; }
+    if (!pkg.name || !wanted.has(pkg.name)) continue;
+    snapshot.set(pkg.name, { path: pkgPath, version: pkg.version });
+  }
+  return snapshot;
+}
+
+/**
+ * Compares current on-disk `version` values against the snapshot taken before
+ * `nx release` ran. Returns the list of packages whose version changed.
+ */
+function detectMutatedVersions(snapshot) {
+  const mutated = [];
+  for (const [name, { path, version: oldVersion }] of snapshot) {
+    let pkg;
+    try { pkg = JSON.parse(readFileSync(path, 'utf-8')); } catch { continue; }
+    if (pkg.version !== oldVersion) {
+      mutated.push({ name, oldVersion, newVersion: pkg.version });
+    }
+  }
+  return mutated;
 }
 
 main().catch((error) => {

@@ -115,10 +115,11 @@ To release a pre-release version (e.g., for testing before stable release):
 
 Each package's `release.branches` in its `package.json` is the source of truth for which branches it may release from. Packages without a `release.branches` field release from every release branch (`main`, `alpha`, `beta`, `next`).
 
-The gate is enforced in two places:
+The gate is enforced in three places:
 
 1. `pnpm release` skips ineligible packages when creating version commits and tags.
-2. The **Publish** workflow re-computes the eligible list from `release.branches` before running `nx release publish`. This means raw flows like `pnpm nx release version` — which bypass `pnpm release` — still cannot accidentally publish an ineligible package to npm, because the workflow will filter them out.
+2. `pnpm release` also **aborts after the `nx release` step** if an ineligible package's `version` was bumped anyway. This guards against a regression where nx release version would silently bump alpha-only packages, leaving downstream `workspace:*` references pointing at versions that would never be published (see the "Alpha-only packages and downstream consumers" note below).
+3. The **Publish** workflow re-computes the eligible list from `release.branches` before running `nx release publish`. This means raw flows like `pnpm nx release version` — which bypass `pnpm release` — still cannot accidentally publish an ineligible package to npm, because the workflow will filter them out.
 
 To keep a package out of stable releases, omit `"main"` from its `release.branches`. To promote an alpha-only package to stable, add `"main"` back.
 
@@ -127,9 +128,18 @@ To keep a package out of stable releases, omit `"main"` from its `release.branch
 | `@storyblok/astro` | `main`, `alpha`, `next` |
 | `@storyblok/nuxt` | `main`, `next` |
 | `storyblok-js-client` | `main`, `beta`, `next` |
-| `@storyblok/api-client` | `alpha` only — stable disabled until promoted |
-| `@storyblok/management-api-client` | `alpha` only — stable disabled until promoted |
 | `@storyblok/migrations` | `alpha` only — stable disabled until promoted |
+
+#### Alpha-only packages and downstream consumers
+
+Marking a package alpha-only (`release.branches: [{ name: "alpha", prerelease: true }]`) freezes its stable version on npm, but does **not** prevent nx from bumping the package's `version` field on `main` if conventional commits drive a bump. Downstream consumers that reference the alpha-only package via `workspace:*` will then publish tarballs pinning the bumped — but never published — version, producing `ETARGET` failures for anyone installing them.
+
+Two mitigations are in place:
+
+1. **Keep breaking changes on the `alpha` branch.** If an alpha-only package is undergoing a breaking rewrite, do the rewrite work on `alpha` and keep `main` at the last stable state until it is ready to promote. Don't let main accumulate changes to an alpha-only package's source.
+2. **The `pnpm release` guard** (see item 2 above) catches the case where main has accidentally accumulated bump-worthy commits for an alpha-only package and aborts before the release is pushed. If the guard fires, follow the recovery instructions it prints (typically `git reset --hard <base-sha>` and reverting the offending commits).
+
+The original incident that motivated this guard is commit `f824b398e` (April 2026), which produced broken `@storyblok/angular@0.1.6` and `storyblok@4.16.9` tarballs on npm latest.
 
 #### Promoting Pre-release to Stable
 

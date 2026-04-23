@@ -1,9 +1,9 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit, signal, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { type SbBlokData, type Story } from '@storyblok/angular';
+import { type Story } from '@storyblok/angular';
 import { ArticleService } from './article.service';
 
-export interface ArticleOverviewComponentBlok extends SbBlokData {
+export interface ArticleOverviewComponentBlok {
   title?: string;
 }
 

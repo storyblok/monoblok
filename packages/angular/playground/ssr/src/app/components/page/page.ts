@@ -6,7 +6,7 @@ import {
   type StoryblokRichTextJson,
 } from '@storyblok/angular';
 
-export interface PageBlok extends SbBlokData {
+export interface PageBlok {
   body?: SbBlokData[];
   richText?: StoryblokRichTextJson;
 }

@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { type SbBlokData } from '@storyblok/angular';
 
-export interface FeaturePostsBlok extends SbBlokData {
+export interface FeaturePostsBlok {
   title?: string;
   articles: SbBlokData[];
 }

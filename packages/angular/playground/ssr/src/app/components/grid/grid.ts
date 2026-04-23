@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { type SbBlokData, SbBlokDirective } from '@storyblok/angular';
 
-export interface GridBlok extends SbBlokData {
+export interface GridBlok {
   columns?: SbBlokData[];
 }
 

@@ -1,8 +1,4 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type SbBlokData, type StoryblokRichTextJson } from '@storyblok/angular';
-import { RichTextComponentProps } from '@storyblok/richtext/static';
-
-export interface LinkBlok extends RichTextComponentProps<'link'>, SbBlokData {}
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-link',
@@ -17,6 +13,4 @@ export interface LinkBlok extends RichTextComponentProps<'link'>, SbBlokData {}
     </div>
   `,
 })
-export class LinkComponent {
-  readonly blok = input.required<LinkBlok>();
-}
+export class LinkComponent {}

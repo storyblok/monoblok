@@ -54,3 +54,4 @@ vite.config.ts.timestamp-*
 /.storyblok
 docs/superpowers
 DOCS.md
+.worktrees

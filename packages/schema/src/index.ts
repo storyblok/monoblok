@@ -17,6 +17,8 @@ export { defineDatasourceEntry } from './helpers/define-datasource-entry';
 export type { DatasourceEntry } from './helpers/define-datasource-entry';
 export { defineField } from './helpers/define-field';
 export type { AssetFieldValue, BlockContent, BlockContentInput, BlocksFieldValue, Field, FieldType, FieldValue, FieldValueInput, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue } from './helpers/define-field';
+export { defineFolderStory } from './helpers/define-folder-story';
+export type { FolderStory } from './helpers/define-folder-story';
 export { defineLink } from './helpers/define-link';
 export type { Link } from './helpers/define-link';
 export { defineProp } from './helpers/define-prop';

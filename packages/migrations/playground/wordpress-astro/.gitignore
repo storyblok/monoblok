@@ -1,0 +1,3 @@
+# Output of the wordpress-to-storyblok skill — disposable test fixture.
+# Real users invoke the skill against their own WP and check in their own storyblok/.
+storyblok/

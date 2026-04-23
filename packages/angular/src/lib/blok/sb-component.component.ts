@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 import { SbBlokDirective } from './sb-blok.directive';
-import { SbBlokData } from './types';
+import { SbBlokData } from '../types';
 
 @Component({
   selector: 'sb-component',

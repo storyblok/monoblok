@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { StoryblokComponentResolver } from './sb-blok.feature';
-import { STORYBLOK_COMPONENTS } from './components.feature';
+import { STORYBLOK_COMPONENTS } from '../components.feature';
 
 @Component({ selector: 'test-teaser', template: '', standalone: true })
 class TeaserComponent {}

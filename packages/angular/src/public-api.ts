@@ -9,28 +9,22 @@ export { provideStoryblok } from './lib/storyblok.feature';
 export { withStoryblokComponents, type StoryblokComponentsMap } from './lib/components.feature';
 
 // Live Preview feature (optional, tree-shakeable)
-export { LivePreviewService } from './lib/livepreview.service';
-export { withLivePreview } from './lib/livepreview.feature';
+export { LivePreviewService } from './lib/livepreview/livepreview.service';
+export { withLivePreview } from './lib/livepreview/livepreview.feature';
+export { type BridgeParams } from '@storyblok/live-preview';
 
-// Storyblok Componnet
-
-export { StoryblokComponent } from './lib/rich-componnet.component';
+// Storyblok Component
+export { StoryblokComponent } from './lib/blok/sb-component.component';
 
 // Directive
-export { SbBlokDirective } from './lib/sb-blok.directive';
+export { SbBlokDirective } from './lib/blok/sb-blok.directive';
 
-// Rich Text (AST-based with custom component overrides)
-export { SbRichTextComponent } from './lib/rich-text.component';
-export { StoryblokRichtextResolver, withStoryblokRichtextComponents } from './lib/richtext.feature';
-export type { SBAngularComponentMap } from './lib/richtext.feature';
-
+// Rich Text (with custom component overrides)
+export { SbRichTextComponent } from './lib/richtext/rich-text.component';
+export { withStoryblokRichtextComponents } from './lib/richtext/richtext.feature';
+export type { SBAngularComponentMap } from './lib/richtext/richtext.feature';
 // Re-export richtext types for convenience
-export {
-  type StoryblokRichTextJson,
-  type RichTextComponentProps,
-} from '@storyblok/richtext/static';
+export { type StoryblokRichTextJson } from '@storyblok/richtext/static';
 
-export * from './lib/types';
 export type { Story } from '@storyblok/api-client';
-
-export { type BridgeParams } from '@storyblok/live-preview';
+export * from './lib/types';

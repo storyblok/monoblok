@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { provideStoryblok } from './storyblok.feature';
 import { StoryblokService, STORYBLOK_CONFIG } from './storyblok.service';
 import { STORYBLOK_COMPONENTS, withStoryblokComponents } from './components.feature';
-import { StoryblokComponentResolver } from './sb-blok.feature';
+import { StoryblokComponentResolver } from './blok/sb-blok.feature';
 
 @Component({ selector: 'test-teaser', template: '', standalone: true })
 class TeaserComponent {}

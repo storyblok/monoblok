@@ -11,7 +11,7 @@ import {
 import { storyblokEditable } from '@storyblok/live-preview';
 
 import { StoryblokComponentResolver } from './sb-blok.feature';
-import { SbBlokData } from './types';
+import { SbBlokData } from '../types';
 
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.

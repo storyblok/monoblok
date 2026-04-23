@@ -2,7 +2,7 @@ import { Component, input, signal, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SbBlokDirective } from './sb-blok.directive';
 import { StoryblokComponentResolver } from './sb-blok.feature';
-import { SbBlokData } from './types';
+import { SbBlokData } from '../types';
 import { vi } from 'vitest';
 
 type TeaserBlok = SbBlokData & {

@@ -26,7 +26,7 @@ import type {
   StoryblokRichTextJson,
   TiptapComponentName,
 } from '@storyblok/richtext/static';
-import { StoryblokComponent } from './rich-componnet.component';
+import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 
 @Component({

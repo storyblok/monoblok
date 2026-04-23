@@ -5,7 +5,7 @@ import {
   type StoryblokFeature,
   BaseComponentResolver,
   StoryblokComponentLoader,
-} from './components.feature';
+} from '../components.feature';
 
 /**
  * Map of Storyblok segment types to Angular components.

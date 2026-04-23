@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type RichTextBaseProps } from '@storyblok/angular';
+import { type RichTextComponentProps } from '@storyblok/angular';
 
 @Component({
   selector: 'app-link',
@@ -12,5 +12,5 @@ import { type RichTextBaseProps } from '@storyblok/angular';
   host: { style: 'display: inline-block' },
 })
 export class LinkComponent {
-  readonly data = input.required<RichTextBaseProps<'link'>>();
+  readonly data = input.required<RichTextComponentProps<'link'>>();
 }

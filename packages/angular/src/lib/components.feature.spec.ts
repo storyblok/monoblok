@@ -37,7 +37,7 @@ describe('isComponentLoader', () => {
       method() {}
     }
 
-    expect(isComponentLoader(SomeClass as unknown as Type<unknown>)).toBe(false);
+    expect(isComponentLoader(SomeClass)).toBe(false);
   });
 });
 

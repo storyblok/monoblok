@@ -3,12 +3,12 @@ import {
   SbRichTextComponent,
   type SbBlokData,
   SbBlokDirective,
-  StoryblokRichTextNode,
+  type StoryblokRichTextJson,
 } from '@storyblok/angular';
 
 export interface PageBlok extends SbBlokData {
   body?: SbBlokData[];
-  richText?: StoryblokRichTextNode;
+  richText?: StoryblokRichTextJson;
 }
 
 @Component({

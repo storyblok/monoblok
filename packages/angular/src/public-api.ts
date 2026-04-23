@@ -17,16 +17,11 @@ export { SbBlokDirective } from './lib/sb-blok.directive';
 
 // Rich Text (AST-based with custom component overrides)
 export { SbRichTextComponent } from './lib/rich-text.component';
-export { SbRichTextNodeComponent } from './lib/rich-text-node.component';
 export { StoryblokRichtextResolver, withStoryblokRichtextComponents } from './lib/richtext.feature';
-export type { StoryblokRichtextComponentsMap, AngularRenderNode } from './lib/richtext.feature';
+export type { SBAngularComponentMap } from './lib/richtext.feature';
 
 // Re-export richtext types for convenience
-export {
-  richTextResolver,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextOptions,
-} from '@storyblok/richtext';
+export { type StoryblokRichTextJson } from '@storyblok/richtext/static';
 
 export * from './lib/types';
 export type { Story } from '@storyblok/api-client';

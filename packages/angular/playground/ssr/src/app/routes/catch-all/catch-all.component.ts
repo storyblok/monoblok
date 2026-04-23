@@ -8,7 +8,7 @@ import {
   input,
 } from '@angular/core';
 import {
-  type ISbStoryData,
+  type Story,
   type SbBlokData,
   SbBlokDirective,
   LivePreviewService,
@@ -35,7 +35,7 @@ export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
 
   /** SSR source of truth */
-  readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
+  readonly storyInput = input<Story | null>(null, { alias: 'story' });
 
   /** Writable signal linked to input - allows bridge updates */
   readonly story = linkedSignal(() => this.storyInput());

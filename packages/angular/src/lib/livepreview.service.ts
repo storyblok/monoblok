@@ -1,5 +1,5 @@
 import { InjectionToken, inject, NgZone, Injectable } from '@angular/core';
-import type { ISbStoryData } from './types';
+import { Story } from '@storyblok/api-client';
 import { type BridgeParams, onStoryblokEditorEvent } from '@storyblok/live-preview';
 
 /**å
@@ -19,7 +19,7 @@ export const LIVE_PREVIEW_ENABLED = new InjectionToken<boolean>('LIVE_PREVIEW_EN
 /**
  * Callback function type for live preview updates.
  */
-export type LivePreviewCallback = (story: ISbStoryData) => void;
+export type LivePreviewCallback = (story: Story) => void;
 
 /**
  * Error thrown in development when LivePreviewService is used
@@ -71,7 +71,7 @@ export class LivePreviewService {
 
     return onStoryblokEditorEvent((story) => {
       this.ngZone.run(() => {
-        callback(story);
+        callback(story as Story);
       });
     }, mergedConfig);
   }

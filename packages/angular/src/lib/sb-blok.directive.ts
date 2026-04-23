@@ -110,7 +110,7 @@ export class SbBlokDirective {
     }
 
     this.currentComponentType = componentType;
-    this.componentRef!.setInput('blok', blok);
+    this.componentRef?.setInput('blok', blok);
     this.applyEditableAttributes(this.componentRef!, blok);
   }
 }

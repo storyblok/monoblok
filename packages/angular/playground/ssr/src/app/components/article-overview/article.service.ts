@@ -7,7 +7,7 @@ export class ArticleService {
 
   async getArticles(): Promise<Story[]> {
     const client = this.storyblok.getClient();
-    const { data } = await client.stories.getAll({
+    const { data } = await client.stories.list({
       query: { version: 'draft', starts_with: 'angular/articles/', content_type: 'article' },
     });
     return (data?.stories as Story[]) ?? [];

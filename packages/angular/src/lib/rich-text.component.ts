@@ -20,16 +20,14 @@ import {
   untracked,
   signal,
 } from '@angular/core';
-import type { StoryblokRichTextNode } from '@storyblok/richtext';
-import { getRichTextSegments, renderSegments, isVoidElement } from '@storyblok/richtext';
+import { StoryblokRichtextResolver } from './richtext.feature';
 import {
-  StoryblokRichtextResolver,
-  createAngularAdapter,
-  type AngularRenderNode,
-  isTextNode,
-  isTagNode,
-  isComponentNode,
-} from './richtext.feature';
+  getStaticChildren,
+  isSelfClosing,
+  processAttrs,
+  resolveTag,
+} from '@storyblok/richtext/static';
+import type { RenderSpec, StoryblokRichTextJson } from '@storyblok/richtext/static';
 
 /**
  * Renders Storyblok rich text content with support for custom component overrides.
@@ -106,93 +104,33 @@ import {
   host: { style: 'display: contents' },
 })
 export class SbRichTextComponent implements AfterViewInit, OnDestroy {
-  private readonly resolver = inject(StoryblokRichtextResolver);
+  /** The Storyblok rich text document to render. */
+  doc = input.required<StoryblokRichTextJson | null | undefined>();
+
   private readonly renderer = inject(Renderer2);
-  private readonly el = inject(ElementRef<HTMLElement>);
-  private readonly injector = inject(Injector);
-  private readonly envInjector = inject(EnvironmentInjector);
-  private readonly appRef = inject(ApplicationRef);
-
-  /** Track dynamically created components for cleanup */
-  private readonly componentRefs: ComponentRef<unknown>[] = [];
-
-  /** Tracks whether initial render has completed (for SSR compatibility) */
+  private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
   private readonly hasRendered = signal(false);
 
-  /** The Storyblok rich text document to render */
-  readonly doc = input.required<StoryblokRichTextNode>();
-
-  /** Computed AST nodes ready for rendering */
-  readonly nodes = computed<AngularRenderNode[]>(() => {
-    const doc = this.doc();
-    if (!doc) return [];
-
-    // 1. Parse rich text into segments
-    const segments = getRichTextSegments(doc);
-
-    // 2. Create Angular adapter
-    const adapter = createAngularAdapter();
-
-    // 3. Get keys of custom components (these become "component" nodes)
-    const keys = this.resolver.getRegisteredTypes();
-
-    // 4. Render segments to Angular AST
-    return renderSegments(segments, adapter, keys);
-  });
-
   constructor() {
-    // Watch for doc changes and re-render (client-side only, after initial render)
-    // This enables live preview updates while maintaining SSR compatibility
     effect(() => {
-      // Track the nodes signal to detect doc changes
-      const nodes = this.nodes();
-
-      // Only re-render after initial render has completed
-      // This prevents double-rendering on initial load and ensures SSR hydration works
-      if (untracked(() => this.hasRendered())) {
-        this.clearContent();
-        this.renderNodes(nodes);
+      const richTextDoc = this.doc();
+      // Only re-render on changes after the initial render is complete.
+      if (this.hasRendered()) {
+        this.render(richTextDoc);
       }
     });
   }
 
   ngAfterViewInit(): void {
-    const nodes = this.nodes();
-    this.renderNodes(nodes);
+    // For SSR hydration, if the server has already rendered content,
+    // we avoid clearing it on the client. The effect will handle future updates.
+    if (this.hostElement.hasChildNodes()) {
+      this.hasRendered.set(true);
+      return;
+    }
+    // Perform the initial render on the client if not pre-rendered.
+    this.render(this.doc());
     this.hasRendered.set(true);
-  }
-
-  /**
-   * Clears all rendered content and destroys dynamic components.
-   */
-  private clearContent(): void {
-    const hostElement = this.el.nativeElement;
-
-    // Remove all child nodes from the host element
-    while (hostElement.firstChild) {
-      this.renderer.removeChild(hostElement, hostElement.firstChild);
-    }
-
-    // Clean up dynamically created components
-    for (const ref of this.componentRefs) {
-      this.appRef.detachView(ref.hostView);
-      ref.destroy();
-    }
-    this.componentRefs.length = 0;
-  }
-
-  /**
-   * Renders AST nodes to the DOM.
-   */
-  private renderNodes(nodes: AngularRenderNode[]): void {
-    const hostElement = this.el.nativeElement;
-
-    if (!hostElement || !nodes.length) return;
-
-    // Render all nodes directly inside the host element
-    for (const node of nodes) {
-      this.renderNode(node, hostElement);
-    }
   }
 
   ngOnDestroy(): void {
@@ -200,146 +138,158 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Renders a single AST node to the DOM.
+   * Renders the entire rich text document.
    */
-  private renderNode(node: AngularRenderNode, parent: Element): void {
-    if (isTextNode(node)) {
-      const textNode = this.renderer.createText(node);
+  private render(doc: StoryblokRichTextJson | null | undefined): void {
+    this.clearContent();
+
+    if (!doc) {
+      return;
+    }
+
+    const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
+
+    if (!nodes || nodes.length === 0) {
+      return;
+    }
+
+    for (const node of nodes) {
+      this.renderNode(node, this.hostElement);
+    }
+  }
+
+  /**
+   * Renders a single rich text node.
+   */
+  private renderNode(node: StoryblokRichTextJson, parent: HTMLElement): void {
+    if (node.type === 'text') {
+      this.renderTextNode(node, parent);
+      return;
+    }
+
+    if (node.type === 'blok') {
+      console.warn('Rendering of "blok" nodes is not supported in SbRichTextComponent.');
+      return;
+    }
+
+    const tag = resolveTag(node);
+    if (!tag) {
+      return; // Unknown or un-renderable node type
+    }
+
+    const attrs = processAttrs(node.type, node.attrs);
+    const element = this.renderer.createElement(tag);
+    const staticChildren = getStaticChildren(node);
+
+    // If a node has a static scaffold (like <code> inside <pre>), the attributes
+    // belong to an inner element, not the main tag. We'll pass them to `createStaticScaffold`.
+    if (!staticChildren) {
+      this.applyAttributes(element, attrs);
+    }
+
+    if (isSelfClosing(tag)) {
+      this.renderer.appendChild(parent, element);
+      return;
+    }
+
+    let contentHost = element;
+
+    if (staticChildren) {
+      contentHost = this.createStaticScaffold(staticChildren, element, attrs);
+    }
+
+    if (node.content) {
+      for (const childNode of node.content) {
+        this.renderNode(childNode, contentHost);
+      }
+    }
+
+    this.renderer.appendChild(parent, element);
+  }
+
+  /**
+   * Renders a text node and applies its marks (e.g., bold, italic).
+   */
+  private renderTextNode(
+    node: StoryblokRichTextJson & { type: 'text' },
+    parent: HTMLElement,
+  ): void {
+    const textNode = this.renderer.createText(node.text || '');
+
+    if (!node.marks || node.marks.length === 0) {
       this.renderer.appendChild(parent, textNode);
       return;
     }
 
-    if (isTagNode(node)) {
-      const element = this.renderer.createElement(node.tag);
+    // Create a chain of mark elements, with the text node at the very end.
+    // The first mark in the array is the outermost.
+    const lastMarkElement = node.marks.reduce((currentParent, mark) => {
+      const tag = resolveTag(mark);
+      if (!tag) return currentParent;
 
-      if (node.attrs) {
-        this.applyAttributes(element, node.attrs);
-      }
+      const markElement = this.renderer.createElement(tag);
+      const attrs = processAttrs(mark.type, mark.attrs);
+      this.applyAttributes(markElement, attrs);
 
-      this.renderer.appendChild(parent, element);
+      this.renderer.appendChild(currentParent, markElement);
+      return markElement;
+    }, parent);
 
-      // Render children inside the element (skip for void elements like img, br, hr)
-      if (!isVoidElement(node.tag) && node.children?.length) {
-        for (const child of node.children) {
-          this.renderNode(child, element);
-        }
-      }
-      return;
-    }
-
-    if (isComponentNode(node)) {
-      this.renderComponentNode(node, parent);
-    }
+    this.renderer.appendChild(lastMarkElement, textNode);
   }
 
   /**
-   * Renders a custom component node, handling lazy loading.
+   * Creates a pre-defined DOM structure (e.g., for tables or code blocks)
+   * and returns the element where the node's content should be rendered.
    */
-  private renderComponentNode(
-    node: { component: string; props: Record<string, unknown>; children?: AngularRenderNode[] },
-    parent: Element,
-  ): void {
-    // Try sync resolution first (eager or cached)
-    const componentType = this.resolver.getSync(node.component as any);
+  private createStaticScaffold(
+    specs: readonly RenderSpec[],
+    parent: HTMLElement,
+    nodeAttrs: Record<string, unknown> = {},
+  ): HTMLElement {
+    let contentHost = parent;
+    for (const spec of specs) {
+      const el = this.renderer.createElement(spec.tag);
+      // The node's attributes are merged with the static child's own attributes.
+      const mergedAttrs = { ...spec.attrs, ...nodeAttrs };
 
-    if (componentType) {
-      this.instantiateComponent(componentType, node, parent);
-      return;
-    }
+      this.applyAttributes(el, mergedAttrs);
+      this.renderer.appendChild(contentHost, el);
 
-    // Check if registered at all
-    if (!this.resolver.has(node.component as any)) {
-      // No component registered - render children as fallback
-      if (node.children?.length) {
-        for (const child of node.children) {
-          this.renderNode(child, parent);
-        }
+      if (spec.children) {
+        // For deeper levels, we don't pass the node's attributes again.
+        contentHost = this.createStaticScaffold(spec.children, el);
+      } else {
+        contentHost = el;
       }
-      return;
     }
-
-    // Lazy load the component
-    this.resolver.resolve(node.component as any).then((resolved) => {
-      if (resolved) {
-        this.instantiateComponent(resolved, node, parent);
-      } else if (node.children?.length) {
-        // Fallback: render children if component couldn't be resolved
-        for (const child of node.children) {
-          this.renderNode(child, parent);
-        }
-      }
-    });
+    return contentHost;
   }
 
   /**
-   * Creates and appends a component instance.
+   * Applies attributes to a DOM element using Renderer2.
    */
-  private instantiateComponent(
-    componentType: Type<unknown>,
-    node: { props: Record<string, unknown>; children?: AngularRenderNode[] },
-    parent: Element,
-  ): void {
-    const componentRef = createComponent(componentType, {
-      environmentInjector: this.envInjector,
-      elementInjector: this.injector,
-    });
-
-    this.componentRefs.push(componentRef);
-
-    const children = node.children ?? [];
-
-    // Get the component's declared inputs
-    const mirror = reflectComponentType(componentType);
-    const declaredInputs = new Set(mirror?.inputs.map((i) => i.propName) ?? []);
-
-    // Set individual inputs only if they are declared on the component
-    for (const [key, value] of Object.entries(node.props)) {
-      if (declaredInputs.has(key)) {
-        componentRef.setInput(key, value);
-      }
-    }
-
-    // Set children if declared
-    if (declaredInputs.has('children')) {
-      componentRef.setInput('children', children);
-    }
-
-    // Pass all props as a single object if the component declares a 'props' input
-    if (declaredInputs.has('props')) {
-      componentRef.setInput('props', { ...node.props, children });
-    }
-
-    // Attach to Angular's change detection
-    this.appRef.attachView(componentRef.hostView);
-
-    // Append to DOM
-    const element = componentRef.location.nativeElement;
-    this.renderer.appendChild(parent, element);
-
-    // Trigger initial change detection
-    componentRef.changeDetectorRef.detectChanges();
-  }
-
-  /**
-   * Applies attributes to an element, handling style and class specially.
-   */
-  private applyAttributes(element: Element, attrs: Record<string, unknown>): void {
+  private applyAttributes(element: HTMLElement, attrs: Record<string, any> = {}): void {
     for (const [key, value] of Object.entries(attrs)) {
-      if (value === undefined || value === null) continue;
+      if (value === null || value === undefined) continue;
 
-      if (key === 'style') {
-        if (typeof value === 'string') {
-          this.renderer.setAttribute(element, 'style', value);
-        } else if (typeof value === 'object') {
-          for (const [prop, val] of Object.entries(value as Record<string, string>)) {
-            this.renderer.setStyle(element, prop, val);
-          }
+      if (key === 'style' && typeof value === 'object') {
+        for (const [styleKey, styleValue] of Object.entries(value)) {
+          this.renderer.setStyle(element, styleKey, String(styleValue));
         }
-      } else if (key === 'class') {
-        this.renderer.setAttribute(element, 'class', String(value));
       } else {
         this.renderer.setAttribute(element, key, String(value));
       }
+    }
+  }
+
+  /**
+   * Removes all child nodes from the host element.
+   */
+  private clearContent(): void {
+    let child: ChildNode | null;
+    while ((child = this.hostElement.firstChild)) {
+      this.renderer.removeChild(this.hostElement, child);
     }
   }
 }

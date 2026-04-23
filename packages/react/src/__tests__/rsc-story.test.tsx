@@ -36,18 +36,18 @@ describe('storyblokStory cache lookup', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the uuid-keyed cached story and clears the uuid entry', () => {
+  it('renders the id-keyed cached story and clears the id entry', () => {
     const server = { id: 1, uuid: 'u-1', content: { component: 'marker', label: 'server' } } as unknown as ISbStoryData;
     const cached = { id: 1, uuid: 'u-1', content: { component: 'marker', label: 'cached' } } as unknown as ISbStoryData;
-    globalThis.storyCache.set('u-1', cached);
+    globalThis.storyCache.set('1', cached);
 
     const { getByTestId } = render(<StoryblokStory story={server} />);
 
     expect(getByTestId('marker').textContent).toBe('cached');
-    expect(globalThis.storyCache.has('u-1')).toBe(false);
+    expect(globalThis.storyCache.has('1')).toBe(false);
   });
 
-  it('falls back to the id-index when uuid miss, merging payload onto server story', () => {
+  it('merges the id-keyed payload onto the server story', () => {
     const server = {
       id: 42,
       uuid: 'u-draft',
@@ -59,12 +59,12 @@ describe('storyblokStory cache lookup', () => {
       id: 42,
       content: { component: 'marker', label: 'history' },
     } as unknown as ISbStoryData;
-    globalThis.storyCache.set('id:42', historyPayload);
+    globalThis.storyCache.set('42', historyPayload);
 
     const { getByTestId } = render(<StoryblokStory story={server} />);
 
     expect(getByTestId('marker').textContent).toBe('history');
-    expect(globalThis.storyCache.has('id:42')).toBe(false);
+    expect(globalThis.storyCache.has('42')).toBe(false);
   });
 
   it('renders the server story when no cache entry matches', () => {
@@ -75,32 +75,15 @@ describe('storyblokStory cache lookup', () => {
     expect(getByTestId('marker').textContent).toBe('only-draft');
   });
 
-  it('prefers the uuid entry over an id-index entry when both exist', () => {
-    const server = { id: 9, uuid: 'u-9', content: { component: 'marker', label: 'draft' } } as unknown as ISbStoryData;
-    const uuidHit = { id: 9, uuid: 'u-9', content: { component: 'marker', label: 'by-uuid' } } as unknown as ISbStoryData;
-    const idHit = { id: 9, content: { component: 'marker', label: 'by-id' } } as unknown as ISbStoryData;
-    globalThis.storyCache.set('u-9', uuidHit);
-    globalThis.storyCache.set('id:9', idHit);
-
-    const { getByTestId } = render(<StoryblokStory story={server} />);
-
-    expect(getByTestId('marker').textContent).toBe('by-uuid');
-    // Both entries are cleared so a stale id-index payload can't replay later.
-    expect(globalThis.storyCache.has('u-9')).toBe(false);
-    expect(globalThis.storyCache.has('id:9')).toBe(false);
-  });
-
-  it('clears a stale id-index entry even when no cache hit occurs', () => {
-    // Simulates a later render (no fresh bridge event) where a previous uuid
-    // consumption left an older Visual History payload behind.
+  it('clears a stale id entry even when no fresh cache hit occurs later', () => {
     const server = { id: 11, uuid: 'u-11', content: { component: 'marker', label: 'draft' } } as unknown as ISbStoryData;
     const staleHistory = { id: 11, content: { component: 'marker', label: 'stale-history' } } as unknown as ISbStoryData;
-    globalThis.storyCache.set('id:11', staleHistory);
+    globalThis.storyCache.set('11', staleHistory);
 
     const { getByTestId, rerender } = render(<StoryblokStory story={server} />);
     // First render merges the stale history payload but consumes the entry.
     expect(getByTestId('marker').textContent).toBe('stale-history');
-    expect(globalThis.storyCache.has('id:11')).toBe(false);
+    expect(globalThis.storyCache.has('11')).toBe(false);
 
     // Second render without any fresh cache entry renders the server story.
     rerender(<StoryblokStory story={server} />);

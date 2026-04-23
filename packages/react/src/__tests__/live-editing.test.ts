@@ -111,7 +111,7 @@ describe('storyblokLiveEditing', () => {
     expect(loadStoryblokBridge).not.toHaveBeenCalled();
   });
 
-  it('should call liveEditUpdateAction without cacheKey for regular live-edit events', async () => {
+  it('should call liveEditUpdateAction for regular live-edit events', async () => {
     vi.mocked(isVisualEditor).mockReturnValue(true);
     vi.mocked(isBridgeLoaded).mockReturnValue(true);
 
@@ -135,12 +135,12 @@ describe('storyblokLiveEditing', () => {
     expect(liveEditUpdateAction).toHaveBeenCalledWith(
       expect.objectContaining({
         story: expect.objectContaining({ uuid: 'uuid-10' }),
-        cacheKey: undefined,
+        pathToRevalidate: '/',
       }),
     );
   });
 
-  it('should call liveEditUpdateAction with id cacheKey for Visual History events', async () => {
+  it('should call liveEditUpdateAction with the same payload shape for Visual History events', async () => {
     vi.mocked(isVisualEditor).mockReturnValue(true);
     vi.mocked(isBridgeLoaded).mockReturnValue(true);
 
@@ -165,7 +165,7 @@ describe('storyblokLiveEditing', () => {
     expect(liveEditUpdateAction).toHaveBeenCalledWith(
       expect.objectContaining({
         story: expect.objectContaining({ id: 42 }),
-        cacheKey: 'id:42',
+        pathToRevalidate: '/',
       }),
     );
   });

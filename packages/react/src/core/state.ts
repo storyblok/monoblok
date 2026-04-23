@@ -1,5 +1,4 @@
 import type {
-  ISbStoryData,
   SbReactComponentsMap,
   StoryblokClient,
 } from '@/types';
@@ -9,13 +8,6 @@ let storyblokApiInstance: StoryblokClient = null;
 const componentsMap: Map<string, React.ElementType> = new Map<string, React.ElementType>();
 let enableFallbackComponent: boolean = false;
 let customFallbackComponent: React.ElementType = null;
-
-declare global {
-  // eslint-disable-next-line vars-on-top
-  var storyCache: Map<string, ISbStoryData>;
-}
-
-globalThis.storyCache = globalThis.storyCache || new Map<string, ISbStoryData>();
 
 // State accessors
 export const getStoryblokApiInstance = (): StoryblokClient => storyblokApiInstance;

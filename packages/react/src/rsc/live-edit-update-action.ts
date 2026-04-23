@@ -1,25 +1,21 @@
 'use server';
 import type { ISbStoryData } from '@storyblok/js';
+import { getStoryCacheKey } from '../core/story-cache';
 
 export async function liveEditUpdateAction({
   story,
   pathToRevalidate,
-  cacheKey,
 }: {
   story: ISbStoryData;
   pathToRevalidate: string;
-  cacheKey?: string;
 }) {
   if (!story || !pathToRevalidate) {
     return console.error('liveEditUpdateAction: story or pathToRevalidate is not provided');
   }
 
-  // Visual History events ship minimal `{ id, content }` payloads without a uuid.
-  // Callers pass `cacheKey` (e.g. `id:<id>`) so the cache entry is retrievable
-  // after revalidation, since the server-fetched draft has a different uuid.
-  const key = cacheKey ?? story.uuid;
-  if (key) {
-    globalThis.storyCache?.set(key, story);
+  const cacheKey = getStoryCacheKey(story);
+  if (cacheKey) {
+    globalThis.storyCache?.set(cacheKey, story);
   }
 
   // Revalidate path in Next.js SDKs only

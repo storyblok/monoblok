@@ -1,7 +1,11 @@
 import { InjectionToken, Type, Injectable, inject } from '@angular/core';
 import type { TiptapComponentName } from '@storyblok/richtext/static';
 
-import { type StoryblokFeature, BaseComponentResolver } from './components.feature';
+import {
+  type StoryblokFeature,
+  BaseComponentResolver,
+  StoryblokComponentLoader,
+} from './components.feature';
 
 /**
  * Map of Storyblok segment types to Angular components.
@@ -22,7 +26,9 @@ import { type StoryblokFeature, BaseComponentResolver } from './components.featu
  * };
  * ```
  */
-export type SBAngularComponentMap = Partial<Record<TiptapComponentName, Type<unknown>>>;
+export type SBAngularComponentMap = Partial<
+  Record<TiptapComponentName, Type<any> | StoryblokComponentLoader>
+>;
 
 /**
  * Injection token for richtext component overrides.

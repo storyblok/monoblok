@@ -25,7 +25,10 @@ export { StoryblokRichtextResolver, withStoryblokRichtextComponents } from './li
 export type { SBAngularComponentMap } from './lib/richtext.feature';
 
 // Re-export richtext types for convenience
-export { type StoryblokRichTextJson } from '@storyblok/richtext/static';
+export {
+  type StoryblokRichTextJson,
+  type RichTextComponentProps,
+} from '@storyblok/richtext/static';
 
 export * from './lib/types';
 export type { Story } from '@storyblok/api-client';

@@ -1,6 +1,4 @@
-import type { ISbComponentType } from 'storyblok-js-client';
-
-export type { ISbStoryData } from 'storyblok-js-client';
+import { ISbComponentType } from '@storyblok/live-preview';
 
 export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
 

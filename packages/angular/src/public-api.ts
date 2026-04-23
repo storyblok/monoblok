@@ -6,8 +6,7 @@
 export { StoryblokService, type StoryblokClientConfig } from './lib/storyblok.service';
 export { provideStoryblok } from './lib/storyblok.feature';
 // Component registry
-export { withStoryblokComponents } from './lib/components.feature';
-export type { StoryblokComponentsMap } from './lib/components.feature';
+export { withStoryblokComponents, type StoryblokComponentsMap } from './lib/components.feature';
 
 // Live Preview feature (optional, tree-shakeable)
 export { LivePreviewService } from './lib/livepreview.service';

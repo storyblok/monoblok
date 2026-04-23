@@ -51,8 +51,7 @@
     "tslib": "^2.3.0",
     "@storyblok/live-preview": "workspace:*",
     "@storyblok/richtext": "workspace:*",
-    "@storyblok/api-client": "workspace:*",
-    "storyblok-js-client": "workspace:*"
+    "@storyblok/api-client": "workspace:*"
   },
   "devDependencies": {
     "@angular/build": "^21.1.2",

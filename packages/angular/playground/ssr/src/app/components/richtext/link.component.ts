@@ -1,20 +1,16 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { SbRichTextComponent, type RichTextComponentProps } from '@storyblok/angular';
+import { type RichTextBaseProps } from '@storyblok/angular';
 
 @Component({
   selector: 'app-link',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SbRichTextComponent],
   template: `
-    <div>
-      <h2>Custom Link Component</h2>
-    </div>
+    <a [href]="data().attrs?.href" target="_blank" rel="noopener">
+      <ng-content></ng-content>
+    </a>
   `,
+  host: { style: 'display: inline-block' },
 })
 export class LinkComponent {
-  readonly node = input.required<RichTextComponentProps<'heading'>>();
-
-  ngOnInit(): void {
-    console.log(this.node());
-  }
+  readonly data = input.required<RichTextBaseProps<'link'>>();
 }

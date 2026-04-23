@@ -21,7 +21,11 @@ import {
   processAttrs,
   resolveTag,
 } from '@storyblok/richtext/static';
-import type { RenderSpec, StoryblokRichTextJson } from '@storyblok/richtext/static';
+import type {
+  RenderSpec,
+  StoryblokRichTextJson,
+  TiptapComponentName,
+} from '@storyblok/richtext/static';
 import { StoryblokComponent } from './rich-componnet.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 
@@ -34,6 +38,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
   host: { style: 'display: contents' },
 })
 export class SbRichTextComponent implements AfterViewInit, OnDestroy {
+  /** Input richtext document */
   doc = input.required<StoryblokRichTextJson | null | undefined>();
 
   private readonly renderer = inject(Renderer2);
@@ -43,34 +48,48 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
   private readonly envInjector = inject(EnvironmentInjector);
   private readonly resolver = inject(StoryblokRichtextResolver);
 
-  private readonly hasRendered = signal(false);
+  /** Prevent async work after destroy */
+  private destroyed = false;
+
+  /** Render version for async cancellation */
   private renderVersion = 0;
+
+  /** Cache resolved components (node + marks) */
+  private readonly componentCache = new Map<string, any>();
+
+  /** Track dynamically created components */
+  private readonly componentRefs: any[] = [];
+
+  private readonly hasRendered = signal(false);
 
   constructor() {
     effect(() => {
-      const doc = this.doc();
       if (!this.hasRendered()) return;
-      this.render(doc);
+      this.render(this.doc());
     });
   }
 
   ngAfterViewInit(): void {
-    if (this.hostElement.childNodes.length > 0) {
-      this.hasRendered.set(true);
-      return;
+    if (this.hostElement.childNodes.length === 0) {
+      this.render(this.doc());
     }
-
-    this.render(this.doc());
     this.hasRendered.set(true);
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.clearContent();
+
+    // destroy all dynamically created components
+    for (const ref of this.componentRefs) {
+      ref.destroy();
+    }
+    this.componentRefs.length = 0;
   }
 
-  // -----------------------------
-  // Core Render
-  // -----------------------------
+  // --------------------------------------------------
+  // Render entry
+  // --------------------------------------------------
   private render(doc: StoryblokRichTextJson | null | undefined): void {
     const version = ++this.renderVersion;
 
@@ -78,66 +97,46 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
     if (!doc) return;
 
     const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
+
     for (const node of nodes) {
       this.renderNode(node, this.hostElement, version);
     }
   }
 
-  // -----------------------------
-  // Node Renderer (SAFE async)
-  // -----------------------------
+  // --------------------------------------------------
+  // Node renderer
+  // --------------------------------------------------
   private async renderNode(
     node: StoryblokRichTextJson,
     parent: HTMLElement,
     version: number,
   ): Promise<void> {
-    // cancel stale render
-    if (version !== this.renderVersion) return;
+    if (this.shouldAbort(version)) return;
 
     if (node.type === 'text') {
-      this.renderTextNode(node, parent);
+      await this.renderTextNode(node, parent, version);
       return;
     }
 
-    // -----------------------------
-    // custom component placeholder
-    // -----------------------------
     const anchor = this.renderer.createComment('sb-node');
     this.renderer.appendChild(parent, anchor);
 
-    const CustomNode = await this.resolver.resolve(node.type);
-
-    if (version !== this.renderVersion) return;
-    if (!anchor.parentNode) return;
+    const CustomNode = await this.resolveCached(node.type);
+    if (this.shouldAbort(version, anchor)) return;
 
     const parentNode = anchor.parentNode as HTMLElement;
-
-    // -----------------------------
-    // custom resolved component
-    // -----------------------------
+    if (!this.isValidAnchor(anchor, parentNode)) return;
+    // -------------------------
+    // Custom component
+    // -------------------------
     if (CustomNode) {
-      const componentRef = createComponent(CustomNode, {
-        environmentInjector: this.envInjector,
-      });
-
-      componentRef.setInput('node', node);
-      this.appRef.attachView(componentRef.hostView);
-
-      const nodes = (componentRef.hostView as any).rootNodes;
-
-      for (const n of nodes) {
-        this.renderer.insertBefore(parentNode, n, anchor);
-      }
-
-      this.renderer.removeChild(parentNode, anchor);
-
-      this.destroyRef.onDestroy(() => componentRef.destroy());
+      this.mountComponent(CustomNode, { data: node }, parentNode, anchor);
       return;
     }
 
-    // -----------------------------
-    // blok fallback
-    // -----------------------------
+    // -------------------------
+    // Blok fallback
+    // -------------------------
     if (node.type === 'blok') {
       const blokList = node.attrs?.body;
       if (!blokList?.length) {
@@ -145,35 +144,21 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      const componentRef = createComponent(StoryblokComponent, {
-        environmentInjector: this.envInjector,
-      });
-
-      componentRef.setInput('bloks', blokList);
-      this.appRef.attachView(componentRef.hostView);
-
-      const nodes = (componentRef.hostView as any).rootNodes;
-      for (const n of nodes) {
-        this.renderer.insertBefore(parentNode, n, anchor);
-      }
-
-      this.renderer.removeChild(parentNode, anchor);
-
-      this.destroyRef.onDestroy(() => componentRef.destroy());
+      this.mountComponent(StoryblokComponent, { bloks: blokList }, parentNode, anchor);
       return;
     }
 
-    // -----------------------------
-    // normal HTML node
-    // -----------------------------
+    // -------------------------
+    // Native HTML node
+    // -------------------------
     const tag = resolveTag(node);
     if (!tag) {
       this.renderer.removeChild(parentNode, anchor);
       return;
     }
 
-    const attrs = processAttrs(node.type, node.attrs);
     const el = this.renderer.createElement(tag);
+    const attrs = processAttrs(node.type, node.attrs);
 
     const staticChildren = getStaticChildren(node);
 
@@ -181,82 +166,119 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
       this.applyAttributes(el, attrs);
     }
 
-    if (isSelfClosing(tag)) {
-      this.renderer.insertBefore(parentNode, el, anchor);
-      this.renderer.removeChild(parentNode, anchor);
-      return;
-    }
+    if (!isSelfClosing(tag)) {
+      const contentHost = staticChildren
+        ? this.createStaticScaffold(staticChildren, el, attrs)
+        : el;
 
-    let contentHost = el;
-
-    if (staticChildren) {
-      contentHost = this.createStaticScaffold(staticChildren, el, attrs);
-    }
-
-    if (node.content) {
-      for (const child of node.content) {
-        await this.renderNode(child, contentHost, version);
+      if (node.content) {
+        for (const child of node.content) {
+          await this.renderNode(child, contentHost, version);
+        }
       }
     }
 
-    // Insert before anchor and remove it to maintain correct order
     this.renderer.insertBefore(parentNode, el, anchor);
     this.renderer.removeChild(parentNode, anchor);
   }
 
-  // -----------------------------
-  // Text node
-  // -----------------------------
-  private renderTextNode(
+  // --------------------------------------------------
+  // Text renderer (marks)
+  // --------------------------------------------------
+  private async renderTextNode(
     node: StoryblokRichTextJson & { type: 'text' },
     parent: HTMLElement,
-  ): void {
-    const textNode = this.renderer.createText(node.text || '');
+    version: number,
+  ): Promise<void> {
+    let current: Node = this.renderer.createText(node.text || '');
 
-    if (!node.marks?.length) {
-      this.renderer.appendChild(parent, textNode);
-      return;
-    }
+    for (const mark of node.marks ?? []) {
+      const CustomMark = await this.resolveCached(mark.type);
+      if (this.shouldAbort(version)) return;
 
-    const last = node.marks.reduce((p, mark) => {
+      if (CustomMark) {
+        const ref = createComponent(CustomMark, {
+          environmentInjector: this.envInjector,
+          projectableNodes: [[current]],
+        });
+
+        ref.setInput('data', mark);
+        this.appRef.attachView(ref.hostView);
+
+        this.componentRefs.push(ref);
+
+        current = (ref.hostView as any).rootNodes[0];
+        continue;
+      }
+
       const tag = resolveTag(mark);
-      if (!tag) return p;
+      if (!tag) continue;
 
       const el = this.renderer.createElement(tag);
       this.applyAttributes(el, processAttrs(mark.type, mark.attrs));
 
-      this.renderer.appendChild(p, el);
-      return el;
-    }, parent);
-
-    this.renderer.appendChild(last, textNode);
-  }
-
-  // -----------------------------
-  // Scaffold (tables/code etc)
-  // -----------------------------
-  private createStaticScaffold(
-    specs: readonly RenderSpec[],
-    parent: HTMLElement,
-    nodeAttrs: Record<string, unknown> = {},
-  ): HTMLElement {
-    let host = parent;
-
-    for (const spec of specs) {
-      const el = this.renderer.createElement(spec.tag);
-      this.applyAttributes(el, { ...spec.attrs, ...nodeAttrs });
-
-      this.renderer.appendChild(host, el);
-
-      host = spec.children ? this.createStaticScaffold(spec.children, el) : el;
+      this.renderer.appendChild(el, current);
+      current = el;
     }
 
-    return host;
+    this.renderer.appendChild(parent, current);
   }
 
-  // -----------------------------
-  // Attributes
-  // -----------------------------
+  // --------------------------------------------------
+  // Helpers
+  // --------------------------------------------------
+
+  /** Prevent rendering after destroy or version mismatch */
+  private shouldAbort(version: number, anchor?: Node): boolean {
+    if (this.destroyed || version !== this.renderVersion) {
+      return true;
+    }
+
+    if (anchor && !anchor.parentNode) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /** Resolve component with caching */
+  private async resolveCached(type: TiptapComponentName): Promise<any> {
+    if (this.componentCache.has(type)) {
+      return this.componentCache.get(type);
+    }
+
+    const resolved = await this.resolver.resolve(type);
+    this.componentCache.set(type, resolved);
+
+    return resolved;
+  }
+
+  /** Mount dynamic component safely */
+  private mountComponent(
+    Component: any,
+    inputs: Record<string, unknown>,
+    parent: HTMLElement,
+    anchor: Node,
+  ) {
+    if (this.destroyed) return;
+
+    const ref = createComponent(Component, {
+      environmentInjector: this.envInjector,
+    });
+
+    Object.entries(inputs).forEach(([k, v]) => ref.setInput(k, v));
+
+    this.appRef.attachView(ref.hostView);
+    this.componentRefs.push(ref);
+
+    const nodes = (ref.hostView as any).rootNodes;
+    for (const n of nodes) {
+      this.renderer.insertBefore(parent, n, anchor);
+    }
+
+    this.renderer.removeChild(parent, anchor);
+  }
+
   private applyAttributes(el: HTMLElement, attrs: Record<string, unknown> = {}) {
     for (const [k, v] of Object.entries(attrs)) {
       if (v == null) continue;
@@ -271,13 +293,29 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // -----------------------------
-  // Cleanup
-  // -----------------------------
+  private createStaticScaffold(
+    specs: readonly RenderSpec[],
+    parent: HTMLElement,
+    attrs: Record<string, unknown> = {},
+  ): HTMLElement {
+    let host = parent;
+
+    for (const spec of specs) {
+      const el = this.renderer.createElement(spec.tag);
+      this.applyAttributes(el, { ...spec.attrs, ...attrs });
+
+      this.renderer.appendChild(host, el);
+      host = spec.children ? this.createStaticScaffold(spec.children, el) : el;
+    }
+
+    return host;
+  }
+  private isValidAnchor(anchor: Node | null | undefined, parent: Node): anchor is Node {
+    return !!anchor && anchor.parentNode === parent;
+  }
   private clearContent(): void {
-    let child: ChildNode | null;
-    while ((child = this.hostElement.firstChild)) {
-      this.renderer.removeChild(this.hostElement, child);
+    while (this.hostElement.firstChild) {
+      this.renderer.removeChild(this.hostElement, this.hostElement.firstChild);
     }
   }
 }

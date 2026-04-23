@@ -28,7 +28,9 @@ export const appConfig: ApplicationConfig = {
         resolveRelations: ['feature_posts.posts'],
       }),
       withStoryblokRichtextComponents({
-        heading: () => import('./components/richtext/link.component').then((m) => m.LinkComponent),
+        link: () => import('./components/richtext/link.component').then((m) => m.LinkComponent),
+        heading: () =>
+          import('./components/richtext/heading.component').then((m) => m.HeadingComponent),
       }),
     ),
   ],

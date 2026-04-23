@@ -12,6 +12,10 @@ export { withStoryblokComponents, type StoryblokComponentsMap } from './lib/comp
 export { LivePreviewService } from './lib/livepreview.service';
 export { withLivePreview } from './lib/livepreview.feature';
 
+// Storyblok Componnet
+
+export { StoryblokComponent } from './lib/rich-componnet.component';
+
 // Directive
 export { SbBlokDirective } from './lib/sb-blok.directive';
 
@@ -25,3 +29,5 @@ export { type StoryblokRichTextJson } from '@storyblok/richtext/static';
 
 export * from './lib/types';
 export type { Story } from '@storyblok/api-client';
+
+export { type BridgeParams } from '@storyblok/live-preview';

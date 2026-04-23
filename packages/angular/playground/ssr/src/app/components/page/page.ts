@@ -1,9 +1,9 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import {
   SbRichTextComponent,
   type SbBlokData,
-  SbBlokDirective,
   type StoryblokRichTextJson,
+  StoryblokComponent,
 } from '@storyblok/angular';
 
 export interface PageBlok {
@@ -13,21 +13,22 @@ export interface PageBlok {
 
 @Component({
   selector: 'app-page',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SbBlokDirective, SbRichTextComponent],
+  imports: [SbRichTextComponent, StoryblokComponent],
   template: `
     <div class="space-y-8">
-      @for (blok of blok().body ?? []; track blok['_uid']) {
-        <ng-container [sbBlok]="blok" />
+      @if (bloks().length) {
+        <sb-component [bloks]="bloks()" />
       }
-      <div>
-        @if (blok().richText) {
-          <sb-rich-text [doc]="blok().richText!" />
-        }
-      </div>
+      @if (richText()) {
+        <sb-rich-text [doc]="richText()" />
+      }
     </div>
   `,
 })
 export class PageComponent {
   readonly blok = input.required<PageBlok>();
+  readonly bloks = computed(() => this.blok().body ?? []);
+  readonly richText = computed(() => this.blok().richText ?? null);
 }

@@ -2,25 +2,19 @@ import {
   Component,
   ChangeDetectionStrategy,
   input,
-  computed,
   inject,
   ElementRef,
   Renderer2,
   AfterViewInit,
   OnDestroy,
-  Type,
   ViewEncapsulation,
-  Injector,
   createComponent,
-  EnvironmentInjector,
-  ApplicationRef,
-  ComponentRef,
-  reflectComponentType,
   effect,
-  untracked,
   signal,
+  DestroyRef,
+  ApplicationRef,
+  EnvironmentInjector,
 } from '@angular/core';
-import { StoryblokRichtextResolver } from './richtext.feature';
 import {
   getStaticChildren,
   isSelfClosing,
@@ -28,6 +22,8 @@ import {
   resolveTag,
 } from '@storyblok/richtext/static';
 import type { RenderSpec, StoryblokRichTextJson } from '@storyblok/richtext/static';
+import { StoryblokComponent } from './rich-componnet.component';
+import { SbBlokData } from './types';
 
 /**
  * Renders Storyblok rich text content with support for custom component overrides.
@@ -110,7 +106,9 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
   private readonly hasRendered = signal(false);
-
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly envInjector = inject(EnvironmentInjector);
   constructor() {
     effect(() => {
       const richTextDoc = this.doc();
@@ -168,7 +166,27 @@ export class SbRichTextComponent implements AfterViewInit, OnDestroy {
     }
 
     if (node.type === 'blok') {
-      console.warn('Rendering of "blok" nodes is not supported in SbRichTextComponent.');
+      const blokList = node.attrs?.body;
+      if (!blokList || blokList.length === 0) {
+        return;
+      }
+
+      const componentRef = createComponent(StoryblokComponent, {
+        environmentInjector: this.envInjector,
+      });
+
+      componentRef.setInput('bloks', blokList);
+      this.appRef.attachView(componentRef.hostView);
+
+      const hostNodes = (componentRef.hostView as any).rootNodes;
+      for (const node of hostNodes) {
+        this.renderer.appendChild(parent, node);
+      }
+
+      this.destroyRef.onDestroy(() => {
+        componentRef.destroy();
+      });
+
       return;
     }
 

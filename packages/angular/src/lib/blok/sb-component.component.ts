@@ -6,12 +6,12 @@ import { SbBlokData } from '../types';
   selector: 'sb-component',
   standalone: true,
   template: `
-    @for (blok of bloks(); track blok._uid) {
+    @for (blok of sbBloks(); track blok._uid) {
       <ng-container [sbBlok]="blok" />
     }
   `,
   imports: [SbBlokDirective],
 })
 export class StoryblokComponent {
-  readonly bloks = input.required<SbBlokData[]>();
+  readonly sbBloks = input.required<SbBlokData[]>();
 }

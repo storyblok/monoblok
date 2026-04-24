@@ -37,7 +37,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
 })
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document */
-  doc = input.required<StoryblokRichTextJson | null | undefined>();
+  sbDocument = input.required<StoryblokRichTextJson | null | undefined>();
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -61,9 +61,9 @@ export class SbRichTextComponent implements OnDestroy {
     // Use effect to reactively render when doc changes
     // The effect runs synchronously during change detection, making it SSR-compatible
     effect(() => {
-      const doc = this.doc();
+      const sbDocument = this.sbDocument();
       // Use untracked to avoid re-triggering the effect when calling render
-      untracked(() => this.render(doc));
+      untracked(() => this.render(sbDocument));
     });
   }
 
@@ -81,13 +81,14 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Render entry
   // --------------------------------------------------
-  private render(doc: StoryblokRichTextJson | null | undefined): void {
+  private render(sbDocument: StoryblokRichTextJson | null | undefined): void {
     const version = ++this.renderVersion;
 
     this.clearContent();
-    if (!doc) return;
+    if (!sbDocument) return;
 
-    const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
+    const nodes =
+      sbDocument.type === 'doc' && sbDocument.content ? sbDocument.content : [sbDocument];
 
     for (const node of nodes) {
       this.renderNode(node, this.hostElement, version);
@@ -97,11 +98,7 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Node renderer (synchronous with deferred async for custom components)
   // --------------------------------------------------
-  private renderNode(
-    node: StoryblokRichTextJson,
-    parent: HTMLElement,
-    version: number,
-  ): void {
+  private renderNode(node: StoryblokRichTextJson, parent: HTMLElement, version: number): void {
     if (this.shouldAbort(version)) return;
 
     if (node.type === 'text') {
@@ -138,7 +135,7 @@ export class SbRichTextComponent implements OnDestroy {
 
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
-      this.mountComponent(StoryblokComponent, { bloks: blokList }, parent, anchor);
+      this.mountComponent(StoryblokComponent, { sbBloks: blokList }, parent, anchor);
       return;
     }
 

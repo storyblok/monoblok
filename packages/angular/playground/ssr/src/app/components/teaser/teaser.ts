@@ -14,7 +14,7 @@ export interface TeaserBlok {
     <div>
       <h2>{{ blok().headline }}</h2>
       <!-- @if (blok().text) {
-        <sb-rich-text [doc]="blok().text!" />
+        <sb-rich-text [sbDocument]="blok().text!" />
       } -->
     </div>
   `,

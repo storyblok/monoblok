@@ -7,7 +7,7 @@ import { type RichTextComponentProps, SbRichTextComponent } from '@storyblok/ang
   template: `
     <p>
       @for (doc of data().content ?? []; track doc) {
-        <sb-rich-text [doc]="doc" />
+        <sb-rich-text [sbDocument]="doc" />
       }
     </p>
   `,

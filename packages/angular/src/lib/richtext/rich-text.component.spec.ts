@@ -12,7 +12,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
   imports: [SbRichTextComponent],
   template: `<div class="custom-node">
     @for (doc of data().content ?? []; track doc) {
-      <sb-rich-text [doc]="doc" />
+      <sb-rich-text [sbDocument]="doc" />
     }
   </div>`,
 })
@@ -89,7 +89,7 @@ describe('SbRichTextComponent', () => {
   });
 
   it('should render normal richtext HTML nodes', async () => {
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -115,7 +115,7 @@ describe('SbRichTextComponent', () => {
   });
 
   it('should render native marks like strong', async () => {
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -160,7 +160,7 @@ describe('SbRichTextComponent', () => {
 
     fixture = TestBed.createComponent(SbRichTextComponent);
 
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -200,7 +200,7 @@ describe('SbRichTextComponent', () => {
 
     fixture = TestBed.createComponent(SbRichTextComponent);
 
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -259,7 +259,7 @@ describe('SbRichTextComponent', () => {
   });
 
   it('should clear old content when doc changes', async () => {
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -277,7 +277,7 @@ describe('SbRichTextComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    fixture.componentRef.setInput('doc', {
+    fixture.componentRef.setInput('sbDocument', {
       type: 'doc',
       content: [
         {
@@ -303,7 +303,7 @@ describe('SbRichTextComponent', () => {
   });
 
   it('should not fail when doc is null', async () => {
-    fixture.componentRef.setInput('doc', null);
+    fixture.componentRef.setInput('sbDocument', null);
 
     fixture.detectChanges();
     await fixture.whenStable();

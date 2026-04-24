@@ -19,10 +19,10 @@ export interface PageBlok {
   template: `
     <div class="space-y-8">
       @if (bloks().length) {
-        <sb-component [bloks]="bloks()" />
+        <sb-component [sbBloks]="bloks()" />
       }
       @if (richText()) {
-        <sb-rich-text [doc]="richText()" />
+        <sb-rich-text [sbDocument]="richText()" />
       }
     </div>
   `,

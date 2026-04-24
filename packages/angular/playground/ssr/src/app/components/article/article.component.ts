@@ -16,7 +16,7 @@ export interface ArticleBlok {
 
       @if (blok().content) {
         <div class="rich-text">
-          <sb-rich-text [doc]="blok().content!" />
+          <sb-rich-text [sbDocument]="blok().content!" />
         </div>
       }
     </div>

@@ -6,7 +6,8 @@ import type { ISbStoryData } from '@storyblok/js';
 // Import after mocks
 import StoryblokLiveEditing from '../rsc/live-editing';
 import { isBridgeLoaded, isVisualEditor } from '../utils';
-import { loadStoryblokBridge } from '@storyblok/js';
+import { loadStoryblokBridge, registerStoryblokBridge } from '@storyblok/js';
+import { liveEditUpdateAction } from '../rsc/live-edit-update-action';
 
 // Mock dependencies - need to define functions inline to avoid hoisting issues
 vi.mock('../rsc/live-edit-update-action', () => ({
@@ -108,5 +109,64 @@ describe('storyblokLiveEditing', () => {
 
     // Since bridge is already loaded, we should not call loadStoryblokBridge
     expect(loadStoryblokBridge).not.toHaveBeenCalled();
+  });
+
+  it('should call liveEditUpdateAction for regular live-edit events', async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+
+    let captured: ((story: ISbStoryData) => void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      captured = cb as (story: ISbStoryData) => void;
+    });
+
+    render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { id: 10, uuid: 'uuid-10' } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+
+    captured!({ id: 10, uuid: 'uuid-10', content: { _uid: 'x' } } as ISbStoryData);
+
+    await vi.waitFor(() => expect(liveEditUpdateAction).toHaveBeenCalled());
+    expect(liveEditUpdateAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        story: expect.objectContaining({ uuid: 'uuid-10' }),
+        pathToRevalidate: '/',
+      }),
+    );
+  });
+
+  it('should call liveEditUpdateAction with the same payload shape for Visual History events', async () => {
+    vi.mocked(isVisualEditor).mockReturnValue(true);
+    vi.mocked(isBridgeLoaded).mockReturnValue(true);
+
+    let captured: ((story: ISbStoryData) => void) | null = null;
+    vi.mocked(registerStoryblokBridge).mockImplementation((_id, cb) => {
+      captured = cb as (story: ISbStoryData) => void;
+    });
+
+    render(
+      React.createElement(StoryblokLiveEditing, {
+        story: { id: 42, uuid: 'uuid-42' } as ISbStoryData,
+        bridgeOptions: {},
+      }),
+    );
+
+    await vi.waitFor(() => expect(captured).not.toBeNull());
+
+    // Visual History payload: minimal, no uuid
+    captured!({ id: 42, content: { _uid: 'hist' } } as unknown as ISbStoryData);
+
+    await vi.waitFor(() => expect(liveEditUpdateAction).toHaveBeenCalled());
+    expect(liveEditUpdateAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        story: expect.objectContaining({ id: 42 }),
+        pathToRevalidate: '/',
+      }),
+    );
   });
 });

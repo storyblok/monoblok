@@ -2,6 +2,7 @@
 
 import { type ISbStoryData, loadStoryblokBridge, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
 import { startTransition, useEffect } from 'react';
+import { getStoryCacheKey } from '../core/story-cache';
 import { isBridgeLoaded, isVisualEditor } from '../utils';
 
 const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions?: StoryblokBridgeConfigV2 }) => {
@@ -11,8 +12,12 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
     return null;
   }
 
-  const storyId = story?.id ?? 0;
+  const storyId = typeof story?.id === 'number' ? story.id : null;
   useEffect(() => {
+    if (storyId === null) {
+      return;
+    }
+
     (async () => {
       // In RSC environments, Storyblok components are server-side rendered,
       // so the bridge script is never automatically loaded on the client.
@@ -21,8 +26,8 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
         await loadStoryblokBridge();
       }
 
-      const handleInput = async (story: ISbStoryData) => {
-        if (!story) {
+      const handleInput = async (incoming: ISbStoryData) => {
+        if (!incoming) {
           return;
         }
 
@@ -30,14 +35,18 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
           const { liveEditUpdateAction } = await import('./live-edit-update-action');
 
           startTransition(() => {
-            liveEditUpdateAction({ story, pathToRevalidate: window.location.pathname });
+            liveEditUpdateAction({
+              story: incoming,
+              pathToRevalidate: window.location.pathname,
+            });
           });
         }
         catch (error) {
           // Fallback: just cache the story if server action is not available
           console.warn('Server action not available, caching story locally:', error);
-          if (story.uuid) {
-            globalThis.storyCache?.set(story.uuid, story);
+          const fallbackKey = getStoryCacheKey(incoming);
+          if (fallbackKey) {
+            globalThis.storyCache?.set(fallbackKey, incoming);
           }
         }
       };

@@ -27,14 +27,14 @@ describe('liveEditUpdateAction', () => {
   });
 
   it('should set the story in the global storyCache', async () => {
-    const story = { uuid: '123' };
+    const story = { id: 123 };
     await liveEditUpdateAction({ story, pathToRevalidate: '/path' });
     expect(globalThis.storyCache.get('123')).toBe(story);
   });
 
   it('should replace existing story in the cache if it already exists', async () => {
-    const oldStory = { uuid: '123', content: { old: true } };
-    const newStory = { uuid: '123', content: { new: true } };
+    const oldStory = { id: 123, content: { old: true } };
+    const newStory = { id: 123, content: { new: true } };
 
     globalThis.storyCache.set('123', oldStory);
     expect(globalThis.storyCache.get('123')).toBe(oldStory);
@@ -42,6 +42,21 @@ describe('liveEditUpdateAction', () => {
     await liveEditUpdateAction({ story: newStory, pathToRevalidate: '/path' });
     expect(globalThis.storyCache.get('123')).toBe(newStory);
     expect(globalThis.storyCache.get('123')).not.toBe(oldStory);
+  });
+
+  it('should cache id-only history payloads under the story id', async () => {
+    const story = { id: 42, content: { headline: 'historic' } };
+    await liveEditUpdateAction({ story, pathToRevalidate: '/path' });
+    expect(globalThis.storyCache.get('42')).toBe(story);
+    expect(globalThis.storyCache.has('undefined')).toBe(false);
+  });
+
+  it('should skip caching when story.id is missing', async () => {
+    const story = { uuid: 'uuid-only', content: {} };
+    const before = globalThis.storyCache.size;
+    await liveEditUpdateAction({ story, pathToRevalidate: '/path' });
+    expect(globalThis.storyCache.size).toBe(before);
+    expect(globalThis.storyCache.has('undefined')).toBe(false);
   });
 
   it('should attempt to revalidate path when in Next.js environment', async () => {
@@ -56,10 +71,26 @@ describe('liveEditUpdateAction', () => {
     // Re-import the module to use the mocked version
     const { liveEditUpdateAction: actionWithMocks } = await import('../rsc/live-edit-update-action');
 
-    const story = { uuid: '123' };
+    const story = { id: 123 };
     await actionWithMocks({ story, pathToRevalidate: '/test-path' });
 
     expect(mockRevalidatePath).toHaveBeenCalledWith('/test-path');
+  });
+
+  it('should revalidate path for id-only history payloads', async () => {
+    process.env.NEXT_RUNTIME = 'nodejs';
+
+    vi.doMock('next/cache', async () => {
+      return { revalidatePath: mockRevalidatePath };
+    });
+
+    const { liveEditUpdateAction: actionWithMocks } = await import('../rsc/live-edit-update-action');
+
+    const story = { id: 7, content: { headline: 'history' } };
+    await actionWithMocks({ story, pathToRevalidate: '/vh-path' });
+
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/vh-path');
+    expect(globalThis.storyCache.get('7')).toBe(story);
   });
 
   it('should catch and log errors during revalidation', async () => {
@@ -78,7 +109,7 @@ describe('liveEditUpdateAction', () => {
     // Re-import the module to use the mocked version
     const { liveEditUpdateAction: actionWithMocks } = await import('../rsc/live-edit-update-action');
 
-    const story = { uuid: '456' };
+    const story = { id: 456 };
     await actionWithMocks({ story, pathToRevalidate: '/path' });
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(

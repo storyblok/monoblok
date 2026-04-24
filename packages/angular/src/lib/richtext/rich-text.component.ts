@@ -206,8 +206,10 @@ export class SbRichTextComponent implements OnDestroy {
     );
 
     if (hasAsyncMarks) {
-      // Defer to async rendering for custom marks
-      this.renderTextNodeAsync(node, parent, version);
+      // Create placeholder anchor to preserve position in parent
+      const anchor = this.renderer.createComment('sb-text');
+      this.renderer.appendChild(parent, anchor);
+      this.renderTextNodeAsync(node, parent, anchor, version);
       return;
     }
 
@@ -249,6 +251,7 @@ export class SbRichTextComponent implements OnDestroy {
   private async renderTextNodeAsync(
     node: StoryblokRichTextJson & { type: 'text' },
     parent: HTMLElement,
+    anchor: Node,
     version: number,
   ): Promise<void> {
     let current: Node = this.renderer.createText(node.text || '');
@@ -282,7 +285,9 @@ export class SbRichTextComponent implements OnDestroy {
       current = el;
     }
 
-    this.renderer.appendChild(parent, current);
+    // Insert at the anchor position to maintain correct order
+    this.renderer.insertBefore(parent, current, anchor);
+    this.renderer.removeChild(parent, anchor);
   }
 
   // --------------------------------------------------

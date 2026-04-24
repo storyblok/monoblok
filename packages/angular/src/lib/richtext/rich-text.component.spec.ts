@@ -210,18 +210,35 @@ describe('SbRichTextComponent', () => {
           },
           content: [
             {
-              text: 'Line ',
+              text: 'External URL link',
+              type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: 'https://www.storyblok.com/',
+                    uuid: null,
+                    anchor: null,
+                    custom: null,
+                    target: '_blank',
+                    linktype: 'url',
+                  },
+                },
+              ],
+            },
+            {
+              text: ' | ',
               type: 'text',
             },
             {
-              text: 'one',
+              text: 'Story link',
               type: 'text',
               marks: [
                 {
                   type: 'link',
                   attrs: {
                     href: '/',
-                    uuid: '8ce97fe6-b8e5-4c7e-a2f2-f84d96daa6eb',
+                    uuid: '37af345b-3dec-4cf4-a0cd-c6ec41f325c3',
                     anchor: null,
                     custom: {},
                     target: '_self',
@@ -231,18 +248,25 @@ describe('SbRichTextComponent', () => {
               ],
             },
             {
-              type: 'hard_break',
-            },
-            {
-              text: 'Line two (after hard break)',
+              text: ' | ',
               type: 'text',
             },
             {
-              type: 'hard_break',
-            },
-            {
-              text: 'Line three',
+              text: 'Story ',
               type: 'text',
+              marks: [
+                {
+                  type: 'link',
+                  attrs: {
+                    href: '/',
+                    uuid: '37af345b-3dec-4cf4-a0cd-c6ec41f325c3',
+                    anchor: 'section-1',
+                    custom: {},
+                    target: '_self',
+                    linktype: 'story',
+                  },
+                },
+              ],
             },
           ],
         },
@@ -254,8 +278,11 @@ describe('SbRichTextComponent', () => {
     fixture.detectChanges();
 
     const customMark = fixture.nativeElement.querySelector('.custom-link');
+
+    // console.log({ p: customMark.textContent.trim(), f: fixture.nativeElement.innerHTML });
+
     expect(customMark).toBeTruthy();
-    expect(customMark.textContent.trim()).toContain('one');
+    expect(customMark.textContent.trim()).toContain('External URL link');
   });
 
   it('should clear old content when doc changes', async () => {

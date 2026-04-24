@@ -1181,17 +1181,13 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('Permission denied while accessing the file');
-      // UI — story identification
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
+        expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`"story-a"`),
-        expect.anything(),
-      );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed stories:'),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining(`story-a (uuid: `),
       );
       // UI
       expect(console.info).toHaveBeenCalledWith(
@@ -1631,17 +1627,13 @@ describe('stories push command', () => {
       expect(logFile).toContain(
         'Expected property name or \'}\' in JSON at position 1',
       );
-      // UI — story identification
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
+        expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('[story-a.json]'),
-        expect.anything(),
-      );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed stories:'),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('story-a.json'),
       );
       // UI
       expect(console.info).toHaveBeenCalledWith(
@@ -1679,17 +1671,16 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('The server returned an error');
-      // UI — story identification
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
+        expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`"story-a"`),
-        expect.anything(),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining(`story-a (uuid: `),
       );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed stories:'),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('The server returned an error'),
       );
       // UI
       expect(console.info).toHaveBeenCalledWith(
@@ -1737,22 +1728,16 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('Invalid bloks field: expected an array');
-      // UI
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories (1):'),
+        expect.anything(),
+      );
+      expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Invalid bloks field: expected an array'),
-        expect.anything(),
       );
-      // UI — story identification
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
-        expect.anything(),
-      );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`"story-a"`),
-        expect.anything(),
-      );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed stories:'),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining(`story-a (uuid: `),
       );
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1786,14 +1771,13 @@ describe('stories push command', () => {
       expect(report?.status).toBe('FAILURE');
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('is missing a content type (content.component)');
-      // UI — story identification
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
+        expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`"story-a"`),
-        expect.anything(),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining(`story-a (uuid: `),
       );
     });
 
@@ -1821,22 +1805,16 @@ describe('stories push command', () => {
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain('The server returned an error');
-      // UI
+      // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories (1):'),
+        expect.anything(),
+      );
+      expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('The server returned an error'),
-        expect.anything(),
       );
-      // UI — story identification
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Story failed:'),
-        expect.anything(),
-      );
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(`"story-a"`),
-        expect.anything(),
-      );
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed stories:'),
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining(`story-a (uuid: `),
       );
       expect(console.info).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
@@ -1849,6 +1827,54 @@ describe('stories push command', () => {
       );
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/1 succeeded, 1 failed.'),
+      );
+    });
+
+    it('should not double-count a story that fails in both creation and update when the manifest lets it survive into later phases', async () => {
+      // Regression for https://github.com/storyblok/monoblok/issues/561:
+      // `maps.stories` is pre-populated from the manifest, so a story that
+      // fails creation can still pass the `readLocalStoriesStream` fileFilter
+      // and reach the update phase. When update also fails, `FailureCollector`
+      // dedups the second error — counters must stay consistent rather than
+      // leaving a "phantom" story uncounted (e.g. `0/1 succeeded, 0 failed`).
+      const storyA = makeMockStory({ slug: 'story-a' });
+      // `storyRefMapper` rewrites `story.id` via `maps.stories`, so the PUT
+      // target is the manifest's `new_id`, not the local id.
+      const staleRemoteId = getID();
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: 'page' })]);
+      // Stale manifest: points at a remote story that no longer exists, which
+      // forces the creation step to fall through to a (failing) createStory
+      // call while leaving the uuid entry in `maps.stories` intact.
+      preconditions.canLoadManifest([
+        { old_id: storyA.uuid, new_id: randomUUID(), created_at: new Date().toISOString() },
+        { old_id: storyA.id, new_id: staleRemoteId, created_at: new Date().toISOString() },
+      ]);
+      preconditions.failsToCreateStories();
+      preconditions.failsToUpdateStories([{ ...storyA, id: staleRemoteId }]);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      const report = getReport();
+      // Per-phase math must balance: succeeded + failed === total.
+      expect(report?.summary).toMatchObject({
+        creationResults: { total: 1, succeeded: 0, failed: 1 },
+        processResults: { total: 1, succeeded: 1, failed: 0 },
+        // total is decremented when the dedup path is hit so the phantom
+        // story disappears from this phase's counts.
+        updateResults: { total: 0, succeeded: 0, failed: 0 },
+      });
+      // Top summary must reflect the distinct failure (1), not 0.
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
+      );
+      // The grouped report still lists the story exactly once.
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed stories (1):'),
+        expect.anything(),
       );
     });
   });

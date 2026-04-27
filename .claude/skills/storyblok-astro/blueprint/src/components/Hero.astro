@@ -1,0 +1,30 @@
+---
+interface Props {
+  title: string;
+  subtitle?: string;
+  align?: 'center' | 'left';
+}
+
+const { title, subtitle, align = 'center' } = Astro.props;
+const isCenter = align === 'center';
+---
+
+<section class="bg-white lg:grid lg:min-h-screen lg:place-content-center">
+  <div class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-32">
+    <div class:list={['mx-auto max-w-prose', { 'text-center': isCenter }]}>
+      <h1 class="text-4xl font-bold text-gray-900 sm:text-5xl">
+        {title}
+      </h1>
+
+      {subtitle && (
+        <p class="mt-4 text-base text-pretty text-gray-700 sm:text-lg/relaxed">
+          {subtitle}
+        </p>
+      )}
+
+      <div class:list={['mt-4 flex gap-4 sm:mt-6', { 'justify-center': isCenter }]}>
+        <slot />
+      </div>
+    </div>
+  </div>
+</section>

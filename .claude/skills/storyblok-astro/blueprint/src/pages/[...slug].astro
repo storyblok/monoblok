@@ -1,0 +1,25 @@
+---
+import { createStoryblokClient } from '../lib/storyblok';
+import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+
+const slug = Astro.params.slug || 'home';
+const client = createStoryblokClient();
+const result = await client.stories.get(slug, {
+  query: { version: import.meta.env.DEV ? 'draft' : 'published' },
+});
+
+if (result.error || !result.data?.story) {
+  return Astro.redirect('/404');
+}
+
+const story = result.data.story;
+---
+
+<html>
+  <head>
+    <title>{story.name}</title>
+  </head>
+  <body>
+    <StoryblokComponent blok={story.content} />
+  </body>
+</html>

@@ -1,0 +1,33 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  columns?: 2 | 3 | 4;
+}
+
+const { title, description, columns = 3 } = Astro.props;
+
+const colsClass: Record<number, string> = {
+  2: 'md:grid-cols-2',
+  3: 'md:grid-cols-3',
+  4: 'md:grid-cols-4',
+};
+---
+
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  {(title || description) && (
+    <div class="mx-auto max-w-lg text-center">
+      {title && (
+        <h2 class="text-3xl/tight font-bold text-gray-900 sm:text-4xl">{title}</h2>
+      )}
+
+      {description && (
+        <p class="mt-4 text-lg text-pretty text-gray-700">{description}</p>
+      )}
+    </div>
+  )}
+
+  <div class:list={['mt-8 grid grid-cols-1 gap-8', colsClass[columns]]}>
+    <slot />
+  </div>
+</div>

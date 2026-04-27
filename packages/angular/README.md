@@ -151,7 +151,7 @@ In your route component, listen for live updates:
 
 ```typescript
 import { Component, inject, linkedSignal, input, OnInit } from '@angular/core';
-import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storyblok/angular';
+import { LivePreviewService, SbBlokDirective, type Story } from '@storyblok/angular';
 
 @Component({
   imports: [SbBlokDirective],
@@ -160,7 +160,7 @@ import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storybl
 export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
   
-  readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
+  readonly storyInput = input<Story | null>(null, { alias: 'story' });
   readonly story = linkedSignal(() => this.storyInput());
 
   ngOnInit() {
@@ -177,14 +177,14 @@ Use the `SbRichTextComponent` to render rich text fields:
 
 ```typescript
 import { Component, input } from '@angular/core';
-import { SbRichTextComponent, type StoryblokRichTextNode } from '@storyblok/angular';
+import { SbRichTextComponent, type StoryblokRichTextJson } from '@storyblok/angular';
 
 @Component({
   imports: [SbRichTextComponent],
-  template: `<sb-rich-text [doc]="content()" />`,
+  template: `<sb-rich-text [sbDocument]="content()" />`,
 })
 export class ArticleComponent {
-  readonly content = input<StoryblokRichTextNode>();
+  readonly content = input<StoryblokRichTextJson>();
 }
 ```
 
@@ -281,8 +281,8 @@ provideStoryblok(
 | Type | Description |
 |------|-------------|
 | `SbBlokData` | Base type for Storyblok block data |
-| `ISbStoryData` | Story data from the API |
-| `StoryblokRichTextNode` | Rich text document node |
+| `Story` | Story data from the API |
+| `StoryblokRichTextJson` | Rich text document node |
 | `AngularRenderNode` | Rendered node in rich text AST |
 
 ## Documentation

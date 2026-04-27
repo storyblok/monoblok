@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import {
   type SbBlokData,
+  type BridgeParams,
   SbBlokDirective,
   StoryblokService,
   LivePreviewService,
@@ -40,12 +41,16 @@ export class HomeComponent implements OnInit {
   readonly story = signal<Story | null>(null);
   readonly loading = signal(true);
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
-
+  readonly bridgeConfig: BridgeParams = {
+    resolveRelations: ['featured-articles.articles'],
+    preventClicks: true,
+  };
   async ngOnInit(): Promise<void> {
     try {
-      const { data } = await this.client.stories.get('home', {
+      const { data } = await this.client.stories.get('angular/home', {
         query: {
           version: 'draft',
+          resolve_relations: 'featured-articles.articles',
         },
       });
       this.story.set((data?.story as Story) || null);
@@ -54,9 +59,10 @@ export class HomeComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+
     // Enable live preview for Visual Editor
     this.livePreview.listen((updatedStory) => {
       this.story.set((updatedStory as Story) || null);
-    });
+    }, this.bridgeConfig);
   }
 }

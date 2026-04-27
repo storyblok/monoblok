@@ -1,5 +1,5 @@
 import type { BridgeParams } from '@storyblok/live-preview';
-import { StoryblokFeature } from './components.feature';
+import { StoryblokFeature } from '../components.feature';
 import { Provider } from '@angular/core';
 import { LIVE_PREVIEW_CONFIG, LIVE_PREVIEW_ENABLED } from './livepreview.service';
 

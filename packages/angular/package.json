@@ -48,11 +48,10 @@
     "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
   },
   "dependencies": {
-    "tslib": "^2.3.0",
+    "@storyblok/api-client": "workspace:*",
     "@storyblok/live-preview": "workspace:*",
     "@storyblok/richtext": "workspace:*",
-    "@storyblok/js": "workspace:*",
-    "@storyblok/api-client": "workspace:*"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.1.2",

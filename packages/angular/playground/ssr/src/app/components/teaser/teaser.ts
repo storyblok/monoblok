@@ -1,9 +1,9 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type SbBlokData, type StoryblokRichTextNode } from '@storyblok/angular';
+import { type StoryblokRichTextJson } from '@storyblok/angular';
 
-export interface TeaserBlok extends SbBlokData {
+export interface TeaserBlok {
   headline?: string;
-  text?: StoryblokRichTextNode;
+  text?: StoryblokRichTextJson;
 }
 
 @Component({
@@ -14,7 +14,7 @@ export interface TeaserBlok extends SbBlokData {
     <div>
       <h2>{{ blok().headline }}</h2>
       <!-- @if (blok().text) {
-        <sb-rich-text [doc]="blok().text!" />
+        <sb-rich-text [sbDocument]="blok().text!" />
       } -->
     </div>
   `,

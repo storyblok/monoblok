@@ -451,7 +451,19 @@ describe('repositoryToTemplate', () => {
     });
   });
 
-  it('should fallback to default port if no port topic', () => {
+  it('should fallback to default port if no port topic and no static template match', () => {
+    const repo = {
+      name: 'blueprint-core-unknown',
+      topics: [],
+      clone_url: 'https://github.com/storyblok/blueprint-core-unknown.git',
+      description: 'An unknown starter',
+      updated_at: '2024-01-01T00:00:00Z',
+    };
+    const template = repositoryToTemplate(repo);
+    expect(template.location).toBe('https://localhost:3000/');
+  });
+
+  it('should use static template location when available', () => {
     const repo = {
       name: 'blueprint-core-react',
       topics: [],
@@ -460,7 +472,8 @@ describe('repositoryToTemplate', () => {
       updated_at: '2024-01-01T00:00:00Z',
     };
     const template = repositoryToTemplate(repo);
-    expect(template.location).toBe('https://localhost:3000/');
+    // React static template has location https://localhost:5173/
+    expect(template.location).toBe('https://localhost:5173/');
   });
 });
 
@@ -521,12 +534,12 @@ describe('fetchBlueprintRepositories', () => {
     expect(blueprints?.[0]?.name).toBe('React');
     expect(blueprints?.[1]?.name).toBe('Vue');
 
-    // Verify blueprint structure
+    // Verify blueprint structure (React uses static template location)
     expect(blueprints?.[0]).toEqual({
       name: 'React',
       value: 'react',
       template: 'https://github.com/storyblok/blueprint-core-react.git',
-      location: 'https://localhost:3000/',
+      location: 'https://localhost:5173/', // From static templates
       description: 'A React starter',
       updated_at: '2024-01-02T00:00:00Z',
       stars: 75,
@@ -548,5 +561,23 @@ describe('fetchBlueprintRepositories', () => {
       octokitError,
       'Failed to fetch blueprints from GitHub',
     );
+  });
+
+  it('should return static templates as fallback when GitHub API fails', async () => {
+    // Mock createOctokit to throw an error
+    const octokitError = new Error('GitHub API error');
+    mockedCreateOctokit.mockImplementation(() => {
+      throw octokitError;
+    });
+
+    const blueprints = await fetchBlueprintRepositories();
+
+    // Should return static templates as fallback
+    expect(blueprints).toBeDefined();
+    expect(blueprints.length).toBeGreaterThan(0);
+    // Check that known static templates are present
+    expect(blueprints.some(bp => bp.value === 'react')).toBe(true);
+    expect(blueprints.some(bp => bp.value === 'vue')).toBe(true);
+    expect(blueprints.some(bp => bp.value === 'nuxt')).toBe(true);
   });
 });

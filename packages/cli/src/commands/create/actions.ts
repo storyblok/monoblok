@@ -7,7 +7,11 @@ import { FileSystemError, handleFileSystemError } from '../../utils/error/filesy
 import open from 'open';
 import { createOctokit } from '../../github';
 import { handleAPIError, konsola } from '../../utils';
-import type { DynamicTemplate } from './constants';
+import { type DynamicTemplate, templates } from './constants';
+
+/** Repository item from GitHub search API response */
+type SearchReposResponse = Awaited<ReturnType<ReturnType<typeof createOctokit>['rest']['search']['repos']>>;
+type SearchRepoItem = SearchReposResponse['data']['items'][number];
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -196,26 +200,52 @@ export const extractPortFromTopics = (topics: string[]): string => {
 };
 
 /**
+ * Finds a matching static template by value
+ * @param value - The template value to search for
+ * @returns The matching static template or undefined
+ */
+const findStaticTemplate = (value: string) => {
+  return Object.values(templates).find(t => t.value === value);
+};
+
+/**
  * Converts a GitHub repository to the format expected by the CLI
- * @param repo - GitHub repository data
+ * Uses static template name and location as priority if available
+ * @param repo - GitHub repository data from search API
  * @returns Formatted blueprint object
  */
-export const repositoryToTemplate = (repo: any): DynamicTemplate => {
+export const repositoryToTemplate = (repo: SearchRepoItem): DynamicTemplate => {
   const technology = repo.name.replace('blueprint-core-', '');
   const port = extractPortFromTopics(repo.topics || []);
+  const staticTemplate = findStaticTemplate(technology);
 
   return {
-    name: technology.charAt(0).toUpperCase() + technology.slice(1),
+    // Prioritize static template name over derived name
+    name: staticTemplate?.name || technology.charAt(0).toUpperCase() + technology.slice(1),
     value: technology,
     template: repo.clone_url,
-    location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
+    // Prioritize static template location over topic-derived port
+    location: staticTemplate?.location || (port ? `https://localhost:${port}/` : 'https://localhost:3000/'),
     description: repo.description,
     updated_at: repo.updated_at,
     stars: repo.stargazers_count,
   };
 };
 
-export const fetchBlueprintRepositories = async () => {
+/**
+ * Converts static templates to DynamicTemplate format for fallback
+ * @returns Array of DynamicTemplate objects
+ */
+const getStaticTemplatesAsFallback = (): DynamicTemplate[] => {
+  return Object.values(templates).map(t => ({
+    name: t.name,
+    value: t.value,
+    template: t.template,
+    location: t.location,
+  }));
+};
+
+export const fetchBlueprintRepositories = async (): Promise<DynamicTemplate[]> => {
   try {
     const octokit = createOctokit();
 
@@ -236,7 +266,9 @@ export const fetchBlueprintRepositories = async () => {
     return blueprints;
   }
   catch (error) {
-    // Fallback to hardcoded blueprints if GitHub search fails
+    // Fallback to static templates if GitHub search fails
     handleAPIError('fetch_blueprints', error as Error, 'Failed to fetch blueprints from GitHub');
+    konsola.warn('Using offline template list');
+    return getStaticTemplatesAsFallback();
   }
 };

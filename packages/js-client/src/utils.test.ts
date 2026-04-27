@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   arrayFrom,
   asyncMap,
+  decodeIfEncoded,
   delay,
   escapeHTML,
   flatMap,
@@ -183,6 +184,42 @@ describe('utils', () => {
       expect(escaped).toBe(
         '&lt;div&gt;Test &amp; &quot;more&quot; test&lt;/div&gt;',
       );
+    });
+  });
+
+  describe('decodeIfEncoded', () => {
+    it('decodes URL-encoded commas in resolve_relations string', () => {
+      const encoded = 'dodoNewsItem.tags%2CgooseProductMetadata.systemGenerationRef';
+      expect(decodeIfEncoded(encoded)).toBe('dodoNewsItem.tags,gooseProductMetadata.systemGenerationRef');
+    });
+
+    it('decodes fully URL-encoded resolve_relations string', () => {
+      const encoded = 'dodoNewsItem.tags%2CgooseProductMetadata.systemGenerationRef%2CgooseProductMetadata.productGroupRef';
+      expect(decodeIfEncoded(encoded)).toBe('dodoNewsItem.tags,gooseProductMetadata.systemGenerationRef,gooseProductMetadata.productGroupRef');
+    });
+
+    it('returns original string when not URL-encoded', () => {
+      const plain = 'dodoNewsItem.tags,gooseProductMetadata.systemGenerationRef';
+      expect(decodeIfEncoded(plain)).toBe(plain);
+    });
+
+    it('returns original string for empty input', () => {
+      expect(decodeIfEncoded('')).toBe('');
+    });
+
+    it('handles mixed encoded characters', () => {
+      const encoded = 'component.field%20with%20spaces%2Cother.field';
+      expect(decodeIfEncoded(encoded)).toBe('component.field with spaces,other.field');
+    });
+
+    it('returns original string for malformed encoding', () => {
+      const malformed = 'component.field%2';
+      expect(decodeIfEncoded(malformed)).toBe(malformed);
+    });
+
+    it('does not double-decode already decoded strings', () => {
+      const plain = 'component.field,other.field';
+      expect(decodeIfEncoded(plain)).toBe(plain);
     });
   });
 });

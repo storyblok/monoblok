@@ -18,12 +18,8 @@ export interface PageBlok {
   imports: [SbRichTextComponent, StoryblokComponent],
   template: `
     <div class="space-y-8">
-      @if (bloks().length) {
-        <sb-component [sbBloks]="bloks()" />
-      }
-      @if (richText()) {
-        <sb-rich-text [sbDocument]="richText()" />
-      }
+      <sb-component [sbBlok]="bloks()" />
+      <sb-rich-text [sbDocument]="richText()" />
     </div>
   `,
 })

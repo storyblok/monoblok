@@ -9,20 +9,20 @@ import {
 import {
   type SbBlokData,
   type BridgeParams,
-  SbBlokDirective,
   StoryblokService,
   LivePreviewService,
   Story,
+  StoryblokComponent,
 } from '@storyblok/angular';
 
 @Component({
   selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SbBlokDirective],
+  imports: [StoryblokComponent],
   template: `
     <div class="p-8 max-w-7xl mx-auto">
       <!-- Pass content directly - directive handles null internally -->
-      <ng-container [sbBlok]="storyContent()" />
+      <sb-component [sbBlok]="storyContent()" />
       @if (loading()) {
         <p class="text-slate-500">Loading...</p>
       } @else if (!storyContent()) {

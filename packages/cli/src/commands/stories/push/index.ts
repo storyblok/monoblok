@@ -2,7 +2,7 @@ import { pipeline } from 'node:stream/promises';
 import { join } from 'pathe';
 import type { Story } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
-import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
+import { CommandError, handleError, logOnlyError, requireAuthentication, toError } from '../../../utils';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
 import { loadManifest, resolveCommandPath } from '../../../utils/filesystem';
@@ -14,6 +14,7 @@ import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
 import { prefetchTargetStories } from '../actions';
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from '../validate-story';
+import { FailureCollector } from './failure-report';
 
 const pushCmd = storiesCommand
   .command('push')
@@ -51,6 +52,7 @@ pushCmd
     }
 
     const pendingWarnings: string[] = [];
+    const failures = new FailureCollector();
 
     const summary = {
       creationResults: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
@@ -140,8 +142,10 @@ pushCmd
           scanProgress.increment();
         },
         onError(error, filename) {
-          summary.creationResults.failed += 1;
-          handleError(error, verbose, { storyFile: filename });
+          if (failures.record({ filename }, error)) {
+            summary.creationResults.failed += 1;
+          }
+          logOnlyError(error, { storyFile: filename });
         },
       });
       const levels = groupStoriesByDepth(storyIndex);
@@ -178,8 +182,11 @@ pushCmd
           dryRun: options.dryRun ?? false,
           appendToManifest,
           onStorySuccess(entry, remoteStory) {
-            if (!entry.uuid || !remoteStory.uuid) {
-              throw new Error('Invalid story provided!');
+            if (!entry.uuid) {
+              throw new Error(`Local story file "${entry.filename}" is missing a "uuid" field. Re-pull the story or add the uuid manually.`);
+            }
+            if (!remoteStory.uuid) {
+              throw new Error(`Storyblok API returned a story without a uuid for slug "${entry.slug}".`);
             }
             maps.stories.set(entry.id, remoteStory.id);
             maps.stories.set(entry.uuid, remoteStory.uuid);
@@ -188,8 +195,11 @@ pushCmd
             creationProgress.increment();
           },
           onStorySkipped(entry, remoteStory, reason) {
-            if (!entry.uuid || !remoteStory.uuid) {
-              throw new Error('Invalid story provided!');
+            if (!entry.uuid) {
+              throw new Error(`Local story file "${entry.filename}" is missing a "uuid" field. Re-pull the story or add the uuid manually.`);
+            }
+            if (!remoteStory.uuid) {
+              throw new Error(`Storyblok API returned a story without a uuid for slug "${entry.slug}".`);
             }
             maps.stories.set(entry.id, remoteStory.id);
             maps.stories.set(entry.uuid, remoteStory.uuid);
@@ -198,13 +208,15 @@ pushCmd
             creationProgress.increment();
           },
           onStoryError(error, entry) {
-            summary.creationResults.failed += 1;
-            summary.processResults.total -= 1;
-            summary.updateResults.total -= 1;
-            processProgress.setTotal(summary.processResults.total);
-            updateProgress.setTotal(summary.updateResults.total);
+            if (failures.record(entry, error)) {
+              summary.creationResults.failed += 1;
+              summary.processResults.total -= 1;
+              summary.updateResults.total -= 1;
+              processProgress.setTotal(summary.processResults.total);
+              updateProgress.setTotal(summary.updateResults.total);
+            }
             creationProgress.increment();
-            handleError(error, verbose, { storyId: entry?.uuid });
+            logOnlyError(error, { storyId: entry.uuid });
           },
         });
       }
@@ -236,12 +248,18 @@ pushCmd
             updateProgress.setTotal(total);
           },
           onStoryError(error, filename) {
-            summary.creationResults.failed += 1;
-            summary.processResults.total -= 1;
+            if (failures.record({ filename }, error)) {
+              summary.processResults.failed += 1;
+            }
+            else {
+              // Already counted as failed in an earlier phase; drop from this
+              // phase's total so `succeeded + failed === total` holds.
+              summary.processResults.total -= 1;
+              processProgress.setTotal(summary.processResults.total);
+            }
             summary.updateResults.total -= 1;
-            processProgress.setTotal(summary.processResults.total);
             updateProgress.setTotal(summary.updateResults.total);
-            handleError(error, verbose, { storyFile: filename });
+            logOnlyError(error, { storyFile: filename });
           },
         }),
         // Map all references to numeric ids and uuids.
@@ -257,10 +275,19 @@ pushCmd
             summary.processResults.succeeded += 1;
           },
           onStoryError(error, localStory) {
-            summary.processResults.failed += 1;
+            // Always keep the audit trail — even when we suppress the
+            // user-facing summary entry for stories that already failed
+            // creation, the file log should retain the full per-phase error.
+            logOnlyError(error, { storyId: localStory.uuid });
+            if (failures.record(localStory, error)) {
+              summary.processResults.failed += 1;
+            }
+            else {
+              summary.processResults.total -= 1;
+              processProgress.setTotal(summary.processResults.total);
+            }
             summary.updateResults.total -= 1;
             updateProgress.setTotal(summary.updateResults.total);
-            handleError(error, verbose, { storyId: localStory.uuid });
           },
         }),
         // Update remote stories with correct references.
@@ -284,8 +311,16 @@ pushCmd
             summary.updateResults.succeeded += 1;
           },
           onStoryError(error, localStory) {
-            summary.updateResults.failed += 1;
-            handleError(error, verbose, { storyId: localStory.uuid });
+            logOnlyError(error, { storyId: localStory.uuid });
+            if (failures.record(localStory, error)) {
+              summary.updateResults.failed += 1;
+            }
+            else {
+              // Already counted as failed in an earlier phase; drop from this
+              // phase's total so `succeeded + failed === total` holds.
+              summary.updateResults.total -= 1;
+              updateProgress.setTotal(summary.updateResults.total);
+            }
           },
         }),
       );
@@ -296,20 +331,36 @@ pushCmd
     finally {
       logger.info('Pushing stories finished', summary);
       ui.stopAllProgressBars();
-      for (const warning of pendingWarnings) {
-        ui.warn(warning);
-      }
-      const failedStories = Math.max(summary.creationResults.failed, summary.processResults.failed, summary.updateResults.failed);
-      ui.info(`Push results: ${summary.creationResults.total} ${summary.creationResults.total === 1 ? 'story' : 'stories'} pushed, ${failedStories} ${failedStories === 1 ? 'story' : 'stories'} failed`);
+      ui.br();
+
+      const failedCount = failures.size;
+      ui.info(`Push results: ${summary.creationResults.total} ${summary.creationResults.total === 1 ? 'story' : 'stories'} pushed, ${failedCount} ${failedCount === 1 ? 'story' : 'stories'} failed`);
       ui.list([
         `Creating stories: ${summary.creationResults.succeeded + summary.creationResults.skipped}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed.`,
         `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed.`,
         `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed.`,
       ]);
 
+      if (pendingWarnings.length > 0 || !failures.isEmpty) {
+        ui.br();
+      }
+
+      for (const warning of pendingWarnings) {
+        ui.warn(warning);
+      }
+
+      if (pendingWarnings.length > 0 && !failures.isEmpty) {
+        ui.br();
+      }
+
+      failures.render(ui, verbose);
+
       reporter.addSummary('creationResults', summary.creationResults);
       reporter.addSummary('processResults', summary.processResults);
       reporter.addSummary('updateResults', summary.updateResults);
+      if (!failures.isEmpty) {
+        reporter.addMeta('failedStories', failures.toReporterMeta());
+      }
       reporter.finalize();
     }
   });

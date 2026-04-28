@@ -36,8 +36,8 @@ import { StoryblokRichtextResolver } from './richtext.feature';
   host: { style: 'display: contents' },
 })
 export class SbRichTextComponent implements OnDestroy {
-  /** Input richtext document */
-  sbDocument = input.required<StoryblokRichTextJson | null | undefined>();
+  /** Input richtext document or array of documents */
+  sbDocument = input.required<StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined>();
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -81,14 +81,28 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Render entry
   // --------------------------------------------------
-  private render(sbDocument: StoryblokRichTextJson | null | undefined): void {
+  private render(
+    sbDocument: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined,
+  ): void {
     const version = ++this.renderVersion;
 
     this.clearContent();
     if (!sbDocument) return;
 
-    const nodes =
-      sbDocument.type === 'doc' && sbDocument.content ? sbDocument.content : [sbDocument];
+    // Handle array of documents
+    if (Array.isArray(sbDocument)) {
+      for (const doc of sbDocument) {
+        this.renderSingleDocument(doc, version);
+      }
+      return;
+    }
+
+    this.renderSingleDocument(sbDocument, version);
+  }
+
+  /** Render a single document */
+  private renderSingleDocument(doc: StoryblokRichTextJson, version: number): void {
+    const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
 
     for (const node of nodes) {
       this.renderNode(node, this.hostElement, version);
@@ -135,7 +149,7 @@ export class SbRichTextComponent implements OnDestroy {
 
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
-      this.mountComponent(StoryblokComponent, { sbBloks: blokList }, parent, anchor);
+      this.mountComponent(StoryblokComponent, { sbBlok: blokList }, parent, anchor);
       return;
     }
 

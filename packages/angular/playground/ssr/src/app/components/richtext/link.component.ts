@@ -6,7 +6,7 @@ import { type RichTextComponentProps } from '@storyblok/angular';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a [href]="data().attrs?.href" target="_blank" rel="noopener">
-      <ng-content></ng-content>
+      <ng-content />
     </a>
   `,
   host: { style: 'display: inline-block' },

@@ -10,19 +10,20 @@ import {
 import {
   type Story,
   type SbBlokData,
-  SbBlokDirective,
   LivePreviewService,
   type BridgeParams,
+  StoryblokComponent,
 } from '@storyblok/angular';
 
 @Component({
   selector: 'app-catch-all',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SbBlokDirective],
+  imports: [StoryblokComponent],
   template: `
     <div class="p-8 max-w-7xl mx-auto">
       <!-- Pass content directly - directive handles null internally -->
-      <ng-container [sbBlok]="storyContent()" />
+      <sb-component [sbBlok]="storyContent()" />
+
       @if (!storyContent()) {
         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h2 class="text-yellow-800 text-xl font-semibold mb-2">No content found</h2>

@@ -88,15 +88,14 @@ interface StoryblokMultilinkBase {
 export type StoryblokMultilink =
   | (StoryblokMultilinkBase & {
     linktype: 'story';
-    story?: StoryblokMultilinkStory;
+    story?: StoryblokMultilinkStory | StoryblokMultilinkLink | StoryblokMultilinkUrl;
   })
   | (StoryblokMultilinkBase & {
     linktype: 'url';
-    story?: StoryblokMultilinkUrl;
   })
   | (StoryblokMultilinkBase & {
     linktype: 'email';
-    email?: string;
+    email: string;
   })
   | (StoryblokMultilinkBase & {
     linktype: 'asset';

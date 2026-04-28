@@ -6,9 +6,7 @@ import { type RichTextComponentProps, SbRichTextComponent } from '@storyblok/ang
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p>
-      @for (doc of data().content ?? []; track doc) {
-        <sb-rich-text [sbDocument]="doc" />
-      }
+      <sb-rich-text [sbDocument]="data().content" />
     </p>
   `,
   host: { style: 'display: contents' },

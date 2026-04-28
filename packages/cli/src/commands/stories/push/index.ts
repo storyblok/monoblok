@@ -233,13 +233,16 @@ pushCmd
        * We need to run the second pass in a separate pipeline because we need a
        * complete map of all stories.
        */
+      const uuidByFilename = new Map(storyIndex.map(entry => [entry.filename, entry.uuid]));
+
       await pipeline(
         // Read local stories from `.json` files.
         readLocalStoriesStream({
           directoryPath: storiesDirectoryPath,
-          fileFilter({ uuid }) {
+          fileFilter({ filename }) {
             // Only load files that were successfully created and mapped.
-            return Boolean(maps.stories.get(uuid));
+            const uuid = uuidByFilename.get(filename);
+            return uuid != null && Boolean(maps.stories.get(uuid));
           },
           setTotalStories(total) {
             summary.processResults.total = total;

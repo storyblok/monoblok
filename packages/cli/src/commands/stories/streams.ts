@@ -1,5 +1,5 @@
 import { readFile, unlink } from 'node:fs/promises';
-import { basename, extname, join, resolve } from 'pathe';
+import { extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
 import { Sema } from 'async-sema';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
@@ -123,14 +123,6 @@ export const fetchStoryStream = ({
   });
 };
 
-const getUUIDFromFilename = (filename: string) => {
-  const uuid = basename(filename, extname(filename)).split('_').at(-1);
-  if (!uuid) {
-    throw new Error(`Unable to extract UUID from local story "${filename}"`);
-  }
-  return uuid;
-};
-
 export const readLocalStoriesStream = ({
   directoryPath,
   fileFilter = () => true,
@@ -140,7 +132,14 @@ export const readLocalStoriesStream = ({
   onStoryError,
 }: {
   directoryPath: string;
-  fileFilter?: (options: { uuid: string }) => boolean;
+  /**
+   * Decides whether a local story file should flow into the pipeline.
+   * Receives the `filename` only — callers that need to resolve to a uuid
+   * should rely on an external index (e.g. the scan index from pass 1),
+   * because filenames `${slug}_${uuid}.json` can't be parsed reliably when
+   * either segment contains underscores.
+   */
+  fileFilter?: (options: { filename: string }) => boolean;
   setTotalStories?: (total: number) => void;
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
@@ -148,7 +147,7 @@ export const readLocalStoriesStream = ({
 }) => {
   const listGenerator = async function* localStoryIterator() {
     const files = (await readDirectory(directoryPath))
-      .filter(f => extname(f) === '.json' && fileFilter({ uuid: getUUIDFromFilename(f) }));
+      .filter(f => extname(f) === '.json' && fileFilter({ filename: f }));
     setTotalStories?.(files.length);
 
     for (const file of files) {
@@ -245,10 +244,15 @@ export const scanLocalStoryIndex = async ({
       const filePath = join(directoryPath, file);
       const fileContent = await readFile(filePath, 'utf-8');
       const story = JSON.parse(fileContent) as Story;
+      if (!story.uuid) {
+        // A missing uuid would otherwise collapse multiple stories onto the
+        // same empty-string key in downstream maps and silently lose content.
+        throw new Error(`Story "${file}" is missing a uuid and cannot be pushed.`);
+      }
       entries.push({
         filename: file,
         id: story.id,
-        uuid: story.uuid ?? '',
+        uuid: story.uuid,
         slug: story.slug ?? '',
         name: story.name ?? '',
         full_slug: story.full_slug ?? '',

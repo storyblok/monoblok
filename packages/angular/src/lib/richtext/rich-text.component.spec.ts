@@ -11,9 +11,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
   standalone: true,
   imports: [SbRichTextComponent],
   template: `<div class="custom-node">
-    @for (doc of data().content ?? []; track doc) {
-      <sb-rich-text [sbDocument]="doc" />
-    }
+    <sb-rich-text [sbDocument]="data().content" />
   </div>`,
 })
 class MockCustomParagraphComponent {
@@ -337,5 +335,24 @@ describe('SbRichTextComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent.trim()).toBe('');
+  });
+
+  it('should render an array of documents', async () => {
+    fixture.componentRef.setInput('sbDocument', [
+      {
+        type: 'text',
+        text: 'First',
+      },
+      {
+        type: 'text',
+        text: ' Second',
+      },
+    ]);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toBe('First Second');
   });
 });

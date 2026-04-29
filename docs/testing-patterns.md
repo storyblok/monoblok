@@ -1,6 +1,8 @@
 # Testing Patterns
 
-**Stack:** Vitest + memfs (filesystem) + msw (API). Tests co-located as `*.test.ts`.
+- Stack: Vitest + memfs (filesystem) + msw (API). Tests co-located as `*.test.ts`.
+- Place tests alongside source files (e.g., `program.ts` -> `program.test.ts`).
+- Rely on the `qa-engineer-integration` or `qa-engineer-unit` skills for further testing instructions.
 
 ## Session mocking
 

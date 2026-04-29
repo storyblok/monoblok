@@ -1,43 +1,139 @@
-# Guidelines for Monoblok CLI
+# Storyblok CLI Agent Guidelines
 
-This document provides instructions for AI agents operating in the `packages/cli` directory of the `monoblok` repository.
+## Where to put code
 
-## Environment & commands
+| Need | Put it here |
+| --- | --- |
+| Top-level CLI registration | `src/index.ts` import |
+| Commander command definition | `src/commands/<name>/index.ts` or `command.ts` |
+| API calls, filesystem writes, transformations | `actions.ts` |
+| Option constants | `constants.ts` |
+| Reusable option types | `types.ts` |
+| Shared CLI utilities | `src/utils/` |
+| Config resolution, global option behavior | `src/lib/config/` |
+| Structured logs | `src/lib/logger/` |
+| Machine-readable command reports | `src/lib/reporter/` |
 
-- **Project Structure:**
-  - This is a monorepo workspace.
-  - CLI source code is in `src/`.
-  - Distributable output goes to `dist/`.
+## Terminal output
 
-### Important commands
+| If you need | Use |
+| --- | --- |
+| User-facing text, titles, warnings, blank lines | `const ui = getUI()` |
+| Progress spinners | `ui.createSpinner()` |
+| Progress bars | `ui.createProgressBar()` |
+| Operational diagnostics | `const logger = getLogger()` |
+| Command errors | `handleError(new CommandError(...), verbose)` |
 
-| Action         | Command           | Notes                         |
-| :------------- | :---------------- | :---------------------------- |
-| **Lint Fix**   | `pnpm lint:fix`   | Auto-fixes linting issues.    |
-| **Type Check** | `pnpm test:types` | Checks types.                 |
+Do not add `console.*`, raw `Spinner`, or direct `konsola.*` calls in new or migrated command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics.
 
-## Code style & conventions
+## Tests
 
-### Naming
+Keep tests close to the changed file. Use simple input/output assertions for pure helpers:
 
-- **Files:** kebab-case (e.g., `custom-fields-parser.ts`).
-- **Classes:** PascalCase.
-- **Functions/Variables:** camelCase.
-- **Interfaces/Types:** PascalCase.
+```ts
+import { describe, expect, it } from 'vitest';
+import { slugify } from './format';
 
-### Automated tests with vitest
+describe('slugify', () => {
+  it('should convert text to a URL-friendly slug', () => {
+    expect(slugify('Hello World!')).toBe('hello-world');
+  });
+});
+```
 
-- Place tests alongside source files (e.g., `program.ts` -> `program.test.ts`).
-- Rely on the `qa-engineer-integration` or `qa-engineer-unit` skills for further testing instructions.
+Use command execution and named preconditions when behavior depends on external state such as files, API responses, or session state:
 
-### Manual tests
+```ts
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { vol } from 'memfs';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 
-- Use the `qa-engineer-manual` skill when it comes to testing the DX of a feature and validating end-to-end functionality.
+import '../index';
+import { storiesCommand } from '../command';
 
-## Development workflow
+const server = setupServer();
 
-- **Step 1:** Create/Modify Test (see `qa-engineer-integration` or `qa-engineer-unit` skills).
-- **Step 2:** Verify Test Fails (`pnpm test <filename>`).
-- **Step 3:** Write Implementation.
-- **Step 4:** Verify Test Passes (`pnpm test <filename>`).
-- **Step 5:** Run Fix & Check (`pnpm test:types && pnpm lint:fix`) before finishing.
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+
+const preconditions = {
+  hasEmptyStoriesDirectory() {
+    vol.fromJSON({
+      '.storyblok/stories/12345/.gitkeep': '',
+    });
+  },
+  canPullStory(story: { id: number; slug: string; uuid: string }) {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/12345/stories', () =>
+        HttpResponse.json({ stories: [story] }, {
+          headers: { Total: '1', 'Per-Page': '100' },
+        })),
+      http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+        HttpResponse.json({ story })),
+    );
+  },
+};
+
+describe('stories pull command', () => {
+  it('should pull stories into the local workspace', async () => {
+    const story = { id: 1, slug: 'home', uuid: 'story-uuid' };
+    preconditions.hasEmptyStoriesDirectory();
+    preconditions.canPullStory(story);
+
+    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
+
+    expect(Object.keys(vol.toJSON())).toEqual(
+      expect.arrayContaining([expect.stringContaining('home_story-uuid.json')]),
+    );
+  });
+});
+```
+
+## Command patterns
+
+Parent commands expose a shared command instance:
+
+```ts
+export const componentsCommand = program
+  .command(commands.COMPONENTS)
+  .alias('comp')
+  .description(`Manage your space's block schema`);
+```
+
+Subcommands import the parent command, define options, and keep the action thin:
+
+```ts
+const pullCmd = componentsCommand
+  .command('pull [componentName]')
+  .option('-s, --space <space>', 'space ID')
+  .description(`Download your space's components schema as JSON.`);
+```
+
+Use global options from Commander after config resolution:
+
+```ts
+const { space, path, verbose } = command.optsWithGlobals();
+```
+
+Use the UI module and stop every spinner on all return paths:
+
+```ts
+const ui = getUI();
+const spinner = ui.createSpinner('Fetching components');
+
+if (!components?.length) {
+  spinner.failed(`No components found in the space ${space}`);
+  return;
+}
+
+spinner.succeed(`Components fetched`);
+```
+
+Use the logger for non-user-facing runtime details:
+
+```ts
+const logger = getLogger();
+logger.info('Pulling components started', { space, componentName });
+```

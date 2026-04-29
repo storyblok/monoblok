@@ -1,0 +1,32 @@
+{
+  "name": "wordpress-to-storyblok-migration",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "wp:discover": "tsx .storyblok/migration/wordpress/scripts/discover-schema.ts",
+    "wp:generate": "tsx .storyblok/migration/wordpress/scripts/generate-stories.ts",
+    "wp:build": "tsx .storyblok/migration/wordpress/scripts/build-seed.ts",
+    "wp:all": "pnpm wp:discover && pnpm wp:generate && pnpm wp:build",
+    "schema:push": "storyblok schema push src/schema/schema.ts",
+    "seed:cleanup": "tsx .storyblok/migration/wordpress/scripts/cleanup-space.ts",
+    "seed:datasources": "storyblok datasources push --from wordpress",
+    "seed:assets": "storyblok assets push --from wordpress --update-stories",
+    "seed:stories": "storyblok stories push --from wordpress --publish",
+    "migrate": "pnpm wp:all && pnpm schema:push && pnpm seed:datasources && pnpm seed:assets && pnpm seed:stories",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@storyblok/schema": "workspace:*",
+    "@storyblok/migrations": "workspace:*",
+    "@wordpress/block-serialization-default-parser": "5.44.0"
+  },
+  "devDependencies": {
+    "@storyblok/management-api-client": "workspace:*",
+    "@types/node": "20.19.0",
+    "dotenv": "^17.3.1",
+    "storyblok": "workspace:*",
+    "tsx": "^4.21.0",
+    "typescript": "5.4.5"
+  }
+}

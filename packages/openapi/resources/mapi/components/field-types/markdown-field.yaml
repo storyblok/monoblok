@@ -1,0 +1,31 @@
+allOf:
+  - $ref: './base-field.yaml'
+  - type: object
+    description: Markdown field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [markdown]
+        description: Field type discriminant
+      rich_markdown:
+        type: boolean
+        description: Whether to display markdown as rich text
+      rtl:
+        type: boolean
+        description: Whether to enable right-to-left text direction
+      customize_toolbar:
+        type: boolean
+        description: Whether to enable a customized toolbar
+      toolbar:
+        type: array
+        description: Array of enabled toolbar elements
+        items:
+          type: string
+      allow_multiline:
+        type: boolean
+        description: Whether to allow empty paragraphs
+      max_length:
+        type: integer
+        description: Maximum length of the input string

@@ -39,14 +39,17 @@ properties:
       component:
         type: object
         description: Component type field configuration
-    additionalProperties: true
+    additionalProperties:
+      $ref: 'main.yaml#/components/schemas/ComponentSchemaField'
   image:
     type:
       - string
       - "null"
     description: URL to the preview image
   preview_field:
-    type: string
+    type:
+      - string
+      - "null"
     description: The field that is for preview in the interface (Preview Field)
   is_root:
     type: boolean
@@ -80,10 +83,14 @@ properties:
             - "null"
           description: Link to the preview image of the preset
         icon:
-          type: string
+          type:
+            - string
+            - "null"
           description: Icon selected for the preset
         color:
-          type: string
+          type:
+            - string
+            - "null"
           description: Color of the icon selected for the preset
         description:
           type: string
@@ -101,10 +108,14 @@ properties:
     format: uuid
     description: The component folder ID of the component
   color:
-    type: string
+    type:
+      - string
+      - "null"
     description: The color of the icon selected for the component
   icon:
-    type: string
+    type:
+      - string
+      - "null"
     description: Icon selected for the component
   internal_tags_list:
     type: array
@@ -124,5 +135,7 @@ properties:
     items:
       type: string
   content_type_asset_preview:
-    type: string
+    type:
+      - string
+      - "null"
     description: Asset preview field (Preview Card) for a content type component

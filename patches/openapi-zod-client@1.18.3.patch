@@ -1,0 +1,52 @@
+diff --git a/dist/generateZodClientFromOpenAPI-5b2305b4.cjs.prod.js b/dist/generateZodClientFromOpenAPI-5b2305b4.cjs.prod.js
+index ed2658a2a919a90f8614bf40daa1b5e9cf57d5fd..a5e926c49c469b654964534a52154b054c0a2fe2 100644
+--- a/dist/generateZodClientFromOpenAPI-5b2305b4.cjs.prod.js
++++ b/dist/generateZodClientFromOpenAPI-5b2305b4.cjs.prod.js
+@@ -833,7 +833,7 @@ var makeSchemaResolver = function makeSchemaResolver(doc) {
+       return byRef.get(autocorrectRef(ref));
+     },
+     resolveSchemaName: function resolveSchemaName(normalized) {
+-      return byNormalized.get(normalized);
++      return byNormalized.get(normalized) || byNormalized.get(normalizeString(normalized));
+     }
+   };
+ };
+diff --git a/dist/generateZodClientFromOpenAPI-99f61d6d.esm.js b/dist/generateZodClientFromOpenAPI-99f61d6d.esm.js
+index 7c24bfd08861104ec127950b4df16d4fa8363cd3..80ece72385b083922666ba7890ff84d63f79529c 100644
+--- a/dist/generateZodClientFromOpenAPI-99f61d6d.esm.js
++++ b/dist/generateZodClientFromOpenAPI-99f61d6d.esm.js
+@@ -807,7 +807,7 @@ var makeSchemaResolver = function makeSchemaResolver(doc) {
+       return byRef.get(autocorrectRef(ref));
+     },
+     resolveSchemaName: function resolveSchemaName(normalized) {
+-      return byNormalized.get(normalized);
++      return byNormalized.get(normalized) || byNormalized.get(normalizeString(normalized));
+     }
+   };
+ };
+diff --git a/dist/generateZodClientFromOpenAPI-e014c53f.cjs.dev.js b/dist/generateZodClientFromOpenAPI-e014c53f.cjs.dev.js
+index ed2658a2a919a90f8614bf40daa1b5e9cf57d5fd..a5e926c49c469b654964534a52154b054c0a2fe2 100644
+--- a/dist/generateZodClientFromOpenAPI-e014c53f.cjs.dev.js
++++ b/dist/generateZodClientFromOpenAPI-e014c53f.cjs.dev.js
+@@ -833,7 +833,7 @@ var makeSchemaResolver = function makeSchemaResolver(doc) {
+       return byRef.get(autocorrectRef(ref));
+     },
+     resolveSchemaName: function resolveSchemaName(normalized) {
+-      return byNormalized.get(normalized);
++      return byNormalized.get(normalized) || byNormalized.get(normalizeString(normalized));
+     }
+   };
+ };
+diff --git a/src/makeSchemaResolver.ts b/src/makeSchemaResolver.ts
+index b8e0dda771fcdba567263e919e11dd4f5e11ef98..a242ff13c2d9c94512fae3775d12e2b66763a837 100644
+--- a/src/makeSchemaResolver.ts
++++ b/src/makeSchemaResolver.ts
+@@ -48,7 +48,7 @@ export const makeSchemaResolver = (doc: OpenAPIObject) => {
+     return {
+         getSchemaByRef,
+         resolveRef: (ref: string) => byRef.get(autocorrectRef(ref))!,
+-        resolveSchemaName: (normalized: string) => byNormalized.get(normalized)!,
++        resolveSchemaName: (normalized: string) => byNormalized.get(normalized) ?? byNormalized.get(normalizeString(normalized))!,
+     };
+ };
+ 

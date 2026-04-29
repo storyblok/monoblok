@@ -1,0 +1,16 @@
+allOf:
+  - $ref: './base-field.yaml'
+  - type: object
+    description: Tab (layout) field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [tab]
+        description: Field type discriminant
+      keys:
+        type: array
+        description: Field keys that belong to this tab
+        items:
+          type: string

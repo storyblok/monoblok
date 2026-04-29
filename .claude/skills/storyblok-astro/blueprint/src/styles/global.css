@@ -1,0 +1,77 @@
+/* ── Base defaults ──────────────────────────────────── */
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+/* ── Layout utilities ──��───────────────────────────── */
+
+.container {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+/* ── Richtext ──────────────────────────────────────── */
+
+.richtext > * + * {
+  margin-top: 1.25em;
+}
+
+.richtext > *:first-child {
+  margin-top: 0;
+}
+
+.richtext h1,
+.richtext h2,
+.richtext h3 {
+  margin-top: 2em;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.richtext h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -0.025em;
+}
+
+.richtext h2 {
+  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+  letter-spacing: -0.02em;
+}
+
+.richtext h3 {
+  font-size: clamp(1.125rem, 2vw, 1.5rem);
+}
+
+.richtext ul,
+.richtext ol {
+  padding-left: 1.5rem;
+}
+
+.richtext li + li {
+  margin-top: 0.375em;
+}
+
+.richtext blockquote {
+  border-left: 3px solid currentColor;
+  padding-left: 1.5rem;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.richtext hr {
+  border: none;
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 3rem auto;
+  max-width: 5rem;
+}
+
+.richtext img {
+  border-radius: 0.5rem;
+}

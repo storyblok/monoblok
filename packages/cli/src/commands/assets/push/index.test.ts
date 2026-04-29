@@ -1002,7 +1002,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );

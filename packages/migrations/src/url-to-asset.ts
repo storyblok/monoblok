@@ -11,7 +11,7 @@ export function urlToAsset(
   const short_filename = pathSegments.at(-1) || url;
 
   return {
-    id: 0,
+    id: 1,
     filename: url,
     space_id: 0,
     created_at: '',

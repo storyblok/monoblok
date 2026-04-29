@@ -157,6 +157,27 @@ describe('createManagementApiClient - HTTP requests', () => {
     expect(capturedAuth).toBe('Bearer my-oauth-token');
   });
 
+  it('should not double-prefix Bearer when oauthToken already includes it', async () => {
+    let capturedAuth = '';
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces', ({ request }) => {
+        capturedAuth = request.headers.get('authorization') ?? '';
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+
+    const client = createManagementApiClient({
+      oauthToken: 'Bearer my-oauth-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(capturedAuth).toBe('Bearer my-oauth-token');
+  });
+
   it('should keep each client instance independent', async () => {
     const requestsByToken: string[] = [];
     server.use(
@@ -177,7 +198,7 @@ describe('createManagementApiClient - HTTP requests', () => {
 });
 
 describe('createManagementApiClient - HTTP method helpers', () => {
-  it('client.get() should send a GET request and return data', async () => {
+  it('should send a GET request and return data', async () => {
     server.use(
       http.get('https://mapi.storyblok.com/v1/spaces/123/custom', () => HttpResponse.json({ result: 'ok' })),
     );
@@ -195,7 +216,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(result.data).toEqual({ result: 'ok' });
   });
 
-  it('client.get() should forward query params', async () => {
+  it('should forward query params', async () => {
     let capturedUrl = '';
     server.use(
       http.get('https://mapi.storyblok.com/v1/spaces/123/custom', ({ request }) => {
@@ -216,7 +237,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(capturedUrl).toContain('page=2');
   });
 
-  it('client.post() should send a POST request with body', async () => {
+  it('should send a POST request with body', async () => {
     let capturedBody: unknown;
     server.use(
       http.post('https://mapi.storyblok.com/v1/spaces/123/custom', async ({ request }) => {
@@ -241,7 +262,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(capturedBody).toEqual({ name: 'test' });
   });
 
-  it('client.put() should send a PUT request with body', async () => {
+  it('should send a PUT request with body', async () => {
     let capturedBody: unknown;
     server.use(
       http.put('https://mapi.storyblok.com/v1/spaces/123/custom/1', async ({ request }) => {
@@ -266,7 +287,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(capturedBody).toEqual({ name: 'updated' });
   });
 
-  it('client.patch() should send a PATCH request with body', async () => {
+  it('should send a PATCH request with body', async () => {
     let capturedBody: unknown;
     server.use(
       http.patch('https://mapi.storyblok.com/v1/spaces/123/custom/1', async ({ request }) => {
@@ -291,7 +312,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(capturedBody).toEqual({ name: 'patched' });
   });
 
-  it('client.delete() should send a DELETE request', async () => {
+  it('should send a DELETE request', async () => {
     let deleteCalled = false;
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/123/custom/1', () => {
@@ -313,7 +334,7 @@ describe('createManagementApiClient - HTTP method helpers', () => {
     expect(deleteCalled).toBe(true);
   });
 
-  it('client.get() should return error on non-2xx response', async () => {
+  it('should return error on non-2xx response', async () => {
     server.use(
       http.get('https://mapi.storyblok.com/v1/spaces/123/custom', () => HttpResponse.json({ error: 'Not Found' }, { status: 404 })),
     );

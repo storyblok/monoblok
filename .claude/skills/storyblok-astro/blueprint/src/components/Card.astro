@@ -1,0 +1,25 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+  href?: string;
+}
+
+const { title, description, href } = Astro.props;
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag
+  class="block rounded-lg border border-gray-200 p-6"
+  {...(href ? { href } : {})}
+>
+  <slot name="icon" />
+
+  <h3 class="mt-4 text-lg font-semibold text-gray-900">{title}</h3>
+
+  {description && (
+    <p class="mt-2 text-pretty text-gray-700">{description}</p>
+  )}
+
+  <slot />
+</Tag>

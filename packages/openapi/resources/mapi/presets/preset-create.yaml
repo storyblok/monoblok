@@ -1,0 +1,28 @@
+type: object
+description: Input for creating a preset.
+required:
+  - name
+  - component_id
+properties:
+  name:
+    type: string
+    description: Given name of your preset
+  component_id:
+    type: integer
+    description: The ID of the component the preset is for
+  preset:
+    type: object
+    description: Fields of the component filled with content
+    additionalProperties: true
+  image:
+    type: string
+    description: Screenshot or other preview image for your editor
+  color:
+    type: string
+    description: Color of the preset icon
+  icon:
+    type: string
+    description: Icon of the preset
+  description:
+    type: string
+    description: A description of the preset for the editors

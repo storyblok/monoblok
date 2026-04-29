@@ -1,0 +1,14 @@
+{
+  "name": "@storyblok/playground-schema-qwik",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "dependsOn": ["^build"],
+      "command": "pnpm build",
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/server"]
+    }
+  }
+}

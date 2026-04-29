@@ -39,7 +39,7 @@ paths:
                 - user
               properties:
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: '#/components/schemas/user-update'
       responses:
         '200':
           description: User updated
@@ -60,6 +60,8 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
+    user-update:
+      $ref: ./user-update.yaml
     User:
       type: object
       description: The User Object

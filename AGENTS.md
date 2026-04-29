@@ -17,7 +17,8 @@ Inspect the root `package.json` and the `packages/` directory to identify active
   - `tools/`: Internal development tools and scripts.
 - **Package naming**: Internal and published packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 - **Dependencies**: Cross-package dependencies within the monorepo use the `workspace:*` protocol.
-- **Tooling consistency**: Packages primarily use `vitest` for testing and `unbuild` for bundling.
+- **Tooling consistency**: Packages primarily use `vitest` for testing and `tsdown` for bundling.
+- **Running tasks**: Always use `nx` (e.g., `pnpm nx build <package>`) instead of `pnpm --filter` for build/test/generate commands. This ensures `dependsOn` prerequisites run automatically.
 
 ## Code style and conventions
 
@@ -49,9 +50,10 @@ The `adr/` directory contains Architecture Decision Records (ADRs) documenting m
 
 ## General
 
+- **ALWAYS:** look up the latest npm package version before installing a new package.
 - **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
-- **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
-- **Branches:** Follow the current branch naming pattern: `<type>/<ticket-or-scope>-<short-description>`, e.g. `feature/WDX-351-type-safe-schema-support`, `bugfix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
-- **Commits:** If ticket or issue information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
+- **IMPORTANT:** Never add a `Co-Authored-By` line or any AI attribution to commit messages or PRs.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
+- **Commits:** If ticket or issue information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
+- **Branches:** Follow this branch naming pattern: `<type>/<ticket-or-scope>-<short-description>`, e.g. `feature/WDX-351-type-safe-schema-support`, `bugfix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
 - **Worktrees:** Always use the `.worktrees/` directory when creating git worktrees.

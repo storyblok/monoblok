@@ -1,0 +1,26 @@
+allOf:
+  - $ref: './base-field.yaml'
+  - type: object
+    description: Text field configuration
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [text]
+        description: Field type discriminant
+      max_length:
+        type: integer
+        description: Maximum length of the input string
+      maxlength:
+        type: integer
+        description: Maximum length for text fields (legacy alias for max_length)
+      minlength:
+        type: integer
+        description: Minimum length for text fields
+      size:
+        type: string
+        description: Field size (small, medium, large)
+      rtl:
+        type: boolean
+        description: Whether to enable right-to-left text direction

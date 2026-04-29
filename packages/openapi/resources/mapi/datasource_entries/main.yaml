@@ -73,7 +73,7 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntryCreate'
+                  $ref: '#/components/schemas/datasource-entry-create'
       responses:
         '201':
           description: Datasource entry created
@@ -137,7 +137,7 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntryUpdate'
+                  $ref: '#/components/schemas/datasource-entry-update'
       responses:
         '204':
           description: Datasource entry updated
@@ -176,7 +176,6 @@ components:
       required:
         - id
         - name
-        - datasource_id
       properties:
         id:
           readOnly: true
@@ -194,7 +193,7 @@ components:
         dimension_value:
           type: string
           description: Given value in the requested dimension
-    DatasourceEntryCreate:
+    datasource-entry-create:
       $ref: ./datasource-entry-create.yaml
-    DatasourceEntryUpdate:
+    datasource-entry-update:
       $ref: ./datasource-entry-update.yaml

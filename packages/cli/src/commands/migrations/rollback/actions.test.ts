@@ -2,9 +2,9 @@ import { vol } from 'memfs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { readRollbackFile, saveRollbackData } from './actions';
 import { CommandError } from '../../../utils';
-import type { StoryContent } from '../../stories/constants';
+import type { BlokContent } from '../../stories/constants';
 
-const mockStoryContent: StoryContent = {
+const mockBlokContent: BlokContent = {
   _uid: 'test-uid',
   component: 'test',
   body: [],
@@ -15,7 +15,7 @@ describe('saveRollbackData', () => {
     const mockStory1 = {
       id: 1,
       name: 'Test Story 1',
-      content: mockStoryContent,
+      content: mockBlokContent,
     };
     await saveRollbackData({
       space: '12345',
@@ -27,7 +27,7 @@ describe('saveRollbackData', () => {
     const mockStory2 = {
       id: 2,
       name: 'Test Story 2',
-      content: mockStoryContent,
+      content: mockBlokContent,
     };
     await saveRollbackData({
       space: '12345',
@@ -48,12 +48,12 @@ describe('saveRollbackData', () => {
       {
         storyId: 1,
         name: 'Test Story 1',
-        content: mockStoryContent,
+        content: mockBlokContent,
       },
       {
         storyId: 2,
         name: 'Test Story 2',
-        content: mockStoryContent,
+        content: mockBlokContent,
       },
     ]);
   });
@@ -62,7 +62,7 @@ describe('saveRollbackData', () => {
     const mockStory = {
       id: 1,
       name: 'Test Story',
-      content: mockStoryContent,
+      content: mockBlokContent,
     };
 
     await saveRollbackData({
@@ -88,7 +88,7 @@ describe('readRollbackFile', () => {
       {
         storyId: 1,
         name: 'Test Story',
-        content: mockStoryContent,
+        content: mockBlokContent,
       },
     ];
 

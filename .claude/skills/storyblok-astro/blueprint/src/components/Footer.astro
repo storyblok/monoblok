@@ -1,0 +1,53 @@
+---
+interface LinkGroup {
+  title: string;
+  links: { label: string; href: string }[];
+}
+
+interface Props {
+  groups?: LinkGroup[];
+  copyright?: string;
+}
+
+const { groups = [], copyright } = Astro.props;
+---
+
+<footer class="bg-white">
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <div class="lg:flex lg:items-start lg:gap-8">
+      <div class="text-teal-600">
+        <slot name="logo">
+          <span class="text-xl font-bold">Logo</span>
+        </slot>
+      </div>
+
+      {groups.length > 0 && (
+        <div class="mt-8 grid grid-cols-2 gap-8 lg:mt-0 lg:grid-cols-4">
+          {groups.map((group) => (
+            <div>
+              <p class="font-medium text-gray-900">{group.title}</p>
+
+              <ul class="mt-6 space-y-4 text-sm">
+                {group.links.map((link) => (
+                  <li>
+                    <a href={link.href} class="text-gray-700 transition hover:opacity-75">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {copyright && (
+      <div class="mt-8 border-t border-gray-100 pt-8">
+        <p class="text-xs text-gray-500">{copyright}</p>
+      </div>
+    )}
+
+    <slot />
+  </div>
+</footer>

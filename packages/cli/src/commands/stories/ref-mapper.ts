@@ -1,4 +1,5 @@
 import type { Component } from '../components/constants';
+import type { ComponentSchemaField } from '../../types';
 import type { Story } from './constants';
 import type { AssetMap } from '../assets/types';
 import { normalizeAssetUrl } from '@storyblok/management-api-client';
@@ -11,7 +12,7 @@ export interface RefMaps {
 export type ComponentSchemas = Record<Component['name'], Component['schema']>;
 
 type RefMapper = <const T extends Record<string, unknown>>(data: T, options: {
-  schema: Component['schema'];
+  schema: ComponentSchemaField | undefined;
   schemas: ComponentSchemas;
   maps: RefMaps;
   fieldRefMappers: FieldRefMappers;
@@ -41,9 +42,9 @@ const traverseAndMapBySchema = (
   const dataNew = { ...data };
 
   for (const [fieldName, fieldValue] of Object.entries(data)) {
-    const fieldSchema = schema[fieldName.replace(/__i18n__.*/, '')] as Component['schema'];
-    const fieldType = fieldSchema && typeof fieldSchema === 'object' && 'type' in fieldSchema && fieldSchema.type;
-    const fieldRefMapper = typeof fieldType === 'string' && fieldRefMappers[fieldType];
+    const fieldSchema = schema[fieldName.replace(/__i18n__.*/, '')];
+    const fieldType = fieldSchema && typeof fieldSchema === 'object' && 'type' in fieldSchema ? fieldSchema.type : undefined;
+    const fieldRefMapper = typeof fieldType === 'string' ? fieldRefMappers[fieldType] : undefined;
 
     if (fieldRefMapper) {
       dataNew[fieldName] = fieldRefMapper(fieldValue as any, {
@@ -129,6 +130,10 @@ const richtextFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMapper
  * Multilink field reference mapper.
  */
 const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
   if (data.linktype !== 'story') {
     return data;
   }
@@ -163,6 +168,10 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }
  * so that the Storyblok Image Service (/m/...) works correctly.
  */
 const assetFieldRefMapper: RefMapper = (data, { maps }) => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
   const mappedAsset = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;
 
   if (!mappedAsset) {
@@ -191,7 +200,7 @@ const multiassetFieldRefMapper: RefMapper = (data, options) => {
  * Options field reference mapper.
  */
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
-  if (schema.source !== 'internal_stories' || !Array.isArray(data)) {
+  if (!schema || !('source' in schema) || schema.source !== 'internal_stories' || !Array.isArray(data)) {
     return data;
   }
 

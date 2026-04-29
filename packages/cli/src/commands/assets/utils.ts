@@ -59,7 +59,6 @@ export const isRemoteSource = (assetBinaryPath: string) => {
 const isValidManifestEntry = (entry: ManifestEntry) =>
   Boolean(typeof entry.old_id === 'number'
     && typeof entry.new_id === 'number'
-    && entry.old_filename
     && entry.new_filename);
 
 export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {

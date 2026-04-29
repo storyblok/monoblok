@@ -15,8 +15,6 @@ paths:
       summary: Retrieve Multiple Components
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/pagination.yaml#/page
-        - $ref: ../shared/pagination.yaml#/per_page
         - name: by_ids
           in: query
           required: false
@@ -76,7 +74,7 @@ paths:
                   components:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Component'
+                      $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -96,7 +94,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentCreate'
+                  $ref: '#/components/schemas/component-create'
       responses:
         '201':
           description: Component created
@@ -106,7 +104,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -130,7 +128,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -151,7 +149,7 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentUpdate'
+                  $ref: '#/components/schemas/component-update'
                 update_content:
                   type: boolean
                   description: Update component name in stories when component name changes
@@ -164,7 +162,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -186,7 +184,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -210,7 +208,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -353,7 +351,7 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
+                    $ref: '#/components/schemas/component'
         '400':
           $ref: ../../shared/responses.yaml#/BadRequest
         '401':
@@ -364,339 +362,56 @@ components:
   securitySchemes:
     $ref: ../shared/security-schemes.yaml#/securitySchemes
   schemas:
-    Component:
+    component:
       $ref: component.yaml
     ComponentVersion:
       type: object
       description: A component version object
       properties:
         schema:
-          additionalProperties: true
+          additionalProperties:
+            $ref: '#/components/schemas/ComponentSchemaField'
     ComponentSchemaField:
-      type: object
-      description: A component schema field object
-      properties:
-        type:
-          type: string
-          description: Field type (text, textarea, number, boolean, etc.)
-        pos:
-          type: integer
-          description: Position of the field
-        display_name:
-          type: string
-          description: Human-readable display name
-        required:
-          type: boolean
-          description: Whether the field is required
-        regex:
-          type: string
-          description: Regular expression for validation
-        translatable:
-          type: boolean
-          description: Whether the field is translatable
-        description:
-          type: string
-          description: Field description
-        default_value:
-          type: string
-          description: Default value for the field
-        options:
-          type: array
-          description: Array of datasource entries [{name:"", value:""}]; Effects editor only if source=undefined. For field type option.
-          items:
-            type: object
-            properties:
-              _uid:
-                type: string
-              name:
-                type: string
-              value:
-                type: string
-              
-        source:
-          type: string
-          description: The source of Single-Option and Multi-Options fields
-          enum: [internal_stories, internal_languages, external, internal]
-        folder_slug:
-          type: string
-          description: When the source is set to internal_stories, set the path of the allowed stories folder
-        filetypes:
-          type: array
-          description: Allowed file types for Asset and Multi-Assets fields (e.g. images, videos, audios, texts)
-          items:
-            type: string
-        maximum:
-          type: number
-          description: The maximal number of components allowed inside a Blocks field
-        minimum:
-          type: number
-          description: The minimal number of components allowed inside a Blocks field
-        maxlength:
-          type: integer
-          description: Maximum length for text fields
-        minlength:
-          type: integer
-          description: Minimum length for text fields
-        rich_markdown:
-          type: boolean
-          description: Whether rich markdown is enabled
-        rich_text:
-          type: boolean
-          description: Whether rich text is enabled
-        markdown:
-          type: boolean
-          description: Whether markdown is enabled
-        size:
-          type: string
-          description: Field size (small, medium, large)
-        height:
-          type: integer
-          description: Field height in pixels
-        width:
-          type: integer
-          description: Field width in pixels
-        use_uuid:
-          type: boolean
-          description: When the source is set to internal_stories, displays the UUID of the selected story. Defaults to true.
-        restrict_content_types:
-          type: boolean
-          description: Whether to restrict content types
-        restrict_components:
-          type: boolean
-          description: Allow or deny access to nestable blocks inside Blocks and Richtext fields. Defaults to false (allowed).
-        restrict_type:
-          type: string
-          description: Specify which blocks are allowed or not inside Blocks and Richtext fields. Supported types are groups (blocks in specific folders), tags (blocks assigned to specific tags), or "" for specific blocks (components).
-          enum: [groups, tags, ""]
-        component_whitelist:
-          type: array
-          description: An array of nestable or universal type block names allowed inside Blocks, Link, and Richtext fields
-          items:
-            type: string
-        component_denylist:
-          type: array
-          description: An array of block names not allowed inside Blocks, Link, and Richtext fields
-          items:
-            type: string
-        component_group_whitelist:
-          type: array
-          description: An array of group (folder) UUIDs that contain blocks allowed inside Blocks and Richtext fields
-          items:
-            type: string
-        component_group_denylist:
-          type: array
-          description: An array of group (folder) UUIDs that contain blocks not allowed inside Blocks and Richtext fields
-          items:
-            type: string
-        component_tag_whitelist:
-          type: array
-          description: An array of tag IDs assigned to blocks allowed inside Blocks and Richtext fields
-          items:
-            type: integer
-        component_tag_denylist:
-          type: array
-          description: An array of tag IDs assigned to blocks not allowed inside Blocks and Richtext fields
-          items:
-            type: integer
-        maximum_entries:
-          type: integer
-          description: Maximum number of entries
-        minimum_entries:
-          type: integer
-          description: Minimum number of entries
-        restrict_assets:
-          type: boolean
-          description: Whether to restrict assets
-        asset_whitelist:
-          type: array
-          description: List of allowed asset types
-          items:
-            type: string
-        asset_folder_id:
-          type: number
-          description: Numeric ID of the asset folder allowed in Asset and Multi-Assets fields
-        allow_external_url:
-          type: boolean
-          description: Allow loading assets from an external URL in Asset and Multi-Assets fields. Defaults to false.
-        exclude_empty_option:
-          type: boolean
-          description: Whether to exclude empty option
-        include_empty_option:
-          type: boolean
-          description: Whether to include empty option
-        datasource_slug:
-          type: string
-          description: When the source is set to internal (Datasource), the selectable datasource slug
-        external_datasource:
-          type: string
-          description: When the source is set to external, the datasource JSON URL
-        filter_content_type:
-          type: array
-          description: When the source is set to internal_stories, allow users to select stories from an array of permitted content type blocks
-          items:
-            type: string
-        entry_appearance:
-          type: string
-          description: When the source is set to internal_stories, specify if the option appears as a link (default) or a card
-        allow_advanced_search:
-          type: boolean
-          description: When the source is set to internal_stories, allow users to search stories in a modal window. Defaults to false.
-        is_reference_type:
-          type: boolean
-          description: Set to true if the Multi-Options field is a References field
-        max_options:
-          type: string
-          description: The maximal number of selectable options in Single-Option, Multi-Options, and References fields
-        min_options:
-          type: string
-          description: The minimal number of selectable options in Single-Option, Multi-Options, and References fields
-        multiple:
-          type: boolean
-          description: Whether multiple values are allowed
-        email_link_type:
-          type: boolean
-          description: Allow specifying an email address in a Link field. Defaults to false.
-        asset_link_type:
-          type: boolean
-          description: Allow specifying an asset's URL in a Link field. Defaults to false.
-        show_anchor:
-          type: boolean
-          description: When the URL in a Link field is an Internal link, allow users to define an anchor ID. Defaults to false.
-        allow_target_blank:
-          type: boolean
-          description: Allow links to open in a new tab. Defaults to false.
-        allow_custom_attributes:
-          type: boolean
-          description: Allow setting custom attributes in a Link field. Defaults to false.
-        force_link_scope:
-          type: boolean
-          description: When the URL in a Link field is an Internal link, allow users to only select stories from a specific folder. Defaults to false.
-        link_scope:
-          type: string
-          description: When force_link_scope is set to true, specify the allowed path
-        no_translate:
-          type: boolean
-          description: Exclude Text and number fields from translation exports
-        rtl:
-          type: boolean
-          description: Enable global right-to-left (RTL) support in Markdown, Text, and Textarea fields
-        tooltip:
-          type: boolean
-          description: Set to true to display the description as a tooltip. Defaults to false.
-        id:
-          type: string
-          description: The ID of the field
-        max_length:
-          type: number
-          description: Set the maximum length of the input string in Markdown, Text, and Textarea fields
-        style_options:
-          type: array
-          description: Objects containing data about custom CSS set inside the Richtext field
-          items:
-            type: object
-            properties:
-              _uid:
-                type: string
-                description: The unique ID of the style within the story
-              name:
-                type: string
-                description: The style's name
-              value:
-                type: string
-                description: The style's value
-        customize_toolbar:
-          type: boolean
-          description: Set to true to enable a customized toolbar in Markdown and Richtext fields. Defaults to false.
-        toolbar:
-          type: array
-          description: An array of enabled toolbar elements
-          items:
-            type: string
-        allow_multiline:
-          type: boolean
-          description: Allow empty paragraphs in Markdown fields. Defaults to false.
-        min_value:
-          type: number
-          description: The minimal value allowed in a Number field
-        max_value:
-          type: number
-          description: The maximal value allowed in a Number field
-        decimals:
-          type: number
-          description: The number of decimal places that appear after the point in a Number field
-        steps:
-          type: number
-          description: The interval between numbers in a Number field
-        disable_time:
-          type: boolean
-          description: Disable time selection in the date picker of a Date/Time field. Defaults to false.
-        inline_label:
-          type: boolean
-          description: Display a Boolean field's label next to the toggle
-        keys:
-          type: array
-          description: An array of field keys displayed in a Group field
-          items:
-            type: string
-        field_type:
-          type: string
-          description: The name of the field type plugin used in a Plugin field
-        required_fields:
-          type: string
-          description: A comma-separated list of names of fields the user is required to fill in in a Plugin field
-        exclude_from_ai_translation:
-          type: boolean
-          description: Exclude the field from AI translations
-        exclude_from_merge:
-          type: boolean
-          description: Exclude the field when merging
-        exclude_from_overwrite:
-          type: boolean
-          description: Exclude the field when overwriting
-        force_merge:
-          type: boolean
-          description: Overwrite the field when merging
-        conditional_settings:
-          type: array
-          description: An array that contains an object with information about conditions set on the field
-          items:
-            type: object
-        custom_css:
-          type: string
-          description: Custom CSS for the field
-        custom_js:
-          type: string
-          description: Custom JavaScript for the field
-        api_connection:
-          type: object
-          description: API connection configuration
-          properties:
-            url:
-              type: string
-              description: API URL
-            headers:
-              type: object
-              description: API headers
-            params:
-              type: object
-              description: API parameters
-        fieldset:
-          type: object
-          description: Fieldset configuration
-          properties:
-            title:
-              type: string
-              description: Fieldset title
-            description:
-              type: string
-              description: Fieldset description
-            collapsible:
-              type: boolean
-              description: Whether the fieldset is collapsible
-            collapsed:
-              type: boolean
-              description: Whether the fieldset is collapsed by default
-    ComponentCreate:
+      description: A component schema field — discriminated union on `type`.
+      discriminator:
+        propertyName: type
+        mapping:
+          text: './field-types/text-field.yaml'
+          textarea: './field-types/textarea-field.yaml'
+          richtext: './field-types/richtext-field.yaml'
+          markdown: './field-types/markdown-field.yaml'
+          number: './field-types/number-field.yaml'
+          datetime: './field-types/datetime-field.yaml'
+          boolean: './field-types/boolean-field.yaml'
+          option: './field-types/option-field.yaml'
+          options: './field-types/options-field.yaml'
+          asset: './field-types/asset-field.yaml'
+          multiasset: './field-types/multiasset-field.yaml'
+          multilink: './field-types/multilink-field.yaml'
+          bloks: './field-types/bloks-field.yaml'
+          table: './field-types/table-field.yaml'
+          section: './field-types/section-field.yaml'
+          tab: './field-types/tab-field.yaml'
+          custom: './field-types/custom-field.yaml'
+      oneOf:
+        - $ref: './field-types/text-field.yaml'
+        - $ref: './field-types/textarea-field.yaml'
+        - $ref: './field-types/richtext-field.yaml'
+        - $ref: './field-types/markdown-field.yaml'
+        - $ref: './field-types/number-field.yaml'
+        - $ref: './field-types/datetime-field.yaml'
+        - $ref: './field-types/boolean-field.yaml'
+        - $ref: './field-types/option-field.yaml'
+        - $ref: './field-types/options-field.yaml'
+        - $ref: './field-types/asset-field.yaml'
+        - $ref: './field-types/multiasset-field.yaml'
+        - $ref: './field-types/multilink-field.yaml'
+        - $ref: './field-types/bloks-field.yaml'
+        - $ref: './field-types/table-field.yaml'
+        - $ref: './field-types/section-field.yaml'
+        - $ref: './field-types/tab-field.yaml'
+        - $ref: './field-types/custom-field.yaml'
+    component-create:
       $ref: ./component-create.yaml
-    ComponentUpdate:
+    component-update:
       $ref: ./component-update.yaml

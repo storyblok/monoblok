@@ -1537,6 +1537,92 @@ describe('storyblokClient', () => {
         undefined,
       );
     });
+
+    it('should decode URL-encoded resolve_relations string', async () => {
+      const storySlug = 'test-story';
+      const mockStoryResponse = {
+        data: {
+          story: {
+            id: 123,
+            uuid: 'test-uuid',
+            name: 'Test Story',
+            content: {
+              _uid: 'test-uid',
+              component: 'test',
+              title: 'Test Title',
+            },
+          },
+        },
+        headers: {},
+        status: 200,
+      };
+
+      const mockGet = vi.fn().mockResolvedValue(mockStoryResponse);
+
+      // Replace the client's internal fetch instance to capture actual params
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+      };
+
+      // Call get with URL-encoded resolve_relations
+      await client.get(`cdn/stories/${storySlug}`, {
+        version: 'published',
+        resolve_relations: 'page.author%2Cpage.categories',
+      });
+
+      // Verify that the internal client received decoded resolve_relations
+      expect(mockGet).toHaveBeenCalledWith(
+        `/cdn/stories/${storySlug}`,
+        expect.objectContaining({
+          resolve_relations: 'page.author,page.categories',
+        }),
+      );
+    });
+
+    it('should decode URL-encoded strings in resolve_relations array', async () => {
+      const storySlug = 'test-story';
+      const mockStoryResponse = {
+        data: {
+          story: {
+            id: 123,
+            uuid: 'test-uuid',
+            name: 'Test Story',
+            content: {
+              _uid: 'test-uid',
+              component: 'test',
+              title: 'Test Title',
+            },
+          },
+        },
+        headers: {},
+        status: 200,
+      };
+
+      const mockGet = vi.fn().mockResolvedValue(mockStoryResponse);
+
+      // Replace the client's internal fetch instance to capture actual params
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+      };
+
+      // Call get with URL-encoded items in resolve_relations array
+      await client.get(`cdn/stories/${storySlug}`, {
+        version: 'published',
+        resolve_relations: ['page.author', 'page.categories%2Ftags'],
+      });
+
+      // Verify that the internal client received decoded and joined resolve_relations
+      expect(mockGet).toHaveBeenCalledWith(
+        `/cdn/stories/${storySlug}`,
+        expect.objectContaining({
+          resolve_relations: 'page.author,page.categories/tags',
+        }),
+      );
+    });
   });
 
   describe('dynamic Rate Limiting', () => {

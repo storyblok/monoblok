@@ -47,7 +47,7 @@ export async function loadComponents(
   const presets: Preset[] = [];
   const duplicates: string[] = [];
 
-  for (const file of filterJsonBySuffix(files, suffix, ['presets'])) {
+  for (const file of filterJsonBySuffix(files, suffix)) {
     const { data, error } = await readJsonFile<Record<string, unknown>>(join(directoryPath, file));
     if (error) {
       handleFileSystemError('read', error);

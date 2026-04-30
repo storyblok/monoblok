@@ -252,10 +252,10 @@ export async function fileExists(path: string) {
  * Filters a list of filenames to only include JSON files matching the suffix convention.
  *
  * When `suffix` is set (e.g. "dev"), only `*.dev.json` files are included.
- * When unset, files with a `.<word>.json` pattern are excluded (they belong to other environments),
- * except for known sub-resource patterns like `.presets.json`.
+ * When unset, all `.json` files are included — use `suffix` to target a specific
+ * environment subset.
  */
-export function filterJsonBySuffix(files: string[], suffix?: string, subResourcePatterns: string[] = []): string[] {
+export function filterJsonBySuffix(files: string[], suffix?: string): string[] {
   return files.filter((file) => {
     if (!file.endsWith('.json')) {
       return false;
@@ -263,9 +263,6 @@ export function filterJsonBySuffix(files: string[], suffix?: string, subResource
     if (suffix) {
       return file.endsWith(`.${suffix}.json`);
     }
-    if (!/\.\w+\.json$/.test(file)) {
-      return true;
-    }
-    return subResourcePatterns.some(pattern => file.endsWith(`.${pattern}.json`));
+    return true;
   });
 }

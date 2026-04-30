@@ -16,7 +16,7 @@ export async function fetchAllPages<T, R>(
 
   while (true) {
     const { data, response } = await fetchFunction(page);
-    const totalHeader = response.headers.get('total');
+    const totalHeader = response.headers.get("total");
     const fetchedItems = extractDataFunction(data);
     items.push(...fetchedItems);
 

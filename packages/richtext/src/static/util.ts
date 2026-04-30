@@ -1,7 +1,7 @@
-import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
-import { SELF_CLOSING_TAGS } from '../utils';
-import type { HtmlTag, StoryblokRichTextComponentMap } from './types';
+import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "./render-map.generated";
+import type { PMMark, PMNode, TiptapComponentName } from "./types.generated";
+import { SELF_CLOSING_TAGS } from "../utils";
+import type { HtmlTag, StoryblokRichTextComponentMap } from "./types";
 
 /**
  * Resolves a component from the provided components map based on the type.
@@ -38,19 +38,19 @@ export function resolveComponent<
 export function resolveTag(node: PMNode | PMMark): HtmlTag | null {
   const type = node.type;
 
-  const entry
-    = NODE_RENDER_MAP[type as keyof typeof NODE_RENDER_MAP]
-      ?? MARK_RENDER_MAP[type as keyof typeof MARK_RENDER_MAP];
+  const entry =
+    NODE_RENDER_MAP[type as keyof typeof NODE_RENDER_MAP] ??
+    MARK_RENDER_MAP[type as keyof typeof MARK_RENDER_MAP];
 
   if (!entry) {
     return null;
   }
 
-  if ('resolve' in entry && typeof entry.resolve === 'function') {
+  if ("resolve" in entry && typeof entry.resolve === "function") {
     return entry.resolve(node.attrs as Parameters<typeof entry.resolve>[0]) as HtmlTag;
   }
 
-  if ('tag' in entry && typeof entry.tag === 'string') {
+  if ("tag" in entry && typeof entry.tag === "string") {
     return entry.tag as HtmlTag;
   }
 
@@ -82,6 +82,6 @@ export function isSelfClosing(tag: HtmlTag | string): boolean {
  */
 export function getStaticChildren(node: PMNode) {
   const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
-  const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
+  const staticChildren = renderMap && "children" in renderMap ? renderMap.children : null;
   return staticChildren;
 }

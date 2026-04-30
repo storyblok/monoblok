@@ -1,5 +1,5 @@
-import type { Extension, Mark, Node } from '@tiptap/core';
-import type { StoryblokRichTextImageOptimizationOptions } from '../types';
+import type { Extension, Mark, Node } from "@tiptap/core";
+import type { StoryblokRichTextImageOptimizationOptions } from "../types";
 import {
   ComponentBlok,
   Details,
@@ -23,7 +23,7 @@ import {
   StoryblokTableRow,
   StoryblokTextAlign,
   Text,
-} from './nodes';
+} from "./nodes";
 import {
   Bold,
   Code,
@@ -39,7 +39,7 @@ import {
   Subscript,
   Superscript,
   Underline,
-} from './marks';
+} from "./marks";
 
 export interface StyleOption {
   name: string;
@@ -48,7 +48,7 @@ export interface StyleOption {
 
 export interface HTMLParserOptions {
   allowCustomAttributes?: boolean;
-  preserveWhitespace?: boolean | 'full';
+  preserveWhitespace?: boolean | "full";
   tiptapExtensions?: Partial<typeof defaultExtensions & Record<string, Extension | Mark | Node>>;
   styleOptions?: StyleOption[];
 }
@@ -106,11 +106,11 @@ export function getStoryblokExtensions(options: StoryblokExtensionOptions = {}) 
     ...defaultExtensions,
     image: StoryblokImage.configure({ optimizeImages: options.optimizeImages || false }),
     link: Link,
-    styled: StoryblokStyled.configure({ allowedStyles: options.styleOptions?.map(o => o.value) }),
+    styled: StoryblokStyled.configure({ allowedStyles: options.styleOptions?.map((o) => o.value) }),
     reporter: Reporter.configure({ allowCustomAttributes: options.allowCustomAttributes }),
   };
 }
 
-export * from './marks';
-export * from './nodes';
-export { computeTableCellAttrs, processBlockAttrs, resolveStoryblokLink } from './utils';
+export * from "./marks";
+export * from "./nodes";
+export { computeTableCellAttrs, processBlockAttrs, resolveStoryblokLink } from "./utils";

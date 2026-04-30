@@ -7,4 +7,4 @@ export type {
   RichtextField,
   Story,
   TableField,
-} from '@storyblok/management-api-client';
+} from "@storyblok/management-api-client";

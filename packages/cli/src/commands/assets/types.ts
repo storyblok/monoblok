@@ -1,6 +1,22 @@
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate } from '../../types';
+import type {
+  Asset,
+  AssetCreate,
+  AssetFolder,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetListQuery,
+  AssetUpdate,
+} from "../../types";
 
-export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate };
+export type {
+  Asset,
+  AssetCreate,
+  AssetFolder,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetListQuery,
+  AssetUpdate,
+};
 
 /**
  * CLI extension of mapi-client's AssetCreate.
@@ -10,7 +26,10 @@ export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpd
  */
 export type AssetUpload = AssetCreate & { id?: number };
 
-export type AssetMapped = Pick<Asset, 'id' | 'filename' | 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>;
+export type AssetMapped = Pick<
+  Asset,
+  "id" | "filename" | "alt" | "title" | "copyright" | "source" | "is_private" | "meta_data"
+>;
 
 /**
  * Maps local with remote asset ids and filenames.

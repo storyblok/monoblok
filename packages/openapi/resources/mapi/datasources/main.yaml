@@ -29,7 +29,7 @@ paths:
             type: string
           description: Search by IDs of datasources (comma separated)
       responses:
-        '200':
+        "200":
           description: List of datasources
           content:
             application/json:
@@ -39,12 +39,12 @@ paths:
                   datasources:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Datasource'
-        '400':
+                      $ref: "#/components/schemas/Datasource"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -59,9 +59,9 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/DatasourceCreate'
+                  $ref: "#/components/schemas/DatasourceCreate"
       responses:
-        '201':
+        "201":
           description: Datasource created
           content:
             application/json:
@@ -69,12 +69,12 @@ paths:
                 type: object
                 properties:
                   datasource:
-                    $ref: '#/components/schemas/Datasource'
-        '400':
+                    $ref: "#/components/schemas/Datasource"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/datasources/{datasource_id}:
     get:
@@ -89,7 +89,7 @@ paths:
             type: integer
           description: Numeric id of a datasource
       responses:
-        '200':
+        "200":
           description: Datasource details
           content:
             application/json:
@@ -97,12 +97,12 @@ paths:
                 type: object
                 properties:
                   datasource:
-                    $ref: '#/components/schemas/Datasource'
-        '400':
+                    $ref: "#/components/schemas/Datasource"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource not found
     put:
       operationId: update
@@ -123,9 +123,9 @@ paths:
               type: object
               properties:
                 datasource:
-                  $ref: '#/components/schemas/DatasourceUpdate'
+                  $ref: "#/components/schemas/DatasourceUpdate"
       responses:
-        '200':
+        "200":
           description: Datasource updated
           content:
             application/json:
@@ -133,12 +133,12 @@ paths:
                 type: object
                 properties:
                   datasource:
-                    $ref: '#/components/schemas/Datasource'
-        '400':
+                    $ref: "#/components/schemas/Datasource"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource not found
     delete:
       operationId: delete
@@ -152,13 +152,13 @@ paths:
             type: integer
           description: Numeric id of a datasource
       responses:
-        '204':
+        "204":
           description: Datasource deleted
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource not found
 components:
   securitySchemes:

@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BridgeParams } from '@storyblok/preview-bridge';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { BridgeParams } from "@storyblok/preview-bridge";
 
 // ---- mocks ----
 
 const constructorMock = vi.fn();
 
-vi.mock('@storyblok/preview-bridge', () => {
+vi.mock("@storyblok/preview-bridge", () => {
   class MockStoryblokBridge {
     constructor(config?: BridgeParams) {
       constructorMock(config);
@@ -17,16 +17,16 @@ vi.mock('@storyblok/preview-bridge', () => {
   };
 });
 
-describe('loadStoryblokBridge', () => {
+describe("loadStoryblokBridge", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
   });
 
-  it('creates the bridge on first call', async () => {
-    const { loadStoryblokBridge } = await import('./loadStoryblokBridge');
+  it("creates the bridge on first call", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
-    const config: BridgeParams = { resolveRelations: ['foo.bar'] };
+    const config: BridgeParams = { resolveRelations: ["foo.bar"] };
 
     const bridge = await loadStoryblokBridge(config);
 
@@ -35,8 +35,8 @@ describe('loadStoryblokBridge', () => {
     expect(constructorMock).toHaveBeenCalledWith(config);
   });
 
-  it('returns the same promise on subsequent calls with no config', async () => {
-    const { loadStoryblokBridge } = await import('./loadStoryblokBridge');
+  it("returns the same promise on subsequent calls with no config", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     const first = await loadStoryblokBridge();
     const second = await loadStoryblokBridge();
@@ -45,10 +45,10 @@ describe('loadStoryblokBridge', () => {
     expect(constructorMock).toHaveBeenCalledOnce();
   });
 
-  it('returns the same promise when called with the same config reference', async () => {
-    const { loadStoryblokBridge } = await import('./loadStoryblokBridge');
+  it("returns the same promise when called with the same config reference", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
-    const config: BridgeParams = { resolveRelations: ['foo.bar'] };
+    const config: BridgeParams = { resolveRelations: ["foo.bar"] };
 
     const first = await loadStoryblokBridge(config);
     const second = await loadStoryblokBridge(config);
@@ -57,35 +57,35 @@ describe('loadStoryblokBridge', () => {
     expect(constructorMock).toHaveBeenCalledOnce();
   });
 
-  it('throws if called with a different config reference', async () => {
-    const { loadStoryblokBridge } = await import('./loadStoryblokBridge');
+  it("throws if called with a different config reference", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
-    const configA: BridgeParams = { resolveRelations: ['foo.bar'] };
-    const configB: BridgeParams = { resolveRelations: ['bar.foo'] };
+    const configA: BridgeParams = { resolveRelations: ["foo.bar"] };
+    const configB: BridgeParams = { resolveRelations: ["bar.foo"] };
 
     await loadStoryblokBridge(configA);
 
     expect(() => loadStoryblokBridge(configB)).toThrowError(
-      '[Storyblok] Preview Bridge already initialized with a different configuration.',
+      "[Storyblok] Preview Bridge already initialized with a different configuration.",
     );
 
     expect(constructorMock).toHaveBeenCalledOnce();
   });
 
-  it('resets internal state if import fails', async () => {
-    vi.doMock('@storyblok/preview-bridge', () => {
+  it("resets internal state if import fails", async () => {
+    vi.doMock("@storyblok/preview-bridge", () => {
       class FailingBridge {
         constructor() {
-          throw new Error('boom');
+          throw new Error("boom");
         }
       }
 
       return { default: FailingBridge };
     });
 
-    const { loadStoryblokBridge: failingLoader } = await import('./loadStoryblokBridge');
+    const { loadStoryblokBridge: failingLoader } = await import("./loadStoryblokBridge");
 
-    await expect(failingLoader()).rejects.toThrow('boom');
-    await expect(failingLoader()).rejects.toThrow('boom');
+    await expect(failingLoader()).rejects.toThrow("boom");
+    await expect(failingLoader()).rejects.toThrow("boom");
   });
 });

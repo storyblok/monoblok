@@ -5,6 +5,7 @@ This document details the release process for Storyblok packages in the monorepo
 ## Overview
 
 The release process is split into two main steps:
+
 1. **Versioning**: Increment versions and create version commits
 2. **Publishing**: Build and publish packages to npm with appropriate distribution tags
 
@@ -32,6 +33,7 @@ To perform releases that create GitHub releases, you need to configure a GitHub 
    Add the token to your shell environment. Choose one of these methods:
 
    **Option A: Add to your shell profile** (recommended for permanent setup):
+
    ```bash
    # For bash (~/.bashrc or ~/.bash_profile)
    echo 'export GITHUB_TOKEN="your_token_here"' >> ~/.bashrc
@@ -43,6 +45,7 @@ To perform releases that create GitHub releases, you need to configure a GitHub 
    ```
 
    **Option B: Set for current session only**:
+
    ```bash
    export GITHUB_TOKEN="your_token_here"
    ```
@@ -67,6 +70,7 @@ pnpm release
 ```
 
 This script will:
+
 - Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
@@ -87,6 +91,7 @@ This script will:
 To release a pre-release version (e.g., for testing before stable release):
 
 1. **Create or switch to a pre-release branch**:
+
    ```bash
    git checkout -b alpha   # or beta, next
    # Or if branch exists:
@@ -94,6 +99,7 @@ To release a pre-release version (e.g., for testing before stable release):
    ```
 
 2. **Make your changes and commit** using conventional commits:
+
    ```bash
    git add .
    git commit -m "feat(astro): add new feature"
@@ -101,9 +107,11 @@ To release a pre-release version (e.g., for testing before stable release):
    ```
 
 3. **Run the release script**:
+
    ```bash
    pnpm release
    ```
+
    This will bump versions with the pre-release suffix (e.g., `1.0.0-alpha.0`).
 
 4. **Publish via GitHub Actions**:
@@ -123,11 +131,11 @@ The gate is enforced in three places:
 
 To keep a package out of stable releases, omit `"main"` from its `release.branches`. To promote an alpha-only package to stable, add `"main"` back.
 
-| Package | Channels |
-|---------|----------|
-| `@storyblok/astro` | `main`, `alpha`, `next` |
-| `@storyblok/nuxt` | `main`, `next` |
-| `storyblok-js-client` | `main`, `beta`, `next` |
+| Package                 | Channels                                      |
+| ----------------------- | --------------------------------------------- |
+| `@storyblok/astro`      | `main`, `alpha`, `next`                       |
+| `@storyblok/nuxt`       | `main`, `next`                                |
+| `storyblok-js-client`   | `main`, `beta`, `next`                        |
 | `@storyblok/migrations` | `alpha` only — stable disabled until promoted |
 
 #### Alpha-only packages and downstream consumers
@@ -162,6 +170,7 @@ pnpm nx release version
 ```
 
 This will:
+
 - Analyze conventional commits since the last release
 - Determine appropriate version bumps
 - Create version commits
@@ -174,7 +183,7 @@ This will:
 
 To create a release with a specific version:
 
-```bash
+````bash
 # With GitHub release
 pnpm nx release 1.2.3 --skip-publish
 
@@ -199,20 +208,21 @@ pnpm release --first-release
 
 # Combine options (order does not matter)
 pnpm release --version=0.1.0 --projects=@storyblok/astro --first-release --dry-run
-```
+````
 
 #### Option Reference
 
-| Option                | Description                                                      | Example                                 |
-|-----------------------|------------------------------------------------------------------|-----------------------------------------|
-| `--version`           | Set the release version (e.g., 1.2.3). Takes priority if present. | `--version=1.2.3` or `--version 1.2.3`  |
-| positional version    | Version as first argument (if `--version` not used).             | `pnpm release 1.2.3`                    |
-| `--projects`          | Only release the specified project(s).                           | `--projects=@storyblok/astro`           |
-| `--first-release`     | Mark this as the first release for the project(s).               | `--first-release`                       |
-| `--dry-run`, `-d`     | Run the release in dry-run mode (no changes made).               | `--dry-run` or `-d`                     |
+| Option             | Description                                                       | Example                                |
+| ------------------ | ----------------------------------------------------------------- | -------------------------------------- |
+| `--version`        | Set the release version (e.g., 1.2.3). Takes priority if present. | `--version=1.2.3` or `--version 1.2.3` |
+| positional version | Version as first argument (if `--version` not used).              | `pnpm release 1.2.3`                   |
+| `--projects`       | Only release the specified project(s).                            | `--projects=@storyblok/astro`          |
+| `--first-release`  | Mark this as the first release for the project(s).                | `--first-release`                      |
+| `--dry-run`, `-d`  | Run the release in dry-run mode (no changes made).                | `--dry-run` or `-d`                    |
 
 You can combine these options as needed. The script will always place the version (if specified) immediately after `pnpm nx release` in the underlying command.
-```
+
+````
 
 ### Version Bumps
 
@@ -256,7 +266,7 @@ npm install @storyblok/package@beta
 
 # Alpha version
 npm install @storyblok/package@alpha
-```
+````
 
 ## Release Branches
 
@@ -339,6 +349,7 @@ git push origin main  # or your target branch
 If `pnpm release` or `nx release version` fails partway through:
 
 1. **Check what was completed**:
+
    ```bash
    # Check if version commits were created
    git log --oneline -5
@@ -351,6 +362,7 @@ If `pnpm release` or `nx release version` fails partway through:
    ```
 
 2. **Complete the process manually**:
+
    ```bash
    # If versions were bumped but not committed
    git add .
@@ -394,4 +406,4 @@ git push origin main
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
 - **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials
-- **"Tag already exists"**: The version has already been tagged. Use `git tag -d <tag>` to delete if needed 
+- **"Tag already exists"**: The version has already been tagged. Use `git tag -d <tag>` to delete if needed

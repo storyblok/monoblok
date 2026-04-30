@@ -21,7 +21,7 @@ paths:
             type: string
           description: Search term to filter spaces by name
       responses:
-        '200':
+        "200":
           description: List of spaces
           content:
             application/json:
@@ -31,12 +31,12 @@ paths:
                   spaces:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Space'
-        '400':
+                      $ref: "#/components/schemas/Space"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '403':
+        "403":
           description: Forbidden - insufficient permissions
     post:
       operationId: create
@@ -52,7 +52,7 @@ paths:
                 - space
               properties:
                 space:
-                  $ref: '#/components/schemas/SpaceCreate'
+                  $ref: "#/components/schemas/SpaceCreate"
                 dup_id:
                   type: integer
                   description: The numeric id of the original space to duplicate. When provided, the new space will be a duplicate of the specified space.
@@ -66,7 +66,7 @@ paths:
                   type: boolean
                   description: Whether to assign a partner to the space
       responses:
-        '201':
+        "201":
           description: Space created
           content:
             application/json:
@@ -74,14 +74,14 @@ paths:
                 type: object
                 properties:
                   space:
-                    $ref: '#/components/schemas/Space'
-        '400':
+                    $ref: "#/components/schemas/Space"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '403':
+        "403":
           description: Forbidden - insufficient permissions
-        '422':
+        "422":
           description: Unprocessable entity - validation errors
   /v1/spaces/{space_id}:
     get:
@@ -91,7 +91,7 @@ paths:
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
       responses:
-        '200':
+        "200":
           description: Space details
           content:
             application/json:
@@ -99,14 +99,14 @@ paths:
                 type: object
                 properties:
                   space:
-                    $ref: '#/components/schemas/Space'
-        '400':
+                    $ref: "#/components/schemas/Space"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '403':
+        "403":
           description: Forbidden - insufficient permissions
-        '404':
+        "404":
           description: Space not found
     put:
       operationId: update
@@ -124,9 +124,9 @@ paths:
                 - space
               properties:
                 space:
-                  $ref: '#/components/schemas/SpaceUpdate'
+                  $ref: "#/components/schemas/SpaceUpdate"
       responses:
-        '200':
+        "200":
           description: Space updated
           content:
             application/json:
@@ -134,16 +134,16 @@ paths:
                 type: object
                 properties:
                   space:
-                    $ref: '#/components/schemas/Space'
-        '400':
+                    $ref: "#/components/schemas/Space"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '403':
+        "403":
           description: Forbidden - insufficient permissions
-        '404':
+        "404":
           description: Space not found
-        '422':
+        "422":
           description: Unprocessable entity - validation errors
     delete:
       operationId: delete
@@ -152,7 +152,7 @@ paths:
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
       responses:
-        '200':
+        "200":
           description: Space deleted
           content:
             application/json:
@@ -160,16 +160,16 @@ paths:
                 type: object
                 properties:
                   space:
-                    $ref: '#/components/schemas/Space'
-        '400':
+                    $ref: "#/components/schemas/Space"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '403':
+        "403":
           description: Forbidden - insufficient permissions
-        '404':
+        "404":
           description: Space not found
-        '422':
+        "422":
           description: Unprocessable entity - validation errors
 components:
   securitySchemes:
@@ -178,8 +178,8 @@ components:
     Space:
       type: object
       description: The Space Object
-      required: 
-        -  id
+      required:
+        - id
       properties:
         name:
           type: string
@@ -282,7 +282,7 @@ components:
           type: array
           description: Array of Collaborators of the Space
           items:
-            $ref: '#/components/schemas/Collaborator'
+            $ref: "#/components/schemas/Collaborator"
         owner:
           type: object
           description: The user Object of the Owner
@@ -414,7 +414,7 @@ components:
             type: integer
         space_id:
           type: integer
-          description: Numeric id of the collaborator space 
+          description: Numeric id of the collaborator space
 
     SpaceCreate:
       type: object
@@ -475,7 +475,7 @@ components:
           description: Whether the space is in an organization
         assign_partner:
           type: boolean
-          description: Whether the space is assigned to a partner 
+          description: Whether the space is assigned to a partner
 
     SpaceUpdate:
       type: object
@@ -599,4 +599,4 @@ components:
             type: integer
         disclaimer_id:
           type: integer
-          description: Disclaimer ID for the space 
+          description: Disclaimer ID for the space

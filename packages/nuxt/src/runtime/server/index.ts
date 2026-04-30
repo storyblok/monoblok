@@ -1,7 +1,7 @@
-import { StoryblokClient } from '@storyblok/vue';
-import { useRuntimeConfig } from '#imports';
-import type { H3Event } from 'h3';
-import type { AllModuleOptions } from '../../types';
+import { StoryblokClient } from "@storyblok/vue";
+import { useRuntimeConfig } from "#imports";
+import type { H3Event } from "h3";
+import type { AllModuleOptions } from "../../types";
 
 export const serverStoryblokClient = (event: H3Event) => {
   const config = useRuntimeConfig();

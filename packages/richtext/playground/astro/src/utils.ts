@@ -1,18 +1,22 @@
-import { isVoidElement, type RendererAdapter, type StoryblokSegmentType } from '@storyblok/richtext';
+import {
+  isVoidElement,
+  type RendererAdapter,
+  type StoryblokSegmentType,
+} from "@storyblok/richtext";
 
 export type StoryblokComponentMap = Partial<Record<StoryblokSegmentType, any>>;
 export type AstroRenderNode =
   | string
   | {
-    tag: string;
-    attrs?: Record<string, unknown>;
-    children?: AstroRenderNode[];
-  }
+      tag: string;
+      attrs?: Record<string, unknown>;
+      children?: AstroRenderNode[];
+    }
   | {
-    component: StoryblokSegmentType;
-    props: Record<string, unknown>;
-    children?: AstroRenderNode[];
-  };
+      component: StoryblokSegmentType;
+      props: Record<string, unknown>;
+      children?: AstroRenderNode[];
+    };
 export function createAstroAdapter(): RendererAdapter<AstroRenderNode> {
   return {
     createElement(tag, attrs = {}, children = []) {
@@ -38,7 +42,6 @@ export function createAstroAdapter(): RendererAdapter<AstroRenderNode> {
         children: Array.isArray(children) ? (children as AstroRenderNode[]) : undefined,
       };
     },
-
   };
 }
 export function createHtmlAdapter(): RendererAdapter<string> {
@@ -48,15 +51,15 @@ export function createHtmlAdapter(): RendererAdapter<string> {
 
       const attrString = Object.entries(attrs)
         .filter(([_, value]) => value !== null && value !== undefined)
-        .join(' ');
+        .join(" ");
 
       const openTag = attrString ? `<${tag} ${attrString}>` : `<${tag}>`;
 
       if (isVoid) {
-        return openTag.replace('>', ' />');
+        return openTag.replace(">", " />");
       }
 
-      const childrenString = children.join('');
+      const childrenString = children.join("");
 
       return `${openTag}${childrenString}</${tag}>`;
     },
@@ -67,7 +70,7 @@ export function createHtmlAdapter(): RendererAdapter<string> {
 
     createComponent(type) {
       console.warn(`Components are not supported in HTML renderer: ${type}`);
-      return '';
+      return "";
     },
   };
 }

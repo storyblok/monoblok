@@ -1,9 +1,9 @@
-import chalk from 'chalk';
-import { MultiBar, Presets } from 'cli-progress';
-import { Spinner } from '@topcli/spinner';
-import { colorPalette } from '../constants';
-import { capitalize } from './format';
-import { isVitest } from './';
+import chalk from "chalk";
+import { MultiBar, Presets } from "cli-progress";
+import { Spinner } from "@topcli/spinner";
+import { colorPalette } from "../constants";
+import { capitalize } from "./format";
+import { isVitest } from "./";
 
 interface InfoOptions {
   header?: boolean;
@@ -42,19 +42,21 @@ export class UI {
     this.console = enabled ? console : null;
     this.enabled = enabled;
     this.multiBar = enabled
-      ? new MultiBar({
-        clearOnComplete: false,
-        format: `${chalk.bold(' {title} ')} ${chalk.hex(colorPalette.PRIMARY)('[{bar}]')} {percentage}% | {eta_formatted} | {value}/{total} processed`,
-        etaBuffer: 60,
-      }, Presets.rect)
+      ? new MultiBar(
+          {
+            clearOnComplete: false,
+            format: `${chalk.bold(" {title} ")} ${chalk.hex(colorPalette.PRIMARY)("[{bar}]")} {percentage}% | {eta_formatted} | {value}/{total} processed`,
+            etaBuffer: 60,
+          },
+          Presets.rect,
+        )
       : null;
   }
 
   title(message: string, color: string, subtitle?: string) {
     if (subtitle) {
       this.console?.log(`${chalk.bgHex(color).bold(` ${capitalize(message)} `)} ${subtitle}`);
-    }
-    else {
+    } else {
       this.console?.log(chalk.bgHex(color).bold(` ${capitalize(message)} `));
     }
     this.br();
@@ -62,7 +64,7 @@ export class UI {
   }
 
   br() {
-    this.console?.log('');
+    this.console?.log("");
   }
 
   ok(message?: string, header: boolean = false) {
@@ -73,7 +75,7 @@ export class UI {
       this.br();
     }
 
-    this.console?.log(message ? `${chalk.green('✔')} ${message}` : '');
+    this.console?.log(message ? `${chalk.green("✔")} ${message}` : "");
   }
 
   info(message: string, options: InfoOptions = {}) {
@@ -84,7 +86,7 @@ export class UI {
       this.console?.info(infoHeader);
     }
 
-    this.console?.info(message ? `${chalk.blue('ℹ')} ${message}` : '');
+    this.console?.info(message ? `${chalk.blue("ℹ")} ${message}` : "");
     if (margin) {
       this.br();
     }
@@ -97,7 +99,7 @@ export class UI {
       this.console?.warn(warnHeader);
     }
 
-    this.console?.warn(message ? `${chalk.yellow('⚠️ ')} ${message}` : '');
+    this.console?.warn(message ? `${chalk.yellow("⚠️ ")} ${message}` : "");
   }
 
   error(message: string, info?: unknown, options: ErrorOptions = {}) {
@@ -108,7 +110,7 @@ export class UI {
       this.br();
     }
 
-    this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info || '');
+    this.console?.error(`${chalk.red.bold("▲ error")} ${message}`, info || "");
     if (margin) {
       this.br();
     }
@@ -122,12 +124,14 @@ export class UI {
 
   createProgressBar(options: { title: string }): ProgressBar {
     const bar = this.multiBar?.create(0, 0, options);
-    if (!bar) { return noopProgressBar; }
+    if (!bar) {
+      return noopProgressBar;
+    }
     return {
       increment: (count = 1) => bar.increment(count),
       // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
       // Floor at 1 so an empty phase stays a clean 0/1 instead.
-      setTotal: total => bar.setTotal(Math.max(total, 1)),
+      setTotal: (total) => bar.setTotal(Math.max(total, 1)),
       stop: () => bar.stop(),
     };
   }

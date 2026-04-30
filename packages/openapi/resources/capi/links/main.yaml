@@ -76,7 +76,7 @@ paths:
             default: 25
             maximum: 1000
       responses:
-        '200':
+        "200":
           description: Map of links
           headers:
             $ref: ../../shared/pagination.yaml#/pagination_headers
@@ -91,13 +91,13 @@ paths:
                     type: object
                     description: Map of link objects keyed by UUID
                     additionalProperties:
-                      $ref: '#/components/schemas/Link'
+                      $ref: "#/components/schemas/Link"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
 components:
   securitySchemes:

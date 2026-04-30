@@ -1,7 +1,6 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 export interface PushComponentsOptions extends CommandOptions {
-
   /**
    * The glob pattern filter to apply to components before pushing.
    * Matching components and all their dependencies (groups, tags, other components)

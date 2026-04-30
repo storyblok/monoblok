@@ -1,8 +1,14 @@
-import type { StoryCreate, StoryUpdate } from '../../types';
-import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, Story, TargetStoryRef } from './constants';
-import { normalizeFullSlug } from './constants';
-import { getMapiClient } from '../../api';
-import { handleAPIError } from '../../utils/error/api-error';
+import type { StoryCreate, StoryUpdate } from "../../types";
+import type {
+  ExistingTargetStories,
+  FetchStoriesResult,
+  StoriesQueryParams,
+  Story,
+  TargetStoryRef,
+} from "./constants";
+import { normalizeFullSlug } from "./constants";
+import { getMapiClient } from "../../api";
+import { handleAPIError } from "../../utils/error/api-error";
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -32,16 +38,12 @@ export const fetchStories = async (
       stories: data.stories || [],
       headers: response.headers,
     };
-  }
-  catch (error) {
-    handleAPIError('pull_stories', error as Error);
+  } catch (error) {
+    handleAPIError("pull_stories", error as Error);
   }
 };
 
-export const fetchStory = async (
-  spaceId: string,
-  storyId: string | number,
-) => {
+export const fetchStory = async (spaceId: string, storyId: string | number) => {
   try {
     const client = getMapiClient();
 
@@ -53,9 +55,8 @@ export const fetchStory = async (
     });
 
     return data.story;
-  }
-  catch (error) {
-    handleAPIError('pull_story', error as Error);
+  } catch (error) {
+    handleAPIError("pull_story", error as Error);
   }
 };
 
@@ -85,9 +86,8 @@ export const createStory = async (
     });
 
     return data?.story;
-  }
-  catch (error) {
-    handleAPIError('create_story', error);
+  } catch (error) {
+    handleAPIError("create_story", error);
   }
 };
 
@@ -122,7 +122,7 @@ export const updateStory = async (
           // StoryUpdate2 expects `parent_id?: number`; normalize null → undefined.
           parent_id: payload.story.parent_id ?? undefined,
         },
-        force_update: payload.force_update === '1' ? '1' : '0',
+        force_update: payload.force_update === "1" ? "1" : "0",
         ...(payload.publish ? { publish: payload.publish } : {}),
       },
       throwOnError: true,
@@ -130,23 +130,25 @@ export const updateStory = async (
 
     const story = data?.story;
     if (!story) {
-      throw new Error('Failed to update story');
+      throw new Error("Failed to update story");
     }
 
     return story;
-  }
-  catch (error) {
-    if (error instanceof Error && error.message === 'Failed to update story') {
+  } catch (error) {
+    if (error instanceof Error && error.message === "Failed to update story") {
       throw error;
     }
-    handleAPIError('update_story', error);
+    handleAPIError("update_story", error);
   }
 };
 
-export const prefetchTargetStories = async (spaceId: string, options?: {
-  onTotal?: (total: number) => void;
-  onIncrement?: (count: number) => void;
-}): Promise<ExistingTargetStories> => {
+export const prefetchTargetStories = async (
+  spaceId: string,
+  options?: {
+    onTotal?: (total: number) => void;
+    onIncrement?: (count: number) => void;
+  },
+): Promise<ExistingTargetStories> => {
   const result: ExistingTargetStories = {
     bySlug: new Map(),
     byId: new Map(),
@@ -158,8 +160,8 @@ export const prefetchTargetStories = async (spaceId: string, options?: {
     if (!response) {
       break;
     }
-    const total = Number(response.headers.get('Total'));
-    const perPage = Number(response.headers.get('Per-Page'));
+    const total = Number(response.headers.get("Total"));
+    const perPage = Number(response.headers.get("Per-Page"));
     totalPages = Math.ceil(total / perPage);
     if (page === 1) {
       options?.onTotal?.(total);
@@ -171,8 +173,7 @@ export const prefetchTargetStories = async (spaceId: string, options?: {
         const existing = result.bySlug.get(key);
         if (existing) {
           existing.push(ref);
-        }
-        else {
+        } else {
           result.bySlug.set(key, [ref]);
         }
       }

@@ -1,11 +1,12 @@
-import { richTextResolver } from '@storyblok/richtext';
-import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
-import { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
-import type { StoryblokRichTextOptions } from '@storyblok/richtext';
-import test from '/test.md?url&raw';
-import testHTML from '/test.html?url&raw';
+import { richTextResolver } from "@storyblok/richtext";
+import { markdownToStoryblokRichtext } from "@storyblok/richtext/markdown-parser";
+import { htmlToStoryblokRichtext } from "@storyblok/richtext/html-parser";
+import type { StoryblokRichTextOptions } from "@storyblok/richtext";
+import test from "/test.md?url&raw";
+import testHTML from "/test.html?url&raw";
 
-const richtextFromMarkdown = markdownToStoryblokRichtext(test, /*  {
+const richtextFromMarkdown = markdownToStoryblokRichtext(
+  test /*  {
   resolvers: {
     [MarkdownTokenTypes.PARAGRAPH]: (_token, children) => {
       return {
@@ -15,7 +16,8 @@ const richtextFromMarkdown = markdownToStoryblokRichtext(test, /*  {
       };
     },
   },
-} */);
+} */,
+);
 
 // eslint-disable-next-line no-console
 console.log({ richtextFromMarkdown });
@@ -46,7 +48,7 @@ const options: StoryblokRichTextOptions<string> = {
 const htmlFromRichtextMarkdown = richTextResolver(options).render(richtextFromMarkdown);
 const htmlFromRichtextHtml = richTextResolver(options).render(richtextFromHTML);
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div class="this-div-is-on-purpose">
   ${htmlFromRichtextMarkdown}
   <br>

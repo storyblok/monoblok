@@ -9,6 +9,7 @@ storyblok assets pull --space YOUR_SPACE_ID
 ```
 
 Assets are saved as file+metadata pairs:
+
 ```
 .storyblok/
 └── assets/
@@ -38,13 +39,13 @@ storyblok assets pull --space YOUR_SPACE_ID --asset-token YOUR_ASSET_TOKEN
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to pull assets from | - |
-| `-p, --path <path>` | Base path where assets are saved (assets are written to `<path>/assets/<space>`) | `.storyblok` |
-| `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
-| `-q, --query <query>` | Filter assets using Storyblok filter query syntax (e.g., `--query="search=my-file.jpg&with_tags=tag1,tag2"`) | - |
-| `--asset-token <token>` | Asset token for downloading private assets (learn more about [private assets](https://www.storyblok.com/docs/concepts/assets#private-assets)) | - |
+| Option                  | Description                                                                                                                                   | Default      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| `-s, --space <space>`   | (Required) The ID of the space to pull assets from                                                                                            | -            |
+| `-p, --path <path>`     | Base path where assets are saved (assets are written to `<path>/assets/<space>`)                                                              | `.storyblok` |
+| `-d, --dry-run`         | Preview changes without applying them to Storyblok                                                                                            | `false`      |
+| `-q, --query <query>`   | Filter assets using Storyblok filter query syntax (e.g., `--query="search=my-file.jpg&with_tags=tag1,tag2"`)                                  | -            |
+| `--asset-token <token>` | Asset token for downloading private assets (learn more about [private assets](https://www.storyblok.com/docs/concepts/assets#private-assets)) | -            |
 
 ## Notes
 

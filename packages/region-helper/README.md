@@ -29,10 +29,10 @@ Import:
 
 ```js
 // ESM
-import {} from '@storyblok/region-helper'
+import {} from "@storyblok/region-helper";
 
 // CommonJS
-const {} = require('@storyblok/region-helper')
+const {} = require("@storyblok/region-helper");
 ```
 
 ## How it works
@@ -53,8 +53,8 @@ For space IDs up to 32 bits, regions are determined by number ranges:
 
 ```js
 // Example with legacy space ID
-const spaceId = 1_500_000
-const region = getRegion(spaceId) // Returns 'us'
+const spaceId = 1_500_000;
+const region = getRegion(spaceId); // Returns 'us'
 ```
 
 ### 2. Bit-based Identification (v1.2.0+)
@@ -69,8 +69,8 @@ For space IDs of 49-53 bits, the region is encoded in the first 5 bits:
 
 ```js
 // Example with new space ID format
-const spaceId = 282_994_740_194_929n
-const region = getRegion(spaceId) // Returns 'eu'
+const spaceId = 282_994_740_194_929n;
+const region = getRegion(spaceId); // Returns 'eu'
 ```
 
 This ensures backward compatibility while supporting the [new extended space ID format](https://www.storyblok.com/mp/upcoming-update-to-the-id-format-of-spaces-and-entities).

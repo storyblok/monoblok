@@ -33,7 +33,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as separator. 
+          description: Sort entries by specific attribute and order with content.YOUR_FIELD:asc and content.YOUR_FIELD:desc. To sort integers append :int. To sort floats append :float. Possible values are all root attributes of the entry (_position_ and _parent_position_ are special invisible attributes) and all fields of your content type inside content with a dot as separator.
         - name: pinned
           in: query
           required: false
@@ -223,7 +223,7 @@ paths:
             type: boolean
           description: Include translated stories
       responses:
-        '200':
+        "200":
           description: List of stories
           headers:
             $ref: ../shared/pagination.yaml#/pagination_headers
@@ -235,12 +235,12 @@ paths:
                   stories:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Story'
-        '400':
+                      $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -288,9 +288,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StoryCreateRequest'
+              $ref: "#/components/schemas/StoryCreateRequest"
       responses:
-        '201':
+        "201":
           description: Story created
           content:
             application/json:
@@ -298,12 +298,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/stories/{story_id}:
     get:
@@ -325,7 +325,7 @@ paths:
             type: integer
           description: Retrieve specific version of the story
       responses:
-        '200':
+        "200":
           description: Story details
           content:
             application/json:
@@ -333,12 +333,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
     put:
       operationId: update
@@ -375,9 +375,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StoryUpdateRequest'
+              $ref: "#/components/schemas/StoryUpdateRequest"
       responses:
-        '200':
+        "200":
           description: Story updated
           content:
             application/json:
@@ -385,12 +385,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
     delete:
       operationId: delete
@@ -399,7 +399,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/story_id
       responses:
-        '200':
+        "200":
           description: Story deleted
           content:
             application/json:
@@ -407,12 +407,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/duplicate:
     put:
@@ -444,9 +444,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StoryDuplicateRequest'
+              $ref: "#/components/schemas/StoryDuplicateRequest"
       responses:
-        '200':
+        "200":
           description: Story duplicated
           content:
             application/json:
@@ -454,12 +454,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/publish:
     get:
@@ -481,7 +481,7 @@ paths:
             type: integer
           description: Release ID for scheduled publishing
       responses:
-        '200':
+        "200":
           description: Story published
           content:
             application/json:
@@ -489,12 +489,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/unpublish:
     get:
@@ -516,7 +516,7 @@ paths:
             type: integer
           description: Release ID for scheduled unpublishing
       responses:
-        '200':
+        "200":
           description: Story unpublished
           content:
             application/json:
@@ -524,12 +524,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/export.json:
     get:
@@ -543,8 +543,8 @@ paths:
           required: false
           schema:
             type: string
-            enum: ['1', '2']
-            default: '1'
+            enum: ["1", "2"]
+            default: "1"
         - name: lang_code
           in: query
           required: false
@@ -558,7 +558,7 @@ paths:
             type: boolean
           description: If the values of the lang_code should be exported or not
       responses:
-        '200':
+        "200":
           description: Story exported
           content:
             application/json:
@@ -566,11 +566,11 @@ paths:
                 type: object
                 description: Export data with field keys and values
                 additionalProperties: true
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/import.json:
     put:
@@ -584,8 +584,8 @@ paths:
           required: false
           schema:
             type: string
-            enum: ['1', '2']
-            default: '1'
+            enum: ["1", "2"]
+            default: "1"
         - name: lang_code
           in: query
           required: false
@@ -616,7 +616,7 @@ paths:
                         - slug
                       description: A single story object to import
       responses:
-        '200':
+        "200":
           description: Story imported
           content:
             application/json:
@@ -624,12 +624,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/ai_translate:
     put:
@@ -661,7 +661,7 @@ paths:
                   type: integer
                   description: Release ID of the story
       responses:
-        '200':
+        "200":
           description: Story translated
           content:
             application/json:
@@ -669,13 +669,13 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
+                    $ref: "#/components/schemas/Story"
                     description: A single story object, containing the translated fields in its content property
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/story_versions:
     get:
@@ -715,7 +715,7 @@ paths:
             type: string
           description: Use it to retrieve all the content of a version
       responses:
-        '200':
+        "200":
           description: Story versions
           content:
             application/json:
@@ -778,11 +778,11 @@ paths:
                         content:
                           type: object
                           description: This object contains the Story's content when the show_content parameter is used
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
   /v1/spaces/{space_id}/stories/{story_id}/restore_with:
     get:
@@ -810,7 +810,7 @@ paths:
             type: integer
           description: Release ID for version restoration
       responses:
-        '200':
+        "200":
           description: Story version restored
           content:
             application/json:
@@ -818,12 +818,12 @@ paths:
                 type: object
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
-        '400':
+                    $ref: "#/components/schemas/Story"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story or version not found
   /v1/spaces/{space_id}/stories/{story_id}/compare:
     get:
@@ -840,17 +840,17 @@ paths:
             type: integer
           description: Story version id
       responses:
-        '200':
+        "200":
           description: Version comparison
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StoryVersionComparison'
-        '400':
+                $ref: "#/components/schemas/StoryVersionComparison"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
 
   /v1/spaces/{space_id}/stories/unpublished_dependencies:
@@ -877,7 +877,7 @@ paths:
                   type: integer
                   description: ID of a release. If this is passed, the endpoint looks for unpublished dependencies in this specific release.
       responses:
-        '200':
+        "200":
           description: Unpublished dependencies
           content:
             application/json:
@@ -887,12 +887,12 @@ paths:
                   unpublished_stories:
                     type: array
                     items:
-                      $ref: '#/components/schemas/UnpublishedStory'
-        '400':
+                      $ref: "#/components/schemas/UnpublishedStory"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
 components:
   securitySchemes:

@@ -1,60 +1,58 @@
-import {
-  apiPlugin,
-  renderRichText,
-  storyblokEditable,
-  storyblokInit,
-} from '../src';
-import type { SbInitResult, SbPluginFactory, StoryblokRichTextNode } from '../src';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiPlugin, renderRichText, storyblokEditable, storyblokInit } from "../src";
+import type { SbInitResult, SbPluginFactory, StoryblokRichTextNode } from "../src";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loadBridge } from './bridge';
+import { loadBridge } from "./bridge";
 
 const { renderMock, richTextResolverMock } = vi.hoisted(() => {
-  const renderMock = vi.fn(() => '<p>Rendered HTML</p>');
+  const renderMock = vi.fn(() => "<p>Rendered HTML</p>");
   const richTextResolverMock = vi.fn(() => ({ render: renderMock }));
   return { renderMock, richTextResolverMock };
 });
-vi.mock('@storyblok/richtext', () => ({
+vi.mock("@storyblok/richtext", () => ({
   richTextResolver: richTextResolverMock,
 }));
-describe('@storyblok/js', () => {
+describe("@storyblok/js", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('api', () => {
-    it('is not loaded by default', () => {
+  describe("api", () => {
+    it("is not loaded by default", () => {
       const result = storyblokInit({
-        accessToken: 'TEST_TOKEN',
+        accessToken: "TEST_TOKEN",
       });
 
       expect(result).toEqual({});
     });
 
-    it('is loaded correctly when using the apiPlugin', async () => {
+    it("is loaded correctly when using the apiPlugin", async () => {
       // Mock fetch to return a successful response
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [
-            { id: 1, name: 'Story 1' },
-            { id: 2, name: 'Story 2' },
-            { id: 3, name: 'Story 3' },
-          ],
-        })));
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            stories: [
+              { id: 1, name: "Story 1" },
+              { id: 2, name: "Story 2" },
+              { id: 3, name: "Story 3" },
+            ],
+          }),
+        ),
+      );
 
       const { storyblokApi } = storyblokInit({
-        accessToken: 'TEST_TOKEN',
+        accessToken: "TEST_TOKEN",
         use: [apiPlugin],
       });
 
-      const result = await storyblokApi!.getAll('cdn/stories', { version: 'draft' });
+      const result = await storyblokApi!.getAll("cdn/stories", { version: "draft" });
 
       expect(result.length).toBeGreaterThan(0);
       expect(fetchSpy).toHaveBeenCalled();
     });
 
-    it('logs an error if no access token is provided', () => {
-      const spy = vi.spyOn(console, 'error');
+    it("logs an error if no access token is provided", () => {
+      const spy = vi.spyOn(console, "error");
       storyblokInit({
         accessToken: undefined,
         apiOptions: { accessToken: undefined },
@@ -62,73 +60,82 @@ describe('@storyblok/js', () => {
       });
 
       expect(spy).toBeCalledWith(
-        'You need to provide an access token to interact with Storyblok API. Read https://www.storyblok.com/docs/api/content-delivery#topics/authentication',
+        "You need to provide an access token to interact with Storyblok API. Read https://www.storyblok.com/docs/api/content-delivery#topics/authentication",
       );
     });
   });
 
-  describe('api Plugin', () => {
+  describe("api Plugin", () => {
     beforeEach(() => {
       vi.restoreAllMocks();
     });
 
-    it('should handle failed API calls', async () => {
+    it("should handle failed API calls", async () => {
       // Create an isolated mock just for this test
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockRejectedValueOnce(new Error('API Error'));
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new Error("API Error"));
 
       const { storyblokApi } = storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         use: [apiPlugin],
       });
 
-      await expect(storyblokApi!.get('cdn/stories/test')).rejects.toThrow();
+      await expect(storyblokApi!.get("cdn/stories/test")).rejects.toThrow();
 
       // Verify the mock was called
       expect(fetchSpy).toHaveBeenCalled();
     });
 
-    it('should support different API endpoints', async () => {
+    it("should support different API endpoints", async () => {
       // Create a spy that returns successful responses
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
         .mockResolvedValueOnce(new Response(JSON.stringify({ stories: [] })))
         .mockResolvedValueOnce(new Response(JSON.stringify({ links: [] })))
         .mockResolvedValueOnce(new Response(JSON.stringify({ datasources: [] })));
 
       const { storyblokApi } = storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         use: [apiPlugin],
       });
 
-      await storyblokApi!.get('cdn/stories');
-      await storyblokApi!.get('cdn/links');
-      await storyblokApi!.get('cdn/datasources');
+      await storyblokApi!.get("cdn/stories");
+      await storyblokApi!.get("cdn/links");
+      await storyblokApi!.get("cdn/datasources");
 
       // Verify different endpoints were called
       expect(fetchSpy).toHaveBeenCalledTimes(3);
-      expect(fetchSpy.mock.calls[0][0].toString()).toContain('cdn/stories');
-      expect(fetchSpy.mock.calls[1][0].toString()).toContain('cdn/links');
-      expect(fetchSpy.mock.calls[2][0].toString()).toContain('cdn/datasources');
+      expect(fetchSpy.mock.calls[0][0].toString()).toContain("cdn/stories");
+      expect(fetchSpy.mock.calls[1][0].toString()).toContain("cdn/links");
+      expect(fetchSpy.mock.calls[2][0].toString()).toContain("cdn/datasources");
     });
 
-    it('should handle pagination correctly', async () => {
+    it("should handle pagination correctly", async () => {
       // Mock fetch to return paginated responses
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [{ id: 1 }, { id: 2 }],
-          total: 4,
-          perPage: 2,
-          page: 1,
-        })))
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [{ id: 3 }, { id: 4 }],
-          total: 4,
-          perPage: 2,
-          page: 2,
-        })));
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              stories: [{ id: 1 }, { id: 2 }],
+              total: 4,
+              perPage: 2,
+              page: 1,
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              stories: [{ id: 3 }, { id: 4 }],
+              total: 4,
+              perPage: 2,
+              page: 2,
+            }),
+          ),
+        );
 
       const { storyblokApi } = storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         use: [apiPlugin],
       }) as { storyblokApi: any };
 
@@ -138,7 +145,7 @@ describe('@storyblok/js', () => {
       const perPage = 2;
 
       // First page
-      let response = await storyblokApi.get('cdn/stories', {
+      let response = await storyblokApi.get("cdn/stories", {
         page,
         perPage,
       });
@@ -149,7 +156,7 @@ describe('@storyblok/js', () => {
       // Get remaining pages
       while (allStories.length < total) {
         page++;
-        response = await storyblokApi.get('cdn/stories', {
+        response = await storyblokApi.get("cdn/stories", {
           page,
           perPage,
         });
@@ -158,26 +165,21 @@ describe('@storyblok/js', () => {
 
       // Verify pagination results
       expect(allStories).toHaveLength(4);
-      expect(allStories).toEqual([
-        { id: 1 },
-        { id: 2 },
-        { id: 3 },
-        { id: 4 },
-      ]);
+      expect(allStories).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
 
       // Verify that fetch was called twice for the two pages
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 
-  describe('initialization', () => {
-    it('should initialize multiple plugins', () => {
+  describe("initialization", () => {
+    it("should initialize multiple plugins", () => {
       // Create two mock plugins with proper typing
-      const plugin1: SbPluginFactory = () => ({ feature1: 'value1' });
-      const plugin2: SbPluginFactory = () => ({ feature2: 'value2' });
+      const plugin1: SbPluginFactory = () => ({ feature1: "value1" });
+      const plugin2: SbPluginFactory = () => ({ feature2: "value2" });
 
       const result = storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         use: [plugin1, plugin2],
       }) as SbInitResult & {
         feature1: string;
@@ -186,121 +188,124 @@ describe('@storyblok/js', () => {
 
       // Verify both plugins were initialized
       expect(result).toEqual({
-        feature1: 'value1',
-        feature2: 'value2',
+        feature1: "value1",
+        feature2: "value2",
       });
 
       // Verify the result has both plugin features
-      expect(result.feature1).toBe('value1');
-      expect(result.feature2).toBe('value2');
+      expect(result.feature1).toBe("value1");
+      expect(result.feature2).toBe("value2");
     });
 
-    it('should handle custom bridge URLs', () => {
-      const customBridgeUrl = 'https://custom-bridge.com/bridge.js';
+    it("should handle custom bridge URLs", () => {
+      const customBridgeUrl = "https://custom-bridge.com/bridge.js";
 
       // Mock window.location to simulate being in the editor
       const originalLocation = window.location;
-      Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok_tk=123' },
+      Object.defineProperty(window, "location", {
+        value: { search: "?_storyblok_tk=123" },
         writable: true,
       });
 
       storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         bridgeUrl: customBridgeUrl,
       });
 
       // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+      const bridgeScript = document.querySelector("#storyblok-javascript-bridge");
 
       // Verify bridge script was added with correct URL
       expect(bridgeScript).toBeTruthy();
-      expect(bridgeScript?.getAttribute('src')).toBe(customBridgeUrl);
+      expect(bridgeScript?.getAttribute("src")).toBe(customBridgeUrl);
 
       // Restore original window.location
-      Object.defineProperty(window, 'location', {
+      Object.defineProperty(window, "location", {
         value: originalLocation,
         writable: true,
       });
     });
 
-    it('should handle custom bridge URL with query params', () => {
-      const baseUrl = 'https://custom-bridge.com/bridge.js';
-      const queryParams = '?version=2&debug=true';
+    it("should handle custom bridge URL with query params", () => {
+      const baseUrl = "https://custom-bridge.com/bridge.js";
+      const queryParams = "?version=2&debug=true";
       const customBridgeUrl = `${baseUrl}${queryParams}`;
 
       // Mock window.location to simulate being in the editor
       const originalLocation = window.location;
-      Object.defineProperty(window, 'location', {
+      Object.defineProperty(window, "location", {
         value: {
-          search: '?_storyblok_tk=123',
-          href: 'http://localhost?_storyblok_tk=123',
+          search: "?_storyblok_tk=123",
+          href: "http://localhost?_storyblok_tk=123",
         },
         writable: true,
       });
 
       storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         bridge: true,
         bridgeUrl: customBridgeUrl,
       });
 
       // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+      const bridgeScript = document.querySelector("#storyblok-javascript-bridge");
 
       // Verify the script was created
       expect(bridgeScript).toBeTruthy();
       // Verify base URL is present (browser strips query params)
-      expect(bridgeScript?.getAttribute('src')).toBe(baseUrl);
+      expect(bridgeScript?.getAttribute("src")).toBe(baseUrl);
 
       // Restore original window.location
-      Object.defineProperty(window, 'location', {
+      Object.defineProperty(window, "location", {
         value: originalLocation,
         writable: true,
       });
     });
   });
 
-  describe('editable', () => {
-    it('gets data-blok-c and data-blok-uid', async () => {
+  describe("editable", () => {
+    it("gets data-blok-c and data-blok-uid", async () => {
       // Mock fetch to return a story response
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          story: {
-            id: 123456,
-            uid: 'test-uid-123',
-            content: {
-              component: 'page',
-              body: [],
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            story: {
+              id: 123456,
+              uid: "test-uid-123",
+              content: {
+                component: "page",
+                body: [],
+              },
             },
-          },
-        })));
+          }),
+        ),
+      );
 
       const { storyblokApi } = storyblokInit({
-        accessToken: 'TEST_TOKEN',
+        accessToken: "TEST_TOKEN",
         use: [apiPlugin],
       });
 
-      const { data } = await storyblokApi!.get('cdn/stories/demo');
+      const { data } = await storyblokApi!.get("cdn/stories/demo");
 
       const blok = data.story.content;
       blok._editable = `<!--#storyblok#{"id":${data.story.id},"uid":"${data.story.uid}"}-->`;
 
       const editableResult = storyblokEditable(blok);
 
-      expect(editableResult['data-blok-c']).toBeDefined();
-      expect(editableResult['data-blok-uid']).toBeDefined();
+      expect(editableResult["data-blok-c"]).toBeDefined();
+      expect(editableResult["data-blok-uid"]).toBeDefined();
       expect(fetchSpy).toHaveBeenCalled();
     });
   });
 
-  describe('rich text', () => {
+  describe("rich text", () => {
     beforeEach(() => {
       vi.clearAllMocks();
     });
 
-    it('should call render with the provided data', () => {
-      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
+    it("should call render with the provided data", () => {
+      const data = { type: "doc", content: [] } as StoryblokRichTextNode<string>;
 
       renderRichText(data);
 
@@ -308,10 +313,10 @@ describe('@storyblok/js', () => {
       expect(renderMock).toHaveBeenCalledWith(data);
     });
 
-    it('should forward tiptapExtensions to richTextResolver', () => {
-      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
+    it("should forward tiptapExtensions to richTextResolver", () => {
+      const data = { type: "doc", content: [] } as StoryblokRichTextNode<string>;
       const options = {
-        tiptapExtensions: { link: { name: 'link' } },
+        tiptapExtensions: { link: { name: "link" } },
       };
 
       renderRichText(data, options as any);
@@ -321,45 +326,45 @@ describe('@storyblok/js', () => {
     });
   });
 
-  describe('bridge functionality', () => {
+  describe("bridge functionality", () => {
     beforeEach(() => {
       // Clear DOM and reset window properties
-      document.head.innerHTML = '';
+      document.head.innerHTML = "";
       window.storyblokRegisterEvent = () => {};
       vi.clearAllMocks();
     });
 
-    it('should load bridge script correctly', async () => {
-      const bridgeUrl = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
+    it("should load bridge script correctly", async () => {
+      const bridgeUrl = "https://app.storyblok.com/f/storyblok-v2-latest.js";
       const loadPromise = loadBridge(bridgeUrl);
 
       // Check if script was added to DOM
-      const script = document.querySelector('#storyblok-javascript-bridge') as HTMLScriptElement;
+      const script = document.querySelector("#storyblok-javascript-bridge") as HTMLScriptElement;
       expect(script).toBeTruthy();
-      expect(script?.getAttribute('src')).toBe(bridgeUrl);
+      expect(script?.getAttribute("src")).toBe(bridgeUrl);
       expect(script?.async).toBe(true);
 
       // Simulate script load
-      const event = new Event('load');
+      const event = new Event("load");
       script?.dispatchEvent(event);
 
       await expect(loadPromise).resolves.toBeDefined();
     });
 
-    it('should handle bridge loading errors', async () => {
-      const bridgeUrl = 'https://invalid-url.com/bridge.js';
+    it("should handle bridge loading errors", async () => {
+      const bridgeUrl = "https://invalid-url.com/bridge.js";
       const loadPromise = loadBridge(bridgeUrl);
 
-      const script = document.querySelector('#storyblok-javascript-bridge');
+      const script = document.querySelector("#storyblok-javascript-bridge");
 
       // Simulate script error
-      const event = new ErrorEvent('error', { error: new Error('Failed to load script') });
+      const event = new ErrorEvent("error", { error: new Error("Failed to load script") });
       script?.dispatchEvent(event);
 
       await expect(loadPromise).rejects.toBeDefined();
     });
 
-    it('should register callbacks correctly', () => {
+    it("should register callbacks correctly", () => {
       const callback = vi.fn();
 
       // Mock being in an iframe
@@ -367,21 +372,21 @@ describe('@storyblok/js', () => {
       delete (window as any).location;
       window.location = {
         ...originalLocation,
-        href: 'http://localhost',
+        href: "http://localhost",
       };
-      Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok' },
+      Object.defineProperty(window, "location", {
+        value: { search: "?_storyblok" },
         writable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
+      loadBridge("https://app.storyblok.com/f/storyblok-v2-latest.js");
 
       // Register callback
       window.storyblokRegisterEvent(callback);
 
       // Simulate script load
-      const script = document.querySelector('#storyblok-javascript-bridge');
-      const event = new Event('load');
+      const script = document.querySelector("#storyblok-javascript-bridge");
+      const event = new Event("load");
       script?.dispatchEvent(event);
 
       expect(callback).toHaveBeenCalled();
@@ -390,75 +395,75 @@ describe('@storyblok/js', () => {
       window.location = originalLocation;
     });
 
-    it('should warn when not in editor mode', () => {
-      const consoleSpy = vi.spyOn(console, 'warn');
+    it("should warn when not in editor mode", () => {
+      const consoleSpy = vi.spyOn(console, "warn");
       const callback = vi.fn();
 
       // Ensure we're not in an iframe
-      Object.defineProperty(window, 'location', {
-        value: { search: '?test=123' },
+      Object.defineProperty(window, "location", {
+        value: { search: "?test=123" },
         writable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
+      loadBridge("https://app.storyblok.com/f/storyblok-v2-latest.js");
       window.storyblokRegisterEvent(callback);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'You are not in Draft Mode or in the Visual Editor.',
-      );
+      expect(consoleSpy).toHaveBeenCalledWith("You are not in Draft Mode or in the Visual Editor.");
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it('should execute callbacks in order of registration', async () => {
+    it("should execute callbacks in order of registration", async () => {
       const executionOrder: number[] = [];
       const callback1 = vi.fn(() => executionOrder.push(1));
       const callback2 = vi.fn(() => executionOrder.push(2));
       const callback3 = vi.fn(() => executionOrder.push(3));
 
       // Mock being in an iframe
-      Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok' },
+      Object.defineProperty(window, "location", {
+        value: { search: "?_storyblok" },
         writable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
+      loadBridge("https://app.storyblok.com/f/storyblok-v2-latest.js");
 
       window.storyblokRegisterEvent(callback1);
       window.storyblokRegisterEvent(callback2);
       window.storyblokRegisterEvent(callback3);
 
       // Simulate script load
-      const script = document.querySelector('#storyblok-javascript-bridge');
-      const event = new Event('load');
+      const script = document.querySelector("#storyblok-javascript-bridge");
+      const event = new Event("load");
       script?.dispatchEvent(event);
 
       expect(executionOrder).toEqual([1, 2, 3]);
     });
 
-    it('should reject promise when window is undefined', async () => {
+    it("should reject promise when window is undefined", async () => {
       // Mock window being undefined (server-side)
       const originalWindow = globalThis.window;
       delete (globalThis as any).window;
 
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .rejects
-        .toThrow('Cannot load Storyblok bridge: window is undefined (server-side environment)');
+      await expect(
+        loadBridge("https://app.storyblok.com/f/storyblok-v2-latest.js"),
+      ).rejects.toThrow(
+        "Cannot load Storyblok bridge: window is undefined (server-side environment)",
+      );
 
       // Restore window
       globalThis.window = originalWindow;
     });
 
-    it('should resolve promise when bridge script already exists', async () => {
+    it("should resolve promise when bridge script already exists", async () => {
       // Add existing bridge script to DOM
-      const existingScript = document.createElement('script');
-      existingScript.id = 'storyblok-javascript-bridge';
-      existingScript.src = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
+      const existingScript = document.createElement("script");
+      existingScript.id = "storyblok-javascript-bridge";
+      existingScript.src = "https://app.storyblok.com/f/storyblok-v2-latest.js";
       document.head.appendChild(existingScript);
 
       // Should resolve immediately since script already exists
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .resolves
-        .toBe(undefined);
+      await expect(loadBridge("https://app.storyblok.com/f/storyblok-v2-latest.js")).resolves.toBe(
+        undefined,
+      );
 
       // Clean up
       existingScript.remove();

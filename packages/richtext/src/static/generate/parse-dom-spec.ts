@@ -1,6 +1,6 @@
-import type { DOMOutputSpec } from 'prosemirror-model';
-import type { AttrValue, RenderSpec } from '../types';
-import { stringToStyle, styleToString } from '../style';
+import type { DOMOutputSpec } from "prosemirror-model";
+import type { AttrValue, RenderSpec } from "../types";
+import { stringToStyle, styleToString } from "../style";
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
 type ArrayDOMSpec = readonly [string, ...unknown[]];
@@ -16,13 +16,13 @@ type AttrsObject = Record<string, AttrValue>;
 
 // Custom DOM specs for nodes that need special handling (e.g. table)
 const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {
-  table: ['table', ['tbody', 0]],
+  table: ["table", ["tbody", 0]],
 };
 
 /** Parses a ProseMirror DOMOutputSpec into a RenderSpec. */
 export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {
   // string
-  if (typeof spec === 'string') {
+  if (typeof spec === "string") {
     return { tag: spec };
   }
   // custom override
@@ -56,8 +56,7 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
   if (isAttrsObject(maybeAttrs)) {
     attrs = maybeAttrs;
     children = rest;
-  }
-  else {
+  } else {
     children = maybeAttrs !== undefined ? [maybeAttrs, ...rest] : rest;
   }
 
@@ -88,9 +87,7 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
 }
 
 /** Filters out null and undefined attribute values. */
-function filterNullAttrs(
-  attrs: AttrsObject,
-): Record<string, AttrValue> {
+function filterNullAttrs(attrs: AttrsObject): Record<string, AttrValue> {
   const result: Record<string, AttrValue> = {};
 
   for (const key of Object.keys(attrs)) {
@@ -102,7 +99,7 @@ function filterNullAttrs(
     }
 
     // Special handling for style
-    if (key === 'style' && typeof value === 'string') {
+    if (key === "style" && typeof value === "string") {
       const styleObj = stringToStyle(value);
 
       const filteredStyle: Record<string, AttrValue> = {};
@@ -130,32 +127,17 @@ function filterNullAttrs(
 
 /** Type guard for attribute objects. */
 function isAttrsObject(value: unknown): value is AttrsObject {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function isValidAttrValue(
-  value: AttrValue,
-): value is string | number | boolean {
-  return (
-    value !== null
-    && value !== undefined
-    && value !== 'null'
-    && value !== 'undefined'
-  );
+function isValidAttrValue(value: AttrValue): value is string | number | boolean {
+  return value !== null && value !== undefined && value !== "null" && value !== "undefined";
 }
 /** Type guard for array-form DOM specs. */
 function isArraySpec(value: unknown): value is ArrayDOMSpec {
-  return Array.isArray(value) && typeof value[0] === 'string';
+  return Array.isArray(value) && typeof value[0] === "string";
 }
 
 /** Type guard for DOM object specs. */
 function isDOMObjectSpec(value: unknown): value is DOMObjectSpec {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && 'dom' in value
-  );
+  return typeof value === "object" && value !== null && "dom" in value;
 }

@@ -12,7 +12,11 @@ interface StoryblokValidationOptions {
 /**
  * Required query parameters that must be present in all Storyblok Visual Editor requests.
  */
-const REQUIRED_STORYBLOK_PARAMS = ['_storyblok', '_storyblok_c', '_storyblok_tk[space_id]'] as const;
+const REQUIRED_STORYBLOK_PARAMS = [
+  "_storyblok",
+  "_storyblok_c",
+  "_storyblok_tk[space_id]",
+] as const;
 
 /**
  * Validates whether a given URL is a legitimate request from the Storyblok Visual Editor.
@@ -43,21 +47,18 @@ const REQUIRED_STORYBLOK_PARAMS = ['_storyblok', '_storyblok_c', '_storyblok_tk[
  * }
  * ```
  */
-export function isInEditor(
-  url: URL,
-  options: StoryblokValidationOptions = {},
-): boolean {
+export function isInEditor(url: URL, options: StoryblokValidationOptions = {}): boolean {
   const params = url.searchParams;
 
   // Early return: Check all required parameters exist
-  const hasRequiredParams = REQUIRED_STORYBLOK_PARAMS.every(param => params.has(param));
+  const hasRequiredParams = REQUIRED_STORYBLOK_PARAMS.every((param) => params.has(param));
 
   if (!hasRequiredParams) {
     return false;
   }
 
   // Optional space ID validation
-  if (options.spaceId && params.get('_storyblok_tk[space_id]') !== options.spaceId) {
+  if (options.spaceId && params.get("_storyblok_tk[space_id]") !== options.spaceId) {
     return false;
   }
 

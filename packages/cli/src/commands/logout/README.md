@@ -9,6 +9,7 @@ storyblok logout
 ```
 
 This command will:
+
 - Remove your stored credentials from `~/.storyblok/credentials.json`
 - Clear your current session
 - Show a success message when completed
@@ -23,6 +24,7 @@ This command will:
 ## Examples
 
 1. Basic logout:
+
 ```bash
 storyblok logout
 ```

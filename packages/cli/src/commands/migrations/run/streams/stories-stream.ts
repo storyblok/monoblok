@@ -1,10 +1,10 @@
-import { pipeline, Readable, Transform } from 'node:stream';
-import { Sema } from 'async-sema';
-import { fetchStories, fetchStory } from '../../../stories/actions';
-import type { StoriesQueryParams, Story } from '../../../stories/constants';
-import { handleAPIError, toError } from '../../../../utils/error';
-import { getLogger } from '../../../../lib/logger/logger';
-import { ERROR_CODES } from '../constants';
+import { pipeline, Readable, Transform } from "node:stream";
+import { Sema } from "async-sema";
+import { fetchStories, fetchStory } from "../../../stories/actions";
+import type { StoriesQueryParams, Story } from "../../../stories/constants";
+import { handleAPIError, toError } from "../../../../utils/error";
+import { getLogger } from "../../../../lib/logger/logger";
+import { ERROR_CODES } from "../constants";
 
 /**
  * Iterator that fetches stories
@@ -23,14 +23,14 @@ export async function* storiesIterator(
     };
 
     // Handle component filter - convert componentName to contain_component
-    if (params?.componentName && typeof params.componentName === 'string') {
+    if (params?.componentName && typeof params.componentName === "string") {
       transformedParams.contain_component = params.componentName;
       delete transformedParams.componentName;
     }
 
     // Handle query string if provided - add filter_query prefix
-    if (params?.query && typeof params.query === 'string') {
-      transformedParams.filter_query = params.query.startsWith('filter_query')
+    if (params?.query && typeof params.query === "string") {
+      transformedParams.filter_query = params.query.startsWith("filter_query")
         ? params.query
         : `filter_query${params.query}`;
       delete transformedParams.query;
@@ -50,8 +50,8 @@ export async function* storiesIterator(
     }
 
     const { headers } = result;
-    const total = Number(headers.get('Total'));
-    perPage = Number(headers.get('Per-Page'));
+    const total = Number(headers.get("Total"));
+    perPage = Number(headers.get("Per-Page"));
     const totalPages = Math.ceil(Number(total) / perPage);
 
     if (onTotal) {
@@ -76,9 +76,8 @@ export async function* storiesIterator(
         yield story;
       }
     }
-  }
-  catch (error) {
-    handleAPIError('pull_stories', error as Error);
+  } catch (error) {
+    handleAPIError("pull_stories", error as Error);
   }
 }
 
@@ -89,7 +88,11 @@ export async function* storiesIterator(
 class StoriesStream extends Transform {
   private semaphore: Sema;
 
-  constructor(private spaceId: string, private batchSize: number, private onProgress?: () => void) {
+  constructor(
+    private spaceId: string,
+    private batchSize: number,
+    private onProgress?: () => void,
+  ) {
     super({
       objectMode: true,
     });
@@ -97,21 +100,27 @@ class StoriesStream extends Transform {
     this.semaphore = new Sema(this.batchSize);
   }
 
-  async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
+  async _transform(
+    chunk: Omit<Story, "content">,
+    _encoding: string,
+    callback: (error?: Error | null, data?: any) => void,
+  ) {
     try {
       await this.semaphore.acquire();
       const story = await fetchStory(this.spaceId, chunk.id.toString());
       this.push(story);
       this.onProgress?.();
-      getLogger().info('Fetched story', { storyId: chunk.id });
+      getLogger().info("Fetched story", { storyId: chunk.id });
       callback();
-    }
-    catch (maybeError) {
+    } catch (maybeError) {
       const error = toError(maybeError);
-      getLogger().error(error.message, { storyId: chunk.id, error, errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR });
+      getLogger().error(error.message, {
+        storyId: chunk.id,
+        error,
+        errorCode: ERROR_CODES.MIGRATION_STORY_FETCH_ERROR,
+      });
       callback(error);
-    }
-    finally {
+    } finally {
       this.semaphore.release();
     }
   }
@@ -145,7 +154,9 @@ export const createStoriesStream = async ({
   return pipeline(listStoriesStream, new StoriesStream(spaceId, batchSize, onProgress), (err) => {
     if (err) {
       console.error(err);
-      getLogger().error(err.message, { errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });
+      getLogger().error(err.message, {
+        errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR,
+      });
     }
   });
 };

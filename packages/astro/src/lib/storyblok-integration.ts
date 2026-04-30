@@ -1,10 +1,10 @@
-import type { ISbConfig, StoryblokBridgeConfigV2 } from '@storyblok/js';
-import type { AstroIntegration } from 'astro';
-import { storyblokLogo } from '../dev-toolbar/toolbarApp';
-import { vitePluginStoryblokInit } from '../vite-plugins/vite-plugin-storyblok-init';
-import { vitePluginStoryblokOptions } from '../vite-plugins/vite-plugin-storyblok-options';
-import { initStoryblokBridge } from './helpers';
-import { vitePluginImportStoryblokComponents } from '../vite-plugins/vite-plugin-import-storyblok-components';
+import type { ISbConfig, StoryblokBridgeConfigV2 } from "@storyblok/js";
+import type { AstroIntegration } from "astro";
+import { storyblokLogo } from "../dev-toolbar/toolbarApp";
+import { vitePluginStoryblokInit } from "../vite-plugins/vite-plugin-storyblok-init";
+import { vitePluginStoryblokOptions } from "../vite-plugins/vite-plugin-storyblok-options";
+import { initStoryblokBridge } from "./helpers";
+import { vitePluginImportStoryblokComponents } from "../vite-plugins/vite-plugin-import-storyblok-components";
 
 export interface IntegrationOptions {
   /**
@@ -55,13 +55,11 @@ export interface IntegrationOptions {
   livePreview?: boolean;
 }
 
-export default function storyblokIntegration(
-  options: IntegrationOptions,
-): AstroIntegration {
+export default function storyblokIntegration(options: IntegrationOptions): AstroIntegration {
   const resolvedOptions = {
     useCustomApi: false,
     bridge: true,
-    componentsDir: 'src',
+    componentsDir: "src",
     enableFallbackComponent: false,
     livePreview: false,
     ...options,
@@ -81,9 +79,9 @@ export default function storyblokIntegration(
 
   const initBridge = initStoryblokBridge(resolvedOptions.bridge);
   return {
-    name: '@storyblok/astro',
+    name: "@storyblok/astro",
     hooks: {
-      'astro:config:setup': ({
+      "astro:config:setup": ({
         injectScript,
         updateConfig,
         addDevToolbarApp,
@@ -104,13 +102,13 @@ export default function storyblokIntegration(
             ],
           },
         });
-        if (livePreview && config?.output !== 'server') {
+        if (livePreview && config?.output !== "server") {
           throw new Error(
-            'To utilize the Astro Storyblok Live feature, Astro must be configured to run in SSR mode. Please disable this feature or switch Astro to SSR mode.',
+            "To utilize the Astro Storyblok Live feature, Astro must be configured to run in SSR mode. Please disable this feature or switch Astro to SSR mode.",
           );
         }
         injectScript(
-          'page-ssr',
+          "page-ssr",
           `
             import { storyblokApiInstance } from "virtual:storyblok-init";
             globalThis.storyblokApiInstance = storyblokApiInstance;
@@ -121,7 +119,7 @@ export default function storyblokIntegration(
 
         if (bridge && !livePreview) {
           injectScript(
-            'page',
+            "page",
             `import { loadStoryblokBridge } from "@storyblok/astro";
               loadStoryblokBridge().then(() => {
                 const { StoryblokBridge, location } = window;
@@ -139,7 +137,7 @@ export default function storyblokIntegration(
         // This is only enabled if LivePreview feature is on
         if (livePreview) {
           injectScript(
-            'page',
+            "page",
             `import { loadStoryblokBridge, handleStoryblokMessage } from "@storyblok/astro";
                 loadStoryblokBridge().then(() => {
                   const { StoryblokBridge, location } = window;
@@ -149,15 +147,15 @@ export default function storyblokIntegration(
               `,
           );
           addMiddleware({
-            entrypoint: '@storyblok/astro/middleware.ts',
-            order: 'pre',
+            entrypoint: "@storyblok/astro/middleware.ts",
+            order: "pre",
           });
         }
         addDevToolbarApp({
-          id: 'storyblok',
-          name: 'Storyblok',
+          id: "storyblok",
+          name: "Storyblok",
           icon: storyblokLogo,
-          entrypoint: '@storyblok/astro/toolbarApp.ts',
+          entrypoint: "@storyblok/astro/toolbarApp.ts",
         });
       },
     },

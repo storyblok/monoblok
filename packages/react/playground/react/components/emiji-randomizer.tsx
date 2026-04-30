@@ -1,5 +1,5 @@
-import React, { type FC, useState } from 'react';
-import type { SbBlokData } from '@storyblok/react';
+import React, { type FC, useState } from "react";
+import type { SbBlokData } from "@storyblok/react";
 
 interface EmojiRandomizerProps {
   blok: SbBlokData & {
@@ -12,11 +12,11 @@ interface EmojiRandomizerProps {
  */
 const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
   // List of fun emojis to randomly choose from
-  const emojis = ['😊', '🎉', '🚀', '✨', '🌈', '🎨', '🎸', '🎮', '🍕', '🌺'];
+  const emojis = ["😊", "🎉", "🚀", "✨", "🌈", "🎨", "🎸", "🎮", "🍕", "🌺"];
 
   // State to track current emoji
-  const [currentEmoji, setCurrentEmoji] = useState(() =>
-    emojis[Math.floor(Math.random() * emojis.length)],
+  const [currentEmoji, setCurrentEmoji] = useState(
+    () => emojis[Math.floor(Math.random() * emojis.length)],
   );
 
   /**
@@ -33,14 +33,12 @@ const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
 
   return (
     <div className="flex flex-col items-center gap-6 p-4 bg-gray-100 dark:bg-gray-900 rounded-lg">
-      <div className="text-6xl">
-        {currentEmoji}
-      </div>
+      <div className="text-6xl">{currentEmoji}</div>
       <button
         onClick={randomizeEmoji}
         className="px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-small transition-colors duration-200 dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800"
       >
-        {blok.label || 'Randomize Emoji'}
+        {blok.label || "Randomize Emoji"}
       </button>
     </div>
   );

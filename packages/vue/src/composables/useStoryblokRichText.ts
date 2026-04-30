@@ -1,11 +1,8 @@
-import type { VNode } from 'vue';
-import { createTextVNode, h } from 'vue';
-import type {
-  SbBlokData,
-  StoryblokRichTextOptions,
-} from '@storyblok/js';
-import { ComponentBlok, richTextResolver } from '@storyblok/js';
-import StoryblokComponent from '../components/StoryblokComponent.vue';
+import type { VNode } from "vue";
+import { createTextVNode, h } from "vue";
+import type { SbBlokData, StoryblokRichTextOptions } from "@storyblok/js";
+import { ComponentBlok, richTextResolver } from "@storyblok/js";
+import StoryblokComponent from "../components/StoryblokComponent.vue";
 
 export function useStoryblokRichText(options: StoryblokRichTextOptions<VNode | VNode[]>) {
   const { tiptapExtensions, ...rest } = options;

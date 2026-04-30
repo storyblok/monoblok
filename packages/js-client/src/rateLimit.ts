@@ -1,5 +1,5 @@
-import type { ISbStoriesParams } from './interfaces';
-import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS } from './constants';
+import type { ISbStoriesParams } from "./interfaces";
+import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS } from "./constants";
 
 export interface RateLimitConfig {
   // User-provided rate limit
@@ -42,9 +42,9 @@ export const MANAGEMENT_API_DEFAULT_RATE_LIMIT = 3;
 function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
   // Single story requests typically have a specific story slug/id in the URL
   // or use find_by parameter
-  const isCdnStories = url.includes('/cdn/stories/');
-  const hasSpecificPath = url.split('/').length > 3 && !url.endsWith('/cdn/stories');
-  const hasFindBy = 'find_by' in params;
+  const isCdnStories = url.includes("/cdn/stories/");
+  const hasSpecificPath = url.split("/").length > 3 && !url.endsWith("/cdn/stories");
+  const hasFindBy = "find_by" in params;
 
   return (isCdnStories && hasSpecificPath) || hasFindBy;
 }
@@ -56,14 +56,11 @@ function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
 function getRateLimitTier(perPage: number): number {
   if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
     return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
-  }
-  else if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
+  } else if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
     return RATE_LIMIT_TIERS.MEDIUM;
-  }
-  else if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
+  } else if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
     return RATE_LIMIT_TIERS.LARGE;
-  }
-  else {
+  } else {
     return RATE_LIMIT_TIERS.VERY_LARGE;
   }
 }
@@ -139,8 +136,8 @@ export function parseRateLimitHeaders(headers: any): RateLimitHeaders | null {
     return null;
   }
 
-  const rateLimitHeader = headers['x-ratelimit'] || headers['X-RateLimit'];
-  const rateLimitPolicyHeader = headers['x-ratelimit-policy'] || headers['X-RateLimit-Policy'];
+  const rateLimitHeader = headers["x-ratelimit"] || headers["X-RateLimit"];
+  const rateLimitPolicyHeader = headers["x-ratelimit-policy"] || headers["X-RateLimit-Policy"];
 
   if (!rateLimitHeader && !rateLimitPolicyHeader) {
     return null;
@@ -170,7 +167,10 @@ export function parseRateLimitHeaders(headers: any): RateLimitHeaders | null {
 /**
  * Creates a rate limit configuration object
  */
-export function createRateLimitConfig(userRateLimit?: number, isManagementApi = false): RateLimitConfig {
+export function createRateLimitConfig(
+  userRateLimit?: number,
+  isManagementApi = false,
+): RateLimitConfig {
   return {
     userRateLimit,
     serverHeadersRateLimit: undefined,

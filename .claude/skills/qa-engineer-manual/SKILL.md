@@ -39,12 +39,12 @@ STORYBLOK_SPACE_ID=your_space_id
 
 ### Built-in scenarios
 
-| Scenario | Use when | Space state after seed |
-|---|---|---|
-| `has-default-components` | Never manually — pushed automatically as a dependency before every scenario | 4 components (page, blog, hero, cta) |
-| `has-stories` | Testing pull/push with realistic cross-references, asset references, nested blocks | 4 components, 10 stories, 2 assets, 1 datasource |
-| `has-many-stories` | Load/bulk testing with many stories | 4 components, 150 stories |
-| `has-many-assets` | Load/bulk testing with many assets | 4 components, 150 assets |
+| Scenario                 | Use when                                                                           | Space state after seed                           |
+| ------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `has-default-components` | Never manually — pushed automatically as a dependency before every scenario        | 4 components (page, blog, hero, cta)             |
+| `has-stories`            | Testing pull/push with realistic cross-references, asset references, nested blocks | 4 components, 10 stories, 2 assets, 1 datasource |
+| `has-many-stories`       | Load/bulk testing with many stories                                                | 4 components, 150 stories                        |
+| `has-many-assets`        | Load/bulk testing with many assets                                                 | 4 components, 150 assets                         |
 
 ### Seed a scenario
 
@@ -137,12 +137,12 @@ scenarios/
 These scripts provide inspection and cleanup during manual tests. Each script loads `.env.qa-engineer-manual` automatically.
 Paths are relative to this `SKILL.md`.
 
-| Script | Purpose |
-| --- | --- |
-| `./scripts/cleanup-local.sh` | Deletes local QA artifacts in `.storyblok/`. |
-| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. |
-| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. |
-| `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`. |
+| Script                        | Purpose                                                                                                                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./scripts/cleanup-local.sh`  | Deletes local QA artifacts in `.storyblok/`.                                                                                                                                          |
+| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`.                                                       |
+| `./scripts/list.sh`           | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`.                                                            |
+| `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`.                         |
 | `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path. |
 
 ## Troubleshooting
@@ -151,14 +151,16 @@ Paths are relative to this `SKILL.md`.
 - When running `.mjs` test files, env vars must be **exported** (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to `node` subprocesses.
 
 **MAPI:**
+
 - **Auth uses `personalAccessToken`** — The MAPI client config property is `personalAccessToken` (or `oauthToken` for OAuth).
   ```js
-  createManagementApiClient({ personalAccessToken: process.env.STORYBLOK_TOKEN, spaceId })
+  createManagementApiClient({ personalAccessToken: process.env.STORYBLOK_TOKEN, spaceId });
   ```
 - **Assets list does NOT support `sort_by`** — passing `sort_by: 'id:asc'` returns HTTP 422 and `data: undefined`.
 - **Story `content.body` is not always an array** — `body` can be a string or other type depending on the component schema. Never spread it directly (e.g., `...content.body`). Use `Array.isArray(content.body)` or walk content recursively to find nested blocks.
 
 **CLI:**
+
 - **`--asset-token` requires an `asset`-type API key** — Only a token with access type `asset` works. Use `STORYBLOK_ASSET_TOKEN` or `STORYBLOK_ASSET_TOKEN_TARGET` environment variables.
 
 ## Output

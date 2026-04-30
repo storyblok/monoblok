@@ -9,6 +9,7 @@ storyblok login
 ```
 
 This will start an interactive login process where you can choose between:
+
 - Email and password login
 - Token login (Personal Access Token – recommended for CI and required for SSO users)
 
@@ -18,24 +19,27 @@ Go to [https://app.storyblok.com/#/me/account?tab=token] and click on **Generate
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-t, --token <token>` | Login directly with a token (useful for CI environments) | - |
-| `-r, --region <region>` | Set the region to work with (must match your space's region) | `eu` |
+| Option                  | Description                                                  | Default |
+| ----------------------- | ------------------------------------------------------------ | ------- |
+| `-t, --token <token>`   | Login directly with a token (useful for CI environments)     | -       |
+| `-r, --region <region>` | Set the region to work with (must match your space's region) | `eu`    |
 
 ## Examples
 
 1. Login with email and password:
+
 ```bash
 storyblok login
 ```
 
 2. Login with a token:
+
 ```bash
 storyblok login --token PERSONAL_ACCESS_TOKEN
 ```
 
 3. Login with a token in a specific region:
+
 ```bash
 storyblok login --token PERSONAL_ACCESS_TOKEN --region us
 ```
@@ -47,8 +51,8 @@ storyblok login --token PERSONAL_ACCESS_TOKEN --region us
 - If you're already logged in, you'll need to logout first to switch accounts
 - For CI environments, it's recommended to use the `--token` option
 - The CLI supports two-factor authentication (2FA) when using email login
-> If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.
-> Generate one in your account settings: [Generate token](https://app.storyblok.com/#/me/account?tab=token).
+  > If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.
+  > Generate one in your account settings: [Generate token](https://app.storyblok.com/#/me/account?tab=token).
 
 ## Available Regions
 

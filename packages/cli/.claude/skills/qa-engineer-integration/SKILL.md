@@ -39,23 +39,30 @@ const server = setupServer();
 const preconditions = {
   canLoadFiles(items: Item[]) {
     const dir = resolveCommandPath(directories.items, DEFAULT_SPACE);
-    vol.fromJSON(Object.fromEntries(items.map(item => [path.join(dir, `${item.slug}.json`), JSON.stringify(item)])));
+    vol.fromJSON(
+      Object.fromEntries(
+        items.map((item) => [path.join(dir, `${item.slug}.json`), JSON.stringify(item)]),
+      ),
+    );
   },
   canCreateRemoteItems(items: Item[]) {
-    const created = items.map(item => ({ ...item, id: getID() }));
+    const created = items.map((item) => ({ ...item, id: getID() }));
     server.use(
-      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/items`, async ({ request }) => {
-        const body = await request.json();
-        const match = created.find(i => i.slug === body.item.slug);
-        return HttpResponse.json({ item: match });
-      }),
+      http.post(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/items`,
+        async ({ request }) => {
+          const body = await request.json();
+          const match = created.find((i) => i.slug === body.item.slug);
+          return HttpResponse.json({ item: match });
+        },
+      ),
     );
     return created;
   },
 };
 
-describe('command push', () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+describe("command push", () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
   afterEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
@@ -65,15 +72,15 @@ describe('command push', () => {
   });
   afterAll(() => server.close());
 
-  it('should push items and write manifest/report', async () => {
+  it("should push items and write manifest/report", async () => {
     preconditions.canLoadFiles([makeMockItem()]);
     preconditions.canCreateRemoteItems([makeMockItem()]);
 
-    await command.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+    await command.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
 
     expect(actions.createItem).toHaveBeenCalled();
     expect(await parseManifest()).toEqual([expect.objectContaining({ old_id: expect.anything() })]);
-    expect(getReport()).toEqual(expect.objectContaining({ status: 'SUCCESS' }));
+    expect(getReport()).toEqual(expect.objectContaining({ status: "SUCCESS" }));
   });
 });
 ```

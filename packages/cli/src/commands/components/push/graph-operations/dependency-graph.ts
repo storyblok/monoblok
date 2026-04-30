@@ -1,11 +1,20 @@
+import type { Component, ComponentFolder, InternalTag, Preset } from "../../constants";
 import type {
-  Component,
-  ComponentFolder,
-  InternalTag,
-  Preset,
-} from '../../constants';
-import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
-import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
+  DependencyGraph,
+  GraphBuildingContext,
+  NodeData,
+  NodeType,
+  ProcessingLevel,
+  SchemaDependencies,
+  TargetResourceInfo,
+  UnifiedNode,
+} from "./types";
+import {
+  upsertComponent,
+  upsertComponentGroup,
+  upsertComponentInternalTag,
+  upsertComponentPreset,
+} from "../actions";
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -14,7 +23,7 @@ import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upse
 /**
  * Field types that support component whitelists (group, tag, and component whitelists)
  */
-const fieldTypesWithDependencies = ['bloks', 'richtext'] as const;
+const fieldTypesWithDependencies = ["bloks", "richtext"] as const;
 
 // =============================================================================
 // GRAPH BUILDING
@@ -70,7 +79,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
 
   // Create nodes for all presets with colocated target data
   // Since presets are nested resources under components, create a component map for efficient lookups
-  const componentMap = new Map(spaceState.local.components.map(c => [c.id, c]));
+  const componentMap = new Map(spaceState.local.components.map((c) => [c.id, c]));
 
   spaceState.local.presets.forEach((preset) => {
     const nodeId = `preset:${preset.id}`;
@@ -79,7 +88,9 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const sourceComponent = componentMap.get(preset.component_id);
     if (!sourceComponent) {
       // Skip presets whose parent components are not available in local data
-      console.warn(`Warning: Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`);
+      console.warn(
+        `Warning: Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`,
+      );
       return;
     }
 
@@ -131,7 +142,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     // Add dependencies on preset_id (component preset reference)
     if (component.preset_id) {
       // Find the preset by ID and create dependency
-      const preset = spaceState.local.presets.find(p => p.id === component.preset_id);
+      const preset = spaceState.local.presets.find((p) => p.id === component.preset_id);
       if (preset) {
         const presetId = `preset:${preset.id}`;
         addDependency(componentId, presetId);
@@ -166,7 +177,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const presetId = `preset:${preset.id}`;
 
     // Find the component this preset belongs to
-    const component = spaceState.local.components.find(c => c.id === preset.component_id);
+    const component = spaceState.local.components.find((c) => c.id === preset.component_id);
     if (component) {
       const componentId = `component:${component.name}`;
       addDependency(presetId, componentId);
@@ -209,10 +220,10 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
     }
 
     // Collect datasource dependencies from option/options fields with internal source
-    if ((field.type === 'option' || field.type === 'options') && field.source === 'internal') {
+    if ((field.type === "option" || field.type === "options") && field.source === "internal") {
       // For option/options fields with internal source, the datasource name is typically
       // specified in the datasource_slug field or can be inferred from other properties
-      if (field.datasource_slug && typeof field.datasource_slug === 'string') {
+      if (field.datasource_slug && typeof field.datasource_slug === "string") {
         datasourceNames.add(field.datasource_slug);
       }
     }
@@ -221,12 +232,11 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
     Object.values(field).forEach((value) => {
       if (Array.isArray(value)) {
         value.forEach((item) => {
-          if (typeof item === 'object' && item !== null) {
+          if (typeof item === "object" && item !== null) {
             traverseField(item);
           }
         });
-      }
-      else if (typeof value === 'object' && value !== null) {
+      } else if (typeof value === "object" && value !== null) {
         traverseField(value);
       }
     });
@@ -234,7 +244,7 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
 
   // Traverse all fields in the schema
   Object.values(schema).forEach((field) => {
-    if (typeof field === 'object' && field !== null) {
+    if (typeof field === "object" && field !== null) {
       traverseField(field);
     }
   });
@@ -262,9 +272,9 @@ export function detectProblematicCycles(graph: DependencyGraph): string[] {
       const cycle = path.slice(cycleStart).concat(nodeId);
 
       // Cycles involving groups or tags are always problematic
-      const hasGroupOrTag = cycle.some(id => id.startsWith('group:') || id.startsWith('tag:'));
+      const hasGroupOrTag = cycle.some((id) => id.startsWith("group:") || id.startsWith("tag:"));
       if (hasGroupOrTag) {
-        problematicCycles.push(`Problematic cycle: ${cycle.join(' → ')}`);
+        problematicCycles.push(`Problematic cycle: ${cycle.join(" → ")}`);
       }
 
       return true;
@@ -317,9 +327,9 @@ export function detectCircularWhitelists(graph: DependencyGraph): string[] {
       const cycle = path.slice(cycleStart).concat(nodeId);
 
       // Only report if it's purely component-to-component cycles
-      const isComponentOnly = cycle.every(id => id.startsWith('component:'));
+      const isComponentOnly = cycle.every((id) => id.startsWith("component:"));
       if (isComponentOnly) {
-        circularWhitelists.push(cycle.join(' → '));
+        circularWhitelists.push(cycle.join(" → "));
       }
 
       return true;
@@ -349,7 +359,7 @@ export function detectCircularWhitelists(graph: DependencyGraph): string[] {
 
   // Check each component node for circular whitelists
   for (const nodeId of graph.nodes.keys()) {
-    if (nodeId.startsWith('component:') && !visited.has(nodeId)) {
+    if (nodeId.startsWith("component:") && !visited.has(nodeId)) {
       dfs(nodeId, []);
     }
   }
@@ -361,7 +371,10 @@ export function detectCircularWhitelists(graph: DependencyGraph): string[] {
  * Detects strongly connected components using Tarjan's algorithm.
  * Returns an array of SCCs, where each SCC is an array of node IDs.
  */
-export function detectStronglyConnectedComponents(nodeIds: string[], graph: DependencyGraph): string[][] {
+export function detectStronglyConnectedComponents(
+  nodeIds: string[],
+  graph: DependencyGraph,
+): string[][] {
   const index = new Map<string, number>();
   const lowLink = new Map<string, number>();
   const onStack = new Set<string>();
@@ -381,13 +394,13 @@ export function detectStronglyConnectedComponents(nodeIds: string[], graph: Depe
     const node = graph.nodes.get(nodeId);
     if (node) {
       for (const dependencyId of node.dependencies) {
-        if (nodeIds.includes(dependencyId)) { // Only consider nodes in the remaining set
+        if (nodeIds.includes(dependencyId)) {
+          // Only consider nodes in the remaining set
           if (!index.has(dependencyId)) {
             // Successor has not yet been visited; recurse on it
             strongConnect(dependencyId);
             lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, lowLink.get(dependencyId)!));
-          }
-          else if (onStack.has(dependencyId)) {
+          } else if (onStack.has(dependencyId)) {
             // Successor is in stack and hence in the current SCC
             lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, index.get(dependencyId)!));
           }
@@ -448,19 +461,21 @@ export function determineProcessingOrder(graph: DependencyGraph): ProcessingLeve
 
       for (const scc of sccs) {
         // Validate that SCCs only contain components (not groups/tags)
-        const hasNonComponent = scc.some(nodeId =>
-          nodeId.startsWith('group:') || nodeId.startsWith('tag:'),
+        const hasNonComponent = scc.some(
+          (nodeId) => nodeId.startsWith("group:") || nodeId.startsWith("tag:"),
         );
 
         if (hasNonComponent) {
-          throw new Error(`Unsupported circular dependency involving groups, tags, or presets: ${scc.join(' → ')}`);
+          throw new Error(
+            `Unsupported circular dependency involving groups, tags, or presets: ${scc.join(" → ")}`,
+          );
         }
 
         // Add as cyclic level - these will need special processing
         levels.push({ nodes: scc, isCyclic: true });
 
         // Remove SCC nodes from processing
-        scc.forEach(nodeId => inDegree.delete(nodeId));
+        scc.forEach((nodeId) => inDegree.delete(nodeId));
       }
 
       continue; // Continue with remaining nodes after handling cycles
@@ -500,13 +515,15 @@ export function validateGraph(graph: DependencyGraph): void {
   // Check for problematic cycles
   const problematicCycles = detectProblematicCycles(graph);
   if (problematicCycles.length > 0) {
-    throw new Error(`❌ Problematic cycles detected:\n${problematicCycles.join('\n')}`);
+    throw new Error(`❌ Problematic cycles detected:\n${problematicCycles.join("\n")}`);
   }
 
   // Report circular whitelists (informational)
   const circularWhitelists = detectCircularWhitelists(graph);
   if (circularWhitelists.length > 0) {
-    console.log(`ℹ️  Circular component whitelists detected (allowed): ${circularWhitelists.join(', ')}`);
+    console.log(
+      `ℹ️  Circular component whitelists detected (allowed): ${circularWhitelists.join(", ")}`,
+    );
   }
 
   console.log(`✅ Graph validation passed`);
@@ -525,7 +542,13 @@ class GraphNode<TSource extends NodeData> implements UnifiedNode<TSource> {
   dependencies: Set<string>;
   dependents: Set<string>;
 
-  constructor(id: string, type: NodeType, name: string, sourceData: TSource, targetResource?: TSource) {
+  constructor(
+    id: string,
+    type: NodeType,
+    name: string,
+    sourceData: TSource,
+    targetResource?: TSource,
+  ) {
     this.id = id;
     this.type = type;
     this.name = name;
@@ -551,7 +574,7 @@ class GraphNode<TSource extends NodeData> implements UnifiedNode<TSource> {
   }
 
   async upsert(_space: string): Promise<TSource> {
-    throw new Error('upsert must be implemented by derived classes');
+    throw new Error("upsert must be implemented by derived classes");
   }
 
   updateTargetData(result: TSource): void {
@@ -564,7 +587,7 @@ class GraphNode<TSource extends NodeData> implements UnifiedNode<TSource> {
 
 export class TagNode extends GraphNode<InternalTag> {
   constructor(id: string, data: InternalTag, targetTag?: InternalTag) {
-    super(id, 'tag', data.name, data, targetTag);
+    super(id, "tag", data.name, data, targetTag);
   }
 
   resolveReferences(_graph: DependencyGraph): void {
@@ -573,7 +596,11 @@ export class TagNode extends GraphNode<InternalTag> {
 
   async upsert(space: string): Promise<InternalTag> {
     const existingId = this.targetData?.id;
-    const result = await upsertComponentInternalTag(space, this.sourceData, existingId as number | undefined);
+    const result = await upsertComponentInternalTag(
+      space,
+      this.sourceData,
+      existingId as number | undefined,
+    );
     if (!result) {
       throw new Error(`Failed to upsert tag ${this.name}`);
     }
@@ -583,7 +610,7 @@ export class TagNode extends GraphNode<InternalTag> {
 
 export class GroupNode extends GraphNode<ComponentFolder> {
   constructor(id: string, data: ComponentFolder, targetGroup?: ComponentFolder) {
-    super(id, 'group', data.name, data, targetGroup);
+    super(id, "group", data.name, data, targetGroup);
   }
 
   resolveReferences(graph: DependencyGraph): void {
@@ -604,7 +631,11 @@ export class GroupNode extends GraphNode<ComponentFolder> {
 
   async upsert(space: string): Promise<ComponentFolder> {
     const existingId = this.targetData?.id;
-    const result = await upsertComponentGroup(space, this.sourceData, existingId as number | undefined);
+    const result = await upsertComponentGroup(
+      space,
+      this.sourceData,
+      existingId as number | undefined,
+    );
     if (!result) {
       throw new Error(`Failed to upsert group ${this.name}`);
     }
@@ -614,7 +645,7 @@ export class GroupNode extends GraphNode<ComponentFolder> {
 
 export class ComponentNode extends GraphNode<Component> {
   constructor(id: string, data: Component, targetComponent?: Component) {
-    super(id, 'component', data.name, data, targetComponent);
+    super(id, "component", data.name, data, targetComponent);
   }
 
   resolveReferences(graph: DependencyGraph): void {
@@ -641,8 +672,7 @@ export class ComponentNode extends GraphNode<Component> {
 
         if (tagNode?.targetData) {
           resolvedTagIds.push(String(tagNode.targetData.id));
-        }
-        else {
+        } else {
           // Keep original ID if not found in graph (might be a tag that already exists in target)
           resolvedTagIds.push(tagId);
         }
@@ -677,18 +707,21 @@ export class ComponentNode extends GraphNode<Component> {
   private findPresetById(presetId: number, graph: DependencyGraph): Preset | null {
     // Find preset by matching source preset_id
     for (const [_nodeId, node] of graph.nodes) {
-      if (node.type === 'preset' && (node.sourceData as Preset).id === presetId) {
+      if (node.type === "preset" && (node.sourceData as Preset).id === presetId) {
         return node.sourceData as Preset;
       }
     }
     return null;
   }
 
-  private resolveSchemaReferences(schema: Record<string, any>, graph: DependencyGraph): Record<string, any> {
+  private resolveSchemaReferences(
+    schema: Record<string, any>,
+    graph: DependencyGraph,
+  ): Record<string, any> {
     const resolvedSchema = JSON.parse(JSON.stringify(schema)); // Deep copy
 
     function resolveField(field: any): any {
-      if (typeof field !== 'object' || field === null) {
+      if (typeof field !== "object" || field === null) {
         return field;
       }
 
@@ -701,21 +734,31 @@ export class ComponentNode extends GraphNode<Component> {
       // Resolve bloks and richtext field references (both support component whitelists)
       if (fieldTypesWithDependencies.includes(resolvedField.type)) {
         // Resolve component group whitelist
-        if (resolvedField.component_group_whitelist && Array.isArray(resolvedField.component_group_whitelist)) {
-          resolvedField.component_group_whitelist = resolvedField.component_group_whitelist.map((groupUuid: string) => {
-            const groupNodeId = `group:${groupUuid}`;
-            const groupNode = graph.nodes.get(groupNodeId) as GroupNode;
-            return groupNode?.targetData?.resource.uuid || groupUuid;
-          });
+        if (
+          resolvedField.component_group_whitelist &&
+          Array.isArray(resolvedField.component_group_whitelist)
+        ) {
+          resolvedField.component_group_whitelist = resolvedField.component_group_whitelist.map(
+            (groupUuid: string) => {
+              const groupNodeId = `group:${groupUuid}`;
+              const groupNode = graph.nodes.get(groupNodeId) as GroupNode;
+              return groupNode?.targetData?.resource.uuid || groupUuid;
+            },
+          );
         }
 
         // Resolve component tag whitelist
-        if (resolvedField.component_tag_whitelist && Array.isArray(resolvedField.component_tag_whitelist)) {
-          resolvedField.component_tag_whitelist = resolvedField.component_tag_whitelist.map((tagId: number) => {
-            const tagNodeId = `tag:${tagId}`;
-            const tagNode = graph.nodes.get(tagNodeId) as TagNode;
-            return tagNode?.targetData?.id || tagId;
-          });
+        if (
+          resolvedField.component_tag_whitelist &&
+          Array.isArray(resolvedField.component_tag_whitelist)
+        ) {
+          resolvedField.component_tag_whitelist = resolvedField.component_tag_whitelist.map(
+            (tagId: number) => {
+              const tagNodeId = `tag:${tagId}`;
+              const tagNode = graph.nodes.get(tagNodeId) as TagNode;
+              return tagNode?.targetData?.id || tagId;
+            },
+          );
         }
 
         // Component whitelist doesn't need ID resolution as it uses names
@@ -727,7 +770,7 @@ export class ComponentNode extends GraphNode<Component> {
 
       // Recursively resolve nested fields
       Object.keys(resolvedField).forEach((key) => {
-        if (typeof resolvedField[key] === 'object' && resolvedField[key] !== null) {
+        if (typeof resolvedField[key] === "object" && resolvedField[key] !== null) {
           resolvedField[key] = resolveField(resolvedField[key]);
         }
       });
@@ -760,7 +803,7 @@ export class ComponentNode extends GraphNode<Component> {
 class PresetNode implements UnifiedNode<Preset> {
   public readonly id: string;
   public readonly name: string;
-  public readonly type: NodeType = 'preset';
+  public readonly type: NodeType = "preset";
   public readonly sourceData: Preset;
   public targetData?: TargetResourceInfo<Preset>;
   public readonly dependencies = new Set<string>();
@@ -791,7 +834,7 @@ class PresetNode implements UnifiedNode<Preset> {
   private findComponentNameById(componentId: number, graph: DependencyGraph): string | null {
     // Find component by matching source component_id
     for (const [_nodeId, node] of graph.nodes) {
-      if (node.type === 'component' && (node.sourceData as Component).id === componentId) {
+      if (node.type === "component" && (node.sourceData as Component).id === componentId) {
         return node.name;
       }
     }

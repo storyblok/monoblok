@@ -1,21 +1,18 @@
-import type { Region } from '@storyblok/region-helper';
-import type { ListData as AssetsListData } from './generated/assets/types.gen';
-import type {
-  ListData as StoriesListData,
-  StoryMapi,
-} from './generated/stories/types.gen';
-import type { Client, RetryOptions } from './generated/shared/client';
-import type { ClientError } from './error';
-import type { RateLimitConfig } from './utils/rate-limit';
+import type { Region } from "@storyblok/region-helper";
+import type { ListData as AssetsListData } from "./generated/assets/types.gen";
+import type { ListData as StoriesListData, StoryMapi } from "./generated/stories/types.gen";
+import type { Client, RetryOptions } from "./generated/shared/client";
+import type { ClientError } from "./error";
+import type { RateLimitConfig } from "./utils/rate-limit";
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export type ApiResponse<T, ThrowOnError extends boolean = false> =
-  ThrowOnError extends true
-    ? { data: T; response: Response; request: Request }
-    : | { data: T; error: undefined; response: Response; request: Request }
+export type ApiResponse<T, ThrowOnError extends boolean = false> = ThrowOnError extends true
+  ? { data: T; response: Response; request: Request }
+  :
+      | { data: T; error: undefined; response: Response; request: Request }
       | { data: undefined; error: ClientError; response: Response; request: Request };
 
 export interface RequestConfigOverrides {
@@ -46,7 +43,7 @@ export interface HttpRequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
-  throwOnError?: RequestConfigOverrides['throwOnError'];
+  throwOnError?: RequestConfigOverrides["throwOnError"];
   fetchOptions?: FetchOptions;
 }
 
@@ -56,7 +53,10 @@ export interface HttpRequestOptions {
 export interface MapiResourceDeps {
   client: Client;
   spaceId?: number;
-  wrapRequest: <TData, ThrowOnError extends boolean = false>(fn: () => Promise<unknown>, throwOnError?: ThrowOnError) => Promise<ApiResponse<TData, ThrowOnError>>;
+  wrapRequest: <TData, ThrowOnError extends boolean = false>(
+    fn: () => Promise<unknown>,
+    throwOnError?: ThrowOnError,
+  ) => Promise<ApiResponse<TData, ThrowOnError>>;
 }
 
 export interface ManagementApiClientConfig {
@@ -113,26 +113,49 @@ export interface ManagementApiClientConfig {
   rateLimit?: RateLimitConfig | number | false;
 }
 
-export type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from './generated/asset_folders/types.gen';
+export type {
+  AssetFolder,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+} from "./generated/asset_folders/types.gen";
 
-export type { Asset, AssetSignRequest, AssetUpdate, AssetUpdateRequest, SignedResponseObject } from './generated/assets/types.gen';
-export type AssetListQuery = NonNullable<AssetsListData['query']>;
+export type {
+  Asset,
+  AssetSignRequest,
+  AssetUpdate,
+  AssetUpdateRequest,
+  SignedResponseObject,
+} from "./generated/assets/types.gen";
+export type AssetListQuery = NonNullable<AssetsListData["query"]>;
 
-export type { ComponentFolder } from './generated/component_folders/types.gen';
-export type { Component, ComponentCreate, ComponentSchemaField, ComponentUpdate } from './generated/components/types.gen';
+export type { ComponentFolder } from "./generated/component_folders/types.gen";
+export type {
+  Component,
+  ComponentCreate,
+  ComponentSchemaField,
+  ComponentUpdate,
+} from "./generated/components/types.gen";
 
-export type { DatasourceEntry, DatasourceEntryCreate, DatasourceEntryUpdate } from './generated/datasource_entries/types.gen';
+export type {
+  DatasourceEntry,
+  DatasourceEntryCreate,
+  DatasourceEntryUpdate,
+} from "./generated/datasource_entries/types.gen";
 
-export type { Datasource, DatasourceCreate, DatasourceUpdate } from './generated/datasources/types.gen';
+export type {
+  Datasource,
+  DatasourceCreate,
+  DatasourceUpdate,
+} from "./generated/datasources/types.gen";
 
-export type { InternalTag } from './generated/internal_tags/types.gen';
+export type { InternalTag } from "./generated/internal_tags/types.gen";
 
 export type Story = Prettify<StoryMapi>;
-export type StoryListQuery = NonNullable<StoriesListData['query']>;
+export type StoryListQuery = NonNullable<StoriesListData["query"]>;
 
-export type { Preset } from './generated/presets/types.gen';
+export type { Preset } from "./generated/presets/types.gen";
 
-export type { Space, SpaceCreate, SpaceUpdate } from './generated/spaces/types.gen';
+export type { Space, SpaceCreate, SpaceUpdate } from "./generated/spaces/types.gen";
 
 export type {
   AssetField,
@@ -146,11 +169,11 @@ export type {
   StoryTranslatedSlug,
   StoryUpdate,
   TableField,
-} from './generated/stories/types.gen';
+} from "./generated/stories/types.gen";
 
 // Users
-export type { User } from './generated/users/types.gen';
+export type { User } from "./generated/users/types.gen";
 
-export type { AssetCreate, AssetUploadRequest } from './resources/assets';
+export type { AssetCreate, AssetUploadRequest } from "./resources/assets";
 
 export type { RateLimitConfig };

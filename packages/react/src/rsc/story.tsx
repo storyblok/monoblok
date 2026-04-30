@@ -1,10 +1,10 @@
-import { forwardRef } from 'react';
-import type { ISbStoryData, StoryblokBridgeConfigV2 } from '@/types';
-import { consumeCachedStory } from '../core/story-cache';
-import StoryblokServerComponent from '../server/server-component';
-import StoryblokLiveEditing from './live-editing';
+import { forwardRef } from "react";
+import type { ISbStoryData, StoryblokBridgeConfigV2 } from "@/types";
+import { consumeCachedStory } from "../core/story-cache";
+import StoryblokServerComponent from "../server/server-component";
+import StoryblokLiveEditing from "./live-editing";
 
-interface StoryblokStoryProps extends Omit<Record<string, unknown>, 'story' | 'bridgeOptions'> {
+interface StoryblokStoryProps extends Omit<Record<string, unknown>, "story" | "bridgeOptions"> {
   story: ISbStoryData;
   bridgeOptions?: StoryblokBridgeConfigV2;
 }
@@ -12,23 +12,17 @@ interface StoryblokStoryProps extends Omit<Record<string, unknown>, 'story' | 'b
 const StoryblokStory = forwardRef<HTMLElement, StoryblokStoryProps>(
   ({ story, bridgeOptions, ...restProps }: StoryblokStoryProps, ref) => {
     if (!story) {
-      console.error(
-        'Please provide a \'story\' property to the StoryblokServerComponent',
-      );
+      console.error("Please provide a 'story' property to the StoryblokServerComponent");
       return null;
     }
 
     story = consumeCachedStory(story);
 
-    if (typeof story.content === 'string') {
+    if (typeof story.content === "string") {
       try {
         story.content = JSON.parse(story.content);
-      }
-      catch (error) {
-        console.error(
-          'An error occurred while trying to parse the story content',
-          error,
-        );
+      } catch (error) {
+        console.error("An error occurred while trying to parse the story content", error);
         story.content = {};
       }
     }

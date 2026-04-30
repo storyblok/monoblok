@@ -1,30 +1,30 @@
 {
   "name": "@storyblok/eslint-config",
-  "type": "module",
   "version": "0.5.0",
   "description": "Opinionated ESLint configuration for Storyblok ecosystem",
-  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/storyblok/monoblok.git"
-  },
   "keywords": [
     "eslint",
     "eslint-config",
     "eslintconfig"
   ],
+  "license": "MIT",
+  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
@@ -37,9 +37,6 @@
     "test:types": "tsc --noEmit --skipLibCheck",
     "watch": "tsdown --watch"
   },
-  "peerDependencies": {
-    "eslint": ">=8.40.0"
-  },
   "dependencies": {
     "@antfu/eslint-config": "~3.6.0",
     "eslint-plugin-format": "^0.1.2"
@@ -47,5 +44,8 @@
   "devDependencies": {
     "eslint": "9.26.0",
     "tsdown": "^0.20.3"
+  },
+  "peerDependencies": {
+    "eslint": ">=8.40.0"
   }
 }

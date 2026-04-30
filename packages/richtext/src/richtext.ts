@@ -1,19 +1,35 @@
-import { getStoryblokExtensions } from './extensions';
-import type { BlockAttributes, MarkNode, StoryblokRichTextDocumentNode, StoryblokRichTextNode, StoryblokRichTextOptions, TextNode } from './types';
-import { attrsToString, collectMarkedTextGroup, escapeHtml, getUniqueMarks, SELF_CLOSING_TAGS } from './utils';
+import { getStoryblokExtensions } from "./extensions";
+import type {
+  BlockAttributes,
+  MarkNode,
+  StoryblokRichTextDocumentNode,
+  StoryblokRichTextNode,
+  StoryblokRichTextOptions,
+  TextNode,
+} from "./types";
+import {
+  attrsToString,
+  collectMarkedTextGroup,
+  escapeHtml,
+  getUniqueMarks,
+  SELF_CLOSING_TAGS,
+} from "./utils";
 
 /**
  * Default render function that creates an HTML string for a given tag, attributes, and children.
  */
-function defaultRenderFn<T = string | null>(tag: string, attrs: BlockAttributes = {}, children?: T): T {
+function defaultRenderFn<T = string | null>(
+  tag: string,
+  attrs: BlockAttributes = {},
+  children?: T,
+): T {
   const attrsString = attrsToString(attrs);
   const tagString = attrsString ? `${tag} ${attrsString}` : tag;
-  const content = Array.isArray(children) ? children.join('') : children || '';
+  const content = Array.isArray(children) ? children.join("") : children || "";
 
   if (!tag) {
     return content as unknown as T;
-  }
-  else if (SELF_CLOSING_TAGS.includes(tag)) {
+  } else if (SELF_CLOSING_TAGS.includes(tag)) {
     return `<${tagString}>` as unknown as T;
   }
   return `<${tagString}>${content}</${tag}>` as unknown as T;
@@ -33,12 +49,12 @@ function specToRender<T>(
 
   // First non-array, non-number, non-null plain object = attributes
   if (
-    content.length > 0
-    && content[0] !== null
-    && content[0] !== undefined
-    && typeof content[0] === 'object'
-    && !Array.isArray(content[0])
-    && typeof content[0] !== 'number'
+    content.length > 0 &&
+    content[0] !== null &&
+    content[0] !== undefined &&
+    typeof content[0] === "object" &&
+    !Array.isArray(content[0]) &&
+    typeof content[0] !== "number"
   ) {
     attrs = content[0] as BlockAttributes;
     content = content.slice(1);
@@ -74,9 +90,13 @@ function specToRender<T>(
 /**
  * Calls renderHTML on a tiptap extension.
  */
-function callExtensionRenderHTML(ext: any, type: 'node' | 'mark', attrs: Record<string, any>): any[] {
+function callExtensionRenderHTML(
+  ext: any,
+  type: "node" | "mark",
+  attrs: Record<string, any>,
+): any[] {
   const thisContext = { options: ext.options || {}, name: ext.name, type: ext.type };
-  if (type === 'node') {
+  if (type === "node") {
     return ext.config.renderHTML.call(thisContext, {
       node: { attrs },
       HTMLAttributes: attrs,
@@ -114,10 +134,9 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   const nodeExtMap = new Map<string, any>();
   const markExtMap = new Map<string, any>();
   for (const ext of extensionValues) {
-    if (ext.type === 'node') {
+    if (ext.type === "node") {
       nodeExtMap.set(ext.name, ext);
-    }
-    else if (ext.type === 'mark') {
+    } else if (ext.type === "mark") {
       markExtMap.set(ext.name, ext);
     }
   }
@@ -131,7 +150,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     }
     // Wrap children in a function for component tags to avoid Vue slot warning:
     // "Non-function value encountered for default slot."
-    if (isExternalRenderFn && typeof tag !== 'string' && children !== undefined) {
+    if (isExternalRenderFn && typeof tag !== "string" && children !== undefined) {
       return renderFn(tag, attrs, (() => children) as unknown as T);
     }
     return renderFn(tag, attrs, children);
@@ -142,12 +161,15 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
   /** Renders a group of text nodes with shared marks wrapped once around unique-mark content. */
   function renderMergedTextNodes(group: TextNode<T>[], shared: MarkNode<T>[]): T {
     const innerRendered = group.map((node) => {
-      return renderText({ ...node, marks: getUniqueMarks(node.marks || [], shared) } as TextNode<T>);
+      return renderText({
+        ...node,
+        marks: getUniqueMarks(node.marks || [], shared),
+      } as TextNode<T>);
     });
 
     let content: T = isExternalRenderFn
-      ? innerRendered as unknown as T
-      : innerRendered.join('') as unknown as T;
+      ? (innerRendered as unknown as T)
+      : (innerRendered.join("") as unknown as T);
 
     // Forward order: matches renderText's marks.reduce() where marks[0] wraps first
     // (innermost) and marks[last] wraps last (outermost).
@@ -157,7 +179,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
         continue;
       }
       const markAttrs = mark.attrs || {};
-      const spec = callExtensionRenderHTML(ext, 'mark', markAttrs);
+      const spec = callExtensionRenderHTML(ext, "mark", markAttrs);
       content = specToRender(spec, contextRenderFn, content);
     }
 
@@ -177,8 +199,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       }
       if (match.group.length === 1) {
         result.push(renderText(match.group[0]));
-      }
-      else {
+      } else {
         result.push(renderMergedTextNodes(match.group, match.shared));
       }
       i = match.endIndex;
@@ -188,20 +209,20 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
 
   function renderNode(node: StoryblokRichTextNode<T>): T {
     // Text nodes — apply marks via reduce
-    if (node.type === 'text') {
+    if (node.type === "text") {
       return renderText(node as TextNode<T>);
     }
 
     // Document node renders without wrapper
-    if (node.type === 'doc') {
+    if (node.type === "doc") {
       return render(node);
     }
 
     // Find extension and call renderHTML
     const ext = nodeExtMap.get(node.type);
     if (!ext?.config?.renderHTML) {
-      console.error('<Storyblok>', `No extension found for node type ${node.type}`);
-      return '' as unknown as T;
+      console.error("<Storyblok>", `No extension found for node type ${node.type}`);
+      return "" as unknown as T;
     }
 
     // Check for renderComponent option (e.g., blok nodes configured via tiptapExtensions)
@@ -209,34 +230,38 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       const body = node.attrs?.body;
       const id = node.attrs?.id;
       if (!Array.isArray(body) || body.length === 0) {
-        return (isExternalRenderFn ? [] : '') as unknown as T;
+        return (isExternalRenderFn ? [] : "") as unknown as T;
       }
-      const rendered = body.map((blok: Record<string, unknown>) => ext.options.renderComponent(blok, id));
-      return (isExternalRenderFn ? rendered : rendered.filter((r: unknown) => r != null).join('')) as unknown as T;
+      const rendered = body.map((blok: Record<string, unknown>) =>
+        ext.options.renderComponent(blok, id),
+      );
+      return (isExternalRenderFn
+        ? rendered
+        : rendered.filter((r: unknown) => r != null).join("")) as unknown as T;
     }
 
     // Table: group rows into thead/tbody based on cell types
-    if (node.type === 'table' && node.content?.length) {
+    if (node.type === "table" && node.content?.length) {
       const headerRows: StoryblokRichTextNode<T>[] = [];
       const bodyRows: StoryblokRichTextNode<T>[] = [];
       for (const row of node.content) {
-        const isHeaderRow = bodyRows.length === 0
-          && row.content?.every((cell: StoryblokRichTextNode<T>) => cell.type === 'tableHeader');
+        const isHeaderRow =
+          bodyRows.length === 0 &&
+          row.content?.every((cell: StoryblokRichTextNode<T>) => cell.type === "tableHeader");
         if (isHeaderRow) {
           headerRows.push(row);
-        }
-        else {
+        } else {
           bodyRows.push(row);
         }
       }
       const nodeAttrs = node.attrs || {};
-      const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);
+      const spec = callExtensionRenderHTML(ext, "node", nodeAttrs);
       const parts: T[] = [];
       if (headerRows.length > 0) {
-        parts.push(contextRenderFn('thead', {}, headerRows.map(render) as T));
+        parts.push(contextRenderFn("thead", {}, headerRows.map(render) as T));
       }
       if (bodyRows.length > 0) {
-        parts.push(contextRenderFn('tbody', {}, bodyRows.map(render) as T));
+        parts.push(contextRenderFn("tbody", {}, bodyRows.map(render) as T));
       }
       return specToRender(spec, contextRenderFn, parts as T | undefined) as T;
     }
@@ -244,7 +269,7 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     const children = node.content ? groupAndRenderChildren(node.content) : undefined;
 
     const nodeAttrs = node.attrs || {};
-    const spec = callExtensionRenderHTML(ext, 'node', nodeAttrs);
+    const spec = callExtensionRenderHTML(ext, "node", nodeAttrs);
     return specToRender(spec, contextRenderFn, children as T | undefined) as T;
   }
 
@@ -256,8 +281,8 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       const baseText = (() => {
         const attrs: BlockAttributes = {};
         if (keyedResolvers) {
-          const currentCount = keyCounters.get('txt') || 0;
-          keyCounters.set('txt', currentCount + 1);
+          const currentCount = keyCounters.get("txt") || 0;
+          keyCounters.set("txt", currentCount + 1);
           attrs.key = `txt-${currentCount}`;
         }
         return textFn(rest.text, attrs) as T;
@@ -267,12 +292,12 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
       return marks.reduce((text: T, mark: MarkNode<T>) => {
         const ext = markExtMap.get(mark.type);
         if (!ext?.config?.renderHTML) {
-          console.error('<Storyblok>', `No extension found for node type ${mark.type}`);
+          console.error("<Storyblok>", `No extension found for node type ${mark.type}`);
           return text;
         }
 
         const markAttrs = mark.attrs || {};
-        const spec = callExtensionRenderHTML(ext, 'mark', markAttrs);
+        const spec = callExtensionRenderHTML(ext, "mark", markAttrs);
         return specToRender(spec, contextRenderFn, text) as T;
       }, baseText);
     }
@@ -280,8 +305,8 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
     // Plain text, no marks
     const attrs: BlockAttributes = node.attrs || {};
     if (keyedResolvers) {
-      const currentCount = keyCounters.get('txt') || 0;
-      keyCounters.set('txt', currentCount + 1);
+      const currentCount = keyCounters.get("txt") || 0;
+      keyCounters.set("txt", currentCount + 1);
       attrs.key = `txt-${currentCount}`;
     }
     return textFn(rest.text, attrs) as T;
@@ -289,10 +314,12 @@ export function richTextResolver<T>(options: StoryblokRichTextOptions<T> = {}) {
 
   function render(node: StoryblokRichTextNode<T> | StoryblokRichTextDocumentNode): T {
     const n = node as StoryblokRichTextNode<T>;
-    if (n.type === 'doc') {
-      return isExternalRenderFn ? n.content.map(renderNode) as T : n.content.map(renderNode).join('') as T;
+    if (n.type === "doc") {
+      return isExternalRenderFn
+        ? (n.content.map(renderNode) as T)
+        : (n.content.map(renderNode).join("") as T);
     }
-    return Array.isArray(n) ? n.map(renderNode) as T : renderNode(n) as T;
+    return Array.isArray(n) ? (n.map(renderNode) as T) : (renderNode(n) as T);
   }
 
   return {

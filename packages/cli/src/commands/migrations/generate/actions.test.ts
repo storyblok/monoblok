@@ -1,37 +1,37 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generateMigration } from './actions';
-import { resolvePath, saveToFile } from '../../../utils/filesystem';
-import { join } from 'pathe';
-import { handleFileSystemError } from '../../../utils';
-import type { Component } from '../../components';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { generateMigration } from "./actions";
+import { resolvePath, saveToFile } from "../../../utils/filesystem";
+import { join } from "pathe";
+import { handleFileSystemError } from "../../../utils";
+import type { Component } from "../../components";
 
 // Mock the filesystem utils
-vi.mock('../../../utils/filesystem', () => ({
+vi.mock("../../../utils/filesystem", () => ({
   saveToFile: vi.fn(),
   resolvePath: vi.fn(),
 }));
 
 // Mock the error handler
-vi.mock('../../../utils', () => ({
+vi.mock("../../../utils", () => ({
   handleFileSystemError: vi.fn(),
 }));
 
-describe('generateMigration', () => {
-  const mockSpace = '295017';
-  const mockPath = '';
+describe("generateMigration", () => {
+  const mockSpace = "295017";
+  const mockPath = "";
   const mockComponent: Component = {
-    name: 'test_component',
-    display_name: 'Test Component',
-    created_at: '2024-01-01',
-    updated_at: '2024-01-01',
+    name: "test_component",
+    display_name: "Test Component",
+    created_at: "2024-01-01",
+    updated_at: "2024-01-01",
     id: 1,
     schema: {
       fullname: {
-        type: 'text',
+        type: "text",
         pos: 0,
       },
       email: {
-        type: 'text',
+        type: "text",
         pos: 1,
       },
     },
@@ -44,16 +44,16 @@ describe('generateMigration', () => {
     // Reset all mocks before each test
     vi.clearAllMocks();
     // Mock implementation for resolvePath
-    vi.mocked(resolvePath).mockImplementation((_, path) => join(process.cwd(), '.storyblok', path));
+    vi.mocked(resolvePath).mockImplementation((_, path) => join(process.cwd(), ".storyblok", path));
   });
 
   afterEach(() => {
     vi.resetAllMocks();
   });
 
-  it('should generate migration file with correct template', async () => {
+  it("should generate migration file with correct template", async () => {
     // Arrange
-    const expectedPath = join(process.cwd(), '.storyblok', `migrations/${mockSpace}`);
+    const expectedPath = join(process.cwd(), ".storyblok", `migrations/${mockSpace}`);
     const expectedFilePath = join(expectedPath, `${mockComponent.name}.js`);
 
     const expectedTemplate = `export default function (block) {
@@ -77,10 +77,10 @@ describe('generateMigration', () => {
     expect(saveToFile).toHaveBeenCalledWith(expectedFilePath, expectedTemplate);
   });
 
-  it('should use custom path when provided', async () => {
+  it("should use custom path when provided", async () => {
     // Arrange
-    const customPath = '/custom/path';
-    const expectedPath = join(process.cwd(), '.storyblok', `migrations/${mockSpace}`);
+    const customPath = "/custom/path";
+    const expectedPath = join(process.cwd(), ".storyblok", `migrations/${mockSpace}`);
     const expectedFilePath = join(expectedPath, `${mockComponent.name}.js`);
 
     // Act
@@ -91,15 +91,15 @@ describe('generateMigration', () => {
     expect(saveToFile).toHaveBeenCalledWith(expectedFilePath, expect.any(String));
   });
 
-  it('should handle filesystem errors properly', async () => {
+  it("should handle filesystem errors properly", async () => {
     // Arrange
-    const mockError = new Error('Failed to write file');
+    const mockError = new Error("Failed to write file");
     vi.mocked(saveToFile).mockRejectedValueOnce(mockError);
 
     // Act
     await generateMigration(mockSpace, mockPath, mockComponent);
 
     // Assert
-    expect(handleFileSystemError).toHaveBeenCalledWith('write', mockError);
+    expect(handleFileSystemError).toHaveBeenCalledWith("write", mockError);
   });
 });

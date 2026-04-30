@@ -1,5 +1,5 @@
-import type { SbSDKOptions } from '@storyblok/js';
-import type { Component } from 'svelte';
+import type { SbSDKOptions } from "@storyblok/js";
+import type { Component } from "svelte";
 
 export interface SbSvelteComponentsMap {
   [name: string]: Component;
@@ -36,4 +36,4 @@ export type {
   StoryblokRichTextOptions,
   TextTypes,
   useStoryblokBridge,
-} from '@storyblok/js';
+} from "@storyblok/js";

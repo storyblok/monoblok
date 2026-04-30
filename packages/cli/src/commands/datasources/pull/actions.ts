@@ -1,11 +1,11 @@
-import { handleAPIError, handleFileSystemError } from '../../../utils';
-import { getMapiClient } from '../../../api';
-import { join, resolve } from 'pathe';
-import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import { fetchAllPages } from '../../../utils/pagination';
-import type { DatasourceEntry, SpaceDatasource } from '../constants';
-import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
-import type { SaveDatasourcesOptions } from './constants';
+import { handleAPIError, handleFileSystemError } from "../../../utils";
+import { getMapiClient } from "../../../api";
+import { join, resolve } from "pathe";
+import { resolvePath, sanitizeFilename, saveToFile } from "../../../utils/filesystem";
+import { fetchAllPages } from "../../../utils/pagination";
+import type { DatasourceEntry, SpaceDatasource } from "../constants";
+import { DEFAULT_DATASOURCES_FILENAME } from "../constants";
+import type { SaveDatasourcesOptions } from "./constants";
 
 /**
  * Fetches entries for a given datasource id in a space.
@@ -20,22 +20,22 @@ export const fetchDatasourceEntries = async (
   try {
     const client = getMapiClient();
     return await fetchAllPages(
-      (page: number) => client.datasourceEntries.list({
-        path: {
-          space_id: Number(spaceId),
-        },
-        query: {
-          datasource_id: datasourceId,
-          page,
-        },
-        throwOnError: true,
-      }),
-      data => data?.datasource_entries || [],
+      (page: number) =>
+        client.datasourceEntries.list({
+          path: {
+            space_id: Number(spaceId),
+          },
+          query: {
+            datasource_id: datasourceId,
+            page,
+          },
+          throwOnError: true,
+        }),
+      (data) => data?.datasource_entries || [],
     );
-  }
-  catch (error) {
+  } catch (error) {
     // Use 'pull_datasources' as the closest valid action for datasource entries errors
-    handleAPIError('pull_datasources', error as Error);
+    handleAPIError("pull_datasources", error as Error);
   }
 };
 
@@ -43,16 +43,17 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
   try {
     const client = getMapiClient();
     const datasources = await fetchAllPages(
-      (page: number) => client.datasources.list({
-        path: {
-          space_id: Number(spaceId),
-        },
-        query: {
-          page,
-        },
-        throwOnError: true,
-      }),
-      data => data.datasources || [],
+      (page: number) =>
+        client.datasources.list({
+          path: {
+            space_id: Number(spaceId),
+          },
+          query: {
+            page,
+          },
+          throwOnError: true,
+        }),
+      (data) => data.datasources || [],
     );
     // Fetch entries for each datasource in parallel
     const datasourcesWithEntries = await Promise.all(
@@ -65,36 +66,44 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
       }),
     );
     return datasourcesWithEntries;
-  }
-  catch (error) {
-    handleAPIError('pull_datasources', error as Error);
+  } catch (error) {
+    handleAPIError("pull_datasources", error as Error);
   }
 };
 
-export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
+export const fetchDatasource = async (
+  spaceId: string,
+  datasourceName: string,
+): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
     const matches = await fetchAllPages(
-      (page: number) => client.datasources.list({
-        path: {
-          space_id: Number(spaceId),
-        },
-        query: {
-          page,
-          search: datasourceName,
-        },
-        throwOnError: true,
-      }),
-      data => data.datasources || [],
+      (page: number) =>
+        client.datasources.list({
+          path: {
+            space_id: Number(spaceId),
+          },
+          query: {
+            page,
+            search: datasourceName,
+          },
+          throwOnError: true,
+        }),
+      (data) => data.datasources || [],
     );
     const found = matches.find((d: SpaceDatasource) => d.name === datasourceName);
-    if (!found) { return undefined; }
+    if (!found) {
+      return undefined;
+    }
     // Fetch entries for the found datasource
     const entries = await fetchDatasourceEntries(spaceId, found.id as number);
     return { ...found, entries: entries || [] } as SpaceDatasource;
-  }
-  catch (error) {
-    handleAPIError('pull_datasources', error as Error, `Failed to fetch datasource ${datasourceName}`);
+  } catch (error) {
+    handleAPIError(
+      "pull_datasources",
+      error as Error,
+      `Failed to fetch datasource ${datasourceName}`,
+    );
   }
 };
 
@@ -108,25 +117,30 @@ export const saveDatasourcesToFiles = async (
   const { filename = DEFAULT_DATASOURCES_FILENAME, suffix, path, separateFiles } = options;
   // Ensure we always include the datasources/space folder structure regardless of custom path
   const resolvedPath = path
-    ? resolve(process.cwd(), path, 'datasources', space)
+    ? resolve(process.cwd(), path, "datasources", space)
     : resolvePath(path, `datasources/${space}`);
 
   try {
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const datasource of datasources) {
-        const sanitizedName = sanitizeFilename(datasource.name || '');
-        const datasourceFilePath = join(resolvedPath, suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`);
+        const sanitizedName = sanitizeFilename(datasource.name || "");
+        const datasourceFilePath = join(
+          resolvedPath,
+          suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`,
+        );
         await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
       }
       return;
     }
 
     // Default to saving consolidated files
-    const datasourcesFilePath = join(resolvedPath, suffix ? `${filename}.${suffix}.json` : `${filename}.json`);
+    const datasourcesFilePath = join(
+      resolvedPath,
+      suffix ? `${filename}.${suffix}.json` : `${filename}.json`,
+    );
     await saveToFile(datasourcesFilePath, JSON.stringify(datasources, null, 2));
-  }
-  catch (error) {
-    handleFileSystemError('write', error as Error);
+  } catch (error) {
+    handleFileSystemError("write", error as Error);
   }
 };

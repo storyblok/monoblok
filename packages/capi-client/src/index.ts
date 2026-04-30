@@ -1,41 +1,48 @@
-import { createClient, createConfig } from './generated/shared/client';
-import type { StoryCapi } from './generated/stories';
-import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
-import { createMemoryCacheProvider, createStrategy } from './utils/cache';
-import { ClientError } from './error';
-import type { RateLimitConfig } from './utils/rate-limit';
-import { createThrottleManager } from './utils/rate-limit';
-import { applyCvToQuery, extractCv } from './utils/cv';
-import { createCacheKey, shouldUseCache } from './utils/request';
-import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
-import type { RetryOptions } from 'ky';
-import type { Client } from './generated/shared/client';
-import type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions, RequestWithCacheOptions, ResourceDeps } from './types';
-import { createStoriesResource } from './resources/stories';
-import { createLinksResource } from './resources/links';
-import { createTagsResource } from './resources/tags';
-import { createDatasourcesResource } from './resources/datasources';
-import { createDatasourceEntriesResource } from './resources/datasource-entries';
-import { createSpacesResource } from './resources/spaces';
+import { createClient, createConfig } from "./generated/shared/client";
+import type { StoryCapi } from "./generated/stories";
+import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
+import { createMemoryCacheProvider, createStrategy } from "./utils/cache";
+import { ClientError } from "./error";
+import type { RateLimitConfig } from "./utils/rate-limit";
+import { createThrottleManager } from "./utils/rate-limit";
+import { applyCvToQuery, extractCv } from "./utils/cv";
+import { createCacheKey, shouldUseCache } from "./utils/request";
+import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
+import type { RetryOptions } from "ky";
+import type { Client } from "./generated/shared/client";
+import type {
+  ApiResponse,
+  FetchOptions,
+  HttpRequestMethod,
+  HttpRequestOptions,
+  RequestWithCacheOptions,
+  ResourceDeps,
+} from "./types";
+import { createStoriesResource } from "./resources/stories";
+import { createLinksResource } from "./resources/links";
+import { createTagsResource } from "./resources/tags";
+import { createDatasourcesResource } from "./resources/datasources";
+import { createDatasourceEntriesResource } from "./resources/datasource-entries";
+import { createSpacesResource } from "./resources/spaces";
 
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
 export type Story = Prettify<StoryCapi>;
-export { ClientError } from './error';
-export type { DatasourceEntryCapi as DatasourceEntry } from './generated/datasource_entries/types.gen';
-export type { DatasourceCapi as Datasource } from './generated/datasources/types.gen';
-export type { LinkCapi as Link } from './generated/links/types.gen';
-export type { Middleware } from './generated/shared/client/utils.gen';
-export type { SpaceCapi as Space } from './generated/spaces/types.gen';
+export { ClientError } from "./error";
+export type { DatasourceEntryCapi as DatasourceEntry } from "./generated/datasource_entries/types.gen";
+export type { DatasourceCapi as Datasource } from "./generated/datasources/types.gen";
+export type { LinkCapi as Link } from "./generated/links/types.gen";
+export type { Middleware } from "./generated/shared/client/utils.gen";
+export type { SpaceCapi as Space } from "./generated/spaces/types.gen";
 export type { ApiResponse, FetchOptions, HttpRequestMethod, HttpRequestOptions };
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler };
 export type { RateLimitConfig };
-export type { TagCapi as Tag } from './generated/tags/types.gen';
-export type { StoryWithInlinedRelations } from './resources/stories';
+export type { TagCapi as Tag } from "./generated/tags/types.gen";
+export type { StoryWithInlinedRelations } from "./resources/stories";
 
-export { createThrottle, parseRateLimitPolicyHeader } from './utils/rate-limit';
+export { createThrottle, parseRateLimitPolicyHeader } from "./utils/rate-limit";
 
 /**
  * Cache configuration.
@@ -56,7 +63,7 @@ interface CacheConfig {
    * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
    * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
    */
-  flush?: 'auto' | 'manual';
+  flush?: "auto" | "manual";
   /**
    * Called when SWR background revalidation fails.
    * Only relevant when `strategy` is `'swr'`.
@@ -112,7 +119,7 @@ export const createApiClient = <
 ) => {
   const {
     accessToken,
-    region = 'eu',
+    region = "eu",
     baseUrl,
     headers = {},
     throwOnError = false,
@@ -127,14 +134,16 @@ export const createApiClient = <
   // `rateLimit` defaults to `{}` (auto-detect mode) when not supplied.
   const throttleManager = createThrottleManager(rateLimit ?? {});
   const cacheProvider = cache.provider ?? createMemoryCacheProvider();
-  const swrOptions = cache.onRevalidationError ? { onRevalidationError: cache.onRevalidationError } : undefined;
+  const swrOptions = cache.onRevalidationError
+    ? { onRevalidationError: cache.onRevalidationError }
+    : undefined;
   const strategy = cache.strategy
-    ? typeof cache.strategy === 'string'
+    ? typeof cache.strategy === "string"
       ? createStrategy(cache.strategy, swrOptions)
       : cache.strategy
-    : createStrategy('cache-first');
+    : createStrategy("cache-first");
   const cacheTtlMs = cache.ttlMs ?? 60_000;
-  const cacheFlush = cache.flush ?? 'auto';
+  const cacheFlush = cache.flush ?? "auto";
   let currentCv: number | undefined;
 
   const client: Client = createClient(
@@ -157,18 +166,18 @@ export const createApiClient = <
 
   client.interceptors.error.use(
     (error: unknown, response: Response) =>
-      new ClientError(response?.statusText || 'API request failed', {
+      new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
-        statusText: response?.statusText ?? '',
+        statusText: response?.statusText ?? "",
         data: error,
       }),
   );
 
   const security = [
     {
-      in: 'query' as const,
-      name: 'token',
-      type: 'apiKey' as const,
+      in: "query" as const,
+      name: "token",
+      type: "apiKey" as const,
     },
   ];
 
@@ -184,7 +193,7 @@ export const createApiClient = <
       return false;
     }
 
-    if (cacheFlush === 'auto' && currentCv !== undefined && currentCv !== nextCv) {
+    if (cacheFlush === "auto" && currentCv !== undefined && currentCv !== nextCv) {
       await cacheProvider.flush();
     }
 
@@ -192,7 +201,10 @@ export const createApiClient = <
     return true;
   };
 
-  const cacheSuccessResult = async <TResponse extends ApiResponse>(key: string, result: TResponse) => {
+  const cacheSuccessResult = async <TResponse extends ApiResponse>(
+    key: string,
+    result: TResponse,
+  ) => {
     const shouldCacheResult = await updateCv(result);
     if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
@@ -204,7 +216,7 @@ export const createApiClient = <
   };
 
   const requestNetwork = async (
-    method: 'GET',
+    method: "GET",
     path: string,
     query: Record<string, unknown>,
     options: HttpRequestOptions,
@@ -225,10 +237,11 @@ export const createApiClient = <
    */
   const asApiResponse = <TData, ThrowOnError extends boolean = false>(
     p: Promise<unknown>,
-  ): Promise<ApiResponse<TData, ThrowOnError>> => p as unknown as Promise<ApiResponse<TData, ThrowOnError>>;
+  ): Promise<ApiResponse<TData, ThrowOnError>> =>
+    p as unknown as Promise<ApiResponse<TData, ThrowOnError>>;
 
   const requestWithCache = async <TData = unknown, ThrowOnError extends boolean = false>(
-    method: 'GET',
+    method: "GET",
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
@@ -245,7 +258,9 @@ export const createApiClient = <
     }
 
     const baseKey = createCacheKey(method, path, rawQuery);
-    const key = cacheOptions?.cacheKeyPrefix ? `${cacheOptions.cacheKeyPrefix}:${baseKey}` : baseKey;
+    const key = cacheOptions?.cacheKeyPrefix
+      ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
+      : baseKey;
     const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
     const cachedResult = cachedEntry?.value;
 
@@ -263,22 +278,21 @@ export const createApiClient = <
   };
 
   const request = async (
-    method: 'GET',
+    method: "GET",
     path: string,
     options: HttpRequestOptions = {},
   ): Promise<ApiResponse> => {
     const rawQuery = options.query || {};
 
     return requestWithCache(method, path, rawQuery, (query) => {
-      return throttleManager.execute(path, rawQuery, () => requestNetwork(method, path, query, options));
+      return throttleManager.execute(path, rawQuery, () =>
+        requestNetwork(method, path, query, options),
+      );
     });
   };
 
-  const getRequest = (
-    path: string,
-    options: HttpRequestOptions = {},
-  ) => {
-    return request('GET', path, options);
+  const getRequest = (path: string, options: HttpRequestOptions = {}) => {
+    return request("GET", path, options);
   };
 
   const resourceDeps: ResourceDeps = {

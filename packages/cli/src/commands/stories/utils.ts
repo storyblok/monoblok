@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
-import { extname, join } from 'pathe';
-import type { Component } from '../components/constants';
-import type { Story } from './constants';
+import { readFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import { extname, join } from "pathe";
+import type { Component } from "../components/constants";
+import type { Story } from "./constants";
 
 /**
  * @method isStoryPublishedWithoutChanges
@@ -31,17 +31,17 @@ const toComponent = (maybeComponent: { component_group_uuid?: string | null }) =
 
 export const findComponentSchemas = async (directoryPath: string) => {
   const files = await readdir(directoryPath).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === 'ENOENT') {
+    if (error.code === "ENOENT") {
       return [];
     }
     throw error;
   });
 
   const fileContents = files
-    .filter(f => extname(f) === '.json')
+    .filter((f) => extname(f) === ".json")
     .map((f) => {
       const filePath = join(directoryPath, f);
-      const fileContent = readFileSync(filePath, 'utf-8');
+      const fileContent = readFileSync(filePath, "utf-8");
       return JSON.parse(fileContent);
     });
 
@@ -65,7 +65,7 @@ export const findComponentSchemas = async (directoryPath: string) => {
     }
   }
 
-  const schemas: Record<Component['name'], Component['schema']> = {};
+  const schemas: Record<Component["name"], Component["schema"]> = {};
   for (const component of components) {
     schemas[component.name] = component.schema;
   }
@@ -77,6 +77,6 @@ export const findComponentSchemas = async (directoryPath: string) => {
  * @param  {object} story - Story object with slug and uuid
  * @return {string} Filename in the format {slug}_{uuid}.json
  */
-export const getStoryFilename = (story: Pick<Story, 'slug' | 'uuid'>) => {
+export const getStoryFilename = (story: Pick<Story, "slug" | "uuid">) => {
   return `${story.slug}_${story.uuid}.json`;
 };

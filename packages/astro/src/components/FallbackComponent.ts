@@ -1,4 +1,4 @@
-import type { SbBlokData } from '@storyblok/js';
+import type { SbBlokData } from "@storyblok/js";
 
 function FallbackComponent(
   _props: Record<string, unknown> & {

@@ -3,6 +3,7 @@
 The `components push` command allows you to upload components and their dependencies to your Storyblok space.
 
 This command will automatically handle the following:
+
 - Upload components
 - Upload component groups
 - Upload component presets
@@ -26,6 +27,7 @@ storyblok components push --space YOUR_SPACE_ID
 ```
 
 This will upload all components and their dependencies from:
+
 ```
 .storyblok/
 └── components/
@@ -40,6 +42,7 @@ storyblok components push COMPONENT_NAME --space YOUR_SPACE_ID
 ```
 
 This will upload a single component and its dependencies from:
+
 ```
 .storyblok/
 └── components/
@@ -49,22 +52,25 @@ This will upload a single component and its dependencies from:
 
 ## Options
 
-| Option                    | Description                                                                                                    | Default                 |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                           | -                       |
-| `-f, --from <from>`       | Source space ID to read components from                                                                        | Target space ID         |
-| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | -                       |
-| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                         | `false`                 |
-| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                               | -                       |
-| `-p, --path <path>`       | Custom path to read the files from                                                                             | `.storyblok/components` |
+| Option                    | Description                                                                                                     | Default                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                            | -                       |
+| `-f, --from <from>`       | Source space ID to read components from                                                                         | Target space ID         |
+| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero\*" will match all components starting with "hero") | -                       |
+| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                          | `false`                 |
+| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                                | -                       |
+| `-p, --path <path>`       | Custom path to read the files from                                                                              | `.storyblok/components` |
 
 ## Examples
 
 1. Push all components with default settings:
+
 ```bash
 storyblok components push --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -73,10 +79,13 @@ Reads from:
 ```
 
 2. Push a single component:
+
 ```bash
 storyblok components push hero --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -85,10 +94,13 @@ Reads from:
 ```
 
 3. Push components with filter:
+
 ```bash
 storyblok components push --space 12345 --filter "hero*"
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -97,10 +109,13 @@ Reads from:
 ```
 
 4. Push components from a different space:
+
 ```bash
 storyblok components push --space 12345 --from 67890
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -109,10 +124,13 @@ Reads from:
 ```
 
 5. Push components from separate files:
+
 ```bash
 storyblok components push --space 12345 --separate-files
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -125,10 +143,13 @@ Reads from:
 ```
 
 6. Push components from a custom path:
+
 ```bash
 storyblok components push --space 12345 --path ./backup
 ```
+
 Reads from:
+
 ```
 backup/
 └── components/
@@ -139,6 +160,7 @@ backup/
 ## File Structure
 
 The command reads from the following file structure:
+
 ```
 {path}/
 └── components/
@@ -147,6 +169,7 @@ The command reads from the following file structure:
 ```
 
 When using `--separate-files`:
+
 ```
 {path}/
 └── components/
@@ -159,6 +182,7 @@ When using `--separate-files`:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{suffix}` is the suffix in the file name if provided

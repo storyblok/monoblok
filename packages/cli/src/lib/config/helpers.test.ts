@@ -1,40 +1,60 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Command } from 'commander';
-import { resolve as resolvePath } from 'pathe';
-import { vol } from 'memfs';
-import { CONFIG_FILE_NAME, formatConfigForDisplay, getOptionPath, HIDDEN_CONFIG_DIR, HIDDEN_CONFIG_FILE_NAME, loadConfigLayers } from './helpers';
-import type { ResolvedCliConfig } from './types';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Command } from "commander";
+import { resolve as resolvePath } from "pathe";
+import { vol } from "memfs";
+import {
+  CONFIG_FILE_NAME,
+  formatConfigForDisplay,
+  getOptionPath,
+  HIDDEN_CONFIG_DIR,
+  HIDDEN_CONFIG_FILE_NAME,
+  loadConfigLayers,
+} from "./helpers";
+import type { ResolvedCliConfig } from "./types";
 
 const loggerInfoMock = vi.hoisted(() => vi.fn());
 const loggerDebugMock = vi.hoisted(() => vi.fn());
 const loadConfigMock = vi.hoisted(() => vi.fn());
 const uiInfoMock = vi.hoisted(() => vi.fn());
-const supportedExtensions = vi.hoisted(() => ['.json', '.json5', '.jsonc', '.yaml', '.yml', '.toml', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs']);
+const supportedExtensions = vi.hoisted(() => [
+  ".json",
+  ".json5",
+  ".jsonc",
+  ".yaml",
+  ".yml",
+  ".toml",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".js",
+  ".mjs",
+  ".cjs",
+]);
 
-vi.mock('node:os', () => ({
-  homedir: () => '/home/tester',
+vi.mock("node:os", () => ({
+  homedir: () => "/home/tester",
 }));
 
-vi.mock('./loader', () => ({
+vi.mock("./loader", () => ({
   SUPPORTED_EXTENSIONS: supportedExtensions,
   loadConfig: (options: any) => loadConfigMock(options),
 }));
 
-vi.mock('../../utils/ui', () => ({
+vi.mock("../../utils/ui", () => ({
   getUI: () => ({
     info: uiInfoMock,
   }),
 }));
 
-vi.mock('../logger/logger', () => ({
+vi.mock("../logger/logger", () => ({
   getLogger: () => ({
     info: loggerInfoMock,
     debug: loggerDebugMock,
   }),
 }));
 
-const HOME_DIR = '/home/tester';
-const WORKSPACE_DIR = '/workspace/project';
+const HOME_DIR = "/home/tester";
+const WORKSPACE_DIR = "/workspace/project";
 const HOME_CONFIG_DIR = resolvePath(HOME_DIR, HIDDEN_CONFIG_DIR);
 const LOCAL_CONFIG_DIR = resolvePath(WORKSPACE_DIR, HIDDEN_CONFIG_DIR);
 
@@ -76,7 +96,7 @@ beforeEach(() => {
   loadConfigMock.mockImplementation(async ({ cwd }: { cwd: string }) => ({
     config: responses.get(cwd) ?? null,
   }));
-  cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(WORKSPACE_DIR);
+  cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(WORKSPACE_DIR);
 });
 
 afterEach(() => {
@@ -88,36 +108,36 @@ afterEach(() => {
   vol.reset();
 });
 
-describe('loadConfigLayers', () => {
-  it('loads configs from home, workspace hidden dir, and project root honoring priority and supported extensions', async () => {
+describe("loadConfigLayers", () => {
+  it("loads configs from home, workspace hidden dir, and project root honoring priority and supported extensions", async () => {
     // Given: config files exist in all three locations
-    preconditions.hasHomeConfig('.json', { scope: 'home', ext: 'json' });
-    preconditions.hasLocalConfig('.yaml', { scope: 'workspace-hidden', ext: 'yaml' });
-    preconditions.hasWorkspaceConfig('.ts', { scope: 'workspace-root', ext: 'ts' });
+    preconditions.hasHomeConfig(".json", { scope: "home", ext: "json" });
+    preconditions.hasLocalConfig(".yaml", { scope: "workspace-hidden", ext: "yaml" });
+    preconditions.hasWorkspaceConfig(".ts", { scope: "workspace-root", ext: "ts" });
 
     // When: loading config layers
     const layers = await loadConfigLayers();
 
     // Then: all layers are loaded in priority order (home → local → workspace)
     expect(layers).toEqual([
-      { scope: 'home', ext: 'json' },
-      { scope: 'workspace-hidden', ext: 'yaml' },
-      { scope: 'workspace-root', ext: 'ts' },
+      { scope: "home", ext: "json" },
+      { scope: "workspace-hidden", ext: "yaml" },
+      { scope: "workspace-root", ext: "ts" },
     ]);
   });
 
-  it('skips locations that do not expose a supported config file', async () => {
+  it("skips locations that do not expose a supported config file", async () => {
     // Given: only workspace config exists
-    preconditions.hasWorkspaceConfig('.ts', { scope: 'workspace-root', ext: 'ts' });
+    preconditions.hasWorkspaceConfig(".ts", { scope: "workspace-root", ext: "ts" });
 
     // When: loading config layers
     const layers = await loadConfigLayers();
 
     // Then: only workspace layer is loaded
-    expect(layers).toEqual([{ scope: 'workspace-root', ext: 'ts' }]);
+    expect(layers).toEqual([{ scope: "workspace-root", ext: "ts" }]);
   });
 
-  it('returns empty array when no config layers are detected', async () => {
+  it("returns empty array when no config layers are detected", async () => {
     // Given: no config files exist
     preconditions.hasNoConfigFiles();
 
@@ -131,7 +151,7 @@ describe('loadConfigLayers', () => {
 });
 
 const mockConfig: ResolvedCliConfig = {
-  region: 'us',
+  region: "us",
   api: {
     maxRetries: 5,
     maxConcurrency: 6,
@@ -139,11 +159,11 @@ const mockConfig: ResolvedCliConfig = {
   log: {
     console: {
       enabled: true,
-      level: 'info',
+      level: "info",
     },
     file: {
       enabled: true,
-      level: 'warn',
+      level: "warn",
       maxFiles: 10,
     },
   },
@@ -157,143 +177,143 @@ const mockConfig: ResolvedCliConfig = {
   verbose: true,
 };
 
-describe('config inspector helpers', () => {
-  it('serializes config for display', () => {
+describe("config inspector helpers", () => {
+  it("serializes config for display", () => {
     const formatted = formatConfigForDisplay(mockConfig);
     const parsed = JSON.parse(formatted);
 
-    expect(parsed.region).toBe('us');
+    expect(parsed.region).toBe("us");
     expect(parsed.api.maxRetries).toBe(5);
-    expect(parsed.log.file.level).toBe('warn');
+    expect(parsed.log.file.level).toBe("warn");
     expect(parsed.verbose).toBe(true);
   });
 });
 
-describe('getOptionPath', () => {
-  it('parses hyphenated flags into camelCase path segments', () => {
+describe("getOptionPath", () => {
+  it("parses hyphenated flags into camelCase path segments", () => {
     const prog = new Command();
-    prog.option('--api-max-retries <number>', 'desc');
+    prog.option("--api-max-retries <number>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
-    expect(path).toEqual(['api', 'maxRetries']);
+    expect(path).toEqual(["api", "maxRetries"]);
   });
 
-  it('handles deeply nested paths with hyphens', () => {
+  it("handles deeply nested paths with hyphens", () => {
     const prog = new Command();
-    prog.option('--log-file-max-files <number>', 'desc');
+    prog.option("--log-file-max-files <number>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
-    expect(path).toEqual(['log', 'file', 'maxFiles']);
+    expect(path).toEqual(["log", "file", "maxFiles"]);
   });
 
-  it('strips --no- prefix from negated boolean flags', () => {
+  it("strips --no- prefix from negated boolean flags", () => {
     const prog = new Command();
-    prog.option('--no-log-console-enabled', 'desc');
+    prog.option("--no-log-console-enabled", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
-    expect(path).toEqual(['log', 'console', 'enabled']);
+    expect(path).toEqual(["log", "console", "enabled"]);
   });
 
-  it('handles single segment flags', () => {
+  it("handles single segment flags", () => {
     const prog = new Command();
-    prog.option('--verbose', 'desc');
+    prog.option("--verbose", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
-    expect(path).toEqual(['verbose']);
+    expect(path).toEqual(["verbose"]);
   });
 
-  it('handles --no- prefix on single segment flags', () => {
+  it("handles --no- prefix on single segment flags", () => {
     const prog = new Command();
-    prog.option('--no-verbose', 'desc');
+    prog.option("--no-verbose", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
-    expect(path).toEqual(['verbose']);
+    expect(path).toEqual(["verbose"]);
   });
 
-  it('dynamically detects path vs property: log is object, console is object, enabled is property', () => {
+  it("dynamically detects path vs property: log is object, console is object, enabled is property", () => {
     const prog = new Command();
-    prog.option('--log-console-enabled', 'desc');
+    prog.option("--log-console-enabled", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // log is object, console is object under log, enabled is property
-    expect(path).toEqual(['log', 'console', 'enabled']);
+    expect(path).toEqual(["log", "console", "enabled"]);
   });
 
-  it('dynamically detects path vs property: log is object, file is object, maxFiles is property', () => {
+  it("dynamically detects path vs property: log is object, file is object, maxFiles is property", () => {
     const prog = new Command();
-    prog.option('--log-file-max-files <number>', 'desc');
+    prog.option("--log-file-max-files <number>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // log is object, file is object under log, max-files becomes maxFiles property
-    expect(path).toEqual(['log', 'file', 'maxFiles']);
+    expect(path).toEqual(["log", "file", "maxFiles"]);
   });
 
-  it('dynamically detects path vs property: api is object, maxRetries is property', () => {
+  it("dynamically detects path vs property: api is object, maxRetries is property", () => {
     const prog = new Command();
-    prog.option('--api-max-retries <number>', 'desc');
+    prog.option("--api-max-retries <number>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // api is object, max-retries becomes maxRetries property
-    expect(path).toEqual(['api', 'maxRetries']);
+    expect(path).toEqual(["api", "maxRetries"]);
   });
 
-  it('dynamically detects path vs property: ui is object, enabled is property', () => {
+  it("dynamically detects path vs property: ui is object, enabled is property", () => {
     const prog = new Command();
-    prog.option('--ui-enabled', 'desc');
+    prog.option("--ui-enabled", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // ui is object, enabled is property
-    expect(path).toEqual(['ui', 'enabled']);
+    expect(path).toEqual(["ui", "enabled"]);
   });
 
-  it('dynamically detects path vs property: report is object, maxFiles is property', () => {
+  it("dynamically detects path vs property: report is object, maxFiles is property", () => {
     const prog = new Command();
-    prog.option('--report-max-files <number>', 'desc');
+    prog.option("--report-max-files <number>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // report is object, max-files becomes maxFiles property
-    expect(path).toEqual(['report', 'maxFiles']);
+    expect(path).toEqual(["report", "maxFiles"]);
   });
 
-  it('handles flags with --no- prefix using dynamic detection', () => {
+  it("handles flags with --no- prefix using dynamic detection", () => {
     const prog = new Command();
-    prog.option('--no-log-file-enabled', 'desc');
+    prog.option("--no-log-file-enabled", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // Strips --no-, then: log is object, file is object, enabled is property
-    expect(path).toEqual(['log', 'file', 'enabled']);
+    expect(path).toEqual(["log", "file", "enabled"]);
   });
 
-  it('treats unknown top-level keys as properties', () => {
+  it("treats unknown top-level keys as properties", () => {
     const prog = new Command();
-    prog.option('--custom-option <value>', 'desc');
+    prog.option("--custom-option <value>", "desc");
 
     const option = prog.options[0];
     const path = getOptionPath(option);
 
     // custom is not in DEFAULT_GLOBAL_CONFIG, so entire thing becomes camelCase property
-    expect(path).toEqual(['customOption']);
+    expect(path).toEqual(["customOption"]);
   });
 });

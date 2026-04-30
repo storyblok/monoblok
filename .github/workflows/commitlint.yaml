@@ -6,7 +6,7 @@ on:
       - opened
       - reopened
       - edited
-      - synchronize 
+      - synchronize
 
 permissions:
   pull-requests: read

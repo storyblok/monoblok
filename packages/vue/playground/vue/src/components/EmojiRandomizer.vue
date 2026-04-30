@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { SbBlokData } from '@storyblok/vue';
+import { ref } from "vue";
+import type { SbBlokData } from "@storyblok/vue";
 
 interface EmojiRandomizerBlok extends SbBlokData {
   label?: string;
@@ -13,12 +13,10 @@ interface Props {
 defineProps<Props>();
 
 // List of fun emojis to randomly choose from
-const emojis = ['😊', '🎉', '🚀', '✨', '🌈', '🎨', '🎸', '🎮', '🍕', '🌺'];
+const emojis = ["😊", "🎉", "🚀", "✨", "🌈", "🎨", "🎸", "🎮", "🍕", "🌺"];
 
 // Reactive state to track current emoji
-const currentEmoji = ref<string>(
-  emojis[Math.floor(Math.random() * emojis.length)],
-);
+const currentEmoji = ref<string>(emojis[Math.floor(Math.random() * emojis.length)]);
 
 /**
  * Generates a new random emoji different from the current one
@@ -49,7 +47,7 @@ const randomizeEmoji = (): void => {
       class="px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-small transition-colors duration-200 dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800"
       @click="randomizeEmoji"
     >
-      {{ blok.label || 'Randomize Emoji' }}
+      {{ blok.label || "Randomize Emoji" }}
     </button>
   </div>
 </template>

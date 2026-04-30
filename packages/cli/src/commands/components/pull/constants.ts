@@ -1,10 +1,9 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 /**
  * Interface representing the options for the `components pull` command.
  */
 export interface PullComponentsOptions extends CommandOptions {
-
   /**
    * The filename to save the file as.
    * Defaults to `components`. The file will be saved as `<filename>.<space>.json`.
@@ -41,5 +40,4 @@ export interface SaveComponentsOptions extends PullComponentsOptions {
    * @default false
    */
   separateFiles?: boolean;
-
 }

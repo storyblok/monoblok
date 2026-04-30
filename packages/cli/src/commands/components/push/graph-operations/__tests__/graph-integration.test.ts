@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildDependencyGraph, determineProcessingOrder, validateGraph } from '../dependency-graph';
-import { processAllResources } from '../resource-processor';
-import type { SpaceComponentsDataState } from '../../../constants';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildDependencyGraph, determineProcessingOrder, validateGraph } from "../dependency-graph";
+import { processAllResources } from "../resource-processor";
+import type { SpaceComponentsDataState } from "../../../constants";
 
 // Mock the API functions
-vi.mock('../../actions', () => ({
+vi.mock("../../actions", () => ({
   upsertComponent: vi.fn(),
   upsertComponentGroup: vi.fn(),
   upsertComponentInternalTag: vi.fn(),
@@ -13,101 +13,128 @@ vi.mock('../../actions', () => ({
 }));
 
 // Mock progress display
-vi.mock('../../progress-display', () => ({
+vi.mock("../../progress-display", () => ({
   progressDisplay: {
     start: vi.fn(),
     handleEvent: vi.fn(),
   },
 }));
 
-describe('graph Integration Tests', () => {
+describe("graph Integration Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('source/Target Reconciliation', () => {
-    it('should correctly reconcile resources with different IDs between source and target spaces', () => {
+  describe("source/Target Reconciliation", () => {
+    it("should correctly reconcile resources with different IDs between source and target spaces", () => {
       // Scenario: Source space has resources with IDs 100-400, target space has same resources with IDs 500-800
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 300,
-            name: 'shared-component',
-            display_name: 'Shared Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: ['100'], // References source tag ID
-            component_group_uuid: 'shared-group-uuid', // References source group
-          }],
-          groups: [{
-            id: 200,
-            name: 'shared-group',
-            uuid: 'shared-group-uuid',
-            parent_id: null,
-            parent_uuid: null,
-          }],
-          internalTags: [{
-            id: 100,
-            name: 'shared-tag',
-            object_type: 'component' as const,
-          }],
-          presets: [{
-            id: 400,
-            name: 'shared-preset',
-            preset: { title: 'Test Preset' },
-            component_id: 300, // References source component ID
-            space_id: 1,
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            image: '',
-            color: '',
-            icon: '',
-            description: '',
-          }],
+          components: [
+            {
+              id: 300,
+              name: "shared-component",
+              display_name: "Shared Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: ["100"], // References source tag ID
+              component_group_uuid: "shared-group-uuid", // References source group
+            },
+          ],
+          groups: [
+            {
+              id: 200,
+              name: "shared-group",
+              uuid: "shared-group-uuid",
+              parent_id: null,
+              parent_uuid: null,
+            },
+          ],
+          internalTags: [
+            {
+              id: 100,
+              name: "shared-tag",
+              object_type: "component" as const,
+            },
+          ],
+          presets: [
+            {
+              id: 400,
+              name: "shared-preset",
+              preset: { title: "Test Preset" },
+              component_id: 300, // References source component ID
+              space_id: 1,
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
+            },
+          ],
           datasources: [],
         },
         target: {
-          components: new Map([['shared-component', {
-            id: 700,
-            name: 'shared-component',
-            display_name: 'Shared Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: ['500'], // Different tag ID in target
-            component_group_uuid: 'shared-group-uuid',
-          }]]),
-          groups: new Map([['shared-group', {
-            id: 600,
-            name: 'shared-group',
-            uuid: 'shared-group-uuid',
-            parent_id: null,
-            parent_uuid: null,
-          }]]),
-          tags: new Map([['shared-tag', {
-            id: 500,
-            name: 'shared-tag',
-            object_type: 'component' as const,
-          }]]),
+          components: new Map([
+            [
+              "shared-component",
+              {
+                id: 700,
+                name: "shared-component",
+                display_name: "Shared Component",
+                created_at: "2023-01-01T00:00:00.000Z",
+                updated_at: "2023-01-01T00:00:00.000Z",
+                schema: {},
+                color: null,
+                internal_tags_list: [],
+                internal_tag_ids: ["500"], // Different tag ID in target
+                component_group_uuid: "shared-group-uuid",
+              },
+            ],
+          ]),
+          groups: new Map([
+            [
+              "shared-group",
+              {
+                id: 600,
+                name: "shared-group",
+                uuid: "shared-group-uuid",
+                parent_id: null,
+                parent_uuid: null,
+              },
+            ],
+          ]),
+          tags: new Map([
+            [
+              "shared-tag",
+              {
+                id: 500,
+                name: "shared-tag",
+                object_type: "component" as const,
+              },
+            ],
+          ]),
           presets: new Map([
-            ['shared-component:shared-preset', { // Use hierarchical key: component.name:preset.name (parent:child)
-              id: 800,
-              name: 'shared-preset',
-              preset: { title: 'Test Preset' },
-              component_id: 700, // Different component ID in target
-              space_id: 2,
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
-            }],
+            [
+              "shared-component:shared-preset",
+              {
+                // Use hierarchical key: component.name:preset.name (parent:child)
+                id: 800,
+                name: "shared-preset",
+                preset: { title: "Test Preset" },
+                component_id: 700, // Different component ID in target
+                space_id: 2,
+                created_at: "2023-01-01T00:00:00.000Z",
+                updated_at: "2023-01-01T00:00:00.000Z",
+                image: "",
+                color: "",
+                icon: "",
+                description: "",
+              },
+            ],
           ]),
           datasources: new Map(),
         },
@@ -118,23 +145,23 @@ describe('graph Integration Tests', () => {
 
       // Validate the graph structure
       expect(graph.nodes.size).toBe(4); // tag, group, component, preset
-      expect(graph.nodes.has('tag:100')).toBe(true);
-      expect(graph.nodes.has('group:shared-group-uuid')).toBe(true);
-      expect(graph.nodes.has('component:shared-component')).toBe(true);
-      expect(graph.nodes.has('preset:400')).toBe(true);
+      expect(graph.nodes.has("tag:100")).toBe(true);
+      expect(graph.nodes.has("group:shared-group-uuid")).toBe(true);
+      expect(graph.nodes.has("component:shared-component")).toBe(true);
+      expect(graph.nodes.has("preset:400")).toBe(true);
 
       // Check dependencies are correctly established
-      const componentNode = graph.nodes.get('component:shared-component')!;
-      const presetNode = graph.nodes.get('preset:400')!;
-      const tagNode = graph.nodes.get('tag:100')!;
-      const groupNode = graph.nodes.get('group:shared-group-uuid')!;
+      const componentNode = graph.nodes.get("component:shared-component")!;
+      const presetNode = graph.nodes.get("preset:400")!;
+      const tagNode = graph.nodes.get("tag:100")!;
+      const groupNode = graph.nodes.get("group:shared-group-uuid")!;
 
       // Component should depend on tag and group
-      expect(componentNode.dependencies.has('tag:100')).toBe(true);
-      expect(componentNode.dependencies.has('group:shared-group-uuid')).toBe(true);
+      expect(componentNode.dependencies.has("tag:100")).toBe(true);
+      expect(componentNode.dependencies.has("group:shared-group-uuid")).toBe(true);
 
       // Preset should depend on component
-      expect(presetNode.dependencies.has('component:shared-component')).toBe(true);
+      expect(presetNode.dependencies.has("component:shared-component")).toBe(true);
 
       // Check target data is correctly colocated
       expect(componentNode.targetData?.id).toBe(700);
@@ -143,31 +170,31 @@ describe('graph Integration Tests', () => {
       expect(presetNode.targetData?.id).toBe(800);
     });
 
-    it('should handle hierarchical group dependencies correctly', () => {
+    it("should handle hierarchical group dependencies correctly", () => {
       const spaceState: SpaceComponentsDataState = {
         local: {
           components: [],
           groups: [
             {
               id: 1,
-              name: 'parent-group',
-              uuid: 'parent-uuid',
+              name: "parent-group",
+              uuid: "parent-uuid",
               parent_id: null,
               parent_uuid: null,
             },
             {
               id: 2,
-              name: 'child-group',
-              uuid: 'child-uuid',
+              name: "child-group",
+              uuid: "child-uuid",
               parent_id: 1,
-              parent_uuid: 'parent-uuid',
+              parent_uuid: "parent-uuid",
             },
             {
               id: 3,
-              name: 'grandchild-group',
-              uuid: 'grandchild-uuid',
+              name: "grandchild-group",
+              uuid: "grandchild-uuid",
               parent_id: 2,
-              parent_uuid: 'child-uuid',
+              parent_uuid: "child-uuid",
             },
           ],
           internalTags: [],
@@ -177,9 +204,36 @@ describe('graph Integration Tests', () => {
         target: {
           components: new Map(),
           groups: new Map([
-            ['parent-group', { id: 10, name: 'parent-group', uuid: 'parent-uuid', parent_id: null, parent_uuid: null }],
-            ['child-group', { id: 20, name: 'child-group', uuid: 'child-uuid', parent_id: 10, parent_uuid: 'parent-uuid' }],
-            ['grandchild-group', { id: 30, name: 'grandchild-group', uuid: 'grandchild-uuid', parent_id: 20, parent_uuid: 'child-uuid' }],
+            [
+              "parent-group",
+              {
+                id: 10,
+                name: "parent-group",
+                uuid: "parent-uuid",
+                parent_id: null,
+                parent_uuid: null,
+              },
+            ],
+            [
+              "child-group",
+              {
+                id: 20,
+                name: "child-group",
+                uuid: "child-uuid",
+                parent_id: 10,
+                parent_uuid: "parent-uuid",
+              },
+            ],
+            [
+              "grandchild-group",
+              {
+                id: 30,
+                name: "grandchild-group",
+                uuid: "grandchild-uuid",
+                parent_id: 20,
+                parent_uuid: "child-uuid",
+              },
+            ],
           ]),
           tags: new Map(),
           presets: new Map(),
@@ -191,85 +245,114 @@ describe('graph Integration Tests', () => {
       const processingOrder = determineProcessingOrder(graph);
 
       // Parent should be processed before child, child before grandchild
-      const parentLevel = processingOrder.findIndex(level => level.nodes.includes('group:parent-uuid'));
-      const childLevel = processingOrder.findIndex(level => level.nodes.includes('group:child-uuid'));
-      const grandchildLevel = processingOrder.findIndex(level => level.nodes.includes('group:grandchild-uuid'));
+      const parentLevel = processingOrder.findIndex((level) =>
+        level.nodes.includes("group:parent-uuid"),
+      );
+      const childLevel = processingOrder.findIndex((level) =>
+        level.nodes.includes("group:child-uuid"),
+      );
+      const grandchildLevel = processingOrder.findIndex((level) =>
+        level.nodes.includes("group:grandchild-uuid"),
+      );
 
       expect(parentLevel).toBeLessThan(childLevel);
       expect(childLevel).toBeLessThan(grandchildLevel);
     });
 
-    it('should resolve references correctly during processing', async () => {
-      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } = await import('../../actions');
+    it("should resolve references correctly during processing", async () => {
+      const {
+        upsertComponent,
+        upsertComponentGroup,
+        upsertComponentInternalTag,
+        upsertComponentPreset,
+      } = await import("../../actions");
 
       // Mock successful upserts with new target IDs
-      (upsertComponentInternalTag as any).mockResolvedValue({ id: 1001, name: 'test-tag', object_type: 'component' });
-      (upsertComponentGroup as any).mockResolvedValue({ id: 2001, name: 'test-group', uuid: 'test-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponentInternalTag as any).mockResolvedValue({
+        id: 1001,
+        name: "test-tag",
+        object_type: "component",
+      });
+      (upsertComponentGroup as any).mockResolvedValue({
+        id: 2001,
+        name: "test-group",
+        uuid: "test-group-uuid",
+        parent_id: null,
+        parent_uuid: null,
+      });
       (upsertComponent as any).mockResolvedValue({
         id: 3001,
-        name: 'test-component',
-        display_name: 'Test Component',
-        created_at: '2023-01-01T00:00:00.000Z',
-        updated_at: '2023-01-01T00:00:00.000Z',
+        name: "test-component",
+        display_name: "Test Component",
+        created_at: "2023-01-01T00:00:00.000Z",
+        updated_at: "2023-01-01T00:00:00.000Z",
         schema: {},
         color: null,
         internal_tags_list: [],
-        internal_tag_ids: ['1001'], // Should be resolved to new tag ID
-        component_group_uuid: 'test-group-uuid',
+        internal_tag_ids: ["1001"], // Should be resolved to new tag ID
+        component_group_uuid: "test-group-uuid",
       });
       (upsertComponentPreset as any).mockResolvedValue({
         id: 4001,
-        name: 'test-preset',
-        preset: { title: 'Test' },
+        name: "test-preset",
+        preset: { title: "Test" },
         component_id: 3001, // Should be resolved to new component ID
         space_id: 1,
-        created_at: '2023-01-01T00:00:00.000Z',
-        updated_at: '2023-01-01T00:00:00.000Z',
-        image: '',
-        color: '',
-        icon: '',
-        description: '',
+        created_at: "2023-01-01T00:00:00.000Z",
+        updated_at: "2023-01-01T00:00:00.000Z",
+        image: "",
+        color: "",
+        icon: "",
+        description: "",
       });
 
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 100,
-            name: 'test-component',
-            display_name: 'Test Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: ['200'], // Source tag ID
-            component_group_uuid: 'test-group-uuid',
-          }],
-          groups: [{
-            id: 300,
-            name: 'test-group',
-            uuid: 'test-group-uuid',
-            parent_id: null,
-            parent_uuid: null,
-          }],
-          internalTags: [{
-            id: 200,
-            name: 'test-tag',
-            object_type: 'component' as const,
-          }],
-          presets: [{
-            id: 400,
-            name: 'test-preset',
-            preset: { title: 'Test' },
-            component_id: 100, // Source component ID
-            space_id: 1,
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            image: '',
-            color: '',
-            icon: '',
-            description: '',
-          }],
+          components: [
+            {
+              id: 100,
+              name: "test-component",
+              display_name: "Test Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: ["200"], // Source tag ID
+              component_group_uuid: "test-group-uuid",
+            },
+          ],
+          groups: [
+            {
+              id: 300,
+              name: "test-group",
+              uuid: "test-group-uuid",
+              parent_id: null,
+              parent_uuid: null,
+            },
+          ],
+          internalTags: [
+            {
+              id: 200,
+              name: "test-tag",
+              object_type: "component" as const,
+            },
+          ],
+          presets: [
+            {
+              id: 400,
+              name: "test-preset",
+              preset: { title: "Test" },
+              component_id: 100, // Source component ID
+              space_id: 1,
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
+            },
+          ],
         },
         target: {
           components: new Map(),
@@ -280,7 +363,7 @@ describe('graph Integration Tests', () => {
       };
 
       const graph = buildDependencyGraph({ spaceState });
-      const results = await processAllResources(graph, 'test-space', 5);
+      const results = await processAllResources(graph, "test-space", 5);
 
       // All resources should be processed successfully
       expect(results.successful).toHaveLength(4);
@@ -291,7 +374,7 @@ describe('graph Integration Tests', () => {
       const componentData = componentCall[1];
 
       // Component should reference the resolved tag ID (1001) not the source ID (200)
-      expect(componentData.internal_tag_ids).toEqual(['1001']);
+      expect(componentData.internal_tag_ids).toEqual(["1001"]);
 
       const presetCall = (upsertComponentPreset as any).mock.calls[0];
       const presetData = presetCall[1];
@@ -301,26 +384,47 @@ describe('graph Integration Tests', () => {
     });
   });
 
-  describe('complex Schema Dependencies', () => {
-    it('should resolve nested schema references correctly', async () => {
-      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+  describe("complex Schema Dependencies", () => {
+    it("should resolve nested schema references correctly", async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } =
+        await import("../../actions");
 
       // Mock successful upserts
-      (upsertComponentInternalTag as any).mockResolvedValue({ id: 1001, name: 'schema-tag', object_type: 'component' });
-      (upsertComponentGroup as any).mockResolvedValue({ id: 2001, name: 'schema-group', uuid: 'schema-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponentInternalTag as any).mockResolvedValue({
+        id: 1001,
+        name: "schema-tag",
+        object_type: "component",
+      });
+      (upsertComponentGroup as any).mockResolvedValue({
+        id: 2001,
+        name: "schema-group",
+        uuid: "schema-group-uuid",
+        parent_id: null,
+        parent_uuid: null,
+      });
       (upsertComponent as any)
-        .mockResolvedValueOnce({ id: 3001, name: 'base-component', display_name: 'Base', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 3001,
+          name: "base-component",
+          display_name: "Base",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
+          schema: {},
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        })
         .mockResolvedValueOnce({
           id: 3002,
-          name: 'complex-component',
-          display_name: 'Complex',
-          created_at: '2023-01-01T00:00:00.000Z',
-          updated_at: '2023-01-01T00:00:00.000Z',
+          name: "complex-component",
+          display_name: "Complex",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
           schema: {
             content: {
-              type: 'bloks',
-              component_whitelist: ['base-component'],
-              component_group_whitelist: ['schema-group-uuid'], // Should be resolved
+              type: "bloks",
+              component_whitelist: ["base-component"],
+              component_group_whitelist: ["schema-group-uuid"], // Should be resolved
               component_tag_whitelist: [1001], // Should be resolved
             },
           },
@@ -334,10 +438,10 @@ describe('graph Integration Tests', () => {
           components: [
             {
               id: 1,
-              name: 'base-component',
-              display_name: 'Base',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "base-component",
+              display_name: "Base",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {},
               color: null,
               internal_tags_list: [],
@@ -345,15 +449,15 @@ describe('graph Integration Tests', () => {
             },
             {
               id: 2,
-              name: 'complex-component',
-              display_name: 'Complex',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "complex-component",
+              display_name: "Complex",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 content: {
-                  type: 'bloks',
-                  component_whitelist: ['base-component'],
-                  component_group_whitelist: ['schema-group-uuid'],
+                  type: "bloks",
+                  component_whitelist: ["base-component"],
+                  component_group_whitelist: ["schema-group-uuid"],
                   component_tag_whitelist: [100], // Source tag ID
                 },
               },
@@ -362,18 +466,22 @@ describe('graph Integration Tests', () => {
               internal_tag_ids: [],
             },
           ],
-          groups: [{
-            id: 200,
-            name: 'schema-group',
-            uuid: 'schema-group-uuid',
-            parent_id: null,
-            parent_uuid: null,
-          }],
-          internalTags: [{
-            id: 100,
-            name: 'schema-tag',
-            object_type: 'component' as const,
-          }],
+          groups: [
+            {
+              id: 200,
+              name: "schema-group",
+              uuid: "schema-group-uuid",
+              parent_id: null,
+              parent_uuid: null,
+            },
+          ],
+          internalTags: [
+            {
+              id: 100,
+              name: "schema-tag",
+              object_type: "component" as const,
+            },
+          ],
           presets: [],
         },
         target: {
@@ -385,11 +493,11 @@ describe('graph Integration Tests', () => {
       };
 
       const graph = buildDependencyGraph({ spaceState });
-      await processAllResources(graph, 'test-space', 5);
+      await processAllResources(graph, "test-space", 5);
 
       // Verify that schema references were resolved
       const complexComponentCall = (upsertComponent as any).mock.calls.find(
-        call => call[1].name === 'complex-component',
+        (call) => call[1].name === "complex-component",
       );
 
       expect(complexComponentCall).toBeDefined();
@@ -399,30 +507,51 @@ describe('graph Integration Tests', () => {
       expect(schemaContent.component_tag_whitelist).toEqual([1001]);
 
       // Group whitelist should remain as UUID (UUIDs don't change)
-      expect(schemaContent.component_group_whitelist).toEqual(['schema-group-uuid']);
+      expect(schemaContent.component_group_whitelist).toEqual(["schema-group-uuid"]);
     });
   });
 
-  describe('richtext Field Dependencies', () => {
-    it('should resolve richtext field dependencies correctly', async () => {
-      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+  describe("richtext Field Dependencies", () => {
+    it("should resolve richtext field dependencies correctly", async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } =
+        await import("../../actions");
 
       // Mock successful upserts
-      (upsertComponentInternalTag as any).mockResolvedValue({ id: 2001, name: 'richtext-tag', object_type: 'component' });
-      (upsertComponentGroup as any).mockResolvedValue({ id: 3001, name: 'richtext-group', uuid: 'richtext-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponentInternalTag as any).mockResolvedValue({
+        id: 2001,
+        name: "richtext-tag",
+        object_type: "component",
+      });
+      (upsertComponentGroup as any).mockResolvedValue({
+        id: 3001,
+        name: "richtext-group",
+        uuid: "richtext-group-uuid",
+        parent_id: null,
+        parent_uuid: null,
+      });
       (upsertComponent as any)
-        .mockResolvedValueOnce({ id: 4001, name: 'allowed-component', display_name: 'Allowed', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 4001,
+          name: "allowed-component",
+          display_name: "Allowed",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
+          schema: {},
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        })
         .mockResolvedValueOnce({
           id: 4002,
-          name: 'richtext-component',
-          display_name: 'Richtext Component',
-          created_at: '2023-01-01T00:00:00.000Z',
-          updated_at: '2023-01-01T00:00:00.000Z',
+          name: "richtext-component",
+          display_name: "Richtext Component",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
           schema: {
             content: {
-              type: 'richtext',
-              component_whitelist: ['allowed-component'],
-              component_group_whitelist: ['richtext-group-uuid'], // Should be resolved
+              type: "richtext",
+              component_whitelist: ["allowed-component"],
+              component_group_whitelist: ["richtext-group-uuid"], // Should be resolved
               component_tag_whitelist: [2001], // Should be resolved
             },
           },
@@ -436,10 +565,10 @@ describe('graph Integration Tests', () => {
           components: [
             {
               id: 1,
-              name: 'allowed-component',
-              display_name: 'Allowed',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "allowed-component",
+              display_name: "Allowed",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {},
               color: undefined,
               internal_tags_list: [],
@@ -447,15 +576,15 @@ describe('graph Integration Tests', () => {
             },
             {
               id: 2,
-              name: 'richtext-component',
-              display_name: 'Richtext Component',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "richtext-component",
+              display_name: "Richtext Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 content: {
-                  type: 'richtext',
-                  component_whitelist: ['allowed-component'],
-                  component_group_whitelist: ['richtext-group-uuid'],
+                  type: "richtext",
+                  component_whitelist: ["allowed-component"],
+                  component_group_whitelist: ["richtext-group-uuid"],
                   component_tag_whitelist: [150], // Source tag ID
                 },
               },
@@ -464,18 +593,22 @@ describe('graph Integration Tests', () => {
               internal_tag_ids: [],
             },
           ],
-          groups: [{
-            id: 300,
-            name: 'richtext-group',
-            uuid: 'richtext-group-uuid',
-            parent_id: undefined,
-            parent_uuid: undefined,
-          }],
-          internalTags: [{
-            id: 150,
-            name: 'richtext-tag',
-            object_type: 'component' as const,
-          }],
+          groups: [
+            {
+              id: 300,
+              name: "richtext-group",
+              uuid: "richtext-group-uuid",
+              parent_id: undefined,
+              parent_uuid: undefined,
+            },
+          ],
+          internalTags: [
+            {
+              id: 150,
+              name: "richtext-tag",
+              object_type: "component" as const,
+            },
+          ],
           presets: [],
           datasources: [],
         },
@@ -491,21 +624,21 @@ describe('graph Integration Tests', () => {
       const graph = buildDependencyGraph({ spaceState });
 
       // Verify dependencies are correctly established
-      const richtextComponentNode = graph.nodes.get('component:richtext-component')!;
-      const _allowedComponentNode = graph.nodes.get('component:allowed-component')!;
-      const _groupNode = graph.nodes.get('group:richtext-group-uuid')!;
-      const _tagNode = graph.nodes.get('tag:150')!;
+      const richtextComponentNode = graph.nodes.get("component:richtext-component")!;
+      const _allowedComponentNode = graph.nodes.get("component:allowed-component")!;
+      const _groupNode = graph.nodes.get("group:richtext-group-uuid")!;
+      const _tagNode = graph.nodes.get("tag:150")!;
 
       // Richtext component should depend on allowed component, group, and tag
-      expect(richtextComponentNode.dependencies.has('component:allowed-component')).toBe(true);
-      expect(richtextComponentNode.dependencies.has('group:richtext-group-uuid')).toBe(true);
-      expect(richtextComponentNode.dependencies.has('tag:150')).toBe(true);
+      expect(richtextComponentNode.dependencies.has("component:allowed-component")).toBe(true);
+      expect(richtextComponentNode.dependencies.has("group:richtext-group-uuid")).toBe(true);
+      expect(richtextComponentNode.dependencies.has("tag:150")).toBe(true);
 
-      await processAllResources(graph, 'test-space', 5);
+      await processAllResources(graph, "test-space", 5);
 
       // Verify that schema references were resolved
       const richtextComponentCall = (upsertComponent as any).mock.calls.find(
-        call => call[1].name === 'richtext-component',
+        (call) => call[1].name === "richtext-component",
       );
 
       expect(richtextComponentCall).toBeDefined();
@@ -515,41 +648,64 @@ describe('graph Integration Tests', () => {
       expect(schemaContent.component_tag_whitelist).toEqual([2001]);
 
       // Group whitelist should remain as UUID (UUIDs don't change)
-      expect(schemaContent.component_group_whitelist).toEqual(['richtext-group-uuid']);
+      expect(schemaContent.component_group_whitelist).toEqual(["richtext-group-uuid"]);
 
       // Component whitelist should remain as names (names don't change)
-      expect(schemaContent.component_whitelist).toEqual(['allowed-component']);
+      expect(schemaContent.component_whitelist).toEqual(["allowed-component"]);
     });
 
-    it('should handle mixed bloks and richtext field dependencies', async () => {
-      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+    it("should handle mixed bloks and richtext field dependencies", async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } =
+        await import("../../actions");
 
       // Mock successful upserts
       (upsertComponentInternalTag as any)
-        .mockResolvedValueOnce({ id: 1101, name: 'bloks-tag', object_type: 'component' })
-        .mockResolvedValueOnce({ id: 1102, name: 'richtext-tag', object_type: 'component' });
+        .mockResolvedValueOnce({ id: 1101, name: "bloks-tag", object_type: "component" })
+        .mockResolvedValueOnce({ id: 1102, name: "richtext-tag", object_type: "component" });
       (upsertComponentGroup as any)
-        .mockResolvedValueOnce({ id: 2101, name: 'bloks-group', uuid: 'bloks-group-uuid', parent_id: null, parent_uuid: null })
-        .mockResolvedValueOnce({ id: 2102, name: 'richtext-group', uuid: 'richtext-group-uuid', parent_id: null, parent_uuid: null });
+        .mockResolvedValueOnce({
+          id: 2101,
+          name: "bloks-group",
+          uuid: "bloks-group-uuid",
+          parent_id: null,
+          parent_uuid: null,
+        })
+        .mockResolvedValueOnce({
+          id: 2102,
+          name: "richtext-group",
+          uuid: "richtext-group-uuid",
+          parent_id: null,
+          parent_uuid: null,
+        });
       (upsertComponent as any)
-        .mockResolvedValueOnce({ id: 3101, name: 'shared-component', display_name: 'Shared', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 3101,
+          name: "shared-component",
+          display_name: "Shared",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
+          schema: {},
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        })
         .mockResolvedValueOnce({
           id: 3102,
-          name: 'mixed-component',
-          display_name: 'Mixed Component',
-          created_at: '2023-01-01T00:00:00.000Z',
-          updated_at: '2023-01-01T00:00:00.000Z',
+          name: "mixed-component",
+          display_name: "Mixed Component",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
           schema: {
             sections: {
-              type: 'bloks',
-              component_whitelist: ['shared-component'],
-              component_group_whitelist: ['bloks-group-uuid'],
+              type: "bloks",
+              component_whitelist: ["shared-component"],
+              component_group_whitelist: ["bloks-group-uuid"],
               component_tag_whitelist: [1101],
             },
             content: {
-              type: 'richtext',
-              component_whitelist: ['shared-component'],
-              component_group_whitelist: ['richtext-group-uuid'],
+              type: "richtext",
+              component_whitelist: ["shared-component"],
+              component_group_whitelist: ["richtext-group-uuid"],
               component_tag_whitelist: [1102],
             },
           },
@@ -563,10 +719,10 @@ describe('graph Integration Tests', () => {
           components: [
             {
               id: 1,
-              name: 'shared-component',
-              display_name: 'Shared',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "shared-component",
+              display_name: "Shared",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {},
               color: undefined,
               internal_tags_list: [],
@@ -574,21 +730,21 @@ describe('graph Integration Tests', () => {
             },
             {
               id: 2,
-              name: 'mixed-component',
-              display_name: 'Mixed Component',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "mixed-component",
+              display_name: "Mixed Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 sections: {
-                  type: 'bloks',
-                  component_whitelist: ['shared-component'],
-                  component_group_whitelist: ['bloks-group-uuid'],
+                  type: "bloks",
+                  component_whitelist: ["shared-component"],
+                  component_group_whitelist: ["bloks-group-uuid"],
                   component_tag_whitelist: [250], // Source bloks tag ID
                 },
                 content: {
-                  type: 'richtext',
-                  component_whitelist: ['shared-component'],
-                  component_group_whitelist: ['richtext-group-uuid'],
+                  type: "richtext",
+                  component_whitelist: ["shared-component"],
+                  component_group_whitelist: ["richtext-group-uuid"],
                   component_tag_whitelist: [350], // Source richtext tag ID
                 },
               },
@@ -600,15 +756,15 @@ describe('graph Integration Tests', () => {
           groups: [
             {
               id: 400,
-              name: 'bloks-group',
-              uuid: 'bloks-group-uuid',
+              name: "bloks-group",
+              uuid: "bloks-group-uuid",
               parent_id: undefined,
               parent_uuid: undefined,
             },
             {
               id: 500,
-              name: 'richtext-group',
-              uuid: 'richtext-group-uuid',
+              name: "richtext-group",
+              uuid: "richtext-group-uuid",
               parent_id: undefined,
               parent_uuid: undefined,
             },
@@ -616,13 +772,13 @@ describe('graph Integration Tests', () => {
           internalTags: [
             {
               id: 250,
-              name: 'bloks-tag',
-              object_type: 'component' as const,
+              name: "bloks-tag",
+              object_type: "component" as const,
             },
             {
               id: 350,
-              name: 'richtext-tag',
-              object_type: 'component' as const,
+              name: "richtext-tag",
+              object_type: "component" as const,
             },
           ],
           presets: [],
@@ -640,20 +796,20 @@ describe('graph Integration Tests', () => {
       const graph = buildDependencyGraph({ spaceState });
 
       // Verify dependencies are correctly established for both bloks and richtext fields
-      const mixedComponentNode = graph.nodes.get('component:mixed-component')!;
+      const mixedComponentNode = graph.nodes.get("component:mixed-component")!;
 
       // Mixed component should depend on shared component and both groups and tags
-      expect(mixedComponentNode.dependencies.has('component:shared-component')).toBe(true);
-      expect(mixedComponentNode.dependencies.has('group:bloks-group-uuid')).toBe(true);
-      expect(mixedComponentNode.dependencies.has('group:richtext-group-uuid')).toBe(true);
-      expect(mixedComponentNode.dependencies.has('tag:250')).toBe(true);
-      expect(mixedComponentNode.dependencies.has('tag:350')).toBe(true);
+      expect(mixedComponentNode.dependencies.has("component:shared-component")).toBe(true);
+      expect(mixedComponentNode.dependencies.has("group:bloks-group-uuid")).toBe(true);
+      expect(mixedComponentNode.dependencies.has("group:richtext-group-uuid")).toBe(true);
+      expect(mixedComponentNode.dependencies.has("tag:250")).toBe(true);
+      expect(mixedComponentNode.dependencies.has("tag:350")).toBe(true);
 
-      await processAllResources(graph, 'test-space', 5);
+      await processAllResources(graph, "test-space", 5);
 
       // Verify that schema references were resolved for both field types
       const mixedComponentCall = (upsertComponent as any).mock.calls.find(
-        call => call[1].name === 'mixed-component',
+        (call) => call[1].name === "mixed-component",
       );
 
       expect(mixedComponentCall).toBeDefined();
@@ -661,36 +817,57 @@ describe('graph Integration Tests', () => {
 
       // Bloks field should have resolved references
       expect(schema.sections.component_tag_whitelist).toEqual([1101]);
-      expect(schema.sections.component_group_whitelist).toEqual(['bloks-group-uuid']);
-      expect(schema.sections.component_whitelist).toEqual(['shared-component']);
+      expect(schema.sections.component_group_whitelist).toEqual(["bloks-group-uuid"]);
+      expect(schema.sections.component_whitelist).toEqual(["shared-component"]);
 
       // Richtext field should have resolved references
       expect(schema.content.component_tag_whitelist).toEqual([1102]);
-      expect(schema.content.component_group_whitelist).toEqual(['richtext-group-uuid']);
-      expect(schema.content.component_whitelist).toEqual(['shared-component']);
+      expect(schema.content.component_group_whitelist).toEqual(["richtext-group-uuid"]);
+      expect(schema.content.component_whitelist).toEqual(["shared-component"]);
     });
 
-    it('should handle richtext fields with nested dependencies', async () => {
-      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } = await import('../../actions');
+    it("should handle richtext fields with nested dependencies", async () => {
+      const { upsertComponent, upsertComponentGroup, upsertComponentInternalTag } =
+        await import("../../actions");
 
       // Mock successful upserts
-      (upsertComponentInternalTag as any).mockResolvedValue({ id: 5001, name: 'nested-tag', object_type: 'component' });
-      (upsertComponentGroup as any).mockResolvedValue({ id: 6001, name: 'nested-group', uuid: 'nested-group-uuid', parent_id: null, parent_uuid: null });
+      (upsertComponentInternalTag as any).mockResolvedValue({
+        id: 5001,
+        name: "nested-tag",
+        object_type: "component",
+      });
+      (upsertComponentGroup as any).mockResolvedValue({
+        id: 6001,
+        name: "nested-group",
+        uuid: "nested-group-uuid",
+        parent_id: null,
+        parent_uuid: null,
+      });
       (upsertComponent as any)
-        .mockResolvedValueOnce({ id: 7001, name: 'nested-component', display_name: 'Nested', created_at: '2023-01-01T00:00:00.000Z', updated_at: '2023-01-01T00:00:00.000Z', schema: {}, color: null, internal_tags_list: [], internal_tag_ids: [] })
+        .mockResolvedValueOnce({
+          id: 7001,
+          name: "nested-component",
+          display_name: "Nested",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
+          schema: {},
+          color: null,
+          internal_tags_list: [],
+          internal_tag_ids: [],
+        })
         .mockResolvedValueOnce({
           id: 7002,
-          name: 'complex-nested-component',
-          display_name: 'Complex Nested',
-          created_at: '2023-01-01T00:00:00.000Z',
-          updated_at: '2023-01-01T00:00:00.000Z',
+          name: "complex-nested-component",
+          display_name: "Complex Nested",
+          created_at: "2023-01-01T00:00:00.000Z",
+          updated_at: "2023-01-01T00:00:00.000Z",
           schema: {
             level1: {
               level2: {
                 nested_content: {
-                  type: 'richtext',
-                  component_whitelist: ['nested-component'],
-                  component_group_whitelist: ['nested-group-uuid'],
+                  type: "richtext",
+                  component_whitelist: ["nested-component"],
+                  component_group_whitelist: ["nested-group-uuid"],
                   component_tag_whitelist: [5001],
                 },
               },
@@ -706,10 +883,10 @@ describe('graph Integration Tests', () => {
           components: [
             {
               id: 1,
-              name: 'nested-component',
-              display_name: 'Nested',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "nested-component",
+              display_name: "Nested",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {},
               color: undefined,
               internal_tags_list: [],
@@ -717,17 +894,17 @@ describe('graph Integration Tests', () => {
             },
             {
               id: 2,
-              name: 'complex-nested-component',
-              display_name: 'Complex Nested',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "complex-nested-component",
+              display_name: "Complex Nested",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 level1: {
                   level2: {
                     nested_content: {
-                      type: 'richtext',
-                      component_whitelist: ['nested-component'],
-                      component_group_whitelist: ['nested-group-uuid'],
+                      type: "richtext",
+                      component_whitelist: ["nested-component"],
+                      component_group_whitelist: ["nested-group-uuid"],
                       component_tag_whitelist: [450], // Source tag ID
                     },
                   },
@@ -738,18 +915,22 @@ describe('graph Integration Tests', () => {
               internal_tag_ids: [],
             },
           ],
-          groups: [{
-            id: 600,
-            name: 'nested-group',
-            uuid: 'nested-group-uuid',
-            parent_id: undefined,
-            parent_uuid: undefined,
-          }],
-          internalTags: [{
-            id: 450,
-            name: 'nested-tag',
-            object_type: 'component' as const,
-          }],
+          groups: [
+            {
+              id: 600,
+              name: "nested-group",
+              uuid: "nested-group-uuid",
+              parent_id: undefined,
+              parent_uuid: undefined,
+            },
+          ],
+          internalTags: [
+            {
+              id: 450,
+              name: "nested-tag",
+              object_type: "component" as const,
+            },
+          ],
           presets: [],
           datasources: [],
         },
@@ -765,18 +946,18 @@ describe('graph Integration Tests', () => {
       const graph = buildDependencyGraph({ spaceState });
 
       // Verify nested dependencies are correctly established
-      const complexNestedComponentNode = graph.nodes.get('component:complex-nested-component')!;
+      const complexNestedComponentNode = graph.nodes.get("component:complex-nested-component")!;
 
       // Should depend on nested component, group, and tag even when deeply nested
-      expect(complexNestedComponentNode.dependencies.has('component:nested-component')).toBe(true);
-      expect(complexNestedComponentNode.dependencies.has('group:nested-group-uuid')).toBe(true);
-      expect(complexNestedComponentNode.dependencies.has('tag:450')).toBe(true);
+      expect(complexNestedComponentNode.dependencies.has("component:nested-component")).toBe(true);
+      expect(complexNestedComponentNode.dependencies.has("group:nested-group-uuid")).toBe(true);
+      expect(complexNestedComponentNode.dependencies.has("tag:450")).toBe(true);
 
-      await processAllResources(graph, 'test-space', 5);
+      await processAllResources(graph, "test-space", 5);
 
       // Verify that nested schema references were resolved
       const complexNestedComponentCall = (upsertComponent as any).mock.calls.find(
-        call => call[1].name === 'complex-nested-component',
+        (call) => call[1].name === "complex-nested-component",
       );
 
       expect(complexNestedComponentCall).toBeDefined();
@@ -784,71 +965,78 @@ describe('graph Integration Tests', () => {
 
       // Nested richtext field should have resolved references
       expect(nestedContent.component_tag_whitelist).toEqual([5001]);
-      expect(nestedContent.component_group_whitelist).toEqual(['nested-group-uuid']);
-      expect(nestedContent.component_whitelist).toEqual(['nested-component']);
+      expect(nestedContent.component_group_whitelist).toEqual(["nested-group-uuid"]);
+      expect(nestedContent.component_whitelist).toEqual(["nested-component"]);
     });
   });
 
-  describe('preset Uniqueness Issues', () => {
-    it('should correctly handle presets with the same name but different IDs', () => {
+  describe("preset Uniqueness Issues", () => {
+    it("should correctly handle presets with the same name but different IDs", () => {
       // Presets are nested resources under components - they can have the same name across different components
       // but are unique by ID globally, and by name within each component context
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 1,
-            name: 'test-component',
-            display_name: 'Test Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }],
+          components: [
+            {
+              id: 1,
+              name: "test-component",
+              display_name: "Test Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
           groups: [],
           internalTags: [],
           presets: [
             {
               id: 100,
-              name: 'shared-preset-name', // Same name
-              preset: { title: 'Preset Version 1' },
+              name: "shared-preset-name", // Same name
+              preset: { title: "Preset Version 1" },
               component_id: 1,
               space_id: 1,
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
             {
               id: 200,
-              name: 'shared-preset-name', // Same name, different ID
-              preset: { title: 'Preset Version 2' },
+              name: "shared-preset-name", // Same name, different ID
+              preset: { title: "Preset Version 2" },
               component_id: 1,
               space_id: 1,
-              created_at: '2023-01-02T00:00:00.000Z',
-              updated_at: '2023-01-02T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-02T00:00:00.000Z",
+              updated_at: "2023-01-02T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
           ],
         },
         target: {
-          components: new Map([['test-component', {
-            id: 10,
-            name: 'test-component',
-            display_name: 'Test Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }]]),
+          components: new Map([
+            [
+              "test-component",
+              {
+                id: 10,
+                name: "test-component",
+                display_name: "Test Component",
+                created_at: "2023-01-01T00:00:00.000Z",
+                updated_at: "2023-01-01T00:00:00.000Z",
+                schema: {},
+                color: null,
+                internal_tags_list: [],
+                internal_tag_ids: [],
+              },
+            ],
+          ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
@@ -859,83 +1047,90 @@ describe('graph Integration Tests', () => {
 
       // Should have 1 component + 2 presets = 3 nodes
       expect(graph.nodes.size).toBe(3);
-      expect(graph.nodes.has('component:test-component')).toBe(true);
-      expect(graph.nodes.has('preset:100')).toBe(true);
-      expect(graph.nodes.has('preset:200')).toBe(true);
+      expect(graph.nodes.has("component:test-component")).toBe(true);
+      expect(graph.nodes.has("preset:100")).toBe(true);
+      expect(graph.nodes.has("preset:200")).toBe(true);
 
-      const presetNode1 = graph.nodes.get('preset:100')!;
-      const presetNode2 = graph.nodes.get('preset:200')!;
+      const presetNode1 = graph.nodes.get("preset:100")!;
+      const presetNode2 = graph.nodes.get("preset:200")!;
 
       // Both presets should have their correct IDs and data
       expect(presetNode1.sourceData.id).toBe(100);
-      expect(presetNode1.sourceData.preset.title).toBe('Preset Version 1');
+      expect(presetNode1.sourceData.preset.title).toBe("Preset Version 1");
       expect(presetNode2.sourceData.id).toBe(200);
-      expect(presetNode2.sourceData.preset.title).toBe('Preset Version 2');
+      expect(presetNode2.sourceData.preset.title).toBe("Preset Version 2");
 
       // Both presets can have the same display name - this is now allowed
-      expect(presetNode1.name).toBe('shared-preset-name');
-      expect(presetNode2.name).toBe('shared-preset-name');
+      expect(presetNode1.name).toBe("shared-preset-name");
+      expect(presetNode2.name).toBe("shared-preset-name");
     });
 
-    it('should create separate nodes for presets with duplicate names', () => {
+    it("should create separate nodes for presets with duplicate names", () => {
       // Edge case: Multiple presets with the same name within the same component
       // While presets should be uniquely named within a component, this tests graceful handling of invalid data
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 1,
-            name: 'test-component',
-            display_name: 'Test Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }],
+          components: [
+            {
+              id: 1,
+              name: "test-component",
+              display_name: "Test Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
           groups: [],
           internalTags: [],
           presets: [
             {
               id: 100,
-              name: 'duplicate-name',
-              preset: { title: 'First Preset' },
+              name: "duplicate-name",
+              preset: { title: "First Preset" },
               component_id: 1,
               space_id: 1,
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
             {
               id: 200,
-              name: 'duplicate-name',
-              preset: { title: 'Second Preset' },
+              name: "duplicate-name",
+              preset: { title: "Second Preset" },
               component_id: 1,
               space_id: 1,
-              created_at: '2023-01-02T00:00:00.000Z',
-              updated_at: '2023-01-02T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-02T00:00:00.000Z",
+              updated_at: "2023-01-02T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
           ],
         },
         target: {
-          components: new Map([['test-component', {
-            id: 10,
-            name: 'test-component',
-            display_name: 'Test Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }]]),
+          components: new Map([
+            [
+              "test-component",
+              {
+                id: 10,
+                name: "test-component",
+                display_name: "Test Component",
+                created_at: "2023-01-01T00:00:00.000Z",
+                updated_at: "2023-01-01T00:00:00.000Z",
+                schema: {},
+                color: null,
+                internal_tags_list: [],
+                internal_tag_ids: [],
+              },
+            ],
+          ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
@@ -946,83 +1141,90 @@ describe('graph Integration Tests', () => {
 
       // Should have 1 component + 2 presets = 3 nodes
       expect(graph.nodes.size).toBe(3);
-      expect(graph.nodes.has('component:test-component')).toBe(true);
-      expect(graph.nodes.has('preset:100')).toBe(true);
-      expect(graph.nodes.has('preset:200')).toBe(true);
+      expect(graph.nodes.has("component:test-component")).toBe(true);
+      expect(graph.nodes.has("preset:100")).toBe(true);
+      expect(graph.nodes.has("preset:200")).toBe(true);
 
-      const presetNode1 = graph.nodes.get('preset:100')!;
-      const presetNode2 = graph.nodes.get('preset:200')!;
+      const presetNode1 = graph.nodes.get("preset:100")!;
+      const presetNode2 = graph.nodes.get("preset:200")!;
 
       // Both presets should have their correct IDs and data
       expect(presetNode1.sourceData.id).toBe(100);
-      expect(presetNode1.sourceData.preset.title).toBe('First Preset');
+      expect(presetNode1.sourceData.preset.title).toBe("First Preset");
       expect(presetNode2.sourceData.id).toBe(200);
-      expect(presetNode2.sourceData.preset.title).toBe('Second Preset');
+      expect(presetNode2.sourceData.preset.title).toBe("Second Preset");
 
       // Both presets can have the same display name - this is now allowed
-      expect(presetNode1.name).toBe('duplicate-name');
-      expect(presetNode2.name).toBe('duplicate-name');
+      expect(presetNode1.name).toBe("duplicate-name");
+      expect(presetNode2.name).toBe("duplicate-name");
     });
 
-    it('should skip presets when their components are missing to prevent key inconsistencies', () => {
+    it("should skip presets when their components are missing to prevent key inconsistencies", () => {
       // This test demonstrates data integrity: presets are nested resources that must have valid parent components
       // When a preset references a missing component, it's skipped to maintain the hierarchical relationship
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 1,
-            name: 'existing-component',
-            display_name: 'Existing Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }],
+          components: [
+            {
+              id: 1,
+              name: "existing-component",
+              display_name: "Existing Component",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: [],
+            },
+          ],
           groups: [],
           internalTags: [],
           presets: [
             {
               id: 100,
-              name: 'valid-preset',
-              preset: { title: 'Valid Preset' },
+              name: "valid-preset",
+              preset: { title: "Valid Preset" },
               component_id: 1, // This component exists
               space_id: 1,
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
             {
               id: 200,
-              name: 'orphaned-preset',
-              preset: { title: 'Orphaned Preset' },
+              name: "orphaned-preset",
+              preset: { title: "Orphaned Preset" },
               component_id: 999, // This component does NOT exist
               space_id: 1,
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
-              image: '',
-              color: '',
-              icon: '',
-              description: '',
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              image: "",
+              color: "",
+              icon: "",
+              description: "",
             },
           ],
         },
         target: {
-          components: new Map([['existing-component', {
-            id: 10,
-            name: 'existing-component',
-            display_name: 'Existing Component',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: [],
-          }]]),
+          components: new Map([
+            [
+              "existing-component",
+              {
+                id: 10,
+                name: "existing-component",
+                display_name: "Existing Component",
+                created_at: "2023-01-01T00:00:00.000Z",
+                updated_at: "2023-01-01T00:00:00.000Z",
+                schema: {},
+                color: null,
+                internal_tags_list: [],
+                internal_tag_ids: [],
+              },
+            ],
+          ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
@@ -1034,31 +1236,33 @@ describe('graph Integration Tests', () => {
       // Should have 1 component + 1 valid preset = 2 nodes
       // The orphaned preset should be skipped with a warning
       expect(graph.nodes.size).toBe(2);
-      expect(graph.nodes.has('component:existing-component')).toBe(true);
-      expect(graph.nodes.has('preset:100')).toBe(true); // Valid preset included
-      expect(graph.nodes.has('preset:200')).toBe(false); // Orphaned preset skipped
+      expect(graph.nodes.has("component:existing-component")).toBe(true);
+      expect(graph.nodes.has("preset:100")).toBe(true); // Valid preset included
+      expect(graph.nodes.has("preset:200")).toBe(false); // Orphaned preset skipped
 
-      const validPresetNode = graph.nodes.get('preset:100')!;
-      expect(validPresetNode.sourceData.name).toBe('valid-preset');
+      const validPresetNode = graph.nodes.get("preset:100")!;
+      expect(validPresetNode.sourceData.name).toBe("valid-preset");
     });
   });
 
-  describe('error Handling', () => {
-    it('should handle missing dependencies gracefully', () => {
+  describe("error Handling", () => {
+    it("should handle missing dependencies gracefully", () => {
       const spaceState: SpaceComponentsDataState = {
         local: {
-          components: [{
-            id: 1,
-            name: 'component-with-missing-deps',
-            display_name: 'Component with Missing Deps',
-            created_at: '2023-01-01T00:00:00.000Z',
-            updated_at: '2023-01-01T00:00:00.000Z',
-            schema: {},
-            color: null,
-            internal_tags_list: [],
-            internal_tag_ids: ['999'], // Non-existent tag
-            component_group_uuid: 'non-existent-group-uuid',
-          }],
+          components: [
+            {
+              id: 1,
+              name: "component-with-missing-deps",
+              display_name: "Component with Missing Deps",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
+              schema: {},
+              color: null,
+              internal_tags_list: [],
+              internal_tag_ids: ["999"], // Non-existent tag
+              component_group_uuid: "non-existent-group-uuid",
+            },
+          ],
           groups: [],
           internalTags: [],
           presets: [],
@@ -1078,20 +1282,20 @@ describe('graph Integration Tests', () => {
       }).not.toThrow();
     });
 
-    it('should detect circular dependencies', () => {
+    it("should detect circular dependencies", () => {
       const spaceState: SpaceComponentsDataState = {
         local: {
           components: [
             {
               id: 1,
-              name: 'component-a',
-              display_name: 'Component A',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "component-a",
+              display_name: "Component A",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 content: {
-                  type: 'bloks',
-                  component_whitelist: ['component-b'],
+                  type: "bloks",
+                  component_whitelist: ["component-b"],
                 },
               },
               color: null,
@@ -1100,14 +1304,14 @@ describe('graph Integration Tests', () => {
             },
             {
               id: 2,
-              name: 'component-b',
-              display_name: 'Component B',
-              created_at: '2023-01-01T00:00:00.000Z',
-              updated_at: '2023-01-01T00:00:00.000Z',
+              name: "component-b",
+              display_name: "Component B",
+              created_at: "2023-01-01T00:00:00.000Z",
+              updated_at: "2023-01-01T00:00:00.000Z",
               schema: {
                 content: {
-                  type: 'bloks',
-                  component_whitelist: ['component-a'], // Circular reference
+                  type: "bloks",
+                  component_whitelist: ["component-a"], // Circular reference
                 },
               },
               color: null,

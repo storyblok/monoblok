@@ -47,7 +47,7 @@ additionalProperties:
             description: Option value or UUID reference
           - $ref: ./field-types/asset-field.yaml
             description: Multi-asset item
-          - $ref: '#'
+          - $ref: "#"
             description: Nested component (blok)
     # Complex field types (objects with fieldtype discriminator)
     - $ref: ./field-types/asset-field.yaml

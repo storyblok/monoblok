@@ -1,19 +1,19 @@
-import type { Client } from '../generated/shared/client';
-import { list } from '../generated/stories/sdk.gen';
-import type { StoryCapi } from '../generated/stories/types.gen';
-import type { ThrottleManager } from './rate-limit';
-import { chunkArray } from './array';
+import type { Client } from "../generated/shared/client";
+import { list } from "../generated/stories/sdk.gen";
+import type { StoryCapi } from "../generated/stories/types.gen";
+import type { ThrottleManager } from "./rate-limit";
+import { chunkArray } from "./array";
 
 const UUID_CHUNK_SIZE = 50;
 const QUERY_CONTEXT_KEYS = new Set([
-  'cv',
-  'fallback_lang',
-  'from_release',
-  'language',
-  'resolve_assets',
-  'resolve_links',
-  'resolve_links_level',
-  'version',
+  "cv",
+  "fallback_lang",
+  "from_release",
+  "language",
+  "resolve_assets",
+  "resolve_links",
+  "resolve_links_level",
+  "version",
 ]);
 
 const pickQueryContext = (baseQuery: Record<string, unknown>): Record<string, unknown> => {
@@ -43,13 +43,13 @@ export const fetchMissingRelations = async ({
   const chunks = chunkArray(uuids, UUID_CHUNK_SIZE);
 
   const results = await Promise.all(
-    chunks.map(chunk =>
-      throttleManager.execute('/v2/cdn/stories', queryContext, async () => {
+    chunks.map((chunk) =>
+      throttleManager.execute("/v2/cdn/stories", queryContext, async () => {
         const response = await list({
           client,
           query: {
             ...queryContext,
-            by_uuids: chunk.join(','),
+            by_uuids: chunk.join(","),
             per_page: UUID_CHUNK_SIZE,
           },
         });
@@ -61,7 +61,7 @@ export const fetchMissingRelations = async ({
         }
 
         if (response.data === undefined) {
-          throw new Error('Failed to fetch missing relations.');
+          throw new Error("Failed to fetch missing relations.");
         }
 
         return response.data.stories;

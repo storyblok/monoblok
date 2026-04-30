@@ -1,10 +1,6 @@
-import type {
-  ISbComponentType,
-  ISbConfig,
-  ISbStoryData,
-} from 'storyblok-js-client';
+import type { ISbComponentType, ISbConfig, ISbStoryData } from "storyblok-js-client";
 
-import type StoryblokClient from 'storyblok-js-client';
+import type StoryblokClient from "storyblok-js-client";
 
 declare global {
   interface Window {
@@ -35,13 +31,7 @@ export interface SbSDKOptions {
 }
 
 export interface ISbEventPayload<S extends ISbComponentType<string> = any> {
-  action:
-    | 'customEvent'
-    | 'published'
-    | 'input'
-    | 'change'
-    | 'unpublished'
-    | 'enterEditmode';
+  action: "customEvent" | "published" | "input" | "change" | "unpublished" | "enterEditmode";
   event?: string;
   story?: ISbStoryData<S>;
   slug?: string;
@@ -56,8 +46,8 @@ export interface StoryblokBridgeConfigV2 {
   customParent?: string;
   preventClicks?: boolean;
   language?: string;
-  resolveLinks?: 'url' | 'story' | '0' | '1' | 'link';
-  fallbackLang?: 'string';
+  resolveLinks?: "url" | "story" | "0" | "1" | "link";
+  fallbackLang?: "string";
 }
 
 export interface StoryblokBridgeV2 {
@@ -66,14 +56,14 @@ export interface StoryblokBridgeV2 {
   enterEditmode: () => void;
   on: (
     event:
-      | 'customEvent'
-      | 'published'
-      | 'input'
-      | 'change'
-      | 'unpublished'
-      | 'enterEditmode'
+      | "customEvent"
+      | "published"
+      | "input"
+      | "change"
+      | "unpublished"
+      | "enterEditmode"
       | string[],
-    callback: (payload?: ISbEventPayload) => void
+    callback: (payload?: ISbEventPayload) => void,
   ) => void;
 }
 
@@ -98,4 +88,4 @@ export type {
   ISbStoryParams, // previously StoryParams
   ISbThrottle,
   ISbThrottledRequest,
-} from 'storyblok-js-client';
+} from "storyblok-js-client";

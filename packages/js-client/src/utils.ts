@@ -1,9 +1,4 @@
-import type {
-  AsyncFn,
-  HtmlEscapes,
-  ISbResult,
-  ISbStoriesParams,
-} from './interfaces';
+import type { AsyncFn, HtmlEscapes, ISbResult, ISbStoriesParams } from "./interfaces";
 
 // TODO: Revise this type, is it needed?
 interface ISbParams extends ISbStoriesParams {
@@ -19,7 +14,7 @@ type RangeFn = (...args: any) => [];
  * @param url - The URL to check
  * @returns boolean indicating if the URL is a CDN URL
  */
-export const isCDNUrl = (url = ''): boolean => url.includes('/cdn/');
+export const isCDNUrl = (url = ""): boolean => url.includes("/cdn/");
 
 /**
  * Gets pagination options for the API request
@@ -28,11 +23,7 @@ export const isCDNUrl = (url = ''): boolean => url.includes('/cdn/');
  * @param page - Current page number
  * @returns Object with pagination options
  */
-export const getOptionsPage = (
-  options: ISbStoriesParams,
-  perPage = 25,
-  page = 1,
-) => ({
+export const getOptionsPage = (options: ISbStoriesParams, perPage = 25, page = 1) => ({
   ...options,
   per_page: perPage,
   page,
@@ -43,8 +34,7 @@ export const getOptionsPage = (
  * @param ms - Milliseconds to delay
  * @returns Promise that resolves after the delay
  */
-export const delay = (ms: number): Promise<void> =>
-  new Promise(res => setTimeout(res, ms));
+export const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
 
 /**
  * Creates an array of specified length using a mapping function
@@ -52,8 +42,7 @@ export const delay = (ms: number): Promise<void> =>
  * @param func - Mapping function
  * @returns Array of specified length
  */
-export const arrayFrom = (length = 0, func: ArrayFn) =>
-  Array.from({ length }, func);
+export const arrayFrom = (length = 0, func: ArrayFn) => Array.from({ length }, func);
 
 /**
  * Creates an array of numbers in the specified range
@@ -73,8 +62,7 @@ export const range = (start = 0, end = start): Array<any> => {
  * @param func - Async mapping function
  * @returns Promise resolving to mapped array
  */
-export const asyncMap = async (arr: RangeFn[], func: AsyncFn) =>
-  Promise.all(arr.map(func));
+export const asyncMap = async (arr: RangeFn[], func: AsyncFn) => Promise.all(arr.map(func));
 
 /**
  * Flattens an array using a mapping function
@@ -96,8 +84,7 @@ export const decodeIfEncoded = (value: string): string => {
   if (/%[0-9A-F]{2}/i.test(value)) {
     try {
       return decodeURIComponent(value);
-    }
-    catch {
+    } catch {
       // If decoding fails (malformed encoding), return original
       return value;
     }
@@ -112,11 +99,7 @@ export const decodeIfEncoded = (value: string): string => {
  * @param isArray - Whether the current level is an array
  * @returns Stringified query parameters
  */
-export const stringify = (
-  params: ISbParams,
-  prefix?: string,
-  isArray?: boolean,
-): string => {
+export const stringify = (params: ISbParams, prefix?: string, isArray?: boolean): string => {
   const pairs: string[] = [];
   for (const key in params) {
     if (!Object.prototype.hasOwnProperty.call(params, key)) {
@@ -126,23 +109,22 @@ export const stringify = (
     if (value === null || value === undefined) {
       continue;
     }
-    const enkey = isArray ? '' : encodeURIComponent(key);
+    const enkey = isArray ? "" : encodeURIComponent(key);
     let pair;
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       pair = stringify(
         value,
         prefix ? prefix + encodeURIComponent(`[${enkey}]`) : enkey,
         Array.isArray(value),
       );
-    }
-    else {
+    } else {
       pair = `${
         prefix ? prefix + encodeURIComponent(`[${enkey}]`) : enkey
       }=${encodeURIComponent(value)}`;
     }
     pairs.push(pair);
   }
-  return pairs.join('&');
+  return pairs.join("&");
 };
 
 /**
@@ -152,11 +134,11 @@ export const stringify = (
  */
 export const getRegionURL = (regionCode?: string): string => {
   const REGION_URLS = {
-    eu: 'api.storyblok.com',
-    us: 'api-us.storyblok.com',
-    cn: 'app.storyblokchina.cn',
-    ap: 'api-ap.storyblok.com',
-    ca: 'api-ca.storyblok.com',
+    eu: "api.storyblok.com",
+    us: "api-us.storyblok.com",
+    cn: "app.storyblokchina.cn",
+    ap: "api-ap.storyblok.com",
+    ca: "api-ca.storyblok.com",
   } as const;
 
   return REGION_URLS[regionCode as keyof typeof REGION_URLS] ?? REGION_URLS.eu;
@@ -169,17 +151,17 @@ export const getRegionURL = (regionCode?: string): string => {
  */
 export const escapeHTML = (string: string): string => {
   const htmlEscapes = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    '\'': '&#39;',
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
   } as HtmlEscapes;
 
   const reUnescapedHtml = /[&<>"']/g;
   const reHasUnescapedHtml = new RegExp(reUnescapedHtml.source);
 
   return string && reHasUnescapedHtml.test(string)
-    ? string.replace(reUnescapedHtml, chr => htmlEscapes[chr])
+    ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
     : string;
 };

@@ -1,5 +1,11 @@
-import type React from 'react';
-import type { ISbStoryData, SbSDKOptions, StoryblokBridgeConfigV2, StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/js';
+import type React from "react";
+import type {
+  ISbStoryData,
+  SbSDKOptions,
+  StoryblokBridgeConfigV2,
+  StoryblokRichTextNode,
+  StoryblokRichTextOptions,
+} from "@storyblok/js";
 
 export interface SbReactComponentsMap {
   [key: string]: React.ElementType;
@@ -13,12 +19,12 @@ export interface SbReactSDKOptions extends SbSDKOptions {
 
 export type TUseStoryblokState = <T = void>(
   initialStory: ISbStoryData<T> | null,
-  bridgeOptions?: StoryblokBridgeConfigV2
+  bridgeOptions?: StoryblokBridgeConfigV2,
 ) => ISbStoryData<T> | null;
 
 export interface StoryblokRichTextProps {
   doc: StoryblokRichTextNode<React.ReactElement>;
-  tiptapExtensions?: StoryblokRichTextOptions<React.ReactElement>['tiptapExtensions'];
+  tiptapExtensions?: StoryblokRichTextOptions<React.ReactElement>["tiptapExtensions"];
 }
 
 export type {
@@ -48,4 +54,4 @@ export type {
   StoryblokClient,
   StoryblokComponentType,
   useStoryblokBridge,
-} from '@storyblok/js';
+} from "@storyblok/js";

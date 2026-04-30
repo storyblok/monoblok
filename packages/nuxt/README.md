@@ -73,7 +73,6 @@ We understand that you might not be able to share your company's project code. P
 
 If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
-
 ## License
 
 [License](/LICENSE)

@@ -122,10 +122,10 @@ The `stories` module provides tools to manage Storyblok stories and their conten
 The `manifest.jsonl` file created when running `storyblok stories push` acts as a reference integrity backbone. Its role is critical for the following functions:
 
 1. **Identity Translation (Migration Mapping)**
-The manifest serves as a persistent translation table that maps "Source IDs" to "Target IDs".
+   The manifest serves as a persistent translation table that maps "Source IDs" to "Target IDs".
    - **Space-to-Space:** It maps IDs from a source Storyblok space to a target space.
    - **Third-Party CMS:** When migrating from systems like WordPress or Drupal, the manifest maps external IDs as the "old" keys, allowing the CLI to treat the external system as the source of truth.
 2. **Idempotency and Duplicate Prevention**
-Storyblok generates new, unique IDs upon creation. Without a manifest, the CLI has no way of knowing if a local file has been pushed before. The manifests ensure syncing works correctly. It helps the CLI to recognize that an item exists and updates the existing record instead of creating a duplicate.
+   Storyblok generates new, unique IDs upon creation. Without a manifest, the CLI has no way of knowing if a local file has been pushed before. The manifests ensure syncing works correctly. It helps the CLI to recognize that an item exists and updates the existing record instead of creating a duplicate.
 3. **Incremental Workflows**
-Manifests enable a "pull-modify-push" cycle. A user can pull a single story to edit its data locally and push it back. Because the manifest persists the relationship between the local file and the remote entity, the CLI correctly targets the existing item in the target space, even if the local source files were previously cleaned up.
+   Manifests enable a "pull-modify-push" cycle. A user can pull a single story to edit its data locally and push it back. Because the manifest persists the relationship between the local file and the remote entity, the CLI correctly targets the existing item in the target space, even if the local source files were previously cleaned up.

@@ -14,7 +14,7 @@ paths:
       summary: Get Current User
       description: Returns the current authenticated user's information.
       responses:
-        '200':
+        "200":
           description: Current user details
           content:
             application/json:
@@ -22,8 +22,8 @@ paths:
                 type: object
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
-        '401':
+                    $ref: "#/components/schemas/User"
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
     put:
       operationId: updateMe
@@ -39,9 +39,9 @@ paths:
                 - user
               properties:
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
       responses:
-        '200':
+        "200":
           description: User updated
           content:
             application/json:
@@ -49,12 +49,12 @@ paths:
                 type: object
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
-        '400':
+                    $ref: "#/components/schemas/User"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '422':
+        "422":
           description: Unprocessable entity - validation errors
 components:
   securitySchemes:

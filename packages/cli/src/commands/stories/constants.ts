@@ -1,4 +1,4 @@
-import type { Story, StoryContent, StoryListQuery } from '../../types';
+import type { Story, StoryContent, StoryListQuery } from "../../types";
 
 export type { Story, StoryContent };
 
@@ -18,7 +18,7 @@ export interface FetchStoriesResult {
   headers: Headers;
 }
 
-export type TargetStoryRef = Pick<Story, 'id' | 'uuid' | 'is_folder'>;
+export type TargetStoryRef = Pick<Story, "id" | "uuid" | "is_folder">;
 
 export interface ExistingTargetStories {
   // folders and start_page can have the same slug, we need TargetStoryRef[]
@@ -39,4 +39,4 @@ export interface StoryIndexEntry {
   component?: string;
 }
 
-export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');
+export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, "");

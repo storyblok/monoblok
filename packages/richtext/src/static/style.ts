@@ -1,4 +1,4 @@
-import type { AttrValue } from './types';
+import type { AttrValue } from "./types";
 
 /**
  * Converts a style object to a CSS string.
@@ -13,7 +13,7 @@ export function styleToString(style: Record<string, AttrValue>) {
   return Object.entries(style)
     .filter(([, v]) => isValidStyleValue(v))
     .map(([k, v]) => `${camelToKebab(k)}: ${v}`)
-    .join('; ');
+    .join("; ");
 }
 
 /**
@@ -27,11 +27,11 @@ export function styleToString(style: Record<string, AttrValue>) {
  */
 export function stringToStyle(style: string): Record<string, string> {
   return style
-    .split(';')
-    .map(rule => rule.trim())
+    .split(";")
+    .map((rule) => rule.trim())
     .filter(Boolean)
     .reduce<Record<string, string>>((acc, rule) => {
-      const colonIdx = rule.indexOf(':');
+      const colonIdx = rule.indexOf(":");
 
       // ignore invalid declarations like "color" or ": red"
       if (colonIdx === -1) {
@@ -54,8 +54,8 @@ function kebabToCamel(str: string) {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 }
 function camelToKebab(str: string) {
-  return str.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+  return str.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 }
 export function isValidStyleValue(value: unknown) {
-  return value !== null && value !== undefined && value !== '';
+  return value !== null && value !== undefined && value !== "";
 }

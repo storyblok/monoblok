@@ -4,5 +4,5 @@
 export default {
   unknownAny: false,
   additionalProperties: false,
-  bannerComment: 'Custom banner comment',
+  bannerComment: "Custom banner comment",
 };

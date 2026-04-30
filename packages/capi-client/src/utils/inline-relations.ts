@@ -1,8 +1,8 @@
-import type { Client } from '../generated/shared/client';
-import type { StoryCapi } from '../generated/stories';
-import type { StoryWithInlinedRelations } from '../resources/stories';
-import { fetchMissingRelations } from './fetch-rel-uuids';
-import type { ThrottleManager } from './rate-limit';
+import type { Client } from "../generated/shared/client";
+import type { StoryCapi } from "../generated/stories";
+import type { StoryWithInlinedRelations } from "../resources/stories";
+import { fetchMissingRelations } from "./fetch-rel-uuids";
+import type { ThrottleManager } from "./rate-limit";
 
 type RelationPath = `${string}.${string}`;
 
@@ -13,10 +13,10 @@ interface ComponentNode {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
-  typeof value.component === 'string' && typeof value._uid === 'string';
+  typeof value.component === "string" && typeof value._uid === "string";
 
 /**
  * Decodes a string if it appears to be URL-encoded.
@@ -27,8 +27,7 @@ const decodeIfEncoded = (value: string): string => {
   if (/%[0-9A-F]{2}/i.test(value)) {
     try {
       return decodeURIComponent(value);
-    }
-    catch {
+    } catch {
       // If decoding fails (malformed encoding), return original
       return value;
     }
@@ -50,7 +49,12 @@ const inlineStoryContentInternal = <TStory extends StoryCapi | StoryWithInlinedR
   const clonedStory = structuredClone(story);
   resolved.set(story.uuid, clonedStory);
   // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
-  clonedStory.content = resolveNode(clonedStory.content, relationMap, relationPaths, resolved) as StoryCapi['content'];
+  clonedStory.content = resolveNode(
+    clonedStory.content,
+    relationMap,
+    relationPaths,
+    resolved,
+  ) as StoryCapi["content"];
   return clonedStory;
 };
 
@@ -61,7 +65,7 @@ function resolveNode<TStory extends StoryCapi | StoryWithInlinedRelations>(
   resolved: Map<string, TStory>,
 ): unknown {
   if (Array.isArray(value)) {
-    return value.map(item => resolveNode(item, relationMap, relationPaths, resolved));
+    return value.map((item) => resolveNode(item, relationMap, relationPaths, resolved));
   }
 
   if (!isRecord(value)) {
@@ -70,7 +74,7 @@ function resolveNode<TStory extends StoryCapi | StoryWithInlinedRelations>(
 
   if (isComponentNode(value)) {
     for (const [fieldName, fieldValue] of Object.entries(value)) {
-      if (fieldName === 'component' || fieldName === '_uid') {
+      if (fieldName === "component" || fieldName === "_uid") {
         continue;
       }
 
@@ -91,7 +95,7 @@ function resolveNode<TStory extends StoryCapi | StoryWithInlinedRelations>(
 }
 
 export const parseResolveRelations = (query: Record<string, unknown>): RelationPath[] => {
-  if (typeof query.resolve_relations !== 'string') {
+  if (typeof query.resolve_relations !== "string") {
     return [];
   }
 
@@ -99,10 +103,10 @@ export const parseResolveRelations = (query: Record<string, unknown>): RelationP
   const resolveRelations = decodeIfEncoded(query.resolve_relations);
 
   return resolveRelations
-    .split(',')
-    .map(path => path.trim())
+    .split(",")
+    .map((path) => path.trim())
     .filter((path): path is RelationPath => {
-      const [component = '', field = '', ...rest] = path.split('.');
+      const [component = "", field = "", ...rest] = path.split(".");
       return component.length > 0 && field.length > 0 && rest.length === 0;
     });
 };
@@ -123,7 +127,7 @@ function resolveFieldValue<TStory extends StoryCapi | StoryWithInlinedRelations>
   relationPaths: ReadonlySet<RelationPath>,
   resolved: Map<string, TStory>,
 ): unknown {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const relatedStory = relationMap.get(value);
     if (!relatedStory) {
       return value;
@@ -133,7 +137,7 @@ function resolveFieldValue<TStory extends StoryCapi | StoryWithInlinedRelations>
   }
 
   if (Array.isArray(value)) {
-    return value.map(item => resolveFieldValue(item, relationMap, relationPaths, resolved));
+    return value.map((item) => resolveFieldValue(item, relationMap, relationPaths, resolved));
   }
 
   return resolveNode(value, relationMap, relationPaths, resolved);
@@ -156,7 +160,9 @@ export const inlineStoriesContent = <TStory extends StoryCapi | StoryWithInlined
 ): Array<TStory> => {
   const normalizedPaths = new Set(relationPaths);
   const resolved = new Map<string, TStory>();
-  return stories.map(story => inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved));
+  return stories.map((story) =>
+    inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved),
+  );
 };
 
 interface ResolveRelationMapOptions {
@@ -187,7 +193,7 @@ export const resolveRelationMap = async (
 
   const relationMap = buildRelationMap(responseData.rels);
   if (responseData.rel_uuids?.length) {
-    const missingUuids = responseData.rel_uuids.filter(uuid => !relationMap.has(uuid));
+    const missingUuids = responseData.rel_uuids.filter((uuid) => !relationMap.has(uuid));
     if (missingUuids.length > 0) {
       const fetchedRelations = await fetchMissingRelations({
         client,

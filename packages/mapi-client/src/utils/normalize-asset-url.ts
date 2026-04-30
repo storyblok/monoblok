@@ -13,4 +13,4 @@
  * name in the path.
  */
 export const normalizeAssetUrl = (url: string): string =>
-  url.replace(/^https?:\/\/s3\.amazonaws\.com\//, 'https://');
+  url.replace(/^https?:\/\/s3\.amazonaws\.com\//, "https://");

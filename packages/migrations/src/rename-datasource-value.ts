@@ -1,4 +1,4 @@
-import type { Story } from './types';
+import type { Story } from "./types";
 
 interface ComponentToUpdate {
   field: string;
@@ -25,10 +25,10 @@ function traverseRichtext(
     );
   }
 
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
     const record = data as Record<string, unknown>;
 
-    if (record.type === 'blok' && record.attrs && typeof record.attrs === 'object') {
+    if (record.type === "blok" && record.attrs && typeof record.attrs === "object") {
       const attrs = record.attrs as Record<string, unknown>;
       if (Array.isArray(attrs.body)) {
         return {
@@ -36,7 +36,7 @@ function traverseRichtext(
           attrs: {
             ...attrs,
             body: attrs.body.map((item: unknown, index: number) => {
-              if (item && typeof item === 'object' && !Array.isArray(item)) {
+              if (item && typeof item === "object" && !Array.isArray(item)) {
                 return traverseObject(
                   item as Record<string, unknown>,
                   componentsToUpdate,
@@ -55,7 +55,14 @@ function traverseRichtext(
 
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(record)) {
-      result[key] = traverseRichtext(value, componentsToUpdate, oldValue, newValue, changes, `${path}.${key}`);
+      result[key] = traverseRichtext(
+        value,
+        componentsToUpdate,
+        oldValue,
+        newValue,
+        changes,
+        `${path}.${key}`,
+      );
     }
     return result;
   }
@@ -71,7 +78,7 @@ function traverseObject(
   changes: Change[],
   path: string,
 ): Record<string, unknown> {
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
     return obj;
   }
 
@@ -86,15 +93,14 @@ function traverseObject(
 
       const fieldValue = result[field];
 
-      if (typeof fieldValue === 'string' && fieldValue === oldValue) {
+      if (typeof fieldValue === "string" && fieldValue === oldValue) {
         result[field] = newValue;
         changes.push({
           component: componentName,
           field,
           path: `${path}.${field}`,
         });
-      }
-      else if (Array.isArray(fieldValue)) {
+      } else if (Array.isArray(fieldValue)) {
         const newArray = fieldValue.map((item) => {
           if (item === oldValue) {
             changes.push({
@@ -115,7 +121,7 @@ function traverseObject(
   for (const [key, value] of Object.entries(result)) {
     if (Array.isArray(value)) {
       result[key] = value.map((item, index) => {
-        if (item && typeof item === 'object' && !Array.isArray(item)) {
+        if (item && typeof item === "object" && !Array.isArray(item)) {
           return traverseObject(
             item as Record<string, unknown>,
             componentsToUpdate,
@@ -127,15 +133,21 @@ function traverseObject(
         }
         return item;
       });
-    }
-    else if (
-      value
-      && typeof value === 'object'
-      && !Array.isArray(value)
-      && (value as Record<string, unknown>).type === 'doc'
-      && Array.isArray((value as Record<string, unknown>).content)
+    } else if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      (value as Record<string, unknown>).type === "doc" &&
+      Array.isArray((value as Record<string, unknown>).content)
     ) {
-      result[key] = traverseRichtext(value, componentsToUpdate, oldValue, newValue, changes, `${path}.${key}`);
+      result[key] = traverseRichtext(
+        value,
+        componentsToUpdate,
+        oldValue,
+        newValue,
+        changes,
+        `${path}.${key}`,
+      );
     }
   }
 
@@ -156,12 +168,12 @@ export function renameDataSourceValue(
     oldValue,
     newValue,
     changes,
-    'content',
+    "content",
   );
 
   return {
     // traverseObject returns Record<string,unknown>; runtime shape satisfies Blok
-    story: { ...story, content: newContent as unknown as Story['content'] },
+    story: { ...story, content: newContent as unknown as Story["content"] },
     changes,
   };
 }

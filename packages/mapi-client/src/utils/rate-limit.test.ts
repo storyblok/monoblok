@@ -1,25 +1,25 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createThrottleManager } from './rate-limit';
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createThrottleManager } from "./rate-limit";
 
-describe('createThrottleManager(false)', () => {
-  it('should execute the function immediately without queuing', async () => {
+describe("createThrottleManager(false)", () => {
+  it("should execute the function immediately without queuing", async () => {
     const manager = createThrottleManager(false);
-    const fn = vi.fn().mockResolvedValue('result');
+    const fn = vi.fn().mockResolvedValue("result");
     const result = await manager.execute(fn);
-    expect(result).toBe('result');
+    expect(result).toBe("result");
     expect(fn).toHaveBeenCalledOnce();
   });
 
-  it('should treat adaptToResponse as a no-op', () => {
+  it("should treat adaptToResponse as a no-op", () => {
     const manager = createThrottleManager(false);
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });
 });
 
-describe('createThrottleManager(number)', () => {
+describe("createThrottleManager(number)", () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should limit concurrent requests to the specified number', async () => {
+  it("should limit concurrent requests to the specified number", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(2);
 
@@ -29,9 +29,9 @@ describe('createThrottleManager(number)', () => {
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     const p1 = manager.execute(makeSlowFn());
@@ -44,7 +44,7 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(2);
   });
 
-  it('should adapt limit from server headers, respecting user ceiling', async () => {
+  it("should adapt limit from server headers, respecting user ceiling", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
 
@@ -52,16 +52,16 @@ describe('createThrottleManager(number)', () => {
     let maxActive = 0;
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=5' },
+      headers: { "x-ratelimit-policy": '"concurrent-requests";q=5' },
     });
     manager.adaptToResponse(serverResponse);
 
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     const promises = Array.from({ length: 10 }, () => manager.execute(makeSlowFn()));
@@ -73,12 +73,12 @@ describe('createThrottleManager(number)', () => {
     expect(maxActive).toBeLessThanOrEqual(5);
   });
 
-  it('should not exceed user ceiling even if server reports higher', async () => {
+  it("should not exceed user ceiling even if server reports higher", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(3);
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=100' },
+      headers: { "x-ratelimit-policy": '"concurrent-requests";q=100' },
     });
     manager.adaptToResponse(serverResponse);
 
@@ -88,9 +88,9 @@ describe('createThrottleManager(number)', () => {
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     const promises = Array.from({ length: 9 }, () => manager.execute(makeSlowFn()));
@@ -102,10 +102,10 @@ describe('createThrottleManager(number)', () => {
   });
 });
 
-describe('createThrottleManager({})', () => {
+describe("createThrottleManager({})", () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should use default maxConcurrency of 6', async () => {
+  it("should use default maxConcurrency of 6", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
@@ -115,9 +115,9 @@ describe('createThrottleManager({})', () => {
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     const promises = Array.from({ length: 12 }, () => manager.execute(makeSlowFn()));
@@ -128,12 +128,12 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBeLessThanOrEqual(6);
   });
 
-  it('should adapt limit from server headers', async () => {
+  it("should adapt limit from server headers", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=3' },
+      headers: { "x-ratelimit-policy": '"concurrent-requests";q=3' },
     });
     manager.adaptToResponse(serverResponse);
 
@@ -143,9 +143,9 @@ describe('createThrottleManager({})', () => {
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     const promises = Array.from({ length: 10 }, () => manager.execute(makeSlowFn()));
@@ -157,12 +157,12 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBeLessThanOrEqual(3);
   });
 
-  it('should ignore server headers when adaptToServerHeaders is false', async () => {
+  it("should ignore server headers when adaptToServerHeaders is false", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ adaptToServerHeaders: false });
 
     const serverResponse = new Response(null, {
-      headers: { 'x-ratelimit-policy': '"concurrent-requests";q=1' },
+      headers: { "x-ratelimit-policy": '"concurrent-requests";q=1' },
     });
     manager.adaptToResponse(serverResponse);
 
@@ -172,9 +172,9 @@ describe('createThrottleManager({})', () => {
     const makeSlowFn = () => async () => {
       activeCount++;
       maxActive = Math.max(maxActive, activeCount);
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
       activeCount--;
-      return 'done';
+      return "done";
     };
 
     // With limit ignored, the default 6 slots should be available.
@@ -186,15 +186,13 @@ describe('createThrottleManager({})', () => {
     expect(maxActive).toBe(6);
   });
 
-  it('should propagate errors from the wrapped function', async () => {
+  it("should propagate errors from the wrapped function", async () => {
     const manager = createThrottleManager({});
-    const error = new Error('boom');
-    await expect(
-      manager.execute(() => Promise.reject(error)),
-    ).rejects.toThrow('boom');
+    const error = new Error("boom");
+    await expect(manager.execute(() => Promise.reject(error))).rejects.toThrow("boom");
   });
 
-  it('should treat adaptToResponse as a no-op when response is undefined', () => {
+  it("should treat adaptToResponse as a no-op when response is undefined", () => {
     const manager = createThrottleManager({});
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });

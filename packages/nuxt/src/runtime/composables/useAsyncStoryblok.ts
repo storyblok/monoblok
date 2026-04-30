@@ -1,7 +1,13 @@
-import { type ISbResult, type ISbStoriesParams, type StoryblokBridgeConfigV2, useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
-import { computed, type ComputedRef, type Ref, watch } from 'vue';
-import { useAsyncData } from '#app';
-import type { AsyncData, AsyncDataOptions, NuxtError } from '#app';
+import {
+  type ISbResult,
+  type ISbStoriesParams,
+  type StoryblokBridgeConfigV2,
+  useStoryblokApi,
+  useStoryblokBridge,
+} from "@storyblok/vue";
+import { computed, type ComputedRef, type Ref, watch } from "vue";
+import { useAsyncData } from "#app";
+import type { AsyncData, AsyncDataOptions, NuxtError } from "#app";
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -15,11 +21,11 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
 }
 
 interface AsyncDataExecuteOptions {
-  dedupe?: 'cancel' | 'defer';
+  dedupe?: "cancel" | "defer";
 }
 
 export interface UseAsyncStoryblokResult {
-  story: ComputedRef<ISbResult['data']['story']>;
+  story: ComputedRef<ISbResult["data"]["story"]>;
   /** In Nuxt 3: null when not loaded. In Nuxt 4: undefined when not loaded. */
   data: Ref<ISbResult | null | undefined>;
   pending: Ref<boolean>;
@@ -45,10 +51,13 @@ export interface UseAsyncStoryblokResult {
  */
 const stableStringify = (obj: Record<string, any>): string => {
   const sortedKeys = Object.keys(obj).sort();
-  const sortedObj = sortedKeys.reduce((acc, key) => {
-    acc[key] = obj[key];
-    return acc;
-  }, {} as Record<string, any>);
+  const sortedObj = sortedKeys.reduce(
+    (acc, key) => {
+      acc[key] = obj[key];
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
   return JSON.stringify(sortedObj);
 };
 
@@ -107,33 +116,40 @@ export async function useAsyncStoryblok(
     resolveLinks: bridge.resolveLinks ?? api.resolve_links,
   };
 
-  const result = await useAsyncData(uniqueKey, () => storyblokApiInstance.get(`cdn/stories/${url}`, api), rest) as AsyncData<ISbResult, NuxtError<unknown>>;
+  const result = (await useAsyncData(
+    uniqueKey,
+    () => storyblokApiInstance.get(`cdn/stories/${url}`, api),
+    rest,
+  )) as AsyncData<ISbResult, NuxtError<unknown>>;
 
   // Register bridge for live preview updates (client-side only)
   // Use watch instead of onMounted because lifecycle hooks must be registered before the first await
   // in async setup functions, but we can't as we need the story.id
   if (import.meta.client) {
     const registerBridge = (storyId: number) => {
-      useStoryblokBridge(storyId, (evStory) => {
-        // In Nuxt 4, data is a shallowRef - we must replace the entire object
-        // to trigger reactivity instead of mutating nested properties
-        if (result.data.value) {
-          result.data.value = {
-            ...result.data.value,
-            data: {
-              ...result.data.value.data,
-              story: evStory,
-            },
-          };
-        }
-      }, bridgeOptions);
+      useStoryblokBridge(
+        storyId,
+        (evStory) => {
+          // In Nuxt 4, data is a shallowRef - we must replace the entire object
+          // to trigger reactivity instead of mutating nested properties
+          if (result.data.value) {
+            result.data.value = {
+              ...result.data.value,
+              data: {
+                ...result.data.value.data,
+                story: evStory,
+              },
+            };
+          }
+        },
+        bridgeOptions,
+      );
     };
 
     const id = result.data.value?.data?.story?.id;
     if (id) {
       registerBridge(id);
-    }
-    else {
+    } else {
       // Wait for data to become available, then register bridge once
       const stopWatch = watch(
         () => result.data.value?.data?.story?.id,

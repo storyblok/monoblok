@@ -1,8 +1,13 @@
-import type { SbBlokData, SbSDKOptions, StoryblokRichTextDocumentNode, StoryblokRichTextOptions } from '@storyblok/js';
-import type StoryblokComponent from './components/StoryblokComponent.vue';
-import type { VNode } from 'vue';
+import type {
+  SbBlokData,
+  SbSDKOptions,
+  StoryblokRichTextDocumentNode,
+  StoryblokRichTextOptions,
+} from "@storyblok/js";
+import type StoryblokComponent from "./components/StoryblokComponent.vue";
+import type { VNode } from "vue";
 
-declare module 'vue' {
+declare module "vue" {
   export interface GlobalComponents {
     StoryblokComponent: typeof StoryblokComponent;
   }
@@ -37,7 +42,7 @@ export type {
   StoryblokRichTextImageOptimizationOptions,
   StoryblokRichTextNode,
   StoryblokRichTextNodeTypes,
-} from '@storyblok/js';
+} from "@storyblok/js";
 
 export interface SbVueSDKOptions extends SbSDKOptions {
   /**
@@ -56,5 +61,5 @@ export interface SbComponentProps {
 
 export interface StoryblokRichTextProps {
   doc: StoryblokRichTextDocumentNode;
-  tiptapExtensions?: StoryblokRichTextOptions<VNode>['tiptapExtensions'];
+  tiptapExtensions?: StoryblokRichTextOptions<VNode>["tiptapExtensions"];
 }

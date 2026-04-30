@@ -9,6 +9,7 @@ storyblok languages pull --space YOUR_SPACE_ID
 ```
 
 This will download your space's languages configuration and save it to:
+
 ```
 .storyblok/
 └── languages/
@@ -18,20 +19,23 @@ This will download your space's languages configuration and save it to:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to pull languages from | - |
-| `-f, --filename <filename>` | Custom name for the languages file | `languages` |
-| `--su, --suffix <suffix>` | Suffix to add to the file name |  |
-| `-p, --path <path>` | Custom path to store the file | `.storyblok/languages` |
+| Option                      | Description                                           | Default                |
+| --------------------------- | ----------------------------------------------------- | ---------------------- |
+| `-s, --space <space>`       | (Required) The ID of the space to pull languages from | -                      |
+| `-f, --filename <filename>` | Custom name for the languages file                    | `languages`            |
+| `--su, --suffix <suffix>`   | Suffix to add to the file name                        |                        |
+| `-p, --path <path>`         | Custom path to store the file                         | `.storyblok/languages` |
 
 ## Examples
 
 1. Pull languages with default settings:
+
 ```bash
 storyblok languages pull --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── languages/
@@ -40,10 +44,13 @@ Generates:
 ```
 
 2. Pull languages with custom filename:
+
 ```bash
 storyblok languages pull --space 12345 --filename my-languages
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── languages/
@@ -52,10 +59,13 @@ Generates:
 ```
 
 3. Pull languages with custom suffix:
+
 ```bash
 storyblok languages pull --space 12345 --suffix dev
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── languages/
@@ -64,10 +74,13 @@ Generates:
 ```
 
 4. Pull languages to a custom path:
+
 ```bash
 storyblok languages pull --space 12345 --path ./backup
 ```
+
 Generates:
+
 ```
 backup/
 └── languages/
@@ -78,6 +91,7 @@ backup/
 ## File Structure
 
 The command follows this pattern for file generation:
+
 ```
 {path}/
 └── languages/
@@ -86,6 +100,7 @@ The command follows this pattern for file generation:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{filename}` is the name you specified (default: `languages`)

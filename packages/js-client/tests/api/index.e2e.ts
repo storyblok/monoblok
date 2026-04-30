@@ -1,5 +1,5 @@
-import StoryblokClient from 'storyblok-js-client';
-import { beforeEach, describe, expect, it } from 'vitest';
+import StoryblokClient from "storyblok-js-client";
+import { beforeEach, describe, expect, it } from "vitest";
 
 /**
  * Smoke tests against the real Storyblok CDN API.
@@ -16,45 +16,45 @@ import { beforeEach, describe, expect, it } from 'vitest';
  *   VITE_ACCESS_TOKEN  — CDN access token
  *   VITE_SPACE_ID      — numeric space ID
  */
-describe.skipIf(!process.env.VITE_ACCESS_TOKEN)('StoryblokClient (smoke tests)', () => {
+describe.skipIf(!process.env.VITE_ACCESS_TOKEN)("StoryblokClient (smoke tests)", () => {
   let client: StoryblokClient;
 
   beforeEach(() => {
     client = new StoryblokClient({
       accessToken: process.env.VITE_ACCESS_TOKEN,
-      cache: { type: 'memory', clear: 'auto' },
+      cache: { type: "memory", clear: "auto" },
     });
   });
 
-  it('authenticates and returns space information', async () => {
-    const { data } = await client.get('cdn/spaces/me');
+  it("authenticates and returns space information", async () => {
+    const { data } = await client.get("cdn/spaces/me");
     expect(data.space.id).toBe(Number(process.env.VITE_SPACE_ID));
   });
 
-  it('returns at least one published story', async () => {
-    const { data } = await client.get('cdn/stories');
+  it("returns at least one published story", async () => {
+    const { data } = await client.get("cdn/stories");
     expect(data.stories.length).toBeGreaterThan(0);
   });
 
-  it('returns a specific story by slug', async () => {
-    const { data } = await client.get('cdn/stories/testcontent-0');
-    expect(data.story.slug).toBe('testcontent-0');
+  it("returns a specific story by slug", async () => {
+    const { data } = await client.get("cdn/stories/testcontent-0");
+    expect(data.story.slug).toBe("testcontent-0");
   });
 
-  it('resolves relations against real content', async () => {
-    const { data } = await client.get('cdn/stories/testcontent-0', {
-      resolve_relations: 'root.author',
+  it("resolves relations against real content", async () => {
+    const { data } = await client.get("cdn/stories/testcontent-0", {
+      resolve_relations: "root.author",
     });
-    expect(data.story.content.author[0].slug).toBe('edgar-allan-poe');
+    expect(data.story.content.author[0].slug).toBe("edgar-allan-poe");
   });
 
-  it('returns stories matching a by_slugs wildcard', async () => {
-    const { data } = await client.get('cdn/stories', { by_slugs: 'folder/*' });
+  it("returns stories matching a by_slugs wildcard", async () => {
+    const { data } = await client.get("cdn/stories", { by_slugs: "folder/*" });
     expect(data.stories.length).toBeGreaterThan(0);
   });
 
-  it('paginates through all stories with getAll', async () => {
-    const result = await client.getAll('cdn/stories', {});
+  it("paginates through all stories with getAll", async () => {
+    const result = await client.getAll("cdn/stories", {});
     expect(result.length).toBeGreaterThan(0);
   });
 });

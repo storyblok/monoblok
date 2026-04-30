@@ -1,4 +1,4 @@
-import * as spacesApi from '../generated/spaces/sdk.gen';
+import * as spacesApi from "../generated/spaces/sdk.gen";
 import type {
   CreateData,
   CreateResponses,
@@ -8,42 +8,129 @@ import type {
   ListResponses,
   UpdateData,
   UpdateResponses,
-} from '../generated/spaces/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
-import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
+} from "../generated/spaces/types.gen";
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../index";
+import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export function createSpacesResource(deps: MapiResourceDeps) {
   const { client, spaceId, wrapRequest } = deps;
-  const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
+  const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = false>(
+      options: {
+        query?: ListData["query"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } = {},
+    ): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
       const { query, signal, throwOnError, fetchOptions } = options;
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        spacesApi.list({ client, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListResponses[200], ThrowOnError>(
+        () =>
+          spacesApi.list({
+            client,
+            query,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions
+              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+              : {}),
+          }),
+        throwOnError,
+      );
     },
-    create<ThrowOnError extends boolean = false>(options: { body: CreateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions }): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = false>(options: {
+      body: CreateData["body"];
+      signal?: AbortSignal;
+      throwOnError?: ThrowOnError;
+      fetchOptions?: FetchOptions;
+    }): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
       const { body, signal, throwOnError, fetchOptions } = options;
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        spacesApi.create({ client, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateResponses[201], ThrowOnError>(
+        () =>
+          spacesApi.create({
+            client,
+            body,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions
+              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+              : {}),
+          }),
+        throwOnError,
+      );
     },
-    get<ThrowOnError extends boolean = false>(options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = false>(
+      options: {
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        spacesApi.get({ client, path: { space_id: resolvedSpaceId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<GetResponses[200], ThrowOnError>(
+        () =>
+          spacesApi.get({
+            client,
+            path: { space_id: resolvedSpaceId },
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions
+              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+              : {}),
+          }),
+        throwOnError,
+      );
     },
-    update<ThrowOnError extends boolean = false>(options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+    update<ThrowOnError extends boolean = false>(
+      options: {
+        body: UpdateData["body"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
-        spacesApi.update({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<UpdateResponses[200], ThrowOnError>(
+        () =>
+          spacesApi.update({
+            client,
+            path: { space_id: resolvedSpaceId },
+            body,
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions
+              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+              : {}),
+          }),
+        throwOnError,
+      );
     },
-    delete<ThrowOnError extends boolean = false>(options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(
+      options: {
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
-        spacesApi.delete_({ client, path: { space_id: resolvedSpaceId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteResponses[200], ThrowOnError>(
+        () =>
+          spacesApi.delete_({
+            client,
+            path: { space_id: resolvedSpaceId },
+            signal,
+            ...(throwOnError === undefined ? {} : { throwOnError }),
+            ...(fetchOptions
+              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+              : {}),
+          }),
+        throwOnError,
+      );
     },
   };
 }

@@ -75,7 +75,7 @@ Using the default config without arguments uses the following `@antfu/eslint-con
 
 ```js
 // eslint.config.js
-import { storyblokLintConfig } from '@storyblok/eslint-config';
+import { storyblokLintConfig } from "@storyblok/eslint-config";
 
 export default storyblokLintConfig();
 ```
@@ -89,7 +89,7 @@ It is possible to add custom rules with the following configuration.
 
 ```js
 // eslint.config.js
-import { storyblokLintConfig } from '@storyblok/eslint-config';
+import { storyblokLintConfig } from "@storyblok/eslint-config";
 
 export default storyblokLintConfig(
   // @antfu/eslint-config options, must be the first argument
@@ -99,7 +99,7 @@ export default storyblokLintConfig(
   // Addtionals flat configs start from here
   {
     rules: {
-      curly: 'off',
+      curly: "off",
     },
   },
 );
@@ -123,7 +123,7 @@ Add the following settings to your `.vscode/settings.json`:
   // Auto fix
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "never"
+    "source.organizeImports": "never",
   },
 
   // Silent the stylistic rules in you IDE, but still auto fix them
@@ -137,7 +137,7 @@ Add the following settings to your `.vscode/settings.json`:
     { "rule": "*-dangle", "severity": "off", "fixable": true },
     { "rule": "*-newline", "severity": "off", "fixable": true },
     { "rule": "*quotes", "severity": "off", "fixable": true },
-    { "rule": "*semi", "severity": "off", "fixable": true }
+    { "rule": "*semi", "severity": "off", "fixable": true },
   ],
 
   // Enable eslint for all supported languages
@@ -162,8 +162,8 @@ Add the following settings to your `.vscode/settings.json`:
     "less",
     "scss",
     "pcss",
-    "postcss"
-  ]
+    "postcss",
+  ],
 }
 ```
 

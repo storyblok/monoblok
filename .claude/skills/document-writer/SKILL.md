@@ -42,7 +42,7 @@ Subject performs action. Prefer this.
 
 ### Spelling
 
-- **American English**: Use standard American spellings (for example, *neighbor*, *center*).
+- **American English**: Use standard American spellings (for example, _neighbor_, _center_).
 - **Abbreviations**: Define on first reference if used more than twice (for example, "universal resource identifier (URI)"). Use abbreviations for common terms (for example, "HTTP").
 - **Special Characters**: Use only when technically correct. Avoid emojis and decorative symbols unless they add technical value.
 
@@ -60,7 +60,7 @@ Subject performs action. Prefer this.
 ## Punctuation
 
 - **Oxford Comma**: Always use a comma before the last item in a list.
-- **Dashes**: 
+- **Dashes**:
   - **Hyphens**: Join compound phrases.
   - **Em dashes**: Demarcate an aside, surrounded by spaces. Avoid En dashes.
 - **Spaces**: Use only one space between sentences. No space before punctuation.

@@ -1,11 +1,11 @@
-import { colorPalette } from '../../../../constants';
-import type { DependencyGraph, NodeProcessingResult, ProcessingLevel, PushResults } from './types';
-import { determineProcessingOrder } from './dependency-graph';
-import { progressDisplay } from '../progress-display';
-import { pushComponent } from '../actions';
-import type { ComponentCreate } from '../../../../types';
-import chalk from 'chalk';
-import { getActiveConfig } from '../../../../lib/config';
+import { colorPalette } from "../../../../constants";
+import type { DependencyGraph, NodeProcessingResult, ProcessingLevel, PushResults } from "./types";
+import { determineProcessingOrder } from "./dependency-graph";
+import { progressDisplay } from "../progress-display";
+import { pushComponent } from "../actions";
+import type { ComponentCreate } from "../../../../types";
+import chalk from "chalk";
+import { getActiveConfig } from "../../../../lib/config";
 
 // =============================================================================
 // RESOURCE PROCESSING
@@ -34,8 +34,7 @@ export async function processAllResources(
       // Handle circular dependencies with stub creation
       const cyclicResults = await processCyclicLevel(level, graph, space, maxConcurrency);
       mergeResults(results, cyclicResults);
-    }
-    else {
+    } else {
       // Handle regular level
       const levelResults = await processLevel(level.nodes, graph, space, maxConcurrency);
       mergeResults(results, levelResults);
@@ -44,7 +43,7 @@ export async function processAllResources(
 
   // Show completion summary using progress display
   progressDisplay.handleEvent({
-    type: 'complete',
+    type: "complete",
     summary: {
       updated: results.successful.length,
       unchanged: 0, // No longer skip resources - all are processed
@@ -67,7 +66,9 @@ async function processCyclicLevel(
 ): Promise<PushResults> {
   // Clear current progress display and show circular dependency message
   progressDisplay.clearProgress();
-  console.log(`\n🔄 Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
+  console.log(
+    `\n🔄 Detected circular dependencies: ${level.nodes.map((id) => id.replace("component:", "")).join(", ")}`,
+  );
 
   // STEP 1: Create stub components for any missing components in the cycle
   await createStubComponents(level.nodes, graph, space);
@@ -88,7 +89,7 @@ async function createStubComponents(
 
   for (const nodeId of nodeIds) {
     const node = graph.nodes.get(nodeId);
-    if (node && node.type === 'component' && !node.targetData) {
+    if (node && node.type === "component" && !node.targetData) {
       missingComponents.push(node.name);
     }
   }
@@ -97,12 +98,14 @@ async function createStubComponents(
     return; // No missing components to create stubs for
   }
 
-  console.log(`📝 Creating stub components for circular dependencies: ${missingComponents.join(', ')}`);
+  console.log(
+    `📝 Creating stub components for circular dependencies: ${missingComponents.join(", ")}`,
+  );
 
   // Create minimal stub components
   for (const nodeId of nodeIds) {
     const node = graph.nodes.get(nodeId);
-    if (node && node.type === 'component' && !node.targetData) {
+    if (node && node.type === "component" && !node.targetData) {
       try {
         const stubComponent = createMinimalStubComponent(node.name);
         const result = await pushComponent(space, stubComponent);
@@ -110,10 +113,9 @@ async function createStubComponents(
         if (result) {
           // Update the node's target data so future references can resolve
           node.updateTargetData(result);
-          console.log(`${chalk.green('✓')} Created stub component: ${node.name}`);
+          console.log(`${chalk.green("✓")} Created stub component: ${node.name}`);
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`✗ Failed to create stub component ${node.name}:`, error);
         throw error;
       }
@@ -121,7 +123,7 @@ async function createStubComponents(
   }
 
   // Add a blank line before resuming normal processing
-  console.log('');
+  console.log("");
 }
 
 /**
@@ -153,7 +155,10 @@ async function processLevel(
   }
 
   // PASS 2: Process all nodes in this level with resolved references
-  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from({ length: maxConcurrency }, () => null);
+  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from(
+    { length: maxConcurrency },
+    () => null,
+  );
   const promises: Promise<NodeProcessingResult>[] = [];
 
   for (let i = 0; i < level.length; i++) {
@@ -195,7 +200,7 @@ async function processNode(
 
     const elapsedMs = Date.now() - startTime;
     progressDisplay.handleEvent({
-      type: 'success',
+      type: "success",
       name: node.getName(),
       resourceType: getResourceTypeName(node.type),
       color: getResourceTypeColor(node.type),
@@ -203,11 +208,10 @@ async function processNode(
     });
 
     return { name: node.getName() };
-  }
-  catch (error) {
+  } catch (error) {
     const elapsedMs = Date.now() - startTime;
     progressDisplay.handleEvent({
-      type: 'error',
+      type: "error",
       name: node.getName(),
       resourceType: getResourceTypeName(node.type),
       error,
@@ -226,8 +230,7 @@ function aggregateResults(results: NodeProcessingResult[]): PushResults {
   for (const result of results) {
     if (result.error) {
       aggregated.failed.push({ name: result.name, error: result.error });
-    }
-    else {
+    } else {
       aggregated.successful.push(result.name);
     }
   }
@@ -248,11 +251,16 @@ function mergeResults(target: PushResults, source: PushResults): void {
  */
 function getResourceTypeName(type: string): string {
   switch (type) {
-    case 'component': return 'component';
-    case 'group': return 'group';
-    case 'tag': return 'tag';
-    case 'preset': return 'preset';
-    default: return type;
+    case "component":
+      return "component";
+    case "group":
+      return "group";
+    case "tag":
+      return "tag";
+    case "preset":
+      return "preset";
+    default:
+      return type;
   }
 }
 
@@ -261,10 +269,15 @@ function getResourceTypeName(type: string): string {
  */
 function getResourceTypeColor(type: string): string {
   switch (type) {
-    case 'component': return colorPalette.COMPONENTS;
-    case 'group': return colorPalette.GROUPS;
-    case 'tag': return colorPalette.TAGS;
-    case 'preset': return colorPalette.PRESETS;
-    default: return colorPalette.COMPONENTS;
+    case "component":
+      return colorPalette.COMPONENTS;
+    case "group":
+      return colorPalette.GROUPS;
+    case "tag":
+      return colorPalette.TAGS;
+    case "preset":
+      return colorPalette.PRESETS;
+    default:
+      return colorPalette.COMPONENTS;
   }
 }

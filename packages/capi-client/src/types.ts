@@ -1,16 +1,15 @@
-import type { Client, RequestOptions } from './generated/shared/client';
-import type { ClientError } from './error';
-import type { ThrottleManager } from './utils/rate-limit';
+import type { Client, RequestOptions } from "./generated/shared/client";
+import type { ClientError } from "./error";
+import type { ThrottleManager } from "./utils/rate-limit";
 
-export type ApiResponse<Data = unknown, ThrowOnError extends boolean = false> =
-  ThrowOnError extends true
-    ? { data: Data; response: Response; request: Request }
-    : { data?: Data; error?: ClientError; response: Response; request: Request };
+export type ApiResponse<
+  Data = unknown,
+  ThrowOnError extends boolean = false,
+> = ThrowOnError extends true
+  ? { data: Data; response: Response; request: Request }
+  : { data?: Data; error?: ClientError; response: Response; request: Request };
 
-export type HttpRequestOptions = Omit<
-  RequestOptions,
-  'method' | 'security' | 'url'
->;
+export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
 
 export type HttpRequestMethod = <TData = unknown>(
   path: string,
@@ -44,12 +43,14 @@ export interface RequestWithCacheOptions {
 export interface ResourceDeps {
   client: Client;
   requestWithCache: <TData, ThrowOnError extends boolean = false>(
-    method: 'GET',
+    method: "GET",
     path: string,
     rawQuery: Record<string, unknown>,
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
     options?: RequestWithCacheOptions,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
-  asApiResponse: <TData, ThrowOnError extends boolean = false>(p: Promise<unknown>) => Promise<ApiResponse<TData, ThrowOnError>>;
+  asApiResponse: <TData, ThrowOnError extends boolean = false>(
+    p: Promise<unknown>,
+  ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
 }

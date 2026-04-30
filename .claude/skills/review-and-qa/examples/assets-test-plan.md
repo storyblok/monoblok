@@ -343,6 +343,7 @@ ls -la .storyblok/assets/$STORYBLOK_SPACE_ID/folders/
 ```
 
 **Verify:**
+
 - [ ] The CLI shows a clear error message about authentication or space access.
 
 #### 6.2 Network failure during pull
@@ -376,6 +377,7 @@ ls -la .storyblok/assets/$STORYBLOK_SPACE_ID/folders/
 ```
 
 **Verify:**
+
 - [ ] The CLI shows a clear error about JSON parsing.
 
 ### 7. Private assets

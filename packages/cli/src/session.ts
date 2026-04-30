@@ -1,6 +1,6 @@
 // session.ts
-import { type RegionCode, regionsDomain } from './constants';
-import { addCredentials, getCredentials } from './creds';
+import { type RegionCode, regionsDomain } from "./constants";
+import { addCredentials, getCredentials } from "./creds";
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -38,8 +38,7 @@ function createSession() {
       state.login = creds.login;
       state.password = creds.password;
       state.region = creds.region as RegionCode;
-    }
-    else {
+    } else {
       // No credentials found; set state to logged out
       state.isLoggedIn = false;
       state.login = undefined;
@@ -67,14 +66,13 @@ function createSession() {
   async function persistCredentials(region: RegionCode) {
     if (state.isLoggedIn && state.login && state.password && state.region) {
       await addCredentials({
-        machineName: regionsDomain[region] || 'mapi.storyblok.com',
+        machineName: regionsDomain[region] || "mapi.storyblok.com",
         login: state.login,
         password: state.password,
         region: state.region,
       });
-    }
-    else {
-      throw new Error('No credentials to save.');
+    } else {
+      throw new Error("No credentials to save.");
     }
   }
 

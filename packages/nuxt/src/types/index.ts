@@ -1,6 +1,6 @@
-import type { AsyncData, AsyncDataOptions, NuxtError } from 'nuxt/app';
-import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from '@storyblok/vue';
-import type { ComputedRef } from 'vue';
+import type { AsyncData, AsyncDataOptions, NuxtError } from "nuxt/app";
+import type { ISbResult, ISbStoriesParams, StoryblokBridgeConfigV2 } from "@storyblok/vue";
+import type { ComputedRef } from "vue";
 
 /**
  * Options for the useAsyncStoryblok composable.
@@ -14,7 +14,7 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
 }
 
 export interface UseAsyncStoryblokResult extends AsyncData<ISbResult, NuxtError<unknown>> {
-  story: ComputedRef<ISbResult['data']['story']>;
+  story: ComputedRef<ISbResult["data"]["story"]>;
 }
 
 export interface ModuleOptions {

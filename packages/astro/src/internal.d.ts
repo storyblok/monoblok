@@ -7,7 +7,7 @@
  */
 
 declare namespace App {
-  import type { ISbStoryData } from '@storyblok/js';
+  import type { ISbStoryData } from "@storyblok/js";
 
   interface Locals {
     _storyblok_preview_data?: {
@@ -18,30 +18,27 @@ declare namespace App {
 }
 
 /** Registered Storyblok components mapped by name. */
-declare module 'virtual:import-storyblok-components' {
-  import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+declare module "virtual:import-storyblok-components" {
+  import type { AstroComponentFactory } from "astro/runtime/server/index.js";
 
-  export const storyblokComponents: Record<
-    string,
-    () => Promise<AstroComponentFactory>
-  >;
+  export const storyblokComponents: Record<string, () => Promise<AstroComponentFactory>>;
 }
 
 /** Integration options provided to the Astro SDK. */
-declare module 'virtual:storyblok-options' {
-  import type { IntegrationOptions } from './lib/storyblok-integration';
+declare module "virtual:storyblok-options" {
+  import type { IntegrationOptions } from "./lib/storyblok-integration";
 
   const options: IntegrationOptions;
   export default options;
 }
 
 // Dev stub. Real types come from the built package.
-declare module '@storyblok/astro' {
+declare module "@storyblok/astro" {
   /** Converts a string to camelCase (internal helper). */
   export function toCamelCase(input: string): string;
   export function sanitizeJSON(data: unknown): string;
   export function isEditorRequest(url: URL, options?: StoryblokValidationOptions): boolean;
 
-  export type { SbBlokData } from '@storyblok/js';
+  export type { SbBlokData } from "@storyblok/js";
   // add more exports as needed
 }

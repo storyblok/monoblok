@@ -1,26 +1,35 @@
-import { spawn } from 'node:child_process';
-import fs from 'node:fs/promises';
-import { vol } from 'memfs';
-import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
-import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
-import * as filesystem from '../../utils/filesystem';
+import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import { vol } from "memfs";
+import { beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
+import open from "open";
+import {
+  createEnvFile,
+  extractPortFromTopics,
+  fetchBlueprintRepositories,
+  generateProject,
+  generateSpaceUrl,
+  handleEnvFileCreation,
+  openSpaceInBrowser,
+  repositoryToTemplate,
+} from "./actions";
+import * as filesystem from "../../utils/filesystem";
 
 // Mock external dependencies
-vi.mock('node:child_process');
-vi.mock('node:fs/promises', () => ({
+vi.mock("node:child_process");
+vi.mock("node:fs/promises", () => ({
   default: {
     access: vi.fn(),
   },
 }));
-vi.mock('open');
-vi.mock('../../utils/filesystem');
+vi.mock("open");
+vi.mock("../../utils/filesystem");
 // Mock github module for fetchBlueprintRepositories tests
-vi.mock('../../github', () => ({
+vi.mock("../../github", () => ({
   createOctokit: vi.fn(),
 }));
 // Mock utils module for error handling and konsola
-vi.mock('../../utils', () => ({
+vi.mock("../../utils", () => ({
   handleAPIError: vi.fn(),
   konsola: {
     ok: vi.fn(),
@@ -35,29 +44,29 @@ const mockedSaveToFile = filesystem.saveToFile as MockedFunction<typeof filesyst
 const mockedFsAccess = vi.mocked(fs.access);
 
 // Import the mocked modules
-const { createOctokit } = await import('../../github');
-const { handleAPIError, konsola } = await import('../../utils');
+const { createOctokit } = await import("../../github");
+const { handleAPIError, konsola } = await import("../../utils");
 const mockedCreateOctokit = vi.mocked(createOctokit);
 const mockedHandleAPIError = vi.mocked(handleAPIError);
 const mockedKonsola = vi.mocked(konsola);
 
-describe('create actions', () => {
+describe("create actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vol.reset();
   });
 
-  describe('generateProject', () => {
-    it('should generate project successfully when directory does not exist', async () => {
+  describe("generateProject", () => {
+    it("should generate project successfully when directory does not exist", async () => {
       // Mock fs.access to throw ENOENT (directory doesn't exist)
-      const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
-      accessError.code = 'ENOENT';
+      const accessError = new Error("ENOENT: no such file or directory") as NodeJS.ErrnoException;
+      accessError.code = "ENOENT";
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
       // Mock successful spawn process
       const mockProcess = {
         on: vi.fn((event: string, callback: (code: number) => void) => {
-          if (event === 'close') {
+          if (event === "close") {
             // Simulate successful completion
             setTimeout(() => callback(0), 0);
           }
@@ -65,58 +74,58 @@ describe('create actions', () => {
       };
       mockedSpawn.mockReturnValue(mockProcess as any);
 
-      await expect(generateProject('react', 'my-project', '/test/path')).resolves.toBeUndefined();
+      await expect(generateProject("react", "my-project", "/test/path")).resolves.toBeUndefined();
 
-      expect(mockedFsAccess).toHaveBeenCalledWith('/test/path/my-project');
+      expect(mockedFsAccess).toHaveBeenCalledWith("/test/path/my-project");
       expect(mockedSpawn).toHaveBeenCalledWith(
-        'npx',
-        ['degit', 'storyblok/blueprint-core-react', '/test/path/my-project'],
+        "npx",
+        ["degit", "storyblok/blueprint-core-react", "/test/path/my-project"],
         {
-          stdio: 'inherit',
+          stdio: "inherit",
           shell: true,
         },
       );
     });
 
-    it('should throw FileSystemError when directory already exists', async () => {
+    it("should throw FileSystemError when directory already exists", async () => {
       // Mock fs.access to succeed (directory exists)
       mockedFsAccess.mockResolvedValueOnce(undefined);
 
-      await expect(generateProject('vue', 'existing-project')).rejects.toThrow(
+      await expect(generateProject("vue", "existing-project")).rejects.toThrow(
         expect.objectContaining({
-          name: 'File System Error',
-          errorId: 'directory_not_empty',
-          code: 'ENOTEMPTY',
+          name: "File System Error",
+          errorId: "directory_not_empty",
+          code: "ENOTEMPTY",
         }),
       );
 
-      expect(mockedFsAccess).toHaveBeenCalledWith(expect.stringContaining('existing-project'));
+      expect(mockedFsAccess).toHaveBeenCalledWith(expect.stringContaining("existing-project"));
     });
 
-    it('should handle filesystem errors other than ENOENT', async () => {
+    it("should handle filesystem errors other than ENOENT", async () => {
       // Mock fs.access to throw EACCES (permission denied)
-      const accessError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
-      accessError.code = 'EACCES';
+      const accessError = new Error("EACCES: permission denied") as NodeJS.ErrnoException;
+      accessError.code = "EACCES";
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
-      await expect(generateProject('svelte', 'test-project')).rejects.toThrow(
+      await expect(generateProject("svelte", "test-project")).rejects.toThrow(
         expect.objectContaining({
-          name: 'File System Error',
-          errorId: 'permission_denied',
+          name: "File System Error",
+          errorId: "permission_denied",
         }),
       );
     });
 
-    it('should handle spawn process failure', async () => {
+    it("should handle spawn process failure", async () => {
       // Mock fs.access to throw ENOENT (directory doesn't exist)
-      const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
-      accessError.code = 'ENOENT';
+      const accessError = new Error("ENOENT: no such file or directory") as NodeJS.ErrnoException;
+      accessError.code = "ENOENT";
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
       // Mock failed spawn process
       const mockProcess = {
         on: vi.fn((event: string, callback: (code: number) => void) => {
-          if (event === 'close') {
+          if (event === "close") {
             // Simulate failure
             setTimeout(() => callback(1), 0);
           }
@@ -124,105 +133,113 @@ describe('create actions', () => {
       };
       mockedSpawn.mockReturnValue(mockProcess as any);
 
-      await expect(generateProject('react', 'failed-project')).rejects.toThrow(
-        'Failed to clone template. Process exited with code 1',
+      await expect(generateProject("react", "failed-project")).rejects.toThrow(
+        "Failed to clone template. Process exited with code 1",
       );
     });
 
-    it('should handle spawn process error', async () => {
+    it("should handle spawn process error", async () => {
       // Mock fs.access to throw ENOENT (directory doesn't exist)
-      const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
-      accessError.code = 'ENOENT';
+      const accessError = new Error("ENOENT: no such file or directory") as NodeJS.ErrnoException;
+      accessError.code = "ENOENT";
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
       // Mock spawn process error
       const mockProcess = {
         on: vi.fn((event: string, callback: (error: Error) => void) => {
-          if (event === 'error') {
-            setTimeout(() => callback(new Error('spawn failed')), 0);
+          if (event === "error") {
+            setTimeout(() => callback(new Error("spawn failed")), 0);
           }
         }),
       };
       mockedSpawn.mockReturnValue(mockProcess as any);
 
-      await expect(generateProject('react', 'error-project')).rejects.toThrow(
-        'Failed to spawn degit process: spawn failed',
+      await expect(generateProject("react", "error-project")).rejects.toThrow(
+        "Failed to spawn degit process: spawn failed",
       );
     });
 
-    it('should use current working directory as default target path', async () => {
-      const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
-      accessError.code = 'ENOENT';
+    it("should use current working directory as default target path", async () => {
+      const accessError = new Error("ENOENT: no such file or directory") as NodeJS.ErrnoException;
+      accessError.code = "ENOENT";
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
       const mockProcess = {
         on: vi.fn((event: string, callback: (code: number) => void) => {
-          if (event === 'close') {
+          if (event === "close") {
             setTimeout(() => callback(0), 0);
           }
         }),
       };
       mockedSpawn.mockReturnValue(mockProcess as any);
 
-      vi.spyOn(process, 'cwd').mockReturnValue('/current/dir');
+      vi.spyOn(process, "cwd").mockReturnValue("/current/dir");
 
-      await generateProject('react', 'my-project');
+      await generateProject("react", "my-project");
 
-      expect(mockedFsAccess).toHaveBeenCalledWith('/current/dir/my-project');
+      expect(mockedFsAccess).toHaveBeenCalledWith("/current/dir/my-project");
 
       vi.mocked(process.cwd).mockRestore();
     });
   });
 
-  describe('createEnvFile', () => {
-    it('should create .env file successfully with access token only', async () => {
+  describe("createEnvFile", () => {
+    it("should create .env file successfully with access token only", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' });
+      await createEnvFile("/test/project", { STORYBLOK_DELIVERY_API_TOKEN: "test-token-123" });
 
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
-        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-123'),
+        "/test/project/.env",
+        expect.stringContaining("STORYBLOK_DELIVERY_API_TOKEN=test-token-123"),
       );
     });
 
-    it('should create .env file with additional variables', async () => {
+    it("should create .env file with additional variables", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
       const additionalVars = {
-        CUSTOM_VAR: 'custom-value',
-        ANOTHER_VAR: 'another-value',
+        CUSTOM_VAR: "custom-value",
+        ANOTHER_VAR: "another-value",
       };
 
-      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' }, additionalVars);
+      await createEnvFile(
+        "/test/project",
+        { STORYBLOK_DELIVERY_API_TOKEN: "test-token-123" },
+        additionalVars,
+      );
 
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
+        "/test/project/.env",
         expect.stringMatching(/STORYBLOK_DELIVERY_API_TOKEN=test-token-123/),
       );
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
+        "/test/project/.env",
         expect.stringMatching(/CUSTOM_VAR=custom-value/),
       );
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
+        "/test/project/.env",
         expect.stringMatching(/ANOTHER_VAR=another-value/),
       );
     });
 
-    it('should handle filesystem errors when creating .env file', async () => {
-      const saveError = new Error('Permission denied');
+    it("should handle filesystem errors when creating .env file", async () => {
+      const saveError = new Error("Permission denied");
       mockedSaveToFile.mockRejectedValue(saveError);
 
-      await expect(createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' })).rejects.toThrow(
-        'Failed to create .env file: Permission denied',
-      );
+      await expect(
+        createEnvFile("/test/project", { STORYBLOK_DELIVERY_API_TOKEN: "test-token-123" }),
+      ).rejects.toThrow("Failed to create .env file: Permission denied");
     });
 
-    it('should create proper .env file content structure', async () => {
+    it("should create proper .env file content structure", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      await createEnvFile('/test/project', { STORYBLOK_DELIVERY_API_TOKEN: 'test-token-123' }, { CUSTOM: 'value' });
+      await createEnvFile(
+        "/test/project",
+        { STORYBLOK_DELIVERY_API_TOKEN: "test-token-123" },
+        { CUSTOM: "value" },
+      );
 
       const [[, content]] = mockedSaveToFile.mock.calls;
 
@@ -233,264 +250,278 @@ describe('create actions', () => {
     });
   });
 
-  describe('handleEnvFileCreation', () => {
-    it('should create .env file with token and region successfully', async () => {
+  describe("handleEnvFileCreation", () => {
+    it("should create .env file with token and region successfully", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      const result = await handleEnvFileCreation('/test/project', 'test-token-123', 'us');
+      const result = await handleEnvFileCreation("/test/project", "test-token-123", "us");
 
       expect(result).toBe(true);
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
-        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-123'),
+        "/test/project/.env",
+        expect.stringContaining("STORYBLOK_DELIVERY_API_TOKEN=test-token-123"),
       );
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
-        expect.stringContaining('STORYBLOK_REGION=us'),
+        "/test/project/.env",
+        expect.stringContaining("STORYBLOK_REGION=us"),
       );
       expect(mockedKonsola.ok).toHaveBeenCalledWith(
-        expect.stringContaining('Created .env file with'),
+        expect.stringContaining("Created .env file with"),
         true,
       );
     });
 
-    it('should create .env file with only token', async () => {
+    it("should create .env file with only token", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      const result = await handleEnvFileCreation('/test/project', 'test-token-456');
+      const result = await handleEnvFileCreation("/test/project", "test-token-456");
 
       expect(result).toBe(true);
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
-        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-456'),
+        "/test/project/.env",
+        expect.stringContaining("STORYBLOK_DELIVERY_API_TOKEN=test-token-456"),
       );
       expect(mockedKonsola.ok).toHaveBeenCalledWith(
-        expect.stringContaining('Created .env file with'),
+        expect.stringContaining("Created .env file with"),
         true,
       );
     });
 
-    it('should create .env file with only region', async () => {
+    it("should create .env file with only region", async () => {
       mockedSaveToFile.mockResolvedValue(undefined);
 
-      const result = await handleEnvFileCreation('/test/project', undefined, 'ap');
+      const result = await handleEnvFileCreation("/test/project", undefined, "ap");
 
       expect(result).toBe(true);
       expect(mockedSaveToFile).toHaveBeenCalledWith(
-        '/test/project/.env',
-        expect.stringContaining('STORYBLOK_REGION=ap'),
+        "/test/project/.env",
+        expect.stringContaining("STORYBLOK_REGION=ap"),
       );
       expect(mockedKonsola.ok).toHaveBeenCalledWith(
-        expect.stringContaining('Created .env file with'),
+        expect.stringContaining("Created .env file with"),
         true,
       );
     });
 
-    it('should return true and log info when no environment variables provided', async () => {
-      const result = await handleEnvFileCreation('/test/project');
+    it("should return true and log info when no environment variables provided", async () => {
+      const result = await handleEnvFileCreation("/test/project");
 
       expect(result).toBe(true);
-      expect(mockedKonsola.info).toHaveBeenCalledWith('No environment variables to write');
+      expect(mockedKonsola.info).toHaveBeenCalledWith("No environment variables to write");
       expect(mockedSaveToFile).not.toHaveBeenCalled();
     });
 
-    it('should handle errors gracefully and return false', async () => {
-      const saveError = new Error('Permission denied');
+    it("should handle errors gracefully and return false", async () => {
+      const saveError = new Error("Permission denied");
       mockedSaveToFile.mockRejectedValue(saveError);
 
-      const result = await handleEnvFileCreation('/test/project', 'test-token-789', 'eu');
+      const result = await handleEnvFileCreation("/test/project", "test-token-789", "eu");
 
       expect(result).toBe(false);
       expect(mockedKonsola.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create .env file: Permission denied'),
+        expect.stringContaining("Failed to create .env file: Permission denied"),
       );
       expect(mockedKonsola.info).toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+        expect.stringContaining("You can manually add STORYBLOK_DELIVERY_API_TOKEN"),
       );
       expect(mockedKonsola.info).toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+        expect.stringContaining("You can manually add STORYBLOK_REGION"),
       );
     });
 
-    it('should show only token message when only token fails', async () => {
-      const saveError = new Error('Disk full');
+    it("should show only token message when only token fails", async () => {
+      const saveError = new Error("Disk full");
       mockedSaveToFile.mockRejectedValue(saveError);
 
-      const result = await handleEnvFileCreation('/test/project', 'test-token');
+      const result = await handleEnvFileCreation("/test/project", "test-token");
 
       expect(result).toBe(false);
       expect(mockedKonsola.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create .env file'),
+        expect.stringContaining("Failed to create .env file"),
       );
       expect(mockedKonsola.info).toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+        expect.stringContaining("You can manually add STORYBLOK_DELIVERY_API_TOKEN"),
       );
       expect(mockedKonsola.info).not.toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+        expect.stringContaining("You can manually add STORYBLOK_REGION"),
       );
     });
 
-    it('should show only region message when only region fails', async () => {
-      const saveError = new Error('Access denied');
+    it("should show only region message when only region fails", async () => {
+      const saveError = new Error("Access denied");
       mockedSaveToFile.mockRejectedValue(saveError);
 
-      const result = await handleEnvFileCreation('/test/project', undefined, 'ca');
+      const result = await handleEnvFileCreation("/test/project", undefined, "ca");
 
       expect(result).toBe(false);
       expect(mockedKonsola.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create .env file'),
+        expect.stringContaining("Failed to create .env file"),
       );
       expect(mockedKonsola.info).not.toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
+        expect.stringContaining("You can manually add STORYBLOK_DELIVERY_API_TOKEN"),
       );
       expect(mockedKonsola.info).toHaveBeenCalledWith(
-        expect.stringContaining('You can manually add STORYBLOK_REGION'),
+        expect.stringContaining("You can manually add STORYBLOK_REGION"),
       );
     });
   });
 
-  describe('generateSpaceUrl', () => {
-    it('should generate correct URL for EU region', () => {
-      const url = generateSpaceUrl(12345, 'eu');
-      expect(url).toBe('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+  describe("generateSpaceUrl", () => {
+    it("should generate correct URL for EU region", () => {
+      const url = generateSpaceUrl(12345, "eu");
+      expect(url).toBe(
+        "https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
 
-    it('should generate correct URL for US region', () => {
-      const url = generateSpaceUrl(67890, 'us');
-      expect(url).toBe('https://app-us.storyblok.com/#/me/spaces/67890/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+    it("should generate correct URL for US region", () => {
+      const url = generateSpaceUrl(67890, "us");
+      expect(url).toBe(
+        "https://app-us.storyblok.com/#/me/spaces/67890/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
 
-    it('should generate correct URL for China region', () => {
-      const url = generateSpaceUrl(11111, 'cn');
-      expect(url).toBe('https://app.storyblokchina.cn/#/me/spaces/11111/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+    it("should generate correct URL for China region", () => {
+      const url = generateSpaceUrl(11111, "cn");
+      expect(url).toBe(
+        "https://app.storyblokchina.cn/#/me/spaces/11111/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
 
-    it('should generate correct URL for Canada region', () => {
-      const url = generateSpaceUrl(22222, 'ca');
-      expect(url).toBe('https://app-ca.storyblok.com/#/me/spaces/22222/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+    it("should generate correct URL for Canada region", () => {
+      const url = generateSpaceUrl(22222, "ca");
+      expect(url).toBe(
+        "https://app-ca.storyblok.com/#/me/spaces/22222/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
 
-    it('should generate correct URL for Asia Pacific region', () => {
-      const url = generateSpaceUrl(33333, 'ap');
-      expect(url).toBe('https://app-ap.storyblok.com/#/me/spaces/33333/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+    it("should generate correct URL for Asia Pacific region", () => {
+      const url = generateSpaceUrl(33333, "ap");
+      expect(url).toBe(
+        "https://app-ap.storyblok.com/#/me/spaces/33333/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
   });
 
-  describe('openSpaceInBrowser', () => {
-    it('should open space URL in browser successfully', async () => {
+  describe("openSpaceInBrowser", () => {
+    it("should open space URL in browser successfully", async () => {
       mockedOpen.mockResolvedValue({} as any);
 
-      await expect(openSpaceInBrowser(12345, 'eu')).resolves.toBeUndefined();
+      await expect(openSpaceInBrowser(12345, "eu")).resolves.toBeUndefined();
 
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+      expect(mockedOpen).toHaveBeenCalledWith(
+        "https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
 
-    it('should handle errors when opening browser fails', async () => {
-      const openError = new Error('Failed to open browser');
+    it("should handle errors when opening browser fails", async () => {
+      const openError = new Error("Failed to open browser");
       mockedOpen.mockRejectedValue(openError);
 
-      await expect(openSpaceInBrowser(12345, 'us')).rejects.toThrow(
-        'Failed to open space in browser: Failed to open browser',
+      await expect(openSpaceInBrowser(12345, "us")).rejects.toThrow(
+        "Failed to open space in browser: Failed to open browser",
       );
     });
 
-    it('should open correct URL for different regions', async () => {
+    it("should open correct URL for different regions", async () => {
       mockedOpen.mockResolvedValue({} as any);
 
-      await openSpaceInBrowser(98765, 'cn');
+      await openSpaceInBrowser(98765, "cn");
 
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblokchina.cn/#/me/spaces/98765/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+      expect(mockedOpen).toHaveBeenCalledWith(
+        "https://app.storyblokchina.cn/#/me/spaces/98765/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create",
+      );
     });
   });
 });
 
-describe('extractPortFromTopics', () => {
-  it('should extract a valid port from topics', () => {
+describe("extractPortFromTopics", () => {
+  it("should extract a valid port from topics", () => {
     // This topic array contains a valid port topic
-    const topics = ['foo', 'bar', 'port-8080', 'baz'];
-    expect(extractPortFromTopics(topics)).toBe('8080');
+    const topics = ["foo", "bar", "port-8080", "baz"];
+    expect(extractPortFromTopics(topics)).toBe("8080");
   });
 
-  it('should return default port if no port topic is found', () => {
+  it("should return default port if no port topic is found", () => {
     // No port topic present, should fallback to 3000
-    const topics = ['foo', 'bar', 'baz'];
-    expect(extractPortFromTopics(topics)).toBe('3000');
+    const topics = ["foo", "bar", "baz"];
+    expect(extractPortFromTopics(topics)).toBe("3000");
   });
 
-  it('should return default port if port is invalid', () => {
+  it("should return default port if port is invalid", () => {
     // Port topic is not a valid number
-    const topics = ['port-abc', 'foo'];
-    expect(extractPortFromTopics(topics)).toBe('3000');
+    const topics = ["port-abc", "foo"];
+    expect(extractPortFromTopics(topics)).toBe("3000");
   });
 
-  it('should return default port if port is out of range', () => {
+  it("should return default port if port is out of range", () => {
     // Port is too high
-    const topics = ['port-70000'];
-    expect(extractPortFromTopics(topics)).toBe('3000');
+    const topics = ["port-70000"];
+    expect(extractPortFromTopics(topics)).toBe("3000");
   });
 });
 
-describe('repositoryToTemplate', () => {
-  it('should convert a repo object to a DynamicTemplate', () => {
+describe("repositoryToTemplate", () => {
+  it("should convert a repo object to a DynamicTemplate", () => {
     // Mock repo object with expected fields
     const repo = {
-      name: 'blueprint-core-vue',
-      topics: ['port-5173'],
-      clone_url: 'https://github.com/storyblok/blueprint-core-vue.git',
-      description: 'A Vue starter',
-      updated_at: '2024-01-01T00:00:00Z',
+      name: "blueprint-core-vue",
+      topics: ["port-5173"],
+      clone_url: "https://github.com/storyblok/blueprint-core-vue.git",
+      description: "A Vue starter",
+      updated_at: "2024-01-01T00:00:00Z",
     };
     const template = repositoryToTemplate(repo);
     expect(template).toEqual({
-      name: 'Vue',
-      value: 'vue',
-      template: 'https://github.com/storyblok/blueprint-core-vue.git',
-      location: 'https://localhost:5173/',
-      description: 'A Vue starter',
-      updated_at: '2024-01-01T00:00:00Z',
+      name: "Vue",
+      value: "vue",
+      template: "https://github.com/storyblok/blueprint-core-vue.git",
+      location: "https://localhost:5173/",
+      description: "A Vue starter",
+      updated_at: "2024-01-01T00:00:00Z",
     });
   });
 
-  it('should fallback to default port if no port topic', () => {
+  it("should fallback to default port if no port topic", () => {
     const repo = {
-      name: 'blueprint-core-react',
+      name: "blueprint-core-react",
       topics: [],
-      clone_url: 'https://github.com/storyblok/blueprint-core-react.git',
-      description: 'A React starter',
-      updated_at: '2024-01-01T00:00:00Z',
+      clone_url: "https://github.com/storyblok/blueprint-core-react.git",
+      description: "A React starter",
+      updated_at: "2024-01-01T00:00:00Z",
     };
     const template = repositoryToTemplate(repo);
-    expect(template.location).toBe('https://localhost:3000/');
+    expect(template.location).toBe("https://localhost:3000/");
   });
 });
 
-describe('fetchBlueprintRepositories', () => {
-  it('should fetch and map repositories to blueprints', async () => {
+describe("fetchBlueprintRepositories", () => {
+  it("should fetch and map repositories to blueprints", async () => {
     // Mock Octokit and its response
     const mockRepos = [
       {
-        name: 'blueprint-core-vue',
-        topics: ['port-5173'],
-        clone_url: 'https://github.com/storyblok/blueprint-core-vue.git',
-        description: 'A Vue starter',
-        updated_at: '2024-01-01T00:00:00Z',
+        name: "blueprint-core-vue",
+        topics: ["port-5173"],
+        clone_url: "https://github.com/storyblok/blueprint-core-vue.git",
+        description: "A Vue starter",
+        updated_at: "2024-01-01T00:00:00Z",
         stargazers_count: 50,
       },
       {
-        name: 'blueprint-core-react',
-        topics: ['port-3000'],
-        clone_url: 'https://github.com/storyblok/blueprint-core-react.git',
-        description: 'A React starter',
-        updated_at: '2024-01-02T00:00:00Z',
+        name: "blueprint-core-react",
+        topics: ["port-3000"],
+        clone_url: "https://github.com/storyblok/blueprint-core-react.git",
+        description: "A React starter",
+        updated_at: "2024-01-02T00:00:00Z",
         stargazers_count: 75,
       },
       // Should be filtered out - not a blueprint
       {
-        name: 'not-a-blueprint',
+        name: "not-a-blueprint",
         topics: [],
-        clone_url: '',
-        description: '',
-        updated_at: '',
+        clone_url: "",
+        description: "",
+        updated_at: "",
       },
     ];
 
@@ -510,32 +541,32 @@ describe('fetchBlueprintRepositories', () => {
     // Verify GitHub API was called correctly
     expect(mockedCreateOctokit).toHaveBeenCalled();
     expect(mockOctokit.rest.search.repos).toHaveBeenCalledWith({
-      q: 'org:storyblok blueprint-core-',
-      sort: 'updated',
-      order: 'desc',
+      q: "org:storyblok blueprint-core-",
+      sort: "updated",
+      order: "desc",
       per_page: 100,
     });
 
     // Only blueprint-core-* repos should be mapped and sorted alphabetically
     expect(blueprints).toHaveLength(2);
-    expect(blueprints?.[0]?.name).toBe('React');
-    expect(blueprints?.[1]?.name).toBe('Vue');
+    expect(blueprints?.[0]?.name).toBe("React");
+    expect(blueprints?.[1]?.name).toBe("Vue");
 
     // Verify blueprint structure
     expect(blueprints?.[0]).toEqual({
-      name: 'React',
-      value: 'react',
-      template: 'https://github.com/storyblok/blueprint-core-react.git',
-      location: 'https://localhost:3000/',
-      description: 'A React starter',
-      updated_at: '2024-01-02T00:00:00Z',
+      name: "React",
+      value: "react",
+      template: "https://github.com/storyblok/blueprint-core-react.git",
+      location: "https://localhost:3000/",
+      description: "A React starter",
+      updated_at: "2024-01-02T00:00:00Z",
       stars: 75,
     });
   });
 
-  it('should handle errors and call handleAPIError', async () => {
+  it("should handle errors and call handleAPIError", async () => {
     // Mock createOctokit to throw an error
-    const octokitError = new Error('GitHub API error');
+    const octokitError = new Error("GitHub API error");
     mockedCreateOctokit.mockImplementation(() => {
       throw octokitError;
     });
@@ -544,9 +575,9 @@ describe('fetchBlueprintRepositories', () => {
 
     // Verify error handling was called
     expect(mockedHandleAPIError).toHaveBeenCalledWith(
-      'fetch_blueprints',
+      "fetch_blueprints",
       octokitError,
-      'Failed to fetch blueprints from GitHub',
+      "Failed to fetch blueprints from GitHub",
     );
   });
 });

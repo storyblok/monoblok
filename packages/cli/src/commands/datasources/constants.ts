@@ -1,8 +1,8 @@
-import type { Datasource, DatasourceEntry } from '../../types';
+import type { Datasource, DatasourceEntry } from "../../types";
 
 export type { DatasourceEntry };
 
-export const DEFAULT_DATASOURCES_FILENAME = 'datasources';
+export const DEFAULT_DATASOURCES_FILENAME = "datasources";
 
 export type SpaceDatasource = Datasource & {
   entries?: DatasourceEntry[];

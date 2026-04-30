@@ -1,9 +1,9 @@
-import { vol } from 'memfs';
+import { vol } from "memfs";
 
 /**
  * Default space ID used across tests.
  */
-export const DEFAULT_SPACE = '12345';
+export const DEFAULT_SPACE = "12345";
 
 /**
  * Global ID generator for tests.
@@ -29,7 +29,7 @@ export interface MockComponent {
  */
 export const makeMockComponent = (overrides: Partial<MockComponent> = {}): MockComponent => {
   return {
-    name: 'component',
+    name: "component",
     schema: {},
     component_group_uuid: null,
     ...overrides,
@@ -42,18 +42,14 @@ export const makeMockComponent = (overrides: Partial<MockComponent> = {}): MockC
  * @param options - Optional filter options
  * @param options.space - The space ID to filter by
  */
-export const getLogFileContents = (
-  logPrefix: string,
-  options: { space?: string } = {},
-) => {
+export const getLogFileContents = (logPrefix: string, options: { space?: string } = {}) => {
   const { space } = options;
 
-  return Object.entries(vol.toJSON())
-    .find(([filename]) => {
-      const matchesPrefix = filename.includes(logPrefix);
-      const matchesSpace = space ? filename.includes(`/${space}/`) : true;
-      return matchesPrefix && matchesSpace;
-    })?.[1];
+  return Object.entries(vol.toJSON()).find(([filename]) => {
+    const matchesPrefix = filename.includes(logPrefix);
+    const matchesSpace = space ? filename.includes(`/${space}/`) : true;
+    return matchesPrefix && matchesSpace;
+  })?.[1];
 };
 
 /**
@@ -62,8 +58,9 @@ export const getLogFileContents = (
  * @param space - The space ID to filter by
  */
 export const getReport = (reportPrefix: string, space: string = DEFAULT_SPACE) => {
-  const reportFile = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.includes(`reports/${space}/${reportPrefix}`))?.[1];
+  const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+    filename.includes(`reports/${space}/${reportPrefix}`),
+  )?.[1];
 
   return reportFile ? JSON.parse(reportFile) : undefined;
 };

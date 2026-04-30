@@ -5,6 +5,7 @@ The Storyblok Management API supports two authentication methods to secure your 
 ## Authentication Methods
 
 ### 🔑 Personal Access Token
+
 **Best for**: Personal scripts, development, and applications where you control the token.
 
 - **Scope**: All spaces associated with your account
@@ -13,6 +14,7 @@ The Storyblok Management API supports two authentication methods to secure your 
 - **Security**: High - grants broad account access
 
 ### 🔐 OAuth Access Token
+
 **Best for**: Third-party integrations, user-facing applications, and secure multi-tenant scenarios.
 
 - **Scope**: Single space with specific permissions
@@ -34,12 +36,14 @@ The Storyblok Management API supports two authentication methods to secure your 
 ## Quick Start
 
 ### Personal Access Token
+
 ```bash
 curl -H "Authorization: YOUR_TOKEN" \
   https://mapi.storyblok.com/v1/spaces/123/stories
 ```
 
 ### OAuth Access Token
+
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   https://mapi.storyblok.com/v1/spaces/123/stories
@@ -48,6 +52,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ## Security Best Practices
 
 ### General Guidelines
+
 - **Never expose tokens** in frontend code or version control
 - **Use environment variables** to store tokens securely
 - **Rotate tokens regularly** for enhanced security
@@ -69,16 +74,19 @@ All authentication methods work across all Storyblok server regions:
 ### Common Authentication Issues
 
 **401 Unauthorized**
+
 - Check if the token is correct
 - Verify you're using the right prefix (Bearer for OAuth, none for Personal)
 - Ensure the token hasn't expired or been revoked
 
 **403 Forbidden**
+
 - Check your permissions for the requested space
 - Verify the token has the required scopes (OAuth)
 - Ensure you have access to the requested resource
 
 **400 Bad Request**
+
 - Check the Authorization header format
 - Verify the token format is correct
 - Ensure you're using the right authentication method
@@ -88,4 +96,4 @@ All authentication methods work across all Storyblok server regions:
 - [Official Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/authentication)
 - [OAuth2 Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/oauth2-authentication)
 - [Storyblok Support](https://www.storyblok.com/support)
-- [Account Settings](https://app.storyblok.com/#!/me/account) 
+- [Account Settings](https://app.storyblok.com/#!/me/account)

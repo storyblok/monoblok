@@ -1,12 +1,7 @@
-import { stringify } from './utils';
+import { stringify } from "./utils";
 
-import type {
-  ISbCustomFetch,
-  ISbError,
-  ISbResponse,
-  ISbStoriesParams,
-} from './interfaces';
-import type Method from './constants';
+import type { ISbCustomFetch, ISbError, ISbResponse, ISbStoriesParams } from "./interfaces";
+import type Method from "./constants";
 
 export interface ResponseFn {
   (arg?: ISbResponse | any): any;
@@ -36,10 +31,9 @@ class SbFetch {
     this.headers = $c.headers || new Headers();
     this.timeout = $c?.timeout ? $c.timeout * 1000 : 0;
     this.responseInterceptor = $c.responseInterceptor;
-    this.fetch = (...args: [any]) =>
-      $c.fetch ? $c.fetch(...args) : fetch(...args);
+    this.fetch = (...args: [any]) => ($c.fetch ? $c.fetch(...args) : fetch(...args));
     this.ejectInterceptor = false;
-    this.url = '';
+    this.url = "";
     this.parameters = {} as ISbStoriesParams;
     this.fetchOptions = {};
   }
@@ -53,25 +47,25 @@ class SbFetch {
   public get(url: string, params: ISbStoriesParams) {
     this.url = url;
     this.parameters = params;
-    return this._methodHandler('get');
+    return this._methodHandler("get");
   }
 
   public post(url: string, params: ISbStoriesParams) {
     this.url = url;
     this.parameters = params;
-    return this._methodHandler('post');
+    return this._methodHandler("post");
   }
 
   public put(url: string, params: ISbStoriesParams) {
     this.url = url;
     this.parameters = params;
-    return this._methodHandler('put');
+    return this._methodHandler("put");
   }
 
   public delete(url: string, params?: ISbStoriesParams) {
     this.url = url;
-    this.parameters = params ?? {} as ISbStoriesParams;
-    return this._methodHandler('delete');
+    this.parameters = params ?? ({} as ISbStoriesParams);
+    return this._methodHandler("delete");
   }
 
   private async _responseHandler(res: Response) {
@@ -80,7 +74,7 @@ class SbFetch {
       data: {},
       headers: {},
       status: 0,
-      statusText: '',
+      statusText: "",
     };
 
     if (res.status !== 204) {
@@ -100,17 +94,14 @@ class SbFetch {
     return response;
   }
 
-  private async _methodHandler(
-    method: Method,
-  ): Promise<ISbResponse | ISbError> {
+  private async _methodHandler(method: Method): Promise<ISbResponse | ISbError> {
     let urlString = `${this.baseURL}${this.url}`;
 
     let body: string | null = null;
 
-    if (method === 'get') {
+    if (method === "get") {
       urlString = `${this.baseURL}${this.url}?${stringify(this.parameters)}`;
-    }
-    else {
+    } else {
       body = JSON.stringify(this.parameters);
     }
 
@@ -138,36 +129,32 @@ class SbFetch {
         clearTimeout(timeout);
       }
 
-      const response = (await this._responseHandler(
-        fetchResponse,
-      )) as ISbResponse;
+      const response = (await this._responseHandler(fetchResponse)) as ISbResponse;
 
       if (this.responseInterceptor && !this.ejectInterceptor) {
         return this._statusHandler(this.responseInterceptor(response));
-      }
-      else {
+      } else {
         return this._statusHandler(response);
       }
-    }
-    catch (err: any) {
+    } catch (err: any) {
       // Check if it's a timeout/abort error
-      if (err.name === 'AbortError') {
+      if (err.name === "AbortError") {
         const error: ISbError = {
-          message: 'Request timeout: The request was aborted due to timeout',
+          message: "Request timeout: The request was aborted due to timeout",
         };
         return error;
       }
 
       // For other errors, try to extract a meaningful message
       const error: ISbError = {
-        message: err.message || err.toString() || 'An unknown error occurred',
+        message: err.message || err.toString() || "An unknown error occurred",
       };
       return error;
     }
   }
 
   public setFetchOptions(fetchOptions: ISbCustomFetch = {}) {
-    if (Object.keys(fetchOptions).length > 0 && 'method' in fetchOptions) {
+    if (Object.keys(fetchOptions).length > 0 && "method" in fetchOptions) {
       delete fetchOptions.method;
     }
     this.fetchOptions = { ...fetchOptions };
@@ -185,11 +172,11 @@ class SbFetch {
   private _normalizeErrorMessage(data: any): string {
     // Handle array of error messages
     if (Array.isArray(data)) {
-      return data[0] || 'Unknown error';
+      return data[0] || "Unknown error";
     }
 
     // Handle object with error property
-    if (data && typeof data === 'object') {
+    if (data && typeof data === "object") {
       // Check for common error message patterns
       if (data.error) {
         return data.error;
@@ -200,7 +187,7 @@ class SbFetch {
         if (Array.isArray(data[key])) {
           return `${key}: ${data[key][0]}`;
         }
-        if (typeof data[key] === 'string') {
+        if (typeof data[key] === "string") {
           return `${key}: ${data[key]}`;
         }
       }
@@ -212,7 +199,7 @@ class SbFetch {
     }
 
     // Fallback for unknown error structures
-    return 'Unknown error';
+    return "Unknown error";
   }
 
   private _statusHandler(res: ISbResponse): Promise<ISbResponse | ISbError> {

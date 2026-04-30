@@ -1,8 +1,8 @@
-import antfu from '@antfu/eslint-config';
-import type { Awaitable, OptionsConfig, TypedFlatConfigItem } from '@antfu/eslint-config';
-import antfuOptions from './rules/antfu';
-import base from './rules/base';
-import nuxt from './rules/nuxt';
+import antfu from "@antfu/eslint-config";
+import type { Awaitable, OptionsConfig, TypedFlatConfigItem } from "@antfu/eslint-config";
+import antfuOptions from "./rules/antfu";
+import base from "./rules/base";
+import nuxt from "./rules/nuxt";
 
 const storyblokLintConfig = (
   options: OptionsConfig & TypedFlatConfigItem = {},

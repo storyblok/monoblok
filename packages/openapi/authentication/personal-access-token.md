@@ -19,6 +19,7 @@ A **Personal Access Token** is obtained from the Storyblok UI and grants access 
 ## Usage
 
 ### cURL Example
+
 ```bash
 curl -H "Authorization: YOUR_PERSONAL_ACCESS_TOKEN" \
   https://mapi.storyblok.com/v1/spaces/123/stories
@@ -47,11 +48,13 @@ Personal access tokens inherit your account permissions across all spaces you ha
 ## Token Management
 
 ### Viewing Active Tokens
+
 1. Go to [Account Settings](https://app.storyblok.com/#!/me/account)
 2. Navigate to **Personal Access Tokens**
 3. View all active tokens with creation dates
 
 ### Revoking Tokens
+
 1. Find the token you want to revoke
 2. Click the **Revoke** button
 3. Confirm the action
@@ -63,11 +66,13 @@ Personal access tokens inherit your account permissions across all spaces you ha
 ### Common Issues
 
 **401 Unauthorized**
+
 - Check if the token is correct
 - Ensure the token hasn't been revoked
 - Verify you're using the token without "Bearer" prefix
 
 **403 Forbidden**
+
 - Check your account permissions
 - Verify you have access to the requested space
 - Ensure the token hasn't expired
@@ -76,4 +81,4 @@ Personal access tokens inherit your account permissions across all spaces you ha
 
 - [Official Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/authentication)
 - [Account Settings](https://app.storyblok.com/#!/me/account)
-- [Storyblok Support](https://www.storyblok.com/support) 
+- [Storyblok Support](https://www.storyblok.com/support)

@@ -1,13 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import type { TUseStoryblokState } from '@/types';
-import { registerStoryblokBridge } from '@storyblok/js';
+import { useEffect, useState } from "react";
+import type { TUseStoryblokState } from "@/types";
+import { registerStoryblokBridge } from "@storyblok/js";
 
-export const useStoryblokState: TUseStoryblokState = (
-  story = null,
-  bridgeOptions = {},
-) => {
+export const useStoryblokState: TUseStoryblokState = (story = null, bridgeOptions = {}) => {
   const [bridgeStory, setBridgeStory] = useState(null);
 
   const storyId = story?.id ?? null;
@@ -18,26 +15,20 @@ export const useStoryblokState: TUseStoryblokState = (
   }, [storyId]);
 
   useEffect(() => {
-    const isBridgeEnabled = typeof window !== 'undefined'
-      && typeof window.storyblokRegisterEvent !== 'undefined';
+    const isBridgeEnabled =
+      typeof window !== "undefined" && typeof window.storyblokRegisterEvent !== "undefined";
 
     if (!isBridgeEnabled || !storyId) {
       return;
     }
 
-    registerStoryblokBridge(
-      storyId,
-      newStory => setBridgeStory(newStory),
-      bridgeOptions,
-    );
+    registerStoryblokBridge(storyId, (newStory) => setBridgeStory(newStory), bridgeOptions);
   }, [storyId, bridgeOptions]);
 
   // Make sure to only return the `bridgeStory` when it matches the original
   // `story`. If it doesn't match, it means the user has navigated away from the
   // previous `story` and the `bridgeStory` is stale.
-  const currentStory = bridgeStory && bridgeStory.id === storyId
-    ? bridgeStory
-    : story;
+  const currentStory = bridgeStory && bridgeStory.id === storyId ? bridgeStory : story;
 
   return currentStory;
 };

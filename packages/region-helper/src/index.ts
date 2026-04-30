@@ -1,40 +1,40 @@
-import { validateSpaceId } from './utils'
+import { validateSpaceId } from "./utils";
 
-export type Region = 'eu' | 'us' | 'cn' | 'ap' | 'ca'
-type Protocol = 'http' | 'https'
-export type RegionRanges = Record<Region, [number, number]>
+export type Region = "eu" | "us" | "cn" | "ap" | "ca";
+type Protocol = "http" | "https";
+export type RegionRanges = Record<Region, [number, number]>;
 
-export const EU_API_DOMAIN = 'api.storyblok.com'
-export const US_API_DOMAIN = 'api-us.storyblok.com'
-export const CN_API_DOMAIN = 'app.storyblokchina.cn'
-export const AP_API_DOMAIN = 'api-ap.storyblok.com'
-export const CA_API_DOMAIN = 'api-ca.storyblok.com'
+export const EU_API_DOMAIN = "api.storyblok.com";
+export const US_API_DOMAIN = "api-us.storyblok.com";
+export const CN_API_DOMAIN = "app.storyblokchina.cn";
+export const AP_API_DOMAIN = "api-ap.storyblok.com";
+export const CA_API_DOMAIN = "api-ca.storyblok.com";
 
-export const EU_MANAGEMENT_API_DOMAIN = 'mapi.storyblok.com'
-export const US_MANAGEMENT_API_DOMAIN = 'api-us.storyblok.com'
-export const CN_MANAGEMENT_API_DOMAIN = 'app.storyblokchina.cn'
-export const AP_MANAGEMENT_API_DOMAIN = 'api-ap.storyblok.com'
-export const CA_MANAGEMENT_API_DOMAIN = 'api-ca.storyblok.com'
+export const EU_MANAGEMENT_API_DOMAIN = "mapi.storyblok.com";
+export const US_MANAGEMENT_API_DOMAIN = "api-us.storyblok.com";
+export const CN_MANAGEMENT_API_DOMAIN = "app.storyblokchina.cn";
+export const AP_MANAGEMENT_API_DOMAIN = "api-ap.storyblok.com";
+export const CA_MANAGEMENT_API_DOMAIN = "api-ca.storyblok.com";
 
-export const EU_CODE = 'eu'
-export const US_CODE = 'us'
-export const CN_CODE = 'cn'
-export const AP_CODE = 'ap'
-export const CA_CODE = 'ca'
+export const EU_CODE = "eu";
+export const US_CODE = "us";
+export const CN_CODE = "cn";
+export const AP_CODE = "ap";
+export const CA_CODE = "ca";
 
-export const EU_NAME = 'Europe'
-export const US_NAME = 'United States'
-export const CN_NAME = 'China'
-export const AP_NAME = 'Australia'
-export const CA_NAME = 'Canada'
+export const EU_NAME = "Europe";
+export const US_NAME = "United States";
+export const CN_NAME = "China";
+export const AP_NAME = "Australia";
+export const CA_NAME = "Canada";
 
 export type RegionalData = {
   [code in Region]: {
-    name: string
-    apiDomain: string
-    managementApiDomain: string
-  }
-}
+    name: string;
+    apiDomain: string;
+    managementApiDomain: string;
+  };
+};
 
 export const REGIONAL_DATA: RegionalData = {
   [EU_CODE]: {
@@ -62,10 +62,10 @@ export const REGIONAL_DATA: RegionalData = {
     apiDomain: CA_API_DOMAIN,
     managementApiDomain: CA_MANAGEMENT_API_DOMAIN,
   },
-}
+};
 
 export function getRegionName(region: Region) {
-  return REGIONAL_DATA[region]?.name || EU_NAME
+  return REGIONAL_DATA[region]?.name || EU_NAME;
 }
 
 export const ALL_REGION_RANGES: RegionRanges = {
@@ -74,7 +74,7 @@ export const ALL_REGION_RANGES: RegionRanges = {
   [US_CODE]: [1_000_000, 2_000_000],
   [CA_CODE]: [2_000_000, 3_000_000],
   [AP_CODE]: [3_000_000, 4_000_000],
-}
+};
 
 export const REGION_BIT_IDENTIFIERS: Record<number, Region> = {
   0b0_0000: EU_CODE, // BYOC spaces uses same code as Europe
@@ -83,9 +83,9 @@ export const REGION_BIT_IDENTIFIERS: Record<number, Region> = {
   0b0_0011: CA_CODE,
   0b0_0100: AP_CODE,
   0b0_0110: CN_CODE,
-} as const
+} as const;
 
-export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]
+export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[];
 
 /**
  * handles the spaceId for the new space_ids
@@ -105,8 +105,8 @@ export const ALL_REGIONS: Region[] = Object.keys(ALL_REGION_RANGES) as Region[]
  * ```
  */
 const isSpaceIdOver49Bits = (spaceId: number): boolean => {
-  return spaceId >= Math.pow(2, 48)
-}
+  return spaceId >= Math.pow(2, 48);
+};
 
 /**
  * return the region based on the first 5 bits of the space id
@@ -125,8 +125,8 @@ const isSpaceIdOver49Bits = (spaceId: number): boolean => {
  * ```
  */
 function getRegionByBitInterval(spaceId: number): Region | undefined {
-  const regionBits = (BigInt(spaceId) >> 48n) & 0b1_1111n
-  return REGION_BIT_IDENTIFIERS[Number(regionBits)]
+  const regionBits = (BigInt(spaceId) >> 48n) & 0b1_1111n;
+  return REGION_BIT_IDENTIFIERS[Number(regionBits)];
 }
 
 /**
@@ -147,17 +147,11 @@ function getRegionByBitInterval(spaceId: number): Region | undefined {
  * getRegion(123456, 'cn') // 'cn' (when in overlapping range)
  * ```
  */
-export function getRegion(
-  spaceId: number | string,
-  preferredRegion?: Region,
-): Region | undefined {
-  const validatedSpaceId = validateSpaceId(spaceId)
+export function getRegion(spaceId: number | string, preferredRegion?: Region): Region | undefined {
+  const validatedSpaceId = validateSpaceId(spaceId);
 
-  if (
-    validatedSpaceId === undefined ||
-    Boolean(BigInt(validatedSpaceId) & ~((1n << 53n) - 1n))
-  ) {
-    return undefined
+  if (validatedSpaceId === undefined || Boolean(BigInt(validatedSpaceId) & ~((1n << 53n) - 1n))) {
+    return undefined;
   }
 
   if (!isSpaceIdOver49Bits(validatedSpaceId)) {
@@ -168,54 +162,51 @@ export function getRegion(
     ) {
       // If we have a preferred region and it's either EU or CN, use it
       if (preferredRegion && [EU_CODE, CN_CODE].includes(preferredRegion)) {
-        return preferredRegion
+        return preferredRegion;
       }
       // Otherwise default to EU
-      return EU_CODE
+      return EU_CODE;
     }
 
     return ALL_REGIONS.find(
       (region) =>
         validatedSpaceId >= ALL_REGION_RANGES[region][0] &&
         validatedSpaceId < ALL_REGION_RANGES[region][1],
-    )
+    );
   }
 
-  return getRegionByBitInterval(validatedSpaceId)
+  return getRegionByBitInterval(validatedSpaceId);
 }
 
-export function getRegionBaseUrl(region: Region, protocol: Protocol = 'https') {
-  return `${protocol}://${getRegionDomain(region)}`
+export function getRegionBaseUrl(region: Region, protocol: Protocol = "https") {
+  return `${protocol}://${getRegionDomain(region)}`;
 }
 
-export function getManagementBaseUrl(
-  region: Region,
-  protocol: Protocol = 'https',
-) {
-  return `${protocol}://${getManagementDomain(region)}`
+export function getManagementBaseUrl(region: Region, protocol: Protocol = "https") {
+  return `${protocol}://${getManagementDomain(region)}`;
 }
 
 export function isRegion(data: unknown): data is Region {
-  return ALL_REGIONS.includes(data as Region)
+  return ALL_REGIONS.includes(data as Region);
 }
 
 export function isSpaceIdWithinRange(spaceId: unknown): spaceId is number {
-  const validatedSpaceId = validateSpaceId(spaceId)
+  const validatedSpaceId = validateSpaceId(spaceId);
 
   if (validatedSpaceId === undefined) {
-    return false
+    return false;
   }
 
-  return validatedSpaceId >= 0 && getRegion(validatedSpaceId) !== undefined
+  return validatedSpaceId >= 0 && getRegion(validatedSpaceId) !== undefined;
 }
 
 function getRegionDomain(region: Region): string {
-  return REGIONAL_DATA[region]?.apiDomain || EU_API_DOMAIN
+  return REGIONAL_DATA[region]?.apiDomain || EU_API_DOMAIN;
 }
 
 function getManagementDomain(region: Region): string {
-  return REGIONAL_DATA[region]?.managementApiDomain || EU_MANAGEMENT_API_DOMAIN
+  return REGIONAL_DATA[region]?.managementApiDomain || EU_MANAGEMENT_API_DOMAIN;
 }
 
 // Re-export utils for external use
-export { validateSpaceId } from './utils'
+export { validateSpaceId } from "./utils";

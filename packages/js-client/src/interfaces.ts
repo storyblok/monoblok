@@ -1,11 +1,9 @@
-import type { ResponseFn } from './sbFetch';
-import type Method from './constants';
-import type { StoryblokContentVersionKeys } from './constants';
+import type { ResponseFn } from "./sbFetch";
+import type Method from "./constants";
+import type { StoryblokContentVersionKeys } from "./constants";
 
 export interface ISbStoriesParams
-  extends Partial<ISbStoryData>,
-  ISbMultipleStoriesData,
-  ISbAssetsParams {
+  extends Partial<ISbStoryData>, ISbMultipleStoriesData, ISbAssetsParams {
   resolve_level?: number;
   _stopResolving?: boolean;
   by_slugs?: string;
@@ -33,7 +31,7 @@ export interface ISbStoriesParams
   published_at_gt?: string;
   published_at_lt?: string;
   resolve_assets?: number;
-  resolve_links?: 'link' | 'url' | 'story' | '0' | '1' | 'link';
+  resolve_links?: "link" | "url" | "story" | "0" | "1" | "link";
   resolve_links_level?: 1 | 2;
   resolve_relations?: string | string[];
   search_term?: string;
@@ -48,10 +46,10 @@ export interface ISbStoriesParams
 export interface ISbStoryParams {
   resolve_level?: number;
   token?: string;
-  find_by?: 'uuid';
+  find_by?: "uuid";
   version?: StoryblokContentVersionKeys;
   resolve_assets?: number;
-  resolve_links?: 'link' | 'url' | 'story' | '0' | '1';
+  resolve_links?: "link" | "url" | "story" | "0" | "1";
   resolve_links_level?: 1 | 2;
   resolve_relations?: string | string[];
   cv?: number;
@@ -127,7 +125,7 @@ export interface ISbStoryData<
   parent?: ISbStoryData;
   parent_id: number | null;
   path?: string;
-  pinned?: '1' | boolean;
+  pinned?: "1" | boolean;
   position: number;
   preview_token?: PreviewToken;
   published?: boolean;
@@ -137,12 +135,14 @@ export interface ISbStoryData<
   slug: string;
   sort_by_date: string | null;
   tag_list: string[];
-  translated_slugs?: {
-    path: string;
-    name: string | null;
-    lang: ISbStoryData['lang'];
-    published: boolean;
-  }[] | null;
+  translated_slugs?:
+    | {
+        path: string;
+        name: string | null;
+        lang: ISbStoryData["lang"];
+        published: boolean;
+      }[]
+    | null;
   unpublished_changes?: boolean;
   updated_at?: string;
   uuid: string;
@@ -161,7 +161,7 @@ export interface ISbMultipleStoriesData {
   is_published?: boolean;
   in_workflow_stages?: string;
   page?: number;
-  pinned?: '1' | boolean;
+  pinned?: "1" | boolean;
   search?: string;
   sort_by?: string;
   starts_with?: string;
@@ -191,9 +191,7 @@ export interface ISbLinkURLObject {
   uuid: string;
 }
 
-export interface ISbStories<
-  Content = ISbComponentType<string> & { [index: string]: any },
-> {
+export interface ISbStories<Content = ISbComponentType<string> & { [index: string]: any }> {
   data: {
     cv: number;
     links: (ISbStoryData | ISbLinkURLObject)[];
@@ -205,9 +203,7 @@ export interface ISbStories<
   headers: any;
 }
 
-export interface ISbStory<
-  Content = ISbComponentType<string> & { [index: string]: any },
-> {
+export interface ISbStory<Content = ISbComponentType<string> & { [index: string]: any }> {
   data: {
     cv: number;
     links: (ISbStoryData | ISbLinkURLObject)[];
@@ -229,8 +225,8 @@ export interface ICacheProvider {
 }
 
 export interface ISbCache {
-  type?: 'none' | 'memory' | 'custom';
-  clear?: 'auto' | 'manual' | 'onpreview';
+  type?: "none" | "memory" | "custom";
+  clear?: "auto" | "manual" | "onpreview";
   custom?: ICacheProvider;
 }
 
@@ -295,13 +291,13 @@ export interface ISbContentMangmntAPI<
     translated_slugs_attributes?: {
       path: string;
       name: string | null;
-      lang: ISbContentMangmntAPI['lang'];
+      lang: ISbContentMangmntAPI["lang"];
       published: boolean;
     }[];
   };
-  force_update?: '1' | unknown;
+  force_update?: "1" | unknown;
   release_id?: number;
-  publish?: '1' | unknown;
+  publish?: "1" | unknown;
   lang?: string;
 }
 
@@ -370,9 +366,7 @@ export interface ISbResponseData {
   stories: Array<ISbStoryData>;
 }
 
-export interface ISbThrottle<
-  T extends (...args: Parameters<T>) => ReturnType<T>,
-> {
+export interface ISbThrottle<T extends (...args: Parameters<T>) => ReturnType<T>> {
   abort?: () => void;
   (...args: Parameters<T>): Promise<unknown>;
 }
@@ -381,7 +375,7 @@ export type ISbThrottledRequest = (
   type: Method,
   url: string,
   params: ISbStoriesParams,
-  fetchOptions?: ISbCustomFetch
+  fetchOptions?: ISbCustomFetch,
 ) => Promise<unknown>;
 
 export type AsyncFn = (...args: any) => [] | Promise<ISbResult>;
@@ -392,7 +386,7 @@ export interface HtmlEscapes {
   [key: string]: string;
 }
 
-export interface ISbCustomFetch extends Omit<RequestInit, 'method'> {}
+export interface ISbCustomFetch extends Omit<RequestInit, "method"> {}
 
 export interface ISbAssetsParams {
   in_folder?: string;

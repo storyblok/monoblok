@@ -1,14 +1,20 @@
-import { readFile, unlink } from 'node:fs/promises';
-import { extname, join, resolve } from 'pathe';
-import { Readable, Transform, Writable } from 'node:stream';
-import { Sema } from 'async-sema';
-import { createStory, fetchStories, fetchStory, updateStory } from './actions';
-import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry, TargetStoryRef } from './constants';
-import { normalizeFullSlug } from './constants';
-import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
-import { toError } from '../../utils/error/error';
-import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
-import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
+import { readFile, unlink } from "node:fs/promises";
+import { extname, join, resolve } from "pathe";
+import { Readable, Transform, Writable } from "node:stream";
+import { Sema } from "async-sema";
+import { createStory, fetchStories, fetchStory, updateStory } from "./actions";
+import type {
+  ExistingTargetStories,
+  StoriesQueryParams,
+  Story,
+  StoryIndexEntry,
+  TargetStoryRef,
+} from "./constants";
+import { normalizeFullSlug } from "./constants";
+import { appendToFile, readDirectory, saveToFile } from "../../utils/filesystem";
+import { toError } from "../../utils/error/error";
+import { type ComponentSchemas, type RefMaps, storyRefMapper } from "./ref-mapper";
+import { getStoryFilename, isStoryPublishedWithoutChanges } from "./utils";
 
 const apiConcurrencyLock = new Sema(12);
 
@@ -49,8 +55,8 @@ export const fetchStoriesStream = ({
         }
 
         const { headers } = result;
-        const total = Number(headers.get('Total'));
-        perPage = Number(headers.get('Per-Page'));
+        const total = Number(headers.get("Total"));
+        perPage = Number(headers.get("Per-Page"));
         totalPages = Math.ceil(total / perPage);
         setTotalStories?.(total);
         setTotalPages?.(totalPages);
@@ -61,12 +67,10 @@ export const fetchStoriesStream = ({
         }
 
         page += 1;
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         onPageError?.(toError(maybeError), page, totalPages);
         break;
-      }
-      finally {
+      } finally {
         onIncrement?.();
       }
     }
@@ -96,8 +100,8 @@ export const fetchStoryStream = ({
 
       const task = fetchStory(spaceId, listStory.id.toString())
         .then((story) => {
-          if (typeof story === 'undefined') {
-            throw new TypeError('Invalid story!');
+          if (typeof story === "undefined") {
+            throw new TypeError("Invalid story!");
           }
           onStorySuccess?.(story);
           this.push(story);
@@ -146,22 +150,21 @@ export const readLocalStoriesStream = ({
   onStoryError?: (error: Error, filename: string) => void;
 }) => {
   const listGenerator = async function* localStoryIterator() {
-    const files = (await readDirectory(directoryPath))
-      .filter(f => extname(f) === '.json' && fileFilter({ filename: f }));
+    const files = (await readDirectory(directoryPath)).filter(
+      (f) => extname(f) === ".json" && fileFilter({ filename: f }),
+    );
     setTotalStories?.(files.length);
 
     for (const file of files) {
       try {
         const filePath = join(directoryPath, file);
-        const fileContent = await readFile(filePath, 'utf-8');
+        const fileContent = await readFile(filePath, "utf-8");
         const story = JSON.parse(fileContent) as Story;
         onStorySuccess?.(story);
         yield story;
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         onStoryError?.(toError(maybeError), file);
-      }
-      finally {
+      } finally {
         onIncrement?.();
       }
     }
@@ -190,11 +193,9 @@ export const mapReferencesStream = ({
         const mappedStory = storyRefMapper(localStory, { schemas, maps });
         onStorySuccess?.(mappedStory);
         this.push(mappedStory);
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         onStoryError?.(toError(maybeError), localStory);
-      }
-      finally {
+      } finally {
         onIncrement?.();
         callback();
       }
@@ -202,23 +203,32 @@ export const mapReferencesStream = ({
   });
 };
 
-export type AppendToManifestTransport = (entry: StoryIndexEntry, remoteStory: TargetStoryRef) => Promise<void>;
+export type AppendToManifestTransport = (
+  entry: StoryIndexEntry,
+  remoteStory: TargetStoryRef,
+) => Promise<void>;
 
-export const makeAppendToManifestFSTransport = ({ manifestFile }: {
-  manifestFile: string;
-}): AppendToManifestTransport => async (entry, remoteStory) => {
-  const createdAt = new Date().toISOString();
-  await appendToFile(manifestFile, JSON.stringify({
-    old_id: entry.uuid,
-    new_id: remoteStory.uuid,
-    created_at: createdAt,
-  }));
-  await appendToFile(manifestFile, JSON.stringify({
-    old_id: entry.id,
-    new_id: remoteStory.id,
-    created_at: createdAt,
-  }));
-};
+export const makeAppendToManifestFSTransport =
+  ({ manifestFile }: { manifestFile: string }): AppendToManifestTransport =>
+  async (entry, remoteStory) => {
+    const createdAt = new Date().toISOString();
+    await appendToFile(
+      manifestFile,
+      JSON.stringify({
+        old_id: entry.uuid,
+        new_id: remoteStory.uuid,
+        created_at: createdAt,
+      }),
+    );
+    await appendToFile(
+      manifestFile,
+      JSON.stringify({
+        old_id: entry.id,
+        new_id: remoteStory.id,
+        created_at: createdAt,
+      }),
+    );
+  };
 
 /**
  * Scans all local `.json` story files and returns a lightweight index
@@ -235,14 +245,14 @@ export const scanLocalStoryIndex = async ({
   onIncrement?: () => void;
   onError?: (error: Error, filename: string) => void;
 }): Promise<StoryIndexEntry[]> => {
-  const files = (await readDirectory(directoryPath)).filter(f => extname(f) === '.json');
+  const files = (await readDirectory(directoryPath)).filter((f) => extname(f) === ".json");
   setTotalStories?.(files.length);
   const entries: StoryIndexEntry[] = [];
 
   for (const file of files) {
     try {
       const filePath = join(directoryPath, file);
-      const fileContent = await readFile(filePath, 'utf-8');
+      const fileContent = await readFile(filePath, "utf-8");
       const story = JSON.parse(fileContent) as Story;
       if (!story.uuid) {
         // A missing uuid would otherwise collapse multiple stories onto the
@@ -253,19 +263,17 @@ export const scanLocalStoryIndex = async ({
         filename: file,
         id: story.id,
         uuid: story.uuid,
-        slug: story.slug ?? '',
-        name: story.name ?? '',
-        full_slug: story.full_slug ?? '',
+        slug: story.slug ?? "",
+        name: story.name ?? "",
+        full_slug: story.full_slug ?? "",
         is_folder: story.is_folder ?? false,
         is_startpage: (story as Record<string, unknown>).is_startpage === true,
         parent_id: story.parent_id ?? null,
         component: story.content?.component,
       });
-    }
-    catch (maybeError) {
+    } catch (maybeError) {
       onError?.(toError(maybeError), file);
-    }
-    finally {
+    } finally {
       onIncrement?.();
     }
   }
@@ -277,8 +285,8 @@ export const groupStoriesByDepth = (entries: StoryIndexEntry[]): StoryIndexEntry
   const depthMap = new Map<number, StoryIndexEntry[]>();
 
   for (const entry of entries) {
-    const slug = normalizeFullSlug(entry.full_slug || '');
-    const depth = slug === '' ? 0 : slug.split('/').length - 1;
+    const slug = normalizeFullSlug(entry.full_slug || "");
+    const depth = slug === "" ? 0 : slug.split("/").length - 1;
     if (!depthMap.has(depth)) {
       depthMap.set(depth, []);
     }
@@ -327,8 +335,8 @@ const findSlugMatch = ({
   if (!slugCandidates) {
     return undefined;
   }
-  const unclaimed = slugCandidates.filter(ref => !claimedRemoteIds.has(ref.id));
-  return unclaimed.find(ref => ref.is_folder === entry.is_folder) ?? unclaimed[0];
+  const unclaimed = slugCandidates.filter((ref) => !claimedRemoteIds.has(ref.id));
+  return unclaimed.find((ref) => ref.is_folder === entry.is_folder) ?? unclaimed[0];
 };
 
 export const createStoriesForLevel = async ({
@@ -366,7 +374,11 @@ export const createStoriesForLevel = async ({
         : undefined;
       if (mappedRemoteStory) {
         claimedRemoteIds.add(mappedRemoteStory.id);
-        onStorySkipped?.(entry, mappedRemoteStory, 'matched by manifest mapping from a previous push');
+        onStorySkipped?.(
+          entry,
+          mappedRemoteStory,
+          "matched by manifest mapping from a previous push",
+        );
         return;
       }
 
@@ -383,19 +395,20 @@ export const createStoriesForLevel = async ({
         if (isMatchConfirmed) {
           claimedRemoteIds.add(match.id);
           await appendToManifest(entry, match);
-          onStorySkipped?.(entry, match, 'matched by slug in target space');
+          onStorySkipped?.(entry, match, "matched by slug in target space");
           return;
         }
       }
 
       if (!entry.is_folder && !entry.component) {
-        throw new Error(`Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`);
+        throw new Error(
+          `Story "${entry.slug}" (${entry.filename}) is missing a content type (content.component). Every story must define a content field with a valid component.`,
+        );
       }
 
       // Resolve parent_id from the maps (parent was created in a previous level).
-      const resolvedParentId = entry.parent_id != null
-        ? maps.stories?.get(entry.parent_id)
-        : undefined;
+      const resolvedParentId =
+        entry.parent_id != null ? maps.stories?.get(entry.parent_id) : undefined;
 
       if (dryRun) {
         const fakeRemote = { id: entry.id, uuid: entry.uuid } as Story;
@@ -410,23 +423,19 @@ export const createStoriesForLevel = async ({
           is_folder: entry.is_folder,
           ...(resolvedParentId != null ? { parent_id: Number(resolvedParentId) } : {}),
           ...(entry.is_startpage && resolvedParentId != null ? { is_startpage: true } : {}),
-          ...(entry.component
-            ? { content: { _uid: '', component: entry.component } }
-            : {}),
+          ...(entry.component ? { content: { _uid: "", component: entry.component } } : {}),
         },
         publish: 0,
       });
       if (!remoteStory) {
-        throw new Error('No response!');
+        throw new Error("No response!");
       }
 
       await appendToManifest(entry, remoteStory);
       onStorySuccess?.(entry, remoteStory);
-    }
-    catch (maybeError) {
+    } catch (maybeError) {
       onStoryError?.(toError(maybeError), entry);
-    }
-    finally {
+    } finally {
       apiConcurrencyLock.release();
     }
   };
@@ -435,8 +444,8 @@ export const createStoriesForLevel = async ({
   // A startpage shares the same full_slug (and depth) as its parent folder,
   // so both land in the same level. Without this split the folder's ID might
   // not be mapped yet when the startpage tries to resolve its parent_id.
-  const folders = level.filter(e => e.is_folder);
-  const nonFolders = level.filter(e => !e.is_folder);
+  const folders = level.filter((e) => e.is_folder);
+  const nonFolders = level.filter((e) => !e.is_folder);
 
   const folderTasks: Promise<void>[] = [];
   for (const entry of folders) {
@@ -453,27 +462,33 @@ export const createStoriesForLevel = async ({
 
 export type WriteStoryTransport = (story: Story) => Promise<Story>;
 
-export const makeWriteStoryFSTransport = ({ directoryPath }: {
-  directoryPath: string;
-}): WriteStoryTransport => async (story) => {
-  await saveToFile(resolve(directoryPath, getStoryFilename(story)), JSON.stringify(story, null, 2));
-  return story;
-};
+export const makeWriteStoryFSTransport =
+  ({ directoryPath }: { directoryPath: string }): WriteStoryTransport =>
+  async (story) => {
+    await saveToFile(
+      resolve(directoryPath, getStoryFilename(story)),
+      JSON.stringify(story, null, 2),
+    );
+    return story;
+  };
 
-export const makeWriteStoryAPITransport = ({ spaceId, publish }: {
-  spaceId: string;
-  publish?: number;
-}): WriteStoryTransport => mappedLocalStory => updateStory(spaceId, mappedLocalStory.id, {
-  story: {
-    ...mappedLocalStory,
-    parent_id: mappedLocalStory.parent_id ?? undefined,
-  },
-  publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
-});
+export const makeWriteStoryAPITransport =
+  ({ spaceId, publish }: { spaceId: string; publish?: number }): WriteStoryTransport =>
+  (mappedLocalStory) =>
+    updateStory(spaceId, mappedLocalStory.id, {
+      story: {
+        ...mappedLocalStory,
+        parent_id: mappedLocalStory.parent_id ?? undefined,
+      },
+      publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
+    });
 
 export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;
 
-export const makeCleanupStoryFSTransport = ({ directoryPath, maps }: {
+export const makeCleanupStoryFSTransport = ({
+  directoryPath,
+  maps,
+}: {
   directoryPath: string;
   maps: RefMaps;
 }): CleanupStoryTransport => {
@@ -482,14 +497,14 @@ export const makeCleanupStoryFSTransport = ({ directoryPath, maps }: {
   const reverseUuidMap = new Map<string | number, string>();
   if (maps.stories) {
     for (const [key, value] of maps.stories.entries()) {
-      if (typeof key === 'string') {
+      if (typeof key === "string") {
         reverseUuidMap.set(value, key);
       }
     }
   }
 
   return async (mappedStory: Story) => {
-    const uuid = mappedStory.uuid ?? '';
+    const uuid = mappedStory.uuid ?? "";
     const originalUuid = reverseUuidMap.get(uuid) ?? uuid;
     const storyFilename = getStoryFilename({
       slug: mappedStory.slug,
@@ -527,8 +542,7 @@ export const writeStoryStream = ({
           await transports.cleanupStory?.(remoteStory);
 
           onStorySuccess?.(mappedLocalStory, remoteStory);
-        }
-        catch (maybeError) {
+        } catch (maybeError) {
           onStoryError?.(toError(maybeError), mappedLocalStory);
         }
       })();

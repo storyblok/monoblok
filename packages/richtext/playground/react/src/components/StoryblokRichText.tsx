@@ -1,6 +1,15 @@
-import { getRichTextSegments, isVoidElement, parseStyleString, renderSegments } from '@storyblok/richtext';
-import { createElement, Fragment } from 'react';
-import type { RendererAdapter, StoryblokRichTextNode, StoryblokSegmentType } from '@storyblok/richtext';
+import {
+  getRichTextSegments,
+  isVoidElement,
+  parseStyleString,
+  renderSegments,
+} from "@storyblok/richtext";
+import { createElement, Fragment } from "react";
+import type {
+  RendererAdapter,
+  StoryblokRichTextNode,
+  StoryblokSegmentType,
+} from "@storyblok/richtext";
 
 type StoryblokComponentMap = Partial<Record<StoryblokSegmentType, React.ComponentType<any>>>;
 interface StoryblokRichTextProps {
@@ -15,11 +24,7 @@ export default function StoryblokRichText({ doc, components }: StoryblokRichText
 
   const content = renderSegments(segments, adapter, keys);
 
-  return (
-    <Fragment>
-      {content}
-    </Fragment>
-  );
+  return <Fragment>{content}</Fragment>;
 }
 export function createReactAdapter(
   components?: StoryblokComponentMap,
@@ -30,8 +35,7 @@ export function createReactAdapter(
 
       const { class: className, style, ...rest } = attrs;
 
-      const parsedStyle
-        = typeof style === 'string' ? toReactStyle(parseStyleString(style)) : style;
+      const parsedStyle = typeof style === "string" ? toReactStyle(parseStyleString(style)) : style;
       const normalizedAttrs = normalizeDOMProps(rest);
       return createElement(
         tag,
@@ -68,9 +72,9 @@ function toReactStyle(styleObj: Record<string, string>): Record<string, string> 
   return result;
 }
 const reactDOMPropsMap: Record<string, string> = {
-  colspan: 'colSpan',
-  rowspan: 'rowSpan',
-  for: 'htmlFor',
+  colspan: "colSpan",
+  rowspan: "rowSpan",
+  for: "htmlFor",
 };
 
 function normalizeDOMProps(attrs: Record<string, any>) {

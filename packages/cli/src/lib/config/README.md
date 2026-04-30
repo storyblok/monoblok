@@ -9,21 +9,21 @@ The Storyblok CLI can read defaults from config files so you don't have to repea
 
 ```ts
 // storyblok.config.ts
-import { defineConfig } from 'storyblok/config';
+import { defineConfig } from "storyblok/config";
 
 export default defineConfig({
-  region: 'us',
+  region: "us",
   verbose: true,
   modules: {
     components: {
-      path: '.storyblok/components', // module-level config - applies to all components commands
+      path: ".storyblok/components", // module-level config - applies to all components commands
       pull: {
         separateFiles: true,
-        suffix: 'dev',
+        suffix: "dev",
       },
     },
     migrations: {
-      space: '12345',
+      space: "12345",
     },
   },
 });
@@ -36,6 +36,7 @@ storyblok components pull
 ```
 
 **Key points:**
+
 - Top-level keys (`region`, `verbose`, `api`, `log`, `report`) are **global** and affect every command.
 - Everything inside `modules` mirrors the CLI structure (`components`, `datasources`, `migrations`, `types`, …).
 - Nested objects trickle down the command chain, so `modules.components.pull.filename` maps to `storyblok components pull --filename`.
@@ -67,6 +68,7 @@ Each layer **merges** with the previous ones:
 3. **Layer 3 - Project root** (`storyblok.config.*`): The main config that lives next to `package.json`. This is usually where you define project-specific settings.
 
 **Example:** If you have:
+
 - `~/.storyblok/config.ts` with `{ region: 'us' }`
 - `storyblok.config.ts` with `{ verbose: true }`
 
@@ -81,6 +83,7 @@ CLI Flags > Project Root > Workspace Hidden > Home Directory > Built-in Defaults
 ```
 
 This means you can:
+
 - Set defaults in your home directory
 - Override them in your project config
 - Override everything with CLI flags when needed
@@ -92,14 +95,14 @@ If no config files exist, the CLI uses its built-in defaults and notifies you wh
 Config files run inside Node, so you can read environment variables directly. The CLI already loads `.env` files via `dotenv/config`, meaning `process.env.*` is available.
 
 ```ts
-import { defineConfig } from 'storyblok/config';
+import { defineConfig } from "storyblok/config";
 
-const spaceId = process.env.STORYBLOK_SPACE_ID ?? '12345';
-const verbose = process.env.STORYBLOK_VERBOSE ?? '';
+const spaceId = process.env.STORYBLOK_SPACE_ID ?? "12345";
+const verbose = process.env.STORYBLOK_VERBOSE ?? "";
 
 export default defineConfig({
-  region: process.env.STORYBLOK_REGION ?? 'eu',
-  verbose: verbose ? verbose !== 'false' : false,
+  region: process.env.STORYBLOK_REGION ?? "eu",
+  verbose: verbose ? verbose !== "false" : false,
   api: {
     maxRetries: Number(process.env.STORYBLOK_MAX_RETRIES ?? 5),
   },
@@ -112,6 +115,7 @@ export default defineConfig({
 ```
 
 **Tips:**
+
 - Store secrets (tokens, IDs) in `~/.storyblok/config.*` or environment variables instead of the repository.
 - You can still override any value per run with CLI flags (e.g., `storyblok components pull --region "au"`).
 
@@ -121,11 +125,11 @@ Here's a complete config file showing all available global options with their de
 
 ```ts
 // storyblok.config.ts
-import { defineConfig } from 'storyblok/config';
+import { defineConfig } from "storyblok/config";
 
 export default defineConfig({
   // General settings
-  region: 'eu', // Storyblok region: 'eu', 'us', 'ap', 'ca', 'cn'
+  region: "eu", // Storyblok region: 'eu', 'us', 'ap', 'ca', 'cn'
   verbose: false, // Enable verbose output
 
   // UI configuration
@@ -143,11 +147,11 @@ export default defineConfig({
   log: {
     console: {
       enabled: false, // Enable console logging
-      level: 'info', // Log level: 'info', 'warn', 'error', 'debug'
+      level: "info", // Log level: 'info', 'warn', 'error', 'debug'
     },
     file: {
       enabled: true, // Enable file logging
-      level: 'info', // File log level
+      level: "info", // File log level
       maxFiles: 10, // Maximum log files to keep
     },
   },
@@ -161,10 +165,10 @@ export default defineConfig({
   // Module-specific configuration
   modules: {
     components: {
-      path: '.storyblok', // Components working directory
+      path: ".storyblok", // Components working directory
       pull: {
         separateFiles: false, // Separate output per component
-        filename: 'components', // Filename for exports
+        filename: "components", // Filename for exports
       },
       push: {
         dryRun: false, // Preview changes without pushing
@@ -186,7 +190,7 @@ export default defineConfig({
     },
     types: {
       generate: {
-        output: 'storyblok-component-types.d.ts',
+        output: "storyblok-component-types.d.ts",
       },
     },
   },
@@ -195,20 +199,20 @@ export default defineConfig({
 
 ## Global Options Reference
 
-| Flag | Config File | Description | Default |
-|------|-------------|-------------|---------|
-| `--verbose` | `verbose` | Enable verbose output | `false` |
-| `--region <region>` | `region` | Storyblok region used for API requests | `eu` |
-| `--api-max-retries <number>` | `api.maxRetries` | Maximum retry attempts for HTTP requests | `3` |
-| `--api-max-concurrency <number>` | `api.maxConcurrency` | Maximum concurrent API requests | `6` |
-| `--ui-enabled` / `--no-ui-enabled` | `ui.enabled` | Enable/disable UI output | `true` |
-| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output | `false` |
-| `--log-console-level <level>` | `log.console.level` | Console log level | `info` |
-| `--log-file-enabled` / `--no-log-file-enabled` | `log.file.enabled` | Enable/disable file logging output | `true` |
-| `--log-file-level <level>` | `log.file.level` | File log level | `info` |
-| `--log-file-max-files <number>` | `log.file.maxFiles` | Max log files kept on disk | `10` |
-| `--report-enabled` / `--no-report-enabled` | `report.enabled` | Enable/disable report generation | `true` |
-| `--report-max-files <number>` | `report.maxFiles` | Max report files kept on disk | `10` |
+| Flag                                                 | Config File           | Description                              | Default |
+| ---------------------------------------------------- | --------------------- | ---------------------------------------- | ------- |
+| `--verbose`                                          | `verbose`             | Enable verbose output                    | `false` |
+| `--region <region>`                                  | `region`              | Storyblok region used for API requests   | `eu`    |
+| `--api-max-retries <number>`                         | `api.maxRetries`      | Maximum retry attempts for HTTP requests | `3`     |
+| `--api-max-concurrency <number>`                     | `api.maxConcurrency`  | Maximum concurrent API requests          | `6`     |
+| `--ui-enabled` / `--no-ui-enabled`                   | `ui.enabled`          | Enable/disable UI output                 | `true`  |
+| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output    | `false` |
+| `--log-console-level <level>`                        | `log.console.level`   | Console log level                        | `info`  |
+| `--log-file-enabled` / `--no-log-file-enabled`       | `log.file.enabled`    | Enable/disable file logging output       | `true`  |
+| `--log-file-level <level>`                           | `log.file.level`      | File log level                           | `info`  |
+| `--log-file-max-files <number>`                      | `log.file.maxFiles`   | Max log files kept on disk               | `10`    |
+| `--report-enabled` / `--no-report-enabled`           | `report.enabled`      | Enable/disable report generation         | `true`  |
+| `--report-max-files <number>`                        | `report.maxFiles`     | Max report files kept on disk            | `10`    |
 
 ## How Config Resolution Works
 

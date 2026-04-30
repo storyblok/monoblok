@@ -1,21 +1,17 @@
-import {
-  storyblokEditable as sbEdit,
-} from '@storyblok/js';
+import { storyblokEditable as sbEdit } from "@storyblok/js";
 
-import type {
-  SbBlokData,
-} from './types';
+import type { SbBlokData } from "./types";
 
 /**
  * Creates options object for Storyblok editable elements
  */
 const createEditableOptions = (value: SbBlokData) => {
   const options = sbEdit(value);
-  return options['data-blok-c']
+  return options["data-blok-c"]
     ? {
-        'data-blok-c': options['data-blok-c'],
-        'data-blok-uid': options['data-blok-uid'],
-        'className': 'storyblok__outline',
+        "data-blok-c": options["data-blok-c"],
+        "data-blok-uid": options["data-blok-uid"],
+        className: "storyblok__outline",
       }
     : null;
 };
@@ -23,13 +19,16 @@ const createEditableOptions = (value: SbBlokData) => {
 /**
  * Applies Storyblok editable attributes to a DOM node
  */
-const applyEditableOptions = (node: HTMLElement, options: ReturnType<typeof createEditableOptions>) => {
+const applyEditableOptions = (
+  node: HTMLElement,
+  options: ReturnType<typeof createEditableOptions>,
+) => {
   if (!options) {
     return;
   }
 
-  node.setAttribute('data-blok-c', options['data-blok-c']);
-  node.setAttribute('data-blok-uid', options['data-blok-uid']);
+  node.setAttribute("data-blok-c", options["data-blok-c"]);
+  node.setAttribute("data-blok-uid", options["data-blok-uid"]);
   node.classList.add(options.className);
 };
 
@@ -51,13 +50,9 @@ export const storyblokEditable = (node: HTMLElement, value: SbBlokData) => {
   };
 };
 
-export {
-  getComponent,
-  getStoryblokApi,
-  storyblokInit,
-} from './storyblok-store';
+export { getComponent, getStoryblokApi, storyblokInit } from "./storyblok-store";
 
 /**
  * @deprecated Use getStoryblokApi() instead. This will be removed in a next major version.
  */
-export { getStoryblokApi as useStoryblokApi } from './storyblok-store';
+export { getStoryblokApi as useStoryblokApi } from "./storyblok-store";

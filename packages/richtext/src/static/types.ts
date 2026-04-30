@@ -1,4 +1,4 @@
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
+import type { PMMark, PMNode, TiptapComponentName } from "./types.generated";
 
 /** Valid attribute values for DOM elements */
 export type AttrValue = string | number | boolean;
@@ -23,12 +23,11 @@ export interface RenderSpec {
 export type StoryblokRichTextJson = PMNode;
 
 /** Base props for node/mark components */
-export type RichTextBaseProps<T extends TiptapComponentName> =
-  T extends PMNode['type']
-    ? Extract<PMNode, { type: T }>
-    : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }>
-      : never;
+export type RichTextBaseProps<T extends TiptapComponentName> = T extends PMNode["type"]
+  ? Extract<PMNode, { type: T }>
+  : T extends PMMark["type"]
+    ? Extract<PMMark, { type: T }>
+    : never;
 
 /** Typed override map for node/mark components */
 export type RichTextComponentProps<
@@ -45,6 +44,6 @@ export type StoryblokRichTextComponentMap<
   ExtraProps extends Record<string, unknown> = Record<string, never>,
 > = {
   [K in TiptapComponentName]?: (
-    props: RichTextComponentProps<K, TComponent, ExtraProps>
+    props: RichTextComponentProps<K, TComponent, ExtraProps>,
   ) => TComponent;
 };

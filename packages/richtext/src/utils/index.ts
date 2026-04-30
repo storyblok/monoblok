@@ -1,4 +1,4 @@
-import type { BlockAttributes, MarkNode, StoryblokRichTextNode, TextNode } from '../types';
+import type { BlockAttributes, MarkNode, StoryblokRichTextNode, TextNode } from "../types";
 
 /**
  * Deep equality comparison for plain objects, arrays, and primitives.
@@ -13,7 +13,7 @@ export function deepEqual(a: any, b: any): boolean {
   if (typeof a !== typeof b) {
     return false;
   }
-  if (typeof a !== 'object') {
+  if (typeof a !== "object") {
     return false;
   }
   if (Array.isArray(a) !== Array.isArray(b)) {
@@ -30,7 +30,7 @@ export function deepEqual(a: any, b: any): boolean {
   if (aKeys.length !== bKeys.length) {
     return false;
   }
-  return aKeys.every(k => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
+  return aKeys.every((k) => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
 }
 
 /** Checks if two marks are equal by comparing their type and attrs. */
@@ -40,12 +40,15 @@ export function markEquals<T>(a: MarkNode<T>, b: MarkNode<T>): boolean {
 
 /** Type guard: checks if a node is a text node with at least one mark. */
 export function isMarkedTextNode<T>(node: StoryblokRichTextNode<T>): node is TextNode<T> {
-  return node.type === 'text' && !!(node as TextNode<T>).marks?.length;
+  return node.type === "text" && !!(node as TextNode<T>).marks?.length;
 }
 
 /** Returns marks unique to a node (not in the shared set), or undefined if all marks are shared. */
-export function getUniqueMarks<T>(marks: MarkNode<T>[], shared: MarkNode<T>[]): MarkNode<T>[] | undefined {
-  const unique = marks.filter(m => !shared.some(s => markEquals(s, m)));
+export function getUniqueMarks<T>(
+  marks: MarkNode<T>[],
+  shared: MarkNode<T>[],
+): MarkNode<T>[] | undefined {
+  const unique = marks.filter((m) => !shared.some((s) => markEquals(s, m)));
   return unique.length ? unique : undefined;
 }
 
@@ -76,9 +79,7 @@ export function collectMarkedTextGroup<T>(
     if (!isMarkedTextNode(next)) {
       break;
     }
-    const nextShared = shared.filter(m =>
-      next.marks!.some(n => markEquals(m, n)),
-    );
+    const nextShared = shared.filter((m) => next.marks!.some((n) => markEquals(m, n)));
     if (nextShared.length === 0) {
       break;
     }
@@ -91,59 +92,59 @@ export function collectMarkedTextGroup<T>(
 }
 
 export const SELF_CLOSING_TAGS = [
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr',
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
 ];
 
 export const BLOCK_LEVEL_TAGS = [
-  'address',
-  'article',
-  'aside',
-  'blockquote',
-  'canvas',
-  'dd',
-  'div',
-  'dl',
-  'dt',
-  'fieldset',
-  'figcaption',
-  'figure',
-  'footer',
-  'form',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'header',
-  'hgroup',
-  'hr',
-  'li',
-  'main',
-  'nav',
-  'noscript',
-  'ol',
-  'output',
-  'p',
-  'pre',
-  'section',
-  'table',
-  'tfoot',
-  'ul',
-  'video',
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "canvas",
+  "dd",
+  "div",
+  "dl",
+  "dt",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hgroup",
+  "hr",
+  "li",
+  "main",
+  "nav",
+  "noscript",
+  "ol",
+  "output",
+  "p",
+  "pre",
+  "section",
+  "table",
+  "tfoot",
+  "ul",
+  "video",
 ];
 
 /**
@@ -172,9 +173,12 @@ export const attrsToString = (attrs: BlockAttributes = {}) => {
   const { custom, ...attrsWithoutCustom } = attrs;
   const normalizedAttrs = { ...attrsWithoutCustom, ...custom };
   return Object.keys(normalizedAttrs)
-    .filter(key => normalizedAttrs[key] != null)
-    .map(key => `${key}="${String(normalizedAttrs[key]).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`)
-    .join(' ');
+    .filter((key) => normalizedAttrs[key] != null)
+    .map(
+      (key) =>
+        `${key}="${String(normalizedAttrs[key]).replace(/&/g, "&amp;").replace(/"/g, "&quot;")}"`,
+    )
+    .join(" ");
 };
 
 /**
@@ -197,9 +201,10 @@ export const attrsToString = (attrs: BlockAttributes = {}) => {
  * console.log(styleString) // 'color: red; font-size: 16px'
  * ```
  */
-export const attrsToStyle = (attrs: Record<string, string> = {}) => Object.keys(attrs)
-  .map(key => `${key}: ${attrs[key]}`)
-  .join('; ');
+export const attrsToStyle = (attrs: Record<string, string> = {}) =>
+  Object.keys(attrs)
+    .map((key) => `${key}: ${attrs[key]}`)
+    .join("; ");
 
 /**
  * Escapes HTML entities in a string.
@@ -219,11 +224,11 @@ export const attrsToStyle = (attrs: Record<string, string> = {}) => Object.keys(
  */
 export function escapeHtml(unsafeText: string): string {
   return unsafeText
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /**

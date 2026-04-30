@@ -12,26 +12,52 @@
 <!-- ── Paragraphs ────────────────────────────────────────────────────── -->
 
 <p>This is a plain paragraph.</p>
-<p>This paragraph has <strong>bold</strong>, <em>italic</em>, <u>underlined</u>, <s>strikethrough</s>, and <code>inline code</code> text.</p>
+<p>
+  This paragraph has <strong>bold</strong>, <em>italic</em>, <u>underlined</u>,
+  <s>strikethrough</s>, and <code>inline code</code> text.
+</p>
 <p>This paragraph has <sup>superscript</sup> and <sub>subscript</sub> text.</p>
 <p>This paragraph has <mark>highlighted</mark> text.</p>
 
 <!-- ── Combined marks ────────────────────────────────────────────────── -->
 
-<p><strong><em>Bold and italic combined.</em></strong></p>
-<p><strong><em><u>Bold, italic, and underlined combined.</u></em></strong></p>
-<p><strong>Bold with <em>partial italic</em> inside.</strong></p>
+<p>
+  <strong><em>Bold and italic combined.</em></strong>
+</p>
+<p>
+  <strong
+    ><em><u>Bold, italic, and underlined combined.</u></em></strong
+  >
+</p>
+<p>
+  <strong>Bold with <em>partial italic</em> inside.</strong>
+</p>
 
 <!-- ── Links ─────────────────────────────────────────────────────────── -->
 
 <p>A <a href="https://www.storyblok.com/" target="_blank">URL link (new tab)</a> in a paragraph.</p>
 <p>A <a href="/about" data-uuid="abc-123" data-linktype="story">story link</a> in a paragraph.</p>
-<p>A <a href="/about" data-uuid="abc-123" data-anchor="section-1" data-linktype="story">story link with anchor</a> in a paragraph.</p>
+<p>
+  A
+  <a href="/about" data-uuid="abc-123" data-anchor="section-1" data-linktype="story"
+    >story link with anchor</a
+  >
+  in a paragraph.
+</p>
 <p>An <a href="mailto:info@storyblok.com" data-linktype="email">email link</a> in a paragraph.</p>
-<p>An <a href="https://a.storyblok.com/f/000000/sample.pdf" data-linktype="asset">asset link</a> in a paragraph.</p>
+<p>
+  An <a href="https://a.storyblok.com/f/000000/sample.pdf" data-linktype="asset">asset link</a> in a
+  paragraph.
+</p>
 <p>A <a href="tel:+44 3457 911 911">telephone link</a> in a paragraph.</p>
-<p><strong><a href="https://example.com">Bold link</a></strong> and <em><a href="https://example.com">italic link</a></em>.</p>
-<p><a href="https://example.com"><strong>Bold</strong>, normal, and <em>italic</em> inside link</a>.</p>
+<p>
+  <strong><a href="https://example.com">Bold link</a></strong> and
+  <em><a href="https://example.com">italic link</a></em
+  >.
+</p>
+<p>
+  <a href="https://example.com"><strong>Bold</strong>, normal, and <em>italic</em> inside link</a>.
+</p>
 
 <h2>Heading with <a href="https://example.com">a link</a> inside</h2>
 
@@ -44,7 +70,8 @@
 <ul>
   <li>Bullet item 1</li>
   <li>Bullet item 2 with <strong>bold</strong></li>
-  <li>Bullet item 3
+  <li>
+    Bullet item 3
     <ul>
       <li>Nested bullet item A</li>
       <li>Nested bullet item B</li>
@@ -57,7 +84,8 @@
 <ol>
   <li>Ordered item 1</li>
   <li>Ordered item 2 with <em>italic</em></li>
-  <li>Ordered item 3
+  <li>
+    Ordered item 3
     <ol>
       <li>Nested ordered item A</li>
     </ol>
@@ -67,7 +95,8 @@
 <!-- ── Mixed nested list ─────────────────────────────────────────────── -->
 
 <ul>
-  <li>Bullet parent
+  <li>
+    Bullet parent
     <ol>
       <li>Ordered child 1</li>
       <li>Ordered child 2</li>
@@ -99,15 +128,19 @@ console.log(greet('Storyblok'));</code></pre>
 
 <!-- ── Horizontal rule ───────────────────────────────────────────────── -->
 
-<hr>
+<hr />
 
 <!-- ── Hard break ────────────────────────────────────────────────────── -->
 
-<p>Line one<br>Line two (after hard break)<br>Line three</p>
+<p>Line one<br />Line two (after hard break)<br />Line three</p>
 
 <!-- ── Image ─────────────────────────────────────────────────────────── -->
 
-<img src="https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg" alt="Placeholder image" title="A sample image">
+<img
+  src="https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg"
+  alt="Placeholder image"
+  title="A sample image"
+/>
 
 <!-- ── Table ─────────────────────────────────────────────────────────── -->
 
@@ -156,7 +189,10 @@ console.log(greet('Storyblok'));</code></pre>
 </details>
 
 <h1>Product Overview</h1>
-<p>Welcome to our <strong>product page</strong>. For more details, visit <a href="https://example.com/docs" target="_blank">our documentation</a>.</p>
+<p>
+  Welcome to our <strong>product page</strong>. For more details, visit
+  <a href="https://example.com/docs" target="_blank">our documentation</a>.
+</p>
 <h2>Features</h2>
 <ul>
   <li>Fast performance with <code>O(1)</code> lookups</li>
@@ -166,15 +202,29 @@ console.log(greet('Storyblok'));</code></pre>
 <h2>Pricing</h2>
 <table>
   <thead>
-    <tr><th>Plan</th><th>Price</th></tr>
+    <tr>
+      <th>Plan</th>
+      <th>Price</th>
+    </tr>
   </thead>
   <tbody>
-    <tr><td>Free</td><td>$0/mo</td></tr>
-    <tr><td>Pro</td><td><strong>$29/mo</strong></td></tr>
+    <tr>
+      <td>Free</td>
+      <td>$0/mo</td>
+    </tr>
+    <tr>
+      <td>Pro</td>
+      <td><strong>$29/mo</strong></td>
+    </tr>
   </tbody>
 </table>
 <h2>Contact</h2>
-<p>Email us at <a href="mailto:support@example.com">support@example.com</a> or call <a href="tel:+1-555-0123">+1-555-0123</a>.</p>
-<hr>
-<blockquote><p>The best product I've ever used! — <em>Customer Review</em></p></blockquote>
+<p>
+  Email us at <a href="mailto:support@example.com">support@example.com</a> or call
+  <a href="tel:+1-555-0123">+1-555-0123</a>.
+</p>
+<hr />
+<blockquote>
+  <p>The best product I've ever used! — <em>Customer Review</em></p>
+</blockquote>
 <pre><code class="language-bash">npm install @example/product</code></pre>

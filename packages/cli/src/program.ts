@@ -1,24 +1,24 @@
-import { Command } from 'commander';
-import { join } from 'pathe';
-import { getPackageJson, handleError } from './utils';
+import { Command } from "commander";
+import { join } from "pathe";
+import { getPackageJson, handleError } from "./utils";
 
-import type { LogLevel, LogTransport } from './lib/logger/logger';
-import { getLogger, setLoggerTransports } from './lib/logger/logger';
-import { getUI } from './utils/ui';
-import { getReporter } from './lib/reporter/reporter';
-import { FileTransport } from './lib/logger/logger-transport-file';
-import { ConsoleTransport } from './lib/logger/logger-transport-console';
-import { resolveCommandPath } from './utils/filesystem';
-import { directories } from './constants';
-import { session } from './session';
-import { getMapiClient } from './api';
+import type { LogLevel, LogTransport } from "./lib/logger/logger";
+import { getLogger, setLoggerTransports } from "./lib/logger/logger";
+import { getUI } from "./utils/ui";
+import { getReporter } from "./lib/reporter/reporter";
+import { FileTransport } from "./lib/logger/logger-transport-file";
+import { ConsoleTransport } from "./lib/logger/logger-transport-console";
+import { resolveCommandPath } from "./utils/filesystem";
+import { directories } from "./constants";
+import { session } from "./session";
+import { getMapiClient } from "./api";
 import {
   applyConfigToCommander,
   getCommandAncestry,
   GLOBAL_OPTION_DEFINITIONS,
   resolveConfig,
   setActiveConfig,
-} from './lib/config';
+} from "./lib/config";
 
 const packageJson = getPackageJson();
 
@@ -38,9 +38,9 @@ export function getProgram(): Command {
     // Basic program setup
     programInstance
       .name(packageJson.name)
-      .description(packageJson.description || '')
-      .version(packageJson.version, '-v, --vers', 'Output the current version')
-      .helpOption('-h, --help', 'Display help for command');
+      .description(packageJson.description || "")
+      .version(packageJson.version, "-v, --vers", "Output the current version")
+      .helpOption("-h, --help", "Display help for command");
 
     // Register all global config options
     for (const option of GLOBAL_OPTION_DEFINITIONS) {
@@ -51,8 +51,7 @@ export function getProgram(): Command {
           option.parser as (value: string, previous: unknown) => unknown,
           option.defaultValue as string | boolean | number,
         );
-      }
-      else {
+      } else {
         programInstance.option(
           option.flags,
           option.description,
@@ -62,7 +61,7 @@ export function getProgram(): Command {
     }
 
     // Unified preAction hook: handles config resolution, then logging/reporting setup
-    programInstance.hook('preAction', async (thisCommand, actionCommand) => {
+    programInstance.hook("preAction", async (thisCommand, actionCommand) => {
       const targetCommand = actionCommand ?? thisCommand;
 
       // Step 1: Resolve and apply configuration
@@ -84,14 +83,10 @@ export function getProgram(): Command {
       // Step 2: Setup logging, UI, and reporting with resolved config
       const options = targetCommand.optsWithGlobals();
       const commandPieces: string[] = [];
-      for (
-        let c: Command | null = targetCommand;
-        c;
-        c = c.parent as Command | null
-      ) {
+      for (let c: Command | null = targetCommand; c; c = c.parent as Command | null) {
         commandPieces.unshift(c.name());
       }
-      const command = commandPieces.join(' ');
+      const command = commandPieces.join(" ");
 
       const runId = Date.now();
 
@@ -111,12 +106,8 @@ export function getProgram(): Command {
 
       // Add file transport if enabled
       if (resolvedConfig.log.file.enabled) {
-        const logsPath = resolveCommandPath(
-          directories.logs,
-          options.space,
-          options.path,
-        );
-        const logFilename = `${commandPieces.join('-')}-${runId}.jsonl`;
+        const logsPath = resolveCommandPath(directories.logs, options.space, options.path);
+        const logFilename = `${commandPieces.join("-")}-${runId}.jsonl`;
         logFilePath = join(logsPath, logFilename);
         transports.push(
           new FileTransport({
@@ -143,12 +134,8 @@ export function getProgram(): Command {
 
       // Initialize reporter based on config
       if (resolvedConfig.report.enabled) {
-        const reportPath = resolveCommandPath(
-          directories.reports,
-          options.space,
-          options.path,
-        );
-        const reportFilename = `${commandPieces.join('-')}-${runId}.json`;
+        const reportPath = resolveCommandPath(directories.reports, options.space, options.path);
+        const reportFilename = `${commandPieces.join("-")}-${runId}.json`;
         const reportFilePath = join(reportPath, reportFilename);
         const reporter = getReporter({
           enabled: true,
@@ -158,21 +145,21 @@ export function getProgram(): Command {
 
         // Add metadata to reporter
         reporter
-          .addMeta('command', command)
-          .addMeta('cliVersion', packageJson.version)
-          .addMeta('runId', String(runId))
-          .addMeta('config', options);
+          .addMeta("command", command)
+          .addMeta("cliVersion", packageJson.version)
+          .addMeta("runId", String(runId))
+          .addMeta("config", options);
 
         // Add logPath if file logging is enabled
         if (logFilePath) {
-          reporter.addMeta('logPath', logFilePath);
+          reporter.addMeta("logPath", logFilePath);
         }
       }
     });
 
     // Global error handling
     programInstance.configureOutput({
-      writeErr: str => handleError(new Error(str)),
+      writeErr: (str) => handleError(new Error(str)),
     });
   }
 

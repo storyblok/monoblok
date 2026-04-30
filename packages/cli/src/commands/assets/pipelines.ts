@@ -1,13 +1,18 @@
-import { pipeline } from 'node:stream/promises';
-import type { Component } from '../components/constants';
-import type { Story } from '../stories/constants';
-import type { UI } from '../../utils/ui';
-import type { WriteStoryTransport } from '../stories/streams';
-import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStoryStream } from '../stories/streams';
-import { validateStoryAgainstSchemas } from '../stories/validate-story';
-import type { Logger } from '../../lib/logger/logger';
-import type { Report } from '../../lib/reporter/reporter';
-import { logOnlyError } from '../../utils/error/error';
+import { pipeline } from "node:stream/promises";
+import type { Component } from "../components/constants";
+import type { Story } from "../stories/constants";
+import type { UI } from "../../utils/ui";
+import type { WriteStoryTransport } from "../stories/streams";
+import {
+  fetchStoriesStream,
+  fetchStoryStream,
+  mapReferencesStream,
+  writeStoryStream,
+} from "../stories/streams";
+import { validateStoryAgainstSchemas } from "../stories/validate-story";
+import type { Logger } from "../../lib/logger/logger";
+import type { Report } from "../../lib/reporter/reporter";
+import { logOnlyError } from "../../utils/error/error";
 import type {
   AppendAssetFolderManifestTransport,
   AppendAssetManifestTransport,
@@ -19,13 +24,19 @@ import type {
   GetAssetTransport,
   UpdateAssetFolderTransport,
   UpdateAssetTransport,
-} from './streams';
-import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
-import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
+} from "./streams";
+import {
+  readLocalAssetFoldersStream,
+  readLocalAssetsStream,
+  readSingleAssetStream,
+  upsertAssetFolderStream,
+  upsertAssetStream,
+} from "./streams";
+import type { AssetFolderMap, AssetMap, AssetUpload } from "./types";
 
 const PROGRESS_BAR_PADDING = 23;
 
-type Summaries = [string, Report['summary'][string]][];
+type Summaries = [string, Report["summary"][string]][];
 
 export const upsertAssetFoldersPipeline = async ({
   directoryPath,
@@ -46,7 +57,7 @@ export const upsertAssetFoldersPipeline = async ({
   };
   ui: UI;
 }): Promise<Summaries> => {
-  const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(PROGRESS_BAR_PADDING) });
+  const folderProgress = ui.createProgressBar({ title: "Folders...".padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 
   await pipeline(
@@ -68,7 +79,7 @@ export const upsertAssetFoldersPipeline = async ({
       onFolderSuccess: (localFolder, remoteFolder) => {
         summary.succeeded += 1;
         maps.assetFolders.set(localFolder.id, remoteFolder.id);
-        logger.info('Created asset folder', { folderId: remoteFolder.id });
+        logger.info("Created asset folder", { folderId: remoteFolder.id });
       },
       onFolderError: (error, folder) => {
         summary.failed += 1;
@@ -77,7 +88,7 @@ export const upsertAssetFoldersPipeline = async ({
     }),
   );
 
-  return [['assetFolderResults', summary]];
+  return [["assetFolderResults", summary]];
 };
 
 export const upsertAssetsPipeline = async ({
@@ -103,7 +114,7 @@ export const upsertAssetsPipeline = async ({
   };
   ui: UI;
 }): Promise<Summaries> => {
-  const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
+  const assetProgress = ui.createProgressBar({ title: "Assets...".padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 
   const steps = [];
@@ -112,59 +123,65 @@ export const upsertAssetsPipeline = async ({
     summary.total = 1;
     assetProgress.setTotal(1);
 
-    steps.push(readSingleAssetStream({
-      asset: assetData,
-      assetBinaryPath,
-      onAssetError: (error) => {
-        summary.failed += 1;
-        assetProgress.increment();
-        logOnlyError(error);
-      },
-    }));
+    steps.push(
+      readSingleAssetStream({
+        asset: assetData,
+        assetBinaryPath,
+        onAssetError: (error) => {
+          summary.failed += 1;
+          assetProgress.increment();
+          logOnlyError(error);
+        },
+      }),
+    );
   }
   // Read assets from the local file system.
   else {
-    steps.push(readLocalAssetsStream({
-      directoryPath,
-      setTotalAssets: (total) => {
-        summary.total = total;
-        assetProgress.setTotal(total);
-      },
-      onAssetError: (error) => {
-        summary.failed += 1;
-        assetProgress.increment();
-        logOnlyError(error);
-      },
-    }));
+    steps.push(
+      readLocalAssetsStream({
+        directoryPath,
+        setTotalAssets: (total) => {
+          summary.total = total;
+          assetProgress.setTotal(total);
+        },
+        onAssetError: (error) => {
+          summary.failed += 1;
+          assetProgress.increment();
+          logOnlyError(error);
+        },
+      }),
+    );
   }
 
-  steps.push(upsertAssetStream({
-    transports,
-    maps,
-    onIncrement: () => assetProgress.increment(),
-    onAssetSuccess: (localAssetResult, remoteAsset) => {
-      if ('id' in localAssetResult && localAssetResult.id) {
-        maps.assets.set(localAssetResult.id, {
-          old: localAssetResult,
-          new: {
-            id: remoteAsset.id,
-            filename: remoteAsset.filename,
-            meta_data: remoteAsset.meta_data,
-          },
-        });
-      }
+  steps.push(
+    upsertAssetStream({
+      transports,
+      maps,
+      onIncrement: () => assetProgress.increment(),
+      onAssetSuccess: (localAssetResult, remoteAsset) => {
+        if ("id" in localAssetResult && localAssetResult.id) {
+          maps.assets.set(localAssetResult.id, {
+            old: localAssetResult,
+            new: {
+              id: remoteAsset.id,
+              filename: remoteAsset.filename,
+              meta_data: remoteAsset.meta_data,
+            },
+          });
+        }
 
-      summary.succeeded += 1;
-      logger.info('Uploaded asset', { assetId: remoteAsset.id });
-    },
-    onAssetError: (error, asset) => {
-      summary.failed += 1;
-      logOnlyError(error, { assetId: asset.id });
-    },
-  }));
+        summary.succeeded += 1;
+        logger.info("Uploaded asset", { assetId: remoteAsset.id });
+      },
+      onAssetError: (error, asset) => {
+        summary.failed += 1;
+        logOnlyError(error, { assetId: asset.id });
+      },
+    }),
+  );
   await pipeline(steps);
 
-  return [['assetResults', summary]];
+  return [["assetResults", summary]];
 };
 
 export const mapAssetReferencesInStoriesPipeline = async ({
@@ -177,7 +194,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
 }: {
   logger: Logger;
   maps: { assets: AssetMap };
-  schemas: Record<Component['name'], Component['schema']>;
+  schemas: Record<Component["name"], Component["schema"]>;
   space: string;
   transports: {
     writeStory: WriteStoryTransport;
@@ -185,16 +202,25 @@ export const mapAssetReferencesInStoriesPipeline = async ({
   ui: UI;
 }): Promise<Summaries> => {
   if (Object.keys(schemas).length === 0) {
-    const message = 'No components found. Please run `storyblok components pull` to fetch the latest components.';
+    const message =
+      "No components found. Please run `storyblok components pull` to fetch the latest components.";
     ui.error(message);
     logger.error(message);
     return [];
   }
 
-  const fetchStoryPagesProgress = ui.createProgressBar({ title: 'Fetching Story Pages...'.padEnd(PROGRESS_BAR_PADDING) });
-  const fetchStoriesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(PROGRESS_BAR_PADDING) });
-  const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(PROGRESS_BAR_PADDING) });
-  const updateProgress = ui.createProgressBar({ title: 'Updating Stories...'.padEnd(PROGRESS_BAR_PADDING) });
+  const fetchStoryPagesProgress = ui.createProgressBar({
+    title: "Fetching Story Pages...".padEnd(PROGRESS_BAR_PADDING),
+  });
+  const fetchStoriesProgress = ui.createProgressBar({
+    title: "Fetching Stories...".padEnd(PROGRESS_BAR_PADDING),
+  });
+  const processProgress = ui.createProgressBar({
+    title: "Processing Stories...".padEnd(PROGRESS_BAR_PADDING),
+  });
+  const updateProgress = ui.createProgressBar({
+    title: "Updating Stories...".padEnd(PROGRESS_BAR_PADDING),
+  });
 
   const summaries = {
     fetchStoryPages: { total: 0, succeeded: 0, failed: 0 },
@@ -203,7 +229,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
     storyUpdateResults: { total: 0, succeeded: 0, failed: 0 },
   };
 
-  const warnAboutMissingSchemas = (missingSchemas: Set<Component['name']>, story: Story) => {
+  const warnAboutMissingSchemas = (missingSchemas: Set<Component["name"]>, story: Story) => {
     const missingSchemaWarnings = new Set<string>();
     for (const schemaName of missingSchemas) {
       if (missingSchemaWarnings.has(schemaName)) {
@@ -253,7 +279,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         fetchStoriesProgress.increment();
       },
       onStorySuccess: (story) => {
-        logger.info('Fetched story', { storyId: story.id });
+        logger.info("Fetched story", { storyId: story.id });
         summaries.fetchStories.succeeded += 1;
       },
       onStoryError: (error, story) => {
@@ -275,7 +301,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
       onStorySuccess(localStory) {
         const { missingSchemas } = validateStoryAgainstSchemas(localStory, schemas);
         warnAboutMissingSchemas(missingSchemas, localStory);
-        logger.info('Processed story', { storyId: localStory.uuid });
+        logger.info("Processed story", { storyId: localStory.uuid });
         summaries.storyProcessResults.succeeded += 1;
       },
       onStoryError(error, localStory) {
@@ -294,7 +320,7 @@ export const mapAssetReferencesInStoriesPipeline = async ({
         updateProgress.increment();
       },
       onStorySuccess(localStory) {
-        logger.info('Updated story', { storyId: localStory.uuid });
+        logger.info("Updated story", { storyId: localStory.uuid });
         summaries.storyUpdateResults.succeeded += 1;
       },
       onStoryError(error, localStory) {

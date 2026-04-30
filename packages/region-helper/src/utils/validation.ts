@@ -15,12 +15,12 @@
  * ```
  */
 export function validateSpaceId(spaceId: unknown): number | undefined {
-  if (typeof spaceId !== 'number' && typeof spaceId !== 'string') {
-    return undefined
+  if (typeof spaceId !== "number" && typeof spaceId !== "string") {
+    return undefined;
   }
 
   const spaceIdAsNumber =
-    typeof spaceId === 'string' ? parseNumericString(spaceId) : Number(spaceId)
+    typeof spaceId === "string" ? parseNumericString(spaceId) : Number(spaceId);
 
   if (
     spaceIdAsNumber !== undefined &&
@@ -28,25 +28,25 @@ export function validateSpaceId(spaceId: unknown): number | undefined {
     Number.isInteger(spaceIdAsNumber) &&
     Number.isSafeInteger(spaceIdAsNumber)
   ) {
-    return spaceIdAsNumber
+    return spaceIdAsNumber;
   }
 
   // Reject all other types
-  return undefined
+  return undefined;
 }
 
 function parseNumericString(numberAsString: string) {
-  const trimmedNumber = numberAsString.trim()
+  const trimmedNumber = numberAsString.trim();
 
   // Check for empty string
-  if (trimmedNumber === '') {
-    return undefined
+  if (trimmedNumber === "") {
+    return undefined;
   }
 
   // Check if string contains only digits
   if (!/^\d+$/.test(trimmedNumber)) {
-    return undefined
+    return undefined;
   }
 
-  return Number(trimmedNumber)
+  return Number(trimmedNumber);
 }

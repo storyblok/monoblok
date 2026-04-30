@@ -1,4 +1,4 @@
-import { getActiveConfig } from '../lib/config';
+import { getActiveConfig } from "../lib/config";
 
 export interface FetchErrorRequest {
   url?: string;
@@ -20,13 +20,13 @@ export class FetchError extends Error {
     request: FetchErrorRequest = {},
   ) {
     super(message);
-    this.name = 'FetchError';
+    this.name = "FetchError";
     this.response = response;
     this.request = request;
   }
 }
 
-export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface FetchOptions {
   headers?: Record<string, string>;
@@ -36,17 +36,20 @@ export interface FetchOptions {
   baseDelay?: number;
 }
 
-export async function customFetch<T>(url: string, options: FetchOptions = {}): Promise<T & { perPage: number; total: number }> {
+export async function customFetch<T>(
+  url: string,
+  options: FetchOptions = {},
+): Promise<T & { perPage: number; total: number }> {
   const { api } = getActiveConfig(); // live config includes CLI overrides (maxRetries, maxConcurrency, etc.)
   const maxRetries = options.maxRetries ?? api.maxRetries;
   const baseDelay = options.baseDelay ?? 500; // 500ms base delay
-  const requestContext: FetchErrorRequest = { url, method: options.method ?? 'GET' };
+  const requestContext: FetchErrorRequest = { url, method: options.method ?? "GET" };
   let attempt = 0;
 
   while (attempt <= maxRetries) {
     try {
       const headers = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       };
 
@@ -57,9 +60,8 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
       };
 
       if (options.body) {
-        fetchOptions.body = typeof options.body === 'string'
-          ? options.body
-          : JSON.stringify(options.body);
+        fetchOptions.body =
+          typeof options.body === "string" ? options.body : JSON.stringify(options.body);
       }
 
       const response = await fetch(url, fetchOptions);
@@ -67,54 +69,68 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
       try {
         // We try to parse the response as JSON
         data = await response.json();
-      }
-      catch {
+      } catch {
         // If it fails, we throw an error
-        throw new FetchError(`Non-JSON response`, {
-          status: response.status,
-          statusText: response.statusText,
-          data: null,
-        }, requestContext);
+        throw new FetchError(
+          `Non-JSON response`,
+          {
+            status: response.status,
+            statusText: response.statusText,
+            data: null,
+          },
+          requestContext,
+        );
       }
 
       if (!response.ok) {
         // If we hit rate limit and have retries left
-        if ((response.status === 429) && (attempt < maxRetries)) {
+        if (response.status === 429 && attempt < maxRetries) {
           const waitTime = baseDelay * 2 ** attempt;
           await delay(waitTime);
           attempt++;
           continue;
         }
 
-        throw new FetchError(`HTTP error! status: ${response.status}`, {
-          status: response.status,
-          statusText: response.statusText,
-          data,
-        }, requestContext);
+        throw new FetchError(
+          `HTTP error! status: ${response.status}`,
+          {
+            status: response.status,
+            statusText: response.statusText,
+            data,
+          },
+          requestContext,
+        );
       }
 
       return {
         ...data,
-        perPage: Number(response.headers.get('Per-Page')),
-        total: Number(response.headers.get('Total')),
+        perPage: Number(response.headers.get("Per-Page")),
+        total: Number(response.headers.get("Total")),
       };
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof FetchError) {
         throw error;
       }
       // For network errors or other non-HTTP errors, create a FetchError
-      throw new FetchError(error instanceof Error ? error.message : String(error), {
-        status: 0,
-        statusText: 'Network Error',
-        data: null,
-      }, requestContext);
+      throw new FetchError(
+        error instanceof Error ? error.message : String(error),
+        {
+          status: 0,
+          statusText: "Network Error",
+          data: null,
+        },
+        requestContext,
+      );
     }
   }
 
-  throw new FetchError('Max retries exceeded', {
-    status: 429,
-    statusText: 'Rate Limit Exceeded',
-    data: null,
-  }, requestContext);
+  throw new FetchError(
+    "Max retries exceeded",
+    {
+      status: 429,
+      statusText: "Rate Limit Exceeded",
+      data: null,
+    },
+    requestContext,
+  );
 }

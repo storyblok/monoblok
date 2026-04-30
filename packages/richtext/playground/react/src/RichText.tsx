@@ -1,9 +1,9 @@
-import type { SbBlokData } from '@storyblok/react';
-import { StoryblokComponent, useStoryblok } from '@storyblok/react';
-import StoryblokRichText from './components/StoryblokRichText';
+import type { SbBlokData } from "@storyblok/react";
+import { StoryblokComponent, useStoryblok } from "@storyblok/react";
+import StoryblokRichText from "./components/StoryblokRichText";
 
 export default function RichText() {
-  const story = useStoryblok('richtext', { version: 'draft' });
+  const story = useStoryblok("richtext", { version: "draft" });
 
   if (!story?.content) {
     return <div>Loading...</div>;

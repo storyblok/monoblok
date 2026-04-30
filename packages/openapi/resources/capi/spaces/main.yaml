@@ -14,7 +14,7 @@ paths:
       summary: Retrieve Current Space
       description: Returns information about the current space
       responses:
-        '200':
+        "200":
           description: Space details
           content:
             application/json:
@@ -25,9 +25,9 @@ paths:
                 properties:
                   space:
                     $ref: ../shared/spaces/space-capi.yaml
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
 components:
   securitySchemes:

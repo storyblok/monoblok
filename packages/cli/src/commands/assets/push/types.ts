@@ -1,4 +1,4 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 export interface PushAssetsOptions extends CommandOptions {
   from?: string;

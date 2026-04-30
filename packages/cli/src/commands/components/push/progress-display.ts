@@ -1,12 +1,12 @@
-import chalk from 'chalk';
-import { konsola } from '../../../utils/konsola';
+import chalk from "chalk";
+import { konsola } from "../../../utils/konsola";
 
 export type ProcessingEvent =
-  | { type: 'start'; total: number }
-  | { type: 'success'; name: string; resourceType: string; color: string; elapsedMs?: number }
-  | { type: 'skip'; name: string; resourceType: string; elapsedMs?: number }
-  | { type: 'error'; name: string; resourceType: string; error: unknown; elapsedMs?: number }
-  | { type: 'complete'; summary: { updated: number; unchanged: number; failed: number } };
+  | { type: "start"; total: number }
+  | { type: "success"; name: string; resourceType: string; color: string; elapsedMs?: number }
+  | { type: "skip"; name: string; resourceType: string; elapsedMs?: number }
+  | { type: "error"; name: string; resourceType: string; error: unknown; elapsedMs?: number }
+  | { type: "complete"; summary: { updated: number; unchanged: number; failed: number } };
 
 export class ProgressDisplay {
   public total = 0;
@@ -14,7 +14,7 @@ export class ProgressDisplay {
   private updated = 0;
   private unchanged = 0;
   private failed = 0;
-  private currentProgressLine = '';
+  private currentProgressLine = "";
   // Track start time for calculating elapsed time on completion
   private startTime: number | null = null;
 
@@ -33,52 +33,68 @@ export class ProgressDisplay {
 
   handleEvent(event: ProcessingEvent) {
     switch (event.type) {
-      case 'start':
+      case "start":
         this.start(event.total);
         break;
 
-      case 'success': {
+      case "success": {
         this.processed++;
         this.updated++;
         this.clearProgress();
-        const successTimeString = event.elapsedMs ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`) : '';
-        console.log(`${chalk.green('✓')} ${this.capitalize(event.resourceType)}→ ${chalk.hex(event.color)(event.name)} - Updated${successTimeString}`);
+        const successTimeString = event.elapsedMs
+          ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`)
+          : "";
+        console.log(
+          `${chalk.green("✓")} ${this.capitalize(event.resourceType)}→ ${chalk.hex(event.color)(event.name)} - Updated${successTimeString}`,
+        );
         this.updateProgress();
         break;
       }
 
-      case 'skip': {
+      case "skip": {
         this.processed++;
         this.unchanged++;
         // Optionally show timing for skipped items if they take longer than expected
-        const skipTimeString = event.elapsedMs && event.elapsedMs > 10 ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`) : '';
+        const skipTimeString =
+          event.elapsedMs && event.elapsedMs > 10
+            ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`)
+            : "";
         if (skipTimeString) {
           this.clearProgress();
-          console.log(`${chalk.dim('—')} ${this.capitalize(event.resourceType)}→ ${chalk.dim(event.name)} - Skipped${skipTimeString}`);
+          console.log(
+            `${chalk.dim("—")} ${this.capitalize(event.resourceType)}→ ${chalk.dim(event.name)} - Skipped${skipTimeString}`,
+          );
         }
         this.updateProgress();
         break;
       }
 
-      case 'error': {
+      case "error": {
         this.processed++;
         this.failed++;
         this.clearProgress();
-        const errorTimeString = event.elapsedMs ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`) : '';
-        console.log(`${chalk.red('✗')} ${this.capitalize(event.resourceType)}→ ${chalk.red(event.name)} - Failed${errorTimeString}`);
+        const errorTimeString = event.elapsedMs
+          ? chalk.dim(` (${this.formatElapsedTime(event.elapsedMs)})`)
+          : "";
+        console.log(
+          `${chalk.red("✗")} ${this.capitalize(event.resourceType)}→ ${chalk.red(event.name)} - Failed${errorTimeString}`,
+        );
         this.updateProgress();
         break;
       }
 
-      case 'complete': {
+      case "complete": {
         this.clearProgress();
         const { updated, unchanged, failed } = event.summary;
 
         // Calculate elapsed time if startTime was recorded
         const elapsedTime = this.startTime ? Date.now() - this.startTime : null;
-        const timeString = elapsedTime ? this.formatElapsedTime(elapsedTime) : '';
+        const timeString = elapsedTime ? this.formatElapsedTime(elapsedTime) : "";
 
-        konsola.ok(`Completed: ${updated} updated, ${unchanged} unchanged, ${failed} failed${timeString ? ` in ${timeString}` : ''}`, true);
+        konsola.ok(
+          `Completed: ${updated} updated, ${unchanged} unchanged, ${failed} failed${timeString ? ` in ${timeString}` : ""}`,
+          true,
+        );
         konsola.br();
         // Show summary of skipped items when there are many
         if (unchanged > 5) {
@@ -96,7 +112,7 @@ export class ProgressDisplay {
 
   clearProgress() {
     if (this.currentProgressLine) {
-      process.stdout.write(`\r${' '.repeat(this.currentProgressLine.length)}\r`);
+      process.stdout.write(`\r${" ".repeat(this.currentProgressLine.length)}\r`);
     }
   }
 

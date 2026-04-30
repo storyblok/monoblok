@@ -1,3 +1,3 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 export type MigrationsRollbackOptions = CommandOptions;

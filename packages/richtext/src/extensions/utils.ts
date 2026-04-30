@@ -1,6 +1,6 @@
-import type { BlockAttributes } from '../types';
-import { LinkTypes } from '../types';
-import { cleanObject } from '../utils';
+import type { BlockAttributes } from "../types";
+import { LinkTypes } from "../types";
+import { cleanObject } from "../utils";
 
 /**
  * Processes block-level attributes, converting textAlign to inline style
@@ -11,7 +11,7 @@ export function processBlockAttrs(attrs: BlockAttributes = {}): BlockAttributes 
   const styles: string[] = [];
 
   if (existingStyle) {
-    styles.push(existingStyle.endsWith(';') ? existingStyle : `${existingStyle};`);
+    styles.push(existingStyle.endsWith(";") ? existingStyle : `${existingStyle};`);
   }
 
   if (textAlign) {
@@ -22,23 +22,26 @@ export function processBlockAttrs(attrs: BlockAttributes = {}): BlockAttributes 
     ...rest,
     class: className,
     id: idName,
-    ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+    ...(styles.length > 0 ? { style: styles.join(" ") } : {}),
   });
 }
 
 /**
  * Resolves a Storyblok link's attributes into a final href and remaining attrs.
  */
-export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: string; rest: Record<string, any> } {
+export function resolveStoryblokLink(attrs: Record<string, any> = {}): {
+  href: string;
+  rest: Record<string, any>;
+} {
   const { linktype, href, anchor, uuid, custom, ...rest } = attrs;
 
-  let finalHref = href ?? '';
+  let finalHref = href ?? "";
   switch (linktype) {
     case LinkTypes.ASSET:
     case LinkTypes.URL:
       break;
     case LinkTypes.EMAIL:
-      if (finalHref && !finalHref.startsWith('mailto:')) {
+      if (finalHref && !finalHref.startsWith("mailto:")) {
         finalHref = `mailto:${finalHref}`;
       }
       break;
@@ -51,7 +54,7 @@ export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: s
       break;
   }
 
-  return { href: finalHref, rest: { ...rest, ...(custom || {}) } };
+  return { href: finalHref, rest: { ...rest, ...custom } };
 }
 
 /**
@@ -77,7 +80,7 @@ export function computeTableCellAttrs(attrs: Record<string, any> = {}): BlockAtt
     ...rest,
     ...(colspan > 1 ? { colspan } : {}),
     ...(rowspan > 1 ? { rowspan } : {}),
-    ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+    ...(styles.length > 0 ? { style: styles.join(" ") } : {}),
   });
 }
 
@@ -85,25 +88,30 @@ export function computeTableCellAttrs(attrs: Record<string, any> = {}): BlockAtt
  * List of supported HTML attributes by tag name, used by the Reporter mark.
  */
 export const supportedAttributesByTagName: Record<string, string[]> = {
-  a: ['href', 'target', 'data-uuid', 'data-anchor', 'data-linktype'],
-  img: ['alt', 'src', 'title'],
-  span: ['class'],
+  a: ["href", "target", "data-uuid", "data-anchor", "data-linktype"],
+  img: ["alt", "src", "title"],
+  span: ["class"],
 } as const;
 
 /**
  * Gets allowed style classes for an element, warning on invalid ones.
  */
-export function getAllowedStylesForElement(element: HTMLElement, { allowedStyles }: { allowedStyles: string[] }): string[] {
-  const classString = element.getAttribute('class') || '';
-  const classes = classString.split(' ').filter(Boolean);
+export function getAllowedStylesForElement(
+  element: HTMLElement,
+  { allowedStyles }: { allowedStyles: string[] },
+): string[] {
+  const classString = element.getAttribute("class") || "";
+  const classes = classString.split(" ").filter(Boolean);
   if (!classes.length) {
     return [];
   }
 
-  const invalidStyles = classes.filter(x => !allowedStyles.includes(x));
+  const invalidStyles = classes.filter((x) => !allowedStyles.includes(x));
   for (const invalidStyle of invalidStyles) {
-    console.warn(`[StoryblokRichText] - \`class\` "${invalidStyle}" on \`<${element.tagName.toLowerCase()}>\` can not be transformed to rich text.`);
+    console.warn(
+      `[StoryblokRichText] - \`class\` "${invalidStyle}" on \`<${element.tagName.toLowerCase()}>\` can not be transformed to rich text.`,
+    );
   }
 
-  return allowedStyles.filter(x => classes.includes(x));
+  return allowedStyles.filter((x) => classes.includes(x));
 }

@@ -14,11 +14,11 @@
 
 This is a plain paragraph.
 
-This paragraph has **bold**, *italic*, ~~strikethrough~~, and `inline code` text.
+This paragraph has **bold**, _italic_, ~~strikethrough~~, and `inline code` text.
 
-**Bold and italic *combined* in one sentence.**
+**Bold and italic _combined_ in one sentence.**
 
-***Bold and italic together.***
+**_Bold and italic together._**
 
 ---
 
@@ -32,7 +32,7 @@ An email link: [info@storyblok.com](mailto:info@storyblok.com)
 
 A telephone link: [+44 3457 911 911](tel:+443457911911)
 
-**[Bold link](https://example.com)** and *[italic link](https://example.com)*.
+**[Bold link](https://example.com)** and _[italic link](https://example.com)_.
 
 ---
 
@@ -47,7 +47,7 @@ A telephone link: [+44 3457 911 911](tel:+443457911911)
 ## Ordered List
 
 1. Ordered item 1
-2. Ordered item 2 with *italic*
+2. Ordered item 2 with _italic_
 3. Ordered item 3
    1. Nested ordered item A
 
@@ -61,7 +61,7 @@ A telephone link: [+44 3457 911 911](tel:+443457911911)
 
 ## Blockquote
 
-> This is a blockquote with *italic* text inside.
+> This is a blockquote with _italic_ text inside.
 
 > > Nested blockquote.
 
@@ -74,7 +74,7 @@ function greet(name) {
   return `Hello, ${name}!`;
 }
 
-console.log(greet('Storyblok'));
+console.log(greet("Storyblok"));
 ```
 
 ```
@@ -99,11 +99,11 @@ Line three
 
 ## Table
 
-| Header 1 | Header 2 | Header 3 |
-|----------|----------|----------|
-| Cell 1 | **Bold cell** | Cell 3 |
-| *Italic cell* | [Link cell](https://example.com) | `Code cell` |
-| R3C1 | R3C2 | R3C3 |
+| Header 1      | Header 2                         | Header 3    |
+| ------------- | -------------------------------- | ----------- |
+| Cell 1        | **Bold cell**                    | Cell 3      |
+| _Italic cell_ | [Link cell](https://example.com) | `Code cell` |
+| R3C1          | R3C2                             | R3C3        |
 
 ---
 
@@ -116,15 +116,15 @@ Welcome to our **product page**. For more details, visit [our documentation](htt
 ## Features
 
 - Fast performance with `O(1)` lookups
-- Built-in *type safety*
+- Built-in _type safety_
 - Comprehensive API
 
 ## Pricing
 
-| Plan | Price |
-|------|-------|
-| Free | $0/mo |
-| Pro | **$29/mo** |
+| Plan | Price      |
+| ---- | ---------- |
+| Free | $0/mo      |
+| Pro  | **$29/mo** |
 
 ## Contact
 
@@ -132,7 +132,7 @@ Email us at [support@example.com](mailto:support@example.com) or call [+1-555-01
 
 ---
 
-> The best product I've ever used! — *Customer Review*
+> The best product I've ever used! — _Customer Review_
 
 ```bash
 npm install @example/product

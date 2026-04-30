@@ -1,17 +1,14 @@
-import { isDraftRequest } from './request';
+import { isDraftRequest } from "./request";
 
 export const extractCv = (maybeData: unknown) => {
-  return maybeData && typeof maybeData === 'object' && 'cv' in maybeData
-    ? typeof maybeData.cv === 'number'
+  return maybeData && typeof maybeData === "object" && "cv" in maybeData
+    ? typeof maybeData.cv === "number"
       ? maybeData.cv
       : undefined
     : undefined;
 };
 
-export const applyCvToQuery = (
-  query: Record<string, unknown>,
-  cv: number,
-) => {
+export const applyCvToQuery = (query: Record<string, unknown>, cv: number) => {
   if (isDraftRequest(query)) {
     return query;
   }

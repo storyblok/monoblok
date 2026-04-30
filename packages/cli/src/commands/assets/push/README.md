@@ -63,14 +63,14 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to push assets to | - |
-| `-p, --path <path>` | Base path where assets are read from (assets live under `<path>/assets`) | `.storyblok` |
-| `-f, --from <from>` | Source space ID to read local assets from (useful for syncing between spaces) | Same as `--space` |
-| `-d, --dry-run` | Preview changes without applying them to Storyblok | `false` |
-| `--data <data>` | Inline asset data as JSON (supports Asset fields, `metadata` maps to `meta_data`) | - |
-| `--short-filename <short-filename>` | Override the asset filename (defaults to the source filename) | - |
-| `--folder <folderId>` | Destination asset folder ID | - |
-| `--cleanup` | Delete local assets and metadata after a successful push | `false` |
-| `--update-stories` | Update file references in stories if necessary | `false` |
+| Option                              | Description                                                                       | Default           |
+| ----------------------------------- | --------------------------------------------------------------------------------- | ----------------- |
+| `-s, --space <space>`               | (Required) The ID of the space to push assets to                                  | -                 |
+| `-p, --path <path>`                 | Base path where assets are read from (assets live under `<path>/assets`)          | `.storyblok`      |
+| `-f, --from <from>`                 | Source space ID to read local assets from (useful for syncing between spaces)     | Same as `--space` |
+| `-d, --dry-run`                     | Preview changes without applying them to Storyblok                                | `false`           |
+| `--data <data>`                     | Inline asset data as JSON (supports Asset fields, `metadata` maps to `meta_data`) | -                 |
+| `--short-filename <short-filename>` | Override the asset filename (defaults to the source filename)                     | -                 |
+| `--folder <folderId>`               | Destination asset folder ID                                                       | -                 |
+| `--cleanup`                         | Delete local assets and metadata after a successful push                          | `false`           |
+| `--update-stories`                  | Update file references in stories if necessary                                    | `false`           |

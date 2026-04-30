@@ -20,7 +20,4 @@ const storyblokLintConfig = (
   );
 };
 
-export {
-  nuxt,
-  storyblokLintConfig,
-};
+export { nuxt, storyblokLintConfig };

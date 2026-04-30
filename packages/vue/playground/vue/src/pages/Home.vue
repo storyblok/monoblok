@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import { onMounted, ref } from "vue";
+import { useStoryblokApi, useStoryblokBridge } from "@storyblok/vue";
 
-const version = import.meta.env.MODE === 'production' ? 'published' : 'draft';
+const version = import.meta.env.MODE === "production" ? "published" : "draft";
 
 const storyblokApi = useStoryblokApi();
-const { data } = await storyblokApi.get('cdn/stories/vue', {
+const { data } = await storyblokApi.get("cdn/stories/vue", {
   version,
 });
 
@@ -18,7 +18,7 @@ onMounted(() => {
   if (!story.value) {
     return;
   }
-  useStoryblokBridge(story.value.id, evStory => (story.value = evStory));
+  useStoryblokBridge(story.value.id, (evStory) => (story.value = evStory));
 });
 </script>
 

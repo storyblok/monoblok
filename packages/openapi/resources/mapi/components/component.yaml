@@ -1,6 +1,6 @@
 type: object
 description: A Storyblok component object representing a content type
-required: 
+required:
   - id
   - name
   - created_at

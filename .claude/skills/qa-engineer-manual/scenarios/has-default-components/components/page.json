@@ -7,7 +7,12 @@
   "is_nestable": false,
   "schema": {
     "headline": { "type": "text", "pos": 0 },
-    "body": { "type": "bloks", "pos": 1, "restrict_components": true, "component_whitelist": ["hero", "cta"] },
+    "body": {
+      "type": "bloks",
+      "pos": 1,
+      "restrict_components": true,
+      "component_whitelist": ["hero", "cta"]
+    },
     "hero_image": { "type": "asset", "pos": 2, "filetypes": ["images"] },
     "seo_description": { "type": "textarea", "pos": 3 }
   },

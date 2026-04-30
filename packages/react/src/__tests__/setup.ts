@@ -1,17 +1,17 @@
-import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // Mock the browser environment
-Object.defineProperty(window, 'location', {
+Object.defineProperty(window, "location", {
   value: {
-    href: 'http://localhost:3000',
-    origin: 'http://localhost:3000',
-    protocol: 'http:',
-    hostname: 'localhost',
-    port: '3000',
-    pathname: '/',
-    search: '',
-    hash: '',
+    href: "http://localhost:3000",
+    origin: "http://localhost:3000",
+    protocol: "http:",
+    hostname: "localhost",
+    port: "3000",
+    pathname: "/",
+    search: "",
+    hash: "",
     assign: vi.fn(),
     replace: vi.fn(),
     reload: vi.fn(),
@@ -19,12 +19,12 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-Object.defineProperty(window, 'self', {
+Object.defineProperty(window, "self", {
   value: window,
   writable: true,
 });
 
-Object.defineProperty(window, 'top', {
+Object.defineProperty(window, "top", {
   value: window,
   writable: true,
 });

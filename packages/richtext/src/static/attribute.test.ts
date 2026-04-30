@@ -1,39 +1,39 @@
-import { describe, expect, it } from 'vitest';
-import { EXCLUDED_ATTRS, processAttrs } from './attribute';
+import { describe, expect, it } from "vitest";
+import { EXCLUDED_ATTRS, processAttrs } from "./attribute";
 
-describe('processAttrs', () => {
-  it('maps style properties correctly', () => {
+describe("processAttrs", () => {
+  it("maps style properties correctly", () => {
     expect(
-      processAttrs('paragraph', {
-        textAlign: 'center',
+      processAttrs("paragraph", {
+        textAlign: "center",
       }),
     ).toEqual({
       style: {
-        textAlign: 'center',
+        textAlign: "center",
       },
     });
   });
 
-  it('skips null and undefined values', () => {
+  it("skips null and undefined values", () => {
     expect(
-      processAttrs('paragraph', {
+      processAttrs("paragraph", {
         textAlign: null,
         colspan: undefined,
       }),
     ).toEqual({});
   });
 
-  it('skips empty string values (important fix)', () => {
+  it("skips empty string values (important fix)", () => {
     expect(
-      processAttrs('paragraph', {
-        textAlign: '',
+      processAttrs("paragraph", {
+        textAlign: "",
       }),
     ).toEqual({});
   });
 
-  it('keeps 0 as valid value', () => {
+  it("keeps 0 as valid value", () => {
     expect(
-      processAttrs('tableCell', {
+      processAttrs("tableCell", {
         colwidth: 0,
       }),
     ).toEqual({
@@ -43,29 +43,33 @@ describe('processAttrs', () => {
     });
   });
 
-  it('keeps false as a value in non-style attributes', () => {
+  it("keeps false as a value in non-style attributes", () => {
     expect(
-      processAttrs('paragraph', {
+      processAttrs("paragraph", {
         test: false,
       }),
     ).toEqual({
       test: false,
     });
   });
-  it('excludes all the attributes added in EXCLUDED_ATTRS', () => {
+  it("excludes all the attributes added in EXCLUDED_ATTRS", () => {
     expect(
-      processAttrs('paragraph', {
-        ...Array.from(EXCLUDED_ATTRS).reduce((acc, attr) => {
-          acc[attr] = 'test';
-          return acc;
-        }, {} as Record<string, string>),
-      }),
+      processAttrs(
+        "paragraph",
+        Array.from(EXCLUDED_ATTRS).reduce(
+          (acc, attr) => {
+            acc[attr] = "test";
+            return acc;
+          },
+          {} as Record<string, string>,
+        ),
+      ),
     ).toEqual({});
   });
 
-  it('stringifies object values', () => {
+  it("stringifies object values", () => {
     expect(
-      processAttrs('paragraph', {
+      processAttrs("paragraph", {
         meta: { a: 1 },
       }),
     ).toEqual({
@@ -73,78 +77,78 @@ describe('processAttrs', () => {
     });
   });
 
-  it('applies default attribute mapping', () => {
+  it("applies default attribute mapping", () => {
     expect(
-      processAttrs('heading', {
+      processAttrs("heading", {
         level: 2,
-        textAlign: 'right',
+        textAlign: "right",
       }),
     ).toEqual({
       style: {
-        textAlign: 'right',
+        textAlign: "right",
       },
     });
   });
 
-  it('allows extendAttrMap to override defaults', () => {
+  it("allows extendAttrMap to override defaults", () => {
     expect(
       processAttrs(
-        'paragraph',
+        "paragraph",
         {
           test: 1,
         },
         {
-          test: 'data-test',
+          test: "data-test",
         },
       ),
     ).toEqual({
-      'data-test': 1,
+      "data-test": 1,
     });
   });
 
-  it('applies styleMap for paragraph', () => {
+  it("applies styleMap for paragraph", () => {
     expect(
-      processAttrs('paragraph', {
-        textAlign: 'right',
+      processAttrs("paragraph", {
+        textAlign: "right",
       }),
     ).toEqual({
       style: {
-        textAlign: 'right',
+        textAlign: "right",
       },
     });
   });
 
-  it('handles array values with px conversion', () => {
+  it("handles array values with px conversion", () => {
     expect(
-      processAttrs('tableCell', {
+      processAttrs("tableCell", {
         colwidth: [200],
       }),
     ).toEqual({
       style: {
-        width: '200px',
+        width: "200px",
       },
     });
   });
-  it('handles story link', () => {
+  it("handles story link", () => {
     expect(
-      processAttrs('link', {
-        linktype: 'story',
-        href: '/story/123',
-        anchor: 'section-1',
+      processAttrs("link", {
+        linktype: "story",
+        href: "/story/123",
+        anchor: "section-1",
       }),
     ).toEqual({
-      href: '/story/123#section-1',
+      href: "/story/123#section-1",
     });
   });
-  it('handles story link with null href', () => {
+  it("handles story link with null href", () => {
     expect(
-      processAttrs('link', {
-        linktype: 'story',
+      processAttrs("link", {
+        linktype: "story",
         href: null,
-        anchor: 'section-1',
+        anchor: "section-1",
       }),
     ).toEqual({
-      href: '#section-1',
+      href: "#section-1",
     });
   });
 });

@@ -1,8 +1,8 @@
 {
   "name": "@storyblok/playground-next-13-app-router",
-  "type": "module",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -1,7 +1,7 @@
-import { StoryblokStory } from '@storyblok/react/rsc';
-import type { ISbStoriesParams, StoryblokClient } from '@storyblok/react/rsc';
-import { getStoryblokApi } from '@/lib/storyblok';
-import Link from 'next/link';
+import { StoryblokStory } from "@storyblok/react/rsc";
+import type { ISbStoriesParams, StoryblokClient } from "@storyblok/react/rsc";
+import { getStoryblokApi } from "@/lib/storyblok";
+import Link from "next/link";
 
 export default async function Home() {
   const { data } = await fetchData();
@@ -9,9 +9,7 @@ export default async function Home() {
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto clas prose">
-        <h1 className="text-4xl font-bold mb-8 dark:text-white">
-          Storyblok Next.js 15 Example
-        </h1>
+        <h1 className="text-4xl font-bold mb-8 dark:text-white">Storyblok Next.js 15 Example</h1>
 
         <nav className="space-y-4">
           <Link
@@ -34,7 +32,7 @@ export default async function Home() {
 }
 
 async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: 'draft' };
+  const sbParams: ISbStoriesParams = { version: "draft" };
 
   const storyblokApi: StoryblokClient = getStoryblokApi();
   return storyblokApi.get(`cdn/stories/react`, sbParams);

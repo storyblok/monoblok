@@ -57,25 +57,21 @@ Add the Storyblok provider to your application configuration:
 
 ```typescript
 // app.config.ts
-import { ApplicationConfig } from '@angular/core';
-import {
-  provideStoryblok,
-  withStoryblokComponents,
-  withLivePreview,
-} from '@storyblok/angular';
+import { ApplicationConfig } from "@angular/core";
+import { provideStoryblok, withStoryblokComponents, withLivePreview } from "@storyblok/angular";
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideStoryblok(
       {
-        accessToken: 'YOUR_ACCESS_TOKEN',
-        region: 'eu', // 'eu', 'us', 'ap', 'ca', or 'cn'
+        accessToken: "YOUR_ACCESS_TOKEN",
+        region: "eu", // 'eu', 'us', 'ap', 'ca', or 'cn'
       },
       withStoryblokComponents({
-        page: () => import('./components/page').then((m) => m.PageComponent),
-        teaser: () => import('./components/teaser').then((m) => m.TeaserComponent),
+        page: () => import("./components/page").then((m) => m.PageComponent),
+        teaser: () => import("./components/teaser").then((m) => m.TeaserComponent),
       }),
-      withLivePreview()
+      withLivePreview(),
     ),
   ],
 };
@@ -87,15 +83,15 @@ Create Angular components that match your Storyblok component names:
 
 ```typescript
 // components/teaser.ts
-import { Component, input } from '@angular/core';
-import { type SbBlokData } from '@storyblok/angular';
+import { Component, input } from "@angular/core";
+import { type SbBlokData } from "@storyblok/angular";
 
 interface TeaserBlok extends SbBlokData {
   headline?: string;
 }
 
 @Component({
-  selector: 'app-teaser',
+  selector: "app-teaser",
   template: `<h2>{{ blok().headline }}</h2>`,
 })
 export class TeaserComponent {
@@ -109,11 +105,11 @@ Use `StoryblokService` to fetch content and `SbBlokDirective` to render it:
 
 ```typescript
 // routes/home.component.ts
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { StoryblokService, SbBlokDirective, type SbBlokData } from '@storyblok/angular';
+import { Component, inject, signal, OnInit } from "@angular/core";
+import { StoryblokService, SbBlokDirective, type SbBlokData } from "@storyblok/angular";
 
 @Component({
-  selector: 'app-home',
+  selector: "app-home",
   imports: [SbBlokDirective],
   template: `<ng-container [sbBlok]="content()" />`,
 })
@@ -123,8 +119,8 @@ export class HomeComponent implements OnInit {
 
   async ngOnInit() {
     const client = this.storyblok.getClient();
-    const { data } = await client.stories.get('home', {
-      query: { version: 'draft' },
+    const { data } = await client.stories.get("home", {
+      query: { version: "draft" },
     });
     this.content.set(data?.story?.content);
   }
@@ -140,18 +136,18 @@ Enable real-time visual editing in the Storyblok Visual Editor:
 ```typescript
 // app.config.ts
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
+  { accessToken: "YOUR_ACCESS_TOKEN" },
   withLivePreview({
-    resolveRelations: ['article.author'],
-  })
-)
+    resolveRelations: ["article.author"],
+  }),
+);
 ```
 
 In your route component, listen for live updates:
 
 ```typescript
-import { Component, inject, linkedSignal, input, OnInit } from '@angular/core';
-import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storyblok/angular';
+import { Component, inject, linkedSignal, input, OnInit } from "@angular/core";
+import { LivePreviewService, SbBlokDirective, type ISbStoryData } from "@storyblok/angular";
 
 @Component({
   imports: [SbBlokDirective],
@@ -159,8 +155,8 @@ import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storybl
 })
 export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
-  
-  readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
+
+  readonly storyInput = input<ISbStoryData | null>(null, { alias: "story" });
   readonly story = linkedSignal(() => this.storyInput());
 
   ngOnInit() {
@@ -176,8 +172,8 @@ export class CatchAllComponent implements OnInit {
 Use the `SbRichTextComponent` to render rich text fields:
 
 ```typescript
-import { Component, input } from '@angular/core';
-import { SbRichTextComponent, type StoryblokRichTextNode } from '@storyblok/angular';
+import { Component, input } from "@angular/core";
+import { SbRichTextComponent, type StoryblokRichTextNode } from "@storyblok/angular";
 
 @Component({
   imports: [SbRichTextComponent],
@@ -194,22 +190,22 @@ Override default elements with custom Angular components:
 
 ```typescript
 // app.config.ts
-import { withStoryblokRichtextComponents } from '@storyblok/angular';
+import { withStoryblokRichtextComponents } from "@storyblok/angular";
 
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
+  { accessToken: "YOUR_ACCESS_TOKEN" },
   withStoryblokRichtextComponents({
     link: CustomLinkComponent,
     image: OptimizedImageComponent,
-  })
-)
+  }),
+);
 ```
 
 Create a custom component using the `props` input pattern:
 
 ```typescript
-import { Component, input, computed } from '@angular/core';
-import { SbRichTextNodeComponent, type AngularRenderNode } from '@storyblok/angular';
+import { Component, input, computed } from "@angular/core";
+import { SbRichTextNodeComponent, type AngularRenderNode } from "@storyblok/angular";
 
 interface LinkProps {
   href?: string;
@@ -227,8 +223,8 @@ interface LinkProps {
 })
 export class CustomLinkComponent {
   readonly props = input<LinkProps>({});
-  readonly href = computed(() => this.props().href ?? '');
-  readonly target = computed(() => this.props().target ?? '_self');
+  readonly href = computed(() => this.props().href ?? "");
+  readonly target = computed(() => this.props().target ?? "_self");
   readonly children = computed(() => this.props().children ?? []);
 }
 ```
@@ -239,51 +235,51 @@ Register components with lazy loading for optimal bundle size:
 
 ```typescript
 const storyblokComponents: StoryblokComponentsMap = {
-  page: () => import('./components/page').then((m) => m.PageComponent),
-  teaser: () => import('./components/teaser').then((m) => m.TeaserComponent),
-  grid: () => import('./components/grid').then((m) => m.GridComponent),
+  page: () => import("./components/page").then((m) => m.PageComponent),
+  teaser: () => import("./components/teaser").then((m) => m.TeaserComponent),
+  grid: () => import("./components/grid").then((m) => m.GridComponent),
 };
 
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
-  withStoryblokComponents(storyblokComponents)
-)
+  { accessToken: "YOUR_ACCESS_TOKEN" },
+  withStoryblokComponents(storyblokComponents),
+);
 ```
 
 ## API reference
 
 ### Providers
 
-| Provider | Description |
-|----------|-------------|
+| Provider                                | Description                                               |
+| --------------------------------------- | --------------------------------------------------------- |
 | `provideStoryblok(config, ...features)` | Configure the SDK with access token and optional features |
-| `withStoryblokComponents(map)` | Register Storyblok components (eager or lazy) |
-| `withLivePreview(options?)` | Enable real-time visual editing |
-| `withStoryblokRichtextComponents(map)` | Register custom rich text components |
+| `withStoryblokComponents(map)`          | Register Storyblok components (eager or lazy)             |
+| `withLivePreview(options?)`             | Enable real-time visual editing                           |
+| `withStoryblokRichtextComponents(map)`  | Register custom rich text components                      |
 
 ### Services
 
-| Service | Description |
-|---------|-------------|
-| `StoryblokService` | Access the Storyblok API client |
+| Service              | Description                     |
+| -------------------- | ------------------------------- |
+| `StoryblokService`   | Access the Storyblok API client |
 | `LivePreviewService` | Listen for live preview updates |
 
 ### Components and directives
 
-| Component/Directive | Description |
-|---------------------|-------------|
-| `SbBlokDirective` | Dynamically render Storyblok components |
-| `SbRichTextComponent` | Render rich text content |
+| Component/Directive       | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| `SbBlokDirective`         | Dynamically render Storyblok components        |
+| `SbRichTextComponent`     | Render rich text content                       |
 | `SbRichTextNodeComponent` | Render rich text nodes (for custom components) |
 
 ### Types
 
-| Type | Description |
-|------|-------------|
-| `SbBlokData` | Base type for Storyblok block data |
-| `ISbStoryData` | Story data from the API |
-| `StoryblokRichTextNode` | Rich text document node |
-| `AngularRenderNode` | Rendered node in rich text AST |
+| Type                    | Description                        |
+| ----------------------- | ---------------------------------- |
+| `SbBlokData`            | Base type for Storyblok block data |
+| `ISbStoryData`          | Story data from the API            |
+| `StoryblokRichTextNode` | Rich text document node            |
+| `AngularRenderNode`     | Rendered node in rich text AST     |
 
 ## Documentation
 

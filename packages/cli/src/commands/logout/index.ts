@@ -1,14 +1,14 @@
-import { removeAllCredentials } from '../../creds';
-import { colorPalette, commands } from '../../constants';
-import { getProgram } from '../../program';
-import { handleError, konsola } from '../../utils';
-import { session } from '../../session';
+import { removeAllCredentials } from "../../creds";
+import { colorPalette, commands } from "../../constants";
+import { getProgram } from "../../program";
+import { handleError, konsola } from "../../utils";
+import { session } from "../../session";
 
 const program = getProgram(); // Get the shared singleton instance
 
 export const logoutCommand = program
   .command(commands.LOGOUT)
-  .description('Logout from the Storyblok CLI')
+  .description("Logout from the Storyblok CLI")
   .action(async () => {
     konsola.title(`${commands.LOGOUT}`, colorPalette.LOGOUT);
 
@@ -16,7 +16,9 @@ export const logoutCommand = program
     try {
       const { state } = session();
       if (!state.isLoggedIn || !state.password || !state.region) {
-        konsola.warn(`You are already logged out. If you want to login, please use the login command.`);
+        konsola.warn(
+          `You are already logged out. If you want to login, please use the login command.`,
+        );
         konsola.br();
         return;
       }
@@ -24,8 +26,7 @@ export const logoutCommand = program
 
       konsola.ok(`Successfully logged out.`, true);
       konsola.br();
-    }
-    catch (error) {
+    } catch (error) {
       handleError(error as Error, verbose);
     }
     konsola.br();

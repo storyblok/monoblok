@@ -4,10 +4,10 @@ Internal CLI tool for managing the Storyblok monorepo.
 
 ## Setup
 
-Build the CLI tool:
+The CLI is built automatically on `pnpm install` (via its `postinstall` hook). To rebuild it manually:
 
 ```bash
-pnpm build:tools
+pnpm --filter monoblok-cli build
 ```
 
 ## Commands
@@ -31,11 +31,11 @@ Create a `repo-manifest.json` file in the monorepo root to define packages for m
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `repo` | The GitHub repository in `owner/repo` format |
+| Field    | Description                                   |
+| -------- | --------------------------------------------- |
+| `repo`   | The GitHub repository in `owner/repo` format  |
 | `branch` | The branch to sync from the source repository |
-| `path` | The destination path in the monorepo |
+| `path`   | The destination path in the monorepo          |
 
 #### Add a subtree
 

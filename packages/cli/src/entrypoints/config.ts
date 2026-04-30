@@ -1,4 +1,4 @@
-export { defineConfig } from '../lib/config/types';
+export { defineConfig } from "../lib/config/types";
 export type {
   AssetsModuleConfig,
   ComponentsModuleConfig,
@@ -11,4 +11,4 @@ export type {
   StoriesModuleConfig,
   StoryblokConfig,
   TypesModuleConfig,
-} from '../lib/config/types';
+} from "../lib/config/types";

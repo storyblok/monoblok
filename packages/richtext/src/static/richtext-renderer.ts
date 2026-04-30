@@ -1,9 +1,9 @@
-import { escapeHtml } from '../utils';
-import { escapeAttr, processAttrs } from './attribute';
-import { styleToString } from './style';
-import type { RenderSpec, StoryblokRichTextJson } from './types';
-import type { PMNode } from './types.generated';
-import { getStaticChildren, isSelfClosing, resolveTag } from './util';
+import { escapeHtml } from "../utils";
+import { escapeAttr, processAttrs } from "./attribute";
+import { styleToString } from "./style";
+import type { RenderSpec, StoryblokRichTextJson } from "./types";
+import type { PMNode } from "./types.generated";
+import { getStaticChildren, isSelfClosing, resolveTag } from "./util";
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -34,41 +34,41 @@ import { getStaticChildren, isSelfClosing, resolveTag } from './util';
  */
 export function richTextRenderer(document: StoryblokRichTextJson): string {
   if (!document) {
-    return '';
+    return "";
   }
 
-  const nodes = document.type === 'doc' ? document.content : [document];
+  const nodes = document.type === "doc" ? document.content : [document];
 
   if (!nodes || nodes.length === 0) {
-    return '';
+    return "";
   }
 
   const parts: string[] = [];
   for (const node of nodes) {
     parts.push(renderNode(node));
   }
-  return parts.join('');
+  return parts.join("");
 }
 
 /** Renders a single node to HTML. */
 function renderNode(node: StoryblokRichTextJson): string {
-  if (node.type === 'text') {
+  if (node.type === "text") {
     return renderText(node);
   }
-  if (node.type === 'blok') {
+  if (node.type === "blok") {
     console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
-    return '';
+    return "";
   }
 
   const tag = resolveTag(node);
   if (!tag) {
-    return '';
+    return "";
   }
 
   const selfClosing = isSelfClosing(tag);
   const staticChildren = getStaticChildren(node);
   const attrs = processAttrs(node.type, node.attrs);
-  const styleString = attrs.style ? styleToString(attrs.style) : '';
+  const styleString = attrs.style ? styleToString(attrs.style) : "";
   const htmlAttrs = attrsToString({
     ...attrs,
     ...(styleString && { style: styleString }),
@@ -79,18 +79,12 @@ function renderNode(node: StoryblokRichTextJson): string {
   }
 
   // Render children content
-  const childContent = node.content
-    ? node.content.map(child => renderNode(child)).join('')
-    : '';
+  const childContent = node.content ? node.content.map((child) => renderNode(child)).join("") : "";
 
   // Handle static children (e.g., code_block with pre > code structure)
   // Static children are wrapped inside the parent tag
   if (staticChildren) {
-    const innerContent = renderStaticChildren(
-      staticChildren,
-      attrs,
-      childContent,
-    );
+    const innerContent = renderStaticChildren(staticChildren, attrs, childContent);
     return `<${tag}${htmlAttrs}>${innerContent}</${tag}>`;
   }
 
@@ -101,7 +95,7 @@ function renderNode(node: StoryblokRichTextJson): string {
 function renderStaticChildren(
   staticChildren: readonly RenderSpec[],
   attrs: Record<string, unknown>,
-  parentChildren: string = '',
+  parentChildren: string = "",
 ): string {
   const parts: string[] = [];
 
@@ -123,11 +117,11 @@ function renderStaticChildren(
     parts.push(`<${tag}${htmlAttrs}>${children}</${tag}>`);
   }
 
-  return parts.join('');
+  return parts.join("");
 }
 
 /** Renders a text node with its marks (bold, italic, etc.). */
-function renderText(node: PMNode & { type: 'text' }): string {
+function renderText(node: PMNode & { type: "text" }): string {
   const marks = node.marks;
   // Escape HTML entities in text content to prevent XSS
   let result = escapeHtml(node.text);
@@ -156,11 +150,11 @@ function attrsToString(attrs: Record<string, unknown>): string {
   const entries = Object.entries(attrs).filter(([, v]) => v != null);
 
   if (entries.length === 0) {
-    return '';
+    return "";
   }
   const attrParts: string[] = [];
   for (const [key, value] of entries) {
     attrParts.push(`${key}="${escapeAttr(value)}"`);
   }
-  return ` ${attrParts.join(' ')}`;
+  return ` ${attrParts.join(" ")}`;
 }

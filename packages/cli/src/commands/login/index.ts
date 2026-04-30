@@ -1,30 +1,30 @@
-import { Spinner } from '@topcli/spinner';
-import chalk from 'chalk';
-import { select } from '@inquirer/prompts';
-import type { RegionCode } from '../../constants';
-import { colorPalette, commands, regionNames, regions } from '../../constants';
-import { getProgram } from '../../program';
-import { CommandError, handleError, isRegion, isVitest, konsola } from '../../utils';
-import { loginWithToken } from './actions';
-import { session } from '../../session';
-import { performInteractiveLogin } from './helpers';
+import { Spinner } from "@topcli/spinner";
+import chalk from "chalk";
+import { select } from "@inquirer/prompts";
+import type { RegionCode } from "../../constants";
+import { colorPalette, commands, regionNames, regions } from "../../constants";
+import { getProgram } from "../../program";
+import { CommandError, handleError, isRegion, isVitest, konsola } from "../../utils";
+import { loginWithToken } from "./actions";
+import { session } from "../../session";
+import { performInteractiveLogin } from "./helpers";
 
 const program = getProgram(); // Get the shared singleton instance
 
-const allRegionsText = Object.values(regions).join(',');
+const allRegionsText = Object.values(regions).join(",");
 
 export const loginCommand = program
   .command(commands.LOGIN)
-  .description('Login to the Storyblok CLI')
-  .option('-t, --token <token>', 'Token to login directly without questions, like for CI environments')
+  .description("Login to the Storyblok CLI")
   .option(
-    '-r, --region <region>',
+    "-t, --token <token>",
+    "Token to login directly without questions, like for CI environments",
+  )
+  .option(
+    "-r, --region <region>",
     `The region you would like to work in. Please keep in mind that the region must match the region of your space. This region flag will be used for the other cli's commands. You can use the values: ${allRegionsText}.`,
   )
-  .action(async (options: {
-    token: string;
-    region: RegionCode;
-  }) => {
+  .action(async (options: { token: string; region: RegionCode }) => {
     konsola.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
     const verbose = program.opts().verbose;
@@ -34,12 +34,18 @@ export const loginCommand = program
     const { state, updateSession, persistCredentials } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
-      konsola.ok(`You are already logged in. If you want to login with a different account, please logout first.`);
+      konsola.ok(
+        `You are already logged in. If you want to login with a different account, please logout first.`,
+      );
       return;
     }
 
     if (region && !isRegion(region)) {
-      handleError(new CommandError(`The provided region: ${region} is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`));
+      handleError(
+        new CommandError(
+          `The provided region: ${region} is not valid. Please use one of the following values: ${Object.values(regions).join(" | ")}`,
+        ),
+      );
       return;
     }
 
@@ -51,7 +57,7 @@ export const loginCommand = program
         let userRegion = region;
         if (!userRegion) {
           userRegion = await select({
-            message: 'Please select the region you would like to work in:',
+            message: "Please select the region you would like to work in:",
             choices: Object.values(regions).map((region: RegionCode) => ({
               name: regionNames[region],
               value: region,
@@ -67,16 +73,17 @@ export const loginCommand = program
           await persistCredentials(userRegion);
           spinner.succeed();
 
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          konsola.ok(
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
+            true,
+          );
         }
-      }
-      catch (error) {
+      } catch (error) {
         spinner.failed();
         konsola.br();
         handleError(error as Error, verbose);
       }
-    }
-    else {
+    } else {
       try {
         const result = await performInteractiveLogin({
           verbose,
@@ -85,10 +92,9 @@ export const loginCommand = program
         });
 
         if (!result) {
-          konsola.warn('Login cancelled or failed.');
+          konsola.warn("Login cancelled or failed.");
         }
-      }
-      catch (error) {
+      } catch (error) {
         konsola.br();
         handleError(error as Error, verbose);
       }

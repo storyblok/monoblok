@@ -9,6 +9,7 @@ storyblok components pull --space YOUR_SPACE_ID
 ```
 
 This will download all components and their dependencies to consolidated files:
+
 ```
 .storyblok/
 └── components/
@@ -29,6 +30,7 @@ storyblok components pull COMPONENT_NAME --space YOUR_SPACE_ID
 ```
 
 This will download a single component and its dependencies to:
+
 ```
 .storyblok/
 └── components/
@@ -41,21 +43,24 @@ This will download a single component and its dependencies to:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to pull components from | - |
-| `-f, --filename <filename>` | Custom name for the components file | `components` |
-| `--sf, --separate-files` | Create a separate file for each component | `false` |
-| `--su, --suffix <suffix>` | Suffix to add to the files names  | |
-| `-p, --path <path>` | Custom path to store the files | `.storyblok/components` |
+| Option                      | Description                                            | Default                 |
+| --------------------------- | ------------------------------------------------------ | ----------------------- |
+| `-s, --space <space>`       | (Required) The ID of the space to pull components from | -                       |
+| `-f, --filename <filename>` | Custom name for the components file                    | `components`            |
+| `--sf, --separate-files`    | Create a separate file for each component              | `false`                 |
+| `--su, --suffix <suffix>`   | Suffix to add to the files names                       |                         |
+| `-p, --path <path>`         | Custom path to store the files                         | `.storyblok/components` |
 
 ## Examples
 
 1. Pull all components with default settings:
+
 ```bash
 storyblok components pull --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -67,10 +72,13 @@ Generates:
 ```
 
 2. Pull a single component:
+
 ```bash
 storyblok components pull hero --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -82,10 +90,13 @@ Generates:
 ```
 
 3. Pull components with a custom file name:
+
 ```bash
 storyblok components pull --space 12345 --filename my-components
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -97,10 +108,13 @@ Generates:
 ```
 
 4. Pull components with custom suffix:
+
 ```bash
 storyblok components pull --space 12345 --suffix dev
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -112,10 +126,13 @@ Generates:
 ```
 
 5. Pull components to separate files:
+
 ```bash
 storyblok components pull --space 12345 --separate-files
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -130,10 +147,13 @@ Generates:
 ```
 
 6. Pull components to a custom path:
+
 ```bash
 storyblok components pull --space 12345 --path ./backup
 ```
+
 Generates:
+
 ```
 backup/
 └── components/
@@ -147,6 +167,7 @@ backup/
 ## File Structure
 
 The command follows this pattern for file generation:
+
 ```
 {path}/
 └── components/
@@ -158,6 +179,7 @@ The command follows this pattern for file generation:
 ```
 
 When using `--separate-files`:
+
 ```
 {path}/
 └── components/
@@ -172,6 +194,7 @@ When using `--separate-files`:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok Space ID
 - `{filename}` is the name you specified (default: `components`)

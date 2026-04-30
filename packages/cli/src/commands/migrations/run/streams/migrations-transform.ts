@@ -1,12 +1,18 @@
-import { Transform } from 'node:stream';
-import type { Story, StoryContent } from '../../../stories/constants';
-import { ERROR_CODES, type FailedMigration, type MigrationFile, type SkippedMigration, type SuccessfulMigration } from '../constants';
-import { applyMigrationToAllBlocks, getMigrationFunction } from '../actions';
-import { getComponentNameFromFilename } from '../../../../utils/filesystem';
-import { hash } from 'ohash';
-import { saveRollbackData } from '../../rollback/actions';
-import { getLogger } from '../../../../lib/logger/logger';
-import { toError } from '../../../../utils/error';
+import { Transform } from "node:stream";
+import type { Story, StoryContent } from "../../../stories/constants";
+import {
+  ERROR_CODES,
+  type FailedMigration,
+  type MigrationFile,
+  type SkippedMigration,
+  type SuccessfulMigration,
+} from "../constants";
+import { applyMigrationToAllBlocks, getMigrationFunction } from "../actions";
+import { getComponentNameFromFilename } from "../../../../utils/filesystem";
+import { hash } from "ohash";
+import { saveRollbackData } from "../../rollback/actions";
+import { getLogger } from "../../../../lib/logger/logger";
+import { toError } from "../../../../utils/error";
 
 export interface MigrationStreamOptions {
   migrationFiles: MigrationFile[];
@@ -49,7 +55,11 @@ export class MigrationStream extends Transform {
     };
   }
 
-  async _transform(chunk: Story, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
+  async _transform(
+    chunk: Story,
+    _encoding: string,
+    callback: (error?: Error | null, data?: any) => void,
+  ) {
     try {
       const results = await this.processStory(chunk);
 
@@ -66,8 +76,7 @@ export class MigrationStream extends Transform {
       }
 
       callback();
-    }
-    catch (error) {
+    } catch (error) {
       callback(error as Error);
     }
   }
@@ -87,29 +96,43 @@ export class MigrationStream extends Transform {
     return migrationFunction;
   }
 
-  private async processStory(story: Story): Promise<Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }>> {
+  private async processStory(story: Story): Promise<
+    Array<{
+      storyId: number;
+      name: string | undefined;
+      content: StoryContent;
+      published?: boolean;
+      unpublished_changes?: boolean;
+    }>
+  > {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
       ? this.options.migrationFiles.filter((file) => {
           const targetComponent = getComponentNameFromFilename(file.name);
-          return targetComponent.split('.')[0] === this.options.componentName;
+          return targetComponent.split(".")[0] === this.options.componentName;
         })
       : this.options.migrationFiles;
 
     if (!story.content) {
       this.results.failed.push({
         storyId: story.id,
-        migrationNames: relevantMigrations.map(m => m.name),
-        error: new Error('Story content is missing'),
+        migrationNames: relevantMigrations.map((m) => m.name),
+        error: new Error("Story content is missing"),
       });
-      getLogger().error('Failed to process story: Content is missing', {
+      getLogger().error("Failed to process story: Content is missing", {
         storyId: story.id,
         errorCode: ERROR_CODES.MIGRATION_STORY_CONTENT_MISSING,
       });
       return [];
     }
 
-    const successfulResults: Array<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }> = [];
+    const successfulResults: Array<{
+      storyId: number;
+      name: string | undefined;
+      content: StoryContent;
+      published?: boolean;
+      unpublished_changes?: boolean;
+    }> = [];
 
     // Process each relevant migration
     const result = await this.applyMigrationsToStory(story, relevantMigrations);
@@ -120,8 +143,17 @@ export class MigrationStream extends Transform {
     return successfulResults;
   }
 
-  private async applyMigrationsToStory(story: Story, migrationFiles: MigrationFile[]): Promise<{ storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean } | null> {
-    const migrationNames = migrationFiles.map(f => f.name);
+  private async applyMigrationsToStory(
+    story: Story,
+    migrationFiles: MigrationFile[],
+  ): Promise<{
+    storyId: number;
+    name: string | undefined;
+    content: StoryContent;
+    published?: boolean;
+    unpublished_changes?: boolean;
+  } | null> {
+    const migrationNames = migrationFiles.map((f) => f.name);
 
     try {
       const storyContent = structuredClone(story.content) as StoryContent;
@@ -131,7 +163,9 @@ export class MigrationStream extends Transform {
       for (const migrationFile of migrationFiles) {
         const migrationFunction = await this.getOrLoadMigrationFunction(migrationFile);
         if (!migrationFunction) {
-          const error = new Error(`Failed to load migration function from file "${migrationFile.name}"`);
+          const error = new Error(
+            `Failed to load migration function from file "${migrationFile.name}"`,
+          );
           this.results.failed.push({
             storyId: story.id,
             migrationNames,
@@ -143,8 +177,13 @@ export class MigrationStream extends Transform {
           return null;
         }
 
-        const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
-        const migrationProcessed = applyMigrationToAllBlocks(storyContent, migrationFunction, targetComponent);
+        const targetComponent =
+          this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+        const migrationProcessed = applyMigrationToAllBlocks(
+          storyContent,
+          migrationFunction,
+          targetComponent,
+        );
         processed = processed || migrationProcessed;
       }
 
@@ -158,7 +197,7 @@ export class MigrationStream extends Transform {
           path: this.options.path,
           story: {
             id: story.id,
-            name: story.name || '',
+            name: story.name || "",
             content: story.content as StoryContent,
             published: story.published,
             unpublished_changes: story.unpublished_changes,
@@ -173,7 +212,7 @@ export class MigrationStream extends Transform {
           migrationNames,
           content: storyContent,
         });
-        getLogger().info('Applied migration', { storyId: story.id, migrationNames });
+        getLogger().info("Applied migration", { storyId: story.id, migrationNames });
 
         return {
           storyId: story.id,
@@ -182,23 +221,29 @@ export class MigrationStream extends Transform {
           published: story.published,
           unpublished_changes: story.unpublished_changes,
         };
-      }
-      else if (processed && !contentChanged) {
+      } else if (processed && !contentChanged) {
         this.results.skipped.push({
           storyId: story.id,
           name: story.name,
           migrationNames,
-          reason: 'No changes detected after migration',
+          reason: "No changes detected after migration",
         });
-        getLogger().info('Skipped migration: No changes detected', { storyId: story.id, migrationNames });
+        getLogger().info("Skipped migration: No changes detected", {
+          storyId: story.id,
+          migrationNames,
+        });
         return null;
-      }
-      else {
-        const reason = migrationFiles.map((migrationFile) => {
-          const targetComponent = this.options.componentName || getComponentNameFromFilename(migrationFile.name);
-          const baseComponent = targetComponent.split('.')[0];
-          return baseComponent === this.options.componentName ? `No matching components found for ${migrationFile.name}` : `Different component target ${migrationFile.name}`;
-        }).join('\n');
+      } else {
+        const reason = migrationFiles
+          .map((migrationFile) => {
+            const targetComponent =
+              this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+            const baseComponent = targetComponent.split(".")[0];
+            return baseComponent === this.options.componentName
+              ? `No matching components found for ${migrationFile.name}`
+              : `Different component target ${migrationFile.name}`;
+          })
+          .join("\n");
 
         this.results.skipped.push({
           storyId: story.id,
@@ -209,8 +254,7 @@ export class MigrationStream extends Transform {
         getLogger().info(`Skipped migration: ${reason}`, { storyId: story.id, migrationNames });
         return null;
       }
-    }
-    catch (maybeError) {
+    } catch (maybeError) {
       const error = toError(maybeError);
       this.results.failed.push({
         storyId: story.id,
@@ -244,27 +288,30 @@ export class MigrationStream extends Transform {
   getSummary(): string {
     const { successful, failed, skipped } = this.results;
 
-    const successfulStoryIds = new Set(successful.map(result => result.storyId));
+    const successfulStoryIds = new Set(successful.map((result) => result.storyId));
 
     let summary = `Migration Results: ${successfulStoryIds.size} stories updated, ${skipped.length} stories skipped`;
 
     if (skipped.length > 0) {
-      const skippedByReason = skipped.reduce((acc, item) => {
-        if (!acc[item.reason]) {
-          acc[item.reason] = 0;
-        }
-        acc[item.reason]++;
-        return acc;
-      }, {} as Record<string, number>);
+      const skippedByReason = skipped.reduce(
+        (acc, item) => {
+          if (!acc[item.reason]) {
+            acc[item.reason] = 0;
+          }
+          acc[item.reason]++;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       const skippedReasons = Object.entries(skippedByReason)
         .map(([reason, count]) => `${reason}: ${count}`)
-        .join(', ');
+        .join(", ");
 
       summary += ` (${skippedReasons})`;
     }
 
     if (failed.length > 0) {
-      const failedStoryIds = new Set(failed.map(result => result.storyId));
+      const failedStoryIds = new Set(failed.map((result) => result.storyId));
       summary += `, ${failedStoryIds.size} stories failed`;
     }
 

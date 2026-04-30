@@ -1,7 +1,7 @@
-import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '../types';
-import { richTextResolver } from '../richtext';
-import { ComponentBlok } from '../extensions/nodes';
-import type { ISbComponentType } from 'storyblok-js-client';
+import type { StoryblokRichTextNode, StoryblokRichTextOptions } from "../types";
+import { richTextResolver } from "../richtext";
+import { ComponentBlok } from "../extensions/nodes";
+import type { ISbComponentType } from "storyblok-js-client";
 
 export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
 
@@ -9,16 +9,16 @@ export interface SbBlokData extends ISbComponentType<string> {
   [index: string]: SbBlokKeyDataTypes;
 }
 export interface RichTextHtmlSegment {
-  type: 'html';
+  type: "html";
   content: string;
 }
 export interface RichTextBlokSegment {
-  type: 'blok';
+  type: "blok";
   blok: SbBlokData;
-};
+}
 export type RichTextSegment = RichTextHtmlSegment | RichTextBlokSegment;
 
-const BLOK_MARKER_PREFIX = 'SB_BLOK_GROUP_';
+const BLOK_MARKER_PREFIX = "SB_BLOK_GROUP_";
 const BLOK_MARKER_REGEX = /<!--SB_BLOK_GROUP_(\d+)-->/;
 
 /**
@@ -76,15 +76,14 @@ export function segmentStoryblokRichText(
     if (i % 2 === 0) {
       const htmlPart = parts[i];
       if (htmlPart && htmlPart.trim()) {
-        segments.push({ type: 'html', content: htmlPart });
+        segments.push({ type: "html", content: htmlPart });
       }
-    }
-    else {
+    } else {
       const groupIndex = Number(parts[i]);
       const bloks = blokGroups[groupIndex];
       if (bloks) {
         for (const blok of bloks) {
-          segments.push({ type: 'blok', blok });
+          segments.push({ type: "blok", blok });
         }
       }
     }

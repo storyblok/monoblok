@@ -1,4 +1,4 @@
-export type CacheStrategy = 'cache-first' | 'network-first' | 'swr';
+export type CacheStrategy = "cache-first" | "network-first" | "swr";
 
 interface StrategyContext<TData> {
   key: string;
@@ -92,8 +92,7 @@ export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
   return async <TData>({ cachedResult, loadNetwork }: StrategyContext<TData>) => {
     try {
       return await loadNetwork();
-    }
-    catch (error) {
+    } catch (error) {
       // network-first: try network, fall back to cached data if available.
       if (cachedResult !== undefined) {
         return cachedResult;
@@ -110,7 +109,7 @@ export interface SwrStrategyOptions {
 }
 
 const defaultOnRevalidationError = (error: unknown): void => {
-  console.warn('[storyblok/api-client] SWR background revalidation failed:', error);
+  console.warn("[storyblok/api-client] SWR background revalidation failed:", error);
 };
 
 export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrategyHandler => {
@@ -138,12 +137,15 @@ export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrate
   };
 };
 
-export const createStrategy = (strategy: CacheStrategy, options?: SwrStrategyOptions): CacheStrategyHandler => {
-  if (strategy === 'network-first') {
+export const createStrategy = (
+  strategy: CacheStrategy,
+  options?: SwrStrategyOptions,
+): CacheStrategyHandler => {
+  if (strategy === "network-first") {
     return createNetworkFirstStrategy();
   }
 
-  if (strategy === 'swr') {
+  if (strategy === "swr") {
     return createSwrStrategy(options);
   }
 

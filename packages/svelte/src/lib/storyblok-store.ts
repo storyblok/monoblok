@@ -1,9 +1,5 @@
-import { storyblokInit as sbInit } from '@storyblok/js';
-import type {
-  SbSvelteComponentsMap,
-  SbSvelteSDKOptions,
-  StoryblokClient,
-} from './types';
+import { storyblokInit as sbInit } from "@storyblok/js";
+import type { SbSvelteComponentsMap, SbSvelteSDKOptions, StoryblokClient } from "./types";
 
 /**
  * Creates a singleton store for managing Storyblok state
@@ -17,7 +13,7 @@ const createStoryblokStore = () => {
    */
   const getApi = (): StoryblokClient => {
     if (!api) {
-      console.error('Storyblok API not initialized. Make sure to load apiPlugin.');
+      console.error("Storyblok API not initialized. Make sure to load apiPlugin.");
     }
     return api!;
   };
@@ -35,14 +31,13 @@ const createStoryblokStore = () => {
    * Retrieves a component from the registered components map
    */
   const getComponent = (componentName: string) => {
-    const resolvedComponent = typeof components === 'function'
-      ? components()[componentName]
-      : components[componentName];
+    const resolvedComponent =
+      typeof components === "function" ? components()[componentName] : components[componentName];
 
     if (!resolvedComponent) {
       console.error(
-        `Component "${componentName}" not found. Please register it in storyblokInit:\n`
-        + `storyblokInit({
+        `Component "${componentName}" not found. Please register it in storyblokInit:\n` +
+          `storyblokInit({
           accessToken: "<your-token>",
           components: {
             "${componentName}": YourComponent
@@ -65,8 +60,4 @@ const createStoryblokStore = () => {
 const storyblokStore = createStoryblokStore();
 
 // Export store methods
-export const {
-  init: storyblokInit,
-  getApi: getStoryblokApi,
-  getComponent,
-} = storyblokStore;
+export const { init: storyblokInit, getApi: getStoryblokApi, getComponent } = storyblokStore;

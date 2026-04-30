@@ -2,45 +2,48 @@
   "name": "@storyblok/region-helper",
   "version": "1.4.0",
   "description": "",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/region-helper"
   },
-  "license": "MIT",
-  "sideEffects": false,
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "build": "unbuild",
-    "dev": "vitest dev",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "play": "jiti playground",
-    "lint": "eslint --cache --ext .ts,.js,.mjs,.cjs . && prettier -c src test",
-    "lint:fix": "eslint --cache --ext .ts,.js,.mjs,.cjs . --fix && prettier -c src test -w",
-    "test": "vitest run --coverage",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:coverage": "vp test run --coverage"
   },
   "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
     "@types/node": "^24.11.0",
     "@vitest/coverage-v8": "^3.1.3",
-    "eslint": "^9.26.0",
-    "eslint-config-unjs": "^0.5.0",
     "jiti": "^2.4.2",
-    "prettier": "^3.5.3",
+    "oxlint": "^1.62.0",
     "typescript": "5.8.3",
-    "unbuild": "^3.5.0",
     "vitest": "^3.1.3"
   }
 }

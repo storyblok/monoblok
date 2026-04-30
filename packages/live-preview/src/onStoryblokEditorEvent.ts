@@ -1,8 +1,8 @@
-import type { BridgeParams } from '@storyblok/preview-bridge';
-import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
+import type { BridgeParams } from "@storyblok/preview-bridge";
+import type { ISbComponentType, ISbStoryData } from "storyblok-js-client";
 
-import { loadStoryblokBridge } from './loadStoryblokBridge';
-import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
+import { loadStoryblokBridge } from "./loadStoryblokBridge";
+import { canUseStoryblokBridge } from "./utils/canUseStoryblokBridge";
 
 /**
  * Internal listener registry for Storyblok `input` events.
@@ -41,19 +41,19 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
   bridgeInitPromise = (async () => {
     const bridge = await loadStoryblokBridge(bridgeOptions);
 
-    bridge.on(['input', 'change', 'published'], (event) => {
+    bridge.on(["input", "change", "published"], (event) => {
       if (!event) {
         return;
       }
 
-      if (event.action === 'input' && event.story) {
+      if (event.action === "input" && event.story) {
         for (const listener of inputListeners) {
           listener(event.story as ISbStoryData);
         }
         return;
       }
 
-      if (event.action === 'change' || event.action === 'published') {
+      if (event.action === "change" || event.action === "published") {
         window.location.reload();
       }
     });
@@ -100,10 +100,7 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
  */
 export async function onStoryblokEditorEvent<
   T extends ISbComponentType<string> = ISbComponentType<string>,
->(
-  callback: (story: ISbStoryData<T>) => void,
-  bridgeOptions?: BridgeParams,
-): Promise<() => void> {
+>(callback: (story: ISbStoryData<T>) => void, bridgeOptions?: BridgeParams): Promise<() => void> {
   await initializeBridge(bridgeOptions);
 
   const listener = (story: ISbStoryData) => {

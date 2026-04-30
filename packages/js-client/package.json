@@ -1,25 +1,35 @@
 {
   "name": "storyblok-js-client",
-  "type": "module",
   "version": "7.3.1",
   "description": "Universal JavaScript SDK for Storyblok's API",
-  "author": "Alexander Feiglstorfer <delooks@gmail.com>",
-  "license": "MIT",
+  "keywords": [
+    "api",
+    "javascript",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js-client#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Alexander Feiglstorfer <delooks@gmail.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/js-client"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "storyblok",
-    "javascript",
-    "api"
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
   ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "unpkg": "./dist/index.umd.js",
+  "jsdelivr": "./dist/index.umd.js",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -27,42 +37,34 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "unpkg": "./dist/index.umd.js",
-  "jsdelivr": "./dist/index.umd.js",
-  "types": "./dist/index.d.cts",
-  "source": "src/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "dev": "tsdown --watch",
-    "build": "tsdown",
-    "test:types": "tsc --noEmit --skipLibCheck",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
     "test": "pnpm run test:unit && pnpm run test:e2e",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
-    "test:e2e": "vitest run -c vitest.config.e2e.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "test:unit": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:e2e": "vp test run -c vitest.config.e2e.ts",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:coverage": "vp test run --coverage",
     "playground": "pnpm run --filter ./playground/vanilla dev",
     "playground:next": "pnpm run --filter ./playground/nextjs dev",
-    "dev:umd": "npx serve ./",
-    "coverage": "vitest run --coverage"
+    "serve:umd": "npx serve ./"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
-    "@vitest/coverage-v8": "^3.1.3",
-    "@vitest/ui": "^3.1.3",
-    "eslint": "^9.26.0",
     "msw": "^2.10.2",
-    "tsdown": "^0.20.3",
+    "oxlint": "^1.62.0",
     "typescript": "5.8.3",
-    "vite": "^7.0.6",
     "vitest": "^3.1.3"
   },
   "release": {
@@ -77,9 +79,6 @@
         "prerelease": true
       }
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

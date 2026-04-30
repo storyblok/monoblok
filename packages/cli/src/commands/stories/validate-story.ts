@@ -1,14 +1,14 @@
-import { pipeline } from 'node:stream/promises';
-import { Writable } from 'node:stream';
-import type { Component } from '../components/constants';
-import type { Story } from './constants';
-import type { ComponentSchemas } from './ref-mapper';
-import { walkRichtextBloks } from './richtext';
-import { readLocalStoriesStream } from './streams';
+import { pipeline } from "node:stream/promises";
+import { Writable } from "node:stream";
+import type { Component } from "../components/constants";
+import type { Story } from "./constants";
+import type { ComponentSchemas } from "./ref-mapper";
+import { walkRichtextBloks } from "./richtext";
+import { readLocalStoriesStream } from "./streams";
 
 export interface SchemaIssues {
-  driftByComponent: Map<Component['name'], Set<string>>;
-  missingSchemas: Set<Component['name']>;
+  driftByComponent: Map<Component["name"], Set<string>>;
+  missingSchemas: Set<Component["name"]>;
 }
 
 /**
@@ -17,13 +17,13 @@ export interface SchemaIssues {
  * story `full_slug`s so the error message can point users at the files to fix.
  */
 export interface AggregatedSchemaIssues {
-  driftByComponent: Map<Component['name'], Map<string, Set<string>>>;
-  missingSchemas: Map<Component['name'], Set<string>>;
+  driftByComponent: Map<Component["name"], Map<string, Set<string>>>;
+  missingSchemas: Map<Component["name"], Set<string>>;
   total: number;
 }
 
-const RESERVED_KEYS = new Set(['component']);
-const isReservedKey = (key: string) => RESERVED_KEYS.has(key) || key.startsWith('_');
+const RESERVED_KEYS = new Set(["component"]);
+const isReservedKey = (key: string) => RESERVED_KEYS.has(key) || key.startsWith("_");
 
 const MAX_STORIES_PER_ENTRY = 5;
 
@@ -54,13 +54,17 @@ export const validateStoryAgainstSchemas = (
   schemas: ComponentSchemas,
 ): SchemaIssues => {
   const driftByComponent = new Map<string, Set<string>>();
-  const missingSchemas = new Set<Component['name']>();
+  const missingSchemas = new Set<Component["name"]>();
 
   const visit = (data: unknown): void => {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) { return; }
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return;
+    }
     const node = data as Record<string, unknown>;
     const componentName = node.component;
-    if (typeof componentName !== 'string' || componentName.length === 0) { return; }
+    if (typeof componentName !== "string" || componentName.length === 0) {
+      return;
+    }
 
     const schema = schemas[componentName];
     if (!schema) {
@@ -69,9 +73,11 @@ export const validateStoryAgainstSchemas = (
     }
 
     for (const [fieldName, fieldValue] of Object.entries(node)) {
-      if (isReservedKey(fieldName)) { continue; }
+      if (isReservedKey(fieldName)) {
+        continue;
+      }
 
-      const normalized = fieldName.replace(/__i18n__.*/, '');
+      const normalized = fieldName.replace(/__i18n__.*/, "");
       const fieldSchema = (schema as Record<string, unknown>)[normalized] as
         | Record<string, unknown>
         | undefined;
@@ -81,13 +87,14 @@ export const validateStoryAgainstSchemas = (
         continue;
       }
 
-      const fieldType = typeof fieldSchema.type === 'string' ? fieldSchema.type : undefined;
+      const fieldType = typeof fieldSchema.type === "string" ? fieldSchema.type : undefined;
 
-      if (fieldType === 'bloks' && Array.isArray(fieldValue)) {
-        for (const item of fieldValue) { visit(item); }
-      }
-      else if (fieldType === 'richtext' && fieldValue && typeof fieldValue === 'object') {
-        walkRichtextBloks(fieldValue, blok => visit(blok));
+      if (fieldType === "bloks" && Array.isArray(fieldValue)) {
+        for (const item of fieldValue) {
+          visit(item);
+        }
+      } else if (fieldType === "richtext" && fieldValue && typeof fieldValue === "object") {
+        walkRichtextBloks(fieldValue, (blok) => visit(blok));
       }
     }
   };
@@ -137,19 +144,23 @@ export const collectSchemaIssues = async ({
             addStoryToSet(issues.missingSchemas, component, storyIdentifier);
           }
           for (const [component, fields] of driftByComponent) {
-            const fieldMap = issues.driftByComponent.get(component) ?? new Map<string, Set<string>>();
-            for (const field of fields) { addStoryToSet(fieldMap, field, storyIdentifier); }
+            const fieldMap =
+              issues.driftByComponent.get(component) ?? new Map<string, Set<string>>();
+            for (const field of fields) {
+              addStoryToSet(fieldMap, field, storyIdentifier);
+            }
             issues.driftByComponent.set(component, fieldMap);
           }
           callback();
         },
       }),
     );
-  }
-  catch (error) {
+  } catch (error) {
     // Missing directory is surfaced by the downstream read stream during Pass 1;
     // pre-flight has nothing to add. Other errors propagate to the caller.
-    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') { throw error; }
+    if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
+      throw error;
+    }
   }
 
   return issues;
@@ -157,8 +168,10 @@ export const collectSchemaIssues = async ({
 
 const formatStoryList = (stories: Set<string>): string => {
   const sorted = [...stories].sort();
-  if (sorted.length <= MAX_STORIES_PER_ENTRY) { return sorted.join(', '); }
-  const shown = sorted.slice(0, MAX_STORIES_PER_ENTRY).join(', ');
+  if (sorted.length <= MAX_STORIES_PER_ENTRY) {
+    return sorted.join(", ");
+  }
+  const shown = sorted.slice(0, MAX_STORIES_PER_ENTRY).join(", ");
   return `${shown}, and ${sorted.length - MAX_STORIES_PER_ENTRY} more`;
 };
 
@@ -170,39 +183,47 @@ const formatStoryList = (stories: Set<string>): string => {
  * running `storyblok components pull` is not always the right answer.
  */
 export const formatSchemaIssues = (issues: AggregatedSchemaIssues): string => {
-  const lines: string[] = ['Schema validation failed. Push aborted.'];
+  const lines: string[] = ["Schema validation failed. Push aborted."];
 
   if (issues.missingSchemas.size > 0) {
-    lines.push('');
-    lines.push('Missing component schemas:');
-    const sortedMissing = [...issues.missingSchemas.entries()]
-      .sort(([a], [b]) => a.localeCompare(b));
+    lines.push("");
+    lines.push("Missing component schemas:");
+    const sortedMissing = [...issues.missingSchemas.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
     for (const [component, stories] of sortedMissing) {
       lines.push(`  - ${component} (in stories: ${formatStoryList(stories)})`);
     }
-    lines.push('');
-    lines.push('If these components exist in Storyblok, run `storyblok components pull` to sync them locally.');
-    lines.push('Otherwise, create them in Storyblok first, or remove the references from the affected stories.');
+    lines.push("");
+    lines.push(
+      "If these components exist in Storyblok, run `storyblok components pull` to sync them locally.",
+    );
+    lines.push(
+      "Otherwise, create them in Storyblok first, or remove the references from the affected stories.",
+    );
   }
 
   if (issues.driftByComponent.size > 0) {
-    lines.push('');
-    lines.push('Fields not declared in local schemas:');
-    const sortedComponents = [...issues.driftByComponent.entries()]
-      .sort(([a], [b]) => a.localeCompare(b));
+    lines.push("");
+    lines.push("Fields not declared in local schemas:");
+    const sortedComponents = [...issues.driftByComponent.entries()].sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
     for (const [component, fieldMap] of sortedComponents) {
       const sortedFields = [...fieldMap.entries()].sort(([a], [b]) => a.localeCompare(b));
       for (const [field, stories] of sortedFields) {
         lines.push(`  - ${component}.${field} (in stories: ${formatStoryList(stories)})`);
       }
     }
-    lines.push('');
-    lines.push('These fields will be lost when the stories are pushed. To fix, either:');
-    lines.push('  - Add the field to the component in Storyblok, then run `storyblok components pull`');
-    lines.push('  - Or remove the field from the affected story JSON files');
+    lines.push("");
+    lines.push("These fields will be lost when the stories are pushed. To fix, either:");
+    lines.push(
+      "  - Add the field to the component in Storyblok, then run `storyblok components pull`",
+    );
+    lines.push("  - Or remove the field from the affected story JSON files");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 };
 
 export const hasSchemaIssues = (issues: AggregatedSchemaIssues): boolean =>

@@ -13,36 +13,40 @@ storyblok types generate --space <spaceId>
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--sf, --separate-files` | Generate separate type definition files for each component | `false` |
-| `--strict` | Enable strict mode with no loose typing | `false` |
-| `--filename <name>` | File name for the generated type files | `storyblok` |
-| `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
-| `--suffix <suffix>` | Suffix for component names | - |
-| `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |
-| `--compiler-options <options>` | Path to the compiler options from json-schema-to-typescript | - |
-| `--space <spaceId>` | (Required) The ID of your Storyblok space | - |
-| `--path <path>` | Path to the directory containing your component files | `.storyblok/components` |
+| Option                          | Description                                                  | Default                 |
+| ------------------------------- | ------------------------------------------------------------ | ----------------------- |
+| `--sf, --separate-files`        | Generate separate type definition files for each component   | `false`                 |
+| `--strict`                      | Enable strict mode with no loose typing                      | `false`                 |
+| `--filename <name>`             | File name for the generated type files                       | `storyblok`             |
+| `--type-prefix <prefix>`        | Prefix to be prepended to all generated component type names | -                       |
+| `--suffix <suffix>`             | Suffix for component names                                   | -                       |
+| `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types               | -                       |
+| `--compiler-options <options>`  | Path to the compiler options from json-schema-to-typescript  | -                       |
+| `--space <spaceId>`             | (Required) The ID of your Storyblok space                    | -                       |
+| `--path <path>`                 | Path to the directory containing your component files        | `.storyblok/components` |
 
 ## Examples
 
 Generate types for all components:
+
 ```bash
 storyblok types generate --space 12345
 ```
 
 Generate types with strict mode:
+
 ```bash
 storyblok types generate --space 12345 --strict
 ```
 
 Generate types with a custom prefix:
+
 ```bash
 storyblok types generate --space 12345 --type-prefix Storyblok
 ```
 
 Generate separate type files for each component:
+
 ```bash
 storyblok types generate --space 12345 --separate-files
 ```
@@ -50,12 +54,14 @@ storyblok types generate --space 12345 --separate-files
 ## File Structure
 
 The command will generate two files:
+
 1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichtext`, etc.)
 2. A `storyblok-components.d.ts` file for each space inside the `.storyblok/types/{spaceId}/` directory with your component types
 
 ### Example Structure
 
 When running:
+
 ```bash
 storyblok types generate --space 295018
 ```

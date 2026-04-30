@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { randomUUID } from 'node:crypto';
-import { makeStoryWithAllFieldTypes, pageWithEverythingBlok } from './__tests__/story-with-all-field-types';
-import { storyRefMapper } from './ref-mapper';
+import { describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
+import {
+  makeStoryWithAllFieldTypes,
+  pageWithEverythingBlok,
+} from "./__tests__/story-with-all-field-types";
+import { storyRefMapper } from "./ref-mapper";
 
 const componentSchemas = {
   page_with_everything: pageWithEverythingBlok.schema,
@@ -13,8 +16,8 @@ const getID = () => {
   return id;
 };
 
-describe('storyRefMapper', () => {
-  it('should map all relevant IDs on a story', () => {
+describe("storyRefMapper", () => {
+  it("should map all relevant IDs on a story", () => {
     const story = makeStoryWithAllFieldTypes();
     const storyMap = new Map<number | string, number | string>();
     storyMap.set(story.id, 1000);
@@ -34,36 +37,53 @@ describe('storyRefMapper', () => {
     expect(mappedStory.alternates?.[0].parent_id).toBe(storyMap.get(story.alternates[0].parent_id));
   });
 
-  it('should map all relevant IDs in all of the fields of a story', () => {
+  it("should map all relevant IDs in all of the fields of a story", () => {
     const story = makeStoryWithAllFieldTypes();
     const storyMap = new Map<number | string, number | string>();
     const assetMap = new Map<number, any>();
     // Bloks > multilink
     storyMap.set(story.content.bloks[0].link.id, randomUUID());
     // Bloks > richtext > link
-    storyMap.set(story.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid, randomUUID());
+    storyMap.set(
+      story.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid,
+      randomUUID(),
+    );
     // Bloks > bloks > richtext > link
-    storyMap.set(story.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0].marks[0].attrs.uuid, randomUUID());
-    storyMap.set(story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid, randomUUID());
+    storyMap.set(
+      story.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0].marks[0]
+        .attrs.uuid,
+      randomUUID(),
+    );
+    storyMap.set(
+      story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0]
+        .marks[0].attrs.uuid,
+      randomUUID(),
+    );
     // Bloks > bloks > asset
-    const asset1New = { id: getID(), filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png' };
+    const asset1New = {
+      id: getID(),
+      filename: "https://a.storyblok.com/f/12345/500x500/new-filename.png",
+    };
     assetMap.set(story.content.bloks[0].bloks[0].asset.id, { new: asset1New });
     // Richtext
     storyMap.set(story.content.richtext.content[0].content[0].marks[0].attrs.uuid, randomUUID());
     storyMap.set(story.content.richtext.content[1].attrs.body[0].link.id, randomUUID());
     // Options
-    story.content.references.forEach(r => storyMap.set(r, randomUUID()));
+    story.content.references.forEach((r) => storyMap.set(r, randomUUID()));
     // Multilink
     storyMap.set(story.content.link.id, randomUUID());
     // Asset
     const asset2New = {
       id: getID(),
-      filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png',
-      meta_data: { alt: 'New Alt' },
+      filename: "https://a.storyblok.com/f/12345/500x500/new-filename.png",
+      meta_data: { alt: "New Alt" },
     };
     assetMap.set(story.content.asset.id, { new: asset2New });
     // Multiasset
-    const asset3New = { id: getID(), filename: 'https://a.storyblok.com/f/12345/500x500/new-filename.png' };
+    const asset3New = {
+      id: getID(),
+      filename: "https://a.storyblok.com/f/12345/500x500/new-filename.png",
+    };
     assetMap.set(story.content.multi_assets[0].id, { new: asset3New });
     const maps = { assets: assetMap, stories: storyMap };
 
@@ -73,19 +93,43 @@ describe('storyRefMapper', () => {
     // Bloks > multilink
     expect(mappedStory.content.bloks[0].link.id).toBe(storyMap.get(story.content.bloks[0].link.id));
     // Bloks > richtext > link
-    expect(mappedStory.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid));
+    expect(mappedStory.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid).toBe(
+      storyMap.get(story.content.bloks[0].richtext.content[0].content[0].marks[0].attrs.uuid),
+    );
     // Bloks > bloks > richtext > link
-    expect(mappedStory.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0].marks[0].attrs.uuid));
+    expect(
+      mappedStory.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0]
+        .marks[0].attrs.uuid,
+    ).toBe(
+      storyMap.get(
+        story.content.bloks[0].bloks[0].richtext.content[0].content[0].content[0].content[0]
+          .marks[0].attrs.uuid,
+      ),
+    );
     // Bloks > bloks > richtext > link (i18n)
-    expect(mappedStory.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0].content[0].marks[0].attrs.uuid));
+    expect(
+      mappedStory.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0]
+        .content[0].marks[0].attrs.uuid,
+    ).toBe(
+      storyMap.get(
+        story.content.bloks[0].bloks[0].richtext__i18n__de.content[0].content[0].content[0]
+          .content[0].marks[0].attrs.uuid,
+      ),
+    );
     // Bloks > bloks > asset
     expect(mappedStory.content.bloks[0].bloks[0].asset.id).toBe(asset1New.id);
     expect(mappedStory.content.bloks[0].bloks[0].asset.filename).toBe(asset1New.filename);
     // Richtext
-    expect(mappedStory.content.richtext.content[0].content[0].marks[0].attrs.uuid).toBe(storyMap.get(story.content.richtext.content[0].content[0].marks[0].attrs.uuid));
-    expect(mappedStory.content.richtext.content[1].attrs.body[0].link.id).toBe(storyMap.get(story.content.richtext.content[1].attrs.body[0].link.id));
+    expect(mappedStory.content.richtext.content[0].content[0].marks[0].attrs.uuid).toBe(
+      storyMap.get(story.content.richtext.content[0].content[0].marks[0].attrs.uuid),
+    );
+    expect(mappedStory.content.richtext.content[1].attrs.body[0].link.id).toBe(
+      storyMap.get(story.content.richtext.content[1].attrs.body[0].link.id),
+    );
     // Options
-    expect(mappedStory.content.references).toEqual(story.content.references.map(r => storyMap.get(r)));
+    expect(mappedStory.content.references).toEqual(
+      story.content.references.map((r) => storyMap.get(r)),
+    );
     // Multilink
     expect(mappedStory.content.link.id).toBe(storyMap.get(story.content.link.id));
     // Asset
@@ -97,11 +141,11 @@ describe('storyRefMapper', () => {
     expect(mappedStory.content.multi_assets[0].filename).toBe(asset3New.filename);
   });
 
-  it('should normalize S3 asset URLs to CDN URLs when mapping asset fields', () => {
+  it("should normalize S3 asset URLs to CDN URLs when mapping asset fields", () => {
     const story = makeStoryWithAllFieldTypes();
     const assetMap = new Map<number, any>();
-    const s3Filename = 'https://s3.amazonaws.com/a.storyblok.com/f/99999/abc123/image.png';
-    const expectedCdnFilename = 'https://a.storyblok.com/f/99999/abc123/image.png';
+    const s3Filename = "https://s3.amazonaws.com/a.storyblok.com/f/99999/abc123/image.png";
+    const expectedCdnFilename = "https://a.storyblok.com/f/99999/abc123/image.png";
     const newAsset = { id: getID(), filename: s3Filename };
     assetMap.set(story.content.asset.id, { new: newAsset });
     const maps = { assets: assetMap, stories: new Map() };
@@ -112,15 +156,15 @@ describe('storyRefMapper', () => {
     expect(mappedStory.content.asset.filename).toBe(expectedCdnFilename);
   });
 
-  it('should handle null parent_id for root-level stories', () => {
+  it("should handle null parent_id for root-level stories", () => {
     const story = {
-      name: 'Root Story',
+      name: "Root Story",
       id: getID(),
       uuid: randomUUID(),
       parent_id: null,
       is_folder: false,
-      slug: 'root-story',
-      content: { _uid: randomUUID(), component: 'page_with_everything' },
+      slug: "root-story",
+      content: { _uid: randomUUID(), component: "page_with_everything" },
     };
     const maps = { assets: new Map(), stories: new Map() };
 
@@ -130,15 +174,15 @@ describe('storyRefMapper', () => {
     expect(mappedStory.parent_id).toBe(0);
   });
 
-  it('should preserve parent_id of 0 for root-level stories', () => {
+  it("should preserve parent_id of 0 for root-level stories", () => {
     const story = {
-      name: 'Root Story',
+      name: "Root Story",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'root-story',
-      content: { _uid: randomUUID(), component: 'page_with_everything' },
+      slug: "root-story",
+      content: { _uid: randomUUID(), component: "page_with_everything" },
     };
     const maps = { assets: new Map(), stories: new Map() };
 
@@ -148,14 +192,14 @@ describe('storyRefMapper', () => {
     expect(mappedStory.parent_id).toBe(0);
   });
 
-  it('should handle stories with missing content field', () => {
+  it("should handle stories with missing content field", () => {
     const story = {
-      name: 'No Content Story',
+      name: "No Content Story",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'no-content',
+      slug: "no-content",
     };
     const maps = { assets: new Map(), stories: new Map() };
 
@@ -167,14 +211,14 @@ describe('storyRefMapper', () => {
     expect(mappedStory.uuid).toBe(story.uuid);
   });
 
-  it('should handle stories with content lacking a component field', () => {
+  it("should handle stories with content lacking a component field", () => {
     const story = {
-      name: 'Folder',
+      name: "Folder",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: true,
-      slug: 'folder',
+      slug: "folder",
       content: { _uid: randomUUID() },
     };
     const maps = { assets: new Map(), stories: new Map() };
@@ -185,22 +229,20 @@ describe('storyRefMapper', () => {
     expect(mappedStory.content).toEqual(story.content);
   });
 
-  it('should handle richtext with missing attrs on link nodes', () => {
+  it("should handle richtext with missing attrs on link nodes", () => {
     const story = {
-      name: 'Richtext Story',
+      name: "Richtext Story",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'richtext-story',
+      slug: "richtext-story",
       content: {
         _uid: randomUUID(),
-        component: 'page_with_everything',
+        component: "page_with_everything",
         richtext: {
-          type: 'doc',
-          content: [
-            { type: 'link' },
-          ],
+          type: "doc",
+          content: [{ type: "link" }],
         },
       },
     };
@@ -210,23 +252,20 @@ describe('storyRefMapper', () => {
     expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
   });
 
-  it('should handle richtext blok nodes with missing attrs or body', () => {
+  it("should handle richtext blok nodes with missing attrs or body", () => {
     const story = {
-      name: 'Blok Story',
+      name: "Blok Story",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'blok-story',
+      slug: "blok-story",
       content: {
         _uid: randomUUID(),
-        component: 'page_with_everything',
+        component: "page_with_everything",
         richtext: {
-          type: 'doc',
-          content: [
-            { type: 'blok' },
-            { type: 'blok', attrs: {} },
-          ],
+          type: "doc",
+          content: [{ type: "blok" }, { type: "blok", attrs: {} }],
         },
       },
     };
@@ -236,45 +275,47 @@ describe('storyRefMapper', () => {
     expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
   });
 
-  it('should throw a helpful error when bloks field has a non-array value', () => {
+  it("should throw a helpful error when bloks field has a non-array value", () => {
     const story = {
-      name: 'Bad Bloks',
+      name: "Bad Bloks",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'bad-bloks',
+      slug: "bad-bloks",
       content: {
         _uid: randomUUID(),
-        component: 'page_with_everything',
-        bloks: 'invalid',
+        component: "page_with_everything",
+        bloks: "invalid",
       },
     };
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps }))
-      .toThrow('Invalid bloks field: expected an array, but received "invalid"');
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).toThrow(
+      'Invalid bloks field: expected an array, but received "invalid"',
+    );
   });
 
-  it('should throw a helpful error when multiasset field has a non-array value', () => {
+  it("should throw a helpful error when multiasset field has a non-array value", () => {
     const story = {
-      name: 'Bad Multiasset',
+      name: "Bad Multiasset",
       id: getID(),
       uuid: randomUUID(),
       parent_id: 0,
       is_folder: false,
-      slug: 'bad-multiasset',
+      slug: "bad-multiasset",
       content: {
         _uid: randomUUID(),
-        component: 'page_with_everything',
-        multi_assets: { filename: 'image.png' },
+        component: "page_with_everything",
+        multi_assets: { filename: "image.png" },
       },
     };
     const maps = { assets: new Map(), stories: new Map() };
 
     // @ts-expect-error Our types are wrong.
-    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps }))
-      .toThrow('Invalid multiasset field: expected an array, but received {"filename":"image.png"}');
+    expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).toThrow(
+      'Invalid multiasset field: expected an array, but received {"filename":"image.png"}',
+    );
   });
 });

@@ -1,88 +1,97 @@
-import { join, parse, resolve } from 'pathe';
-import { pathToFileURL } from 'node:url';
-import { access, appendFile, constants, mkdir, readdir, readFile as readFileImpl, writeFile } from 'node:fs/promises';
-import { handleFileSystemError } from './error/filesystem-error';
-import type { FileReaderResult } from '../types';
-import filenamify from 'filenamify';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { toError } from './error';
+import { join, parse, resolve } from "pathe";
+import { pathToFileURL } from "node:url";
+import {
+  access,
+  appendFile,
+  constants,
+  mkdir,
+  readdir,
+  readFile as readFileImpl,
+  writeFile,
+} from "node:fs/promises";
+import { handleFileSystemError } from "./error/filesystem-error";
+import type { FileReaderResult } from "../types";
+import filenamify from "filenamify";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { toError } from "./error";
 
 // Default working folder for commands that do not pass --path explicitly.
-export const DEFAULT_STORAGE_DIR = '.storyblok';
+export const DEFAULT_STORAGE_DIR = ".storyblok";
 
 export interface FileOptions {
   mode?: number;
 }
 
 export const getStoryblokGlobalPath = () => {
-  const homeDirectory = process.env[
-    process.platform.startsWith('win') ? 'USERPROFILE' : 'HOME'
-  ] || process.cwd();
+  const homeDirectory =
+    process.env[process.platform.startsWith("win") ? "USERPROFILE" : "HOME"] || process.cwd();
 
-  return join(homeDirectory, '.storyblok');
+  return join(homeDirectory, ".storyblok");
 };
 
-export const saveToFile = async (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
+export const saveToFile = async (
+  filePath: string,
+  data: string | NodeJS.ArrayBufferView,
+  options?: FileOptions,
+) => {
   // Get the directory path
   const resolvedPath = parse(filePath).dir;
 
   // Ensure the directory exists
   try {
     await mkdir(resolvedPath, { recursive: true });
-  }
-  catch (mkdirError) {
-    handleFileSystemError('mkdir', mkdirError as Error);
+  } catch (mkdirError) {
+    handleFileSystemError("mkdir", mkdirError as Error);
     return; // Exit early if the directory creation fails
   }
 
   // Write the file
   try {
     await writeFile(filePath, data, options);
-  }
-  catch (writeError) {
-    handleFileSystemError('write', writeError as Error);
+  } catch (writeError) {
+    handleFileSystemError("write", writeError as Error);
   }
 };
 
-export const saveToFileSync = (filePath: string, data: string | NodeJS.ArrayBufferView, options?: FileOptions) => {
+export const saveToFileSync = (
+  filePath: string,
+  data: string | NodeJS.ArrayBufferView,
+  options?: FileOptions,
+) => {
   const resolvedPath = parse(filePath).dir;
 
   // Only attempt to create a directory if there's a directory part
   if (resolvedPath) {
     try {
       mkdirSync(resolvedPath, { recursive: true });
-    }
-    catch (mkdirError) {
-      handleFileSystemError('mkdir', mkdirError as Error);
+    } catch (mkdirError) {
+      handleFileSystemError("mkdir", mkdirError as Error);
       return; // Exit early if the directory creation fails
     }
   }
 
   try {
     writeFileSync(filePath, data, options as any);
-  }
-  catch (writeError) {
-    handleFileSystemError('write', writeError as Error);
+  } catch (writeError) {
+    handleFileSystemError("write", writeError as Error);
   }
 };
 
 export const appendToFile = async (filePath: string, data: string, options?: any) => {
-  const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+  const dataWithNewline = data.endsWith("\n") ? data : `${data}\n`;
   try {
     await appendFile(filePath, dataWithNewline, options);
-  }
-  catch (maybeError) {
+  } catch (maybeError) {
     const error = toError(maybeError);
     // If the directory doesn't exist, create it and retry
-    if ('code' in error && error.code === 'ENOENT') {
+    if ("code" in error && error.code === "ENOENT") {
       const dir = parse(filePath).dir;
       await mkdir(dir, { recursive: true });
       // Retry the append
       await appendFile(filePath, dataWithNewline, options);
-    }
-    else {
+    } else {
       handleFileSystemError(
-        'syscall' in error && error.syscall === 'mkdir' ? 'mkdir' : 'write',
+        "syscall" in error && error.syscall === "mkdir" ? "mkdir" : "write",
         error,
       );
     }
@@ -95,28 +104,25 @@ export const appendToFileSync = (filePath: string, data: string, options?: FileO
   // Ensure the directory exists
   try {
     mkdirSync(resolvedPath, { recursive: true });
-  }
-  catch (mkdirError) {
-    handleFileSystemError('mkdir', mkdirError as Error);
+  } catch (mkdirError) {
+    handleFileSystemError("mkdir", mkdirError as Error);
     return;
   }
 
   try {
-    const dataWithNewline = data.endsWith('\n') ? data : `${data}\n`;
+    const dataWithNewline = data.endsWith("\n") ? data : `${data}\n`;
     appendFileSync(filePath, dataWithNewline, options);
-  }
-  catch (writeError) {
-    handleFileSystemError('write', writeError as Error);
+  } catch (writeError) {
+    handleFileSystemError("write", writeError as Error);
   }
 };
 
 export const readFile = async (filePath: string) => {
   try {
-    return await readFileImpl(filePath, 'utf8');
-  }
-  catch (error) {
-    handleFileSystemError('read', error as Error);
-    return '';
+    return await readFileImpl(filePath, "utf8");
+  } catch (error) {
+    handleFileSystemError("read", error as Error);
+    return "";
   }
 };
 
@@ -129,10 +135,15 @@ export interface ManifestEntry {
 }
 
 export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[]> => {
-  return readFileImpl(manifestFile, 'utf8')
-    .then(manifest => manifest.split('\n').filter(Boolean).map(entry => JSON.parse(entry)))
+  return readFileImpl(manifestFile, "utf8")
+    .then((manifest) =>
+      manifest
+        .split("\n")
+        .filter(Boolean)
+        .map((entry) => JSON.parse(entry)),
+    )
     .catch((error: NodeJS.ErrnoException) => {
-      if (error && error.code === 'ENOENT') {
+      if (error && error.code === "ENOENT") {
         return [];
       }
       throw error;
@@ -142,9 +153,12 @@ export const loadManifest = async (manifestFile: string): Promise<ManifestEntry[
 /**
  * Saves an array of manifest entries to a JSONL file.
  */
-export const saveManifest = async (manifestFile: string, entries: ManifestEntry[]): Promise<void> => {
-  const content = entries.map(entry => JSON.stringify(entry)).join('\n');
-  await saveToFile(manifestFile, content ? `${content}\n` : '');
+export const saveManifest = async (
+  manifestFile: string,
+  entries: ManifestEntry[],
+): Promise<void> => {
+  const content = entries.map((entry) => JSON.stringify(entry)).join("\n");
+  await saveToFile(manifestFile, content ? `${content}\n` : "");
 };
 
 /**
@@ -194,7 +208,7 @@ export function resolveCommandPath(commandPath: string, space?: string, baseDir?
  */
 export const getComponentNameFromFilename = (filename: string): string => {
   // Remove the .js extension
-  return filename.replace(/\.js$/, '');
+  return filename.replace(/\.js$/, "");
 };
 
 /**
@@ -205,7 +219,7 @@ export const getComponentNameFromFilename = (filename: string): string => {
  */
 export const sanitizeFilename = (filename: string): string => {
   return filenamify(filename, {
-    replacement: '_',
+    replacement: "_",
   });
 };
 
@@ -213,9 +227,8 @@ export async function readDirectory(directoryPath: string) {
   try {
     const files = await readdir(directoryPath);
     return files;
-  }
-  catch (maybeError) {
-    handleFileSystemError('read', toError(maybeError));
+  } catch (maybeError) {
+    handleFileSystemError("read", toError(maybeError));
     return [];
   }
 }
@@ -228,8 +241,7 @@ export async function readJsonFile<T>(filePath: string): Promise<FileReaderResul
     }
     const parsed = JSON.parse(content);
     return { data: Array.isArray(parsed) ? parsed : [parsed] };
-  }
-  catch (error) {
+  } catch (error) {
     return { data: [], error: error as Error };
   }
 }
@@ -242,19 +254,21 @@ export async function fileExists(path: string) {
   try {
     await access(path, constants.F_OK);
     return true;
-  }
-  catch {
+  } catch {
     return false;
   }
 }
 
 export function consolidatedFilename(defaultFilename: string, suffix?: string): string {
-  return suffix
-    ? `${defaultFilename}.${suffix}.json`
-    : `${defaultFilename}.json`;
+  return suffix ? `${defaultFilename}.${suffix}.json` : `${defaultFilename}.json`;
 }
 
-export async function shouldUseSeparateFiles(resolvedPath: string, defaultFilename: string, separateFiles?: boolean, suffix?: string): Promise<boolean> {
+export async function shouldUseSeparateFiles(
+  resolvedPath: string,
+  defaultFilename: string,
+  separateFiles?: boolean,
+  suffix?: string,
+): Promise<boolean> {
   if (separateFiles !== undefined) {
     return separateFiles;
   }

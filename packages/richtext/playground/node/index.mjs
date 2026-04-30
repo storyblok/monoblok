@@ -1,91 +1,91 @@
-import { richTextResolver } from '@storyblok/richtext';
+import { richTextResolver } from "@storyblok/richtext";
 
 const { render } = richTextResolver();
 const rt = {
-  type: 'doc',
+  type: "doc",
   content: [
     {
-      type: 'paragraph',
+      type: "paragraph",
       content: [
         {
-          text: 'The S3 backups included in the Teams plan back up the whole space',
-          type: 'text',
+          text: "The S3 backups included in the Teams plan back up the whole space",
+          type: "text",
         },
       ],
     },
     {
-      type: 'paragraph',
+      type: "paragraph",
       content: [
         {
-          text: 'Customers on Community or Entry have to utilize other ways to make the same thing happen.',
-          type: 'text',
+          text: "Customers on Community or Entry have to utilize other ways to make the same thing happen.",
+          type: "text",
         },
       ],
     },
     {
-      type: 'paragraph',
+      type: "paragraph",
       content: [
         {
-          text: 'Here are a few tools that may help you achieve what you\'re after.',
-          type: 'text',
+          text: "Here are a few tools that may help you achieve what you're after.",
+          type: "text",
         },
       ],
     },
     {
-      type: 'bullet_list',
+      type: "bullet_list",
       content: [
         {
-          type: 'list_item',
+          type: "list_item",
           content: [
             {
-              type: 'paragraph',
+              type: "paragraph",
               content: [
                 {
-                  text: 'Our CLI',
-                  type: 'text',
+                  text: "Our CLI",
+                  type: "text",
                   marks: [
                     {
-                      type: 'link',
+                      type: "link",
                       attrs: {
-                        href: 'https://www.storyblok.com/docs/Guides/command-line-interface',
+                        href: "https://www.storyblok.com/docs/Guides/command-line-interface",
                         uuid: null,
                         anchor: null,
                         target: null,
-                        linktype: 'url',
+                        linktype: "url",
                       },
                     },
                   ],
                 },
                 {
-                  text: ' provides the option to export the component schema',
-                  type: 'text',
+                  text: " provides the option to export the component schema",
+                  type: "text",
                 },
               ],
             },
           ],
         },
         {
-          type: 'list_item',
+          type: "list_item",
           content: [
             {
-              type: 'paragraph',
+              type: "paragraph",
               content: [
                 {
-                  text: 'Markus Oberlehner (an ambassador of ours) provides a set of scripts to backup components and stories. Check it out ',
-                  type: 'text',
+                  text: "Markus Oberlehner (an ambassador of ours) provides a set of scripts to backup components and stories. Check it out ",
+                  type: "text",
                 },
                 {
-                  text: 'here',
-                  type: 'text',
+                  text: "here",
+                  type: "text",
                   marks: [
                     {
-                      type: 'link',
+                      type: "link",
                       attrs: {
-                        href: 'https://github.com/maoberlehner/storyblok-migrate',
+                        href: "https://github.com/maoberlehner/storyblok-migrate",
                         uuid: null,
                         anchor: null,
                         target: null,
-                        linktype: 'url',
+                        linktype: "url",
                       },
                     },
                   ],
@@ -95,34 +95,34 @@ const rt = {
           ],
         },
         {
-          type: 'list_item',
+          type: "list_item",
           content: [
             {
-              type: 'paragraph',
+              type: "paragraph",
               content: [
                 {
-                  text: 'For assets, we have a ',
-                  type: 'text',
+                  text: "For assets, we have a ",
+                  type: "text",
                 },
                 {
-                  text: 'corresponding script',
-                  type: 'text',
+                  text: "corresponding script",
+                  type: "text",
                   marks: [
                     {
-                      type: 'link',
+                      type: "link",
                       attrs: {
-                        href: 'https://github.com/storyblok/tool-examples/tree/main/storyblok-assets-backup',
+                        href: "https://github.com/storyblok/tool-examples/tree/main/storyblok-assets-backup",
                         uuid: null,
                         anchor: null,
                         target: null,
-                        linktype: 'url',
+                        linktype: "url",
                       },
                     },
                   ],
                 },
                 {
-                  text: ' too',
-                  type: 'text',
+                  text: " too",
+                  type: "text",
                 },
               ],
             },

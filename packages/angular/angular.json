@@ -53,9 +53,7 @@
                 "input": "playground/ssr/public"
               }
             ],
-            "styles": [
-              "playground/ssr/src/styles.css"
-            ],
+            "styles": ["playground/ssr/src/styles.css"],
             "server": "playground/ssr/src/main.server.ts",
             "outputMode": "server",
             "ssr": {
@@ -118,9 +116,7 @@
                 "input": "playground/app/public"
               }
             ],
-            "styles": [
-              "playground/app/src/styles.css"
-            ]
+            "styles": ["playground/app/src/styles.css"]
           },
           "configurations": {
             "production": {

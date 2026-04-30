@@ -1,17 +1,17 @@
-import type { ISbStoryData } from '@storyblok/js';
-import morphdom from 'morphdom';
+import type { ISbStoryData } from "@storyblok/js";
+import morphdom from "morphdom";
 
 let timeout: NodeJS.Timeout;
 let abortController: AbortController | null = null;
 
 const DEBOUNCE_DELAY_MS = 500;
-const SERVER_DATA_ELEMENT_ID = '__STORYBLOK_SERVERDATA__';
-const STORYBLOK_FOCUSED_ATTRIBUTE = 'data-blok-focused';
-const STORYBLOK_UID_ATTRIBUTE = 'data-blok-uid';
-const PRESERVE_STATE_ATTRIBUTE = 'data-preserve-state';
-const DISABLE_LIVE_PREVIEW_META = 'storyblok-live-preview';
-const LIVE_PREVIEW_UPDATING_EVENT = 'storyblok-live-preview-updating';
-const LIVE_PREVIEW_UPDATED_EVENT = 'storyblok-live-preview-updated';
+const SERVER_DATA_ELEMENT_ID = "__STORYBLOK_SERVERDATA__";
+const STORYBLOK_FOCUSED_ATTRIBUTE = "data-blok-focused";
+const STORYBLOK_UID_ATTRIBUTE = "data-blok-uid";
+const PRESERVE_STATE_ATTRIBUTE = "data-preserve-state";
+const DISABLE_LIVE_PREVIEW_META = "storyblok-live-preview";
+const LIVE_PREVIEW_UPDATING_EVENT = "storyblok-live-preview-updating";
+const LIVE_PREVIEW_UPDATED_EVENT = "storyblok-live-preview-updated";
 
 /**
  * Checks if live preview is disabled via meta tag
@@ -20,7 +20,7 @@ function isLivePreviewDisabled(): boolean {
   const metaTag = document.querySelector<HTMLMetaElement>(
     `meta[name="${DISABLE_LIVE_PREVIEW_META}"]`,
   );
-  return metaTag?.content === 'disabled' || metaTag?.content === 'false';
+  return metaTag?.content === "disabled" || metaTag?.content === "false";
 }
 
 /**
@@ -29,18 +29,15 @@ function isLivePreviewDisabled(): boolean {
  * We should explore alternative methods to optimize
  * this process and improve efficiency.
  */
-export async function handleStoryblokMessage(event: {
-  action: string;
-  story: ISbStoryData;
-}) {
+export async function handleStoryblokMessage(event: { action: string; story: ISbStoryData }) {
   const { action, story } = event || {};
 
-  if (['published', 'change'].includes(action)) {
+  if (["published", "change"].includes(action)) {
     location.reload();
     return;
   }
   // Handle input events with debouncing
-  if (action === 'input' && story) {
+  if (action === "input" && story) {
     // Early return if live preview is disabled
     if (isLivePreviewDisabled()) {
       return;
@@ -58,13 +55,12 @@ export async function handleStoryblokMessage(event: {
     timeout = setTimeout(async () => {
       try {
         await updateLivePreview(story);
-      }
-      catch (error) {
+      } catch (error) {
         // Ignore abort errors - they're expected when cancelling requests
-        if (error instanceof Error && error.name === 'AbortError') {
+        if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        console.error('Failed to update live preview:', error);
+        console.error("Failed to update live preview:", error);
       }
     }, DEBOUNCE_DELAY_MS);
   }
@@ -74,12 +70,8 @@ export async function handleStoryblokMessage(event: {
  */
 async function updateLivePreview(story: ISbStoryData): Promise<void> {
   // Dispatch cancelable event to allow users to prevent the update
-  const updatingEvent = dispatchStoryblokEvent(
-    LIVE_PREVIEW_UPDATING_EVENT,
-    { story },
-    true,
-  );
-    // If the event was prevented, skip the update
+  const updatingEvent = dispatchStoryblokEvent(LIVE_PREVIEW_UPDATING_EVENT, { story }, true);
+  // If the event was prevented, skip the update
   if (updatingEvent.defaultPrevented) {
     return;
   }
@@ -146,12 +138,10 @@ function updateDOMWithNewBody(
     const focusedElementID = focusedElem.getAttribute(STORYBLOK_UID_ATTRIBUTE);
 
     // Now find the same element by above [data-blok-uid] in our new virtual HTML page
-    const newDomFocusElem = newBody.querySelector(
-      `[data-blok-uid="${focusedElementID}"]`,
-    );
+    const newDomFocusElem = newBody.querySelector(`[data-blok-uid="${focusedElementID}"]`);
     if (newDomFocusElem) {
       // Add the [data-blok-focused] attribute to the above element
-      newDomFocusElem.setAttribute(STORYBLOK_FOCUSED_ATTRIBUTE, 'true');
+      newDomFocusElem.setAttribute(STORYBLOK_FOCUSED_ATTRIBUTE, "true");
       // Update the focused element while preserving state
       updateDOM(focusedElem, newDomFocusElem);
       shouldUpdateFullBody = false;
@@ -168,7 +158,8 @@ function updateDOMWithNewBody(
  * Used to match elements between old and new DOM trees
  */
 function getNodeKey(node: Node) {
-  if (node.nodeType === 1) { // Element node
+  if (node.nodeType === 1) {
+    // Element node
     const uid = (node as Element).getAttribute(STORYBLOK_UID_ATTRIBUTE);
     if (uid) {
       return uid;
@@ -191,7 +182,7 @@ function updateDOM(currentNode: Node, newNode: Node) {
 }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => {
-  if (v === null || typeof v !== 'object') {
+  if (v === null || typeof v !== "object") {
     return false;
   }
   if (Array.isArray(v)) {
@@ -214,22 +205,20 @@ async function getNewHTMLBody(story: ISbStoryData, serverData?: unknown) {
   };
 
   const response = await fetch(location.href, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(payload),
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     signal: abortController.signal,
   });
-    // Handle HTTP errors
+  // Handle HTTP errors
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch updated HTML: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to fetch updated HTML: ${response.status} ${response.statusText}`);
   }
   const html = await response.text();
   const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = parser.parseFromString(html, "text/html");
   return doc.body;
 }
 
@@ -253,10 +242,9 @@ function extractServerData(body: HTMLElement): unknown | null {
   }
 
   try {
-    return JSON.parse(serverDataElement.textContent || '{}');
-  }
-  catch (error) {
-    console.error('Failed to parse server data:', error);
+    return JSON.parse(serverDataElement.textContent || "{}");
+  } catch (error) {
+    console.error("Failed to parse server data:", error);
     return null;
   }
 }

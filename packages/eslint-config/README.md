@@ -6,6 +6,9 @@
   <br />
 </div>
 
+> [!WARNING]
+> **Deprecated.** This package is superseded by [`@storyblok/lint-config`](https://npmjs.com/package/@storyblok/lint-config), which ships an Oxlint-based configuration aligned with [Vite+](https://viteplus.dev). It will receive only critical fixes and will be removed in a future major release. See the new package's [README](../lint-config/README.md#migration) for migration instructions.
+
 <p align="center">
   <a href="https://npmjs.com/package/@storyblok/eslint-config">
     <img src="https://img.shields.io/npm/v/@storyblok/eslint-config/latest.svg?style=flat-square" alt="Storyblok JS" />

@@ -1,25 +1,45 @@
 {
   "name": "@storyblok/richtext",
-  "type": "module",
   "version": "4.2.1",
   "description": "Storyblok RichText Resolver",
-  "author": "Storyblok",
-  "license": "MIT",
+  "keywords": [
+    "resolver",
+    "richtext",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/richtext#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/richtext"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "storyblok",
-    "richtext",
-    "resolver"
+  "files": [
+    "*.d.ts",
+    "dist"
   ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "markdown-parser": [
+        "./dist/markdown-parser.d.cts"
+      ],
+      "html-parser": [
+        "./dist/html-parser.d.cts"
+      ],
+      "static": [
+        "./dist/static.d.cts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -39,38 +59,21 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "typesVersions": {
-    "*": {
-      "markdown-parser": [
-        "./dist/markdown-parser.d.cts"
-      ],
-      "html-parser": [
-        "./dist/html-parser.d.cts"
-      ],
-      "static": [
-        "./dist/static.d.cts"
-      ]
-    }
-  },
-  "files": [
-    "*.d.ts",
-    "dist"
-  ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
-    "build:watch": "tsdown --watch",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "vitest run",
-    "test:ui": "vitest --ui",
-    "coverage": "vitest run --coverage",
+    "test:coverage": "vp test run --coverage",
     "playground": "cd playground && npm run dev",
     "playground:vue": "cd playground/vue && npm run dev",
     "playground:react": "cd playground/react && npm run dev",
@@ -118,24 +121,17 @@
     "@arethetypeswrong/core": "^0.18.2",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.11.0",
-    "@vitest/coverage-v8": "^3.1.3",
-    "@vitest/ui": "^3.1.3",
-    "eslint": "^9.26.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
     "lint-staged": "^15.5.2",
+    "oxlint": "^1.62.0",
     "pathe": "^2.0.3",
-    "prettier": "^3.4.2",
     "prosemirror-model": "^1.25.4",
     "release-it": "^18.1.2",
-    "tsdown": "^0.20.3",
     "tsx": "^4.20.3",
     "typescript": "5.8.3",
-    "vitest": "^3.1.3",
     "vue": "^3.5.13"
   },
   "commitlint": {

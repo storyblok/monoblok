@@ -14,12 +14,9 @@
  * normalizePath("/");                // "/"
  */
 export function normalizePath(p: string): string {
-  return (
-    `/${
-      p
-        .trim()
-        .replace(/^\/+/, '') // remove leading slashes
-        .replace(/\/+$/, '') // remove trailing slashes
-        .replace(/\/{2,}/g, '/')}` // collapse multiple slashes
-  );
+  return `/${p
+    .trim()
+    .replace(/^\/+/, "") // remove leading slashes
+    .replace(/\/+$/, "") // remove trailing slashes
+    .replace(/\/{2,}/g, "/")}`; // collapse multiple slashes
 }

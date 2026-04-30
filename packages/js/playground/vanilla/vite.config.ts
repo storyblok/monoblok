@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 // import basicSsl from '@vitejs/plugin-basic-ssl'
-import { resolve } from 'pathe';
+import { resolve } from "pathe";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,7 +9,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@storyblok/js': resolve(__dirname, '../../src/index.ts'),
+      "@storyblok/js": resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },
 });

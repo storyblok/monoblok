@@ -1,41 +1,54 @@
-import type { Command } from 'commander';
-import chalk from 'chalk';
-import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../lib/logger/logger';
-import { getReporter } from '../../../lib/reporter/reporter';
-import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, requireAuthentication } from '../../../utils';
-import { session } from '../../../session';
-import type { MigrationsRunOptions } from './constants';
-import { migrationsCommand } from '../command';
-import { createStoriesStream } from './streams/stories-stream';
-import { readMigrationFiles } from './actions';
-import { MigrationStream } from './streams/migrations-transform';
-import { UpdateStream } from './streams/update-stream';
-import { pipeline } from 'node:stream';
+import type { Command } from "commander";
+import chalk from "chalk";
+import { getUI } from "../../../utils/ui";
+import { getLogger } from "../../../lib/logger/logger";
+import { getReporter } from "../../../lib/reporter/reporter";
+import { colorPalette, commands } from "../../../constants";
+import { CommandError, handleError, requireAuthentication } from "../../../utils";
+import { session } from "../../../session";
+import type { MigrationsRunOptions } from "./constants";
+import { migrationsCommand } from "../command";
+import { createStoriesStream } from "./streams/stories-stream";
+import { readMigrationFiles } from "./actions";
+import { MigrationStream } from "./streams/migrations-transform";
+import { UpdateStream } from "./streams/update-stream";
+import { pipeline } from "node:stream";
 
-const runCmd = migrationsCommand.command('run [componentName]')
-  .description('Run migrations')
-  .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
-  .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
-  .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
-  .option('--publish <publish>', 'Options for publication mode: all | published | published-with-changes')
-  .option('-f, --from <from>', 'source space id')
-  .option('-s, --space <space>', 'space ID');
+const runCmd = migrationsCommand
+  .command("run [componentName]")
+  .description("Run migrations")
+  .option("--fi, --filter <filter>", "glob filter to apply to the components before pushing")
+  .option("-d, --dry-run", "Preview changes without applying them to Storyblok")
+  .option(
+    "-q, --query <query>",
+    'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"',
+  )
+  .option("--starts-with <path>", 'Filter stories by path. Example: --starts-with="/en/blog/"')
+  .option(
+    "--publish <publish>",
+    "Options for publication mode: all | published | published-with-changes",
+  )
+  .option("-f, --from <from>", "source space id")
+  .option("-s, --space <space>", "space ID");
 
-runCmd
-  .action(async (componentName: string | undefined, options: MigrationsRunOptions, command: Command) => {
+runCmd.action(
+  async (componentName: string | undefined, options: MigrationsRunOptions, command: Command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
 
-    ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, componentName ? `Running migrations for component ${componentName}...` : 'Running migrations...');
-    logger.info('Migration started');
+    ui.title(
+      `${commands.MIGRATIONS}`,
+      colorPalette.MIGRATIONS,
+      componentName
+        ? `Running migrations for component ${componentName}...`
+        : "Running migrations...",
+    );
+    logger.info("Migration started");
 
     if (options.dryRun) {
       ui.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
-      logger.warn('Dry run mode enabled');
+      logger.warn("Dry run mode enabled");
     }
 
     const { space, path, verbose } = command.optsWithGlobals();
@@ -45,7 +58,10 @@ runCmd
       return;
     }
     if (!space) {
-      handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
+      handleError(
+        new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
+        verbose,
+      );
       return;
     }
 
@@ -53,7 +69,9 @@ runCmd
     const fromSpace = from || space;
 
     if (from) {
-      ui.info(`Running migrations ${chalk.bold('from')} space ${chalk.hex(colorPalette.MIGRATIONS)(fromSpace)} ${chalk.bold('on')} space ${chalk.hex(colorPalette.MIGRATIONS)(space)}`);
+      ui.info(
+        `Running migrations ${chalk.bold("from")} space ${chalk.hex(colorPalette.MIGRATIONS)(fromSpace)} ${chalk.bold("on")} space ${chalk.hex(colorPalette.MIGRATIONS)(space)}`,
+      );
       ui.br();
     }
 
@@ -67,24 +85,26 @@ runCmd
       });
       const filteredMigrations = componentName
         ? migrationFiles.filter((file) => {
-          // Match any migration file that starts with the component name and is followed by either
-          // the end of the filename or a dot
-            return file.name.match(new RegExp(`^${componentName}(\\..*)?\.js$`));
+            // Match any migration file that starts with the component name and is followed by either
+            // the end of the filename or a dot
+            return file.name.match(new RegExp(`^${componentName}(\\..*)?.js$`));
           })
         : migrationFiles;
 
       if (filteredMigrations.length === 0) {
-        spinner.failed(`No migration files found${componentName ? ` for component "${componentName}"` : ''}${filter ? ` matching filter "${filter}"` : ''} in space "${fromSpace}".`);
-        logger.warn('No migration files found');
-        logger.info('Migration finished');
+        spinner.failed(
+          `No migration files found${componentName ? ` for component "${componentName}"` : ""}${filter ? ` matching filter "${filter}"` : ""} in space "${fromSpace}".`,
+        );
+        logger.warn("No migration files found");
+        logger.info("Migration finished");
         return;
       }
 
       // Spinner doesn't have update method, so we'll stop and start a new one
       spinner.succeed(`Found ${filteredMigrations.length} migration files.`);
-      const storiesProgress = ui.createProgressBar({ title: 'Fetching Stories...'.padEnd(19) });
-      const migrationsProgress = ui.createProgressBar({ title: 'Applying Migrations'.padEnd(19) });
-      const updateProgress = ui.createProgressBar({ title: 'Updating Stories...'.padEnd(19) });
+      const storiesProgress = ui.createProgressBar({ title: "Fetching Stories...".padEnd(19) });
+      const migrationsProgress = ui.createProgressBar({ title: "Applying Migrations".padEnd(19) });
+      const updateProgress = ui.createProgressBar({ title: "Updating Stories...".padEnd(19) });
 
       const storiesStream = await createStoriesStream({
         spaceId: space,
@@ -128,18 +148,13 @@ runCmd
       });
 
       await new Promise<void>((resolve, reject) => {
-        pipeline(
-          storiesStream,
-          migrationStream,
-          updateStream,
-          (err) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve();
-          },
-        );
+        pipeline(storiesStream, migrationStream, updateStream, (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        });
       });
 
       ui.stopAllProgressBars();
@@ -166,15 +181,15 @@ runCmd
         failed: updateStreamResults.failed.length,
       };
 
-      logger.info('Migration finished', {
+      logger.info("Migration finished", {
         migrationResults,
         updateResults,
       });
-      reporter.addSummary('migrationResults', migrationResults);
-      reporter.addSummary('updateResults', updateResults);
+      reporter.addSummary("migrationResults", migrationResults);
+      reporter.addSummary("updateResults", updateResults);
       reporter.finalize();
-    }
-    catch (error) {
+    } catch (error) {
       handleError(error as Error, verbose);
     }
-  });
+  },
+);

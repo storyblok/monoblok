@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { data, pending, error } = await useFetch('/api/test');
+const { data, pending, error } = await useFetch("/api/test");
 
 onMounted(() => {
   if (data.value?.story) {

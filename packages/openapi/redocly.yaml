@@ -74,9 +74,8 @@ apis:
     output: ./dist/mapi/users.yaml
     title: Users
 
-
 # Linting rules
 rules:
   info-license: off
   operation-4xx-response: off
-  operation-operationId: off 
+  operation-operationId: off

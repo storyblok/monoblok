@@ -80,7 +80,7 @@ export function createThrottle(initialLimit: number): Throttle {
  * Example header: `"concurrent-requests";q=30`
  */
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
-  const policy = response.headers.get('x-ratelimit-policy');
+  const policy = response.headers.get("x-ratelimit-policy");
   if (!policy) {
     return undefined;
   }
@@ -103,19 +103,20 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
   // Disabled - every request goes straight through.
   if (config === false) {
     return {
-      execute: fn => fn(),
+      execute: (fn) => fn(),
       adaptToResponse: () => {},
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
+  const resolvedConfig: RateLimitConfig =
+    typeof config === "number" ? { maxConcurrency: config } : config;
   const { maxConcurrency = DEFAULT_MAX_CONCURRENT, adaptToServerHeaders = true } = resolvedConfig;
 
   const cappedLimit = Math.min(maxConcurrency, MAX_RATE_LIMIT);
   const throttle = createThrottle(cappedLimit);
 
   return {
-    execute: fn => throttle.execute(fn),
+    execute: (fn) => throttle.execute(fn),
     adaptToResponse: (response) => {
       if (!adaptToServerHeaders || response === undefined) {
         return;

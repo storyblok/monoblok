@@ -66,7 +66,7 @@ paths:
             type: string
           description: Filter components by metadata frame ID
       responses:
-        '200':
+        "200":
           description: List of components
           content:
             application/json:
@@ -76,12 +76,12 @@ paths:
                   components:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Component'
-        '400':
+                      $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -96,9 +96,9 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentCreate'
+                  $ref: "#/components/schemas/ComponentCreate"
       responses:
-        '201':
+        "201":
           description: Component created
           content:
             application/json:
@@ -106,12 +106,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/components/{component_id}:
     description: Manage a specific component by its ID. Retrieve, update, or delete individual components and their configurations.
@@ -122,7 +122,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/component_id
       responses:
-        '200':
+        "200":
           description: Component details
           content:
             application/json:
@@ -130,12 +130,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component not found
     put:
       operationId: update
@@ -151,12 +151,12 @@ paths:
               type: object
               properties:
                 component:
-                  $ref: '#/components/schemas/ComponentUpdate'
+                  $ref: "#/components/schemas/ComponentUpdate"
                 update_content:
                   type: boolean
                   description: Update component name in stories when component name changes
       responses:
-        '200':
+        "200":
           description: Component updated
           content:
             application/json:
@@ -164,12 +164,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component not found
     delete:
       operationId: delete
@@ -178,7 +178,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/component_id
       responses:
-        '200':
+        "200":
           description: Component deleted
           content:
             application/json:
@@ -186,12 +186,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/restore:
     post:
@@ -202,7 +202,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/component_id
       responses:
-        '200':
+        "200":
           description: Component restored
           content:
             application/json:
@@ -210,12 +210,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component not found
   /v1/spaces/{space_id}/versions:
     description: Retrieve component versions. This endpoint's response is paginated.
@@ -235,14 +235,14 @@ paths:
         - name: model
           in: query
           required: false
-          schema: 
+          schema:
             type: string
             enum: [components, stories]
           description: Model type. Must be 'components' for component versions.
         - name: model_id
           in: query
           required: false
-          schema: 
+          schema:
             type: string
           description: Component ID when model is 'components'
         - name: versions_v2
@@ -253,13 +253,13 @@ paths:
           description: Use version 2 system for retrieving versions
 
       responses:
-        '200':
+        "200":
           description: Component versions
           content:
             application/json:
-              schema: 
+              schema:
                 type: object
-                properties: 
+                properties:
                   versions:
                     type: array
                     items:
@@ -279,12 +279,12 @@ paths:
                           type: string
                         is_draft:
                           type: boolean
-                
-        '400':
+
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component not found
   /v1/spaces/{space_id}/components/{component_id}/component_versions/{version_id}:
     description: Retrieve schema details of a component version.
@@ -301,7 +301,7 @@ paths:
             type: integer
           description: Version ID of the component
       responses:
-        '200':
+        "200":
           description: Component version details
           content:
             application/json:
@@ -314,11 +314,11 @@ paths:
                       schema:
                         type: object
                         additionalProperties: true
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component or version not found
   /v1/spaces/{space_id}/versions/{version_id}:
     description: Restore a component to a saved version.
@@ -345,7 +345,7 @@ paths:
                 model_id:
                   type: string
       responses:
-        '200':
+        "200":
           description: Component version restored
           content:
             application/json:
@@ -353,12 +353,12 @@ paths:
                 type: object
                 properties:
                   component:
-                    $ref: '#/components/schemas/Component'
-        '400':
+                    $ref: "#/components/schemas/Component"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Component or version not found
 components:
   securitySchemes:
@@ -412,7 +412,7 @@ components:
                 type: string
               value:
                 type: string
-              
+
         source:
           type: string
           description: The source of Single-Option and Multi-Options fields

@@ -25,6 +25,7 @@ storyblok login
 ## UTM Parameters
 
 The signup URL includes the following UTM parameters for tracking:
+
 - `utm_source=storyblok-cli`
 - `utm_medium=cli`
 - `utm_campaign=signup`

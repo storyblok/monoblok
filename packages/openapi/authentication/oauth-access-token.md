@@ -30,24 +30,30 @@ The following permissions (scopes) can be granted during the OAuth process:
 OAuth access tokens are obtained through the standard OAuth2 authorization flow:
 
 ### Step 1: Redirect User to Authorization URL
+
 Redirect users to Storyblok's authorization endpoint with your client credentials and requested scopes.
 
 ### Step 2: User Grants Permissions
+
 The user is redirected to Storyblok where they:
+
 1. Log in to their account
 2. Select the space to authorize
 3. Grant the requested permissions (scopes)
 4. Are redirected back to your application with an authorization code
 
 ### Step 3: Exchange Code for Access Token
+
 Exchange the authorization code for an access token using your client credentials.
 
 ### Step 4: Use Access Token in API Requests
+
 Include the access token in the Authorization header for API requests.
 
 ## Usage
 
 ### cURL Example
+
 ```bash
 curl -H "Authorization: Bearer YOUR_OAUTH_ACCESS_TOKEN" \
   https://mapi.storyblok.com/v1/spaces/123/stories
@@ -56,6 +62,7 @@ curl -H "Authorization: Bearer YOUR_OAUTH_ACCESS_TOKEN" \
 ## Token Management
 
 ### Token Response
+
 When you exchange an authorization code for an access token, you'll receive:
 
 ```json
@@ -69,6 +76,7 @@ When you exchange an authorization code for an access token, you'll receive:
 ```
 
 ### Token Expiration
+
 - Access tokens typically expire after 1 hour (3600 seconds)
 - Use refresh tokens to obtain new access tokens
 - Store refresh tokens securely for long-term access
@@ -101,21 +109,25 @@ To use OAuth2 authentication, you need to register your application:
 ### Common Issues
 
 **400 Bad Request - Invalid Grant**
+
 - Authorization code has expired (codes expire quickly)
 - Authorization code has already been used
 - Incorrect client credentials
 
 **401 Unauthorized**
+
 - Access token has expired
 - Invalid access token
 - Incorrect "Bearer" prefix usage
 
 **403 Forbidden**
+
 - Insufficient scope permissions
 - Token doesn't have access to requested space
 - Space access has been revoked
 
 ### Error Responses
+
 ```json
 {
   "error": "invalid_grant",
@@ -128,4 +140,4 @@ To use OAuth2 authentication, you need to register your application:
 - [OAuth2 Authentication Guide](https://www.storyblok.com/docs/api/management/getting-started/oauth2-authentication)
 - [OAuth2 Authorization Flow](https://www.storyblok.com/docs/api/management/getting-started/oauth2-authentication#oauth2-authorization-flow)
 - [Available Scopes](https://www.storyblok.com/docs/api/management/getting-started/oauth2-authentication#available-scopes)
-- [Storyblok Support](https://www.storyblok.com/support) 
+- [Storyblok Support](https://www.storyblok.com/support)

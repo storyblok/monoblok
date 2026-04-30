@@ -233,24 +233,27 @@ export async function fetchData() {
 
 | Export                 | Use Case                            | Live Editing | Static Export Support |
 | ---------------------- | ----------------------------------- | ------------ | --------------------- |
-| `@storyblok/react`     | Client-side rendering, SPA          | ✅            | ✅                     |
-| `@storyblok/react/ssr` | Server-side rendering, static sites | ❌            | ✅                     |
-| `@storyblok/react/rsc` | React Server Components             | ✅            | ❌                     |
+| `@storyblok/react`     | Client-side rendering, SPA          | ✅           | ✅                    |
+| `@storyblok/react/ssr` | Server-side rendering, static sites | ❌           | ✅                    |
+| `@storyblok/react/rsc` | React Server Components             | ✅           | ❌                    |
 
 ### When to Use Each Export
 
 **Use `@storyblok/react`** for:
+
 - Single Page Applications (SPA)
 - Client-side rendered React apps
 - When you need live editing in browser-based applications
 
 **Use `@storyblok/react/ssr`** for:
+
 - Next.js static exports (`output: 'export'`)
 - Static site generation without live editing
 - Server-side rendering where live editing isn't required
 - Performance-critical scenarios where bundle size matters
 
 **Use `@storyblok/react/rsc`** for:
+
 - Next.js App Router with React Server Components
 - When you need live editing with server components
 - Modern React applications with server/client component separation
@@ -265,7 +268,7 @@ If you're using Next.js with `output: 'export'` for static site generation, you 
 // next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // Enables static export
+  output: "export", // Enables static export
 };
 
 module.exports = nextConfig;
@@ -306,7 +309,7 @@ export default async function Home() {
 
 export async function fetchData() {
   const storyblokApi = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/home`, { version: 'draft' });
+  return storyblokApi.get(`cdn/stories/home`, { version: "draft" });
 }
 ```
 
@@ -386,6 +389,7 @@ export async function fetchData() {
 ```
 
 **The `StoryblokStory` component automatically:**
+
 - Renders your Storyblok content components on the server
 - Loads the bridge script for live editing (when in Visual Editor)
 - Handles live content updates via global cache
@@ -396,9 +400,9 @@ export async function fetchData() {
 You can pass bridge options for advanced configurations:
 
 ```jsx
-const bridgeOptions = { resolveRelations: ['article.author'] };
+const bridgeOptions = { resolveRelations: ["article.author"] };
 
-<StoryblokStory story={data.story} bridgeOptions={bridgeOptions} />
+<StoryblokStory story={data.story} bridgeOptions={bridgeOptions} />;
 ```
 
 **Advanced: Manual Component Separation**
@@ -421,11 +425,9 @@ import { StoryblokServerComponent, StoryblokLiveEditing } from '@storyblok/react
 When creating your individual Storyblok content components (like `Page`, `Teaser`, etc.), you must use `StoryblokServerComponent` for nested components. Import it from the same export you're using:
 
 **For RSC (with live editing):**
+
 ```jsx
-import {
-  storyblokEditable,
-  StoryblokServerComponent,
-} from "@storyblok/react/rsc";
+import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/rsc";
 
 const Page = ({ blok }) => (
   <main {...storyblokEditable(blok)}>
@@ -439,11 +441,9 @@ export default Page;
 ```
 
 **For SSR (static exports):**
+
 ```jsx
-import {
-  storyblokEditable,
-  StoryblokServerComponent,
-} from "@storyblok/react/ssr";
+import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/ssr";
 
 const Page = ({ blok }) => (
   <main {...storyblokEditable(blok)}>
@@ -505,11 +505,7 @@ export default function Home({ story: initialStory }) {
 In this case, the story is being passed as a prop that can be coming from where the story is being fetched. A complete example would look like this-
 
 ```js
-import {
-  getStoryblokApi,
-  StoryblokComponent,
-  useStoryblokState,
-} from "@storyblok/react";
+import { getStoryblokApi, StoryblokComponent, useStoryblokState } from "@storyblok/react";
 
 export default function Home({ story: initialStory }) {
   const story = useStoryblokState(initialStory);
@@ -867,6 +863,7 @@ By using these techniques, you can ensure that only the necessary components and
 ### "Server Actions are not supported with static export"
 
 **Error:** When using Next.js with `output: 'export'`, you might encounter:
+
 ```
 Error: Server Actions are not supported with static export
 ```
@@ -901,8 +898,8 @@ Error: Server Actions are not supported with static export
 ```js
 storyblokInit({
   components: {
-    page: Page,        // Matches 'page' component in Storyblok
-    teaser: Teaser,    // Matches 'teaser' component in Storyblok
+    page: Page, // Matches 'page' component in Storyblok
+    teaser: Teaser, // Matches 'teaser' component in Storyblok
     // Add all your components here
   },
 });

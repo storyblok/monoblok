@@ -1,18 +1,11 @@
-import type { SBRichTextSegment, StoryblokSegmentType } from './richtext-segment';
+import type { SBRichTextSegment, StoryblokSegmentType } from "./richtext-segment";
 
 export interface RendererAdapter<T = unknown> {
-  createElement: (
-    tag: string,
-    attrs?: Record<string, unknown>,
-    children?: T[]
-  ) => T;
+  createElement: (tag: string, attrs?: Record<string, unknown>, children?: T[]) => T;
 
   createText: (text: string) => T;
 
-  createComponent?: (
-    type: StoryblokSegmentType,
-    props: Record<string, unknown>
-  ) => T;
+  createComponent?: (type: StoryblokSegmentType, props: Record<string, unknown>) => T;
 }
 
 function renderSegment<T>(
@@ -21,35 +14,36 @@ function renderSegment<T>(
   customComponents: StoryblokSegmentType[],
   key?: number,
 ): T {
-  if (segment.kind === 'text') {
+  if (segment.kind === "text") {
     return adapter.createText(segment.text);
   }
   // Treat as component if it's a real component or a custom mapped type
-  if (segment.kind === 'component') {
+  if (segment.kind === "component") {
     if (!adapter.createComponent) {
-      throw new Error('Component renderer not provided');
+      throw new Error("Component renderer not provided");
     }
     return adapter.createComponent(segment.type as StoryblokSegmentType, { key, ...segment.props });
   }
   // Node or Mark segment overrides
   if (customComponents.includes(segment.type as StoryblokSegmentType)) {
     if (!adapter.createComponent) {
-      throw new Error('Component renderer not provided');
+      throw new Error("Component renderer not provided");
     }
 
     // Convert NodeSegment or MarkSegment to props
     const props = {
-      ...('attrs' in segment ? segment.attrs : {}),
+      ...("attrs" in segment ? segment.attrs : {}),
       key,
-      children: segment.content?.map((child, i) => renderSegment(child, adapter, customComponents, i)),
+      children: segment.content?.map((child, i) =>
+        renderSegment(child, adapter, customComponents, i),
+      ),
     };
 
     return adapter.createComponent(segment.type as StoryblokSegmentType, props);
   }
   // node or mark
-  const children = segment.content?.map((child, i) =>
-    renderSegment(child, adapter, customComponents, i),
-  ) ?? [];
+  const children =
+    segment.content?.map((child, i) => renderSegment(child, adapter, customComponents, i)) ?? [];
 
   if (!segment.tag) {
     throw new Error(`Missing tag for ${segment.type}`);

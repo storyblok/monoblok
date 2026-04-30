@@ -1,5 +1,5 @@
-import type { CommandOptions } from '../../../types';
-import type { StoryContent } from '../../stories/constants';
+import type { CommandOptions } from "../../../types";
+import type { StoryContent } from "../../stories/constants";
 
 export interface MigrationsRunOptions extends CommandOptions {
   dryRun?: boolean;
@@ -10,7 +10,7 @@ export interface MigrationsRunOptions extends CommandOptions {
   from?: string;
   query?: string;
   startsWith?: string;
-  publish?: 'all' | 'published' | 'published-with-changes';
+  publish?: "all" | "published" | "published-with-changes";
 }
 
 export interface ReadMigrationFilesOptions {
@@ -50,13 +50,13 @@ export interface SkippedMigration {
 }
 
 export const ERROR_CODES = {
-  MIGRATION_APPLY_TO_STORY_ERROR: 'MIGRATION_APPLY_TO_STORY_ERROR',
-  MIGRATION_CREATE_STORIES_PIPELINE_ERROR: 'MIGRATION_CREATE_STORIES_PIPELINE_ERROR',
-  MIGRATION_FILE_NO_DEFAULT_EXPORT: 'MIGRATION_FILE_NO_DEFAULT_EXPORT',
-  MIGRATION_FILE_NOT_FOUND: 'MIGRATION_FILE_NOT_FOUND',
-  MIGRATION_LOAD_ERROR: 'MIGRATION_LOAD_ERROR',
-  MIGRATION_STORY_CONTENT_MISSING: 'MIGRATION_STORY_CONTENT_MISSING',
-  MIGRATION_STORY_FETCH_ERROR: 'MIGRATION_STORY_FETCH_ERROR',
-  MIGRATION_STORY_UPDATE_ERROR: 'MIGRATION_STORY_UPDATE_ERROR',
-  MIGRATION_STORY_UPDATE_NULL: 'MIGRATION_STORY_UPDATE_NULL',
+  MIGRATION_APPLY_TO_STORY_ERROR: "MIGRATION_APPLY_TO_STORY_ERROR",
+  MIGRATION_CREATE_STORIES_PIPELINE_ERROR: "MIGRATION_CREATE_STORIES_PIPELINE_ERROR",
+  MIGRATION_FILE_NO_DEFAULT_EXPORT: "MIGRATION_FILE_NO_DEFAULT_EXPORT",
+  MIGRATION_FILE_NOT_FOUND: "MIGRATION_FILE_NOT_FOUND",
+  MIGRATION_LOAD_ERROR: "MIGRATION_LOAD_ERROR",
+  MIGRATION_STORY_CONTENT_MISSING: "MIGRATION_STORY_CONTENT_MISSING",
+  MIGRATION_STORY_FETCH_ERROR: "MIGRATION_STORY_FETCH_ERROR",
+  MIGRATION_STORY_UPDATE_ERROR: "MIGRATION_STORY_UPDATE_ERROR",
+  MIGRATION_STORY_UPDATE_NULL: "MIGRATION_STORY_UPDATE_NULL",
 };

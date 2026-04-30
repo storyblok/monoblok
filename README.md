@@ -20,7 +20,7 @@
   </a>
 </p>
 
-## 📦  Packages
+## 📦 Packages
 
 This monorepo contains the following official Storyblok SDKs and integrations:
 
@@ -63,12 +63,14 @@ This repository represents an ongoing migration from a polyrepo structure to a u
 ### Prerequisites
 
 - Node.js (v18 or later)
-- pnpm (v8 or later)
+- pnpm (v10 or later)
 - Git
+- [Vite+](https://viteplus.dev/guide/) (`vp` CLI) — pin the version listed in `.viteplus-version`
 
 ### Setup
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/storyblok/monoblok.git
    cd monoblok
@@ -79,11 +81,10 @@ This repository represents an ongoing migration from a polyrepo structure to a u
    pnpm install
    ```
 
-### Package Management with PNPM
+### Package management
 
-This repository uses PNPM as its primary package manager, providing efficient dependency management and disk space usage. The workspace is configured in `pnpm-workspace.yaml` and includes all packages in the `packages/` directory.
+This repository uses pnpm workspaces (configured in the root `package.json`) for dependency management.
 
-Common PNPM commands:
 ```bash
 # Install dependencies
 pnpm install
@@ -95,74 +96,64 @@ pnpm add <package> --filter @storyblok/react
 pnpm --filter @storyblok/react <script>
 ```
 
-### Development with NX
+### Tooling
 
-While PNPM manages our packages, we use NX to optimize our development workflow. NX provides powerful features for:
+Packages share a unified toolchain via [Vite+](https://viteplus.dev) (`vp` CLI):
 
-- Intelligent caching
-- Affected package detection
-- Dependency graph visualization
-- Parallel task execution
-- Project-specific configurations
+- `vp pack` / `vp build` for bundling (tsdown / Vite under the hood)
+- `vp test` for testing (Vitest)
+- `vp lint` for linting (Oxlint via `@storyblok/lint-config`)
+- `vp fmt` for formatting (Oxfmt)
 
-#### Common NX Commands
+Framework-specific builders (Angular CLI, Nuxt module builder, svelte-package, Redocly) are kept where Vite+ doesn't apply.
+
+Every package exposes the same canonical script names. See [`AGENTS.md`](./AGENTS.md) for the full table.
+
+### Common commands
+
+NX orchestrates tasks across the monorepo with caching and affected-only execution:
 
 ```bash
 # Build all packages
-pnpm build
+pnpm nx run-many --target=build
 
 # Build a specific package
-pnpm build @storyblok/react
+pnpm nx build @storyblok/react
 
-# Run tests for affected packages
-pnpm nx affected:test
+# Run all tests (or affected only)
+pnpm test
+pnpm nx affected --target=test
 
-# Show dependency graph
-pnpm nx graph
-
-# Run commands only on affected packages
-pnpm nx affected --target=build
-```
-
-#### Development Workflows
-
-```bash
-# Start development mode for a package
-pnpm dev @storyblok/react
-
-# Run tests in watch mode
-pnpm test:watch @storyblok/react
-
-# Lint all packages
+# Lint, format, type-check the whole repo
 pnpm lint
-
-# Format all packages
 pnpm format
+pnpm test:types
 
-# Check types
-pnpm type-check
+# Watch-build a single package while developing
+pnpm --filter @storyblok/react dev
+
+# Re-run a package's tests on change
+pnpm --filter @storyblok/migrations test:watch
+
+# Show the dependency graph
+pnpm nx graph
 ```
 
-For more advanced NX usage, we recommend exploring:
+For more advanced NX usage:
+
 - [NX Documentation](https://nx.dev/docs)
 - [NX Cache](https://nx.dev/concepts/how-caching-works)
 - [NX Affected](https://nx.dev/concepts/affected)
 - [NX Project Configuration](https://nx.dev/concepts/project-configuration)
 
-### Repository Administration
+### Repository administration
 
-For repository administrators, we provide the `monoblock-cli` tool to help manage the monorepo. This tool assists with:
-
-- Package migration
-- Dependency management
-- Repository maintenance
-- Release coordination
-
-See the [monoblock-cli package](packages/monoblock-cli) for detailed documentation and usage instructions.
+For repository administrators, the internal `monoblok` CLI helps manage the monorepo (license checks, migration helpers, etc.). See [`tools/monoblok`](tools/monoblok) for details.
 
 ## 📄 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+
 - Code style and standards
 - Pull request process
 - Development workflow

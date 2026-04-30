@@ -14,10 +14,6 @@
     "eslint-config",
     "eslintconfig"
   ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org"
-  },
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -29,6 +25,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "scripts": {
     "dev": "npx @eslint/config-inspector --config eslint.config.ts",
     "lint": "eslint .",

@@ -1,19 +1,25 @@
 {
   "name": "@storyblok/vue",
-  "type": "module",
   "version": "10.1.4",
   "description": "SDK to integrate Storyblok into your project using Vue.",
-  "author": "Storyblok",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/vue#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/vue"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/storyblok-vue.js",
+  "module": "./dist/storyblok-vue.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,43 +27,39 @@
       "require": "./dist/storyblok-vue.js"
     }
   },
-  "main": "./dist/storyblok-vue.js",
-  "module": "./dist/storyblok-vue.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "dev": "vite build --watch",
-    "playground": "pnpm run --filter ./playground/vue dev",
+    "build": "vp build",
+    "dev": "vp build --watch",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
     "test": "pnpm run test:unit && pnpm run test:e2e",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
+    "test:unit": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
     "test:e2e": "pnpm run cy:components",
-    "build": "vite build",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "test:coverage": "vp test run --coverage",
+    "playground": "pnpm run --filter ./playground/vue dev",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "cy:components": "cypress run --component"
-  },
-  "peerDependencies": {
-    "vue": ">=3.4"
   },
   "dependencies": {
     "@storyblok/js": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@types/node": "^24.11.0",
-    "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
+    "oxlint": "^1.62.0",
     "pathe": "^2.0.3",
     "typescript": "5.8.3",
     "vite": "^6.3.5",
@@ -68,13 +70,13 @@
     "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
   },
+  "peerDependencies": {
+    "vue": ">=3.4"
+  },
   "release": {
     "branches": [
       "main"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

@@ -1,4 +1,4 @@
-import { toPascalCase } from '../../../utils';
+import { toPascalCase } from "../../../utils";
 
 /**
  * Generates imports for Storyblok types (ISbStoryData, StoryblokAsset, etc.)
@@ -25,7 +25,7 @@ export function generateStoryblokImports(
       return `Storyblok${pascalType}`;
     });
 
-    imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
+    imports.push(`import type { ${typeImports.join(", ")} } from '../storyblok.d.ts';`);
   }
 
   return imports;
@@ -39,11 +39,11 @@ interface TypeResult {
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function hasIdentifier(content: string, identifier: string): boolean {
-  const regex = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, 'g');
+  const regex = new RegExp(`\\b${escapeRegExp(identifier)}\\b`, "g");
   return regex.test(content);
 }
 
@@ -87,9 +87,7 @@ export function detectUsedDatasourceTypes(
   content: string,
   datasourceResults: TypeResult[],
 ): string[] {
-  return datasourceResults
-    .filter(ds => hasIdentifier(content, ds.title))
-    .map(ds => ds.title);
+  return datasourceResults.filter((ds) => hasIdentifier(content, ds.title)).map((ds) => ds.title);
 }
 
 /**
@@ -105,8 +103,8 @@ export function detectReferencedComponents(
   componentResults: TypeResult[],
 ): string[] {
   return componentResults
-    .filter(c => c.title !== currentTitle && hasIdentifier(content, c.title))
-    .map(c => c.title);
+    .filter((c) => c.title !== currentTitle && hasIdentifier(content, c.title))
+    .map((c) => c.title);
 }
 
 /**
@@ -138,7 +136,7 @@ export function generateComponentImports(
 
   if (usedStoryblokTypes.length > 0) {
     const hasISbStoryData = usedStoryblokTypes.includes(STORY_TYPE);
-    const otherTypes = usedStoryblokTypes.filter(t => t !== STORY_TYPE);
+    const otherTypes = usedStoryblokTypes.filter((t) => t !== STORY_TYPE);
 
     if (hasISbStoryData) {
       imports.push(`import type { ${STORY_TYPE} } from '@storyblok/js';`);
@@ -149,14 +147,16 @@ export function generateComponentImports(
         const pascalType = toPascalCase(type);
         return `Storyblok${pascalType}`;
       });
-      imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
+      imports.push(`import type { ${typeImports.join(", ")} } from '../storyblok.d.ts';`);
     }
   }
 
   // Check if this component uses any datasource types
   const usedDatasourceTypes = detectUsedDatasourceTypes(componentContent, datasourceResults);
   if (usedDatasourceTypes.length > 0) {
-    imports.push(`import type { ${usedDatasourceTypes.join(', ')} } from './datasource-types.d.ts';`);
+    imports.push(
+      `import type { ${usedDatasourceTypes.join(", ")} } from './datasource-types.d.ts';`,
+    );
   }
 
   // Check if this component references other components
@@ -167,8 +167,8 @@ export function generateComponentImports(
   );
   if (referencedComponents.length > 0) {
     const componentImportsStr = referencedComponents
-      .map(name => `import type { ${name} } from './${name}.d.ts';`)
-      .join('\n');
+      .map((name) => `import type { ${name} } from './${name}.d.ts';`)
+      .join("\n");
     imports.push(componentImportsStr);
   }
 
@@ -189,12 +189,9 @@ export function createDatasourcesFile(
     return null;
   }
 
-  const content = [
-    ...typeDefs,
-    ...datasourceResults.map(r => r.content),
-  ].join('\n');
+  const content = [...typeDefs, ...datasourceResults.map((r) => r.content)].join("\n");
 
-  return { name: 'datasource-types', content };
+  return { name: "datasource-types", content };
 }
 
 /**
@@ -216,23 +213,17 @@ export function createContentTypesFile(
 
   // Generate imports for each content type component
   const imports = contentTypeNames
-    .map(name => `import type { ${name} } from './${name}.d.ts';`)
-    .join('\n');
+    .map((name) => `import type { ${name} } from './${name}.d.ts';`)
+    .join("\n");
 
   // Generate the ContentType union
-  const typeUnion = contentTypeNames.length > 0
-    ? contentTypeNames.join('\n  | ')
-    : 'never';
+  const typeUnion = contentTypeNames.length > 0 ? contentTypeNames.join("\n  | ") : "never";
 
   const typeDefinition = `export type ContentType =\n  | ${typeUnion};`;
 
-  const content = [
-    ...typeDefs,
-    imports,
-    typeDefinition,
-  ].join('\n');
+  const content = [...typeDefs, imports, typeDefinition].join("\n");
 
-  return { name: 'content-types', content };
+  return { name: "content-types", content };
 }
 
 /**
@@ -249,10 +240,6 @@ export function createComponentFile(
 ): { name: string; content: string } {
   return {
     name: componentResult.title,
-    content: [
-      ...typeDefs,
-      ...componentImports,
-      componentResult.content,
-    ].join('\n'),
+    content: [...typeDefs, ...componentImports, componentResult.content].join("\n"),
   };
 }

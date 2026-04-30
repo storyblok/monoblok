@@ -1,0 +1,48 @@
+name: Setup Vite+
+description: Install the pinned Vite+ alpha (vp CLI) and add it to PATH
+runs:
+  using: "composite"
+  steps:
+    - name: Restore Vite+ install cache
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.vite-plus
+        key: vite-plus-${{ runner.os }}-${{ hashFiles('.viteplus-version') }}
+
+    - name: Install Vite+ (Unix)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      shell: bash
+      env:
+        VP_VERSION_FILE: .viteplus-version
+        VP_NODE_MANAGER: "no"
+      run: |
+        version=$(grep -v '^#' "$VP_VERSION_FILE" | tr -d '[:space:]')
+        if [[ -z "$version" ]]; then echo "empty Vite+ version"; exit 1; fi
+        export VP_VERSION="$version"
+        curl -fsSL https://vite.plus | bash
+
+    - name: Install Vite+ (Windows)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      shell: pwsh
+      env:
+        VP_NODE_MANAGER: "no"
+      run: |
+        $version = (Get-Content .viteplus-version | Where-Object { $_ -notmatch '^#' -and $_.Trim() -ne '' } | Select-Object -First 1).Trim()
+        if ([string]::IsNullOrEmpty($version)) { Write-Error 'empty Vite+ version'; exit 1 }
+        $env:VP_VERSION = $version
+        Invoke-RestMethod https://vite.plus/ps1 | Invoke-Expression
+
+    - name: Add vp to PATH (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: echo "$HOME/.vite-plus/bin" >> "$GITHUB_PATH"
+
+    - name: Add vp to PATH (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: Add-Content -Path $env:GITHUB_PATH -Value "$env:USERPROFILE\.vite-plus\bin"
+
+    - name: Verify vp
+      shell: bash
+      run: vp --version

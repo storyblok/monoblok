@@ -3,9 +3,9 @@ import {
   richTextResolver,
   type StoryblokRichTextNode,
   type StoryblokRichTextOptions,
-} from '@storyblok/js';
-import { experimental_AstroContainer } from 'astro/container';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+} from "@storyblok/js";
+import { experimental_AstroContainer } from "astro/container";
+import StoryblokComponent from "@storyblok/astro/StoryblokComponent.astro";
 
 // Lazily initialized Astro container (for rendering blok components)
 let container: null | experimental_AstroContainer = null;
@@ -37,7 +37,7 @@ let container: null | experimental_AstroContainer = null;
  */
 export const richTextToHTML = async (
   richTextField: StoryblokRichTextNode,
-  tiptapExtensions?: StoryblokRichTextOptions['tiptapExtensions'],
+  tiptapExtensions?: StoryblokRichTextOptions["tiptapExtensions"],
 ): Promise<string> => {
   // Create Astro container only once
   if (!container) {
@@ -51,8 +51,8 @@ export const richTextToHTML = async (
     tiptapExtensions: {
       blok: ComponentBlok.configure({
         renderComponent: (blok: Record<string, unknown>, _id?: string) => {
-          if (!blok || typeof blok !== 'object' || !container) {
-            return '';
+          if (!blok || typeof blok !== "object" || !container) {
+            return "";
           }
 
           // Generate unique placeholder ID
@@ -64,10 +64,10 @@ export const richTextToHTML = async (
             .renderToString(StoryblokComponent, {
               props: { blok },
             })
-            .then(result => ({ id, result }))
+            .then((result) => ({ id, result }))
             .catch((err) => {
-              console.error('Component rendering failed:', err);
-              return { id, result: '<!-- Component render error -->' };
+              console.error("Component rendering failed:", err);
+              return { id, result: "<!-- Component render error -->" };
             });
 
           asyncReplacements.push(promise);
@@ -81,13 +81,11 @@ export const richTextToHTML = async (
   let html = resolver.render(richTextField);
   // Wait for all async renders
   const results = await Promise.all(asyncReplacements);
-  const replacements = new Map(
-    results.map(({ id, result }) => [id, result ?? '']),
-  );
+  const replacements = new Map(results.map(({ id, result }) => [id, result ?? ""]));
 
   // Single-pass replacement using regex
   html = html.replace(/<!--ASYNC-([\w-]+)-->/g, (_, id: string) => {
-    return replacements.get(id) ?? '';
+    return replacements.get(id) ?? "";
   });
 
   return html;

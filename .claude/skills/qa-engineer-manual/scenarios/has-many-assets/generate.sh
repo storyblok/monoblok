@@ -9,7 +9,7 @@ fake_id="$2"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 template_png="${script_dir}/../../templates/asset-template.png"
-template_meta="${script_dir}/../../templates/asset-template.png.meta.json"
+template_meta="${script_dir}/../../templates/asset-template.png.meta.json.tpl"
 target_dir="${staging_dir}/assets/${fake_id}"
 
 mkdir -p "${target_dir}"

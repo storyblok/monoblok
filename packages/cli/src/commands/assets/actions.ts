@@ -1,14 +1,24 @@
-import Storyblok from 'storyblok-js-client';
-import { getMapiClient } from '../../api';
-import { handleAPIError } from '../../utils/error/api-error';
-import { toError } from '../../utils/error/error';
-import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+import Storyblok from "storyblok-js-client";
+import { getMapiClient } from "../../api";
+import { handleAPIError } from "../../utils/error/api-error";
+import { toError } from "../../utils/error/error";
+import type { RegionCode } from "../../constants";
+import type {
+  Asset,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetListQuery,
+  AssetUpdate,
+  AssetUpload,
+} from "./types";
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
  */
-export const fetchAssets = async ({ spaceId, params }: {
+export const fetchAssets = async ({
+  spaceId,
+  params,
+}: {
   spaceId: string;
   params?: AssetListQuery;
 }) => {
@@ -25,16 +35,16 @@ export const fetchAssets = async ({ spaceId, params }: {
       },
       throwOnError: true,
     });
-    const assets = (data?.assets || [])
-      .filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
+    const assets = (data?.assets || []).filter((asset): asset is Asset =>
+      Boolean(asset?.id && asset?.filename),
+    );
 
     return {
       assets,
       headers: response.headers,
     };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_assets', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_assets", toError(maybeError));
   }
 };
 
@@ -50,30 +60,27 @@ export const downloadFile = async (filename: string) => {
  * Fetches a signed URL for a private asset from the Content Delivery API.
  */
 export const getSignedAssetUrl = async (
-  filename: Asset['filename'],
+  filename: Asset["filename"],
   assetToken: string,
   region?: RegionCode,
 ): Promise<string> => {
   try {
     const client = new Storyblok({
       accessToken: assetToken,
-      region: region || 'eu',
+      region: region || "eu",
     });
 
-    const response = await client.get('cdn/assets/me', {
+    const response = await client.get("cdn/assets/me", {
       filename,
     });
 
     return response.data.asset.signed_url;
-  }
-  catch (maybeError) {
-    handleAPIError('pull_asset', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_asset", toError(maybeError));
   }
 };
 
-export const fetchAssetFolders = async ({ spaceId }: {
-  spaceId: string;
-}) => {
+export const fetchAssetFolders = async ({ spaceId }: { spaceId: string }) => {
   try {
     const client = getMapiClient();
     const { data, response } = await client.assetFolders.list({
@@ -87,17 +94,19 @@ export const fetchAssetFolders = async ({ spaceId }: {
       asset_folders: data.asset_folders || [],
       headers: response.headers,
     };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_asset_folders', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_asset_folders", toError(maybeError));
   }
 };
 
-export const createAssetFolder = async (folder: AssetFolderCreate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const createAssetFolder = async (
+  folder: AssetFolderCreate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     const client = getMapiClient();
     const { data } = await client.assetFolders.create({
@@ -109,21 +118,24 @@ export const createAssetFolder = async (folder: AssetFolderCreate, {
     });
     const { asset_folder } = data;
     if (!asset_folder) {
-      throw new Error('Failed to create asset folder');
+      throw new Error("Failed to create asset folder");
     }
 
     return asset_folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_folder", toError(maybeError));
   }
 };
 
-export const updateAssetFolder = async (id: number, folder: AssetFolderUpdate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const updateAssetFolder = async (
+  id: number,
+  folder: AssetFolderUpdate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     const client = getMapiClient();
     await client.assetFolders.update(id, {
@@ -135,9 +147,8 @@ export const updateAssetFolder = async (id: number, folder: AssetFolderUpdate, {
     });
 
     return folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_folder", toError(maybeError));
   }
 };
 
@@ -150,7 +161,9 @@ export const downloadAssetFile = async (
 
   if (asset.is_private) {
     if (!options.assetToken) {
-      throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
+      throw new Error(
+        `Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`,
+      );
     }
     url = await getSignedAssetUrl(asset.filename, options.assetToken, options.region);
   }
@@ -178,23 +191,21 @@ export const updateAsset = async (
 
     if (fileBuffer !== undefined) {
       if (!short_filename) {
-        throw new Error('short_filename is required when replacing an asset file');
+        throw new Error("short_filename is required when replacing an asset file");
       }
       await client.assets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata, short_filename },
         file: fileBuffer,
       });
-    }
-    else {
+    } else {
       await client.assets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata },
       });
     }
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_update', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_update", toError(maybeError));
   }
 };
 
@@ -218,8 +229,7 @@ export const createAsset = async (
       file: fileBuffer,
       path: { space_id: Number(spaceId) },
     });
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_create', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_create", toError(maybeError));
   }
 };

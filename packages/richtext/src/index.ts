@@ -1,9 +1,9 @@
-export { ComponentBlok } from './extensions/nodes';
-export * from './render-segments';
-export * from './richtext';
-export * from './richtext-segment';
-export * from './types';
-export * from './utils/segment-richtext';
+export { ComponentBlok } from "./extensions/nodes";
+export * from "./render-segments";
+export * from "./richtext";
+export * from "./richtext-segment";
+export * from "./types";
+export * from "./utils/segment-richtext";
 /**
  * Wraps a framework component (React, Vue, etc.) for use as a tag
  * in Tiptap's `renderHTML` DOMOutputSpec.

@@ -1,18 +1,18 @@
-import type { RegionCode } from '../../../../constants';
+import type { RegionCode } from "../../../../constants";
 import type {
   Component,
   ComponentFolder,
   InternalTag,
   Preset,
   SpaceComponentsDataState,
-} from '../../constants';
+} from "../../constants";
 
 // =============================================================================
 // CORE TYPES
 // =============================================================================
 
 /** Types of nodes in our dependency graph */
-export type NodeType = 'component' | 'group' | 'tag' | 'preset';
+export type NodeType = "component" | "group" | "tag" | "preset";
 
 /** Data that can be stored in a graph node */
 export type NodeData = Component | ComponentFolder | InternalTag | Preset;

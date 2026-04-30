@@ -1,5 +1,5 @@
-import { getMapiClient } from '../../../api';
-import { handleAPIError } from '../../../utils';
+import { getMapiClient } from "../../../api";
+import { handleAPIError } from "../../../utils";
 
 /**
  * Deletes a datasource by id from a Storyblok space.
@@ -16,8 +16,11 @@ export async function deleteDatasource(spaceId: string, id: string): Promise<voi
       },
       throwOnError: true,
     });
-  }
-  catch (error) {
-    handleAPIError('delete_datasource', error as Error, `Datasource with id '${id}' not found in space ${spaceId}.`);
+  } catch (error) {
+    handleAPIError(
+      "delete_datasource",
+      error as Error,
+      `Datasource with id '${id}' not found in space ${spaceId}.`,
+    );
   }
 }

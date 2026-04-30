@@ -4,10 +4,10 @@ import {
   getEnableFallbackComponent,
   setComponents,
   storyblokInit,
-} from './init';
-import { getStoryblokApi, useStoryblokApi } from './use-storyblok-api';
+} from "./init";
+import { getStoryblokApi, useStoryblokApi } from "./use-storyblok-api";
 
-export * from '../types';
+export * from "../types";
 
 export {
   getComponent,
@@ -19,8 +19,8 @@ export {
   useStoryblokApi,
 };
 
-export { default as StoryblokComponent } from './storyblok-component';
-export { useStoryblokState } from './use-storyblok-state';
+export { default as StoryblokComponent } from "./storyblok-component";
+export { useStoryblokState } from "./use-storyblok-state";
 
 export {
   apiPlugin,
@@ -39,4 +39,4 @@ export {
   type StoryblokRichTextOptions,
   TextTypes,
   useStoryblokBridge,
-} from '@storyblok/js';
+} from "@storyblok/js";

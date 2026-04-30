@@ -1,16 +1,22 @@
 {
   "name": "monoblok-cli",
   "version": "0.1.0",
-  "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
-  "type": "module",
-  "main": "dist/index.mjs",
   "private": true,
+  "description": "CLI tool for migrating and managing Storyblok projects in the monorepo",
   "bin": {
     "monoblok": "dist/index.mjs"
   },
+  "type": "module",
+  "main": "dist/index.mjs",
   "scripts": {
-    "build": "unbuild --stub",
-    "postinstall": "pnpm run build"
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "postinstall": "pnpm run build",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test:types": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@types/license-checker": "^25.0.6",
@@ -19,12 +25,13 @@
     "execa": "^5.1.1",
     "inquirer": "^8.2.5",
     "license-checker": "^25.0.1",
-    "ora": "^5.4.1",
-    "unbuild": "^3.5.0"
+    "ora": "^5.4.1"
   },
   "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
     "@types/inquirer": "^9.0.8",
     "@types/node": "^24.11.0",
+    "oxlint": "^1.62.0",
     "typescript": "5.8.3"
   }
 }

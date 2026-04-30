@@ -1,13 +1,18 @@
-import { FileSystemError, handleAPIError, handleFileSystemError } from '../../../utils';
-import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
-import type { ComponentCreate, ComponentUpdate } from '../../../types';
-import type { ReadComponentsOptions } from './constants';
-import { join } from 'pathe';
-import { readdir } from 'node:fs/promises';
-import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
-import chalk from 'chalk';
-import { getMapiClient } from '../../../api';
+import { FileSystemError, handleAPIError, handleFileSystemError } from "../../../utils";
+import type { Component, ComponentFolder, InternalTag, Preset } from "../constants";
+import {
+  DEFAULT_COMPONENTS_FILENAME,
+  DEFAULT_GROUPS_FILENAME,
+  DEFAULT_PRESETS_FILENAME,
+  DEFAULT_TAGS_FILENAME,
+} from "../constants";
+import type { ComponentCreate, ComponentUpdate } from "../../../types";
+import type { ReadComponentsOptions } from "./constants";
+import { join } from "pathe";
+import { readdir } from "node:fs/promises";
+import { readJsonFile, resolvePath, shouldUseSeparateFiles } from "../../../utils/filesystem";
+import chalk from "chalk";
+import { getMapiClient } from "../../../api";
 
 // Define a type for components data without datasources
 export interface ComponentsData {
@@ -18,7 +23,10 @@ export interface ComponentsData {
 }
 
 // Component actions
-export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
+export const pushComponent = async (
+  space: string,
+  component: ComponentCreate,
+): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -32,13 +40,16 @@ export const pushComponent = async (space: string, component: ComponentCreate): 
     });
 
     return data?.component;
-  }
-  catch (error) {
-    handleAPIError('push_component', error as Error, `Failed to push component ${component.name}`);
+  } catch (error) {
+    handleAPIError("push_component", error as Error, `Failed to push component ${component.name}`);
   }
 };
 
-export const updateComponent = async (space: string, componentId: number, component: ComponentUpdate): Promise<Component | undefined> => {
+export const updateComponent = async (
+  space: string,
+  componentId: number,
+  component: ComponentUpdate,
+): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -53,9 +64,12 @@ export const updateComponent = async (space: string, componentId: number, compon
     });
 
     return data?.component;
-  }
-  catch (error) {
-    handleAPIError('update_component', error as Error, `Failed to update component ${component.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component",
+      error as Error,
+      `Failed to update component ${component.name}`,
+    );
   }
 };
 
@@ -67,8 +81,7 @@ export const upsertComponent = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponent(space, existingId, component);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponent(space, component);
   }
@@ -76,7 +89,10 @@ export const upsertComponent = async (
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
+export const pushComponentGroup = async (
+  space: string,
+  componentGroup: ComponentFolder,
+): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -91,13 +107,20 @@ export const pushComponentGroup = async (space: string, componentGroup: Componen
     });
 
     return data?.component_group;
-  }
-  catch (error) {
-    handleAPIError('push_component_group', error as Error, `Failed to push component group ${componentGroup.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_group",
+      error as Error,
+      `Failed to push component group ${componentGroup.name}`,
+    );
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
+export const updateComponentGroup = async (
+  space: string,
+  groupId: number,
+  componentGroup: ComponentFolder,
+): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -112,9 +135,12 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
     });
 
     return data?.component_group;
-  }
-  catch (error) {
-    handleAPIError('update_component_group', error as Error, `Failed to update component group ${componentGroup.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_group",
+      error as Error,
+      `Failed to update component group ${componentGroup.name}`,
+    );
   }
 };
 
@@ -126,15 +152,17 @@ export const upsertComponentGroup = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentGroup(space, existingId, group);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentGroup(space, group);
   }
 };
 
 // Component preset actions
-export const pushComponentPreset = async (space: string, preset: Preset): Promise<Preset | undefined> => {
+export const pushComponentPreset = async (
+  space: string,
+  preset: Preset,
+): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -149,13 +177,20 @@ export const pushComponentPreset = async (space: string, preset: Preset): Promis
     });
 
     return data?.preset;
-  }
-  catch (error) {
-    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${preset.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_preset",
+      error as Error,
+      `Failed to push component preset ${preset.name}`,
+    );
   }
 };
 
-export const updateComponentPreset = async (space: string, presetId: number, preset: Preset): Promise<Preset | undefined> => {
+export const updateComponentPreset = async (
+  space: string,
+  presetId: number,
+  preset: Preset,
+): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -170,9 +205,12 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
     });
 
     return data?.preset;
-  }
-  catch (error) {
-    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${preset.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_preset",
+      error as Error,
+      `Failed to update component preset ${preset.name}`,
+    );
   }
 };
 
@@ -184,8 +222,7 @@ export const upsertComponentPreset = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentPreset(space, existingId, preset);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentPreset(space, preset);
   }
@@ -200,15 +237,21 @@ export const deleteComponentPreset = async (space: string, presetId: number): Pr
       path: { space_id: Number(space) },
       throwOnError: true,
     });
-  }
-  catch (error) {
-    handleAPIError('delete_component_preset', error as Error, `Failed to delete component preset ${presetId}`);
+  } catch (error) {
+    handleAPIError(
+      "delete_component_preset",
+      error as Error,
+      `Failed to delete component preset ${presetId}`,
+    );
   }
 };
 
 // Component internal tag actions
 
-export const pushComponentInternalTag = async (space: string, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
+export const pushComponentInternalTag = async (
+  space: string,
+  componentInternalTag: InternalTag,
+): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -221,13 +264,20 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
     });
 
     return data.internal_tag;
-  }
-  catch (error) {
-    handleAPIError('push_component_internal_tag', error as Error, `Failed to push component internal tag ${componentInternalTag.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_internal_tag",
+      error as Error,
+      `Failed to push component internal tag ${componentInternalTag.name}`,
+    );
   }
 };
 
-export const updateComponentInternalTag = async (space: string, tagId: number, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
+export const updateComponentInternalTag = async (
+  space: string,
+  tagId: number,
+  componentInternalTag: InternalTag,
+): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -240,9 +290,12 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
     });
 
     return data.internal_tag;
-  }
-  catch (error) {
-    handleAPIError('update_component_internal_tag', error as Error, `Failed to update component internal tag ${componentInternalTag.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_internal_tag",
+      error as Error,
+      `Failed to update component internal tag ${componentInternalTag.name}`,
+    );
   }
 };
 
@@ -254,23 +307,22 @@ export const upsertComponentInternalTag = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentInternalTag(space, existingId, tag);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentInternalTag(space, tag);
   }
 };
 
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<ComponentsData> => {
+  options: ReadComponentsOptions,
+): Promise<ComponentsData> => {
   const { from, path, separateFiles, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   // Check if directory exists first
   try {
     await readdir(resolvedPath);
-  }
-  catch (error) {
+  } catch (error) {
     const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:
 
 1. Pull the components from your source space:
@@ -279,16 +331,13 @@ export const readComponentsFiles = async (
 2. Then try pushing again:
    ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
 
-    throw new FileSystemError(
-      'file_not_found',
-      'read',
-      error as Error,
-      message,
-    );
+    throw new FileSystemError("file_not_found", "read", error as Error, message);
   }
 
   // Determine read mode: explicit flag takes precedence, otherwise auto-detect
-  if (await shouldUseSeparateFiles(resolvedPath, DEFAULT_COMPONENTS_FILENAME, separateFiles, suffix)) {
+  if (
+    await shouldUseSeparateFiles(resolvedPath, DEFAULT_COMPONENTS_FILENAME, separateFiles, suffix)
+  ) {
     return await readSeparateFiles(resolvedPath, suffix);
   }
 
@@ -305,47 +354,55 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   const filteredFiles = files.filter((file) => {
     if (suffix) {
       return file.endsWith(`.${suffix}.json`);
-    }
-    else {
+    } else {
       // Regex to match files with a pattern like .<suffix>.json
-      return !/\.\w+\.json$/.test(file) || file.endsWith('.presets.json'); ;
+      return !/\.\w+\.json$/.test(file) || file.endsWith(".presets.json");
     }
   });
 
   for (const file of filteredFiles) {
     const filePath = join(resolvedPath, file);
 
-    if (file === `${DEFAULT_GROUPS_FILENAME}.json` || file === `${DEFAULT_GROUPS_FILENAME}.${suffix}.json`) {
+    if (
+      file === `${DEFAULT_GROUPS_FILENAME}.json` ||
+      file === `${DEFAULT_GROUPS_FILENAME}.${suffix}.json`
+    ) {
       const result = await readJsonFile<ComponentFolder>(filePath);
       if (result.error) {
-        handleFileSystemError('read', result.error);
+        handleFileSystemError("read", result.error);
         continue;
       }
       groups = result.data;
-    }
-    else if (file === `${DEFAULT_TAGS_FILENAME}.json` || file === `${DEFAULT_TAGS_FILENAME}.${suffix}.json`) {
+    } else if (
+      file === `${DEFAULT_TAGS_FILENAME}.json` ||
+      file === `${DEFAULT_TAGS_FILENAME}.${suffix}.json`
+    ) {
       const result = await readJsonFile<InternalTag>(filePath);
       if (result.error) {
-        handleFileSystemError('read', result.error);
+        handleFileSystemError("read", result.error);
         continue;
       }
       internalTags = result.data;
-    }
-    else if (file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.json`) || file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.${suffix}.json`)) {
+    } else if (
+      file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.json`) ||
+      file.endsWith(`.${DEFAULT_PRESETS_FILENAME}.${suffix}.json`)
+    ) {
       const result = await readJsonFile<Preset>(filePath);
       if (result.error) {
-        handleFileSystemError('read', result.error);
+        handleFileSystemError("read", result.error);
         continue;
       }
       presets.push(...result.data);
-    }
-    else if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
-      if (file === `${DEFAULT_COMPONENTS_FILENAME}.json` || file === `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`) {
+    } else if (file.endsWith(".json") || file.endsWith(`${suffix}.json`)) {
+      if (
+        file === `${DEFAULT_COMPONENTS_FILENAME}.json` ||
+        file === `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`
+      ) {
         continue;
       }
       const result = await readJsonFile<Component>(filePath);
       if (result.error) {
-        handleFileSystemError('read', result.error);
+        handleFileSystemError("read", result.error);
         continue;
       }
       components.push(...result.data);
@@ -360,25 +417,48 @@ async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise
   };
 }
 
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<ComponentsData> {
+async function readConsolidatedFiles(
+  resolvedPath: string,
+  suffix?: string,
+): Promise<ComponentsData> {
   // Read required components file
-  const componentsPath = join(resolvedPath, suffix ? `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json` : `${DEFAULT_COMPONENTS_FILENAME}.json`);
+  const componentsPath = join(
+    resolvedPath,
+    suffix
+      ? `${DEFAULT_COMPONENTS_FILENAME}.${suffix}.json`
+      : `${DEFAULT_COMPONENTS_FILENAME}.json`,
+  );
   const componentsResult = await readJsonFile<Component>(componentsPath);
 
   if (componentsResult.error || !componentsResult.data.length) {
     throw new FileSystemError(
-      'file_not_found',
-      'read',
-      componentsResult.error || new Error('Components file is empty'),
+      "file_not_found",
+      "read",
+      componentsResult.error || new Error("Components file is empty"),
       `No components found in ${componentsPath}. Please make sure you have pulled the components first.`,
     );
   }
 
   // Read optional files
   const [groupsResult, presetsResult, tagsResult] = await Promise.all([
-    readJsonFile<ComponentFolder>(join(resolvedPath, suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`)),
-    readJsonFile<Preset>(join(resolvedPath, suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`)),
-    readJsonFile<InternalTag>(join(resolvedPath, suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`)),
+    readJsonFile<ComponentFolder>(
+      join(
+        resolvedPath,
+        suffix ? `${DEFAULT_GROUPS_FILENAME}.${suffix}.json` : `${DEFAULT_GROUPS_FILENAME}.json`,
+      ),
+    ),
+    readJsonFile<Preset>(
+      join(
+        resolvedPath,
+        suffix ? `${DEFAULT_PRESETS_FILENAME}.${suffix}.json` : `${DEFAULT_PRESETS_FILENAME}.json`,
+      ),
+    ),
+    readJsonFile<InternalTag>(
+      join(
+        resolvedPath,
+        suffix ? `${DEFAULT_TAGS_FILENAME}.${suffix}.json` : `${DEFAULT_TAGS_FILENAME}.json`,
+      ),
+    ),
   ]);
 
   return {

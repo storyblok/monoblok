@@ -1,5 +1,5 @@
 <script setup>
-import RealApiChild from './RealApiChild.vue';
+import RealApiChild from "./RealApiChild.vue";
 </script>
 
 <template>

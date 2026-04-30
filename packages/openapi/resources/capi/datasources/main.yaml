@@ -36,7 +36,7 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Array of datasources
           headers:
             $ref: ../../shared/pagination.yaml#/pagination_headers
@@ -51,13 +51,13 @@ paths:
                     type: array
                     description: Array of datasource objects
                     items:
-                      $ref: '#/components/schemas/Datasource'
+                      $ref: "#/components/schemas/Datasource"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
   /v2/cdn/datasources/{id}:
     get:
@@ -82,7 +82,7 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Datasource details
           content:
             application/json:
@@ -92,15 +92,15 @@ paths:
                   - datasource
                 properties:
                   datasource:
-                    $ref: '#/components/schemas/Datasource'
+                    $ref: "#/components/schemas/Datasource"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource not found
 components:
   securitySchemes:

@@ -1,4 +1,4 @@
-export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+export type LogLevel = "error" | "warn" | "info" | "debug";
 
 export type LogContextValue =
   | string
@@ -37,15 +37,17 @@ export class Logger {
   public context: LogContext = {};
 
   constructor(options?: LoggerOptions) {
-    if (options?.transports) { this.transports = options.transports; }
-    if (options?.context) { this.context = options.context; }
+    if (options?.transports) {
+      this.transports = options.transports;
+    }
+    if (options?.context) {
+      this.context = options.context;
+    }
   }
 
   public log(level: LogLevel, message: string, context?: LogContext): void {
     const timestamp = new Date();
-    const mergedContext = context
-      ? { ...this.context, ...context }
-      : this.context;
+    const mergedContext = context ? { ...this.context, ...context } : this.context;
 
     const record: LogRecord = {
       timestamp,
@@ -60,19 +62,19 @@ export class Logger {
   }
 
   public error(message: string, context?: LogContext): void {
-    this.log('error', message, context);
+    this.log("error", message, context);
   }
 
   public warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
+    this.log("warn", message, context);
   }
 
   public info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
+    this.log("info", message, context);
   }
 
   public debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
+    this.log("debug", message, context);
   }
 }
 

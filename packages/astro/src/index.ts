@@ -1,13 +1,13 @@
-import storyblokIntegration from './lib/storyblok-integration';
+import storyblokIntegration from "./lib/storyblok-integration";
 
-export { getLiveStory, getPayload, useStoryblokApi } from './lib/helpers';
+export { getLiveStory, getPayload, useStoryblokApi } from "./lib/helpers";
 
-export { sanitizeJSON } from './lib/sanitizeJSON';
-export type { IntegrationOptions } from './lib/storyblok-integration';
-export { handleStoryblokMessage } from './live-preview/handleStoryblokMessage';
-export * from './types';
-export { isEditorRequest } from './utils/isEditorRequest';
-export { toCamelCase } from './utils/toCamelCase';
+export { sanitizeJSON } from "./lib/sanitizeJSON";
+export type { IntegrationOptions } from "./lib/storyblok-integration";
+export { handleStoryblokMessage } from "./live-preview/handleStoryblokMessage";
+export * from "./types";
+export { isEditorRequest } from "./utils/isEditorRequest";
+export { toCamelCase } from "./utils/toCamelCase";
 export {
   loadStoryblokBridge,
   renderRichText,
@@ -15,6 +15,6 @@ export {
   richTextResolver,
   segmentStoryblokRichText,
   storyblokEditable,
-} from '@storyblok/js';
+} from "@storyblok/js";
 export { storyblokIntegration as storyblok };
-export { apiPlugin, storyblokInit } from '@storyblok/js';
+export { apiPlugin, storyblokInit } from "@storyblok/js";

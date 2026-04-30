@@ -36,8 +36,6 @@ Are you eager to dive into coding? **[Follow these steps to kickstart a new proj
 npm install storyblok-js-client # yarn add storyblok-js-client
 ```
 
-
-
 #### Compatibility
 
 | Version to install                                                                                                            | Support                                              |
@@ -83,7 +81,6 @@ Storyblok.put(`spaces/${spaceId}/stories/1`, {
 Storyblok.delete(`spaces/${spaceId}/stories/1`);
 ```
 
-
 ## NEW BRANCHES AND VERSIONS
 
 The old master branch containing version `4.x.y` has been moved to the `v4` branch.
@@ -96,9 +93,9 @@ Error handling from fetch has changed. Exceptions will be thrown as an object wi
 
 ```javascript
 {
-  message: string
-  status: number
-  response: ISbResponse
+  message: string;
+  status: number;
+  response: ISbResponse;
 }
 ```
 
@@ -121,8 +118,8 @@ The proxy feature was also removed in this version.
 Version 5 is using native `fetch` API, supported by modern browsers and Node >= 18. If you are using an environment with no `fetch` API support, you can use a polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) at the very beginning of your app entry point:
 
 ```js
-import 'isomorphic-fetch'
-require('isomorphic-fetch') // in CJS environments
+import "isomorphic-fetch";
+require("isomorphic-fetch"); // in CJS environments
 ```
 
 ## Documentation
@@ -181,15 +178,18 @@ When you don't specify a custom `rateLimit`, the client automatically selects th
 It works as specified in [Content Delivery API docs](https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/rate-limit).
 
 For **cached requests** (`version=published` or default):
+
 - **1000 requests/second** - Leverages Storyblok's CDN caching for maximum performance
 
 For **draft requests** (`version=draft`):
+
 - **50 req/s** - Single entries or small listings (≤25 items per page)
 - **15 req/s** - Medium listings (26-50 items per page)
 - **10 req/s** - Large listings (51-75 items per page)
 - **6 req/s** - Very large listings (76-100 items per page)
 
 **Management API**
+
 - **3 req/s** - Default rate limit when using `oauthToken`
 
 #### Custom Rate Limiting
@@ -198,17 +198,19 @@ Override automatic rate limiting by setting a custom `rateLimit`:
 
 ```javascript
 const Storyblok = new StoryblokClient({
-  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+  accessToken: "<YOUR_SPACE_ACCESS_TOKEN>",
   rateLimit: 25, // Apply 25 req/s to ALL requests
 });
 ```
 
 **When to use custom rate limiting:**
+
 - You want consistent rate limiting across all request types
 - You need to reduce load during high-traffic periods
 - You want to match specific API quota requirements
 
 **Important:**
+
 - Custom `rateLimit` applies to **all request types** (draft, published, Management API)
 - Maximum rate limit is capped at **1000 req/s**
 - Requests served from in-memory cache bypass rate limiting entirely
@@ -248,7 +250,7 @@ let Storyblok = new StoryblokClient({
 One can remove the reponseInterceptor at any time, by calling the function `ejectInterceptor` as shown below:
 
 ```javascript
-Storyblok.ejectInterceptor()
+Storyblok.ejectInterceptor();
 ```
 
 ### Error handling
@@ -257,9 +259,9 @@ Exceptions will be thrown as an object with the following structure:
 
 ```javascript
 {
-  message: Error // an Error object with the error message
-  status: number
-  response: ISbResponse
+  message: Error; // an Error object with the error message
+  status: number;
+  response: ISbResponse;
 }
 ```
 
@@ -267,12 +269,12 @@ where,
 
 ```typescript
 interface ISbResponse {
-  data: any
-  status: number
-  statusText: string
-  headers: any
-  config: any
-  request: any
+  data: any;
+  status: number;
+  statusText: string;
+  headers: any;
+  config: any;
+  request: any;
 }
 ```
 
@@ -285,24 +287,16 @@ With this parameter, you can resolve relations with live updates in the Storyblo
 > It is important to note that when using the storyblok-js-client and other framework-specific SDKs, you don't need to look for the `rels` array after resolving relations. The resolved relations are injected into the properties and, hence, are directly accessible through the properties. For example, you can access the authors array directly with `page.author` once it is resolved.
 
 ```javascript
-window.storyblok.resolveRelations(
-  storyObject,
-  relationsToResolve,
-  callbackWhenResolved
-)
+window.storyblok.resolveRelations(storyObject, relationsToResolve, callbackWhenResolved);
 ```
 
 **Example**
 
 ```javascript
-window.storyblok.on('input', (event) => {
-  window.storyblok.addComments(event.story.content, event.story.id)
-  window.storyblok.resolveRelations(
-    event.story,
-    ['post.author', 'post.categories'],
-    () => {}
-  )
-})
+window.storyblok.on("input", (event) => {
+  window.storyblok.addComments(event.story.content, event.story.id);
+  window.storyblok.resolveRelations(event.story, ["post.author", "post.categories"], () => {});
+});
 ```
 
 ### Custom Fetch parameter
@@ -315,28 +309,28 @@ You can now pass an aditional paramater to the following calls: `get`, `getAll`,
 ```javascript
 const data = {
   story: {
-    name: 'xy',
-    slug: 'xy',
+    name: "xy",
+    slug: "xy",
   },
-}
+};
 
 Storyblok.get(
-  'cdn/stories/home',
+  "cdn/stories/home",
   {
-    version: 'draft',
+    version: "draft",
   },
   {
-    mode: 'cors',
-    cache: 'no-cache',
+    mode: "cors",
+    cache: "no-cache",
     body: JSON.stringify(data),
-  }
+  },
 )
   .then((response) => {
-    console.log(response)
+    console.log(response);
   })
   .catch((error) => {
-    console.error(error)
-  })
+    console.error(error);
+  });
 ```
 
 ### Method `Storyblok#get`
@@ -353,15 +347,15 @@ With this method you can get single or multiple items. The multiple items are pa
 **Example**
 
 ```javascript
-Storyblok.get('cdn/stories/home', {
-  version: 'draft',
+Storyblok.get("cdn/stories/home", {
+  version: "draft",
 })
   .then((response) => {
-    console.log(response)
+    console.log(response);
   })
   .catch((error) => {
-    console.log(error)
-  })
+    console.log(error);
+  });
 ```
 
 #### Method `Storyblok#getAll`
@@ -379,15 +373,15 @@ With this method you can get all items at once.
 **Example**
 
 ```javascript
-Storyblok.getAll('cdn/stories', {
-  version: 'draft',
+Storyblok.getAll("cdn/stories", {
+  version: "draft",
 })
   .then((stories) => {
-    console.log(stories) // an array
+    console.log(stories); // an array
   })
   .catch((error) => {
-    console.log(error)
-  })
+    console.log(error);
+  });
 ```
 
 #### Method `Storyblok#post` (only management api)
@@ -402,15 +396,15 @@ Storyblok.getAll('cdn/stories', {
 **Example**
 
 ```javascript
-Storyblok.post('spaces/<YOUR_SPACE_ID>/stories', {
-  story: { name: 'xy', slug: 'xy' },
+Storyblok.post("spaces/<YOUR_SPACE_ID>/stories", {
+  story: { name: "xy", slug: "xy" },
 })
   .then((response) => {
-    console.log(response)
+    console.log(response);
   })
   .catch((error) => {
-    console.log(error)
-  })
+    console.log(error);
+  });
 ```
 
 #### Method `Storyblok#put` (only management api)
@@ -425,15 +419,15 @@ Storyblok.post('spaces/<YOUR_SPACE_ID>/stories', {
 **Example**
 
 ```javascript
-Storyblok.put('spaces/<YOUR_SPACE_ID>/stories/1', {
-  story: { name: 'xy', slug: 'xy' },
+Storyblok.put("spaces/<YOUR_SPACE_ID>/stories/1", {
+  story: { name: "xy", slug: "xy" },
 })
   .then((response) => {
-    console.log(response)
+    console.log(response);
   })
   .catch((error) => {
-    console.log(error)
-  })
+    console.log(error);
+  });
 ```
 
 #### Method `Storyblok#delete` (only management api)
@@ -448,13 +442,13 @@ Storyblok.put('spaces/<YOUR_SPACE_ID>/stories/1', {
 **Example**
 
 ```javascript
-Storyblok.delete('spaces/<YOUR_SPACE_ID>/stories/1')
+Storyblok.delete("spaces/<YOUR_SPACE_ID>/stories/1")
   .then((response) => {
-    console.log(response)
+    console.log(response);
   })
   .catch((error) => {
-    console.log(error)
-  })
+    console.log(error);
+  });
 ```
 
 #### Method `Storyblok#flushCache`
@@ -466,9 +460,8 @@ Storyblok.delete('spaces/<YOUR_SPACE_ID>/stories/1')
 **Example**
 
 ```javascript
-Storyblok.flushCache()
+Storyblok.flushCache();
 ```
-
 
 ## Code examples
 
@@ -506,16 +499,16 @@ new StoryblokClient({
 ### Filter by content type values and path
 
 ```javascript
-import StoryblokClient from 'storyblok-js-client'
+import StoryblokClient from "storyblok-js-client";
 
 let client = new StoryblokClient({
-  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
-})
+  accessToken: "<YOUR_SPACE_ACCESS_TOKEN>",
+});
 
 // Filter by boolean value in content type
 client
-  .get('cdn/stories', {
-    version: 'draft',
+  .get("cdn/stories", {
+    version: "draft",
     filter_query: {
       is_featured: {
         in: true,
@@ -523,32 +516,32 @@ client
     },
   })
   .then((res) => {
-    console.log(res.data.stories)
-  })
+    console.log(res.data.stories);
+  });
 
 // Get all news and author contents
 client
-  .get('cdn/stories', {
-    version: 'draft',
+  .get("cdn/stories", {
+    version: "draft",
     filter_query: {
       component: {
-        in: 'news,author',
+        in: "news,author",
       },
     },
   })
   .then((res) => {
-    console.log(res.data.stories)
-  })
+    console.log(res.data.stories);
+  });
 
 // Get all content from the news folder
 client
-  .get('cdn/stories', {
-    version: 'draft',
-    starts_with: 'news/',
+  .get("cdn/stories", {
+    version: "draft",
+    starts_with: "news/",
   })
   .then((res) => {
-    console.log(res.data.stories)
-  })
+    console.log(res.data.stories);
+  });
 ```
 
 ### Download all content from Storyblok
@@ -556,56 +549,51 @@ client
 Following a code example using the storyblok-js-client to back up all content on your local filesystem inside a 'backup' folder.
 
 ```javascript
-import StoryblokClient from 'storyblok-js-client'
-import fs from 'fs'
+import StoryblokClient from "storyblok-js-client";
+import fs from "fs";
 
 let client = new StoryblokClient({
-  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
-})
+  accessToken: "<YOUR_SPACE_ACCESS_TOKEN>",
+});
 
-let lastPage = 1
+let lastPage = 1;
 let getStories = (page) => {
   client
-    .get('cdn/stories', {
-      version: 'draft',
+    .get("cdn/stories", {
+      version: "draft",
       per_page: 25,
       page: page,
     })
     .then((res) => {
-      let stories = res.data.stories
+      let stories = res.data.stories;
       stories.forEach((story) => {
-        fs.writeFile(
-          './backup/' + story.id + '.json',
-          JSON.stringify(story),
-          (err) => {
-            if (err) throw err
+        fs.writeFile("./backup/" + story.id + ".json", JSON.stringify(story), (err) => {
+          if (err) throw err;
 
-            console.log(story.full_slug + ' backed up')
-          }
-        )
-      })
+          console.log(story.full_slug + " backed up");
+        });
+      });
 
-      let total = res.total
-      lastPage = Math.ceil(res.total / res.perPage)
+      let total = res.total;
+      lastPage = Math.ceil(res.total / res.perPage);
 
       if (page <= lastPage) {
-        page++
-        getStories(page)
+        page++;
+        getStories(page);
       }
-    })
-}
+    });
+};
 
-getStories(1)
+getStories(1);
 ```
-
 
 ### Handling access token overwrite
 
 You can overwrite an access token, and prevent errors from the function call by adding a `.catch()` method for each access token as shown below.
 
 ```javascript
-const public = 'token1'
-const preview = 'token2'
+const public = "token1";
+const preview = "token2";
 ```
 
 You can pass the tokens as follows:

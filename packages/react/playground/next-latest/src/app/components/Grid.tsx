@@ -1,4 +1,4 @@
-import { storyblokEditable } from '@storyblok/react/rsc';
+import { storyblokEditable } from "@storyblok/react/rsc";
 
 const Grid = ({ blok }: { blok: any }) => {
   return (

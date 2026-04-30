@@ -42,7 +42,7 @@ paths:
             type: string
           description: Comma-separated list of IDs to filter by
       responses:
-        '200':
+        "200":
           description: List of asset folders
           content:
             application/json:
@@ -52,12 +52,12 @@ paths:
                   asset_folders:
                     type: array
                     items:
-                      $ref: '#/components/schemas/AssetFolder'
-        '400':
+                      $ref: "#/components/schemas/AssetFolder"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -72,9 +72,9 @@ paths:
               type: object
               properties:
                 asset_folder:
-                  $ref: '#/components/schemas/AssetFolderCreate'
+                  $ref: "#/components/schemas/AssetFolderCreate"
       responses:
-        '201':
+        "201":
           description: Asset folder created successfully
           content:
             application/json:
@@ -82,12 +82,12 @@ paths:
                 type: object
                 properties:
                   asset_folder:
-                    $ref: '#/components/schemas/AssetFolder'
-        '400':
+                    $ref: "#/components/schemas/AssetFolder"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/asset_folders/{asset_folder_id}:
     description: Operations for a specific asset folder
@@ -98,7 +98,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/asset_folder_id
       responses:
-        '200':
+        "200":
           description: Asset folder details
           content:
             application/json:
@@ -106,12 +106,12 @@ paths:
                 type: object
                 properties:
                   asset_folder:
-                    $ref: '#/components/schemas/AssetFolder'
-        '400':
+                    $ref: "#/components/schemas/AssetFolder"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset folder not found
     put:
       operationId: update
@@ -127,15 +127,15 @@ paths:
               type: object
               properties:
                 asset_folder:
-                  $ref: '#/components/schemas/AssetFolderUpdate'
+                  $ref: "#/components/schemas/AssetFolderUpdate"
       responses:
-        '204':
+        "204":
           description: Asset folder updated successfully
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset folder not found
     delete:
       operationId: delete
@@ -150,13 +150,13 @@ paths:
             type: boolean
           description: If true, recursively delete all child folders and orphan their assets. If false (default), assets are orphaned and child folders are moved to the parent level.
       responses:
-        '204':
+        "204":
           description: Asset folder deleted successfully
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset folder not found
 components:
   securitySchemes:

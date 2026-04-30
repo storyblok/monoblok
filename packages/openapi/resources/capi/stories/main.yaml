@@ -236,7 +236,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Array of stories
           headers:
             $ref: ../../shared/pagination.yaml#/pagination_headers
@@ -251,7 +251,7 @@ paths:
                     type: array
                     description: Array of story objects
                     items:
-                      $ref: '#/components/schemas/Story'
+                      $ref: "#/components/schemas/Story"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
@@ -259,7 +259,7 @@ paths:
                     type: array
                     description: Array of resolved stories (when resolve_relations is used)
                     items:
-                      $ref: '#/components/schemas/Story'
+                      $ref: "#/components/schemas/Story"
                   links:
                     type: array
                     description: Array of resolved links (when resolve_links is used)
@@ -275,9 +275,9 @@ paths:
                     description: Array of UUIDs of linked stories (if limit exceeded)
                     items:
                       type: string
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
   /v2/cdn/stories/{identifier}:
     get:
@@ -389,7 +389,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Story details
           content:
             application/json:
@@ -399,7 +399,7 @@ paths:
                   - story
                 properties:
                   story:
-                    $ref: '#/components/schemas/Story'
+                    $ref: "#/components/schemas/Story"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
@@ -407,7 +407,7 @@ paths:
                     type: array
                     description: Array of resolved stories (when resolve_relations is used)
                     items:
-                      $ref: '#/components/schemas/Story'
+                      $ref: "#/components/schemas/Story"
                   links:
                     type: array
                     description: Array of resolved links (when resolve_links is used)
@@ -423,11 +423,11 @@ paths:
                     description: Array of UUIDs of linked stories (if limit exceeded)
                     items:
                       type: string
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Story not found
 components:
   securitySchemes:

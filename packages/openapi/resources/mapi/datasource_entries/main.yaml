@@ -43,7 +43,7 @@ paths:
             type: string
           description: Provide dimension id to receive the dimension_value filled
       responses:
-        '200':
+        "200":
           description: List of datasource entries
           content:
             application/json:
@@ -53,12 +53,12 @@ paths:
                   datasource_entries:
                     type: array
                     items:
-                      $ref: '#/components/schemas/DatasourceEntry'
-        '400':
+                      $ref: "#/components/schemas/DatasourceEntry"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -73,9 +73,9 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntryCreate'
+                  $ref: "#/components/schemas/DatasourceEntryCreate"
       responses:
-        '201':
+        "201":
           description: Datasource entry created
           content:
             application/json:
@@ -83,12 +83,12 @@ paths:
                 type: object
                 properties:
                   datasource_entry:
-                    $ref: '#/components/schemas/DatasourceEntry'
-        '400':
+                    $ref: "#/components/schemas/DatasourceEntry"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/datasource_entries/{datasource_entry_id}:
     get:
@@ -103,7 +103,7 @@ paths:
             type: integer
           description: Numeric ID of datasource entry
       responses:
-        '200':
+        "200":
           description: Datasource entry details
           content:
             application/json:
@@ -111,12 +111,12 @@ paths:
                 type: object
                 properties:
                   datasource_entry:
-                    $ref: '#/components/schemas/DatasourceEntry'
-        '400':
+                    $ref: "#/components/schemas/DatasourceEntry"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource entry not found
     put:
       operationId: update
@@ -137,15 +137,15 @@ paths:
               type: object
               properties:
                 datasource_entry:
-                  $ref: '#/components/schemas/DatasourceEntryUpdate'
+                  $ref: "#/components/schemas/DatasourceEntryUpdate"
       responses:
-        '204':
+        "204":
           description: Datasource entry updated
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource entry not found
     delete:
       operationId: delete
@@ -159,13 +159,13 @@ paths:
             type: integer
           description: Numeric ID of datasource entry
       responses:
-        '204':
+        "204":
           description: Datasource entry deleted
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Datasource entry not found
 components:
   securitySchemes:

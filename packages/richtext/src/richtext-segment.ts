@@ -1,7 +1,7 @@
-import { ComponentBlok, getStoryblokExtensions } from './extensions';
-import type { Attributes, Mark as TiptapMark, Node as TiptapNode } from '@tiptap/core';
-import type { BlockAttributes, MarkNode, StoryblokRichTextNode, TextNode } from './types';
-import { collectMarkedTextGroup, getUniqueMarks, SELF_CLOSING_TAGS } from './utils';
+import { ComponentBlok, getStoryblokExtensions } from "./extensions";
+import type { Attributes, Mark as TiptapMark, Node as TiptapNode } from "@tiptap/core";
+import type { BlockAttributes, MarkNode, StoryblokRichTextNode, TextNode } from "./types";
+import { collectMarkedTextGroup, getUniqueMarks, SELF_CLOSING_TAGS } from "./utils";
 
 /**
  * ProseMirror DOMOutputSpec returned by renderHTML
@@ -13,12 +13,12 @@ type DOMOutputSpec = (string | number | Attributes | DOMOutputSpec)[];
  */
 
 export interface TextSegment {
-  kind: 'text';
+  kind: "text";
   text: string;
 }
 
 export interface NodeSegment {
-  kind: 'node';
+  kind: "node";
   type: string;
   tag: string | null;
   attrs: Attributes;
@@ -26,22 +26,18 @@ export interface NodeSegment {
 }
 
 export interface MarkSegment {
-  kind: 'mark';
+  kind: "mark";
   type: string;
   tag: string | null;
   attrs: Attributes;
   content: SBRichTextSegment[];
 }
 interface ComponentSegment {
-  kind: 'component';
+  kind: "component";
   type: string;
   props: Record<string, unknown>;
 }
-export type SBRichTextSegment =
-  | TextSegment
-  | NodeSegment
-  | MarkSegment
-  | ComponentSegment;
+export type SBRichTextSegment = TextSegment | NodeSegment | MarkSegment | ComponentSegment;
 
 export type StoryblokExtensions = ReturnType<typeof getStoryblokExtensions>;
 export type StoryblokSegmentType = keyof StoryblokExtensions; // e.g., "paragraph" | "heading" | "image" | ...
@@ -61,23 +57,27 @@ export interface StoryblokRichTextOptionsNew {
    */
   onUnknownMark?: (mark: any) => SBRichTextSegment[];
 }
-export function getRichTextSegments(richText: StoryblokRichTextNode, options: StoryblokRichTextOptionsNew = {}) {
+export function getRichTextSegments(
+  richText: StoryblokRichTextNode,
+  options: StoryblokRichTextOptionsNew = {},
+) {
   const blokExtension = {
     blok: ComponentBlok.configure({
-      renderComponent: blok => blok,
+      renderComponent: (blok) => blok,
     }),
   };
-  const extensions = Object.values(
-    { ...getStoryblokExtensions({ optimizeImages: options.optimizeImages }), ...blokExtension },
-  );
+  const extensions = Object.values({
+    ...getStoryblokExtensions({ optimizeImages: options.optimizeImages }),
+    ...blokExtension,
+  });
   // Build lookup maps: type name → extension config
   const nodeExtMap = new Map<string, TiptapNode>();
   const markExtMap = new Map<string, TiptapMark>();
   for (const ext of extensions) {
-    if (ext.type === 'node') {
+    if (ext.type === "node") {
       nodeExtMap.set(ext.name, ext as TiptapNode);
     }
-    if (ext.type === 'mark') {
+    if (ext.type === "mark") {
       markExtMap.set(ext.name, ext as TiptapMark);
     }
   }
@@ -85,9 +85,15 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
   // --- Mark merging (ProseMirror-style adjacent text node grouping) ---
 
   /** Renders a group of text nodes with shared marks wrapped once around unique-mark content. */
-  function renderMergedTextNodes(group: TextNode<string>[], shared: MarkNode<string>[]): SBRichTextSegment[] {
+  function renderMergedTextNodes(
+    group: TextNode<string>[],
+    shared: MarkNode<string>[],
+  ): SBRichTextSegment[] {
     const innerSegments: SBRichTextSegment[] = group.flatMap((node) => {
-      return renderText({ ...node, marks: getUniqueMarks(node.marks || [], shared) } as TextNode<string>);
+      return renderText({
+        ...node,
+        marks: getUniqueMarks(node.marks || [], shared),
+      } as TextNode<string>);
     });
 
     // Reverse: matches renderText's [...marks].reverse() iteration order,
@@ -102,13 +108,15 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
       const attrs = mark.attrs ?? {};
       const spec = callExtensionRenderHTML(ext, attrs);
       const tag = getTagFromSpec(spec);
-      segments = [{
-        kind: 'mark' as const,
-        type: mark.type,
-        tag,
-        attrs,
-        content: segments,
-      }];
+      segments = [
+        {
+          kind: "mark" as const,
+          type: mark.type,
+          tag,
+          attrs,
+          content: segments,
+        },
+      ];
     }
 
     return segments;
@@ -127,8 +135,7 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
       }
       if (match.group.length === 1) {
         result.push(...renderText(match.group[0]));
-      }
-      else {
+      } else {
         result.push(...renderMergedTextNodes(match.group, match.shared));
       }
       i = match.endIndex;
@@ -139,10 +146,10 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
   // --- End mark merging helpers ---
 
   function renderNode(node: StoryblokRichTextNode): SBRichTextSegment[] {
-    if (node.type === 'text') {
+    if (node.type === "text") {
       return renderText(node as TextNode<string>);
     }
-    if (node.type === 'doc') {
+    if (node.type === "doc") {
       return node.content?.flatMap(renderNode) ?? [];
     }
 
@@ -160,11 +167,7 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
     const attrs = node.attrs || {};
 
     const spec = callExtensionRenderHTML(ext, attrs);
-    const segment = parseDOMSpec(
-      spec,
-      node.type,
-      children,
-    );
+    const segment = parseDOMSpec(spec, node.type, children);
 
     return [segment];
   }
@@ -175,7 +178,7 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
   function renderText(node: TextNode<string>): SBRichTextSegment[] {
     let segments: SBRichTextSegment[] = [
       {
-        kind: 'text',
+        kind: "text",
         text: node.text,
       },
     ];
@@ -191,9 +194,7 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
       const ext = markExtMap.get(mark.type);
 
       if (!ext?.config?.renderHTML) {
-        segments
-          = options.onUnknownMark?.(mark)
-            ?? segments;
+        segments = options.onUnknownMark?.(mark) ?? segments;
         continue;
       }
 
@@ -202,8 +203,8 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
       const spec = callExtensionRenderHTML(ext, attrs);
       const tag = getTagFromSpec(spec);
 
-      segments = segments.map(seg => ({
-        kind: 'mark',
+      segments = segments.map((seg) => ({
+        kind: "mark",
         type: mark.type,
         tag,
         attrs,
@@ -218,10 +219,7 @@ export function getRichTextSegments(richText: StoryblokRichTextNode, options: St
 /**
  * Call renderHTML safely
  */
-function callExtensionRenderHTML(
-  ext: TiptapNode | TiptapMark,
-  attrs: Attributes,
-): DOMOutputSpec {
+function callExtensionRenderHTML(ext: TiptapNode | TiptapMark, attrs: Attributes): DOMOutputSpec {
   const render = ext.config.renderHTML;
 
   if (!render) {
@@ -233,7 +231,7 @@ function callExtensionRenderHTML(
     parent: null,
   };
 
-  if (ext.type === 'node') {
+  if (ext.type === "node") {
     return (render as any).call(ctx, {
       node: { attrs },
       HTMLAttributes: attrs,
@@ -251,7 +249,7 @@ function callExtensionRenderHTML(
  */
 function getTagFromSpec(spec: DOMOutputSpec): string | null {
   const first = spec?.[0];
-  return typeof first === 'string' ? first : null;
+  return typeof first === "string" ? first : null;
 }
 export function isVoidElement(tag: string) {
   return SELF_CLOSING_TAGS.includes(tag);
@@ -264,17 +262,17 @@ function tryRenderComponent(
 ): ComponentSegment | null {
   const renderComponent = (ext.options as any)?.renderComponent;
 
-  if (typeof renderComponent !== 'function') {
+  if (typeof renderComponent !== "function") {
     return null;
   }
 
   const result = renderComponent(attrs);
 
   return {
-    kind: 'component',
+    kind: "component",
     type,
     props: {
-      ...(result ?? {}),
+      ...result,
     },
   };
 }
@@ -291,8 +289,7 @@ function parseDOMSpec(
   if (isAttributes(maybeAttrs)) {
     attrs = maybeAttrs;
     childrenSpec = rest;
-  }
-  else {
+  } else {
     childrenSpec = [maybeAttrs, ...rest];
   }
 
@@ -310,26 +307,22 @@ function parseDOMSpec(
       continue;
     }
 
-    if (typeof child === 'string') {
+    if (typeof child === "string") {
       content.push({
-        kind: 'text',
+        kind: "text",
         text: child,
       });
     }
   }
   // --- TABLE FIX ---
-  if (tag === 'table') {
+  if (tag === "table") {
     const headerRows: NodeSegment[] = [];
     const bodyRows: NodeSegment[] = [];
 
     for (const row of content as NodeSegment[]) {
-      if (
-        row.tag === 'tr'
-        && row.content.every(cell => (cell as NodeSegment).tag === 'th')
-      ) {
+      if (row.tag === "tr" && row.content.every((cell) => (cell as NodeSegment).tag === "th")) {
         headerRows.push(row);
-      }
-      else {
+      } else {
         bodyRows.push(row as NodeSegment);
       }
     }
@@ -338,9 +331,9 @@ function parseDOMSpec(
 
     if (headerRows.length) {
       content.push({
-        kind: 'node',
-        type: 'thead',
-        tag: 'thead',
+        kind: "node",
+        type: "thead",
+        tag: "thead",
         attrs: {},
         content: headerRows,
       });
@@ -348,28 +341,24 @@ function parseDOMSpec(
 
     if (bodyRows.length) {
       content.push({
-        kind: 'node',
-        type: 'tbody',
-        tag: 'tbody',
+        kind: "node",
+        type: "tbody",
+        tag: "tbody",
         attrs: {},
         content: bodyRows,
       });
     }
   }
   return {
-    kind: 'node',
+    kind: "node",
     type: nodeType,
-    tag: typeof tag === 'string' ? tag : null,
+    tag: typeof tag === "string" ? tag : null,
     attrs,
     content,
   };
 }
 function isAttributes(value: unknown): value is Attributes {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -389,8 +378,8 @@ export function parseStyleString(style: string): Record<string, string> {
   }
 
   // Split by semicolon and remove empty entries
-  style.split(';').forEach((rule) => {
-    const [prop, value] = rule.split(':');
+  style.split(";").forEach((rule) => {
+    const [prop, value] = rule.split(":");
 
     if (!prop || !value) {
       return;

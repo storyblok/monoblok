@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import type { VNode } from 'vue';
-import { createTextVNode, h } from 'vue';
-import { BlockTypes, richTextResolver, type StoryblokRichTextNode, type StoryblokRichTextNodeResolver, type StoryblokRichTextOptions } from '@storyblok/richtext';
-import { StoryblokComponent, useStoryblok } from '@storyblok/vue';
+import type { VNode } from "vue";
+import { createTextVNode, h } from "vue";
+import {
+  BlockTypes,
+  richTextResolver,
+  type StoryblokRichTextNode,
+  type StoryblokRichTextNodeResolver,
+  type StoryblokRichTextOptions,
+} from "@storyblok/richtext";
+import { StoryblokComponent, useStoryblok } from "@storyblok/vue";
 
-import CodeBlock from './CodeBlock.vue';
+import CodeBlock from "./CodeBlock.vue";
 
 /* const doc: StoryblokRichTextDocumentNode = {
   type: 'doc',
@@ -368,18 +374,22 @@ import CodeBlock from './CodeBlock.vue';
   ],
 }; */
 
-const story = await useStoryblok('/vue/test-richtext', {
-  version: 'draft',
+const story = await useStoryblok("/vue/test-richtext", {
+  version: "draft",
 });
 
 const componentResolver: StoryblokRichTextNodeResolver<VNode> = (
   node: StoryblokRichTextNode<VNode>,
 ): VNode => {
-  return node?.attrs?.body.map(blok =>
-    h(StoryblokComponent, {
-      blok,
-      id: node?.attrs?.id,
-    }, node.children),
+  return node?.attrs?.body.map((blok) =>
+    h(
+      StoryblokComponent,
+      {
+        blok,
+        id: node?.attrs?.id,
+      },
+      node.children,
+    ),
   );
 };
 
@@ -389,15 +399,22 @@ const options: StoryblokRichTextOptions<VNode> = {
   keyedResolvers: true,
   resolvers: {
     [BlockTypes.CODE_BLOCK]: (node: StoryblokRichTextNode<VNode>) => {
-      return h(CodeBlock, {
-        class: node?.attrs?.class,
-      }, node.children);
+      return h(
+        CodeBlock,
+        {
+          class: node?.attrs?.class,
+        },
+        node.children,
+      );
     },
     [BlockTypes.COMPONENT]: componentResolver,
   },
 };
 
-const root = () => story.value?.content?.richText ? richTextResolver<VNode>(options).render(story.value.content.richText) : null;
+const root = () =>
+  story.value?.content?.richText
+    ? richTextResolver<VNode>(options).render(story.value.content.richText)
+    : null;
 </script>
 
 <template>

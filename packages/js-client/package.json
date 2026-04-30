@@ -1,7 +1,7 @@
 {
   "name": "storyblok-js-client",
   "type": "module",
-  "version": "7.3.0",
+  "version": "7.3.1",
   "description": "Universal JavaScript SDK for Storyblok's API",
   "author": "Alexander Feiglstorfer <delooks@gmail.com>",
   "license": "MIT",

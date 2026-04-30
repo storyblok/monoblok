@@ -1,48 +1,66 @@
-# Monoblok
+# Storyblok monoblok Agent Guidelines
 
-Storyblok's monorepo for all JavaScript SDKs and tools. Uses pnpm workspaces + Nx.
+> **Note:** `AGENTS.md` is the source of truth. `CLAUDE.md` is a symlink to `AGENTS.md`.
 
 ## Rules
 
-1. **Small diffs** - One logical change per commit
-2. **Plan first** - For non-trivial changes, write a plan before coding
-3. **Verify always** - Run lint/typecheck/tests before considering work done
-4. **No new deps** - Avoid adding dependencies unless strictly necessary
+1. **Be concise** - Drop: filler, pleasantries, hedging.
+2. **Small diffs** - One logical change per commit
+3. **Plan first** - For non-trivial changes, write a plan before coding
+4. **Verify always** - Run lint/typecheck/tests before considering work done
+5. **No new deps** - Avoid adding dependencies unless strictly necessary
 
-## Commands
+## Monorepo setup
 
-```bash
-pnpm install                                                        # Setup
-pnpm nx build cli                                                   # Build single package
-pnpm nx test cli                                                    # Test single package
-pnpm nx lint cli                                                    # Lint single package
-pnpm nx run cli test:types                                          # Typecheck single package
-pnpm nx run-many --target=build,lint,test,test:types --parallel=3   # CI check (run before PR)
-pnpm --filter storyblok test -- --watch                             # Watch mode (cli)
-```
+The project uses `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and `pnpm nx run-many` to build, test, lint, and run parallel CI checks across your projects. E.g., `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
 
-Branch naming: `[fix|feat|chore]/WDX-XXX-[title]`
+- `packages/`: Public packages and integrations.
+- `tools/`: Internal development tools and scripts.
+- Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 
-## Code conventions
+## Storyblok REST and Application Reference
+
+- `../storyrails` (Storyblok backend) - Load when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `spec/integration/openapi/` is the source of truth.
+- `../storyfront` (headless CMS frontend) - Load when matching UI/app behavior, field-type rendering, or admin-side flows.
+
+These sibling repos may not be available; ignore them if absent. Check each repo's `AGENTS.md` for how to consult it.
+
+## Conventions
 
 - **Naming:** Files `kebab-case.ts`, functions/variables `camelCase`, classes/types `PascalCase`, constants `UPPER_SNAKE_CASE`
-- **Types:** Use `type` for object shapes, `interface` for extendable contracts. Explicit return types on public APIs.
+- **Types:** Use `type` for object shapes, `interface` for extendable contracts. Avoid `as` type casts. Explicit return types on public APIs.
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths). Prefer named imports.
-- **Linting:** Run `pnpm nx lint <pkg> --fix` first before fixing lint errors manually.
+- **Linting:** Always lint and type-check affected packages after making changes. Default to `lint:fix` or `--fix` and fix remaining issues.
 
-## API Reference
+## Architecture Decision Records
 
-The **source of truth** for Storyblok Management API schemas is the **storyrails** repo (`spec/integration/openapi/`), not the local `packages/openapi` spec which may lag behind. Flag inconsistencies to the user.
+When a significant architectural decision is made, add a concise new ADR in `adr/` following the existing numbering convention (`0001-`, `0002-`, …).
 
-## Context files
+## Git
 
-For deeper context on specific areas, read the relevant file in `.claude/context/`:
+- **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
+- **IMPORTANT:** Never add `Co-Authored-By` or similar AI attribution trailers to commit messages or PRs.
+- **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
+- **Branch naming:** `[fix|feat|chore]/WDX-XXX-[title]` e.g. `feat/WDX-351-type-safe-schema-support`, `fix/WDX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
+- **Commits:** If information is available, add `Fixes WDX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
 
-- `cli-architecture.md` - CLI command patterns, UI module, migration checklist
-- `testing-patterns.md` - Windows compatibility gotchas, session mocking
-- `storyrails.md` - Backend API behavior, error patterns, auth methods
-- `storyfront.md` - Visual editor bridge protocol between SDKs and Storyblok UI
-- `docs-platform.md` - Docs site conventions, versioning, library doc paths
-- `announcements.md` - SDK announcement article format and tone
-- `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin)
-- `storyblok-swift.md` - Swift SDK (URLSession extension)
+**Worktrees:**
+
+```bash
+bash .agents/skills/blitz/scripts/monotree.sh add <branch-name>     # Create worktree
+bash .agents/skills/blitz/scripts/monotree.sh remove <branch-name>  # Remove worktree
+bash .agents/skills/blitz/scripts/monotree.sh list                  # List worktrees
+```
+
+Worktrees live in `.worktrees/<prefix>-<branch-name>` e.g., `.worktrees/fix-pulling-stories`.
+
+## Docs
+
+For more context, read relevant files in `docs/`:
+
+- `announcements.md` - SDK announcement article format and tone. Load when drafting a release/announcement post.
+- `cli-architecture.md` - CLI command patterns, UI module, migration checklist. Load when adding or modifying a `storyblok` CLI command.
+- `docs-platform.md` - Docs site conventions, versioning, library doc paths. Load when editing docs site content or library docs.
+- `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
+- `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
+- `testing-patterns.md` - Windows compatibility gotchas, session mocking. Load when writing or debugging tests.

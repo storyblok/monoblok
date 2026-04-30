@@ -50,3 +50,5 @@ vite.config.ts.timestamp-*
 .rules
 claude-output
 .storyblok
+.worktrees
+tmp

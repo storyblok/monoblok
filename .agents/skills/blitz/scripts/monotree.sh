@@ -15,7 +15,7 @@ MONOBLOK_ROOT="$(git rev-parse --show-toplevel)"
 
 add_worktree() {
   local name="$1"
-  local worktree_path="../$name"
+  local worktree_path="./.worktrees/$name"
 
   cd "$MONOBLOK_ROOT" || exit 1
 
@@ -29,11 +29,9 @@ add_worktree() {
   cd "$worktree_path" || exit 1
 
   # Copy config directories and files
-  cp -r "$MONOBLOK_ROOT/.claude" .
+  [ -f "$MONOBLOK_ROOT/.claude/settings.local.json" ] && cp "$MONOBLOK_ROOT/.claude/settings.local.json" .claude/
   [ -d "$MONOBLOK_ROOT/.zed" ] && cp -r "$MONOBLOK_ROOT/.zed" .
   [ -d "$MONOBLOK_ROOT/claude-output" ] && cp -r "$MONOBLOK_ROOT/claude-output" .
-  cp "$MONOBLOK_ROOT/.gitignore" .
-  cp "$MONOBLOK_ROOT/CLAUDE.md" .
 
   # Copy all .env files (preserving directory structure, excluding node_modules)
   (cd "$MONOBLOK_ROOT" && find . -name '.env*' -not -path '*/node_modules/*' -print0 | while IFS= read -r -d '' f; do

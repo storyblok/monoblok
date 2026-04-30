@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { appendToFile, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
+import { appendToFile, filterJsonBySuffix, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile } from './filesystem';
 import { join, resolve } from 'pathe';
 
 beforeEach(() => {
@@ -187,6 +187,28 @@ describe('filesystem utils', async () => {
 
     it('should handle filenames with paths', () => {
       expect(getComponentNameFromFilename('/path/to/my_component.js')).toBe('/path/to/my_component');
+    });
+  });
+
+  describe('filterJsonBySuffix', () => {
+    it('should include all JSON files when no suffix is specified', () => {
+      expect(filterJsonBySuffix(['a.json', 'a.dev.json'])).toEqual(['a.json', 'a.dev.json']);
+    });
+
+    it('should include only matching suffix files when suffix is specified', () => {
+      expect(filterJsonBySuffix(['a.json', 'a.dev.json', 'b.staging.json'], 'dev')).toEqual(['a.dev.json']);
+    });
+
+    it('should exclude non-JSON files', () => {
+      expect(filterJsonBySuffix(['a.json', 'readme.txt', 'config.yaml'])).toEqual(['a.json']);
+    });
+
+    it('should not filter out custom filenames with dots', () => {
+      expect(filterJsonBySuffix(['my.components.json'])).toEqual(['my.components.json']);
+    });
+
+    it('should return empty when suffix does not match any file', () => {
+      expect(filterJsonBySuffix(['a.dev.json'], 'staging')).toEqual([]);
     });
   });
 

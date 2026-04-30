@@ -223,7 +223,7 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
       'file_not_found',
       'read',
       new Error('Duplicate datasources detected'),
-      `Duplicate datasources found in ${resolvedPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when datasources exist in both consolidated and separate files. Please, clean up the directory and pull datasources again in the format you intend.`,
+      `Duplicate datasources found in ${resolvedPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. datasources.json and datasources.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull datasources again in the format you intend`,
     );
   }
 

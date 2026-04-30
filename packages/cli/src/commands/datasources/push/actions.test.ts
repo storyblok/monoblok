@@ -151,11 +151,12 @@ describe('push datasources actions', () => {
         })).rejects.toThrow(FileSystemError);
       });
 
-      it('should handle files without suffix pattern correctly', async () => {
-        // Create files with various patterns
+      it('should include all JSON files when no suffix is specified', async () => {
+        // Without --suffix, all .json files are loaded regardless of naming pattern.
+        // Use --suffix to target only a specific environment subset (e.g. --suffix dev).
         vol.fromJSON({
           '/mock/path/datasources/source-space/countries.json': JSON.stringify(mockDatasource1),
-          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify(mockDatasource2), // Has suffix pattern, should be ignored when no suffix specified
+          '/mock/path/datasources/source-space/categories.dev.json': JSON.stringify(mockDatasource2),
         });
 
         const result = await readDatasourcesFiles({
@@ -165,9 +166,9 @@ describe('push datasources actions', () => {
           verbose: false,
         });
 
-        // Should only include files without suffix pattern
-        expect(result.datasources).toHaveLength(1);
-        expect(result.datasources[0]).toEqual(mockDatasource1);
+        expect(result.datasources).toHaveLength(2);
+        expect(result.datasources).toContainEqual(mockDatasource1);
+        expect(result.datasources).toContainEqual(mockDatasource2);
       });
 
       it('should handle non-JSON files gracefully', async () => {

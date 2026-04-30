@@ -224,11 +224,12 @@ describe('push components actions', () => {
         })).rejects.toThrow(FileSystemError);
       });
 
-      it('should handle files without suffix pattern correctly', async () => {
-        // Create files with various patterns
+      it('should include all JSON files when no suffix is specified', async () => {
+        // Without --suffix, all .json files are loaded regardless of naming pattern.
+        // Use --suffix to target only a specific environment subset (e.g. --suffix dev).
         vol.fromJSON({
           '/mock/path/components/source-space/hero.json': JSON.stringify(mockComponent1),
-          '/mock/path/components/source-space/feature.dev.json': JSON.stringify(mockComponent2), // Has suffix pattern, should be ignored
+          '/mock/path/components/source-space/feature.dev.json': JSON.stringify(mockComponent2),
         });
 
         const result = await readComponentsFiles({
@@ -238,9 +239,9 @@ describe('push components actions', () => {
           verbose: false,
         });
 
-        // Should only include files without suffix pattern
-        expect(result.components).toHaveLength(1);
-        expect(result.components[0]).toEqual(mockComponent1);
+        expect(result.components).toHaveLength(2);
+        expect(result.components).toContainEqual(mockComponent1);
+        expect(result.components).toContainEqual(mockComponent2);
       });
 
       it('should handle non-JSON files gracefully', async () => {

@@ -82,7 +82,7 @@ export async function loadComponents(
       'file_not_found',
       'read',
       new Error('Duplicate components detected'),
-      `Duplicate components found in ${directoryPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when components exist in both consolidated and separate files. Please, clean up the directory and pull components again in the format you intend.`,
+      `Duplicate components found in ${directoryPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. components.json and components.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull components again in the format you intend`,
     );
   }
 

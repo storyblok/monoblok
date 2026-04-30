@@ -1,6 +1,7 @@
 import type { Component } from '../components/constants';
 import type { Story } from './constants';
 import { loadComponents } from '../components/loader';
+import { FileSystemError } from '../../utils/error/filesystem-error';
 
 /**
  * @method isStoryPublishedWithoutChanges
@@ -32,6 +33,10 @@ export const findComponentSchemas = async (directoryPath: string) => {
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return {};
+    }
+    if (error instanceof FileSystemError) {
+      error.message = `Failed to load component schemas for content validation.\n\n${error.message}`;
+      throw error;
     }
     throw error;
   }

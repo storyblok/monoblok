@@ -1,12 +1,14 @@
-import { join } from 'pathe';
-import { handleAPIError, handleFileSystemError } from '../../utils';
-import { resolvePath, saveToFile } from '../../utils/filesystem';
-import type { PullLanguagesOptions } from './constants';
-import { DEFAULT_LANGUAGES_FILENAME } from './constants';
-import type { SpaceInternationalization } from '../../types';
-import { fetchSpace } from '../spaces';
+import { join } from "pathe";
+import { handleAPIError, handleFileSystemError } from "../../utils";
+import { resolvePath, saveToFile } from "../../utils/filesystem";
+import type { PullLanguagesOptions } from "./constants";
+import { DEFAULT_LANGUAGES_FILENAME } from "./constants";
+import type { SpaceInternationalization } from "../../types";
+import { fetchSpace } from "../spaces";
 
-export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationalization | undefined> => {
+export const fetchLanguages = async (
+  spaceId: string,
+): Promise<SpaceInternationalization | undefined> => {
   try {
     const space = await fetchSpace(spaceId);
     if (space?.default_lang_name !== undefined && space?.languages?.length) {
@@ -15,13 +17,16 @@ export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationa
         languages: space?.languages,
       };
     }
-  }
-  catch (error) {
-    handleAPIError('pull_languages', error);
+  } catch (error) {
+    handleAPIError("pull_languages", error);
   }
 };
 
-export const saveLanguagesToFile = async (space: string, internationalizationOptions: SpaceInternationalization, options: PullLanguagesOptions) => {
+export const saveLanguagesToFile = async (
+  space: string,
+  internationalizationOptions: SpaceInternationalization,
+  options: PullLanguagesOptions,
+) => {
   try {
     const { filename = DEFAULT_LANGUAGES_FILENAME, suffix, path } = options;
     const data = JSON.stringify(internationalizationOptions, null, 2);
@@ -30,8 +35,7 @@ export const saveLanguagesToFile = async (space: string, internationalizationOpt
     const filePath = join(resolvedPath, name);
 
     await saveToFile(filePath, data);
-  }
-  catch (error) {
-    handleFileSystemError('write', error as Error);
+  } catch (error) {
+    handleFileSystemError("write", error as Error);
   }
 };

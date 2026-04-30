@@ -1,9 +1,12 @@
-import type { CommanderCommand, PlainObject, ResolvedCliConfig } from './types';
-import { getOptionPath, getValueAtPath, setValueAtPath } from './helpers';
+import type { CommanderCommand, PlainObject, ResolvedCliConfig } from "./types";
+import { getOptionPath, getValueAtPath, setValueAtPath } from "./helpers";
 
 // Sets defaults. If, at Commander flag-level, some options has defauls, they'll override
 // the ones from the config file defaults
-export function collectGlobalDefaults(root: CommanderCommand, baseDefaults: PlainObject): PlainObject {
+export function collectGlobalDefaults(
+  root: CommanderCommand,
+  baseDefaults: PlainObject,
+): PlainObject {
   const defaults = baseDefaults;
   for (const option of root.options) {
     if (option.defaultValue === undefined) {
@@ -33,7 +36,11 @@ export function collectLocalDefaults(commands: CommanderCommand[]): PlainObject 
 
 // Translate explicit CLI flags into config objects: root options mutate the global tree,
 // nested commands only patch their own local option bag (no deep paths involved).
-export function applyCliOverrides(commandChain: CommanderCommand[], globalResolved: PlainObject, localResolved: PlainObject): void {
+export function applyCliOverrides(
+  commandChain: CommanderCommand[],
+  globalResolved: PlainObject,
+  localResolved: PlainObject,
+): void {
   const [root] = commandChain;
   for (const command of commandChain) {
     const isRoot = command === root;
@@ -41,7 +48,7 @@ export function applyCliOverrides(commandChain: CommanderCommand[], globalResolv
       const attrName = option.attributeName();
       const source = command.getOptionValueSource(attrName);
       // Skip commander defaults/config hydration so we only react to explicit CLI input.
-      if (!source || source === 'default' || source === 'config') {
+      if (!source || source === "default" || source === "config") {
         continue;
       }
       const value = command.getOptionValue(attrName);
@@ -50,8 +57,7 @@ export function applyCliOverrides(commandChain: CommanderCommand[], globalResolv
         // Global CLI overrides must also win over module-level config that may have
         // set the same key in localResolved (e.g. --path overriding modules.*.path).
         delete localResolved[attrName];
-      }
-      else {
+      } else {
         localResolved[attrName] = value;
       }
     }
@@ -59,20 +65,23 @@ export function applyCliOverrides(commandChain: CommanderCommand[], globalResolv
 }
 
 // Hydrate Commander options with resolved config so downstream logic can rely on option values.
-export function applyConfigToCommander(commandChain: CommanderCommand[], resolved: ResolvedCliConfig): void {
+export function applyConfigToCommander(
+  commandChain: CommanderCommand[],
+  resolved: ResolvedCliConfig,
+): void {
   for (const command of commandChain) {
     for (const option of command.options) {
       const attrName = option.attributeName();
       const source = command.getOptionValueSource(attrName);
       // Never overwrite explicit CLI flags; only hydrate values that still come from defaults.
-      if (source && source !== 'default' && source !== 'config') {
+      if (source && source !== "default" && source !== "config") {
         continue;
       }
       const value = getValueAtPath(resolved, getOptionPath(option));
       if (value === undefined) {
         continue;
       }
-      command.setOptionValueWithSource(attrName, value, 'config');
+      command.setOptionValueWithSource(attrName, value, "config");
     }
   }
 }

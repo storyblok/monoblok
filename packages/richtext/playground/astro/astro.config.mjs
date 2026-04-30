@@ -1,8 +1,8 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'pathe';
-import { storyblok } from '@storyblok/astro';
+import { defineConfig } from "astro/config";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "pathe";
+import { storyblok } from "@storyblok/astro";
 
 // Get the directory path using import.meta.url
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -11,7 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   integrations: [
     storyblok({
-      accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
+      accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
       enableFallbackComponent: true,
     }),
   ],
@@ -20,7 +20,7 @@ export default defineConfig({
     resolve: {
       alias: {
         // Define your aliases here
-        '@storyblok/richtext': resolve(__dirname, '../../src/index.ts'),
+        "@storyblok/richtext": resolve(__dirname, "../../src/index.ts"),
       },
     },
   },

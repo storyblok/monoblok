@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { readdirSync, readFileSync, statSync } from 'fs';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
+import { readdirSync, readFileSync, statSync } from "fs";
+import { join } from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Reads `packages/*​/package.json` and splits packages by whether their
@@ -10,12 +10,12 @@ import { fileURLToPath } from 'url';
  * Packages without a `release.branches` field are eligible on every
  * release branch.
  */
-export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
+export function getBranchEligiblePackages(branch, packagesDir = "packages") {
   const eligible = [];
   const excluded = [];
 
   for (const entry of readdirSync(packagesDir).sort()) {
-    const pkgPath = join(packagesDir, entry, 'package.json');
+    const pkgPath = join(packagesDir, entry, "package.json");
 
     let stat;
     try {
@@ -27,7 +27,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
 
     let pkg;
     try {
-      pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+      pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     } catch (err) {
       process.stderr.write(`⚠️  Warning: failed to parse ${pkgPath} — skipping (${err.message})\n`);
       continue;
@@ -41,9 +41,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
       continue;
     }
 
-    const branchNames = branches
-      .map(b => (typeof b === 'string' ? b : b?.name))
-      .filter(Boolean);
+    const branchNames = branches.map((b) => (typeof b === "string" ? b : b?.name)).filter(Boolean);
 
     if (branchNames.includes(branch)) {
       eligible.push(pkg.name);
@@ -60,9 +58,9 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const branch = process.argv[2];
   if (!branch) {
-    process.stderr.write('Usage: node tools/release-branches.mjs <branch>\n');
+    process.stderr.write("Usage: node tools/release-branches.mjs <branch>\n");
     process.exit(1);
   }
   const { eligible } = getBranchEligiblePackages(branch);
-  process.stdout.write(eligible.join(','));
+  process.stdout.write(eligible.join(","));
 }

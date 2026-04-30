@@ -1,15 +1,15 @@
-import chalk from 'chalk';
-import { colorPalette, commands } from '../../constants';
-import { getProgram } from '../../program';
-import { handleError, konsola } from '../../utils';
-import { buildSignupUrl, openSignupInBrowser } from './actions';
-import { session } from '../../session';
+import chalk from "chalk";
+import { colorPalette, commands } from "../../constants";
+import { getProgram } from "../../program";
+import { handleError, konsola } from "../../utils";
+import { buildSignupUrl, openSignupInBrowser } from "./actions";
+import { session } from "../../session";
 
 const program = getProgram(); // Get the shared singleton instance
 
 export const signupCommand = program
   .command(commands.SIGNUP)
-  .description('Sign up for Storyblok')
+  .description("Sign up for Storyblok")
   .action(async () => {
     konsola.title(`${commands.SIGNUP}`, colorPalette.SIGNUP);
     // Global options
@@ -17,7 +17,9 @@ export const signupCommand = program
     const { state } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
-      konsola.ok(`You are already logged in. If you want to signup with a different account, please logout first.`);
+      konsola.ok(
+        `You are already logged in. If you want to signup with a different account, please logout first.`,
+      );
       return;
     }
 
@@ -33,9 +35,10 @@ export const signupCommand = program
 
       konsola.ok(`Browser opened! Please complete the signup process.`);
       konsola.br();
-      konsola.info(`Once you've completed signup, run ${chalk.hex(colorPalette.PRIMARY)('storyblok login')} to authenticate with the CLI.`);
-    }
-    catch (error) {
+      konsola.info(
+        `Once you've completed signup, run ${chalk.hex(colorPalette.PRIMARY)("storyblok login")} to authenticate with the CLI.`,
+      );
+    } catch (error) {
       konsola.br();
       handleError(error as Error, verbose);
     }

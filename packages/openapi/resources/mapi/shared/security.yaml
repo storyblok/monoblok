@@ -4,5 +4,5 @@
 # Personal Access Token - used without "Bearer" keyword
 - PersonalAccessToken: []
 
-# OAuth Access Token - used with "Bearer" keyword  
+# OAuth Access Token - used with "Bearer" keyword
 - BearerAuth: []

@@ -1,9 +1,6 @@
-import { storyblokInit as sbInit } from '@storyblok/js';
+import { storyblokInit as sbInit } from "@storyblok/js";
 
-import type {
-  SbReactSDKOptions,
-  StoryblokClient,
-} from '@/types';
+import type { SbReactSDKOptions, StoryblokClient } from "@/types";
 
 import {
   getComponent,
@@ -14,8 +11,8 @@ import {
   setCustomFallbackComponent,
   setEnableFallbackComponent,
   setStoryblokApiInstance,
-} from './state';
-import { useStoryblokApi } from './use-storyblok-api';
+} from "./state";
+import { useStoryblokApi } from "./use-storyblok-api";
 
 export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => StoryblokClient) => {
   const existingInstance = getStoryblokApiInstance();

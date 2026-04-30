@@ -15,12 +15,12 @@ describe("@storyblok/astro", () => {
     cy.get("[data-test=page-component]").should(
       "have.attr",
       "data-blok-uid",
-      "291636474-b0efb26b-f00a-455f-8862-4a6e650c1d4d"
+      "291636474-b0efb26b-f00a-455f-8862-4a6e650c1d4d",
     );
     cy.get("[data-test=page-component]").should(
       "have.attr",
       "data-blok-c",
-      `{"name":"page","space":"221046","uid":"b0efb26b-f00a-455f-8862-4a6e650c1d4d","id":"291636474"}`
+      `{"name":"page","space":"221046","uid":"b0efb26b-f00a-455f-8862-4a6e650c1d4d","id":"291636474"}`,
     );
   });
   it("globally registered feature component is loaded correctly", () => {

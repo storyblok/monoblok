@@ -1,53 +1,59 @@
-import { generateStoryblokTypes, generateTypes, getComponentType, getStoryType, saveTypesToComponentsFile } from './actions';
-import { vol } from 'memfs';
-import { readFileSync } from 'node:fs';
-import { join, resolve } from 'pathe';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Component, SpaceComponentsData } from '../../../commands/components/constants';
-import type { GenerateTypesOptions } from './constants';
+import {
+  generateStoryblokTypes,
+  generateTypes,
+  getComponentType,
+  getStoryType,
+  saveTypesToComponentsFile,
+} from "./actions";
+import { vol } from "memfs";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "pathe";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Component, SpaceComponentsData } from "../../../commands/components/constants";
+import type { GenerateTypesOptions } from "./constants";
 
 // Import the mocked functions
-import { saveToFile } from '../../../utils/filesystem';
-import type { SpaceDatasource } from '../../datasources/constants';
+import { saveToFile } from "../../../utils/filesystem";
+import type { SpaceDatasource } from "../../datasources/constants";
 
 // Mock datasource for testing
 const mockDatasource: SpaceDatasource = {
   id: 1,
-  name: 'Countries',
-  slug: 'countries',
-  created_at: '2021-08-09T12:00:00Z',
-  updated_at: '2021-08-09T12:00:00Z',
+  name: "Countries",
+  slug: "countries",
+  created_at: "2021-08-09T12:00:00Z",
+  updated_at: "2021-08-09T12:00:00Z",
   entries: [
-    { id: 101, name: 'United States', value: 'us', dimension_value: '', datasource_id: 1 },
-    { id: 102, name: 'Canada', value: 'ca', dimension_value: '', datasource_id: 1 },
+    { id: 101, name: "United States", value: "us", dimension_value: "", datasource_id: 1 },
+    { id: 102, name: "Canada", value: "ca", dimension_value: "", datasource_id: 1 },
   ],
 };
 
 // Mock the filesystem module
-vi.mock('../../../utils/filesystem', () => ({
+vi.mock("../../../utils/filesystem", () => ({
   saveToFile: vi.fn().mockResolvedValue(undefined),
-  resolvePath: vi.fn().mockReturnValue('/mocked/resolved/path'),
+  resolvePath: vi.fn().mockReturnValue("/mocked/resolved/path"),
 }));
 
 // Mock the fs module
-vi.mock('node:fs', () => ({
-  readFileSync: vi.fn().mockReturnValue(''),
+vi.mock("node:fs", () => ({
+  readFileSync: vi.fn().mockReturnValue(""),
 }));
 
-vi.mock('pathe', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('pathe')>();
+vi.mock("pathe", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("pathe")>();
   return {
     ...actual,
-    resolve: vi.fn().mockReturnValue('/mocked/path'),
-    join: vi.fn().mockReturnValue('/mocked/joined/path'),
+    resolve: vi.fn().mockReturnValue("/mocked/path"),
+    join: vi.fn().mockReturnValue("/mocked/joined/path"),
   };
 });
 
 // Mock pathToFileURL so dynamic imports resolve consistently on all platforms.
 // On Windows, pathToFileURL adds a drive-letter prefix (file:///D:/…) which
 // prevents vi.mock('/mocked/path') from intercepting the import.
-vi.mock('node:url', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:url')>();
+vi.mock("node:url", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:url")>();
   return {
     ...actual,
     pathToFileURL: (p: string) => ({ href: p }),
@@ -56,14 +62,14 @@ vi.mock('node:url', async (importOriginal) => {
 
 // Create a mock for the custom fields parser
 const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {
-  if (field.field_type === 'native-color-picker') {
+  if (field.field_type === "native-color-picker") {
     return {
       [key]: {
         properties: {
-          color: { type: 'string' },
+          color: { type: "string" },
         },
-        required: ['color'],
-        type: 'object',
+        required: ["color"],
+        type: "object",
       },
     };
   }
@@ -71,12 +77,12 @@ const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {
 });
 
 // Mock the dynamic import
-vi.mock('/mocked/path', () => ({
+vi.mock("/mocked/path", () => ({
   default: mockCustomFieldsParser,
 }));
 
 // Mock the import function
-vi.mock('node:module', () => ({
+vi.mock("node:module", () => ({
   import: vi.fn().mockResolvedValue({
     default: mockCustomFieldsParser,
   }),
@@ -84,7 +90,7 @@ vi.mock('node:module', () => ({
 
 // Set up the virtual file system with our custom fields parser
 vol.fromJSON({
-  '/path/to/custom/parser.ts': `
+  "/path/to/custom/parser.ts": `
 export default (key: string, field: any) => {
   switch (field.field_type) {
     case 'native-color-picker':
@@ -103,7 +109,7 @@ export default (key: string, field: any) => {
 };
 `,
   // Add a mock storyblok.ts file for testing generateStoryblokTypes
-  '/mocked/path': `
+  "/mocked/path": `
 // Storyblok types
 export type StoryblokPropertyType = 'text' | 'textarea' | 'number' | 'boolean' | 'multilink' | 'bloks' | 'custom';
 
@@ -153,29 +159,29 @@ export interface StoryblokCustom {
 });
 
 // Set up the mock content for readFileSync
-const mockStoryblokContent = vol.readFileSync('/mocked/path', 'utf-8') as string;
+const mockStoryblokContent = vol.readFileSync("/mocked/path", "utf-8") as string;
 vi.mocked(readFileSync).mockImplementation((path) => {
-  if (path === '/mocked/path') {
+  if (path === "/mocked/path") {
     return mockStoryblokContent;
   }
-  return '';
+  return "";
 });
 
 const mockSpaceData: SpaceComponentsData = {
   components: [
     {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         title: {
-          type: 'text',
+          type: "text",
           required: true,
         },
         description: {
-          type: 'textarea',
+          type: "textarea",
           required: false,
         },
       },
@@ -189,8 +195,8 @@ const mockSpaceData: SpaceComponentsData = {
   internalTags: [],
 };
 
-describe('generate types actions', () => {
-  it('should generate types successfully', async () => {
+describe("generate types actions", () => {
+  it("should generate types successfully", async () => {
     // Create mock options
     const mockOptions: GenerateTypesOptions = {
       strict: false,
@@ -200,31 +206,31 @@ describe('generate types actions', () => {
     const result = await generateTypes(mockSpaceData, mockOptions);
 
     // Verify the result contains expected content
-    expect(result).toContain('// This file was generated by the storyblok CLI.');
-    expect(result).toContain('// DO NOT MODIFY THIS FILE BY HAND.');
-    expect(result).toContain('export interface TestComponent');
-    expect(result).toContain('title: string');
-    expect(result).toContain('description?: string');
+    expect(result).toContain("// This file was generated by the storyblok CLI.");
+    expect(result).toContain("// DO NOT MODIFY THIS FILE BY HAND.");
+    expect(result).toContain("export interface TestComponent");
+    expect(result).toContain("title: string");
+    expect(result).toContain("description?: string");
     expect(result).toContain('component: "test_component"');
-    expect(result).toContain('_uid: string');
-    expect(result).toContain('[k: string]: unknown');
+    expect(result).toContain("_uid: string");
+    expect(result).toContain("[k: string]: unknown");
   });
 
-  it('should generate types successfully with strict mode', async () => {
+  it("should generate types successfully with strict mode", async () => {
     const mockOptions: GenerateTypesOptions = {
       strict: true,
     };
 
     const result = await generateTypes(mockSpaceData, mockOptions);
 
-    expect(result).not.toContain('[k: string]: unknown');
+    expect(result).not.toContain("[k: string]: unknown");
   });
 
-  it('should handle customFieldsParser option', async () => {
+  it("should handle customFieldsParser option", async () => {
     // Create mock options with customFieldsParser
     const mockOptions: GenerateTypesOptions = {
       strict: false,
-      customFieldsParser: '/path/to/custom/parser.ts',
+      customFieldsParser: "/path/to/custom/parser.ts",
     };
 
     // Call the function with the customFieldsParser option
@@ -233,19 +239,19 @@ describe('generate types actions', () => {
     // Verify that the result is generated successfully
     expect(result).toBeDefined();
     if (result) {
-      expect(typeof result).toBe('string');
+      expect(typeof result).toBe("string");
       expect(result.length).toBeGreaterThan(0);
     }
 
     // Verify that resolve was called with the customFieldsParser path
-    expect(resolve).toHaveBeenCalledWith('/path/to/custom/parser.ts');
+    expect(resolve).toHaveBeenCalledWith("/path/to/custom/parser.ts");
   });
 
-  it('should handle compilerOptions option', async () => {
+  it("should handle compilerOptions option", async () => {
     // Create mock options with compilerOptions
     const mockOptions: GenerateTypesOptions = {
       strict: false,
-      compilerOptions: '/path/to/compiler/options',
+      compilerOptions: "/path/to/compiler/options",
     };
 
     // Call the function with the compilerOptions option
@@ -254,34 +260,34 @@ describe('generate types actions', () => {
     // Verify that the result is generated successfully
     expect(result).toBeDefined();
     if (result) {
-      expect(typeof result).toBe('string');
+      expect(typeof result).toBe("string");
       expect(result.length).toBeGreaterThan(0);
     }
 
     // Verify that resolve was called with the compilerOptions path
-    expect(resolve).toHaveBeenCalledWith('/path/to/compiler/options');
+    expect(resolve).toHaveBeenCalledWith("/path/to/compiler/options");
   });
 
-  it('should apply typePrefix to component type names', async () => {
+  it("should apply typePrefix to component type names", async () => {
     // Create mock options with typePrefix
     const mockOptions: GenerateTypesOptions = {
       strict: false,
-      typePrefix: 'Custom',
+      typePrefix: "Custom",
     };
 
     // Call the function with the typePrefix option
     const result = await generateTypes(mockSpaceData, mockOptions);
 
     // Verify that the result contains the expected prefixed type name
-    expect(result).toContain('export interface CustomTestComponent');
-    expect(result).toContain('title: string');
-    expect(result).toContain('description?: string');
+    expect(result).toContain("export interface CustomTestComponent");
+    expect(result).toContain("title: string");
+    expect(result).toContain("description?: string");
     expect(result).toContain('component: "test_component"');
-    expect(result).toContain('_uid: string');
-    expect(result).toContain('[k: string]: unknown');
+    expect(result).toContain("_uid: string");
+    expect(result).toContain("[k: string]: unknown");
   });
 
-  it('should generate separate files when separateFiles option is true', async () => {
+  it("should generate separate files when separateFiles option is true", async () => {
     const mockOptions: GenerateTypesOptions = {
       strict: false,
       separateFiles: true,
@@ -296,36 +302,38 @@ describe('generate types actions', () => {
 
       // Each file should have name and content properties
       result.forEach((file) => {
-        expect(file).toHaveProperty('name');
-        expect(file).toHaveProperty('content');
-        expect(typeof file.name).toBe('string');
-        expect(typeof file.content).toBe('string');
+        expect(file).toHaveProperty("name");
+        expect(file).toHaveProperty("content");
+        expect(typeof file.name).toBe("string");
+        expect(typeof file.content).toBe("string");
       });
 
       // Find the TestComponent file
-      const testComponentFile = result.find(f => f.name === 'TestComponent');
+      const testComponentFile = result.find((f) => f.name === "TestComponent");
       expect(testComponentFile).toBeDefined();
       if (testComponentFile) {
-        expect(testComponentFile.content).toContain('// This file was generated by the storyblok CLI.');
-        expect(testComponentFile.content).toContain('export interface TestComponent');
-        expect(testComponentFile.content).toContain('title: string');
-        expect(testComponentFile.content).toContain('description?: string');
+        expect(testComponentFile.content).toContain(
+          "// This file was generated by the storyblok CLI.",
+        );
+        expect(testComponentFile.content).toContain("export interface TestComponent");
+        expect(testComponentFile.content).toContain("title: string");
+        expect(testComponentFile.content).toContain("description?: string");
       }
     }
   });
 
-  it('should generate content-types file when using separateFiles with content types', async () => {
+  it("should generate content-types file when using separateFiles with content types", async () => {
     const spaceDataWithContentTypes: SpaceComponentsData = {
       components: [
         {
-          name: 'page',
-          display_name: 'Page',
-          created_at: '2023-01-01T00:00:00Z',
-          updated_at: '2023-01-01T00:00:00Z',
+          name: "page",
+          display_name: "Page",
+          created_at: "2023-01-01T00:00:00Z",
+          updated_at: "2023-01-01T00:00:00Z",
           id: 1,
           schema: {
             title: {
-              type: 'text',
+              type: "text",
               required: true,
             },
           },
@@ -335,14 +343,14 @@ describe('generate types actions', () => {
           is_nestable: false,
         },
         {
-          name: 'article',
-          display_name: 'Article',
-          created_at: '2023-01-01T00:00:00Z',
-          updated_at: '2023-01-01T00:00:00Z',
+          name: "article",
+          display_name: "Article",
+          created_at: "2023-01-01T00:00:00Z",
+          updated_at: "2023-01-01T00:00:00Z",
           id: 2,
           schema: {
             headline: {
-              type: 'text',
+              type: "text",
               required: true,
             },
           },
@@ -368,19 +376,21 @@ describe('generate types actions', () => {
     expect(Array.isArray(result)).toBe(true);
     if (Array.isArray(result)) {
       // Should have content-types file
-      const contentTypesFile = result.find(f => f.name === 'content-types');
+      const contentTypesFile = result.find((f) => f.name === "content-types");
       expect(contentTypesFile).toBeDefined();
       if (contentTypesFile) {
-        expect(contentTypesFile.content).toContain('export type ContentType');
-        expect(contentTypesFile.content).toContain('Page');
-        expect(contentTypesFile.content).toContain('Article');
-        expect(contentTypesFile.content).toContain('import type { Page } from \'./Page.d.ts\';');
-        expect(contentTypesFile.content).toContain('import type { Article } from \'./Article.d.ts\';');
+        expect(contentTypesFile.content).toContain("export type ContentType");
+        expect(contentTypesFile.content).toContain("Page");
+        expect(contentTypesFile.content).toContain("Article");
+        expect(contentTypesFile.content).toContain("import type { Page } from './Page.d.ts';");
+        expect(contentTypesFile.content).toContain(
+          "import type { Article } from './Article.d.ts';",
+        );
       }
     }
   });
 
-  it('should generate datasources file when using separateFiles with datasources', async () => {
+  it("should generate datasources file when using separateFiles with datasources", async () => {
     const spaceDataWithDatasources: SpaceComponentsData = {
       components: [],
       datasources: [mockDatasource],
@@ -399,24 +409,24 @@ describe('generate types actions', () => {
     expect(Array.isArray(result)).toBe(true);
     if (Array.isArray(result)) {
       // Should have datasources file
-      const datasourcesFile = result.find(f => f.name === 'datasource-types');
+      const datasourcesFile = result.find((f) => f.name === "datasource-types");
       expect(datasourcesFile).toBeDefined();
       if (datasourcesFile) {
-        expect(datasourcesFile.content).toContain('CountriesDataSource');
+        expect(datasourcesFile.content).toContain("CountriesDataSource");
         expect(datasourcesFile.content).toContain('"us"');
         expect(datasourcesFile.content).toContain('"ca"');
       }
     }
   });
 
-  it('should handle null or undefined component schema', async () => {
+  it("should handle null or undefined component schema", async () => {
     const spaceDataWithNullSchema: SpaceComponentsData = {
       components: [
         {
-          name: 'empty_component',
-          display_name: 'Empty Component',
-          created_at: '2023-01-01T00:00:00Z',
-          updated_at: '2023-01-01T00:00:00Z',
+          name: "empty_component",
+          display_name: "Empty Component",
+          created_at: "2023-01-01T00:00:00Z",
+          updated_at: "2023-01-01T00:00:00Z",
           id: 1,
           schema: null as any,
           internal_tags_list: [],
@@ -438,29 +448,28 @@ describe('generate types actions', () => {
     expect(result).toBeDefined();
   });
 
-  it('should filter out datasources with null or undefined slug', async () => {
+  it("should filter out datasources with null or undefined slug", async () => {
     const spaceDataWithInvalidDatasource: SpaceComponentsData = {
       components: [],
       datasources: [
         {
           id: 1,
-          name: 'Valid Datasource',
-          slug: 'valid_datasource',
-          created_at: '2021-08-09T12:00:00Z',
-          updated_at: '2021-08-09T12:00:00Z',
+          name: "Valid Datasource",
+          slug: "valid_datasource",
+          created_at: "2021-08-09T12:00:00Z",
+          updated_at: "2021-08-09T12:00:00Z",
           entries: [
-            { id: 1, name: 'Item 1', value: 'item1', dimension_value: '', datasource_id: 1 },
-
+            { id: 1, name: "Item 1", value: "item1", dimension_value: "", datasource_id: 1 },
           ],
         },
         {
           id: 2,
-          name: 'Invalid Datasource',
-          created_at: '2021-08-09T12:00:00Z',
-          updated_at: '2021-08-09T12:00:00Z',
+          name: "Invalid Datasource",
+          created_at: "2021-08-09T12:00:00Z",
+          updated_at: "2021-08-09T12:00:00Z",
           slug: null as any,
           entries: [
-            { id: 2, name: 'Item 2', value: 'item2', dimension_value: '', datasource_id: 2 },
+            { id: 2, name: "Item 2", value: "item2", dimension_value: "", datasource_id: 2 },
           ],
         },
       ],
@@ -477,112 +486,112 @@ describe('generate types actions', () => {
 
     // Should only contain the valid datasource
     expect(result).toBeDefined();
-    if (typeof result === 'string') {
-      expect(result).toContain('ValidDatasourceDataSource');
-      expect(result).not.toContain('InvalidDatasourceDataSource');
+    if (typeof result === "string") {
+      expect(result).toContain("ValidDatasourceDataSource");
+      expect(result).not.toContain("InvalidDatasourceDataSource");
     }
   });
 });
 
-describe('getComponentType', () => {
-  it('should convert component name to PascalCase', () => {
+describe("getComponentType", () => {
+  it("should convert component name to PascalCase", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('test_component', options)).toBe('TestComponent');
+    expect(getComponentType("test_component", options)).toBe("TestComponent");
   });
 
-  it('should handle special characters in component name', () => {
+  it("should handle special characters in component name", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('test-component!', options)).toBe('TestComponent');
+    expect(getComponentType("test-component!", options)).toBe("TestComponent");
   });
 
-  it('should handle emojis in component name', () => {
+  it("should handle emojis in component name", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('test😀component', options)).toBe('TestComponent');
+    expect(getComponentType("test😀component", options)).toBe("TestComponent");
   });
 
-  it('should handle multiple consecutive special characters', () => {
+  it("should handle multiple consecutive special characters", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('test___component', options)).toBe('TestComponent');
+    expect(getComponentType("test___component", options)).toBe("TestComponent");
   });
 
-  it('should handle component names starting with numbers', () => {
+  it("should handle component names starting with numbers", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('123component', options)).toBe('_123component');
+    expect(getComponentType("123component", options)).toBe("_123component");
   });
 
-  it('should apply typePrefix when provided', () => {
+  it("should apply typePrefix when provided", () => {
     const options: GenerateTypesOptions = {
-      typePrefix: 'Custom',
+      typePrefix: "Custom",
     };
-    expect(getComponentType('test_component', options)).toBe('CustomTestComponent');
+    expect(getComponentType("test_component", options)).toBe("CustomTestComponent");
   });
 
-  it('should handle empty typePrefix', () => {
+  it("should handle empty typePrefix", () => {
     const options: GenerateTypesOptions = {
-      typePrefix: '',
+      typePrefix: "",
     };
-    expect(getComponentType('test_component', options)).toBe('TestComponent');
+    expect(getComponentType("test_component", options)).toBe("TestComponent");
   });
 
-  it('should apply typeSuffix when provided', () => {
+  it("should apply typeSuffix when provided", () => {
     const options: GenerateTypesOptions = {
-      typeSuffix: 'CustomSuffixValue',
+      typeSuffix: "CustomSuffixValue",
     };
-    expect(getComponentType('test_component', options)).toBe('TestComponentCustomSuffixValue');
+    expect(getComponentType("test_component", options)).toBe("TestComponentCustomSuffixValue");
   });
 
-  it('should handle empty typeSuffix', () => {
+  it("should handle empty typeSuffix", () => {
     const options: GenerateTypesOptions = {
-      typeSuffix: '',
+      typeSuffix: "",
     };
-    expect(getComponentType('test_component', options)).toBe('TestComponent');
+    expect(getComponentType("test_component", options)).toBe("TestComponent");
   });
 
-  it('should handle component names with spaces', () => {
+  it("should handle component names with spaces", () => {
     const options: GenerateTypesOptions = {};
-    expect(getComponentType('test component', options)).toBe('TestComponent');
+    expect(getComponentType("test component", options)).toBe("TestComponent");
   });
 });
 
-describe('getStoryType', () => {
-  it('should convert property names to the correct format', () => {
+describe("getStoryType", () => {
+  it("should convert property names to the correct format", () => {
     // Test cases for different property name formats
-    expect(getStoryType('my_property')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('my-property')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('myProperty')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('MyProperty')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('my property')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('my_property_name')).toBe('ISbStoryData<MyPropertyName>');
+    expect(getStoryType("my_property")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("my-property")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("myProperty")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("MyProperty")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("my property")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("my_property_name")).toBe("ISbStoryData<MyPropertyName>");
   });
 
-  it('should handle special characters and numbers', () => {
-    expect(getStoryType('my_property_123')).toBe('ISbStoryData<MyProperty123>');
-    expect(getStoryType('my-property!')).toBe('ISbStoryData<MyProperty>');
-    expect(getStoryType('my_property@name')).toBe('ISbStoryData<MyPropertyName>');
+  it("should handle special characters and numbers", () => {
+    expect(getStoryType("my_property_123")).toBe("ISbStoryData<MyProperty123>");
+    expect(getStoryType("my-property!")).toBe("ISbStoryData<MyProperty>");
+    expect(getStoryType("my_property@name")).toBe("ISbStoryData<MyPropertyName>");
   });
 
-  it('should handle empty or single character properties', () => {
-    expect(getStoryType('')).toBe('ISbStoryData<>');
-    expect(getStoryType('a')).toBe('ISbStoryData<A>');
+  it("should handle empty or single character properties", () => {
+    expect(getStoryType("")).toBe("ISbStoryData<>");
+    expect(getStoryType("a")).toBe("ISbStoryData<A>");
   });
 
-  it('should handle prefix', () => {
-    expect(getStoryType('my_property', 'Custom')).toBe('ISbStoryData<CustomMyProperty>');
+  it("should handle prefix", () => {
+    expect(getStoryType("my_property", "Custom")).toBe("ISbStoryData<CustomMyProperty>");
   });
 });
 
-describe('component property type annotations', () => {
-  it('should handle text property type', async () => {
+describe("component property type annotations", () => {
+  it("should handle text property type", async () => {
     // Create a component with text property type
     const componentWithTextType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         title: {
-          type: 'text',
+          type: "text",
           required: true,
         },
       },
@@ -603,20 +612,20 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('title: string');
+    expect(result).toContain("title: string");
   });
 
-  it('should handle textarea property type', async () => {
+  it("should handle textarea property type", async () => {
     // Create a component with textarea property type
     const componentWithTextareaType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         description: {
-          type: 'textarea',
+          type: "textarea",
           required: false,
         },
       },
@@ -637,20 +646,20 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('description?: string');
+    expect(result).toContain("description?: string");
   });
 
-  it('should handle number property type', async () => {
+  it("should handle number property type", async () => {
     // Create a component with number property type
     const componentWithNumberType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         count: {
-          type: 'number',
+          type: "number",
           required: false,
         },
       },
@@ -671,20 +680,20 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('count?: string');
+    expect(result).toContain("count?: string");
   });
 
-  it('should handle boolean property type', async () => {
+  it("should handle boolean property type", async () => {
     // Create a component with boolean property type
     const componentWithBooleanType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         isActive: {
-          type: 'boolean',
+          type: "boolean",
           required: false,
         },
       },
@@ -705,18 +714,18 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('isActive?: boolean');
+    expect(result).toContain("isActive?: boolean");
   });
 
-  it('should handle multilink property type', async () => {
+  it("should handle multilink property type", async () => {
     const componentWithMultilinkEmail: Component = {
-      name: 'test_component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         link: {
-          type: 'multilink',
+          type: "multilink",
           required: false,
           email_link_type: true,
           asset_link_type: false,
@@ -730,17 +739,18 @@ describe('component property type annotations', () => {
       presets: [],
       internalTags: [],
     };
-    expect(await generateTypes(spaceData1, { strict: false }))
-      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;');
+    expect(await generateTypes(spaceData1, { strict: false })).toContain(
+      'link?: Exclude<StoryblokMultilink, {linktype?: "asset"}>;',
+    );
 
     const componentWithMultilinkBoth: Component = {
-      name: 'test_component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         link: {
-          type: 'multilink',
+          type: "multilink",
           required: false,
           email_link_type: true,
           asset_link_type: true,
@@ -754,17 +764,18 @@ describe('component property type annotations', () => {
       presets: [],
       internalTags: [],
     };
-    expect(await generateTypes(spaceData2, { strict: false }))
-      .toContain('link?: StoryblokMultilink;');
+    expect(await generateTypes(spaceData2, { strict: false })).toContain(
+      "link?: StoryblokMultilink;",
+    );
 
     const componentWithMultilinkNone: Component = {
-      name: 'test_component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         link: {
-          type: 'multilink',
+          type: "multilink",
           required: false,
           email_link_type: false,
           asset_link_type: false,
@@ -778,24 +789,25 @@ describe('component property type annotations', () => {
       presets: [],
       internalTags: [],
     };
-    expect(await generateTypes(spaceData3, { strict: false }))
-      .toContain('link?: Exclude<StoryblokMultilink, {linktype?: "email"} | {linktype?: "asset"}>;');
+    expect(await generateTypes(spaceData3, { strict: false })).toContain(
+      'link?: Exclude<StoryblokMultilink, {linktype?: "email"} | {linktype?: "asset"}>;',
+    );
   });
 
-  it('should handle bloks property type with component restrictions', async () => {
+  it("should handle bloks property type with component restrictions", async () => {
     // Create a component with bloks property type and component restrictions
     const componentWithBloksType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         content: {
-          type: 'bloks',
+          type: "bloks",
           required: false,
           restrict_components: true,
-          component_whitelist: ['button', 'image'],
+          component_whitelist: ["button", "image"],
         },
       },
       internal_tags_list: [],
@@ -815,57 +827,57 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('content?:');
+    expect(result).toContain("content?:");
   });
 
-  it('should handle bloks property type with tag-based restrictions', async () => {
+  it("should handle bloks property type with tag-based restrictions", async () => {
     // Create components with different tag IDs
     const buttonComponent: Component = {
-      name: 'button',
-      display_name: 'Button',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "button",
+      display_name: "Button",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {},
       internal_tags_list: [],
-      internal_tag_ids: ['1', '2'], // Has tags 1 and 2
+      internal_tag_ids: ["1", "2"], // Has tags 1 and 2
     };
 
     const imageComponent: Component = {
-      name: 'image',
-      display_name: 'Image',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "image",
+      display_name: "Image",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 2,
       schema: {},
       internal_tags_list: [],
-      internal_tag_ids: ['2', '3'], // Has tags 2 and 3
+      internal_tag_ids: ["2", "3"], // Has tags 2 and 3
     };
 
     const textComponent: Component = {
-      name: 'text',
-      display_name: 'Text',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "text",
+      display_name: "Text",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 3,
       schema: {},
       internal_tags_list: [],
-      internal_tag_ids: ['4'], // Has tag 4 only
+      internal_tag_ids: ["4"], // Has tag 4 only
     };
 
     // Create a component with bloks property type and tag-based restrictions
     const componentWithTagBasedBloks: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 4,
       schema: {
         content: {
-          type: 'bloks',
+          type: "bloks",
           required: false,
           restrict_components: true,
-          restrict_type: 'tags',
+          restrict_type: "tags",
           component_tag_whitelist: [1, 2], // Only allow components with tags 1 or 2
         },
       },
@@ -887,25 +899,25 @@ describe('component property type annotations', () => {
 
     // Verify that the result contains the expected union type for tag-based restrictions
     // Should include Button and Image (both have tags 1 or 2), but not Text (only has tag 4)
-    expect(result).toContain('content?:');
-    expect(result).toContain('(Button | Image)[]');
+    expect(result).toContain("content?:");
+    expect(result).toContain("(Button | Image)[]");
   });
 
-  it('should handle tabbed properties correctly', async () => {
+  it("should handle tabbed properties correctly", async () => {
     // Create a component with tabbed properties
     const componentWithTabbedProperties: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
-        'tab-content': {
-          type: 'tab',
-          display_name: 'Content',
+        "tab-content": {
+          type: "tab",
+          display_name: "Content",
         },
-        'title': {
-          type: 'text',
+        title: {
+          type: "text",
           required: true,
         },
       },
@@ -926,22 +938,22 @@ describe('component property type annotations', () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     // Verify that the result contains the expected property type but not the tab
-    expect(result).toContain('title: string');
-    expect(result).not.toContain('tab-content');
+    expect(result).toContain("title: string");
+    expect(result).not.toContain("tab-content");
   });
 
-  it('should handle custom property type with customFieldsParser', async () => {
+  it("should handle custom property type with customFieldsParser", async () => {
     // Create a component with custom property type
     const componentWithCustomType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         colorPicker: {
-          type: 'custom',
-          field_type: 'native-color-picker',
+          type: "custom",
+          field_type: "native-color-picker",
           required: false,
         },
       },
@@ -961,7 +973,7 @@ describe('component property type annotations', () => {
     // Create mock options with customFieldsParser
     const mockOptions: GenerateTypesOptions = {
       strict: false,
-      customFieldsParser: '/path/to/custom/parser.ts',
+      customFieldsParser: "/path/to/custom/parser.ts",
     };
 
     // Reset the mock to ensure it's called with the right parameters
@@ -974,25 +986,25 @@ describe('component property type annotations', () => {
     expect(mockCustomFieldsParser).toHaveBeenCalled();
 
     // Verify that the result contains the expected property type
-    expect(result).toContain('colorPicker?:');
-    expect(result).toContain('color: string');
+    expect(result).toContain("colorPicker?:");
+    expect(result).toContain("color: string");
   });
-  it('should handle datasource property type', async () => {
+  it("should handle datasource property type", async () => {
     // Create a component with boolean property type
     const componentWithDatasourceType: Component = {
-      name: 'test_component',
-      display_name: 'Test Component',
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
         sex: {
-          type: 'option',
+          type: "option",
           pos: 1,
           use_uuid: true,
-          source: 'internal',
-          datasource_slug: 'garden-325',
-          id: '679gCtyCRbKrTlUkXBHw7w',
+          source: "internal",
+          datasource_slug: "garden-325",
+          id: "679gCtyCRbKrTlUkXBHw7w",
         },
       },
       internal_tags_list: [],
@@ -1002,37 +1014,39 @@ describe('component property type annotations', () => {
     // Create a space data with this component
     const spaceData: SpaceComponentsData = {
       components: [componentWithDatasourceType],
-      datasources: [{
-        id: 109556769159015,
-        name: 'Garden-325',
-        slug: 'garden-325',
-        dimensions: [],
-        created_at: '2025-11-06T13:47:38.095Z',
-        updated_at: '2025-11-06T13:47:38.095Z',
-        entries: [
-          {
-            id: 109556771421284,
-            datasource_id: 109556769159015,
-            name: 'deform-206',
-            value: 'deform-206',
-            dimension_value: '',
-          },
-          {
-            id: 109556773588069,
-            datasource_id: 109556769159015,
-            name: 'because-854',
-            value: 'because-854',
-            dimension_value: '',
-          },
-          {
-            id: 109556775738470,
-            datasource_id: 109556769159015,
-            name: 'even-218',
-            value: 'even-218',
-            dimension_value: '',
-          },
-        ],
-      }],
+      datasources: [
+        {
+          id: 109556769159015,
+          name: "Garden-325",
+          slug: "garden-325",
+          dimensions: [],
+          created_at: "2025-11-06T13:47:38.095Z",
+          updated_at: "2025-11-06T13:47:38.095Z",
+          entries: [
+            {
+              id: 109556771421284,
+              datasource_id: 109556769159015,
+              name: "deform-206",
+              value: "deform-206",
+              dimension_value: "",
+            },
+            {
+              id: 109556773588069,
+              datasource_id: 109556769159015,
+              name: "because-854",
+              value: "because-854",
+              dimension_value: "",
+            },
+            {
+              id: 109556775738470,
+              datasource_id: 109556769159015,
+              name: "even-218",
+              value: "even-218",
+              dimension_value: "",
+            },
+          ],
+        },
+      ],
       groups: [],
       presets: [],
       internalTags: [],
@@ -1041,17 +1055,19 @@ describe('component property type annotations', () => {
     // Generate types
     const result = await generateTypes(spaceData, { strict: false });
     // Verify that the result contains the expected property type
-    expect(result).toContain('sex?: Garden325DataSource');
-    expect(result).toContain('export type Garden325DataSource = "deform-206" | "because-854" | "even-218";');
+    expect(result).toContain("sex?: Garden325DataSource");
+    expect(result).toContain(
+      'export type Garden325DataSource = "deform-206" | "because-854" | "even-218";',
+    );
   });
 });
 
-describe('generateStoryblokTypes', () => {
+describe("generateStoryblokTypes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should generate Storyblok types successfully with default options', async () => {
+  it("should generate Storyblok types successfully with default options", async () => {
     // Call the function with default options
     const result = await generateStoryblokTypes();
 
@@ -1059,31 +1075,31 @@ describe('generateStoryblokTypes', () => {
     expect(result).toBe(true);
 
     // Verify that readFileSync was called with the correct path
-    expect(readFileSync).toHaveBeenCalledWith('/mocked/path', 'utf-8');
-    expect(join).toHaveBeenCalledWith(expect.any(String), 'storyblok.d.ts');
+    expect(readFileSync).toHaveBeenCalledWith("/mocked/path", "utf-8");
+    expect(join).toHaveBeenCalledWith(expect.any(String), "storyblok.d.ts");
 
     // Verify that saveToFile was called with the correct parameters
     const savedContent = vi.mocked(saveToFile).mock.calls[0][1] as string;
-    const lines = savedContent.split('\n');
+    const lines = savedContent.split("\n");
 
     // Verify the first three lines
-    expect(lines[0]).toBe('// This file was generated by the Storyblok CLI.');
-    expect(lines[1]).toBe('// DO NOT MODIFY THIS FILE BY HAND.');
-    expect(lines[2]).toBe('import type { ISbStoryData } from \'@storyblok/js\';');
+    expect(lines[0]).toBe("// This file was generated by the Storyblok CLI.");
+    expect(lines[1]).toBe("// DO NOT MODIFY THIS FILE BY HAND.");
+    expect(lines[2]).toBe("import type { ISbStoryData } from '@storyblok/js';");
   });
 
-  it('should generate Storyblok types with custom path', async () => {
+  it("should generate Storyblok types with custom path", async () => {
     // Call the function with custom path
-    const result = await generateStoryblokTypes({ path: '/custom/path' });
+    const result = await generateStoryblokTypes({ path: "/custom/path" });
 
     // Verify that the function returns true
     expect(result).toBe(true);
 
     // Verify that resolve was called with the correct path
-    expect(resolve).toHaveBeenCalledWith(expect.any(String), '/custom/path', 'types');
+    expect(resolve).toHaveBeenCalledWith(expect.any(String), "/custom/path", "types");
   });
 
-  it('should extract all Storyblok type definitions', async () => {
+  it("should extract all Storyblok type definitions", async () => {
     // Call the function
     await generateStoryblokTypes();
 
@@ -1091,78 +1107,78 @@ describe('generateStoryblokTypes', () => {
     const savedContent = vi.mocked(saveToFile).mock.calls[0][1];
 
     // Verify that all expected type definitions are included
-    expect(savedContent).toContain('export type StoryblokPropertyType = \'text\' | \'textarea\' | \'number\' | \'boolean\' | \'multilink\' | \'bloks\' | \'custom\';');
-    expect(savedContent).toContain('export interface StoryblokText');
-    expect(savedContent).toContain('export interface StoryblokTextarea');
-    expect(savedContent).toContain('export interface StoryblokNumber');
-    expect(savedContent).toContain('export interface StoryblokBoolean');
-    expect(savedContent).toContain('export interface StoryblokMultilink');
-    expect(savedContent).toContain('export interface StoryblokBloks');
-    expect(savedContent).toContain('export interface StoryblokCustom');
+    expect(savedContent).toContain(
+      "export type StoryblokPropertyType = 'text' | 'textarea' | 'number' | 'boolean' | 'multilink' | 'bloks' | 'custom';",
+    );
+    expect(savedContent).toContain("export interface StoryblokText");
+    expect(savedContent).toContain("export interface StoryblokTextarea");
+    expect(savedContent).toContain("export interface StoryblokNumber");
+    expect(savedContent).toContain("export interface StoryblokBoolean");
+    expect(savedContent).toContain("export interface StoryblokMultilink");
+    expect(savedContent).toContain("export interface StoryblokBloks");
+    expect(savedContent).toContain("export interface StoryblokCustom");
   });
 });
 
-describe('saveTypesToComponentsFile', () => {
+describe("saveTypesToComponentsFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should call saveTypesToComponentsFile with the expected path and default filename', async () => {
-    const dummyTypes = '// types content';
-    await saveTypesToComponentsFile('12345', dummyTypes, {});
+  it("should call saveTypesToComponentsFile with the expected path and default filename", async () => {
+    const dummyTypes = "// types content";
+    await saveTypesToComponentsFile("12345", dummyTypes, {});
 
     // We expect join to be called with the filename ending in -components.d.ts
     expect(join).toHaveBeenCalledWith(expect.any(String), `storyblok-components.d.ts`);
     // We expect saveToFile to be called with the mocked joined path and the dummy types
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+    expect(saveToFile).toHaveBeenCalledWith("/mocked/joined/path", dummyTypes);
   });
 
-  it('should call saveTypesToComponentsFile with the expected path and custom filename', async () => {
-    const customFilename = 'my-custom-types';
-    const dummyTypes = '// types content';
-    await saveTypesToComponentsFile('12345', dummyTypes, { filename: customFilename });
+  it("should call saveTypesToComponentsFile with the expected path and custom filename", async () => {
+    const customFilename = "my-custom-types";
+    const dummyTypes = "// types content";
+    await saveTypesToComponentsFile("12345", dummyTypes, { filename: customFilename });
 
     // We expect join to be called with the filename ending in -components.d.ts
     expect(join).toHaveBeenCalledWith(expect.any(String), `${customFilename}.d.ts`);
     // We expect saveToFile to be called with the mocked joined path and the dummy types
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', dummyTypes);
+    expect(saveToFile).toHaveBeenCalledWith("/mocked/joined/path", dummyTypes);
   });
 
-  it('should save multiple files when separateFiles is true', async () => {
+  it("should save multiple files when separateFiles is true", async () => {
     const dummyFiles = [
-      { name: 'TestComponent', content: '// TestComponent content' },
-      { name: 'AnotherComponent', content: '// AnotherComponent content' },
-      { name: 'datasources', content: '// datasources content' },
+      { name: "TestComponent", content: "// TestComponent content" },
+      { name: "AnotherComponent", content: "// AnotherComponent content" },
+      { name: "datasources", content: "// datasources content" },
     ];
 
-    await saveTypesToComponentsFile('12345', dummyFiles, { separateFiles: true });
+    await saveTypesToComponentsFile("12345", dummyFiles, { separateFiles: true });
 
     // Should call saveToFile for each file
     expect(saveToFile).toHaveBeenCalledTimes(3);
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', '// TestComponent content');
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', '// AnotherComponent content');
-    expect(saveToFile).toHaveBeenCalledWith('/mocked/joined/path', '// datasources content');
+    expect(saveToFile).toHaveBeenCalledWith("/mocked/joined/path", "// TestComponent content");
+    expect(saveToFile).toHaveBeenCalledWith("/mocked/joined/path", "// AnotherComponent content");
+    expect(saveToFile).toHaveBeenCalledWith("/mocked/joined/path", "// datasources content");
   });
 
-  it('should ignore filename option when separateFiles is true', async () => {
-    const dummyFiles = [
-      { name: 'Component1', content: '// Component1 content' },
-    ];
+  it("should ignore filename option when separateFiles is true", async () => {
+    const dummyFiles = [{ name: "Component1", content: "// Component1 content" }];
 
-    await saveTypesToComponentsFile('12345', dummyFiles, {
+    await saveTypesToComponentsFile("12345", dummyFiles, {
       separateFiles: true,
-      filename: 'custom-filename', // This should be ignored
+      filename: "custom-filename", // This should be ignored
     });
 
     // Should use the component name, not the custom filename
-    expect(join).toHaveBeenCalledWith(expect.any(String), 'Component1.d.ts');
-    expect(join).not.toHaveBeenCalledWith(expect.any(String), 'custom-filename.d.ts');
+    expect(join).toHaveBeenCalledWith(expect.any(String), "Component1.d.ts");
+    expect(join).not.toHaveBeenCalledWith(expect.any(String), "custom-filename.d.ts");
   });
 
-  it('should handle empty array when separateFiles is true', async () => {
+  it("should handle empty array when separateFiles is true", async () => {
     const dummyFiles: Array<{ name: string; content: string }> = [];
 
-    await saveTypesToComponentsFile('12345', dummyFiles, { separateFiles: true });
+    await saveTypesToComponentsFile("12345", dummyFiles, { separateFiles: true });
 
     // Should not call saveToFile for empty array
     expect(saveToFile).not.toHaveBeenCalled();

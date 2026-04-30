@@ -1,4 +1,4 @@
-import type { Component, Story } from './types';
+import type { Component, Story } from "./types";
 
 export interface RefMaps {
   assets?: Map<unknown, string | number>;
@@ -8,24 +8,21 @@ export interface RefMaps {
   datasources?: Map<unknown, string | number>;
 }
 
-export type ComponentSchemas = Record<
-  string,
-  Record<string, { type: string; source?: string }>
->;
+export type ComponentSchemas = Record<string, Record<string, { type: string; source?: string }>>;
 
 export interface MapRefsOptions {
   schemas: ComponentSchemas;
   maps: RefMaps;
 }
 
-type ProcessedFields = Set<Component['schema']>;
-type MissingSchemas = Set<Component['name']>;
+type ProcessedFields = Set<Component["schema"]>;
+type MissingSchemas = Set<Component["name"]>;
 type UnknownRecord = Record<string, unknown>;
 
 type RefMapper = (
   data: unknown,
   options: {
-    schema: Component['schema'];
+    schema: Component["schema"];
     schemas: ComponentSchemas;
     maps: RefMaps;
     fieldRefMappers: FieldRefMappers;
@@ -37,7 +34,7 @@ type RefMapper = (
 type FieldRefMappers = Record<string, RefMapper>;
 
 function isRecord(value: unknown): value is UnknownRecord {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function asRecord(value: unknown): UnknownRecord {
@@ -64,7 +61,7 @@ const traverseAndMapBySchema = (
     missingSchemas: MissingSchemas;
   },
 ): unknown => {
-  if (!isRecord(data) || typeof data.component !== 'string') {
+  if (!isRecord(data) || typeof data.component !== "string") {
     return data ?? {};
   }
 
@@ -77,16 +74,10 @@ const traverseAndMapBySchema = (
   const dataNew: UnknownRecord = { ...data };
 
   for (const [fieldName, fieldValue] of Object.entries(data)) {
-    const fieldSchema = schema[
-      fieldName.replace(/__i18n__.*/, '')
-    ] as Component['schema'];
-    const fieldType
-      = fieldSchema
-        && typeof fieldSchema === 'object'
-        && 'type' in fieldSchema
-        && fieldSchema.type;
-    const fieldRefMapper
-      = typeof fieldType === 'string' && fieldRefMappers[fieldType];
+    const fieldSchema = schema[fieldName.replace(/__i18n__.*/, "")] as Component["schema"];
+    const fieldType =
+      fieldSchema && typeof fieldSchema === "object" && "type" in fieldSchema && fieldSchema.type;
+    const fieldRefMapper = typeof fieldType === "string" && fieldRefMappers[fieldType];
 
     if (fieldSchema) {
       processedFields.add(fieldSchema);
@@ -124,7 +115,7 @@ const traverseAndMapRichtextDoc = (
   },
 ): unknown => {
   if (Array.isArray(data)) {
-    return data.map(item =>
+    return data.map((item) =>
       traverseAndMapRichtextDoc(item, {
         schemas,
         maps,
@@ -136,24 +127,22 @@ const traverseAndMapRichtextDoc = (
   }
 
   if (isRecord(data)) {
-    if (data.type === 'link' && asRecord(data.attrs).linktype === 'story') {
+    if (data.type === "link" && asRecord(data.attrs).linktype === "story") {
       return {
         ...data,
         attrs: {
           ...asRecord(data.attrs),
-          uuid:
-            maps.stories?.get(asRecord(data.attrs).uuid)
-            ?? asRecord(data.attrs).uuid,
+          uuid: maps.stories?.get(asRecord(data.attrs).uuid) ?? asRecord(data.attrs).uuid,
         },
       };
     }
 
-    if (data.type === 'blok') {
+    if (data.type === "blok") {
       return {
         ...data,
         attrs: {
           ...asRecord(data.attrs),
-          body: asArray(asRecord(data.attrs).body).map(d =>
+          body: asArray(asRecord(data.attrs).body).map((d) =>
             traverseAndMapBySchema(d, {
               schemas,
               maps,
@@ -196,7 +185,7 @@ const richtextFieldRefMapper: RefMapper = (
   });
 
 const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
-  if (!isRecord(data) || data.linktype !== 'story') {
+  if (!isRecord(data) || data.linktype !== "story") {
     return data;
   }
 
@@ -216,7 +205,7 @@ const bloksFieldRefMapper: RefMapper = (
     );
   }
 
-  return data.map(d =>
+  return data.map((d) =>
     traverseAndMapBySchema(d, {
       schemas,
       maps,
@@ -232,8 +221,7 @@ const assetFieldRefMapper: RefMapper = (data, { maps }) => {
     return data;
   }
 
-  const newId
-    = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;
+  const newId = typeof data.id === "number" ? maps.assets?.get(data.id) : undefined;
   return newId === undefined ? data : { ...data, id: newId };
 };
 
@@ -244,7 +232,7 @@ const multiassetFieldRefMapper: RefMapper = (data, options) => {
     );
   }
 
-  return data.map(d => assetFieldRefMapper(d, options));
+  return data.map((d) => assetFieldRefMapper(d, options));
 };
 
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
@@ -252,23 +240,19 @@ const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
     return data;
   }
 
-  const sourceMapBySchema: Record<
-    string,
-    Map<unknown, string | number> | undefined
-  > = {
+  const sourceMapBySchema: Record<string, Map<unknown, string | number> | undefined> = {
     internal_stories: maps.stories,
     internal_users: maps.users,
     internal_tags: maps.tags,
     internal_datasources: maps.datasources,
   };
 
-  const sourceMap
-    = sourceMapBySchema[(schema as { source?: string }).source ?? ''];
+  const sourceMap = sourceMapBySchema[(schema as { source?: string }).source ?? ""];
   if (!sourceMap) {
     return data;
   }
 
-  return data.map(d => sourceMap.get(d) ?? d);
+  return data.map((d) => sourceMap.get(d) ?? d);
 };
 
 const fieldRefMappers = {
@@ -284,28 +268,26 @@ export function mapRefs(
   story: Story,
   options: MapRefsOptions,
 ): {
-    mappedStory: Story;
-    processedFields: ProcessedFields;
-    missingSchemas: MissingSchemas;
-  } {
+  mappedStory: Story;
+  processedFields: ProcessedFields;
+  missingSchemas: MissingSchemas;
+} {
   const { schemas, maps } = options;
   const processedFields: ProcessedFields = new Set();
   const missingSchemas: MissingSchemas = new Set();
 
   const alternatesRaw = story.alternates
-    ? (story.alternates as Required<Story>['alternates']).map((alternate) => {
+    ? (story.alternates as Required<Story>["alternates"]).map((alternate) => {
         const mappedAlternate = asRecord(alternate);
         return {
           ...mappedAlternate,
           id: maps.stories?.get(mappedAlternate.id) ?? mappedAlternate.id,
-          parent_id:
-            maps.stories?.get(mappedAlternate.parent_id)
-            ?? mappedAlternate.parent_id,
+          parent_id: maps.stories?.get(mappedAlternate.parent_id) ?? mappedAlternate.parent_id,
         };
       })
     : story.alternates;
   // mapped ids may be string|number at runtime but shape is compatible
-  const alternates = alternatesRaw as Story['alternates'];
+  const alternates = alternatesRaw as Story["alternates"];
 
   const parentId = maps.stories?.get(story.parent_id);
   const mappedContentRaw = story.content?.component
@@ -321,7 +303,7 @@ export function mapRefs(
   const mappedStory = {
     ...story,
     // traverseAndMapBySchema returns unknown; runtime shape satisfies Blok
-    content: mappedContentRaw as unknown as Story['content'],
+    content: mappedContentRaw as unknown as Story["content"],
     id: Number(maps.stories?.get(story.id) ?? story.id),
     uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
     parent_id: parentId != null ? Number(parentId) : story.parent_id,

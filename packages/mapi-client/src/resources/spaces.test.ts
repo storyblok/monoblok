@@ -1,17 +1,17 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
-import { createManagementApiClient } from '../index';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
+import { fromOpenApi } from "@msw/source/open-api";
+import { readFileSync } from "node:fs";
+import { join } from "pathe";
+import { fileURLToPath } from "node:url";
+import { createManagementApiClient } from "../index";
 
 const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/spaces.yaml',
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../node_modules/@storyblok/openapi/dist/mapi/spaces.yaml",
 );
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
+const openapiSpec = readFileSync(openapiSpecPath, "utf-8");
 const handlers = await fromOpenApi(openapiSpec);
 const server = setupServer(...handlers);
 
@@ -19,12 +19,12 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('spaces.list()', () => {
-  it('should successfully retrieve multiple spaces', async () => {
+describe("spaces.list()", () => {
+  it("should successfully retrieve multiple spaces", async () => {
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -34,16 +34,16 @@ describe('spaces.list()', () => {
     expect(Array.isArray(result.data?.spaces)).toBe(true);
   });
 
-  it('should return error on 401', async () => {
+  it("should return error on 401", async () => {
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      http.get("https://mapi.storyblok.com/v1/spaces", () => {
+        return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
       }),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'invalid-token',
+      personalAccessToken: "invalid-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -55,31 +55,31 @@ describe('spaces.list()', () => {
   });
 });
 
-describe('spaces.get()', () => {
-  it('should successfully retrieve the current space', async () => {
+describe("spaces.get()", () => {
+  it("should successfully retrieve the current space", async () => {
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
     const result = await client.spaces.get();
 
     expect(result.error).toBeUndefined();
-    expect(typeof result.data?.space).toBe('object');
+    expect(typeof result.data?.space).toBe("object");
   });
 
-  it('should return error on 401', async () => {
+  it("should return error on 401", async () => {
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      http.get("https://mapi.storyblok.com/v1/spaces/:space_id", () => {
+        return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
       }),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'invalid-token',
+      personalAccessToken: "invalid-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -90,25 +90,25 @@ describe('spaces.get()', () => {
     expect(result.response.status).toBe(401);
   });
 
-  it('should allow overriding space_id via path option', async () => {
+  it("should allow overriding space_id via path option", async () => {
     let resolvedSpaceId: string | undefined;
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id', ({ params }) => {
+      http.get("https://mapi.storyblok.com/v1/spaces/:space_id", ({ params }) => {
         resolvedSpaceId = String(params.space_id);
         return HttpResponse.json({
-          space: { id: Number(params.space_id), name: 'Space' },
+          space: { id: Number(params.space_id), name: "Space" },
         });
       }),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
-      region: 'eu',
+      personalAccessToken: "test-token",
+      region: "eu",
       rateLimit: false,
     });
 
     const result = await client.spaces.get({ path: { space_id: 999 } });
 
     expect(result.error).toBeUndefined();
-    expect(resolvedSpaceId).toBe('999');
+    expect(resolvedSpaceId).toBe("999");
   });
 });

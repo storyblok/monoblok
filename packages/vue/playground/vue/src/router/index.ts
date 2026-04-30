@@ -1,11 +1,11 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory } from "vue-router";
 
 const routes = [
-  { path: '/', name: 'Home', component: () => import('../pages/Home.vue') },
+  { path: "/", name: "Home", component: () => import("../pages/Home.vue") },
   {
-    path: '/richtext',
-    name: 'RichTextDemo',
-    component: () => import('../pages/RichTextDemo.vue'),
+    path: "/richtext",
+    name: "RichTextDemo",
+    component: () => import("../pages/RichTextDemo.vue"),
   },
 ];
 

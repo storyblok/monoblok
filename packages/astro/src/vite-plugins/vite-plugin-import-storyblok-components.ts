@@ -1,7 +1,7 @@
-import { normalizeAstroExtension } from '../utils/normalizeAstroExtension';
-import { normalizePath } from '../utils/normalizePath';
-import { toCamelCase } from '../utils/toCamelCase';
-import type { Plugin } from 'vite';
+import { normalizeAstroExtension } from "../utils/normalizeAstroExtension";
+import { normalizePath } from "../utils/normalizePath";
+import { toCamelCase } from "../utils/toCamelCase";
+import type { Plugin } from "vite";
 
 /**
  * Vite plugin that automatically imports Storyblok components from a specified directory
@@ -16,11 +16,11 @@ export function vitePluginImportStoryblokComponents(
   customFallbackComponent?: string,
 ): Plugin {
   // Virtual module identifiers for Vite's module system
-  const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
+  const VIRTUAL_MODULE_ID = "virtual:import-storyblok-components";
   const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
   return {
-    name: 'vite-plugin-import-storyblok-components',
+    name: "vite-plugin-import-storyblok-components",
 
     /**
      * Resolves virtual module imports
@@ -55,11 +55,7 @@ export function vitePluginImportStoryblokComponents(
       );
 
       // Generate the virtual module code
-      const moduleCode = generateModuleCode(
-        componentsDir,
-        fallbackImport,
-        manualImports,
-      );
+      const moduleCode = generateModuleCode(componentsDir, fallbackImport, manualImports);
 
       return moduleCode;
     },
@@ -112,7 +108,7 @@ function generateModuleCode(
     }
     
     // Manual components
-    ${manualImports.join('\n')}
+    ${manualImports.join("\n")}
     // Add fallback component if enabled
     ${fallbackImport}    
     // Export the components object for use in Storyblok initialization
@@ -127,19 +123,14 @@ async function resolveFallbackComponent(
   customFallbackComponent?: string,
 ): Promise<string> {
   if (!enableFallbackComponent) {
-    return '';
+    return "";
   }
 
   if (customFallbackComponent) {
-    const customPath = getComponentFullPath(
-      componentsDir,
-      customFallbackComponent,
-    );
+    const customPath = getComponentFullPath(componentsDir, customFallbackComponent);
     const resolved = await ctx.resolve(customPath);
     if (!resolved) {
-      throw new Error(
-        `Custom fallback component could not be found. Does "${customPath}" exist?`,
-      );
+      throw new Error(`Custom fallback component could not be found. Does "${customPath}" exist?`);
     }
 
     return `
@@ -182,8 +173,7 @@ async function resolveUserComponents(
           `Component could not be found for blok "${key}"! Does "${pathWithExt}" exist?`,
         );
       }
-    }
-    else {
+    } else {
       const camelCaseName = toCamelCase(key);
 
       imports.push(`
@@ -213,10 +203,7 @@ async function resolveUserComponents(
  * getComponentFullPath("components", "ui/Button");
  * // "/components/ui/Button.astro"
  */
-function getComponentFullPath(
-  componentsDir: string,
-  componentPath: string,
-): string {
+function getComponentFullPath(componentsDir: string, componentPath: string): string {
   const normalizedComponentsDir = normalizePath(componentsDir);
   const fullComponentPath = `${normalizedComponentsDir}${normalizePath(componentPath)}`;
   return normalizeAstroExtension(fullComponentPath);

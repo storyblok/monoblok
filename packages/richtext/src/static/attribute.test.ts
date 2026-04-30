@@ -54,13 +54,16 @@ describe("processAttrs", () => {
   });
   it("excludes all the attributes added in EXCLUDED_ATTRS", () => {
     expect(
-      processAttrs("paragraph", Array.from(EXCLUDED_ATTRS).reduce(
+      processAttrs(
+        "paragraph",
+        Array.from(EXCLUDED_ATTRS).reduce(
           (acc, attr) => {
             acc[attr] = "test";
             return acc;
           },
           {} as Record<string, string>,
-        )),
+        ),
+      ),
     ).toEqual({});
   });
 

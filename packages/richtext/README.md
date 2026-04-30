@@ -31,9 +31,9 @@
 
 - **Framework-Agnostic Rendering**: Outputs raw HTML by default but can be configured to produce framework-specific elements, such as React components or Vue nodes.
 - **Custom Resolvers**: Allows developers to override default rendering behavior for specific elements like links, images, and embedded components. This enables integration with custom components or styling frameworks like Tailwind CSS.
-Storyblok
+  Storyblok
 - **Image Optimization**: Supports image optimization options, including lazy loading, responsive sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
-Storyblok
+  Storyblok
 - **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and improved developer experience across different frameworks.
 - **Markdown to Rich Text Conversion**: Converts Markdown content to Storyblok's rich text nodes, allowing for seamless integration with markdown-based content management systems.
 

@@ -1,9 +1,9 @@
-import type { ISbThrottle, Queue } from './interfaces';
+import type { ISbThrottle, Queue } from "./interfaces";
 
 class AbortError extends Error {
   constructor(msg: string) {
     super(msg);
-    this.name = 'AbortError';
+    this.name = "AbortError";
   }
 }
 
@@ -13,11 +13,11 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   interval: number,
 ): ISbThrottle<T> {
   if (!Number.isFinite(limit)) {
-    throw new TypeError('Expected `limit` to be a finite number');
+    throw new TypeError("Expected `limit` to be a finite number");
   }
 
   if (!Number.isFinite(interval)) {
-    throw new TypeError('Expected `interval` to be a finite number');
+    throw new TypeError("Expected `interval` to be a finite number");
   }
 
   const queue: Queue<Parameters<T>>[] = [];
@@ -33,8 +33,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
       try {
         const res = await fn(...x.args);
         x.resolve(res);
-      }
-      catch (error) {
+      } catch (error) {
         x.reject(error);
       }
     }
@@ -46,7 +45,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
         next();
       }
 
-      timeouts = timeouts.filter(currentId => currentId !== id);
+      timeouts = timeouts.filter((currentId) => currentId !== id);
     }, interval);
 
     if (!timeouts.includes(id)) {
@@ -57,9 +56,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   const throttled: ISbThrottle<T> = (...args) => {
     if (isAborted) {
       return Promise.reject(
-        new Error(
-          'Throttled function is already aborted and not accepting new promises',
-        ),
+        new Error("Throttled function is already aborted and not accepting new promises"),
       );
     }
 
@@ -81,9 +78,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
     timeouts.forEach(clearTimeout);
     timeouts = [];
 
-    queue.forEach(x =>
-      x.reject(() => new AbortError('Throttle function aborted')),
-    );
+    queue.forEach((x) => x.reject(() => new AbortError("Throttle function aborted")));
     queue.length = 0;
   };
 

@@ -1,8 +1,8 @@
-import { join } from 'pathe';
-import { appendToFile, getComponentNameFromFilename, resolvePath } from '../../../utils/filesystem';
-import type { StoryContent } from '../../stories/constants';
-import { readFile } from 'node:fs/promises';
-import { CommandError } from '../../../utils';
+import { join } from "pathe";
+import { appendToFile, getComponentNameFromFilename, resolvePath } from "../../../utils/filesystem";
+import type { StoryContent } from "../../stories/constants";
+import { readFile } from "node:fs/promises";
+import { CommandError } from "../../../utils";
 
 export interface RollbackDataStory {
   storyId: number;
@@ -39,7 +39,13 @@ export async function saveRollbackData({
 }: {
   space: string;
   path: string;
-  story: { id: number; name: string; content: StoryContent; published?: boolean; unpublished_changes?: boolean };
+  story: {
+    id: number;
+    name: string;
+    content: StoryContent;
+    published?: boolean;
+    unpublished_changes?: boolean;
+  };
   migrationTimestamp: number;
   migrationNames: string[];
 }): Promise<void> {
@@ -53,17 +59,14 @@ export async function saveRollbackData({
 
   // Resolve the path for rollbacks
   const rollbacksPath = resolvePath(path, `migrations/${space}/rollbacks`);
-  const componentNames = migrationNames.map(n => getComponentNameFromFilename(n));
+  const componentNames = migrationNames.map((n) => getComponentNameFromFilename(n));
   // Deduplicate component names and join the component names for final rollback name
-  const rollbackName = [...new Set(componentNames)].join('~');
+  const rollbackName = [...new Set(componentNames)].join("~");
   const rollbackFileName = `${rollbackName}.${migrationTimestamp}.jsonl`;
   const rollbackFilePath = join(rollbacksPath, rollbackFileName);
 
   // Save the rollback data as JSONL
-  await appendToFile(
-    rollbackFilePath,
-    JSON.stringify(rollbackData),
-  );
+  await appendToFile(rollbackFilePath, JSON.stringify(rollbackData));
 }
 
 /**
@@ -88,15 +91,18 @@ export async function readRollbackFile({
     const rollbackFilePath = join(resolvedPath, migrationFile);
 
     // Read the rollback file
-    const filePath = rollbackFilePath.endsWith('.jsonl')
+    const filePath = rollbackFilePath.endsWith(".jsonl")
       ? rollbackFilePath
       : `${rollbackFilePath}.jsonl`;
 
     return {
-      stories: (await readFile(filePath, 'utf-8')).trim().split('\n').filter(Boolean).map(x => JSON.parse(x)),
+      stories: (await readFile(filePath, "utf-8"))
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((x) => JSON.parse(x)),
     };
-  }
-  catch (error) {
+  } catch (error) {
     throw new CommandError(`Failed to read rollback file: ${(error as Error).message}`);
   }
 }

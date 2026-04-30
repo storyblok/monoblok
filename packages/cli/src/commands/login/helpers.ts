@@ -1,11 +1,11 @@
-import { Spinner } from '@topcli/spinner';
-import chalk from 'chalk';
-import { input, password, select } from '@inquirer/prompts';
-import type { RegionCode } from '../../constants';
-import { colorPalette, regionNames, regions } from '../../constants';
-import { handleError, isVitest, konsola } from '../../utils';
-import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
-import { session } from '../../session';
+import { Spinner } from "@topcli/spinner";
+import chalk from "chalk";
+import { input, password, select } from "@inquirer/prompts";
+import type { RegionCode } from "../../constants";
+import { colorPalette, regionNames, regions } from "../../constants";
+import { handleError, isVitest, konsola } from "../../utils";
+import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
+import { session } from "../../session";
 
 /**
  * Performs interactive login flow with email/password or token
@@ -27,17 +27,17 @@ export async function performInteractiveLogin(options?: {
 
   try {
     const strategy = await select({
-      message: 'How would you like to login?',
+      message: "How would you like to login?",
       choices: [
         {
-          name: 'With email',
-          value: 'login-with-email',
-          short: 'Email',
+          name: "With email",
+          value: "login-with-email",
+          short: "Email",
         },
         {
-          name: 'With Token (Personal Access Token – works also for SSO accounts)',
-          value: 'login-with-token',
-          short: 'Token',
+          name: "With Token (Personal Access Token – works also for SSO accounts)",
+          value: "login-with-token",
+          short: "Token",
         },
       ],
     });
@@ -45,28 +45,32 @@ export async function performInteractiveLogin(options?: {
     let userToken: string;
     let userRegion: RegionCode;
 
-    if (strategy === 'login-with-token') {
-      konsola.info([
-        '🔑 You can use a Personal Access Token to log in.',
-        'This works for all accounts, including SSO accounts.',
-        `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
-      ].join('\n'));
+    if (strategy === "login-with-token") {
+      konsola.info(
+        [
+          "🔑 You can use a Personal Access Token to log in.",
+          "This works for all accounts, including SSO accounts.",
+          `Generate one in your Storyblok account settings: ${chalk.underline.blue("https://app.storyblok.com/#/me/account?tab=token")}`,
+        ].join("\n"),
+      );
 
       userToken = await password({
-        message: 'Please enter your Personal Access Token:',
+        message: "Please enter your Personal Access Token:",
         validate: (value: string) => {
           return value.length > 0;
         },
       });
 
-      userRegion = preSelectedRegion || await select({
-        message: 'Please select the region you would like to work in:',
-        choices: Object.values(regions).map((region: RegionCode) => ({
-          name: regionNames[region],
-          value: region,
-        })),
-        default: regions.EU,
-      });
+      userRegion =
+        preSelectedRegion ||
+        (await select({
+          message: "Please select the region you would like to work in:",
+          choices: Object.values(regions).map((region: RegionCode) => ({
+            name: regionNames[region],
+            value: region,
+          })),
+          default: regions.EU,
+        }));
 
       spinner.start(`Logging in with token`);
       const user = await loginWithToken(userToken, userRegion);
@@ -77,14 +81,16 @@ export async function performInteractiveLogin(options?: {
         updateSession(user.email, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          konsola.ok(
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
+            true,
+          );
         }
         return { token: userToken, region: userRegion };
       }
-    }
-    else {
+    } else {
       const userEmail = await input({
-        message: 'Please enter your email address:',
+        message: "Please enter your email address:",
         required: true,
         validate: (value: string) => {
           const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
@@ -92,17 +98,19 @@ export async function performInteractiveLogin(options?: {
         },
       });
       const userPassword = await password({
-        message: 'Please enter your password:',
+        message: "Please enter your password:",
       });
 
-      userRegion = preSelectedRegion || await select({
-        message: 'Please select the region you would like to work in:',
-        choices: Object.values(regions).map((region: RegionCode) => ({
-          name: regionNames[region],
-          value: region,
-        })),
-        default: regions.EU,
-      });
+      userRegion =
+        preSelectedRegion ||
+        (await select({
+          message: "Please select the region you would like to work in:",
+          choices: Object.values(regions).map((region: RegionCode) => ({
+            name: regionNames[region],
+            value: region,
+          })),
+          default: regions.EU,
+        }));
 
       spinner.start(`Logging in with email`);
       spinner.succeed();
@@ -110,7 +118,8 @@ export async function performInteractiveLogin(options?: {
 
       if (response?.otp_required) {
         const otp = await input({
-          message: 'Add the code from your Authenticator app, or the one we sent to your e-mail / phone:',
+          message:
+            "Add the code from your Authenticator app, or the one we sent to your e-mail / phone:",
           required: true,
         });
 
@@ -118,8 +127,7 @@ export async function performInteractiveLogin(options?: {
         if (otpResponse?.access_token) {
           userToken = otpResponse.access_token;
         }
-      }
-      else if (response?.access_token) {
+      } else if (response?.access_token) {
         userToken = response.access_token;
       }
 
@@ -128,15 +136,17 @@ export async function performInteractiveLogin(options?: {
         updateSession(userEmail, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
+          konsola.ok(
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`,
+            true,
+          );
         }
         return { token: userToken, region: userRegion };
       }
     }
 
     return null;
-  }
-  catch (error) {
+  } catch (error) {
     spinner.failed();
     konsola.br();
     handleError(error as Error, verbose);

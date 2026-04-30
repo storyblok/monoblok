@@ -12,6 +12,7 @@ storyblok datasources push --space YOUR_SPACE_ID
 ```
 
 This will upload all datasources and their entries from:
+
 ```
 .storyblok/
 └── datasources/
@@ -26,6 +27,7 @@ storyblok datasources push DATASOURCE_NAME --space YOUR_SPACE_ID
 ```
 
 This will upload a single datasource and its entries from:
+
 ```
 .storyblok/
 └── datasources/
@@ -35,22 +37,25 @@ This will upload a single datasource and its entries from:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to push datasources to | - |
-| `-f, --from <from>` | Source space ID to read datasources from | Target space ID |
-| `--fi, --filter <filter>` | Filter to apply to datasources by their name (e.g., "color" will match datasources containing "color") | - |
-| `--sf, --separate-files` | Read from separate files instead of consolidated files | `false` |
-| `--su, --suffix <suffix>` | Suffix to add to the files names | - |
-| `-p, --path <path>` | Custom path to read the files from | `.storyblok/datasources` |
+| Option                    | Description                                                                                            | Default                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------ |
+| `-s, --space <space>`     | (Required) The ID of the space to push datasources to                                                  | -                        |
+| `-f, --from <from>`       | Source space ID to read datasources from                                                               | Target space ID          |
+| `--fi, --filter <filter>` | Filter to apply to datasources by their name (e.g., "color" will match datasources containing "color") | -                        |
+| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                 | `false`                  |
+| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                       | -                        |
+| `-p, --path <path>`       | Custom path to read the files from                                                                     | `.storyblok/datasources` |
 
 ## Examples
 
 1. Push all datasources with default settings:
+
 ```bash
 storyblok datasources push --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -59,10 +64,13 @@ Reads from:
 ```
 
 2. Push a single datasource:
+
 ```bash
 storyblok datasources push colors --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -71,10 +79,13 @@ Reads from:
 ```
 
 3. Push datasources with filter:
+
 ```bash
 storyblok datasources push --space 12345 --filter "color"
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -83,10 +94,13 @@ Reads from:
 ```
 
 4. Push datasources from a different space:
+
 ```bash
 storyblok datasources push --space 12345 --from 67890
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -95,10 +109,13 @@ Reads from:
 ```
 
 5. Push datasources from separate files:
+
 ```bash
 storyblok datasources push --space 12345 --separate-files
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -110,10 +127,13 @@ Reads from:
 ```
 
 6. Push datasources with suffix:
+
 ```bash
 storyblok datasources push --space 12345 --suffix dev
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── datasources/
@@ -122,10 +142,13 @@ Reads from:
 ```
 
 7. Push datasources from a custom path:
+
 ```bash
 storyblok datasources push --space 12345 --path ./backup
 ```
+
 Reads from:
+
 ```
 backup/
 └── datasources/
@@ -136,6 +159,7 @@ backup/
 ## File Structure
 
 The command reads from the following file structure:
+
 ```
 {path}/
 └── datasources/
@@ -144,6 +168,7 @@ The command reads from the following file structure:
 ```
 
 When using `--separate-files`:
+
 ```
 {path}/
 └── datasources/
@@ -154,6 +179,7 @@ When using `--separate-files`:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{suffix}` is the suffix in the file name if provided
@@ -171,10 +197,12 @@ The command performs the following operations:
 ## Data Structure
 
 Each datasource file contains:
+
 - **Datasource metadata**: `id`, `name`, `slug`, `dimensions`, timestamps
 - **Entries**: Array of datasource entries with `id`, `name`, `value`, `dimension_value`
 
 Example datasource file:
+
 ```json
 {
   "id": 1,
@@ -207,6 +235,7 @@ Example datasource file:
 ## Common Use Cases
 
 ### Copy datasources between spaces
+
 ```bash
 # Pull from production space
 storyblok datasources pull --space 12345
@@ -216,12 +245,14 @@ storyblok datasources push --space 67890 --from 12345
 ```
 
 ### Update specific datasources
+
 ```bash
 # Push only color-related datasources
 storyblok datasources push --space 12345 --filter "color"
 ```
 
 ### Work with separate files
+
 ```bash
 # If you pulled with separate files, push with the same flag
 storyblok datasources push --space 12345 --separate-files
@@ -230,15 +261,18 @@ storyblok datasources push --space 12345 --separate-files
 ## ⚠️ Known Caveats
 
 ### Entry Name Dependencies
+
 - **Cross-space operations**: If you modify the `name` property of a datasource entry when pushing between different spaces, this will create a **new entry** instead of updating the existing one
 - **Reason**: Since datasource entry IDs are different between spaces, the `name` field is the only reliable property for matching entries across spaces
 - **Recommendation**: Avoid changing entry names when copying datasources between spaces, or manually clean up duplicate entries afterward
 
 ### Matching Logic
+
 - **Datasources**: Matched by `name` field for upserts
 - **Entries**: Matched by `name` field within each datasource for upserts
 - **IDs**: Local file IDs are ignored during push operations (server assigns new IDs)
 
 ### File Consistency
+
 - Must use the same flags (`--suffix`, `--separate-files`) as used during the original `pull` operation
 - Command expects files to exist in the exact structure created by `datasources pull`

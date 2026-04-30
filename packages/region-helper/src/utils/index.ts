@@ -1,1 +1,1 @@
-export { validateSpaceId } from './validation'
+export { validateSpaceId } from "./validation";

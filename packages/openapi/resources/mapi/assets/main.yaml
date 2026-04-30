@@ -28,7 +28,15 @@ paths:
           required: false
           schema:
             type: string
-            enum: [created_at:asc, created_at:desc, updated_at:asc, updated_at:desc, short_filename:asc, short_filename:desc]
+            enum:
+              [
+                created_at:asc,
+                created_at:desc,
+                updated_at:asc,
+                updated_at:desc,
+                short_filename:asc,
+                short_filename:desc,
+              ]
           description: Sort assets by specific attribute and order
         - name: is_private
           in: query
@@ -67,7 +75,7 @@ paths:
             type: string
           description: Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
       responses:
-        '200':
+        "200":
           description: List of assets
           content:
             application/json:
@@ -77,12 +85,12 @@ paths:
                   assets:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Asset'
-        '400':
+                      $ref: "#/components/schemas/Asset"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: signResponseObject
@@ -95,19 +103,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssetSignRequest'
+              $ref: "#/components/schemas/AssetSignRequest"
       responses:
-        '200':
+        "200":
           description: Signed response object for upload
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SignedResponseObject'
-        '400':
+                $ref: "#/components/schemas/SignedResponseObject"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/assets/{asset_id}:
     get:
@@ -118,17 +126,17 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/asset_id
       responses:
-        '200':
+        "200":
           description: Asset details
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Asset'
-        '400':
+                $ref: "#/components/schemas/Asset"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset not found
     put:
       operationId: update
@@ -142,15 +150,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssetUpdateRequest'
+              $ref: "#/components/schemas/AssetUpdateRequest"
       responses:
-        '204':
+        "204":
           description: Asset updated successfully (no content)
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset not found
     delete:
       operationId: delete
@@ -160,7 +168,7 @@ paths:
         - $ref: ../shared/parameters.yaml#/space_id
         - $ref: ../shared/parameters.yaml#/asset_id
       responses:
-        '200':
+        "200":
           description: Asset deleted
           content:
             application/json:
@@ -168,12 +176,12 @@ paths:
                 type: object
                 properties:
                   asset:
-                    $ref: '#/components/schemas/Asset'
-        '400':
+                    $ref: "#/components/schemas/Asset"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset not found
   /v1/spaces/{space_id}/assets/{signed_response_object_id}/finish_upload:
     get:
@@ -189,7 +197,7 @@ paths:
             type: string
           description: The ID from the signed response object
       responses:
-        '200':
+        "200":
           description: Upload finalized successfully
           content:
             application/json:
@@ -199,12 +207,12 @@ paths:
                   message:
                     type: string
                     description: Success message indicating the upload was finalized
-                    example: 'Asset uploaded successfully'
-        '400':
+                    example: "Asset uploaded successfully"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Asset not found
   /v1/spaces/{space_id}/assets/bulk_destroy:
     post:
@@ -228,7 +236,7 @@ paths:
                     type: number
                   description: Array of numeric asset IDs
       responses:
-        '200':
+        "200":
           description: Assets deleted successfully
           content:
             application/json:
@@ -238,12 +246,12 @@ paths:
                   message:
                     type: string
                     description: Success message indicating which assets were deleted
-                    example: 'Asset(s) 20142579, 20142580 deleted successfully'
-        '400':
+                    example: "Asset(s) 20142579, 20142580 deleted successfully"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/assets/bulk_update:
     post:
@@ -271,7 +279,7 @@ paths:
                   type: number
                   description: Id of the folder containing this asset
       responses:
-        '200':
+        "200":
           description: Assets moved successfully
           content:
             application/json:
@@ -281,12 +289,12 @@ paths:
                   message:
                     type: string
                     description: Success message indicating which assets were moved
-                    example: 'Assets moved successfully'
-        '400':
+                    example: "Assets moved successfully"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/assets/bulk_restore:
     post:
@@ -310,7 +318,7 @@ paths:
                     type: number
                   description: Array of numeric asset IDs
       responses:
-        '200':
+        "200":
           description: Assets restored successfully
           content:
             application/json:
@@ -320,12 +328,12 @@ paths:
                   message:
                     type: string
                     description: Success message indicating which assets were restored
-                    example: 'Assets restored successfully'
-        '400':
+                    example: "Assets restored successfully"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
 components:
   securitySchemes:
@@ -508,7 +516,7 @@ components:
       description: Request body for updating an asset.
       properties:
         asset:
-          $ref: '#/components/schemas/AssetUpdate'
+          $ref: "#/components/schemas/AssetUpdate"
     SignedResponseObject:
       type: object
       description: Signed response object returned from the upload request

@@ -19,6 +19,7 @@ The `migrations` module provides tools to manage and execute migrations for your
 ## File Structure
 
 All migration files are stored in:
+
 ```
 .storyblok/
 └── migrations/

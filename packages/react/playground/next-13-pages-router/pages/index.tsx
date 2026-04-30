@@ -1,16 +1,16 @@
-import React from 'react';
-import type { GetStaticProps, InferGetStaticPropsType } from 'next';
-import Teaser from '../components/teaser';
-import Grid from '../components/grid';
-import Page from '../components/page';
-import Feature from '../components/feature';
+import React from "react";
+import type { GetStaticProps, InferGetStaticPropsType } from "next";
+import Teaser from "../components/teaser";
+import Grid from "../components/grid";
+import Page from "../components/page";
+import Feature from "../components/feature";
 
 import {
   getStoryblokApi,
   setComponents,
   StoryblokComponent,
   useStoryblokState,
-} from '@storyblok/react';
+} from "@storyblok/react";
 
 export default function Home({
   story: initialStory,
@@ -35,7 +35,7 @@ export const getStaticProps: GetStaticProps = async () => {
   const storyblokApi = getStoryblokApi();
 
   const { data } = await storyblokApi.get(`cdn/stories/home`, {
-    version: 'draft',
+    version: "draft",
   });
 
   return {

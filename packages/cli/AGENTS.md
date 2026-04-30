@@ -11,10 +11,10 @@ This document provides instructions for AI agents operating in the `packages/cli
 
 ### Important commands
 
-| Action         | Command           | Notes                         |
-| :------------- | :---------------- | :---------------------------- |
-| **Lint Fix**   | `pnpm lint:fix`   | Auto-fixes linting issues.    |
-| **Type Check** | `pnpm test:types` | Checks types.                 |
+| Action         | Command           | Notes                      |
+| :------------- | :---------------- | :------------------------- |
+| **Lint Fix**   | `pnpm lint:fix`   | Auto-fixes linting issues. |
+| **Type Check** | `pnpm test:types` | Checks types.              |
 
 ## Code style & conventions
 

@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getComponent, getStoryblokApi, storyblokInit } from '../lib/storyblok-store';
-import type { SbSvelteSDKOptions } from '../lib/types';
-import type { Component } from 'svelte';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getComponent, getStoryblokApi, storyblokInit } from "../lib/storyblok-store";
+import type { SbSvelteSDKOptions } from "../lib/types";
+import type { Component } from "svelte";
 
 // Mock @storyblok/js
-vi.mock('@storyblok/js', () => ({
+vi.mock("@storyblok/js", () => ({
   storyblokInit: vi.fn(() => ({
-    storyblokApi: { test: 'api' },
+    storyblokApi: { test: "api" },
   })),
 }));
 
@@ -16,74 +16,74 @@ const MockComponent: Component = () => {
   };
 };
 
-describe('storyblok-store', () => {
+describe("storyblok-store", () => {
   // Mock console.error to prevent noise in tests
-  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
   beforeEach(() => {
     // Clear console.error mock calls between tests
     consoleError.mockClear();
   });
 
-  describe('storyblokInit', () => {
-    it('should initialize with components', () => {
+  describe("storyblokInit", () => {
+    it("should initialize with components", () => {
       const options: SbSvelteSDKOptions = {
-        accessToken: 'test-token',
+        accessToken: "test-token",
         components: {
-          'test-component': MockComponent,
+          "test-component": MockComponent,
         },
       };
 
       storyblokInit(options);
 
       // Verify component is registered by trying to retrieve it
-      const component = getComponent('test-component');
+      const component = getComponent("test-component");
       expect(component).toBe(MockComponent);
     });
 
-    it('should initialize with function components', () => {
+    it("should initialize with function components", () => {
       const options: SbSvelteSDKOptions = {
-        accessToken: 'test-token',
+        accessToken: "test-token",
         components: () => ({
-          'test-component': MockComponent,
+          "test-component": MockComponent,
         }),
       };
 
       storyblokInit(options);
 
       // Verify component is registered by trying to retrieve it
-      const component = getComponent('test-component');
+      const component = getComponent("test-component");
       expect(component).toBe(MockComponent);
     });
 
-    it('should initialize without components', () => {
+    it("should initialize without components", () => {
       const options: SbSvelteSDKOptions = {
-        accessToken: 'test-token',
+        accessToken: "test-token",
       };
 
       storyblokInit(options);
 
       // Trying to get a non-existent component should trigger error
-      getComponent('non-existent');
+      getComponent("non-existent");
       expect(consoleError).toHaveBeenCalled();
     });
   });
 
-  describe('getComponent', () => {
-    it('should return registered component', () => {
+  describe("getComponent", () => {
+    it("should return registered component", () => {
       storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
         components: {
-          'test-component': MockComponent,
+          "test-component": MockComponent,
         },
       });
 
-      const component = getComponent('test-component');
+      const component = getComponent("test-component");
       expect(component).toBe(MockComponent);
     });
 
-    it('should return undefined and log error for non-existent component', () => {
-      const component = getComponent('non-existent');
+    it("should return undefined and log error for non-existent component", () => {
+      const component = getComponent("non-existent");
 
       expect(component).toBeUndefined();
       expect(consoleError).toHaveBeenCalledWith(
@@ -92,15 +92,15 @@ describe('storyblok-store', () => {
     });
   });
 
-  describe('getStoryblokApi', () => {
-    it('should return initialized API', () => {
+  describe("getStoryblokApi", () => {
+    it("should return initialized API", () => {
       storyblokInit({
-        accessToken: 'test-token',
+        accessToken: "test-token",
       });
 
       // API is initialized
       const api = getStoryblokApi();
-      expect(api).toEqual({ test: 'api' });
+      expect(api).toEqual({ test: "api" });
     });
   });
 });

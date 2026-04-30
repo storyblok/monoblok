@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref } from "vue";
 
 defineProps({ blok: Object });
 const count = ref(0);

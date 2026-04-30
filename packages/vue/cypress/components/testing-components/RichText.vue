@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import RichTextChild from './RichTextChild.vue';
+import RichTextChild from "./RichTextChild.vue";
 </script>
 
 <template>

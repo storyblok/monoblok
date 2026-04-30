@@ -1,9 +1,9 @@
-export type StoryblokPropertyType = 'asset' | 'multiasset' | 'multilink' | 'table' | 'richtext';
+export type StoryblokPropertyType = "asset" | "multiasset" | "multilink" | "table" | "richtext";
 
 export interface StoryblokAsset {
   alt: string | null;
   copyright: string | null;
-  fieldtype: 'asset';
+  fieldtype: "asset";
   id: number;
   filename: string | null;
   name: string;
@@ -74,11 +74,11 @@ export interface StoryblokMultilinkUrl {
 }
 
 interface StoryblokMultilinkBase {
-  fieldtype: 'multilink';
+  fieldtype: "multilink";
   id: string;
   url: string;
   cached_url: string;
-  target?: '_blank' | '_self';
+  target?: "_blank" | "_self";
   anchor?: string;
   rel?: string;
   title?: string;
@@ -87,36 +87,36 @@ interface StoryblokMultilinkBase {
 
 export type StoryblokMultilink =
   | (StoryblokMultilinkBase & {
-    linktype: 'story';
-    story?: StoryblokMultilinkStory | StoryblokMultilinkLink | StoryblokMultilinkUrl;
-  })
+      linktype: "story";
+      story?: StoryblokMultilinkStory | StoryblokMultilinkLink | StoryblokMultilinkUrl;
+    })
   | (StoryblokMultilinkBase & {
-    linktype: 'url';
-  })
+      linktype: "url";
+    })
   | (StoryblokMultilinkBase & {
-    linktype: 'email';
-    email: string;
-  })
+      linktype: "email";
+      email: string;
+    })
   | (StoryblokMultilinkBase & {
-    linktype: 'asset';
-  });
+      linktype: "asset";
+    });
 
 export interface StoryblokTable {
-  fieldtype: 'table';
+  fieldtype: "table";
   thead: Array<{
     _uid: string;
     value: string;
-    component: '_table_head';
+    component: "_table_head";
     _editable?: string;
   }>;
   tbody: Array<{
     _uid: string;
-    component: '_table_row';
+    component: "_table_row";
     _editable?: string;
     body: Array<{
       _uid: string;
       value: string;
-      component: '_table_col';
+      component: "_table_col";
       _editable?: string;
     }>;
   }>;

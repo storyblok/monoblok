@@ -30,7 +30,7 @@ paths:
             enum: [asset, component]
           description: Filter internal tags by object type. Possible values - `asset` or `component`
       responses:
-        '200':
+        "200":
           description: List of internal tags
           headers:
             $ref: ../shared/pagination.yaml#/pagination_headers
@@ -42,12 +42,12 @@ paths:
                   internal_tags:
                     type: array
                     items:
-                      $ref: '#/components/schemas/InternalTag'
-        '400':
+                      $ref: "#/components/schemas/InternalTag"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
     post:
       operationId: create
@@ -59,9 +59,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTag'
+              $ref: "#/components/schemas/InternalTag"
       responses:
-        '201':
+        "201":
           description: Internal tag created
           content:
             application/json:
@@ -69,12 +69,12 @@ paths:
                 type: object
                 properties:
                   internal_tag:
-                    $ref: '#/components/schemas/InternalTag'
-        '400':
+                    $ref: "#/components/schemas/InternalTag"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Space not found
   /v1/spaces/{space_id}/internal_tags/{internal_tag_id}:
     put:
@@ -93,9 +93,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InternalTag'
+              $ref: "#/components/schemas/InternalTag"
       responses:
-        '200':
+        "200":
           description: Internal tag updated
           content:
             application/json:
@@ -103,12 +103,12 @@ paths:
                 type: object
                 properties:
                   internal_tag:
-                    $ref: '#/components/schemas/InternalTag'
-        '400':
+                    $ref: "#/components/schemas/InternalTag"
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Internal tag not found
     delete:
       operationId: delete
@@ -122,13 +122,13 @@ paths:
             type: integer
           description: Numeric ID of the internal tag
       responses:
-        '204':
+        "204":
           description: Internal tag deleted
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
-        '404':
+        "404":
           description: Internal tag not found
 components:
   securitySchemes:

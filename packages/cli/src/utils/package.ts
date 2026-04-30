@@ -1,7 +1,7 @@
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'pathe';
-import type { NormalizedPackageJson } from 'read-package-up';
-import { readPackageUp } from 'read-package-up';
+import { fileURLToPath } from "node:url";
+import { dirname } from "pathe";
+import type { NormalizedPackageJson } from "read-package-up";
+import { readPackageUp } from "read-package-up";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,13 +14,13 @@ const result = await readPackageUp({
 const packageJson: NormalizedPackageJson = result
   ? result.packageJson
   : ({
-      name: 'storyblok',
-      description: 'Storyblok CLI',
-      version: '0.0.0',
+      name: "storyblok",
+      description: "Storyblok CLI",
+      version: "0.0.0",
     } as NormalizedPackageJson);
 
 if (!result) {
-  console.debug('Metadata not found');
+  console.debug("Metadata not found");
 }
 
 /**

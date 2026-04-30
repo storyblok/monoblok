@@ -19,7 +19,6 @@
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true
-
   },
   "include": ["src"],
   "exclude": ["node_modules", "src/**/*.cy.ts", "src/**/*.test.ts"]

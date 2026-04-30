@@ -1,43 +1,43 @@
-import { describe, expect, it, vi } from 'vitest';
-import { richTextResolver } from './richtext';
-import { getRichTextSegments } from './richtext-segment';
-import { renderSegments } from './render-segments';
-import type { RendererAdapter } from './render-segments';
-import { createSSRApp, createTextVNode, h } from 'vue';
-import type { VNode } from 'vue';
-import { renderToString } from 'vue/server-renderer';
-import type { StoryblokRichTextNode } from './types';
-import { Mark, Node } from '@tiptap/core';
-import Heading from '@tiptap/extension-heading';
-import Bold from '@tiptap/extension-bold';
-import { ComponentBlok } from './extensions/nodes';
-import { getStoryblokExtensions } from './extensions';
+import { describe, expect, it, vi } from "vitest";
+import { richTextResolver } from "./richtext";
+import { getRichTextSegments } from "./richtext-segment";
+import { renderSegments } from "./render-segments";
+import type { RendererAdapter } from "./render-segments";
+import { createSSRApp, createTextVNode, h } from "vue";
+import type { VNode } from "vue";
+import { renderToString } from "vue/server-renderer";
+import type { StoryblokRichTextNode } from "./types";
+import { Mark, Node } from "@tiptap/core";
+import Heading from "@tiptap/extension-heading";
+import Bold from "@tiptap/extension-bold";
+import { ComponentBlok } from "./extensions/nodes";
+import { getStoryblokExtensions } from "./extensions";
 
-describe('richtext', () => {
-  describe('document', () => {
-    it('should not render any wrapper tag', () => {
+describe("richtext", () => {
+  describe("document", () => {
+    it("should not render any wrapper tag", () => {
       const { render } = richTextResolver({});
       const richdata = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'paragraph',
+            type: "paragraph",
             content: [
               {
-                type: 'text',
-                text: 'Hey ',
+                type: "text",
+                text: "Hey ",
               },
             ],
           },
           {
-            type: 'doc',
+            type: "doc",
             content: [
               {
-                type: 'paragraph',
+                type: "paragraph",
                 content: [
                   {
-                    type: 'text',
-                    text: 'nested',
+                    type: "text",
+                    text: "nested",
                   },
                 ],
               },
@@ -47,20 +47,20 @@ describe('richtext', () => {
       };
 
       const html = render(richdata as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p>Hey </p><p>nested</p>');
+      expect(html).toBe("<p>Hey </p><p>nested</p>");
     });
   });
-  describe('blocktypes', () => {
-    it('should render a paragraph with key property', async () => {
+  describe("blocktypes", () => {
+    it("should render a paragraph with key property", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const paragraph = {
-        type: 'paragraph',
+        type: "paragraph",
         content: [
           {
-            type: 'text',
-            text: 'Hello, world!',
+            type: "text",
+            text: "Hello, world!",
           },
         ],
       };
@@ -68,19 +68,19 @@ describe('richtext', () => {
       expect(html).toBe('<p key="p-0">Hello, world!</p>');
     });
 
-    it('should render heading with key property', async () => {
+    it("should render heading with key property", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const heading = {
-        type: 'heading',
+        type: "heading",
         attrs: {
           level: 2,
         },
         content: [
           {
-            text: 'Headline 2',
-            type: 'text',
+            text: "Headline 2",
+            type: "text",
           },
         ],
       };
@@ -88,28 +88,28 @@ describe('richtext', () => {
       expect(html).toBe('<h2 key="h2-0">Headline 2</h2>');
     });
 
-    it('should render list items with keys if keyedResolvers is true', async () => {
+    it("should render list items with keys if keyedResolvers is true", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const list = {
-        type: 'bullet_list',
+        type: "bullet_list",
         content: [
           {
-            type: 'list_item',
+            type: "list_item",
             content: [
               {
-                type: 'text',
-                text: 'Item 1',
+                type: "text",
+                text: "Item 1",
               },
             ],
           },
           {
-            type: 'list_item',
+            type: "list_item",
             content: [
               {
-                type: 'text',
-                text: 'Item 2',
+                type: "text",
+                text: "Item 2",
               },
             ],
           },
@@ -119,85 +119,91 @@ describe('richtext', () => {
       expect(html).toBe('<ul key="ul-0"><li key="li-0">Item 1</li><li key="li-1">Item 2</li></ul>');
     });
 
-    it('should render an image with attrs', async () => {
+    it("should render an image with attrs", async () => {
       const { render } = richTextResolver({});
       const image = {
-        type: 'image',
+        type: "image",
         attrs: {
-          src: 'https://example.com/image.jpg',
-          alt: 'An image',
-          copyright: '© Storyblok',
-          source: 'Storyblok',
-          title: 'An image',
+          src: "https://example.com/image.jpg",
+          alt: "An image",
+          copyright: "© Storyblok",
+          source: "Storyblok",
+          title: "An image",
           meta_data: {
-            alt: 'An image',
-            copyright: '© Storyblok',
-            source: 'Storyblok',
+            alt: "An image",
+            copyright: "© Storyblok",
+            source: "Storyblok",
           },
         },
       };
       const html = render(image as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<img src="https://example.com/image.jpg" alt="An image" title="An image">');
+      expect(html).toBe(
+        '<img src="https://example.com/image.jpg" alt="An image" title="An image">',
+      );
     });
 
-    it('should render an image with key property', async () => {
+    it("should render an image with key property", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const image = {
-        type: 'image',
+        type: "image",
         attrs: {
-          src: 'https://example.com/image.jpg',
-          alt: 'An image',
+          src: "https://example.com/image.jpg",
+          alt: "An image",
         },
       };
       const html = render(image as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<img src="https://example.com/image.jpg" alt="An image" key="img-0">');
     });
 
-    it('should optimize image attrs', async () => {
+    it("should optimize image attrs", async () => {
       const { render } = richTextResolver({
         optimizeImages: true,
       });
       const image = {
-        type: 'image',
+        type: "image",
         attrs: {
-          src: 'https://example.com/image.jpg',
-          alt: 'An image',
-          title: 'An image',
+          src: "https://example.com/image.jpg",
+          alt: "An image",
+          title: "An image",
           meta_data: {
-            alt: 'An image',
-            title: 'An image',
+            alt: "An image",
+            title: "An image",
           },
         },
       };
       const html = render(image as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<img src="https://example.com/image.jpg/m/" alt="An image" title="An image">');
+      expect(html).toBe(
+        '<img src="https://example.com/image.jpg/m/" alt="An image" title="An image">',
+      );
     });
 
-    it('should render an emoji', async () => {
+    it("should render an emoji", async () => {
       const { render } = richTextResolver({});
       const emoji = {
-        type: 'emoji',
+        type: "emoji",
         attrs: {
-          emoji: '🚀',
-          name: 'smile',
+          emoji: "🚀",
+          name: "smile",
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="🚀"><img style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy"></span>');
+      expect(html).toBe(
+        '<span data-type="emoji" data-name="smile" data-emoji="🚀"><img style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy"></span>',
+      );
     });
 
-    it('should render a table', async () => {
+    it("should render a table", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -205,18 +211,18 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Cell 1',
-                        type: 'text',
+                        text: "Cell 1",
+                        type: "text",
                       },
                     ],
                   },
                 ],
               },
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -224,11 +230,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Cell 2',
-                        type: 'text',
+                        text: "Cell 2",
+                        type: "text",
                       },
                     ],
                   },
@@ -239,19 +245,21 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><td><p>Cell 1</p></td><td><p>Cell 2</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        "<table><tbody><tr><td><p>Cell 1</p></td><td><p>Cell 2</p></td></tr></tbody></table>",
+      );
     });
 
-    it('should render a table with colspan and rowspan', async () => {
+    it("should render a table with colspan and rowspan", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 2,
                   rowspan: 1,
@@ -259,11 +267,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Merged Cell',
-                        type: 'text',
+                        text: "Merged Cell",
+                        type: "text",
                       },
                     ],
                   },
@@ -272,10 +280,10 @@ describe('richtext', () => {
             ],
           },
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -283,18 +291,18 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Cell 1',
-                        type: 'text',
+                        text: "Cell 1",
+                        type: "text",
                       },
                     ],
                   },
                 ],
               },
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -302,11 +310,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Cell 2',
-                        type: 'text',
+                        text: "Cell 2",
+                        type: "text",
                       },
                     ],
                   },
@@ -317,19 +325,21 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><td colspan="2"><p>Merged Cell</p></td></tr><tr><td><p>Cell 1</p></td><td><p>Cell 2</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table><tbody><tr><td colspan="2"><p>Merged Cell</p></td></tr><tr><td><p>Cell 1</p></td><td><p>Cell 2</p></td></tr></tbody></table>',
+      );
     });
 
-    it('should render a table with colwidth', async () => {
+    it("should render a table with colwidth", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -337,11 +347,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Fixed Width Cell',
-                        type: 'text',
+                        text: "Fixed Width Cell",
+                        type: "text",
                       },
                     ],
                   },
@@ -352,21 +362,23 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><td style="width: 200px;"><p>Fixed Width Cell</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table><tbody><tr><td style="width: 200px;"><p>Fixed Width Cell</p></td></tr></tbody></table>',
+      );
     });
 
-    it('should render a table with keyed resolvers', async () => {
+    it("should render a table with keyed resolvers", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -374,11 +386,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Cell 1',
-                        type: 'text',
+                        text: "Cell 1",
+                        type: "text",
                       },
                     ],
                   },
@@ -389,32 +401,34 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table key="table-0"><tbody key="tbody-0"><tr key="tr-0"><td key="td-0"><p key="p-0">Cell 1</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table key="table-0"><tbody key="tbody-0"><tr key="tr-0"><td key="td-0"><p key="p-0">Cell 1</p></td></tr></tbody></table>',
+      );
     });
 
-    it('should render a table cell with background color', async () => {
+    it("should render a table cell with background color", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
                   colwidth: null,
-                  backgroundColor: '#F11F1F',
+                  backgroundColor: "#F11F1F",
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Colored Cell',
-                        type: 'text',
+                        text: "Colored Cell",
+                        type: "text",
                       },
                     ],
                   },
@@ -425,32 +439,34 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><td style="background-color: #F11F1F;"><p>Colored Cell</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table><tbody><tr><td style="background-color: #F11F1F;"><p>Colored Cell</p></td></tr></tbody></table>',
+      );
     });
 
-    it('should render a table cell with both width and background color', async () => {
+    it("should render a table cell with both width and background color", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
                   colwidth: 200,
-                  backgroundColor: '#F11F1F',
+                  backgroundColor: "#F11F1F",
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Styled Cell',
-                        type: 'text',
+                        text: "Styled Cell",
+                        type: "text",
                       },
                     ],
                   },
@@ -461,39 +477,41 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><tbody><tr><td style="width: 200px; background-color: #F11F1F;"><p>Styled Cell</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table><tbody><tr><td style="width: 200px; background-color: #F11F1F;"><p>Styled Cell</p></td></tr></tbody></table>',
+      );
     });
 
-    it('should render a table with header cells', async () => {
+    it("should render a table with header cells", async () => {
       const { render } = richTextResolver({});
       const table = {
-        type: 'table',
+        type: "table",
         content: [
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableHeader',
+                type: "tableHeader",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
                   colwidth: null,
-                  backgroundColor: '#F5F5F5',
+                  backgroundColor: "#F5F5F5",
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Header Cell',
-                        type: 'text',
+                        text: "Header Cell",
+                        type: "text",
                       },
                     ],
                   },
                 ],
               },
               {
-                type: 'tableHeader',
+                type: "tableHeader",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -501,11 +519,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Another Header',
-                        type: 'text',
+                        text: "Another Header",
+                        type: "text",
                       },
                     ],
                   },
@@ -514,10 +532,10 @@ describe('richtext', () => {
             ],
           },
           {
-            type: 'tableRow',
+            type: "tableRow",
             content: [
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -525,18 +543,18 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Regular Cell',
-                        type: 'text',
+                        text: "Regular Cell",
+                        type: "text",
                       },
                     ],
                   },
                 ],
               },
               {
-                type: 'tableCell',
+                type: "tableCell",
                 attrs: {
                   colspan: 1,
                   rowspan: 1,
@@ -544,11 +562,11 @@ describe('richtext', () => {
                 },
                 content: [
                   {
-                    type: 'paragraph',
+                    type: "paragraph",
                     content: [
                       {
-                        text: 'Another Cell',
-                        type: 'text',
+                        text: "Another Cell",
+                        type: "text",
                       },
                     ],
                   },
@@ -559,40 +577,47 @@ describe('richtext', () => {
         ],
       };
       const html = render(table as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<table><thead><tr><th style="background-color: #F5F5F5;"><p>Header Cell</p></th><th><p>Another Header</p></th></tr></thead><tbody><tr><td><p>Regular Cell</p></td><td><p>Another Cell</p></td></tr></tbody></table>');
+      expect(html).toBe(
+        '<table><thead><tr><th style="background-color: #F5F5F5;"><p>Header Cell</p></th><th><p>Another Header</p></th></tr></thead><tbody><tr><td><p>Regular Cell</p></td><td><p>Another Cell</p></td></tr></tbody></table>',
+      );
     });
   });
 
-  describe('textTypes & MarksTypes', () => {
-    it('should render text with styled marks', async () => {
+  describe("textTypes & MarksTypes", () => {
+    it("should render text with styled marks", async () => {
       const { render } = richTextResolver({});
       const text = {
-        type: 'paragraph',
+        type: "paragraph",
         content: [
           {
-            text: 'Bold and italic',
-            type: 'text',
-            marks: [{ type: 'styled', attrs: { color: 'red' } }, { type: 'styled', attrs: { color: 'blue' } }],
+            text: "Bold and italic",
+            type: "text",
+            marks: [
+              { type: "styled", attrs: { color: "red" } },
+              { type: "styled", attrs: { color: "blue" } },
+            ],
           },
         ],
       };
       const html = render(text as unknown as StoryblokRichTextNode<string>);
       // Update the expected HTML to reflect the styles
-      expect(html).toBe('<p><span style="color: blue"><span style="color: red">Bold and italic</span></span></p>');
+      expect(html).toBe(
+        '<p><span style="color: blue"><span style="color: red">Bold and italic</span></span></p>',
+      );
     });
 
-    it('should render an external link', async () => {
+    it("should render an external link", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'External link',
-        type: 'text',
+        text: "External link",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'https://example.com',
-              target: '_blank',
-              linktype: 'url',
+              href: "https://example.com",
+              target: "_blank",
+              linktype: "url",
             },
           },
         ],
@@ -601,19 +626,19 @@ describe('richtext', () => {
       expect(html).toBe('<a href="https://example.com" target="_blank">External link</a>');
     });
 
-    it('should render an anchor link', async () => {
+    it("should render an anchor link", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'Anchor link',
-        type: 'text',
+        text: "Anchor link",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: '/home',
-              target: '_self',
-              anchor: 'anchor',
-              linktype: 'story',
+              href: "/home",
+              target: "_self",
+              anchor: "anchor",
+              linktype: "story",
             },
           },
         ],
@@ -622,17 +647,17 @@ describe('richtext', () => {
       expect(html).toBe('<a href="/home#anchor" target="_self">Anchor link</a>');
     });
 
-    it('should render an email link', async () => {
+    it("should render an email link", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'jane@example.com',
-        type: 'text',
+        text: "jane@example.com",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'jane@example.com',
-              linktype: 'email',
+              href: "jane@example.com",
+              linktype: "email",
             },
           },
         ],
@@ -641,17 +666,17 @@ describe('richtext', () => {
       expect(html).toBe('<a href="mailto:jane@example.com">jane@example.com</a>');
     });
 
-    it('should not duplicate mailto: prefix when href already contains it', async () => {
+    it("should not duplicate mailto: prefix when href already contains it", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'hey@hoe.dev',
-        type: 'text',
+        text: "hey@hoe.dev",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'mailto:hey@hoe.dev',
-              linktype: 'email',
+              href: "mailto:hey@hoe.dev",
+              linktype: "email",
             },
           },
         ],
@@ -660,20 +685,20 @@ describe('richtext', () => {
       expect(html).toBe('<a href="mailto:hey@hoe.dev">hey@hoe.dev</a>');
     });
 
-    it('should render an internal link', async () => {
+    it("should render an internal link", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'Internal Link',
-        type: 'text',
+        text: "Internal Link",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: '/',
-              uuid: '2bbf3ee7-acbe-401c-ade5-cf33e6e0babb',
+              href: "/",
+              uuid: "2bbf3ee7-acbe-401c-ade5-cf33e6e0babb",
               anchor: null,
-              target: '_blank',
-              linktype: 'story',
+              target: "_blank",
+              linktype: "story",
             },
           },
         ],
@@ -682,36 +707,38 @@ describe('richtext', () => {
       expect(html).toBe('<a href="/" target="_blank">Internal Link</a>');
     });
 
-    it('should render an asset link', async () => {
+    it("should render an asset link", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'Asset link',
-        type: 'text',
+        text: "Asset link",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'https://a.storyblok.com/f/67536/400x303/ccbe9ca7b3/nuxt-logo.png',
-              linktype: 'asset',
+              href: "https://a.storyblok.com/f/67536/400x303/ccbe9ca7b3/nuxt-logo.png",
+              linktype: "asset",
             },
           },
         ],
       };
       const html = render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<a href="https://a.storyblok.com/f/67536/400x303/ccbe9ca7b3/nuxt-logo.png">Asset link</a>');
+      expect(html).toBe(
+        '<a href="https://a.storyblok.com/f/67536/400x303/ccbe9ca7b3/nuxt-logo.png">Asset link</a>',
+      );
     });
 
-    it('should render a key when keyedResolvers is set', async () => {
+    it("should render a key when keyedResolvers is set", async () => {
       const { render } = richTextResolver({ keyedResolvers: true });
       const link = {
-        text: 'Link text',
-        type: 'text',
+        text: "Link text",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'https://url.com',
-              linktype: 'url',
+              href: "https://url.com",
+              linktype: "url",
             },
           },
         ],
@@ -720,41 +747,41 @@ describe('richtext', () => {
       expect(html).toBe('<a href="https://url.com" key="a-0">Link text</a>');
     });
 
-    it('should not render href when is empty', async () => {
-      const { render } = richTextResolver({ });
+    it("should not render href when is empty", async () => {
+      const { render } = richTextResolver({});
       const link: any = {
-        text: 'Link text',
-        type: 'text',
+        text: "Link text",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              linktype: 'url',
+              linktype: "url",
             },
           },
         ],
       };
       const html = render(link as unknown as StoryblokRichTextNode<string>);
-      link.marks[0].attrs.href = '';
+      link.marks[0].attrs.href = "";
       const html2 = render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<a>Link text</a>');
-      expect(html2).toBe('<a>Link text</a>');
+      expect(html).toBe("<a>Link text</a>");
+      expect(html2).toBe("<a>Link text</a>");
     });
 
-    it('should not render null attributes on links', async () => {
+    it("should not render null attributes on links", async () => {
       const { render } = richTextResolver({});
       const link = {
-        text: 'Hello',
-        type: 'text',
+        text: "Hello",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: '/',
+              href: "/",
               uuid: null,
               anchor: null,
               target: null,
-              linktype: 'url',
+              linktype: "url",
             },
           },
         ],
@@ -763,16 +790,16 @@ describe('richtext', () => {
       expect(html).toBe('<a href="/">Hello</a>');
     });
 
-    it('should render as a URL when linktype is not defined', async () => {
-      const { render } = richTextResolver({ });
+    it("should render as a URL when linktype is not defined", async () => {
+      const { render } = richTextResolver({});
       const link = {
-        text: 'Link text',
-        type: 'text',
+        text: "Link text",
+        type: "text",
         marks: [
           {
-            type: 'link',
+            type: "link",
             attrs: {
-              href: 'https://url.com',
+              href: "https://url.com",
             },
           },
         ],
@@ -781,242 +808,257 @@ describe('richtext', () => {
       expect(html).toBe('<a href="https://url.com">Link text</a>');
     });
 
-    it('should render a bold text with key property', async () => {
+    it("should render a bold text with key property", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const bold = {
-        text: 'Bold',
-        type: 'text',
-        marks: [{ type: 'bold' }],
+        text: "Bold",
+        type: "text",
+        marks: [{ type: "bold" }],
       };
       const html = render(bold as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<strong key="strong-0">Bold</strong>');
     });
 
-    it('should render an italic text with key', async () => {
+    it("should render an italic text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const italic = {
-        text: 'Italic',
-        type: 'text',
-        marks: [{ type: 'italic' }],
+        text: "Italic",
+        type: "text",
+        marks: [{ type: "italic" }],
       };
       const html = render(italic as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<em key="em-0">Italic</em>');
     });
 
-    it('should render a underline text with key', async () => {
+    it("should render a underline text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const underline = {
-        text: 'Underline',
-        type: 'text',
-        marks: [{ type: 'underline' }],
+        text: "Underline",
+        type: "text",
+        marks: [{ type: "underline" }],
       };
       const html = render(underline as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<u key="u-0">Underline</u>');
     });
 
-    it('should render a strike text with key', async () => {
+    it("should render a strike text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const strike = {
-        text: 'Strike',
-        type: 'text',
-        marks: [{ type: 'strike' }],
+        text: "Strike",
+        type: "text",
+        marks: [{ type: "strike" }],
       };
       const html = render(strike as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<s key="s-0">Strike</s>');
     });
 
-    it('should render a code text with key', async () => {
+    it("should render a code text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const code = {
-        text: 'Code',
-        type: 'text',
-        marks: [{ type: 'code' }],
+        text: "Code",
+        type: "text",
+        marks: [{ type: "code" }],
       };
       const html = render(code as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<code key="code-0">Code</code>');
     });
 
-    it('should render a superscript text with key', async () => {
+    it("should render a superscript text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const superscript = {
-        text: 'Superscript',
-        type: 'text',
-        marks: [{ type: 'superscript' }],
+        text: "Superscript",
+        type: "text",
+        marks: [{ type: "superscript" }],
       };
       const html = render(superscript as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<sup key="sup-0">Superscript</sup>');
     });
 
-    it('should render a subscript text with key', async () => {
+    it("should render a subscript text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const subscript = {
-        text: 'Subscript',
-        type: 'text',
-        marks: [{ type: 'subscript' }],
+        text: "Subscript",
+        type: "text",
+        marks: [{ type: "subscript" }],
       };
       const html = render(subscript as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<sub key="sub-0">Subscript</sub>');
     });
 
-    it('should render a highlight text with key', async () => {
+    it("should render a highlight text with key", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const highlight = {
-        text: 'Highlight',
-        type: 'text',
-        marks: [{ type: 'highlight' }],
+        text: "Highlight",
+        type: "text",
+        marks: [{ type: "highlight" }],
       };
       const html = render(highlight as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<mark key="mark-0">Highlight</mark>');
     });
 
-    it('should render text with multiple marks and keys', () => {
+    it("should render text with multiple marks and keys", () => {
       const text = {
-        type: 'paragraph',
-        content: [{
-          type: 'text',
-          text: 'Styled text',
-          marks: [
-            { type: 'bold' },
-            { type: 'italic' },
-          ],
-        }],
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "Styled text",
+            marks: [{ type: "bold" }, { type: "italic" }],
+          },
+        ],
       };
-      const html = richTextResolver<string>({ keyedResolvers: true }).render(text as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p key="p-0"><em key="em-0"><strong key="strong-0">Styled text</strong></em></p>');
+      const html = richTextResolver<string>({ keyedResolvers: true }).render(
+        text as unknown as StoryblokRichTextNode<string>,
+      );
+      expect(html).toBe(
+        '<p key="p-0"><em key="em-0"><strong key="strong-0">Styled text</strong></em></p>',
+      );
     });
 
-    it('should render an emoji with keys', async () => {
+    it("should render an emoji with keys", async () => {
       const { render } = richTextResolver({
         keyedResolvers: true,
       });
       const emoji = {
-        type: 'emoji',
+        type: "emoji",
         attrs: {
-          emoji: '😊',
-          name: 'smile',
-          fallbackImage: 'smile.png',
+          emoji: "😊",
+          name: "smile",
+          fallbackImage: "smile.png",
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="😊" key="span-0"><img src="smile.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" key="img-0"></span>');
+      expect(html).toBe(
+        '<span data-type="emoji" data-name="smile" data-emoji="😊" key="span-0"><img src="smile.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" key="img-0"></span>',
+      );
     });
 
-    it('should render a code block with keys', () => {
+    it("should render a code block with keys", () => {
       const codeBlock = {
-        type: 'code_block',
-        content: [{ type: 'text', text: 'const x = 42;' }],
+        type: "code_block",
+        content: [{ type: "text", text: "const x = 42;" }],
       };
-      const html = richTextResolver<string>({ keyedResolvers: true }).render(codeBlock as StoryblokRichTextNode<string>);
+      const html = richTextResolver<string>({ keyedResolvers: true }).render(
+        codeBlock as StoryblokRichTextNode<string>,
+      );
       expect(html).toBe('<pre key="pre-0"><code key="code-0">const x = 42;</code></pre>');
     });
 
-    it('should render anchor mark as span with id, not as a link', () => {
+    it("should render anchor mark as span with id, not as a link", () => {
       const { render } = richTextResolver({});
       const text = {
-        type: 'text',
-        text: 'Anchored text',
-        marks: [{ type: 'anchor', attrs: { id: 'my-section' } }],
+        type: "text",
+        text: "Anchored text",
+        marks: [{ type: "anchor", attrs: { id: "my-section" } }],
       };
       const html = render(text as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<span id="my-section">Anchored text</span>');
     });
 
-    it('should not leak language attribute onto pre element', () => {
+    it("should not leak language attribute onto pre element", () => {
       const { render } = richTextResolver({});
       const codeBlock = {
-        type: 'code_block',
-        attrs: { language: 'js' },
-        content: [{ type: 'text', text: 'const x = 1;' }],
+        type: "code_block",
+        attrs: { language: "js" },
+        content: [{ type: "text", text: "const x = 1;" }],
       };
       const html = render(codeBlock as unknown as StoryblokRichTextNode<string>);
       expect(html).toBe('<pre><code class="language-js">const x = 1;</code></pre>');
       expect(html).not.toContain('language="js"');
     });
 
-    it('should render a link with text, keys, and custom attrs', () => {
+    it("should render a link with text, keys, and custom attrs", () => {
       const link = {
-        type: 'paragraph',
-        content: [{
-          type: 'text',
-          text: 'Click me',
-          marks: [{
-            type: 'link',
-            attrs: {
-              href: 'https://example.com',
-              custom: {
-                'data-custom': 'foo',
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "Click me",
+            marks: [
+              {
+                type: "link",
+                attrs: {
+                  href: "https://example.com",
+                  custom: {
+                    "data-custom": "foo",
+                  },
+                },
               },
-            },
-          }],
-        }],
+            ],
+          },
+        ],
       };
-      const html = richTextResolver<string>({ keyedResolvers: true }).render(link as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p key="p-0"><a href="https://example.com" data-custom="foo" key="a-0">Click me</a></p>');
+      const html = richTextResolver<string>({ keyedResolvers: true }).render(
+        link as unknown as StoryblokRichTextNode<string>,
+      );
+      expect(html).toBe(
+        '<p key="p-0"><a href="https://example.com" data-custom="foo" key="a-0">Click me</a></p>',
+      );
     });
   });
-  describe('frameworks', () => {
-    it('should use the framework render function', async () => {
+  describe("frameworks", () => {
+    it("should use the framework render function", async () => {
       const { render } = richTextResolver({
         renderFn: h,
       });
       const paragraph = {
-        type: 'paragraph',
+        type: "paragraph",
         content: [
           {
-            type: 'text',
-            text: 'Hello, world!',
+            type: "text",
+            text: "Hello, world!",
           },
         ],
       };
       const vnode = render(paragraph as StoryblokRichTextNode<VNode>);
       expect(vnode.__v_isVNode).toBeTruthy();
-      expect(vnode.type).toBe('p');
+      expect(vnode.type).toBe("p");
     });
-    it('should use the framework text function', async () => {
+    it("should use the framework text function", async () => {
       const { render } = richTextResolver({
         renderFn: h,
         textFn: createTextVNode,
       });
       const paragraph = {
-        type: 'paragraph',
+        type: "paragraph",
         content: [
           {
-            type: 'text',
-            text: 'Hello, world!',
+            type: "text",
+            text: "Hello, world!",
           },
         ],
       };
       const vnode = render(paragraph as StoryblokRichTextNode<VNode>);
-      expect(vnode?.children[0].children).toBe('Hello, world!');
+      expect(vnode?.children[0].children).toBe("Hello, world!");
     });
-    it('should render a mark with a Vue component via tiptapExtensions', () => {
+    it("should render a mark with a Vue component via tiptapExtensions", () => {
       // Simulate a Vue component (like RouterLink)
-      const RouterLink = { name: 'RouterLink', render: () => null };
+      const RouterLink = { name: "RouterLink", render: () => null };
 
       const CustomLink = Mark.create({
-        name: 'link',
+        name: "link",
         renderHTML({ HTMLAttributes }: any) {
-          if (HTMLAttributes.linktype === 'story') {
+          if (HTMLAttributes.linktype === "story") {
             // Return component reference as DOMOutputSpec tag
             return [RouterLink, { to: HTMLAttributes.href }, 0];
           }
-          return ['a', { href: HTMLAttributes.href }, 0];
+          return ["a", { href: HTMLAttributes.href }, 0];
         },
       });
 
@@ -1028,42 +1070,46 @@ describe('richtext', () => {
 
       // Story link → should use RouterLink component
       const storyLink = {
-        type: 'text',
-        text: 'Internal Link',
-        marks: [{
-          type: 'link',
-          attrs: { href: '/about', linktype: 'story' },
-        }],
+        type: "text",
+        text: "Internal Link",
+        marks: [
+          {
+            type: "link",
+            attrs: { href: "/about", linktype: "story" },
+          },
+        ],
       };
       const storyVNode = render(storyLink as any);
       expect(storyVNode.__v_isVNode).toBeTruthy();
       expect(storyVNode.type).toBe(RouterLink);
-      expect(storyVNode.props?.to).toBe('/about');
+      expect(storyVNode.props?.to).toBe("/about");
 
       // URL link → should use <a> tag
       const urlLink = {
-        type: 'text',
-        text: 'External Link',
-        marks: [{
-          type: 'link',
-          attrs: { href: 'https://example.com', linktype: 'url' },
-        }],
+        type: "text",
+        text: "External Link",
+        marks: [
+          {
+            type: "link",
+            attrs: { href: "https://example.com", linktype: "url" },
+          },
+        ],
       };
       const urlVNode = render(urlLink as any);
       expect(urlVNode.__v_isVNode).toBeTruthy();
-      expect(urlVNode.type).toBe('a');
-      expect(urlVNode.props?.href).toBe('https://example.com');
+      expect(urlVNode.type).toBe("a");
+      expect(urlVNode.props?.href).toBe("https://example.com");
     });
 
-    it('should render a node with a Vue component via tiptapExtensions', () => {
-      const CustomAlert = { name: 'CustomAlert', render: () => null };
+    it("should render a node with a Vue component via tiptapExtensions", () => {
+      const CustomAlert = { name: "CustomAlert", render: () => null };
 
       const AlertNode = Node.create({
-        name: 'paragraph',
-        content: 'inline*',
-        group: 'block',
+        name: "paragraph",
+        content: "inline*",
+        group: "block",
         renderHTML() {
-          return [CustomAlert, { class: 'alert' }, 0];
+          return [CustomAlert, { class: "alert" }, 0];
         },
       });
 
@@ -1074,32 +1120,32 @@ describe('richtext', () => {
       });
 
       const doc = {
-        type: 'paragraph',
-        content: [{ type: 'text', text: 'Alert content' }],
+        type: "paragraph",
+        content: [{ type: "text", text: "Alert content" }],
       };
       const vnode = render(doc as any);
       expect(vnode.__v_isVNode).toBeTruthy();
       expect(vnode.type).toBe(CustomAlert);
-      expect(vnode.props?.class).toBe('alert');
+      expect(vnode.props?.class).toBe("alert");
     });
 
-    it('should not emit Vue slot warning when rendering component marks', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it("should not emit Vue slot warning when rendering component marks", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const RouterLink = {
-        name: 'RouterLink',
+        name: "RouterLink",
         props: { to: String },
         setup(props: { to: string }, { slots }: any) {
-          return () => h('a', { href: props.to }, slots.default?.());
+          return () => h("a", { href: props.to }, slots.default?.());
         },
       };
       const CustomLink = Mark.create({
-        name: 'link',
+        name: "link",
         renderHTML({ HTMLAttributes }: any) {
-          if (HTMLAttributes.linktype === 'story') {
+          if (HTMLAttributes.linktype === "story") {
             return [RouterLink, { to: HTMLAttributes.href }, 0];
           }
-          return ['a', { href: HTMLAttributes.href }, 0];
+          return ["a", { href: HTMLAttributes.href }, 0];
         },
       });
 
@@ -1111,15 +1157,19 @@ describe('richtext', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [{
-            type: 'text',
-            text: 'click here',
-            marks: [{ type: 'link', attrs: { href: '/about', linktype: 'story' } }],
-          }],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "click here",
+                marks: [{ type: "link", attrs: { href: "/about", linktype: "story" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const vnodes = render(doc as any);
@@ -1128,28 +1178,30 @@ describe('richtext', () => {
       await renderToString(app);
 
       const slotWarnings = warnSpy.mock.calls.filter(
-        call => typeof call[0] === 'string' && call[0].includes('Non-function value encountered for default slot'),
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes("Non-function value encountered for default slot"),
       );
       expect(slotWarnings).toHaveLength(0);
 
       warnSpy.mockRestore();
     });
 
-    it('should not emit Vue slot warning when rendering component nodes', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it("should not emit Vue slot warning when rendering component nodes", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       const CustomAlert = {
-        name: 'CustomAlert',
+        name: "CustomAlert",
         setup(_props: any, { slots }: any) {
-          return () => h('div', { class: 'alert' }, slots.default?.());
+          return () => h("div", { class: "alert" }, slots.default?.());
         },
       };
       const AlertNode = Node.create({
-        name: 'paragraph',
-        content: 'inline*',
-        group: 'block',
+        name: "paragraph",
+        content: "inline*",
+        group: "block",
         renderHTML() {
-          return [CustomAlert, { class: 'alert' }, 0];
+          return [CustomAlert, { class: "alert" }, 0];
         },
       });
 
@@ -1161,8 +1213,8 @@ describe('richtext', () => {
       });
 
       const doc = {
-        type: 'paragraph',
-        content: [{ type: 'text', text: 'Alert content' }],
+        type: "paragraph",
+        content: [{ type: "text", text: "Alert content" }],
       };
 
       const vnodes = render(doc as any);
@@ -1170,7 +1222,9 @@ describe('richtext', () => {
       await renderToString(app);
 
       const slotWarnings = warnSpy.mock.calls.filter(
-        call => typeof call[0] === 'string' && call[0].includes('Non-function value encountered for default slot'),
+        (call) =>
+          typeof call[0] === "string" &&
+          call[0].includes("Non-function value encountered for default slot"),
       );
       expect(slotWarnings).toHaveLength(0);
 
@@ -1179,18 +1233,18 @@ describe('richtext', () => {
   });
 });
 
-describe('text Alignment', () => {
-  it('should render paragraph with text alignment', async () => {
+describe("text Alignment", () => {
+  it("should render paragraph with text alignment", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'paragraph',
+      type: "paragraph",
       attrs: {
-        textAlign: 'right',
+        textAlign: "right",
       },
       content: [
         {
-          type: 'text',
-          text: 'Right aligned text',
+          type: "text",
+          text: "Right aligned text",
         },
       ],
     };
@@ -1199,44 +1253,44 @@ describe('text Alignment', () => {
     expect(html).toBe('<p style="text-align: right;">Right aligned text</p>');
   });
 
-  it('should handle multiple paragraphs with different alignments', async () => {
+  it("should handle multiple paragraphs with different alignments", async () => {
     const { render } = richTextResolver();
     const doc = {
-      type: 'doc',
+      type: "doc",
       content: [
         {
-          type: 'paragraph',
+          type: "paragraph",
           attrs: {
-            textAlign: 'right',
+            textAlign: "right",
           },
           content: [
             {
-              type: 'text',
-              text: 'Right aligned text',
+              type: "text",
+              text: "Right aligned text",
             },
           ],
         },
         {
-          type: 'paragraph',
+          type: "paragraph",
           attrs: {
-            textAlign: 'center',
+            textAlign: "center",
           },
           content: [
             {
-              type: 'text',
-              text: 'Center aligned text',
+              type: "text",
+              text: "Center aligned text",
             },
           ],
         },
         {
-          type: 'paragraph',
+          type: "paragraph",
           attrs: {
-            textAlign: 'left',
+            textAlign: "left",
           },
           content: [
             {
-              type: 'text',
-              text: 'Left aligned text',
+              type: "text",
+              text: "Left aligned text",
             },
           ],
         },
@@ -1245,45 +1299,47 @@ describe('text Alignment', () => {
 
     const html = render(doc as StoryblokRichTextNode<string>);
     expect(html).toBe(
-      '<p style="text-align: right;">Right aligned text</p>'
-      + '<p style="text-align: center;">Center aligned text</p>'
-      + '<p style="text-align: left;">Left aligned text</p>',
+      '<p style="text-align: right;">Right aligned text</p>' +
+        '<p style="text-align: center;">Center aligned text</p>' +
+        '<p style="text-align: left;">Left aligned text</p>',
     );
   });
 
-  it('should handle text alignment with other attributes', async () => {
+  it("should handle text alignment with other attributes", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'paragraph',
+      type: "paragraph",
       attrs: {
-        textAlign: 'right',
-        class: 'custom-class',
-        id: 'custom-id',
+        textAlign: "right",
+        class: "custom-class",
+        id: "custom-id",
       },
       content: [
         {
-          type: 'text',
-          text: 'Styled text',
+          type: "text",
+          text: "Styled text",
         },
       ],
     };
 
     const html = render(node as StoryblokRichTextNode<string>);
-    expect(html).toBe('<p class="custom-class" id="custom-id" style="text-align: right;">Styled text</p>');
+    expect(html).toBe(
+      '<p class="custom-class" id="custom-id" style="text-align: right;">Styled text</p>',
+    );
   });
 
-  it('should preserve existing style attributes when adding text alignment', async () => {
+  it("should preserve existing style attributes when adding text alignment", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'paragraph',
+      type: "paragraph",
       attrs: {
-        textAlign: 'right',
-        style: 'color: red;',
+        textAlign: "right",
+        style: "color: red;",
       },
       content: [
         {
-          type: 'text',
-          text: 'Colored and aligned text',
+          type: "text",
+          text: "Colored and aligned text",
         },
       ],
     };
@@ -1292,18 +1348,18 @@ describe('text Alignment', () => {
     expect(html).toBe('<p style="color: red; text-align: right;">Colored and aligned text</p>');
   });
 
-  it('should handle text alignment in headings', async () => {
+  it("should handle text alignment in headings", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'heading',
+      type: "heading",
       attrs: {
         level: 2,
-        textAlign: 'center',
+        textAlign: "center",
       },
       content: [
         {
-          type: 'text',
-          text: 'Centered Heading',
+          type: "text",
+          text: "Centered Heading",
         },
       ],
     };
@@ -1312,23 +1368,23 @@ describe('text Alignment', () => {
     expect(html).toBe('<h2 style="text-align: center;">Centered Heading</h2>');
   });
 
-  it('should handle text alignment in list items', async () => {
+  it("should handle text alignment in list items", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'bullet_list',
+      type: "bullet_list",
       content: [
         {
-          type: 'list_item',
+          type: "list_item",
           attrs: {
-            textAlign: 'right',
+            textAlign: "right",
           },
           content: [
             {
-              type: 'paragraph',
+              type: "paragraph",
               content: [
                 {
-                  type: 'text',
-                  text: 'Right aligned list item',
+                  type: "text",
+                  text: "Right aligned list item",
                 },
               ],
             },
@@ -1338,29 +1394,31 @@ describe('text Alignment', () => {
     };
 
     const html = render(node as StoryblokRichTextNode<string>);
-    expect(html).toBe('<ul><li style="text-align: right;"><p>Right aligned list item</p></li></ul>');
+    expect(html).toBe(
+      '<ul><li style="text-align: right;"><p>Right aligned list item</p></li></ul>',
+    );
   });
 
-  it('should handle text alignment in table cells', async () => {
+  it("should handle text alignment in table cells", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'table',
+      type: "table",
       content: [
         {
-          type: 'tableRow',
+          type: "tableRow",
           content: [
             {
-              type: 'tableCell',
+              type: "tableCell",
               attrs: {
-                textAlign: 'center',
+                textAlign: "center",
               },
               content: [
                 {
-                  type: 'paragraph',
+                  type: "paragraph",
                   content: [
                     {
-                      type: 'text',
-                      text: 'Centered cell',
+                      type: "text",
+                      text: "Centered cell",
                     },
                   ],
                 },
@@ -1372,31 +1430,33 @@ describe('text Alignment', () => {
     };
 
     const html = render(node as StoryblokRichTextNode<string>);
-    expect(html).toBe('<table><tbody><tr><td style="text-align: center;"><p>Centered cell</p></td></tr></tbody></table>');
+    expect(html).toBe(
+      '<table><tbody><tr><td style="text-align: center;"><p>Centered cell</p></td></tr></tbody></table>',
+    );
   });
 
-  it('should handle text alignment with multiple styles in table cells', async () => {
+  it("should handle text alignment with multiple styles in table cells", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'table',
+      type: "table",
       content: [
         {
-          type: 'tableRow',
+          type: "tableRow",
           content: [
             {
-              type: 'tableCell',
+              type: "tableCell",
               attrs: {
-                textAlign: 'center',
-                backgroundColor: '#F5F5F5',
+                textAlign: "center",
+                backgroundColor: "#F5F5F5",
                 colwidth: 200,
               },
               content: [
                 {
-                  type: 'paragraph',
+                  type: "paragraph",
                   content: [
                     {
-                      type: 'text',
-                      text: 'Styled cell',
+                      type: "text",
+                      text: "Styled cell",
                     },
                   ],
                 },
@@ -1408,15 +1468,17 @@ describe('text Alignment', () => {
     };
 
     const html = render(node as StoryblokRichTextNode<string>);
-    expect(html).toBe('<table><tbody><tr><td style="width: 200px; background-color: #F5F5F5; text-align: center;"><p>Styled cell</p></td></tr></tbody></table>');
+    expect(html).toBe(
+      '<table><tbody><tr><td style="width: 200px; background-color: #F5F5F5; text-align: center;"><p>Styled cell</p></td></tr></tbody></table>',
+    );
   });
 
-  it('should handle empty paragraphs with text alignment', async () => {
+  it("should handle empty paragraphs with text alignment", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'paragraph',
+      type: "paragraph",
       attrs: {
-        textAlign: 'center',
+        textAlign: "center",
       },
       content: [],
     };
@@ -1425,42 +1487,44 @@ describe('text Alignment', () => {
     expect(html).toBe('<p style="text-align: center;"></p>');
   });
 
-  it('should handle text alignment with mixed content', async () => {
+  it("should handle text alignment with mixed content", async () => {
     const { render } = richTextResolver();
     const node = {
-      type: 'paragraph',
+      type: "paragraph",
       attrs: {
-        textAlign: 'right',
+        textAlign: "right",
       },
       content: [
         {
-          type: 'text',
-          text: 'Text with ',
+          type: "text",
+          text: "Text with ",
         },
         {
-          type: 'text',
-          text: 'bold',
-          marks: [{ type: 'bold' }],
+          type: "text",
+          text: "bold",
+          marks: [{ type: "bold" }],
         },
         {
-          type: 'text',
-          text: ' and ',
+          type: "text",
+          text: " and ",
         },
         {
-          type: 'text',
-          text: 'link',
-          marks: [{ type: 'link', attrs: { href: '#' } }],
+          type: "text",
+          text: "link",
+          marks: [{ type: "link", attrs: { href: "#" } }],
         },
       ],
     };
 
     const html = render(node as StoryblokRichTextNode<string>);
-    expect(html).toBe('<p style="text-align: right;">Text with <strong>bold</strong> and <a href="#">link</a></p>');
+    expect(html).toBe(
+      '<p style="text-align: right;">Text with <strong>bold</strong> and <a href="#">link</a></p>',
+    );
   });
 });
 
-describe('tiptapExtensions', () => {
-  it('should allow overriding a built-in node extension', () => {
+describe("tiptapExtensions", () => {
+  it("should allow overriding a built-in node extension", () => {
     const CustomHeading = Heading.extend({
       renderHTML({ HTMLAttributes }) {
         const { level, ...rest } = HTMLAttributes;
@@ -1469,12 +1533,14 @@ describe('tiptapExtensions', () => {
     });
 
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'heading',
-        attrs: { level: 2 },
-        content: [{ type: 'text', text: 'Hello' }],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 2 },
+          content: [{ type: "text", text: "Hello" }],
+        },
+      ],
     };
 
     const html = richTextResolver<string>({
@@ -1484,23 +1550,27 @@ describe('tiptapExtensions', () => {
     expect(html).toBe('<h2 class="custom-heading-2">Hello</h2>');
   });
 
-  it('should allow overriding a built-in mark extension', () => {
+  it("should allow overriding a built-in mark extension", () => {
     const CustomBold = Bold.extend({
       renderHTML() {
-        return ['b', { class: 'custom-bold' }, 0];
+        return ["b", { class: "custom-bold" }, 0];
       },
     });
 
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'paragraph',
-        content: [{
-          type: 'text',
-          text: 'Bold text',
-          marks: [{ type: 'bold' }],
-        }],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Bold text",
+              marks: [{ type: "bold" }],
+            },
+          ],
+        },
+      ],
     };
 
     const html = richTextResolver<string>({
@@ -1510,22 +1580,24 @@ describe('tiptapExtensions', () => {
     expect(html).toBe('<p><b class="custom-bold">Bold text</b></p>');
   });
 
-  it('should allow adding a custom node extension', () => {
+  it("should allow adding a custom node extension", () => {
     const Callout = Node.create({
-      name: 'callout',
-      group: 'block',
-      content: 'inline*',
+      name: "callout",
+      group: "block",
+      content: "inline*",
       renderHTML({ HTMLAttributes }) {
-        return ['div', { 'data-callout': '', 'class': 'callout', ...HTMLAttributes }, 0];
+        return ["div", { "data-callout": "", class: "callout", ...HTMLAttributes }, 0];
       },
     });
 
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'callout',
-        content: [{ type: 'text', text: 'Important note' }],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "callout",
+          content: [{ type: "text", text: "Important note" }],
+        },
+      ],
     };
 
     const html = richTextResolver<string>({
@@ -1535,24 +1607,28 @@ describe('tiptapExtensions', () => {
     expect(html).toBe('<div data-callout="" class="callout">Important note</div>');
   });
 
-  it('should allow adding a custom mark extension', () => {
+  it("should allow adding a custom mark extension", () => {
     const Spoiler = Mark.create({
-      name: 'spoiler',
+      name: "spoiler",
       renderHTML() {
-        return ['span', { class: 'spoiler' }, 0];
+        return ["span", { class: "spoiler" }, 0];
       },
     });
 
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'paragraph',
-        content: [{
-          type: 'text',
-          text: 'Secret',
-          marks: [{ type: 'spoiler' }],
-        }],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Secret",
+              marks: [{ type: "spoiler" }],
+            },
+          ],
+        },
+      ],
     };
 
     const html = richTextResolver<string>({
@@ -1563,31 +1639,33 @@ describe('tiptapExtensions', () => {
   });
 });
 
-describe('renderComponent (blok extension option)', () => {
+describe("renderComponent (blok extension option)", () => {
   const blokDoc = {
-    type: 'doc',
-    content: [{
-      type: 'blok',
-      attrs: {
-        id: '489f2970-6787-486a-97c3-6f1e8a99b7a9',
-        body: [
-          {
-            _uid: 'i-134324ee-1754-48be-93df-02df1e394733',
-            title: 'Second button!',
-            component: 'test-button',
-          },
-          {
-            _uid: 'i-437c2948-0be9-442e-949d-a11c79736aa6',
-            title: 'My Button',
-            component: 'test-button',
-          },
-        ],
+    type: "doc",
+    content: [
+      {
+        type: "blok",
+        attrs: {
+          id: "489f2970-6787-486a-97c3-6f1e8a99b7a9",
+          body: [
+            {
+              _uid: "i-134324ee-1754-48be-93df-02df1e394733",
+              title: "Second button!",
+              component: "test-button",
+            },
+            {
+              _uid: "i-437c2948-0be9-442e-949d-a11c79736aa6",
+              title: "My Button",
+              component: "test-button",
+            },
+          ],
+        },
       },
-    }],
+    ],
   };
 
-  describe('vanilla (HTML string)', () => {
-    it('should render blok nodes via renderComponent returning HTML strings', () => {
+  describe("vanilla (HTML string)", () => {
+    it("should render blok nodes via renderComponent returning HTML strings", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1599,12 +1677,12 @@ describe('renderComponent (blok extension option)', () => {
 
       const html = render(blokDoc as any);
       expect(html).toBe(
-        '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">Second button!</div>'
-        + '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">My Button</div>',
+        '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">Second button!</div>' +
+          '<div data-component="test-button" data-id="489f2970-6787-486a-97c3-6f1e8a99b7a9">My Button</div>',
       );
     });
 
-    it('should return empty string for empty body', () => {
+    it("should return empty string for empty body", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1614,17 +1692,19 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: { id: 'test', body: [] },
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "test", body: [] },
+          },
+        ],
       };
       const html = render(doc as any);
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
 
-    it('should return empty string when body is undefined', () => {
+    it("should return empty string when body is undefined", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1634,20 +1714,22 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: { id: 'test' },
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "test" },
+          },
+        ],
       };
       const html = render(doc as any);
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
   });
 
-  describe('framework (Vue VNodes)', () => {
-    it('should render blok nodes via renderComponent returning VNodes', () => {
-      const MockComponent = { name: 'MockBlok', render: () => null };
+  describe("framework (Vue VNodes)", () => {
+    it("should render blok nodes via renderComponent returning VNodes", () => {
+      const MockComponent = { name: "MockBlok", render: () => null };
 
       const { render } = richTextResolver<VNode | VNode[]>({
         renderFn: h,
@@ -1656,8 +1738,7 @@ describe('renderComponent (blok extension option)', () => {
         keyedResolvers: true,
         tiptapExtensions: {
           blok: ComponentBlok.configure({
-            renderComponent: (blok: any, id?: string) =>
-              h(MockComponent, { blok, id }),
+            renderComponent: (blok: any, id?: string) => h(MockComponent, { blok, id }),
           }),
         },
       });
@@ -1667,38 +1748,40 @@ describe('renderComponent (blok extension option)', () => {
       const blokElements = result[0];
       expect(Array.isArray(blokElements)).toBe(true);
       expect(blokElements).toHaveLength(2);
-      expect(blokElements[0].props.blok.component).toBe('test-button');
-      expect(blokElements[0].props.blok.title).toBe('Second button!');
-      expect(blokElements[1].props.blok.component).toBe('test-button');
-      expect(blokElements[1].props.blok.title).toBe('My Button');
+      expect(blokElements[0].props.blok.component).toBe("test-button");
+      expect(blokElements[0].props.blok.title).toBe("Second button!");
+      expect(blokElements[1].props.blok.component).toBe("test-button");
+      expect(blokElements[1].props.blok.title).toBe("My Button");
     });
 
-    it('should return empty array for empty body in framework mode', () => {
+    it("should return empty array for empty body in framework mode", () => {
       const { render } = richTextResolver<VNode | VNode[]>({
         renderFn: h,
         // @ts-expect-error - createTextVNode types
         textFn: createTextVNode,
         tiptapExtensions: {
           blok: ComponentBlok.configure({
-            renderComponent: (blok: any) => h('div', {}, blok.title),
+            renderComponent: (blok: any) => h("div", {}, blok.title),
           }),
         },
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: { id: 'test', body: [] },
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "test", body: [] },
+          },
+        ],
       };
       const result = render(doc as any) as any;
       expect(result[0]).toEqual([]);
     });
   });
 
-  describe('edge cases', () => {
-    it('should render two consecutive blok nodes in sequence', () => {
+  describe("edge cases", () => {
+    it("should render two consecutive blok nodes in sequence", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1709,32 +1792,32 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'blok-1',
-              body: [{ _uid: '1', component: 'banner', title: 'Banner A' }],
+              id: "blok-1",
+              body: [{ _uid: "1", component: "banner", title: "Banner A" }],
             },
           },
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'blok-2',
-              body: [{ _uid: '2', component: 'cta', title: 'CTA B' }],
+              id: "blok-2",
+              body: [{ _uid: "2", component: "cta", title: "CTA B" }],
             },
           },
         ],
       };
       const html = render(doc as any);
       expect(html).toBe(
-        '<div data-component="banner" data-id="blok-1">Banner A</div>'
-        + '<div data-component="cta" data-id="blok-2">CTA B</div>',
+        '<div data-component="banner" data-id="blok-1">Banner A</div>' +
+          '<div data-component="cta" data-id="blok-2">CTA B</div>',
       );
     });
 
-    it('should render a single body item', () => {
+    it("should render a single body item", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1744,20 +1827,22 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: {
-            id: 'single',
-            body: [{ _uid: '1', component: 'btn', title: 'Solo' }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: {
+              id: "single",
+              body: [{ _uid: "1", component: "btn", title: "Solo" }],
+            },
           },
-        }],
+        ],
       };
       const html = render(doc as any);
-      expect(html).toBe('<button>Solo</button>');
+      expect(html).toBe("<button>Solo</button>");
     });
 
-    it('should return empty string when body is null', () => {
+    it("should return empty string when body is null", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1767,17 +1852,19 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: { id: 'test', body: null },
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "test", body: null },
+          },
+        ],
       };
       const html = render(doc as any);
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
 
-    it('should produce empty string when renderComponent callback returns null', () => {
+    it("should produce empty string when renderComponent callback returns null", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
@@ -1787,46 +1874,50 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: {
-            id: 'test',
-            body: [{ _uid: '1', component: 'hidden', title: 'Hidden' }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: {
+              id: "test",
+              body: [{ _uid: "1", component: "hidden", title: "Hidden" }],
+            },
           },
-        }],
+        ],
       };
       const html = render(doc as any);
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
 
-    it('should fall back to renderHTML warning when no renderComponent is configured', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it("should fall back to renderHTML warning when no renderComponent is configured", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const { render } = richTextResolver<string>({});
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: {
-            id: 'test',
-            body: [{ _uid: '1', component: 'btn', title: 'Click' }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: {
+              id: "test",
+              body: [{ _uid: "1", component: "btn", title: "Click" }],
+            },
           },
-        }],
+        ],
       };
       const html = render(doc as any);
-      expect(html).toContain('display: none');
+      expect(html).toContain("display: none");
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('BLOK resolver is not available'),
+        expect.stringContaining("BLOK resolver is not available"),
       );
       warnSpy.mockRestore();
     });
 
-    it('should support heading override and blok renderComponent together', () => {
+    it("should support heading override and blok renderComponent together", () => {
       const CustomHeading = Heading.extend({
         renderHTML({ HTMLAttributes }) {
           const { level, ...rest } = HTMLAttributes;
-          return [`h${level}`, { class: 'custom', ...rest }, 0];
+          return [`h${level}`, { class: "custom", ...rest }, 0];
         },
       });
 
@@ -1840,18 +1931,18 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'heading',
+            type: "heading",
             attrs: { level: 2 },
-            content: [{ type: 'text', text: 'Title' }],
+            content: [{ type: "text", text: "Title" }],
           },
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'b1',
-              body: [{ _uid: '1', component: 'widget', title: 'My Widget' }],
+              id: "b1",
+              body: [{ _uid: "1", component: "widget", title: "My Widget" }],
             },
           },
         ],
@@ -1860,13 +1951,13 @@ describe('renderComponent (blok extension option)', () => {
       expect(html).toBe('<h2 class="custom">Title</h2><widget>My Widget</widget>');
     });
 
-    it('should allow user to override the default blok extension entirely', () => {
+    it("should allow user to override the default blok extension entirely", () => {
       const CustomBlok = Node.create({
-        name: 'blok',
-        group: 'block',
+        name: "blok",
+        group: "block",
         atom: true,
         renderHTML({ HTMLAttributes }) {
-          return ['div', { 'class': 'custom-blok', 'data-id': HTMLAttributes.id }];
+          return ["div", { class: "custom-blok", "data-id": HTMLAttributes.id }];
         },
       });
 
@@ -1875,17 +1966,19 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'blok',
-          attrs: { id: 'test', body: [{ _uid: '1', component: 'x' }] },
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "test", body: [{ _uid: "1", component: "x" }] },
+          },
+        ],
       };
       const html = render(doc as any);
       expect(html).toBe('<div class="custom-blok" data-id="test"></div>');
     });
 
-    it('should not apply keyed resolvers to blok renderComponent output', () => {
+    it("should not apply keyed resolvers to blok renderComponent output", () => {
       const { render } = richTextResolver<string>({
         keyedResolvers: true,
         tiptapExtensions: {
@@ -1896,22 +1989,22 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'paragraph',
-            content: [{ type: 'text', text: 'Before' }],
+            type: "paragraph",
+            content: [{ type: "text", text: "Before" }],
           },
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'b1',
-              body: [{ _uid: '1', component: 'btn', title: 'Click' }],
+              id: "b1",
+              body: [{ _uid: "1", component: "btn", title: "Click" }],
             },
           },
           {
-            type: 'paragraph',
-            content: [{ type: 'text', text: 'After' }],
+            type: "paragraph",
+            content: [{ type: "text", text: "After" }],
           },
         ],
       };
@@ -1921,185 +2014,274 @@ describe('renderComponent (blok extension option)', () => {
     });
   });
 
-  describe('mixed content', () => {
-    it('should work alongside other content in a document', () => {
+  describe("mixed content", () => {
+    it("should work alongside other content in a document", () => {
       const { render } = richTextResolver<string>({
         tiptapExtensions: {
           blok: ComponentBlok.configure({
-            renderComponent: (blok: any) =>
-              `<button>${blok.title}</button>`,
+            renderComponent: (blok: any) => `<button>${blok.title}</button>`,
           }),
         },
       });
 
       const doc = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'paragraph',
-            content: [{ type: 'text', text: 'Before blok' }],
+            type: "paragraph",
+            content: [{ type: "text", text: "Before blok" }],
           },
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'test',
-              body: [{ _uid: '1', component: 'btn', title: 'Click me' }],
+              id: "test",
+              body: [{ _uid: "1", component: "btn", title: "Click me" }],
             },
           },
           {
-            type: 'paragraph',
-            content: [{ type: 'text', text: 'After blok' }],
+            type: "paragraph",
+            content: [{ type: "text", text: "After blok" }],
           },
         ],
       };
       const html = render(doc as any);
-      expect(html).toBe('<p>Before blok</p><button>Click me</button><p>After blok</p>');
+      expect(html).toBe("<p>Before blok</p><button>Click me</button><p>After blok</p>");
     });
   });
 
-  it('should register all expected extensions', () => {
+  it("should register all expected extensions", () => {
     const extensions = getStoryblokExtensions();
     const extensionValues = Object.values(extensions);
 
-    const nodeNames = extensionValues.filter(e => e.type === 'node').map(e => e.name).sort();
-    const markNames = extensionValues.filter(e => e.type === 'mark').map(e => e.name).sort();
+    const nodeNames = extensionValues
+      .filter((e) => e.type === "node")
+      .map((e) => e.name)
+      .sort();
+    const markNames = extensionValues
+      .filter((e) => e.type === "mark")
+      .map((e) => e.name)
+      .sort();
 
-    expect(nodeNames).toEqual([
-      'blockquote',
-      'blok',
-      'bullet_list',
-      'code_block',
-      'details',
-      'detailsContent',
-      'detailsSummary',
-      'doc',
-      'emoji',
-      'hard_break',
-      'heading',
-      'horizontal_rule',
-      'image',
-      'list_item',
-      'ordered_list',
-      'paragraph',
-      'table',
-      'tableCell',
-      'tableHeader',
-      'tableRow',
-      'text',
-    ].sort());
+    expect(nodeNames).toEqual(
+      [
+        "blockquote",
+        "blok",
+        "bullet_list",
+        "code_block",
+        "details",
+        "detailsContent",
+        "detailsSummary",
+        "doc",
+        "emoji",
+        "hard_break",
+        "heading",
+        "horizontal_rule",
+        "image",
+        "list_item",
+        "ordered_list",
+        "paragraph",
+        "table",
+        "tableCell",
+        "tableHeader",
+        "tableRow",
+        "text",
+      ].sort(),
+    );
 
-    expect(markNames).toEqual([
-      'anchor',
-      'bold',
-      'code',
-      'highlight',
-      'italic',
-      'link',
-      'reporter',
-      'strike',
-      'styled',
-      'subscript',
-      'superscript',
-      'textStyle',
-      'underline',
-    ].sort());
+    expect(markNames).toEqual(
+      [
+        "anchor",
+        "bold",
+        "code",
+        "highlight",
+        "italic",
+        "link",
+        "reporter",
+        "strike",
+        "styled",
+        "subscript",
+        "superscript",
+        "textStyle",
+        "underline",
+      ].sort(),
+    );
   });
 
-  describe('mark merging (adjacent text nodes with shared marks)', () => {
-    it('should merge link with bold and italic inner marks', () => {
+  describe("mark merging (adjacent text nodes with shared marks)", () => {
+    it("should merge link with bold and italic inner marks", () => {
       const { render } = richTextResolver({});
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-            { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-            { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-            { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-            { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "normal ",
+                marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+              },
+              {
+                type: "text",
+                text: "bold",
+                marks: [
+                  { type: "bold" },
+                  { type: "link", attrs: { href: "/url", linktype: "url" } },
+                ],
+              },
+              {
+                type: "text",
+                text: " and ",
+                marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+              },
+              {
+                type: "text",
+                text: "italic",
+                marks: [
+                  { type: "italic" },
+                  { type: "link", attrs: { href: "/url", linktype: "url" } },
+                ],
+              },
+              {
+                type: "text",
+                text: " end",
+                marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const html = render(doc as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p><a href="/url">normal <strong>bold</strong> and <em>italic</em> end</a></p>');
+      expect(html).toBe(
+        '<p><a href="/url">normal <strong>bold</strong> and <em>italic</em> end</a></p>',
+      );
     });
 
-    it('should handle non-text node breaking a link group', () => {
+    it("should handle non-text node breaking a link group", () => {
       const { render } = richTextResolver({});
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Before ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-            { type: 'hard_break' },
-            { type: 'text', text: 'After', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Before ",
+                marks: [{ type: "link", attrs: { href: "/x", linktype: "url" } }],
+              },
+              { type: "hard_break" },
+              {
+                type: "text",
+                text: "After",
+                marks: [{ type: "link", attrs: { href: "/x", linktype: "url" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const html = render(doc as StoryblokRichTextNode<string>);
       expect(html).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
     });
 
-    it('should separate groups when any link attr differs', () => {
+    it("should separate groups when any link attr differs", () => {
       const { render } = richTextResolver({});
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            // Group 1: href /a
-            { type: 'text', text: 'A', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
-            { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
-            // Group 2: same href, different target → separate group
-            { type: 'text', text: 'C', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
-            { type: 'text', text: 'D', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              // Group 1: href /a
+              {
+                type: "text",
+                text: "A",
+                marks: [{ type: "link", attrs: { href: "/a", linktype: "url" } }],
+              },
+              {
+                type: "text",
+                text: "B",
+                marks: [{ type: "bold" }, { type: "link", attrs: { href: "/a", linktype: "url" } }],
+              },
+              // Group 2: same href, different target → separate group
+              {
+                type: "text",
+                text: "C",
+                marks: [{ type: "link", attrs: { href: "/a", linktype: "url", target: "_blank" } }],
+              },
+              {
+                type: "text",
+                text: "D",
+                marks: [
+                  { type: "italic" },
+                  { type: "link", attrs: { href: "/a", linktype: "url", target: "_blank" } },
+                ],
+              },
+            ],
+          },
+        ],
       };
 
       const html = render(doc as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p><a href="/a">A<strong>B</strong></a><a href="/a" target="_blank">C<em>D</em></a></p>');
+      expect(html).toBe(
+        '<p><a href="/a">A<strong>B</strong></a><a href="/a" target="_blank">C<em>D</em></a></p>',
+      );
     });
 
-    it('should merge adjacent links into a single VNode with Vue renderFn', () => {
+    it("should merge adjacent links into a single VNode with Vue renderFn", () => {
       const { render } = richTextResolver<VNode | VNode[]>({
         renderFn: h,
         textFn: createTextVNode,
         keyedResolvers: true,
       });
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Visit our ', marks: [{ type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
-            { type: 'text', text: 'awesome', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
-            { type: 'text', text: ' page', marks: [{ type: 'link', attrs: { href: '/page', linktype: 'url' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Visit our ",
+                marks: [{ type: "link", attrs: { href: "/page", linktype: "url" } }],
+              },
+              {
+                type: "text",
+                text: "awesome",
+                marks: [
+                  { type: "bold" },
+                  { type: "link", attrs: { href: "/page", linktype: "url" } },
+                ],
+              },
+              {
+                type: "text",
+                text: " page",
+                marks: [{ type: "link", attrs: { href: "/page", linktype: "url" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const vnodes = render(doc as StoryblokRichTextNode<VNode | VNode[]>);
       const result = Array.isArray(vnodes) ? vnodes : [vnodes];
       expect(result).toHaveLength(1);
       const p = result[0] as VNode;
-      expect(p.type).toBe('p');
+      expect(p.type).toBe("p");
       const pChildren = p.children as VNode[];
       const linkNodes = (Array.isArray(pChildren) ? pChildren : [pChildren]).filter(
-        (c: any) => typeof c === 'object' && c?.type === 'a',
+        (c: any) => typeof c === "object" && c?.type === "a",
       );
       expect(linkNodes).toHaveLength(1);
     });
 
-    it('should merge marks when using a custom link extension (Vue router-link)', () => {
+    it("should merge marks when using a custom link extension (Vue router-link)", () => {
       const CustomLink = Mark.create({
-        name: 'link',
+        name: "link",
         renderHTML({ mark }) {
-          return ['router-link', { to: mark.attrs.href }, 0];
+          return ["router-link", { to: mark.attrs.href }, 0];
         },
       });
 
@@ -2108,122 +2290,195 @@ describe('renderComponent (blok extension option)', () => {
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Go to ', marks: [{ type: 'link', attrs: { href: '/about' } }] },
-            { type: 'text', text: 'about', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/about' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Go to ",
+                marks: [{ type: "link", attrs: { href: "/about" } }],
+              },
+              {
+                type: "text",
+                text: "about",
+                marks: [{ type: "bold" }, { type: "link", attrs: { href: "/about" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const html = render(doc as StoryblokRichTextNode<string>);
-      expect(html).toBe('<p><router-link to="/about">Go to <strong>about</strong></router-link></p>');
+      expect(html).toBe(
+        '<p><router-link to="/about">Go to <strong>about</strong></router-link></p>',
+      );
     });
 
-    it('should merge marks with a renderFn that intercepts link tags (Next.js pattern)', () => {
-      interface MockElement { tag: string; attrs: Record<string, any>; children: any }
-      const el = (tag: string, attrs: Record<string, any>, children?: any): MockElement =>
-        ({ tag, attrs, children });
+    it("should merge marks with a renderFn that intercepts link tags (Next.js pattern)", () => {
+      interface MockElement {
+        tag: string;
+        attrs: Record<string, any>;
+        children: any;
+      }
+      const el = (tag: string, attrs: Record<string, any>, children?: any): MockElement => ({
+        tag,
+        attrs,
+        children,
+      });
 
       const { render } = richTextResolver<MockElement>({
         renderFn: (tag, attrs = {}, children) => {
           // Simulate Next.js pattern: replace <a> with <Link>
-          if (tag === 'a') {
-            return el('Link', { href: attrs.href }, children);
+          if (tag === "a") {
+            return el("Link", { href: attrs.href }, children);
           }
           return el(tag, attrs, children);
         },
-        textFn: text => text as any,
+        textFn: (text) => text as any,
       });
 
       const doc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Visit ', marks: [{ type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
-            { type: 'text', text: 'about', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
-            { type: 'text', text: ' page', marks: [{ type: 'link', attrs: { href: '/about', linktype: 'url' } }] },
-          ],
-        }],
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "Visit ",
+                marks: [{ type: "link", attrs: { href: "/about", linktype: "url" } }],
+              },
+              {
+                type: "text",
+                text: "about",
+                marks: [
+                  { type: "bold" },
+                  { type: "link", attrs: { href: "/about", linktype: "url" } },
+                ],
+              },
+              {
+                type: "text",
+                text: " page",
+                marks: [{ type: "link", attrs: { href: "/about", linktype: "url" } }],
+              },
+            ],
+          },
+        ],
       };
 
       const result = render(doc as any) as unknown as MockElement[];
       const p = result[0];
-      expect(p.tag).toBe('p');
+      expect(p.tag).toBe("p");
       const pChildren = Array.isArray(p.children) ? p.children : [p.children];
-      const linkNodes = pChildren.filter((c: any) => c?.tag === 'Link');
+      const linkNodes = pChildren.filter((c: any) => c?.tag === "Link");
       expect(linkNodes).toHaveLength(1);
-      expect(linkNodes[0].attrs.href).toBe('/about');
+      expect(linkNodes[0].attrs.href).toBe("/about");
     });
   });
 });
 
-describe('getRichTextSegments mark merging', () => {
+describe("getRichTextSegments mark merging", () => {
   function segmentsToHtml(segments: any[]): string {
     const adapter: RendererAdapter<string> = {
       createElement: (tag, attrs, children) => {
         const attrStr = attrs
           ? Object.entries(attrs)
-              .filter(([k, v]) => k !== 'key' && v != null)
+              .filter(([k, v]) => k !== "key" && v != null)
               .map(([k, v]) => ` ${k}="${v}"`)
-              .join('')
-          : '';
-        const inner = children ? children.join('') : '';
+              .join("")
+          : "";
+        const inner = children ? children.join("") : "";
         return `<${tag}${attrStr}>${inner}</${tag}>`;
       },
-      createText: text => text,
+      createText: (text) => text,
     };
-    return renderSegments(segments, adapter, []).join('');
+    return renderSegments(segments, adapter, []).join("");
   }
 
-  it('should merge link with bold and italic inner marks', () => {
+  it("should merge link with bold and italic inner marks", () => {
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'paragraph',
-        content: [
-          { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-          { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-          { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-          { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-          { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-        ],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "normal ",
+              marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+            },
+            {
+              type: "text",
+              text: "bold",
+              marks: [{ type: "bold" }, { type: "link", attrs: { href: "/url", linktype: "url" } }],
+            },
+            {
+              type: "text",
+              text: " and ",
+              marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+            },
+            {
+              type: "text",
+              text: "italic",
+              marks: [
+                { type: "italic" },
+                { type: "link", attrs: { href: "/url", linktype: "url" } },
+              ],
+            },
+            {
+              type: "text",
+              text: " end",
+              marks: [{ type: "link", attrs: { href: "/url", linktype: "url" } }],
+            },
+          ],
+        },
+      ],
     };
 
     const segments = getRichTextSegments(doc as StoryblokRichTextNode);
     const html = segmentsToHtml(segments);
     expect(html.match(/<a /g)?.length).toBe(1);
-    expect(html).toContain('<strong>bold</strong>');
-    expect(html).toContain('<em>italic</em>');
+    expect(html).toContain("<strong>bold</strong>");
+    expect(html).toContain("<em>italic</em>");
   });
 
-  it('should produce correct segment structure for merged marks', () => {
+  it("should produce correct segment structure for merged marks", () => {
     const doc = {
-      type: 'doc',
-      content: [{
-        type: 'paragraph',
-        content: [
-          { type: 'text', text: 'A ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-          { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-        ],
-      }],
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "A ",
+              marks: [{ type: "link", attrs: { href: "/x", linktype: "url" } }],
+            },
+            {
+              type: "text",
+              text: "B",
+              marks: [{ type: "bold" }, { type: "link", attrs: { href: "/x", linktype: "url" } }],
+            },
+          ],
+        },
+      ],
     };
 
     const segments = getRichTextSegments(doc as StoryblokRichTextNode);
     expect(segments).toHaveLength(1);
     const paragraph = segments[0] as any;
-    expect(paragraph.kind).toBe('node');
-    expect(paragraph.tag).toBe('p');
-    const linkSegments = paragraph.content.filter((s: any) => s.kind === 'mark' && s.type === 'link');
+    expect(paragraph.kind).toBe("node");
+    expect(paragraph.tag).toBe("p");
+    const linkSegments = paragraph.content.filter(
+      (s: any) => s.kind === "mark" && s.type === "link",
+    );
     expect(linkSegments).toHaveLength(1);
     const linkContent = linkSegments[0].content;
     expect(linkContent).toHaveLength(2);
-    expect(linkContent[0]).toEqual({ kind: 'text', text: 'A ' });
-    expect(linkContent[1].kind).toBe('mark');
-    expect(linkContent[1].type).toBe('bold');
+    expect(linkContent[0]).toEqual({ kind: "text", text: "A " });
+    expect(linkContent[1].kind).toBe("mark");
+    expect(linkContent[1].type).toBe("bold");
   });
 });

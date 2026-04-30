@@ -37,15 +37,11 @@ Update your `app.config.ts` to configure the SDK:
 
 ```typescript
 // src/app/app.config.ts
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
-import {
-  provideStoryblok,
-  withStoryblokComponents,
-  withLivePreview,
-} from '@storyblok/angular';
-import { routes } from './app.routes';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from "@angular/core";
+import { provideRouter } from "@angular/router";
+import { provideClientHydration, withEventReplay } from "@angular/platform-browser";
+import { provideStoryblok, withStoryblokComponents, withLivePreview } from "@storyblok/angular";
+import { routes } from "./app.routes";
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -54,13 +50,13 @@ export const appConfig: ApplicationConfig = {
     provideClientHydration(withEventReplay()),
     provideStoryblok(
       {
-        accessToken: 'YOUR_ACCESS_TOKEN',
-        region: 'eu', // Change based on your space region
+        accessToken: "YOUR_ACCESS_TOKEN",
+        region: "eu", // Change based on your space region
       },
       withStoryblokComponents({
         // Components will be added here
       }),
-      withLivePreview()
+      withLivePreview(),
     ),
   ],
 };
@@ -90,15 +86,15 @@ The page component serves as a container for other components:
 
 ```typescript
 // src/app/components/page/page.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { SbBlokDirective, type SbBlokData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { SbBlokDirective, type SbBlokData } from "@storyblok/angular";
 
 export interface PageBlok extends SbBlokData {
   body?: SbBlokData[];
 }
 
 @Component({
-  selector: 'app-page',
+  selector: "app-page",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbBlokDirective],
   template: `
@@ -120,15 +116,15 @@ A simple teaser component with a headline:
 
 ```typescript
 // src/app/components/teaser/teaser.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type SbBlokData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { type SbBlokData } from "@storyblok/angular";
 
 export interface TeaserBlok extends SbBlokData {
   headline?: string;
 }
 
 @Component({
-  selector: 'app-teaser',
+  selector: "app-teaser",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="teaser">
@@ -157,15 +153,15 @@ A grid component that renders nested components in columns:
 
 ```typescript
 // src/app/components/grid/grid.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { SbBlokDirective, type SbBlokData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { SbBlokDirective, type SbBlokData } from "@storyblok/angular";
 
 export interface GridBlok extends SbBlokData {
   columns?: SbBlokData[];
 }
 
 @Component({
-  selector: 'app-grid',
+  selector: "app-grid",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbBlokDirective],
   template: `
@@ -195,8 +191,8 @@ A feature card component:
 
 ```typescript
 // src/app/components/feature/feature.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type SbBlokData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { type SbBlokData } from "@storyblok/angular";
 
 export interface FeatureBlok extends SbBlokData {
   name?: string;
@@ -204,7 +200,7 @@ export interface FeatureBlok extends SbBlokData {
 }
 
 @Component({
-  selector: 'app-feature',
+  selector: "app-feature",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="feature">
@@ -241,27 +237,27 @@ Create a component registry with lazy loading:
 
 ```typescript
 // src/app/storyblok.components.ts
-import { type StoryblokComponentsMap } from '@storyblok/angular';
+import { type StoryblokComponentsMap } from "@storyblok/angular";
 
 export const storyblokComponents: StoryblokComponentsMap = {
-  page: () => import('./components/page/page.component').then((m) => m.PageComponent),
-  teaser: () => import('./components/teaser/teaser.component').then((m) => m.TeaserComponent),
-  grid: () => import('./components/grid/grid.component').then((m) => m.GridComponent),
-  feature: () => import('./components/feature/feature.component').then((m) => m.FeatureComponent),
+  page: () => import("./components/page/page.component").then((m) => m.PageComponent),
+  teaser: () => import("./components/teaser/teaser.component").then((m) => m.TeaserComponent),
+  grid: () => import("./components/grid/grid.component").then((m) => m.GridComponent),
+  feature: () => import("./components/feature/feature.component").then((m) => m.FeatureComponent),
 };
 ```
 
 Update `app.config.ts` to use the component registry:
 
 ```typescript
-import { storyblokComponents } from './storyblok.components';
+import { storyblokComponents } from "./storyblok.components";
 
 // In providers array:
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN', region: 'eu' },
+  { accessToken: "YOUR_ACCESS_TOKEN", region: "eu" },
   withStoryblokComponents(storyblokComponents),
-  withLivePreview()
-)
+  withLivePreview(),
+);
 ```
 
 ## Fetch and display content
@@ -280,16 +276,16 @@ import {
   OnInit,
   linkedSignal,
   input,
-} from '@angular/core';
+} from "@angular/core";
 import {
   type ISbStoryData,
   type SbBlokData,
   SbBlokDirective,
   LivePreviewService,
-} from '@storyblok/angular';
+} from "@storyblok/angular";
 
 @Component({
-  selector: 'app-catch-all',
+  selector: "app-catch-all",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbBlokDirective],
   template: `
@@ -319,11 +315,11 @@ export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
 
   // Story data from route resolver
-  readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
-  
+  readonly storyInput = input<ISbStoryData | null>(null, { alias: "story" });
+
   // Writable signal that can be updated by live preview
   readonly story = linkedSignal(() => this.storyInput());
-  
+
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
   ngOnInit(): void {
@@ -341,21 +337,21 @@ Configure routes with a resolver to fetch content:
 
 ```typescript
 // src/app/app.routes.ts
-import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, Routes } from '@angular/router';
-import { StoryblokService } from '@storyblok/angular';
+import { inject } from "@angular/core";
+import { ActivatedRouteSnapshot, Routes } from "@angular/router";
+import { StoryblokService } from "@storyblok/angular";
 
 export const routes: Routes = [
   {
-    path: '**',
+    path: "**",
     loadComponent: () =>
-      import('./routes/catch-all/catch-all.component').then((m) => m.CatchAllComponent),
+      import("./routes/catch-all/catch-all.component").then((m) => m.CatchAllComponent),
     resolve: {
       story: async (route: ActivatedRouteSnapshot) => {
-        const slug = route.url.map((s) => s.path).join('/') || 'home';
+        const slug = route.url.map((s) => s.path).join("/") || "home";
         const client = inject(StoryblokService).getClient();
         const { data } = await client.stories.get(slug, {
-          query: { version: 'draft' },
+          query: { version: "draft" },
         });
         return data?.story;
       },
@@ -372,13 +368,13 @@ Update the page component to support rich text fields:
 
 ```typescript
 // src/app/components/page/page.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
 import {
   SbBlokDirective,
   SbRichTextComponent,
   type SbBlokData,
   type StoryblokRichTextNode,
-} from '@storyblok/angular';
+} from "@storyblok/angular";
 
 export interface PageBlok extends SbBlokData {
   body?: SbBlokData[];
@@ -386,7 +382,7 @@ export interface PageBlok extends SbBlokData {
 }
 
 @Component({
-  selector: 'app-page',
+  selector: "app-page",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbBlokDirective, SbRichTextComponent],
   template: `
@@ -394,7 +390,7 @@ export interface PageBlok extends SbBlokData {
       @for (blok of blok().body ?? []; track blok._uid) {
         <ng-container [sbBlok]="blok" />
       }
-      
+
       @if (blok().content) {
         <div class="rich-text">
           <sb-rich-text [doc]="blok().content!" />
@@ -421,9 +417,9 @@ Create a custom link component to handle internal and external links:
 
 ```typescript
 // src/app/components/richtext/link.component.ts
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { SbRichTextNodeComponent, type AngularRenderNode } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { SbRichTextNodeComponent, type AngularRenderNode } from "@storyblok/angular";
 
 interface LinkProps {
   href?: string;
@@ -433,7 +429,7 @@ interface LinkProps {
 }
 
 @Component({
-  selector: 'app-rich-link',
+  selector: "app-rich-link",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbRichTextNodeComponent, RouterLink],
   template: `
@@ -459,13 +455,13 @@ interface LinkProps {
 })
 export class RichLinkComponent {
   readonly props = input<LinkProps>({});
-  
-  readonly href = computed(() => this.props().href ?? '');
-  readonly target = computed(() => this.props().target ?? '_self');
+
+  readonly href = computed(() => this.props().href ?? "");
+  readonly target = computed(() => this.props().target ?? "_self");
   readonly linktype = computed(() => this.props().linktype);
   readonly children = computed(() => this.props().children ?? []);
-  
-  readonly isInternal = computed(() => this.linktype() === 'story');
+
+  readonly isInternal = computed(() => this.linktype() === "story");
 }
 ```
 
@@ -473,17 +469,17 @@ Register the custom rich text component:
 
 ```typescript
 // src/app/app.config.ts
-import { withStoryblokRichtextComponents } from '@storyblok/angular';
-import { RichLinkComponent } from './components/richtext/link.component';
+import { withStoryblokRichtextComponents } from "@storyblok/angular";
+import { RichLinkComponent } from "./components/richtext/link.component";
 
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN', region: 'eu' },
+  { accessToken: "YOUR_ACCESS_TOKEN", region: "eu" },
   withStoryblokComponents(storyblokComponents),
   withLivePreview(),
   withStoryblokRichtextComponents({
     link: RichLinkComponent,
-  })
-)
+  }),
+);
 ```
 
 ## Handle embedded components in rich text
@@ -492,8 +488,8 @@ When you embed Storyblok components inside rich text fields, create a blok compo
 
 ```typescript
 // src/app/components/richtext/blok.component.ts
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
-import { SbBlokDirective, type SbBlokData, type AngularRenderNode } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
+import { SbBlokDirective, type SbBlokData, type AngularRenderNode } from "@storyblok/angular";
 
 interface BlokProps {
   body?: SbBlokData[];
@@ -501,7 +497,7 @@ interface BlokProps {
 }
 
 @Component({
-  selector: 'app-rich-blok',
+  selector: "app-rich-blok",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbBlokDirective],
   template: `
@@ -522,7 +518,7 @@ Register it in the rich text components:
 withStoryblokRichtextComponents({
   link: RichLinkComponent,
   blok: RichBlokComponent,
-})
+});
 ```
 
 ## Resolve relations
@@ -535,8 +531,8 @@ When your content references other stories (like an article referencing an autho
 // In your route resolver
 const { data } = await client.stories.get(slug, {
   query: {
-    version: 'draft',
-    resolve_relations: 'article.author,article.categories',
+    version: "draft",
+    resolve_relations: "article.author,article.categories",
   },
 });
 ```
@@ -545,20 +541,20 @@ const { data } = await client.stories.get(slug, {
 
 ```typescript
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN', region: 'eu' },
+  { accessToken: "YOUR_ACCESS_TOKEN", region: "eu" },
   withStoryblokComponents(storyblokComponents),
   withLivePreview({
-    resolveRelations: ['article.author', 'article.categories'],
-  })
-)
+    resolveRelations: ["article.author", "article.categories"],
+  }),
+);
 ```
 
 ### Use resolved relations in components
 
 ```typescript
 // src/app/components/article/article.component.ts
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type SbBlokData, type ISbStoryData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { type SbBlokData, type ISbStoryData } from "@storyblok/angular";
 
 export interface ArticleBlok extends SbBlokData {
   title?: string;
@@ -567,7 +563,7 @@ export interface ArticleBlok extends SbBlokData {
 }
 
 @Component({
-  selector: 'app-article',
+  selector: "app-article",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article>
@@ -599,8 +595,8 @@ Register components with lazy loading to reduce initial bundle size:
 ```typescript
 const storyblokComponents: StoryblokComponentsMap = {
   // Good: Lazy loaded
-  page: () => import('./components/page').then((m) => m.PageComponent),
-  
+  page: () => import("./components/page").then((m) => m.PageComponent),
+
   // Avoid: Eagerly loaded (increases bundle size)
   // page: PageComponent,
 };
@@ -639,7 +635,7 @@ template: `
   @if (blok().image?.filename) {
     <img [src]="blok().image.filename" [alt]="blok().image.alt" />
   }
-`
+`;
 ```
 
 ## Next steps

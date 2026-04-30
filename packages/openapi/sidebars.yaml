@@ -5,8 +5,7 @@
 - group: Authentication
   items:
     - directory: authentication
-  
 
 - group: Management API
   items:
-    - $ref: resources/mapi/sidebars.yaml 
+    - $ref: resources/mapi/sidebars.yaml

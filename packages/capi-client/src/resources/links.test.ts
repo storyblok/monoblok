@@ -1,17 +1,17 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
-import { createApiClient } from '../index';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
+import { fromOpenApi } from "@msw/source/open-api";
+import { readFileSync } from "node:fs";
+import { join } from "pathe";
+import { fileURLToPath } from "node:url";
+import { createApiClient } from "../index";
 
 const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/capi/links.yaml',
+  fileURLToPath(new URL(".", import.meta.url)),
+  "../../node_modules/@storyblok/openapi/dist/capi/links.yaml",
 );
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
+const openapiSpec = readFileSync(openapiSpecPath, "utf-8");
 const handlers = await fromOpenApi(openapiSpec);
 const server = setupServer(...handlers);
 
@@ -19,35 +19,35 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('links.list()', () => {
-  it('should successfully retrieve multiple links', async () => {
+describe("links.list()", () => {
+  it("should successfully retrieve multiple links", async () => {
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
     const result = await client.links.list();
 
     expect(result.error).toBeUndefined();
-    expect(typeof result.data?.links).toBe('object');
+    expect(typeof result.data?.links).toBe("object");
   });
 
-  it('should return links as a record of link objects', async () => {
-    const linkUuid = 'abc-123';
+  it("should return links as a record of link objects", async () => {
+    const linkUuid = "abc-123";
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
         return HttpResponse.json({
           links: {
             [linkUuid]: {
               id: 1,
               uuid: linkUuid,
-              slug: 'home',
-              path: '',
-              name: 'Home',
+              slug: "home",
+              path: "",
+              name: "Home",
               is_folder: false,
               published: true,
               is_startpage: true,
               position: 0,
-              real_path: '/home',
+              real_path: "/home",
             },
           },
           cv: 1,
@@ -55,7 +55,7 @@ describe('links.list()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
     const result = await client.links.list();
@@ -63,20 +63,17 @@ describe('links.list()', () => {
     expect(result.error).toBeUndefined();
     expect(result.data?.links[linkUuid]).toBeDefined();
     expect(result.data?.links[linkUuid]?.uuid).toBe(linkUuid);
-    expect(result.data?.links[linkUuid]?.slug).toBe('home');
+    expect(result.data?.links[linkUuid]?.slug).toBe("home");
   });
 
-  it('should return error on 401', async () => {
+  it("should return error on 401", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/links', () => {
-        return HttpResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 },
-        );
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
       }),
     );
     const client = createApiClient({
-      accessToken: 'invalid-token',
+      accessToken: "invalid-token",
     });
 
     const result = await client.links.list();
@@ -86,10 +83,10 @@ describe('links.list()', () => {
     expect(result.response.status).toBe(401);
   });
 
-  it('should use in-memory cache for second call', async () => {
+  it("should use in-memory cache for second call", async () => {
     let requestCount = 0;
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
         requestCount++;
         return HttpResponse.json({
           links: {},
@@ -98,29 +95,29 @@ describe('links.list()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
-    await client.links.list({ query: { version: 'published' } });
-    await client.links.list({ query: { version: 'published' } });
+    await client.links.list({ query: { version: "published" } });
+    await client.links.list({ query: { version: "published" } });
 
     expect(requestCount).toBe(1);
   });
 
-  it('should not cache draft requests', async () => {
+  it("should not cache draft requests", async () => {
     let requestCount = 0;
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/links', () => {
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
         requestCount++;
         return HttpResponse.json({ links: {} });
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
-    await client.links.list({ query: { version: 'draft' } });
-    await client.links.list({ query: { version: 'draft' } });
+    await client.links.list({ query: { version: "draft" } });
+    await client.links.list({ query: { version: "draft" } });
 
     expect(requestCount).toBe(2);
   });

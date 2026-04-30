@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { vol } from 'memfs';
-import { getID } from '../../__tests__/helpers';
+import { randomUUID } from "node:crypto";
+import { vol } from "memfs";
+import { getID } from "../../__tests__/helpers";
 
 /**
  * MockStory interface - unified interface for story mocking in tests.
@@ -29,12 +29,12 @@ export const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => 
   return {
     id: storyId,
     uuid: overrides.uuid ?? randomUUID(),
-    name: overrides.name || 'Story',
+    name: overrides.name || "Story",
     slug,
     full_slug: overrides.full_slug || slug,
     content: overrides.content ?? {
       _uid: randomUUID(),
-      component: 'page',
+      component: "page",
     },
     is_folder: overrides.is_folder ?? false,
     parent_id: overrides.parent_id ?? 0,
@@ -46,8 +46,9 @@ export const makeMockStory = (overrides: Partial<MockStory> = {}): MockStory => 
  * Checks if a story file exists in the virtual file system.
  */
 export const storyFileExists = ({ slug, uuid }: { slug: string; uuid: string }) => {
-  const file = Object.entries(vol.toJSON())
-    .find(([filename]) => filename.endsWith(`${slug}_${uuid}.json`))?.[1];
+  const file = Object.entries(vol.toJSON()).find(([filename]) =>
+    filename.endsWith(`${slug}_${uuid}.json`),
+  )?.[1];
   return file ? JSON.parse(file).uuid === uuid : false;
 };
 

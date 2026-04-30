@@ -25,16 +25,16 @@ export function sanitizeJSON(data: unknown): string {
   // JSON.stringify returns undefined for undefined input (not a string)
   // Return null as valid JSON representation
   if (json === undefined) {
-    return 'null';
+    return "null";
   }
 
   // Replace dangerous characters that could break out of script context
   return json
-    .replace(/</g, '\\u003c') // Escape < to prevent </script> injection
-    .replace(/>/g, '\\u003e') // Escape > to prevent tag closures
-    .replace(/\u2028/g, '\\u2028') // Line separator - valid JSON but breaks JS
-    .replace(/\u2029/g, '\\u2029') // Paragraph separator - valid JSON but breaks JS
-    .replace(/&/g, '\\u0026'); // Escape & to prevent HTML entity issues
+    .replace(/</g, "\\u003c") // Escape < to prevent </script> injection
+    .replace(/>/g, "\\u003e") // Escape > to prevent tag closures
+    .replace(/\u2028/g, "\\u2028") // Line separator - valid JSON but breaks JS
+    .replace(/\u2029/g, "\\u2029") // Paragraph separator - valid JSON but breaks JS
+    .replace(/&/g, "\\u0026"); // Escape & to prevent HTML entity issues
 }
 
 /**

@@ -1,6 +1,6 @@
-import type { Space, SpaceCreate, SpaceUpdate } from '../../types';
-import { handleAPIError } from '../../utils';
-import { getMapiClient } from '../../api';
+import type { Space, SpaceCreate, SpaceUpdate } from "../../types";
+import { handleAPIError } from "../../utils";
+import { getMapiClient } from "../../api";
 
 export type { Space, SpaceCreate, SpaceUpdate };
 
@@ -16,9 +16,8 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
     });
 
     return data?.space;
-  }
-  catch (error) {
-    handleAPIError('pull_spaces', error as Error, `Failed to fetch space ${spaceId}`);
+  } catch (error) {
+    handleAPIError("pull_spaces", error as Error, `Failed to fetch space ${spaceId}`);
   }
 };
 
@@ -37,8 +36,7 @@ export const createSpace = async (space: SpaceCreate): Promise<Space | undefined
     });
 
     return data?.space;
-  }
-  catch (error) {
-    handleAPIError('create_space', error as Error, `Failed to create space ${space.name}`);
+  } catch (error) {
+    handleAPIError("create_space", error as Error, `Failed to create space ${space.name}`);
   }
 };

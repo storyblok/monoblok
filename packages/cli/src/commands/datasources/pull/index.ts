@@ -1,36 +1,39 @@
-import type { Command } from 'commander';
-import { colorPalette, commands, directories } from '../../../constants';
-import { session } from '../../../session';
+import type { Command } from "commander";
+import { colorPalette, commands, directories } from "../../../constants";
+import { session } from "../../../session";
 
-import { datasourcesCommand } from '../command';
-import type { PullDatasourcesOptions } from './constants';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
-import chalk from 'chalk';
-import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
-import { isAbsolute, join, relative } from 'pathe';
-import { resolveCommandPath } from '../../../utils/filesystem';
-import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
-import { getUI } from '../../../utils/ui';
-import { getLogger } from '../../../lib/logger/logger';
+import { datasourcesCommand } from "../command";
+import type { PullDatasourcesOptions } from "./constants";
+import { CommandError, handleError, konsola, requireAuthentication } from "../../../utils";
+import chalk from "chalk";
+import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from "./actions";
+import { isAbsolute, join, relative } from "pathe";
+import { resolveCommandPath } from "../../../utils/filesystem";
+import { DEFAULT_DATASOURCES_FILENAME } from "../constants";
+import { getUI } from "../../../utils/ui";
+import { getLogger } from "../../../lib/logger/logger";
 
 const pullCmd = datasourcesCommand
-  .command('pull [datasourceName]')
-  .option('-f, --filename <filename>', 'custom name to be used in file(s) name instead of space id')
-  .option('--sf, --separate-files', 'Argument to create a single file for each datasource')
-  .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. datasources.<suffix>.json)')
-  .option('-s, --space <space>', 'space ID')
-  .description('Pull datasources from your space');
+  .command("pull [datasourceName]")
+  .option("-f, --filename <filename>", "custom name to be used in file(s) name instead of space id")
+  .option("--sf, --separate-files", "Argument to create a single file for each datasource")
+  .option(
+    "--su, --suffix <suffix>",
+    "suffix to add to the file name (e.g. datasources.<suffix>.json)",
+  )
+  .option("-s, --space <space>", "space ID")
+  .description("Pull datasources from your space");
 
-pullCmd
-  .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions, command: Command) => {
-    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
+pullCmd.action(
+  async (datasourceName: string | undefined, options: PullDatasourcesOptions, command: Command) => {
+    konsola.title(
+      `${commands.DATASOURCES}`,
+      colorPalette.DATASOURCES,
+      datasourceName ? `Pulling datasource ${datasourceName}...` : "Pulling datasources...",
+    );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const {
-      separateFiles = false,
-      suffix,
-      filename,
-    } = options;
+    const { separateFiles = false, suffix, filename } = options;
 
     // Use default filename when not provided
     const actualFilename = filename ?? DEFAULT_DATASOURCES_FILENAME;
@@ -43,14 +46,19 @@ pullCmd
       return;
     }
     if (!space) {
-      handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
+      handleError(
+        new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
+        verbose,
+      );
       return;
     }
 
     const ui = getUI();
     const logger = getLogger();
-    logger.info('Pulling datasources started', { space, datasourceName });
-    const spinnerDatasources = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
+    logger.info("Pulling datasources started", { space, datasourceName });
+    const spinnerDatasources = ui.createSpinner(
+      `Fetching ${chalk.hex(colorPalette.DATASOURCES)("datasources")}`,
+    );
 
     try {
       let datasources;
@@ -61,8 +69,7 @@ pullCmd
           return;
         }
         datasources = [datasource];
-      }
-      else {
+      } else {
         datasources = await fetchDatasources(space);
         if (!datasources || datasources.length === 0) {
           spinnerDatasources.failed(`No datasources found in the space ${space}`);
@@ -70,13 +77,15 @@ pullCmd
         }
       }
 
-      spinnerDatasources.succeed(`${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Completed in ${spinnerDatasources.elapsedTime.toFixed(2)}ms`);
-
-      await saveDatasourcesToFiles(
-        space,
-        datasources,
-        { ...options, path, separateFiles: separateFiles || !!datasourceName },
+      spinnerDatasources.succeed(
+        `${chalk.hex(colorPalette.DATASOURCES)("Datasources")} - Completed in ${spinnerDatasources.elapsedTime.toFixed(2)}ms`,
       );
+
+      await saveDatasourcesToFiles(space, datasources, {
+        ...options,
+        path,
+        separateFiles: separateFiles || !!datasourceName,
+      });
       konsola.br();
       if (separateFiles) {
         if (filename && filename !== DEFAULT_DATASOURCES_FILENAME) {
@@ -84,31 +93,37 @@ pullCmd
         }
         const filePath = `${datasourcesOutputDir}/`;
         // Only show relative path if the base path wasn't absolute
-        const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), datasourcesOutputDir)}/`;
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
-      }
-      else if (datasourceName) {
+        const displayPath =
+          path && isAbsolute(path) ? filePath : `${relative(process.cwd(), datasourcesOutputDir)}/`;
+        konsola.ok(
+          `Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`,
+        );
+      } else if (datasourceName) {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${datasourceName}.json`;
         const filePath = join(datasourcesOutputDir, fileName);
         // Only show relative path if the base path wasn't absolute
-        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
-        konsola.ok(`Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
-      }
-      else {
+        const displayPath = path && isAbsolute(path) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(
+          `Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`,
+        );
+      } else {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
         const filePath = join(datasourcesOutputDir, fileName);
         // Only show relative path if the base path wasn't absolute
-        const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        const displayPath = path && isAbsolute(path) ? filePath : relative(process.cwd(), filePath);
+        konsola.ok(
+          `Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`,
+        );
       }
       konsola.br();
-    }
-    catch (error) {
-      spinnerDatasources.failed(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Failed`);
+    } catch (error) {
+      spinnerDatasources.failed(
+        `Fetching ${chalk.hex(colorPalette.DATASOURCES)("Datasources")} - Failed`,
+      );
       konsola.br();
       handleError(error as Error, verbose);
+    } finally {
+      logger.info("Pulling datasources finished", { space, datasourceName });
     }
-    finally {
-      logger.info('Pulling datasources finished', { space, datasourceName });
-    }
-  });
+  },
+);

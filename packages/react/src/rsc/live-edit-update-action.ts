@@ -1,6 +1,6 @@
-'use server';
-import type { ISbStoryData } from '@storyblok/js';
-import { getStoryCacheKey } from '../core/story-cache';
+"use server";
+import type { ISbStoryData } from "@storyblok/js";
+import { getStoryCacheKey } from "../core/story-cache";
 
 export async function liveEditUpdateAction({
   story,
@@ -10,7 +10,7 @@ export async function liveEditUpdateAction({
   pathToRevalidate: string;
 }) {
   if (!story || !pathToRevalidate) {
-    return console.error('liveEditUpdateAction: story or pathToRevalidate is not provided');
+    return console.error("liveEditUpdateAction: story or pathToRevalidate is not provided");
   }
 
   const cacheKey = getStoryCacheKey(story);
@@ -21,11 +21,10 @@ export async function liveEditUpdateAction({
   // Revalidate path in Next.js SDKs only
   if (process.env.NEXT_RUNTIME) {
     try {
-      const { revalidatePath } = await import('next/cache');
+      const { revalidatePath } = await import("next/cache");
       revalidatePath(pathToRevalidate);
-    }
-    catch (error) {
-      console.error('liveEditUpdateAction: error while revalidating path', error);
+    } catch (error) {
+      console.error("liveEditUpdateAction: error while revalidating path", error);
     }
   }
 }

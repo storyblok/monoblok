@@ -1,17 +1,14 @@
-import type { AssetField } from './types';
+import type { AssetField } from "./types";
 
-export type UrlToAssetFieldOptions = Partial<Omit<AssetField, 'fieldtype' | 'filename' | 'id'>>;
+export type UrlToAssetFieldOptions = Partial<Omit<AssetField, "fieldtype" | "filename" | "id">>;
 
-export function urlToAssetField(
-  url: string,
-  options?: UrlToAssetFieldOptions,
-): AssetField {
+export function urlToAssetField(url: string, options?: UrlToAssetFieldOptions): AssetField {
   // Derive name from last path segment
-  const pathSegments = url.split('/');
+  const pathSegments = url.split("/");
   const name = pathSegments.at(-1) || url;
 
   return {
-    fieldtype: 'asset',
+    fieldtype: "asset",
     id: 0,
     filename: url,
     name,

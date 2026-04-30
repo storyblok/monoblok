@@ -40,23 +40,27 @@ yarn add @storyblok/live-preview
 Covers the most common live preview use cases with minimal setup.
 
 ```ts
-import { onStoryblokEditorEvent } from '@storyblok/live-preview';
+import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 
 onStoryblokEditorEvent((story) => {
   // update local state
 });
 ```
+
 ### Low-level Preview Bridge access
+
 For advanced use cases where full control is needed, the Preview Bridge can be accessed directly.
+
 ```ts
-import { loadStoryblokBridge } from '@storyblok/live-preview';
+import { loadStoryblokBridge } from "@storyblok/live-preview";
 
 const bridge = await loadStoryblokBridge(bridgeOptions);
 
-bridge.on(['input', 'change', 'published'], (event) => {
+bridge.on(["input", "change", "published"], (event) => {
   // custom preview handling
 });
 ```
+
 ## Documentation
 
 This package is intentionally minimal.
@@ -66,8 +70,8 @@ More helpers and examples will be added over time as usage expands.
 
 For help, best practices, or discussions:
 
-* [Storyblok GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
-* [Join the Storyblok Discord](https://storyblok.com/join-discord)
+- [Storyblok GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
+- [Join the Storyblok Discord](https://storyblok.com/join-discord)
 
 ## Support
 

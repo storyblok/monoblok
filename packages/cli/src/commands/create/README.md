@@ -9,6 +9,7 @@ storyblok create [project-path]
 ```
 
 This will start an interactive process where you can choose your technology stack and project path. The command will:
+
 1. Scaffold a new project using your selected template
 2. Create a new Storyblok space for your project
 3. Generate a `.env` file with your space's access token
@@ -16,50 +17,57 @@ This will start an interactive process where you can choose your technology stac
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
+| Option                      | Description                                                                   | Default               |
+| --------------------------- | ----------------------------------------------------------------------------- | --------------------- |
 | `-t, --template <template>` | Technology starter template (react, vue, svelte, astro, nuxt, next, eleventy) | Interactive selection |
-| `--skip-space` | Skip space creation and only generate the project | `false` |
-| `--token` | Skip space creation and generate the project with this `token` | `false` |
+| `--skip-space`              | Skip space creation and only generate the project                             | `false`               |
+| `--token`                   | Skip space creation and generate the project with this `token`                | `false`               |
 
 ## Available Templates
 
-| Template | Technology |
-|-----------|------------|
-| `react` | React with TypeScript |
-| `vue` | Vue 3 with TypeScript |
-| `svelte` | SvelteKit with TypeScript |
-| `astro` | Astro with TypeScript |
-| `nuxt` | Nuxt 3 with TypeScript |
-| `next` | Next.js with TypeScript |
-| `eleventy` | Eleventy with JavaScript |
+| Template   | Technology                |
+| ---------- | ------------------------- |
+| `react`    | React with TypeScript     |
+| `vue`      | Vue 3 with TypeScript     |
+| `svelte`   | SvelteKit with TypeScript |
+| `astro`    | Astro with TypeScript     |
+| `nuxt`     | Nuxt 3 with TypeScript    |
+| `next`     | Next.js with TypeScript   |
+| `eleventy` | Eleventy with JavaScript  |
 
 ## Examples
 
 1. **Interactive creation** (recommended for first-time users):
+
 ```bash
 storyblok create
 ```
+
 This will prompt you to:
+
 - Select your preferred technology
 - Choose a project path
 
 2. **Create with a specific template**:
+
 ```bash
 storyblok create my-project --template react
 ```
 
 3. **Create without a Storyblok space** (project only):
+
 ```bash
 storyblok create my-project --template vue --skip-space
 ```
 
 4. **Create with a custom path**:
+
 ```bash
 storyblok create ./projects/my-awesome-app --template astro
 ```
 
 5. **Create with absolute path**:
+
 ```bash
 storyblok create /Users/john/projects/my-app --template eleventy
 ```
@@ -69,6 +77,7 @@ storyblok create /Users/john/projects/my-app --template eleventy
 When you don't specify a template or project path, the CLI will guide you through the process:
 
 ### Template Selection
+
 ```
 ? Please select the technology you would like to use: (Use arrow keys)
 ❯ React
@@ -81,6 +90,7 @@ When you don't specify a template or project path, the CLI will guide you throug
 ```
 
 ### Project Path Input
+
 ```
 ? What is the path for your project? (./my-react-project)
 ```
@@ -90,7 +100,9 @@ The default project path will be `./my-{technology}-project` based on your templ
 ## What Gets Created
 
 ### Project Structure
+
 The command generates a complete project structure based on your chosen template, including:
+
 - Project scaffolding with the selected technology
 - TypeScript configuration
 - Storyblok integration setup
@@ -98,19 +110,25 @@ The command generates a complete project structure based on your chosen template
 - Development server configuration
 
 ### Storyblok Space
+
 Unless you use `--skip-space`, the command will:
+
 - Create a new Storyblok space with your project name
 - Configure the space with appropriate settings for your chosen technology
 - Generate a preview token for local development
 
 ### Environment Configuration
+
 The command automatically creates a `.env` file in your project root with:
+
 ```env
 STORYBLOK_ACCESS_TOKEN=your_space_token_here
 ```
 
 ### Browser Integration
+
 After successful creation, the command will:
+
 - Open your new Storyblok space in your default browser
 - Display the space management interface
 - Show you next steps to get started
@@ -118,6 +136,7 @@ After successful creation, the command will:
 ## Path Validation
 
 The project path must meet these requirements:
+
 - Cannot be empty
 - Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores
 - Valid examples: `my-project`, `my_project_123`, `./projects/awesome-app`
@@ -136,16 +155,19 @@ storyblok login
 The command handles various error scenarios gracefully:
 
 ### Project Generation Failures
+
 - Directory already exists and is not empty
 - Permission issues when creating files
 - Invalid project names or paths
 
 ### Space Creation Failures
+
 - API connectivity issues
 - Space name conflicts
 - Insufficient permissions
 
 ### Environment Setup Issues
+
 - `.env` file creation failures (shows manual token for fallback)
 - Browser opening failures (provides manual space URL)
 
@@ -162,23 +184,30 @@ The command handles various error scenarios gracefully:
 ## Troubleshooting
 
 ### "Invalid template" Warning
+
 If you specify an invalid template name, the CLI will show available options and switch to interactive mode:
+
 ```bash
 storyblok create my-project --template invalid-name
 # ⚠ Invalid template "invalid-name". Valid options are: react, vue, svelte, astro, nuxt, next, eleventy
 ```
 
 ### Directory Already Exists
+
 If the target directory exists and is not empty, the command will show an error and stop execution to prevent overwriting existing files.
 
 ### Permission Issues
+
 If you encounter permission errors:
+
 - Ensure you have write access to the target directory
 - Check that your Storyblok account has space creation permissions
 - Verify your authentication token is still valid
 
 ### Failed to Open Browser
+
 If the browser fails to open automatically, the CLI will provide the direct URL to your space:
+
 ```
 ⚠ Failed to open browser: [error message]
 ℹ You can manually open your space at: https://app.storyblok.com/#/me/spaces/12345/dashboard
@@ -189,16 +218,19 @@ If the browser fails to open automatically, the CLI will provide the direct URL 
 After creating your project:
 
 1. **Navigate to your project**:
+
 ```bash
 cd your-project-name
 ```
 
 2. **Install dependencies**:
+
 ```bash
 npm install
 ```
 
 3. **Start development server**:
+
 ```bash
 npm run dev
 ```

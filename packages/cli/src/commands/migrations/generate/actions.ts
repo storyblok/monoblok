@@ -1,7 +1,7 @@
-import { resolvePath, saveToFile } from '../../../utils/filesystem';
-import type { Component } from '../../components/constants';
-import { join } from 'pathe';
-import { handleFileSystemError } from '../../../utils';
+import { resolvePath, saveToFile } from "../../../utils/filesystem";
+import type { Component } from "../../components/constants";
+import { join } from "pathe";
+import { handleFileSystemError } from "../../../utils";
 
 const getMigrationTemplate = () => {
   return `export default function (block) {
@@ -19,7 +19,12 @@ const getMigrationTemplate = () => {
 `;
 };
 
-export const generateMigration = async (space: string, path: string | undefined, component: Component, suffix?: string) => {
+export const generateMigration = async (
+  space: string,
+  path: string | undefined,
+  component: Component,
+  suffix?: string,
+) => {
   const resolvedPath = resolvePath(path, `migrations/${space}`);
 
   const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
@@ -27,8 +32,7 @@ export const generateMigration = async (space: string, path: string | undefined,
 
   try {
     await saveToFile(migrationPath, getMigrationTemplate());
-  }
-  catch (error) {
-    handleFileSystemError('write', error as Error);
+  } catch (error) {
+    handleFileSystemError("write", error as Error);
   }
 };

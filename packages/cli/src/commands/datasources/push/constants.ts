@@ -1,7 +1,6 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 export interface PushDatasourcesOptions extends CommandOptions {
-
   /**
    * The glob pattern filter to apply to datasources before pushing.
    * @default `.*`

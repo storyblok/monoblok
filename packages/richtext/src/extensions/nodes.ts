@@ -1,39 +1,39 @@
-import { Node } from '@tiptap/core';
-import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
-import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
-import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
-import Blockquote from '@tiptap/extension-blockquote';
-import CodeBlock from '@tiptap/extension-code-block';
-import Document from '@tiptap/extension-document';
-import Emoji from '@tiptap/extension-emoji';
-import HardBreak from '@tiptap/extension-hard-break';
-import Heading from '@tiptap/extension-heading';
-import HorizontalRule from '@tiptap/extension-horizontal-rule';
-import Image from '@tiptap/extension-image';
-import Paragraph from '@tiptap/extension-paragraph';
-import Text from '@tiptap/extension-text';
-import { optimizeImage } from '../images-optimization';
-import type { StoryblokRichTextImageOptimizationOptions } from '../types';
-import { cleanObject } from '../utils';
-import { computeTableCellAttrs, processBlockAttrs } from './utils';
-import TextAlign from '@tiptap/extension-text-align';
+import { Node } from "@tiptap/core";
+import { BulletList, ListItem, OrderedList } from "@tiptap/extension-list";
+import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
+import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import Blockquote from "@tiptap/extension-blockquote";
+import CodeBlock from "@tiptap/extension-code-block";
+import Document from "@tiptap/extension-document";
+import Emoji from "@tiptap/extension-emoji";
+import HardBreak from "@tiptap/extension-hard-break";
+import Heading from "@tiptap/extension-heading";
+import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Image from "@tiptap/extension-image";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
+import { optimizeImage } from "../images-optimization";
+import type { StoryblokRichTextImageOptimizationOptions } from "../types";
+import { cleanObject } from "../utils";
+import { computeTableCellAttrs, processBlockAttrs } from "./utils";
+import TextAlign from "@tiptap/extension-text-align";
 
 // Re-export unmodified extensions
 export { Details, DetailsContent, DetailsSummary, Document, Text };
 
 export const StoryblokTextAlign = TextAlign.configure({
-  types: ['heading', 'paragraph'],
+  types: ["heading", "paragraph"],
 });
 // Blockquote, Paragraph, Heading need processBlockAttrs for textAlign support
 export const StoryblokBlockquote = Blockquote.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['blockquote', processBlockAttrs(HTMLAttributes), 0];
+    return ["blockquote", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
 export const StoryblokParagraph = Paragraph.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['p', processBlockAttrs(HTMLAttributes), 0];
+    return ["p", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
@@ -46,23 +46,23 @@ export const StoryblokHeading = Heading.extend({
 
 export const StoryblokTableRow = TableRow.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['tr', processBlockAttrs(HTMLAttributes), 0];
+    return ["tr", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
 // Storyblok uses snake_case names for some extensions
 export const StoryblokBulletList = BulletList.extend({
-  name: 'bullet_list',
+  name: "bullet_list",
   addOptions() {
-    return { ...this.parent!(), itemTypeName: 'list_item' };
+    return { ...this.parent!(), itemTypeName: "list_item" };
   },
   renderHTML({ HTMLAttributes }) {
-    return ['ul', processBlockAttrs(HTMLAttributes), 0];
+    return ["ul", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
 export const StoryblokOrderedList = OrderedList.extend({
-  name: 'ordered_list',
+  name: "ordered_list",
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -72,25 +72,29 @@ export const StoryblokOrderedList = OrderedList.extend({
     };
   },
   addOptions() {
-    return { ...this.parent!(), itemTypeName: 'list_item' };
+    return { ...this.parent!(), itemTypeName: "list_item" };
   },
   renderHTML({ HTMLAttributes }) {
-    return ['ol', processBlockAttrs(HTMLAttributes), 0];
+    return ["ol", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
 export const StoryblokListItem = ListItem.extend({
-  name: 'list_item',
+  name: "list_item",
   addOptions() {
-    return { ...this.parent!(), bulletListTypeName: 'bullet_list', orderedListTypeName: 'ordered_list' };
+    return {
+      ...this.parent!(),
+      bulletListTypeName: "bullet_list",
+      orderedListTypeName: "ordered_list",
+    };
   },
   renderHTML({ HTMLAttributes }) {
-    return ['li', processBlockAttrs(HTMLAttributes), 0];
+    return ["li", processBlockAttrs(HTMLAttributes), 0];
   },
 });
 
 export const StoryblokCodeBlock = CodeBlock.extend({
-  name: 'code_block',
+  name: "code_block",
   addAttributes() {
     return {
       class: {
@@ -103,11 +107,11 @@ export const StoryblokCodeBlock = CodeBlock.extend({
     const attrs = processBlockAttrs(rest);
     const lang = node.attrs.language;
     const codeAttrs = lang ? { class: `language-${lang}` } : {};
-    return ['pre', attrs, ['code', codeAttrs, 0]];
+    return ["pre", attrs, ["code", codeAttrs, 0]];
   },
 });
-export const StoryblokHardBreak = HardBreak.extend({ name: 'hard_break' });
-export const StoryblokHorizontalRule = HorizontalRule.extend({ name: 'horizontal_rule' });
+export const StoryblokHardBreak = HardBreak.extend({ name: "hard_break" });
+export const StoryblokHorizontalRule = HorizontalRule.extend({ name: "horizontal_rule" });
 
 // Table with custom renderHTML
 // Note: thead/tbody grouping is handled by the richtext renderer,
@@ -115,7 +119,7 @@ export const StoryblokHorizontalRule = HorizontalRule.extend({ name: 'horizontal
 export const StoryblokTable = Table.extend({
   renderHTML({ HTMLAttributes }) {
     const attrs = processBlockAttrs(HTMLAttributes);
-    return ['table', attrs, 0];
+    return ["table", attrs, 0];
   },
 });
 
@@ -133,8 +137,8 @@ export const StoryblokTableCell = TableCell.extend({
       colwidth: {
         default: null,
         parseHTML: (element: HTMLElement) => {
-          const colwidth = element.getAttribute('colwidth');
-          return colwidth ? colwidth.split(',').map(Number) : null;
+          const colwidth = element.getAttribute("colwidth");
+          return colwidth ? colwidth.split(",").map(Number) : null;
         },
       },
       backgroundColor: {
@@ -143,19 +147,21 @@ export const StoryblokTableCell = TableCell.extend({
     };
   },
   renderHTML({ HTMLAttributes }) {
-    return ['td', computeTableCellAttrs(HTMLAttributes), 0];
+    return ["td", computeTableCellAttrs(HTMLAttributes), 0];
   },
 });
 
 // Table header with custom style handling
 export const StoryblokTableHeader = TableHeader.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['th', computeTableCellAttrs(HTMLAttributes), 0];
+    return ["th", computeTableCellAttrs(HTMLAttributes), 0];
   },
 });
 
 // Image with optimizeImages support
-export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<StoryblokRichTextImageOptimizationOptions> }>({
+export const StoryblokImage = Image.extend<{
+  optimizeImages: boolean | Partial<StoryblokRichTextImageOptimizationOptions>;
+}>({
   addOptions() {
     return { ...this.parent?.(), optimizeImages: false };
   },
@@ -170,24 +176,31 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
       extraAttrs = result.attrs;
     }
 
-    return ['img', cleanObject({ src: finalSrc, alt, title, srcset, sizes, ...extraAttrs })];
+    return ["img", cleanObject({ src: finalSrc, alt, title, srcset, sizes, ...extraAttrs })];
   },
 });
 
 // Emoji with custom renderHTML
 export const StoryblokEmoji = Emoji.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['span', {
-      'data-type': 'emoji',
-      'data-name': HTMLAttributes.name,
-      'data-emoji': HTMLAttributes.emoji,
-    }, ['img', {
-      src: HTMLAttributes.fallbackImage,
-      alt: HTMLAttributes.alt,
-      style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
-      draggable: 'false',
-      loading: 'lazy',
-    }]];
+    return [
+      "span",
+      {
+        "data-type": "emoji",
+        "data-name": HTMLAttributes.name,
+        "data-emoji": HTMLAttributes.emoji,
+      },
+      [
+        "img",
+        {
+          src: HTMLAttributes.fallbackImage,
+          alt: HTMLAttributes.alt,
+          style: "width: 1.25em; height: 1.25em; vertical-align: text-top",
+          draggable: "false",
+          loading: "lazy",
+        },
+      ],
+    ];
   },
 });
 
@@ -195,9 +208,11 @@ export const StoryblokEmoji = Emoji.extend({
 // Configure `renderComponent` option to render blok components in framework SDKs.
 // Similar to PHP Tiptap extension's `renderer` callback:
 // https://github.com/storyblok/php-tiptap-extension/blob/main/src/Node/Blok.php
-export const ComponentBlok = Node.create<{ renderComponent: ((blok: Record<string, unknown>, id?: string) => unknown) | null }>({
-  name: 'blok',
-  group: 'block',
+export const ComponentBlok = Node.create<{
+  renderComponent: ((blok: Record<string, unknown>, id?: string) => unknown) | null;
+}>({
+  name: "blok",
+  group: "block",
   atom: true,
   addOptions() {
     return {
@@ -211,14 +226,19 @@ export const ComponentBlok = Node.create<{ renderComponent: ((blok: Record<strin
     };
   },
   parseHTML() {
-    return [{ tag: 'div[data-blok]' }];
+    return [{ tag: "div[data-blok]" }];
   },
   renderHTML({ HTMLAttributes }) {
-    console.warn('[StoryblokRichText] - BLOK resolver is not available for vanilla usage. Configure `renderComponent` option on the blok tiptapExtension.');
-    return ['span', cleanObject({
-      'data-blok': JSON.stringify(HTMLAttributes?.body?.[0] ?? null),
-      'data-blok-id': HTMLAttributes?.id,
-      'style': 'display: none',
-    })];
+    console.warn(
+      "[StoryblokRichText] - BLOK resolver is not available for vanilla usage. Configure `renderComponent` option on the blok tiptapExtension.",
+    );
+    return [
+      "span",
+      cleanObject({
+        "data-blok": JSON.stringify(HTMLAttributes?.body?.[0] ?? null),
+        "data-blok-id": HTMLAttributes?.id,
+        style: "display: none",
+      }),
+    ];
   },
 });

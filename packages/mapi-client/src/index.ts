@@ -1,35 +1,35 @@
-import type { Client, ResolvedRequestOptions } from './generated/shared/client';
-import type { Middleware } from './generated/shared/client/utils.gen';
-import { createClient, createConfig } from './generated/shared/client';
-import { getManagementBaseUrl } from '@storyblok/region-helper';
-import { ClientError } from './error';
-import { createThrottleManager } from './utils/rate-limit';
-import { createAssetFoldersResource } from './resources/asset-folders';
-import { createAssetsResource } from './resources/assets';
-import { createComponentFoldersResource } from './resources/component-folders';
-import { createComponentsResource } from './resources/components';
-import { createDatasourceEntriesResource } from './resources/datasource-entries';
-import { createDatasourcesResource } from './resources/datasources';
-import { createInternalTagsResource } from './resources/internal-tags';
-import { createPresetsResource } from './resources/presets';
-import { createSpacesResource } from './resources/spaces';
-import { createStoriesResource } from './resources/stories';
-import { createUsersResource } from './resources/users';
+import type { Client, ResolvedRequestOptions } from "./generated/shared/client";
+import type { Middleware } from "./generated/shared/client/utils.gen";
+import { createClient, createConfig } from "./generated/shared/client";
+import { getManagementBaseUrl } from "@storyblok/region-helper";
+import { ClientError } from "./error";
+import { createThrottleManager } from "./utils/rate-limit";
+import { createAssetFoldersResource } from "./resources/asset-folders";
+import { createAssetsResource } from "./resources/assets";
+import { createComponentFoldersResource } from "./resources/component-folders";
+import { createComponentsResource } from "./resources/components";
+import { createDatasourceEntriesResource } from "./resources/datasource-entries";
+import { createDatasourcesResource } from "./resources/datasources";
+import { createInternalTagsResource } from "./resources/internal-tags";
+import { createPresetsResource } from "./resources/presets";
+import { createSpacesResource } from "./resources/spaces";
+import { createStoriesResource } from "./resources/stories";
+import { createUsersResource } from "./resources/users";
 import type {
   ApiResponse,
   HttpRequestOptions,
   ManagementApiClientConfig,
   MapiResourceDeps,
-} from './types';
+} from "./types";
 
-export { ClientError } from './error';
+export { ClientError } from "./error";
 
 function getAuthorizationHeader(config: ManagementApiClientConfig): string | undefined {
   if (config.personalAccessToken) {
     return config.personalAccessToken;
   }
   if (config.oauthToken) {
-    return `Bearer ${config.oauthToken.replace(/^Bearer\s+/i, '')}`;
+    return `Bearer ${config.oauthToken.replace(/^Bearer\s+/i, "")}`;
   }
   return undefined;
 }
@@ -37,14 +37,14 @@ function getAuthorizationHeader(config: ManagementApiClientConfig): string | und
 export const createManagementApiClient = (config: ManagementApiClientConfig) => {
   const {
     spaceId,
-    region = 'eu',
+    region = "eu",
     baseUrl,
     headers = {},
     throwOnError = false,
     retry = {
       limit: 12,
       backoffLimit: 20_000,
-      methods: ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'],
+      methods: ["get", "post", "put", "delete", "patch", "head", "options", "trace"],
       statusCodes: [429],
     },
     timeout = 30_000,
@@ -72,9 +72,9 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
 
   client.interceptors.error.use(
     (error: unknown, response: Response) =>
-      new ClientError(response?.statusText || 'API request failed', {
+      new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
-        statusText: response?.statusText ?? '',
+        statusText: response?.statusText ?? "",
         data: error,
       }),
   );
@@ -89,7 +89,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     _throwOnError?: ThrowOnError,
   ): Promise<ApiResponse<TData, ThrowOnError>> {
     return throttleManager.execute(async () => {
-      const result = await fn() as ApiResponse<TData, ThrowOnError>;
+      const result = (await fn()) as ApiResponse<TData, ThrowOnError>;
       throttleManager.adaptToResponse((result as { response: Response }).response);
       return result;
     }) as Promise<ApiResponse<TData, ThrowOnError>>;
@@ -107,7 +107,13 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   ): Promise<ApiResponse<TData>> => {
     const { fetchOptions, ...rest } = options;
     return wrapRequest<TData>(() =>
-      client.get({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.get({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -121,7 +127,13 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   ): Promise<ApiResponse<TData>> => {
     const { fetchOptions, ...rest } = options;
     return wrapRequest<TData>(() =>
-      client.post({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.post({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -135,7 +147,13 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   ): Promise<ApiResponse<TData>> => {
     const { fetchOptions, ...rest } = options;
     return wrapRequest<TData>(() =>
-      client.put({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.put({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -149,7 +167,13 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   ): Promise<ApiResponse<TData>> => {
     const { fetchOptions, ...rest } = options;
     return wrapRequest<TData>(() =>
-      client.patch({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.patch({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -163,7 +187,13 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   ): Promise<ApiResponse<TData>> => {
     const { fetchOptions, ...rest } = options;
     return wrapRequest<TData>(() =>
-      client.delete({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.delete({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -177,7 +207,12 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     delete: httpDelete,
     get: httpGet,
     patch: httpPatch,
-    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    interceptors: client.interceptors as Middleware<
+      Request,
+      Response,
+      unknown,
+      ResolvedRequestOptions
+    >,
     internalTags: createInternalTagsResource(deps),
     post: httpPost,
     presets: createPresetsResource(deps),
@@ -239,5 +274,5 @@ export type {
   StoryUpdate,
   TableField,
   User,
-} from './types';
-export { normalizeAssetUrl } from './utils/normalize-asset-url';
+} from "./types";
+export { normalizeAssetUrl } from "./utils/normalize-asset-url";

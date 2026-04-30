@@ -1,5 +1,5 @@
-import { commands } from '../../constants';
-import { getProgram } from '../../program';
+import { commands } from "../../constants";
+import { getProgram } from "../../program";
 
 const program = getProgram();
 

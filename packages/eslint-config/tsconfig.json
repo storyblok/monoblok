@@ -8,8 +8,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": [
-    "**/*.ts",
-    "eslint.config.ts"
-  ]
+  "include": ["**/*.ts", "eslint.config.ts"]
 }

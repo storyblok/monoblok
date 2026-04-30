@@ -33,4 +33,4 @@ export type {
   StoryblokRichTextNodeTypes,
   StoryblokRichTextOptions,
   TextTypes,
-} from '@storyblok/js';
+} from "@storyblok/js";

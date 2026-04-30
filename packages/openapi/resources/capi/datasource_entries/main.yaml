@@ -48,7 +48,7 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
+        "200":
           description: Array of datasource entries
           headers:
             $ref: ../../shared/pagination.yaml#/pagination_headers
@@ -63,15 +63,15 @@ paths:
                     type: array
                     description: Array of datasource entry objects
                     items:
-                      $ref: '#/components/schemas/DatasourceEntry'
+                      $ref: "#/components/schemas/DatasourceEntry"
                   cv:
                     type:
                       - integer
                       - "null"
                     description: Cache version Unix timestamp
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
 components:
   securitySchemes:

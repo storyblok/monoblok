@@ -1,60 +1,60 @@
 export enum BlockTypes {
-  DOCUMENT = 'doc',
-  HEADING = 'heading',
-  PARAGRAPH = 'paragraph',
-  QUOTE = 'blockquote',
-  OL_LIST = 'ordered_list',
-  UL_LIST = 'bullet_list',
-  LIST_ITEM = 'list_item',
-  CODE_BLOCK = 'code_block',
-  HR = 'horizontal_rule',
-  BR = 'hard_break',
-  IMAGE = 'image',
-  EMOJI = 'emoji',
-  COMPONENT = 'blok',
-  TABLE = 'table',
-  TABLE_ROW = 'tableRow',
-  TABLE_CELL = 'tableCell',
-  TABLE_HEADER = 'tableHeader',
+  DOCUMENT = "doc",
+  HEADING = "heading",
+  PARAGRAPH = "paragraph",
+  QUOTE = "blockquote",
+  OL_LIST = "ordered_list",
+  UL_LIST = "bullet_list",
+  LIST_ITEM = "list_item",
+  CODE_BLOCK = "code_block",
+  HR = "horizontal_rule",
+  BR = "hard_break",
+  IMAGE = "image",
+  EMOJI = "emoji",
+  COMPONENT = "blok",
+  TABLE = "table",
+  TABLE_ROW = "tableRow",
+  TABLE_CELL = "tableCell",
+  TABLE_HEADER = "tableHeader",
 }
 
 export enum MarkTypes {
-  BOLD = 'bold',
-  STRONG = 'strong',
-  STRIKE = 'strike',
-  UNDERLINE = 'underline',
-  ITALIC = 'italic',
-  CODE = 'code',
-  LINK = 'link',
-  ANCHOR = 'anchor',
-  STYLED = 'styled',
-  SUPERSCRIPT = 'superscript',
-  SUBSCRIPT = 'subscript',
-  TEXT_STYLE = 'textStyle',
-  HIGHLIGHT = 'highlight',
+  BOLD = "bold",
+  STRONG = "strong",
+  STRIKE = "strike",
+  UNDERLINE = "underline",
+  ITALIC = "italic",
+  CODE = "code",
+  LINK = "link",
+  ANCHOR = "anchor",
+  STYLED = "styled",
+  SUPERSCRIPT = "superscript",
+  SUBSCRIPT = "subscript",
+  TEXT_STYLE = "textStyle",
+  HIGHLIGHT = "highlight",
 }
 
 export enum TextTypes {
-  TEXT = 'text',
+  TEXT = "text",
 }
 
 export enum LinkTargets {
-  SELF = '_self',
-  BLANK = '_blank',
+  SELF = "_self",
+  BLANK = "_blank",
 }
 
 export enum LinkTypes {
-  URL = 'url',
-  STORY = 'story',
-  ASSET = 'asset',
-  EMAIL = 'email',
+  URL = "url",
+  STORY = "story",
+  ASSET = "asset",
+  EMAIL = "email",
 }
 
 /**
  * Represents text alignment attributes that can be applied to block-level elements.
  */
 export interface TextAlignmentAttrs {
-  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  textAlign?: "left" | "center" | "right" | "justify";
 }
 
 /**
@@ -91,18 +91,19 @@ export interface LinkNode<T = string> extends StoryblokRichTextNode<T> {
 }
 
 export interface MarkNode<T = string> extends StoryblokRichTextNode<T> {
-  type: MarkTypes.BOLD |
-    MarkTypes.ITALIC |
-    MarkTypes.UNDERLINE |
-    MarkTypes.STRIKE |
-    MarkTypes.CODE |
-    MarkTypes.LINK |
-    MarkTypes.ANCHOR |
-    MarkTypes.STYLED |
-    MarkTypes.SUPERSCRIPT |
-    MarkTypes.SUBSCRIPT |
-    MarkTypes.TEXT_STYLE |
-    MarkTypes.HIGHLIGHT;
+  type:
+    | MarkTypes.BOLD
+    | MarkTypes.ITALIC
+    | MarkTypes.UNDERLINE
+    | MarkTypes.STRIKE
+    | MarkTypes.CODE
+    | MarkTypes.LINK
+    | MarkTypes.ANCHOR
+    | MarkTypes.STYLED
+    | MarkTypes.SUPERSCRIPT
+    | MarkTypes.SUBSCRIPT
+    | MarkTypes.TEXT_STYLE
+    | MarkTypes.HIGHLIGHT;
   attrs?: BlockAttributes;
 }
 
@@ -134,7 +135,7 @@ export interface StoryblokRichTextImageOptimizationOptions {
   /**
    * Loading strategy for the image. 'lazy' loads the image when it enters the viewport. 'eager' loads the image immediately.
    */
-  loading: 'lazy' | 'eager';
+  loading: "lazy" | "eager";
 
   /**
    * Optional filters that can be applied to the image to adjust its appearance.
@@ -152,8 +153,8 @@ export interface StoryblokRichTextImageOptimizationOptions {
   filters: Partial<{
     blur: number;
     brightness: number;
-    fill: 'transparent';
-    format: 'webp' | 'png' | 'jpg';
+    fill: "transparent";
+    format: "webp" | "png" | "jpg";
     grayscale: boolean;
     quality: number;
     rotate: 0 | 90 | 180 | 270;
@@ -193,7 +194,10 @@ export interface StoryblokRichTextImageOptimizationOptions {
 /**
  * Represents the options for rendering rich text.
  */
-export interface StoryblokRichTextOptions<T = string, S = (tag: string, attrs: BlockAttributes, children?: T) => T> {
+export interface StoryblokRichTextOptions<
+  T = string,
+  S = (tag: string, attrs: BlockAttributes, children?: T) => T,
+> {
   /**
    * Defines the function that will be used to render the final HTML string (vanilla) or Framework component (React, Vue).
    *

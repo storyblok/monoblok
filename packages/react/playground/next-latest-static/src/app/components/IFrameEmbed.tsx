@@ -1,6 +1,6 @@
-import React from 'react';
-import type { SbBlokData } from '@storyblok/react';
-import { storyblokEditable } from '@storyblok/react/ssr';
+import React from "react";
+import type { SbBlokData } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react/ssr";
 
 interface IframeEmbedProps {
   blok: SbBlokData & {

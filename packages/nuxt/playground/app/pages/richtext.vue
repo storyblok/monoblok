@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { NuxtLink } from '#components';
-import { Mark } from '@tiptap/core';
+import { NuxtLink } from "#components";
+import { Mark } from "@tiptap/core";
 
-const { story } = await useAsyncStoryblok('vue/test-richtext', {
+const { story } = await useAsyncStoryblok("vue/test-richtext", {
   api: {
-    version: 'draft',
+    version: "draft",
   },
   bridge: {},
 });
 
 const CustomLink = Mark.create({
-  name: 'link',
+  name: "link",
   renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
-    if (HTMLAttributes.linktype === 'story') {
+    if (HTMLAttributes.linktype === "story") {
       return [asTag(NuxtLink), { to: HTMLAttributes.href }, 0];
     }
-    return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
+    return ["a", { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
   },
 });
 

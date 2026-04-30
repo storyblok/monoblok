@@ -1,13 +1,13 @@
-import { spawn } from 'node:child_process';
-import { join } from 'pathe';
-import fs from 'node:fs/promises';
-import { saveToFile } from '../../utils/filesystem';
-import { appDomains, type RegionCode } from '../../constants';
-import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
-import open from 'open';
-import { createOctokit } from '../../github';
-import { handleAPIError, konsola } from '../../utils';
-import type { DynamicTemplate } from './constants';
+import { spawn } from "node:child_process";
+import { join } from "pathe";
+import fs from "node:fs/promises";
+import { saveToFile } from "../../utils/filesystem";
+import { appDomains, type RegionCode } from "../../constants";
+import { FileSystemError, handleFileSystemError } from "../../utils/error/filesystem-error";
+import open from "open";
+import { createOctokit } from "../../github";
+import { handleAPIError, konsola } from "../../utils";
+import type { DynamicTemplate } from "./constants";
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -29,47 +29,50 @@ export const generateProject = async (
       await fs.access(projectPath);
       // If we reach this point, the directory already exists
       // Create a mock ENOTEMPTY error to use with our filesystem error system
-      const existsError: NodeJS.ErrnoException = new Error(`Directory ${projectName} already exists`) as NodeJS.ErrnoException;
-      existsError.code = 'ENOTEMPTY';
+      const existsError: NodeJS.ErrnoException = new Error(
+        `Directory ${projectName} already exists`,
+      ) as NodeJS.ErrnoException;
+      existsError.code = "ENOTEMPTY";
       existsError.path = projectPath;
-      throw new FileSystemError('directory_not_empty', 'mkdir', existsError, `Directory ${projectName} already exists`);
-    }
-    catch (error) {
+      throw new FileSystemError(
+        "directory_not_empty",
+        "mkdir",
+        existsError,
+        `Directory ${projectName} already exists`,
+      );
+    } catch (error) {
       const fsError = error as NodeJS.ErrnoException;
 
       // Directory doesn't exist (ENOENT), which is what we want
-      if (fsError.code === 'ENOENT') {
+      if (fsError.code === "ENOENT") {
         // Continue with project creation
-      }
-      else {
+      } else {
         // Handle other filesystem errors using the error handler
-        handleFileSystemError('read', fsError);
+        handleFileSystemError("read", fsError);
       }
     }
 
     // Clone the template repository using degit
-    const degitProcess = spawn('npx', ['degit', templateRepo, projectPath], {
-      stdio: 'inherit',
+    const degitProcess = spawn("npx", ["degit", templateRepo, projectPath], {
+      stdio: "inherit",
       shell: true,
     });
 
     return new Promise((resolve, reject) => {
-      degitProcess.on('close', (code) => {
+      degitProcess.on("close", (code) => {
         if (code === 0) {
           resolve();
-        }
-        else {
+        } else {
           reject(new Error(`Failed to clone template. Process exited with code ${code}`));
         }
       });
 
-      degitProcess.on('error', (error) => {
+      degitProcess.on("error", (error) => {
         reject(new Error(`Failed to spawn degit process: ${error.message}`));
       });
     });
-  }
-  catch (error) {
-    handleFileSystemError('read', error as NodeJS.ErrnoException);
+  } catch (error) {
+    handleFileSystemError("read", error as NodeJS.ErrnoException);
   }
 };
 
@@ -86,16 +89,18 @@ export const createEnvFile = async (
   additionalVars?: Record<string, string>,
 ): Promise<void> => {
   try {
-    const envPath = join(projectPath, '.env');
+    const envPath = join(projectPath, ".env");
 
     // Build the .env content
     let envContent = `# Storyblok Configuration
-${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\n')}
+${Object.entries(storyblokVars)
+  .map(([key, value]) => `${key}=${value}`)
+  .join("\n")}
 `;
 
     // Add any additional environment variables
     if (additionalVars && Object.keys(additionalVars).length > 0) {
-      envContent += '\n# Additional Configuration\n';
+      envContent += "\n# Additional Configuration\n";
       for (const [key, value] of Object.entries(additionalVars)) {
         envContent += `${key}=${value}\n`;
       }
@@ -103,14 +108,17 @@ ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\
 
     // Use the filesystem utility to save the file
     await saveToFile(envPath, envContent);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`Failed to create .env file: ${(error as Error).message}`);
   }
 };
 
 // Helper to create .env file and handle errors
-export async function handleEnvFileCreation(resolvedPath: string, token?: string, region?: RegionCode): Promise<boolean> {
+export async function handleEnvFileCreation(
+  resolvedPath: string,
+  token?: string,
+  region?: RegionCode,
+): Promise<boolean> {
   const envVars: Record<string, string> = {};
   if (token) {
     envVars.STORYBLOK_DELIVERY_API_TOKEN = token;
@@ -119,26 +127,21 @@ export async function handleEnvFileCreation(resolvedPath: string, token?: string
     envVars.STORYBLOK_REGION = region;
   }
   if (Object.keys(envVars).length === 0) {
-    konsola.info('No environment variables to write');
+    konsola.info("No environment variables to write");
     return true;
   }
   try {
     await createEnvFile(resolvedPath, envVars);
-    const writtenKeys = Object.keys(envVars).join(', ');
+    const writtenKeys = Object.keys(envVars).join(", ");
     konsola.ok(`Created .env file with: ${writtenKeys}`, true);
     return true;
-  }
-  catch (error) {
+  } catch (error) {
     konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
     if (token) {
-      konsola.info(
-        `You can manually add STORYBLOK_DELIVERY_API_TOKEN to your .env file.`,
-      );
+      konsola.info(`You can manually add STORYBLOK_DELIVERY_API_TOKEN to your .env file.`);
     }
     if (region) {
-      konsola.info(
-        `You can manually add STORYBLOK_REGION to your .env file.`,
-      );
+      konsola.info(`You can manually add STORYBLOK_REGION to your .env file.`);
     }
     return false;
   }
@@ -154,9 +157,9 @@ export const generateSpaceUrl = (spaceId: number, region: RegionCode): string =>
   const domain = appDomains[region];
 
   const utmParams = new URLSearchParams({
-    utm_source: 'storyblok-cli',
-    utm_medium: 'cli',
-    utm_campaign: 'create',
+    utm_source: "storyblok-cli",
+    utm_medium: "cli",
+    utm_campaign: "create",
   });
   return `https://${domain}/#/me/spaces/${spaceId}/dashboard?${utmParams.toString()}`;
 };
@@ -172,8 +175,7 @@ export const openSpaceInBrowser = async (spaceId: number, region: RegionCode): P
     const spaceUrl = generateSpaceUrl(spaceId, region);
 
     await open(spaceUrl);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`Failed to open space in browser: ${(error as Error).message}`);
   }
 };
@@ -184,15 +186,15 @@ export const openSpaceInBrowser = async (spaceId: number, region: RegionCode): P
  * @returns Port number as string, defaults to '3000' if not found
  */
 export const extractPortFromTopics = (topics: string[]): string => {
-  const portTopic = topics.find(topic => topic.startsWith('port-'));
+  const portTopic = topics.find((topic) => topic.startsWith("port-"));
   if (portTopic) {
-    const port = portTopic.replace('port-', '');
+    const port = portTopic.replace("port-", "");
     // Validate that it's a valid port number
     if (/^\d+$/.test(port) && Number.parseInt(port) > 0 && Number.parseInt(port) <= 65535) {
       return port;
     }
   }
-  return '3000'; // Default fallback port
+  return "3000"; // Default fallback port
 };
 
 /**
@@ -201,14 +203,14 @@ export const extractPortFromTopics = (topics: string[]): string => {
  * @returns Formatted blueprint object
  */
 export const repositoryToTemplate = (repo: any): DynamicTemplate => {
-  const technology = repo.name.replace('blueprint-core-', '');
+  const technology = repo.name.replace("blueprint-core-", "");
   const port = extractPortFromTopics(repo.topics || []);
 
   return {
     name: technology.charAt(0).toUpperCase() + technology.slice(1),
     value: technology,
     template: repo.clone_url,
-    location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
+    location: port ? `https://localhost:${port}/` : "https://localhost:3000/",
     description: repo.description,
     updated_at: repo.updated_at,
     stars: repo.stargazers_count,
@@ -221,22 +223,21 @@ export const fetchBlueprintRepositories = async () => {
 
     // Search for repositories matching the blueprint pattern
     const { data } = await octokit.rest.search.repos({
-      q: 'org:storyblok blueprint-core-',
-      sort: 'updated',
-      order: 'desc',
+      q: "org:storyblok blueprint-core-",
+      sort: "updated",
+      order: "desc",
       per_page: 100,
     });
 
     // Filter and convert repositories to blueprints
     const blueprints = data.items
-      .filter(repo => repo.name.startsWith('blueprint-core-'))
+      .filter((repo) => repo.name.startsWith("blueprint-core-"))
       .map(repositoryToTemplate)
       .sort((a, b) => (b.stars || 0) - (a.stars || 0));
 
     return blueprints;
-  }
-  catch (error) {
+  } catch (error) {
     // Fallback to hardcoded blueprints if GitHub search fails
-    handleAPIError('fetch_blueprints', error as Error, 'Failed to fetch blueprints from GitHub');
+    handleAPIError("fetch_blueprints", error as Error, "Failed to fetch blueprints from GitHub");
   }
 };

@@ -31,7 +31,7 @@ paths:
               - draft
             default: published
       responses:
-        '200':
+        "200":
           description: Array of tags
           content:
             application/json:
@@ -44,13 +44,13 @@ paths:
                     type: array
                     description: Array of tag objects
                     items:
-                      $ref: '#/components/schemas/Tag'
+                      $ref: "#/components/schemas/Tag"
                   cv:
                     type: integer
                     description: Cache version Unix timestamp
-        '400':
+        "400":
           $ref: ../../shared/responses.yaml#/BadRequest
-        '401':
+        "401":
           $ref: ../../shared/responses.yaml#/Unauthorized
 components:
   securitySchemes:

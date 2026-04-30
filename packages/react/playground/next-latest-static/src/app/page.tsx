@@ -1,10 +1,7 @@
-import type {
-  ISbStoriesParams,
-  StoryblokClient,
-} from '@storyblok/react/ssr';
-import { StoryblokServerStory } from '@storyblok/react/ssr';
-import { getStoryblokApi } from '@/lib/storyblok';
-import Link from 'next/link';
+import type { ISbStoriesParams, StoryblokClient } from "@storyblok/react/ssr";
+import { StoryblokServerStory } from "@storyblok/react/ssr";
+import { getStoryblokApi } from "@/lib/storyblok";
+import Link from "next/link";
 
 export default async function Home() {
   const { data } = await fetchData();
@@ -16,7 +13,8 @@ export default async function Home() {
           Storyblok Next.js 15 Static Export Example
         </h1>
 
-        { // TODO: Enable for https://github.com/storyblok/monoblok/issues/35
+        {
+          // TODO: Enable for https://github.com/storyblok/monoblok/issues/35
           <nav className="space-y-4">
             <Link
               href="/richtext"
@@ -39,7 +37,7 @@ export default async function Home() {
 }
 
 async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: 'draft' };
+  const sbParams: ISbStoriesParams = { version: "draft" };
 
   const storyblokApi: StoryblokClient = getStoryblokApi();
   return storyblokApi.get(`cdn/stories/react`, sbParams);

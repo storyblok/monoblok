@@ -1,14 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { vol } from 'memfs';
-import { appendToFile, consolidatedFilename, getComponentNameFromFilename, getStoryblokGlobalPath, resolvePath, sanitizeFilename, saveToFile, shouldUseSeparateFiles } from './filesystem';
-import { join, resolve } from 'pathe';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vol } from "memfs";
+import {
+  appendToFile,
+  consolidatedFilename,
+  getComponentNameFromFilename,
+  getStoryblokGlobalPath,
+  resolvePath,
+  sanitizeFilename,
+  saveToFile,
+  shouldUseSeparateFiles,
+} from "./filesystem";
+import { join, resolve } from "pathe";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('filesystem utils', async () => {
-  describe('getStoryblokGlobalPath', async () => {
+describe("filesystem utils", async () => {
+  describe("getStoryblokGlobalPath", async () => {
     const originalPlatform = process.platform;
     const originalEnv = { ...process.env };
     const originalCwd = process.cwd;
@@ -18,47 +27,47 @@ describe('filesystem utils', async () => {
     });
 
     afterEach(() => {
-    // Restore the original platform after each test
-      Object.defineProperty(process, 'platform', {
+      // Restore the original platform after each test
+      Object.defineProperty(process, "platform", {
         value: originalPlatform,
       });
       // Restore process.cwd()
       process.cwd = originalCwd;
     });
-    it('should return the correct path on Unix-like systems when HOME is set', () => {
+    it("should return the correct path on Unix-like systems when HOME is set", () => {
       // Mock the platform to be Unix-like
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
+      Object.defineProperty(process, "platform", {
+        value: "linux",
       });
 
       // Set the HOME environment variable
-      process.env.HOME = '/home/testuser';
+      process.env.HOME = "/home/testuser";
 
-      const expectedPath = join('/home/testuser', '.storyblok');
+      const expectedPath = join("/home/testuser", ".storyblok");
       const result = getStoryblokGlobalPath();
 
       expect(result).toBe(expectedPath);
     });
 
-    it('should return the correct path on Windows systems when USERPROFILE is set', () => {
+    it("should return the correct path on Windows systems when USERPROFILE is set", () => {
       // Mock the platform to be Windows
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
+      Object.defineProperty(process, "platform", {
+        value: "win32",
       });
 
       // Set the USERPROFILE environment variable
-      process.env.USERPROFILE = 'C:/Users/TestUser';
+      process.env.USERPROFILE = "C:/Users/TestUser";
 
-      const expectedPath = join('C:/Users/TestUser', '.storyblok');
+      const expectedPath = join("C:/Users/TestUser", ".storyblok");
       const result = getStoryblokGlobalPath();
 
       expect(result).toBe(expectedPath);
     });
 
-    it('should use process.cwd() when home directory is not set', () => {
+    it("should use process.cwd() when home directory is not set", () => {
       // Mock the platform to be Unix-like
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
+      Object.defineProperty(process, "platform", {
+        value: "linux",
       });
 
       // Remove HOME and USERPROFILE
@@ -66,182 +75,186 @@ describe('filesystem utils', async () => {
       delete process.env.USERPROFILE;
 
       // Mock process.cwd()
-      process.cwd = vi.fn().mockReturnValue('/current/working/directory');
+      process.cwd = vi.fn().mockReturnValue("/current/working/directory");
 
-      const expectedPath = join('/current/working/directory', '.storyblok');
+      const expectedPath = join("/current/working/directory", ".storyblok");
       const result = getStoryblokGlobalPath();
 
       expect(result).toBe(expectedPath);
     });
 
-    it('should use process.cwd() when HOME is empty', () => {
+    it("should use process.cwd() when HOME is empty", () => {
       // Mock the platform to be Unix-like
-      Object.defineProperty(process, 'platform', {
-        value: 'linux',
+      Object.defineProperty(process, "platform", {
+        value: "linux",
       });
 
       // Set HOME to an empty string
-      process.env.HOME = '';
+      process.env.HOME = "";
 
       // Mock process.cwd()
-      process.cwd = vi.fn().mockReturnValue('/current/working/directory');
+      process.cwd = vi.fn().mockReturnValue("/current/working/directory");
 
-      const expectedPath = join('/current/working/directory', '.storyblok');
+      const expectedPath = join("/current/working/directory", ".storyblok");
       const result = getStoryblokGlobalPath();
 
       expect(result).toBe(expectedPath);
     });
 
-    it('should handle Windows platform when USERPROFILE is not set', () => {
+    it("should handle Windows platform when USERPROFILE is not set", () => {
       // Mock the platform to be Windows
-      Object.defineProperty(process, 'platform', {
-        value: 'win32',
+      Object.defineProperty(process, "platform", {
+        value: "win32",
       });
 
       // Remove USERPROFILE
       delete process.env.USERPROFILE;
 
       // Mock process.cwd()
-      process.cwd = vi.fn().mockReturnValue('C:/Current/Directory');
+      process.cwd = vi.fn().mockReturnValue("C:/Current/Directory");
 
-      const expectedPath = join('C:/Current/Directory', '.storyblok');
+      const expectedPath = join("C:/Current/Directory", ".storyblok");
       const result = getStoryblokGlobalPath();
 
       expect(result).toBe(expectedPath);
     });
   });
-  describe('saveToFile', async () => {
-    it('should save the data to the file', async () => {
-      const filePath = '/path/to/file.txt';
-      const data = 'Hello, World!';
+  describe("saveToFile", async () => {
+    it("should save the data to the file", async () => {
+      const filePath = "/path/to/file.txt";
+      const data = "Hello, World!";
 
       await saveToFile(filePath, data);
 
-      const content = vol.readFileSync(filePath, 'utf8');
+      const content = vol.readFileSync(filePath, "utf8");
       expect(content).toBe(data);
     });
 
-    it('should create the directory if it does not exist', async () => {
-      const filePath = '/path/to/new/file.txt';
-      const data = 'Hello, World!';
+    it("should create the directory if it does not exist", async () => {
+      const filePath = "/path/to/new/file.txt";
+      const data = "Hello, World!";
 
       await saveToFile(filePath, data);
 
-      const content = vol.readFileSync(filePath, 'utf8');
+      const content = vol.readFileSync(filePath, "utf8");
       expect(content).toBe(data);
     });
   });
 
-  describe('appendToFile', async () => {
-    it('should append a new line to a file', async () => {
-      const filePath = '/path/to/file.txt';
-      const data = 'Hello, World!';
+  describe("appendToFile", async () => {
+    it("should append a new line to a file", async () => {
+      const filePath = "/path/to/file.txt";
+      const data = "Hello, World!";
 
       await appendToFile(filePath, data);
       await appendToFile(filePath, data);
 
-      const content = vol.readFileSync(filePath, 'utf8');
+      const content = vol.readFileSync(filePath, "utf8");
       expect(content).toBe(`${data}\n${data}\n`);
     });
   });
 
-  describe('resolvePath', async () => {
-    it('should resolve the path correctly', async () => {
-      const path = '/path/to/file';
-      const folder = 'folder';
+  describe("resolvePath", async () => {
+    it("should resolve the path correctly", async () => {
+      const path = "/path/to/file";
+      const folder = "folder";
 
       const resolvedPath = resolvePath(path, folder);
       expect(resolvedPath).toBe(resolve(process.cwd(), path, folder));
 
       const resolvedPathWithoutPath = resolvePath(undefined, folder);
-      expect(resolvedPathWithoutPath).toBe(resolve(process.cwd(), '.storyblok', folder));
+      expect(resolvedPathWithoutPath).toBe(resolve(process.cwd(), ".storyblok", folder));
     });
 
-    it('should preserve dot-prefixed directory names', async () => {
-      const resolvedPath = resolvePath('.storyblok', 'migrations/12345');
-      expect(resolvedPath).toBe(resolve(process.cwd(), '.storyblok', 'migrations/12345'));
+    it("should preserve dot-prefixed directory names", async () => {
+      const resolvedPath = resolvePath(".storyblok", "migrations/12345");
+      expect(resolvedPath).toBe(resolve(process.cwd(), ".storyblok", "migrations/12345"));
     });
 
-    it('should not duplicate migrations when path does not include it', async () => {
-      const resolvedPath = resolvePath('.storyblok', 'migrations/12345');
-      const parts = resolvedPath.split('/');
-      const migrationsCount = parts.filter(p => p === 'migrations').length;
+    it("should not duplicate migrations when path does not include it", async () => {
+      const resolvedPath = resolvePath(".storyblok", "migrations/12345");
+      const parts = resolvedPath.split("/");
+      const migrationsCount = parts.filter((p) => p === "migrations").length;
       expect(migrationsCount).toBe(1);
     });
   });
 
-  describe('getComponentNameFromFilename', async () => {
-    it('should extract the component name from a JavaScript file', () => {
-      expect(getComponentNameFromFilename('simple_component.js')).toBe('simple_component');
-      expect(getComponentNameFromFilename('nested-component.js')).toBe('nested-component');
-      expect(getComponentNameFromFilename('camelCaseComponent.js')).toBe('camelCaseComponent');
+  describe("getComponentNameFromFilename", async () => {
+    it("should extract the component name from a JavaScript file", () => {
+      expect(getComponentNameFromFilename("simple_component.js")).toBe("simple_component");
+      expect(getComponentNameFromFilename("nested-component.js")).toBe("nested-component");
+      expect(getComponentNameFromFilename("camelCaseComponent.js")).toBe("camelCaseComponent");
     });
 
-    it('should return the original name if no .js extension is present', () => {
-      expect(getComponentNameFromFilename('component_without_extension')).toBe('component_without_extension');
+    it("should return the original name if no .js extension is present", () => {
+      expect(getComponentNameFromFilename("component_without_extension")).toBe(
+        "component_without_extension",
+      );
     });
 
-    it('should handle filenames with multiple dots', () => {
-      expect(getComponentNameFromFilename('component.with.dots.js')).toBe('component.with.dots');
+    it("should handle filenames with multiple dots", () => {
+      expect(getComponentNameFromFilename("component.with.dots.js")).toBe("component.with.dots");
     });
 
-    it('should handle filenames with paths', () => {
-      expect(getComponentNameFromFilename('/path/to/my_component.js')).toBe('/path/to/my_component');
-    });
-  });
-
-  describe('consolidatedFilename', () => {
-    it('should return filename with .json when no suffix', () => {
-      expect(consolidatedFilename('components')).toBe('components.json');
-    });
-
-    it('should return filename with suffix and .json', () => {
-      expect(consolidatedFilename('components', 'v2')).toBe('components.v2.json');
+    it("should handle filenames with paths", () => {
+      expect(getComponentNameFromFilename("/path/to/my_component.js")).toBe(
+        "/path/to/my_component",
+      );
     });
   });
 
-  describe('shouldUseSeparateFiles', () => {
-    it('should return true when separateFiles is explicitly true', async () => {
-      const result = await shouldUseSeparateFiles('/some/path', 'components', true);
+  describe("consolidatedFilename", () => {
+    it("should return filename with .json when no suffix", () => {
+      expect(consolidatedFilename("components")).toBe("components.json");
+    });
+
+    it("should return filename with suffix and .json", () => {
+      expect(consolidatedFilename("components", "v2")).toBe("components.v2.json");
+    });
+  });
+
+  describe("shouldUseSeparateFiles", () => {
+    it("should return true when separateFiles is explicitly true", async () => {
+      const result = await shouldUseSeparateFiles("/some/path", "components", true);
       expect(result).toBe(true);
     });
 
-    it('should return false when separateFiles is explicitly false', async () => {
-      const result = await shouldUseSeparateFiles('/some/path', 'components', false);
+    it("should return false when separateFiles is explicitly false", async () => {
+      const result = await shouldUseSeparateFiles("/some/path", "components", false);
       expect(result).toBe(false);
     });
 
-    it('should return false when consolidated file exists', async () => {
-      vol.fromJSON({ '/space/components.json': '[]' });
-      const result = await shouldUseSeparateFiles('/space', 'components');
+    it("should return false when consolidated file exists", async () => {
+      vol.fromJSON({ "/space/components.json": "[]" });
+      const result = await shouldUseSeparateFiles("/space", "components");
       expect(result).toBe(false);
     });
 
-    it('should return true when consolidated file does not exist', async () => {
-      vol.fromJSON({ '/space/other.json': '[]' });
-      const result = await shouldUseSeparateFiles('/space', 'components');
+    it("should return true when consolidated file does not exist", async () => {
+      vol.fromJSON({ "/space/other.json": "[]" });
+      const result = await shouldUseSeparateFiles("/space", "components");
       expect(result).toBe(true);
     });
 
-    it('should check suffixed consolidated file when suffix is provided', async () => {
-      vol.fromJSON({ '/space/components.v2.json': '[]' });
-      const result = await shouldUseSeparateFiles('/space', 'components', undefined, 'v2');
+    it("should check suffixed consolidated file when suffix is provided", async () => {
+      vol.fromJSON({ "/space/components.v2.json": "[]" });
+      const result = await shouldUseSeparateFiles("/space", "components", undefined, "v2");
       expect(result).toBe(false);
     });
 
-    it('should return true when suffixed consolidated file does not exist', async () => {
-      vol.fromJSON({ '/space/components.json': '[]' });
-      const result = await shouldUseSeparateFiles('/space', 'components', undefined, 'v2');
+    it("should return true when suffixed consolidated file does not exist", async () => {
+      vol.fromJSON({ "/space/components.json": "[]" });
+      const result = await shouldUseSeparateFiles("/space", "components", undefined, "v2");
       expect(result).toBe(true);
     });
   });
 
-  describe('sanitizeFilename', () => {
-    it('should convert strings to URL-friendly slugs', () => {
-      expect(sanitizeFilename('Country / Currency')).toBe('Country _ Currency');
-      expect(sanitizeFilename('path/to/file')).toBe('path_to_file');
-      expect(sanitizeFilename('My Component Name')).toBe('My Component Name');
-      expect(sanitizeFilename('Special@Characters!')).toBe('Special@Characters!');
+  describe("sanitizeFilename", () => {
+    it("should convert strings to URL-friendly slugs", () => {
+      expect(sanitizeFilename("Country / Currency")).toBe("Country _ Currency");
+      expect(sanitizeFilename("path/to/file")).toBe("path_to_file");
+      expect(sanitizeFilename("My Component Name")).toBe("My Component Name");
+      expect(sanitizeFilename("Special@Characters!")).toBe("Special@Characters!");
     });
   });
 });

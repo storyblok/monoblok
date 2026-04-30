@@ -1,8 +1,8 @@
-import { getStoryblokApi, StoryblokComponent, storyblokInit } from '../../core';
-import type { SbReactComponentsMap } from '../../types';
-import type { SbBlokData } from '@storyblok/js';
-import { apiPlugin, registerStoryblokBridge } from '@storyblok/js';
-import React, { forwardRef, useEffect } from 'react';
+import { getStoryblokApi, StoryblokComponent, storyblokInit } from "../../core";
+import type { SbReactComponentsMap } from "../../types";
+import type { SbBlokData } from "@storyblok/js";
+import { apiPlugin, registerStoryblokBridge } from "@storyblok/js";
+import React, { forwardRef, useEffect } from "react";
 
 interface TestProps {
   bridge?: boolean;
@@ -15,14 +15,7 @@ interface TestProps {
 
 const Test = forwardRef<HTMLElement, TestProps>(
   (
-    {
-      bridge,
-      accessToken,
-      components,
-      enableFallbackComponent,
-      customFallbackComponent,
-      blok,
-    },
+    { bridge, accessToken, components, enableFallbackComponent, customFallbackComponent, blok },
     ref,
   ) => {
     storyblokInit({
@@ -35,13 +28,11 @@ const Test = forwardRef<HTMLElement, TestProps>(
     });
 
     const storyblokApi = getStoryblokApi();
-    const apiExists = !!(
-      storyblokApi && typeof storyblokApi.get === 'function'
-    );
+    const apiExists = !!(storyblokApi && typeof storyblokApi.get === "function");
 
     useEffect(() => {
       // eslint-disable-next-line no-console
-      registerStoryblokBridge(43423, newStory => console.log(newStory));
+      registerStoryblokBridge(43423, (newStory) => console.log(newStory));
     }, []);
 
     return (
@@ -57,6 +48,6 @@ const Test = forwardRef<HTMLElement, TestProps>(
   },
 );
 
-Test.displayName = 'Test';
+Test.displayName = "Test";
 
 export default Test;

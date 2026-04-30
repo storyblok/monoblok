@@ -1,4 +1,4 @@
-import type { ISbStoryData } from '@/types';
+import type { ISbStoryData } from "@/types";
 
 declare global {
   // eslint-disable-next-line vars-on-top
@@ -8,8 +8,10 @@ declare global {
 globalThis.storyCache = globalThis.storyCache || new Map<string, ISbStoryData>();
 
 /** Returns the shared cache key for a Storyblok story. */
-export const getStoryCacheKey = (story: Pick<ISbStoryData, 'id'> | null | undefined): string | null => {
-  if (typeof story?.id !== 'number') {
+export const getStoryCacheKey = (
+  story: Pick<ISbStoryData, "id"> | null | undefined,
+): string | null => {
+  if (typeof story?.id !== "number") {
     return null;
   }
 

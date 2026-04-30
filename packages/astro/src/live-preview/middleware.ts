@@ -1,11 +1,10 @@
-import { defineMiddleware } from 'astro/middleware';
-import { isEditorRequest } from '@storyblok/astro';
+import { defineMiddleware } from "astro/middleware";
+import { isEditorRequest } from "@storyblok/astro";
 
 export const onRequest = defineMiddleware(async ({ locals, request }, next) => {
-  if (request.method === 'POST') {
+  if (request.method === "POST") {
     // First do a check if its coming from within storyblok
-    const editorRequest
-      = isEditorRequest(new URL(request.url));
+    const editorRequest = isEditorRequest(new URL(request.url));
 
     if (editorRequest) {
       try {
@@ -14,9 +13,8 @@ export const onRequest = defineMiddleware(async ({ locals, request }, next) => {
         if (requestBody?.story?.is_storyblok_preview) {
           locals._storyblok_preview_data = requestBody;
         }
-      }
-      catch (error) {
-        console.error('Error reading request body:', error);
+      } catch (error) {
+        console.error("Error reading request body:", error);
       }
     }
   }

@@ -21,6 +21,7 @@ storyblok logs prune --space YOUR_SPACE_ID [--keep <count>]
 ```
 
 Options:
+
 - `--keep <count>` retains the most recent `count` runs and deletes the rest (default `0`, meaning remove all).
 
 Note: use the same `--path` option you used when running the command producing the logs.

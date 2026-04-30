@@ -563,10 +563,10 @@ export class Storyblok {
     }
 
     links.forEach((story: ISbStoryData | any) => {
-      this.links[resolveId][story.uuid] = ({
-	...story,
-	_stopResolving: true
-});
+      this.links[resolveId][story.uuid] = {
+        ...story,
+        _stopResolving: true,
+      };
     });
   }
 
@@ -613,10 +613,10 @@ export class Storyblok {
 
     if (relations && relations.length > 0) {
       relations.forEach((story: ISbStoryData) => {
-        this.relations[resolveId][story.uuid] = ({
-	...story,
-	_stopResolving: true
-});
+        this.relations[resolveId][story.uuid] = {
+          ...story,
+          _stopResolving: true,
+        };
       });
     }
   }

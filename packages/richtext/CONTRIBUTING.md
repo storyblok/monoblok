@@ -37,12 +37,12 @@ Make sure the playground project has the root project as a dependency using `wor
 Use the Google Chrome developer tools to debug the package from the playground project by resolving the package from the local file system in your `vite.config.ts` file. Example:
 
 ```ts
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@storyblok/richtext': resolve(__dirname, '../src/index.ts'),
+      "@storyblok/richtext": resolve(__dirname, "../src/index.ts"),
     },
   },
 });

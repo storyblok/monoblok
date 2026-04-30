@@ -1,4 +1,4 @@
-import type { GlobalConfig, ResolvedCliConfig } from './types';
+import type { GlobalConfig, ResolvedCliConfig } from "./types";
 
 const BASE_GLOBAL_CONFIG: GlobalConfig = {
   region: undefined,
@@ -11,11 +11,11 @@ const BASE_GLOBAL_CONFIG: GlobalConfig = {
   log: {
     console: {
       enabled: false,
-      level: 'info',
+      level: "info",
     },
     file: {
       enabled: true,
-      level: 'info',
+      level: "info",
       maxFiles: 10,
     },
   },

@@ -1,9 +1,9 @@
-import type { LayoutLoad } from './$types';
+import type { LayoutLoad } from "./$types";
 import { storyblokInit, apiPlugin, getStoryblokApi } from "@storyblok/svelte";
-import Teaser from '$lib/Teaser.svelte';
-import Page from '$lib/Page.svelte';
-import Feature from '$lib/Feature.svelte';
-import Grid from '$lib/Grid.svelte';
+import Teaser from "$lib/Teaser.svelte";
+import Page from "$lib/Page.svelte";
+import Feature from "$lib/Feature.svelte";
+import Grid from "$lib/Grid.svelte";
 
 export const load: LayoutLoad = () => {
   storyblokInit({
@@ -18,14 +18,14 @@ export const load: LayoutLoad = () => {
     apiOptions: {
       https: true,
       cache: {
-        clear: 'auto',
-        type: 'none',
+        clear: "auto",
+        type: "none",
       },
-      region: 'eu',
+      region: "eu",
     },
   });
 
-	return {
-	  storyblokApi: getStoryblokApi(),
-	};
+  return {
+    storyblokApi: getStoryblokApi(),
+  };
 };

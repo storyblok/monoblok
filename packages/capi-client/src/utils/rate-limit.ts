@@ -107,27 +107,27 @@ const SINGLE_STORY_PATH_RE = /\/v2\/cdn\/stories\/.+$/;
  */
 export function determineTier(path: string, query: Record<string, unknown>): TierName {
   if (SINGLE_STORY_PATH_RE.test(path)) {
-    return 'SINGLE_OR_SMALL';
+    return "SINGLE_OR_SMALL";
   }
 
   const rawPerPage = query.per_page;
-  const perPage
-    = typeof rawPerPage === 'number'
+  const perPage =
+    typeof rawPerPage === "number"
       ? rawPerPage
-      : typeof rawPerPage === 'string'
+      : typeof rawPerPage === "string"
         ? Number.parseInt(rawPerPage, 10) || DEFAULT_PER_PAGE
         : DEFAULT_PER_PAGE;
 
   if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
-    return 'SINGLE_OR_SMALL';
+    return "SINGLE_OR_SMALL";
   }
   if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
-    return 'MEDIUM';
+    return "MEDIUM";
   }
   if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
-    return 'LARGE';
+    return "LARGE";
   }
-  return 'VERY_LARGE';
+  return "VERY_LARGE";
 }
 
 /**
@@ -137,7 +137,7 @@ export function determineTier(path: string, query: Record<string, unknown>): Tie
  * Example header: `"concurrent-requests";q=30`
  */
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
-  const policy = response.headers.get('x-ratelimit-policy');
+  const policy = response.headers.get("x-ratelimit-policy");
   if (!policy) {
     return undefined;
   }
@@ -165,7 +165,8 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
+  const resolvedConfig: RateLimitConfig =
+    typeof config === "number" ? { maxConcurrency: config } : config;
   const { maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
 
   // Fixed-limit mode — single queue, optional server-header adaptation.

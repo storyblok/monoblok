@@ -1,13 +1,13 @@
-import type { SpaceDatasource } from '../datasources/constants';
+import type { SpaceDatasource } from "../datasources/constants";
 
-import type { Component, ComponentFolder, InternalTag, Preset } from '../../types';
+import type { Component, ComponentFolder, InternalTag, Preset } from "../../types";
 
 export type { Component, ComponentFolder, InternalTag, Preset };
 
-export const DEFAULT_COMPONENTS_FILENAME = 'components';
-export const DEFAULT_GROUPS_FILENAME = 'groups';
-export const DEFAULT_PRESETS_FILENAME = 'presets';
-export const DEFAULT_TAGS_FILENAME = 'tags';
+export const DEFAULT_COMPONENTS_FILENAME = "components";
+export const DEFAULT_GROUPS_FILENAME = "groups";
+export const DEFAULT_PRESETS_FILENAME = "presets";
+export const DEFAULT_TAGS_FILENAME = "tags";
 
 // There is no create or update type for internal tags
 

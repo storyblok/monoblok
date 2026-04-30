@@ -1,55 +1,55 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resolve } from 'pathe';
-import { vol } from 'memfs';
+import { resolve } from "pathe";
+import { vol } from "memfs";
 // Import the main module first to ensure proper initialization
-import '../index';
-import { migrationsCommand } from '../command';
-import { fetchStories, fetchStory, updateStory } from '../../stories/actions';
-import type { Story } from '../../stories/constants';
-import * as filesystem from '../../../utils/filesystem';
-import { resetLogger } from '../../../lib/logger/logger';
-import { resetReporter } from '../../../lib/reporter/reporter';
-import { getLogFileContents } from '../../__tests__/helpers';
+import "../index";
+import { migrationsCommand } from "../command";
+import { fetchStories, fetchStory, updateStory } from "../../stories/actions";
+import type { Story } from "../../stories/constants";
+import * as filesystem from "../../../utils/filesystem";
+import { resetLogger } from "../../../lib/logger/logger";
+import { resetReporter } from "../../../lib/reporter/reporter";
+import { getLogFileContents } from "../../__tests__/helpers";
 
-vi.mock('../../stories/actions', () => ({
+vi.mock("../../stories/actions", () => ({
   fetchStories: vi.fn(),
   fetchStory: vi.fn(),
   updateStory: vi.fn(),
 }));
 
-vi.spyOn(console, 'info');
-vi.spyOn(console, 'warn');
+vi.spyOn(console, "info");
+vi.spyOn(console, "warn");
 
 // Helper function to create mock story
 const createMockStory = (overrides: Partial<Story> = {}): Story => ({
   id: 517473243,
-  name: 'Test Story',
-  uuid: 'uuid-1',
-  slug: 'test-story',
-  full_slug: 'test-story',
+  name: "Test Story",
+  uuid: "uuid-1",
+  slug: "test-story",
+  full_slug: "test-story",
   content: {
-    _uid: '4b16d1ea-4306-47c5-b901-9d67d5babf53',
-    component: 'page',
+    _uid: "4b16d1ea-4306-47c5-b901-9d67d5babf53",
+    component: "page",
     body: [
       {
-        _uid: '216ba4ef-1298-4b7d-8ce0-7487e6db15cc',
-        component: 'migration-component',
-        unchanged: 'unchanged',
+        _uid: "216ba4ef-1298-4b7d-8ce0-7487e6db15cc",
+        component: "migration-component",
+        unchanged: "unchanged",
         amount: 10,
       },
     ],
   },
-  created_at: '2023-01-01T00:00:00Z',
-  updated_at: '2023-01-01T00:00:00Z',
-  published_at: '2023-01-01T00:00:00Z',
-  first_published_at: '2023-01-01T00:00:00Z',
+  created_at: "2023-01-01T00:00:00Z",
+  updated_at: "2023-01-01T00:00:00Z",
+  published_at: "2023-01-01T00:00:00Z",
+  first_published_at: "2023-01-01T00:00:00Z",
   published: true,
   unpublished_changes: false,
   is_startpage: false,
   is_folder: false,
   pinned: false,
-  group_id: 'group-1',
+  group_id: "group-1",
   position: 0,
   tag_list: [],
   disable_fe_editor: false,
@@ -61,17 +61,17 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => ({
 
 const mockStory = createMockStory();
 
-const MIGRATION_FUNCTION_FILE_PATH = './.storyblok/migrations/12345/migration-component.js';
-const FROM_SPACE_MIGRATION_FILE_PATH = './.storyblok/migrations/67890/migration-component.js';
-const LOG_PREFIX = 'storyblok-migrations-run-';
+const MIGRATION_FUNCTION_FILE_PATH = "./.storyblok/migrations/12345/migration-component.js";
+const FROM_SPACE_MIGRATION_FILE_PATH = "./.storyblok/migrations/67890/migration-component.js";
+const LOG_PREFIX = "storyblok-migrations-run-";
 
 const preconditions = {
   canFetchStories() {
     vi.mocked(fetchStories).mockResolvedValue({
       stories: [mockStory],
       headers: new Headers({
-        'Total': '1',
-        'Per-Page': '100',
+        Total: "1",
+        "Per-Page": "100",
       }),
     });
   },
@@ -83,19 +83,19 @@ const preconditions = {
   },
   canLoadMigrationFunction(mockMigrationFn = (block: any) => ({ ...block, migrated: true })) {
     vol.fromJSON({
-      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
+      [MIGRATION_FUNCTION_FILE_PATH]: "only the filename matters!",
     });
-    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
+    const importModuleSpy = vi.spyOn(filesystem, "importModule");
     importModuleSpy.mockImplementation(() => Promise.resolve({ default: mockMigrationFn }));
   },
   canNotLoadMigrationFunction() {
     this.canFetchStories();
     this.canFetchStory();
     vol.fromJSON({
-      [MIGRATION_FUNCTION_FILE_PATH]: 'only the filename matters!',
+      [MIGRATION_FUNCTION_FILE_PATH]: "only the filename matters!",
     });
     vi.doMock(resolve(MIGRATION_FUNCTION_FILE_PATH), () => {
-      throw new Error('Cannot find module');
+      throw new Error("Cannot find module");
     });
   },
   migrationDirectoryDoesNotExist() {
@@ -118,14 +118,16 @@ const preconditions = {
     this.canFetchStory();
     this.canUpdateStory();
     vol.fromJSON({
-      [FROM_SPACE_MIGRATION_FILE_PATH]: 'only the filename matters!',
+      [FROM_SPACE_MIGRATION_FILE_PATH]: "only the filename matters!",
     });
-    const importModuleSpy = vi.spyOn(filesystem, 'importModule');
-    importModuleSpy.mockImplementation(() => Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }));
+    const importModuleSpy = vi.spyOn(filesystem, "importModule");
+    importModuleSpy.mockImplementation(() =>
+      Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }),
+    );
   },
 };
 
-describe('migrations run command', () => {
+describe("migrations run command", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
@@ -133,39 +135,40 @@ describe('migrations run command', () => {
     resetReporter();
   });
 
-  it('should run migrations successfully', async () => {
+  it("should run migrations successfully", async () => {
     preconditions.canMigrate();
 
     // Reset logger right before parseAsync to ensure preAction creates it with proper transports
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
 
     expect(fetchStories).toHaveBeenCalledWith(
-      '12345',
+      "12345",
       expect.objectContaining({
         per_page: 500,
         page: 1,
         story_only: true,
       }),
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith("12345", "517473243");
     // Report
-    const reportFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
-    const parsedReport = JSON.parse(reportFile || '{}');
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    const parsedReport = JSON.parse(reportFile || "{}");
     expect(parsedReport).toEqual({
-      status: 'SUCCESS',
+      status: "SUCCESS",
       meta: {
         runId: expect.any(String),
-        command: 'storyblok migrations run',
+        command: "storyblok migrations run",
         cliVersion: expect.any(String),
         startedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         endedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         durationMs: expect.any(Number),
         logPath: expect.any(String),
         config: expect.objectContaining({
-          space: '12345',
+          space: "12345",
         }),
       },
       summary: {
@@ -184,29 +187,28 @@ describe('migrations run command', () => {
     });
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Migration finished');
+    expect(logFile).toContain("Migration finished");
     expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
     expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
     // UI
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Migration Results:'),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Update Results: 1 stories updated.'),
+      expect.stringContaining("Update Results: 1 stories updated."),
     );
   });
 
-  it('should report a run with only skipped migrations as success', async () => {
+  it("should report a run with only skipped migrations as success", async () => {
     preconditions.canMigrateNoChange();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
 
-    const reportFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
-    expect(JSON.parse(reportFile || '{}')).toMatchObject({
-      status: 'SUCCESS',
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toMatchObject({
+      status: "SUCCESS",
       meta: expect.any(Object),
       summary: {
         migrationResults: {
@@ -224,19 +226,20 @@ describe('migrations run command', () => {
     });
   });
 
-  it('should gracefully handle error while loading migration', async () => {
+  it("should gracefully handle error while loading migration", async () => {
     preconditions.canNotLoadMigrationFunction();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
 
     expect(updateStory).not.toHaveBeenCalled();
     // Report
-    const reportFile = Object.entries(vol.toJSON())
-      .find(([filename]) => filename.includes('reports/12345/storyblok-migrations-run-'))?.[1];
-    expect(JSON.parse(reportFile || '{}')).toEqual({
-      status: 'FAILURE',
+    const reportFile = Object.entries(vol.toJSON()).find(([filename]) =>
+      filename.includes("reports/12345/storyblok-migrations-run-"),
+    )?.[1];
+    expect(JSON.parse(reportFile || "{}")).toEqual({
+      status: "FAILURE",
       meta: expect.any(Object),
       summary: {
         migrationResults: {
@@ -254,130 +257,151 @@ describe('migrations run command', () => {
     });
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Couldn\'t load migration function');
-    expect(logFile).toContain('MIGRATION_LOAD_ERROR');
+    expect(logFile).toContain("Couldn't load migration function");
+    expect(logFile).toContain("MIGRATION_LOAD_ERROR");
     // UI
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
     expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Migration Results:'),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('No stories required updates'),
+      expect.stringContaining("No stories required updates"),
     );
   });
 
-  it('should gracefully handle non-existing migrations directory', async () => {
+  it("should gracefully handle non-existing migrations directory", async () => {
     preconditions.migrationDirectoryDoesNotExist();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345']);
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No directory found for space \\"12345\\".');
   });
 
-  it('should handle dry run mode correctly', async () => {
+  it("should handle dry run mode correctly", async () => {
     preconditions.canMigrate();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--dry-run']);
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345", "--dry-run"]);
 
     expect(fetchStories).toHaveBeenCalledWith(
-      '12345',
+      "12345",
       expect.objectContaining({
         per_page: 500,
         page: 1,
         story_only: true,
       }),
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith("12345", "517473243");
     // Verify that updateStory was NOT called (since it's a dry run)
     expect(updateStory).not.toHaveBeenCalled();
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Dry run mode enabled');
-    expect(logFile).toContain('Migration finished');
+    expect(logFile).toContain("Dry run mode enabled");
+    expect(logFile).toContain("Migration finished");
     // UI
     expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
+      expect.stringContaining("DRY RUN MODE ENABLED: No changes will be made."),
     );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Migration Results:'),
-    );
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
   });
 
-  it('should handle component filtering correctly', async () => {
+  it("should handle component filtering correctly", async () => {
     preconditions.canMigrate();
 
     // Run the command with component filter
-    await migrationsCommand.parseAsync(['node', 'test', 'run', 'migration-component', '--space', '12345']);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "migration-component",
+      "--space",
+      "12345",
+    ]);
 
     expect(fetchStories).toHaveBeenCalledWith(
-      '12345',
+      "12345",
       expect.objectContaining({
         per_page: 500,
         page: 1,
-        contain_component: 'migration-component',
+        contain_component: "migration-component",
         story_only: true,
       }),
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith("12345", "517473243");
   });
 
-  it('should read migration files from --from space and apply to --space', async () => {
+  it("should read migration files from --from space and apply to --space", async () => {
     preconditions.canMigrateFromSpace();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--from",
+      "67890",
+    ]);
 
     // Stories should be fetched from the target space (--space)
     expect(fetchStories).toHaveBeenCalledWith(
-      '12345',
+      "12345",
       expect.objectContaining({
         per_page: 500,
         page: 1,
         story_only: true,
       }),
     );
-    expect(fetchStory).toHaveBeenCalledWith('12345', '517473243');
+    expect(fetchStory).toHaveBeenCalledWith("12345", "517473243");
 
     // Migration module should be loaded from the --from space directory, not --space
     expect(filesystem.importModule).toHaveBeenCalledWith(
-      expect.stringContaining('/migrations/67890/'),
+      expect.stringContaining("/migrations/67890/"),
     );
     expect(filesystem.importModule).not.toHaveBeenCalledWith(
-      expect.stringContaining('/migrations/12345/'),
+      expect.stringContaining("/migrations/12345/"),
     );
 
     // Migration should be applied successfully
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('Migration Results:'),
-    );
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Migration Results:"));
   });
 
-  it('should show info message when --from is provided', async () => {
+  it("should show info message when --from is provided", async () => {
     preconditions.canMigrateFromSpace();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--from",
+      "67890",
+    ]);
 
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('from'),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.stringContaining('67890'),
-    );
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("from"));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("67890"));
   });
 
-  it('should reference --from space in error when migration directory does not exist', async () => {
+  it("should reference --from space in error when migration directory does not exist", async () => {
     preconditions.migrationDirectoryDoesNotExist();
 
     resetLogger();
 
-    await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--from",
+      "67890",
+    ]);
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('No directory found for space \\"67890\\".');

@@ -1,8 +1,8 @@
-import { StoryblokComponent, useStoryblok } from '@storyblok/react';
-import React from 'react';
+import { StoryblokComponent, useStoryblok } from "@storyblok/react";
+import React from "react";
 
 function Home() {
-  const story = useStoryblok('react', { version: 'draft' });
+  const story = useStoryblok("react", { version: "draft" });
 
   if (!story?.content) {
     return <div>Loading...</div>;

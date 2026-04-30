@@ -8,19 +8,32 @@
       "outputs": ["{projectRoot}/dist"],
       "cache": true
     },
-    "test": {
-      "dependsOn": ["build"]
-    },
-    "test:types": {
-      "dependsOn": ["build"]
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false
     },
     "lint": {
       "dependsOn": ["^build"],
       "cache": true
     },
-    "dev": {
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "test:watch": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "test:ui": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:types": {
+      "dependsOn": ["build"]
+    },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "outputs": ["{projectRoot}/coverage"],
+      "cache": true
     }
   },
   "tui": {

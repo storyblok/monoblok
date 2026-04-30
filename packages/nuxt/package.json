@@ -1,17 +1,21 @@
 {
   "name": "@storyblok/nuxt",
-  "type": "module",
   "version": "10.1.4",
   "description": "Storyblok Nuxt module",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/nuxt"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/module.mjs",
   "exports": {
     ".": {
       "types": "./dist/types.d.mts",
@@ -22,54 +26,49 @@
       "import": "./dist/runtime/server/index.js"
     }
   },
-  "main": "./dist/module.mjs",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "prepack": "nuxt-module-build build",
     "build": "nuxt-module-build prepare && nuxt-module-build build",
-    "test:types": "tsc --noEmit --skipLibCheck",
+    "prepack": "nuxt-module-build build",
     "dev": "nuxi dev playground --port 3000",
     "dev:build": "nuxi build playground",
     "dev:preview": "nuxi preview playground --port 3100",
     "dev:e2e": "nuxi dev playground --port 3100",
-    "prepare:playground": "nuxi prepare playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxi prepare playground",
-    "cy:open": "cypress open",
-    "cy:run": "cypress run",
+    "prepare:playground": "nuxi prepare playground",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "pnpm run test:e2e",
     "test:e2e": "start-server-and-test dev:e2e http://localhost:3100 cy:run",
-    "test:e2e-watch": "start-server-and-test dev:e2e http://localhost:3100 cy:open",
-    "pretest:e2e-static": "nuxi generate playground",
-    "test:e2e-static": "start-server-and-test dev:preview http://localhost:3100 cy:run",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "pnpm run test:e2e"
-  },
-  "peerDependencies": {
-    "nuxt": "^3.15.0 || ^4.0.0"
+    "test:e2e:watch": "start-server-and-test dev:e2e http://localhost:3100 cy:open",
+    "pretest:e2e:static": "nuxi generate playground",
+    "test:e2e:static": "start-server-and-test dev:preview http://localhost:3100 cy:run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "cy:run": "cypress run",
+    "cy:open": "cypress open"
   },
   "dependencies": {
     "@storyblok/vue": "workspace:*"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^6.0.3",
-    "@nuxt/eslint": "^1.2.0",
-    "@nuxt/eslint-config": "^1.2.0",
     "@nuxt/kit": "^4.2.2",
     "@nuxt/module-builder": "^1.0.0",
     "@nuxt/schema": "^4.2.2",
     "@nuxt/test-utils": "^3.23.0",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@types/node": "^24.11.0",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-cypress": "^4.3.0",
-    "eslint-plugin-vue": "^9.32.0",
     "nuxt": "^4.2.2",
-    "prettier": "^3.4.2",
+    "oxlint": "^1.62.0",
     "start-server-and-test": "^2.0.11"
+  },
+  "peerDependencies": {
+    "nuxt": "^3.15.0 || ^4.0.0"
   },
   "release": {
     "branches": [
@@ -79,9 +78,6 @@
         "prerelease": true
       }
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+
+# Packages and tools own their formatting via `nx run-many --target=format`.
+packages/*/
+tools/*/

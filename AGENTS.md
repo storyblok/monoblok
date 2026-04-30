@@ -17,11 +17,11 @@ Inspect the root `package.json` and the `packages/` directory to identify active
   - `tools/`: Internal development tools and scripts.
 - **Package naming**: Internal and published packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 - **Dependencies**: Cross-package dependencies within the monorepo use the `workspace:*` protocol.
-- **Tooling consistency**: Packages primarily use `vitest` for testing and `unbuild` for bundling.
+- **Tooling**: Packages use [Vite+](https://viteplus.dev) (`vp` CLI) as the unified toolchain — `vp pack`/`vp build` for bundling (tsdown / Vite under the hood), `vp test` for testing (Vitest), `vp lint` for linting (Oxlint via `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt).
 
 ## Code style and conventions
 
-Always use linting and type-checking scripts for affected packages after making changes. When encountering lint errors, run the lint command with `--fix` first before attempting to fix issues manually.
+Always use `lint:fix`, `format`, and `test:types` scripts for affected packages after making changes. When encountering lint errors, run the lint command with `--fix` first before attempting to fix issues manually.
 
 ### General
 

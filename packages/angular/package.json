@@ -3,49 +3,50 @@
   "version": "0.2.2",
   "private": false,
   "description": "Official Angular integration for the Storyblok Headless CMS",
-  "author": "Storyblok",
-  "license": "MIT",
+  "keywords": [
+    "angular",
+    "angular-sdk",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/angular#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/angular"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "angular",
-    "storyblok",
-    "angular-sdk"
+  "files": [
+    "dist/fesm2022",
+    "dist/types"
   ],
   "type": "module",
   "sideEffects": false,
+  "module": "./dist/fesm2022/storyblok-angular.mjs",
+  "typings": "./dist/types/storyblok-angular.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/storyblok-angular.d.ts",
       "default": "./dist/fesm2022/storyblok-angular.mjs"
     }
   },
-  "module": "./dist/fesm2022/storyblok-angular.mjs",
-  "typings": "./dist/types/storyblok-angular.d.ts",
-  "files": [
-    "dist/fesm2022",
-    "dist/types"
-  ],
   "scripts": {
     "ng": "ng",
+    "build": "ng build @storyblok/angular",
+    "dev": "ng build --watch --configuration development",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "ng test @storyblok/angular",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
     "playground:ssr:test": "ng test ssr-playground",
     "playground:app:start": "ng serve app-playground --ssl",
-    "playground:app:test": "ng test app-playground",
-    "build": "ng build @storyblok/angular",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test @storyblok/angular"
-  },
-  "peerDependencies": {
-    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",
-    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
+    "playground:app:test": "ng test app-playground"
   },
   "dependencies": {
     "@storyblok/api-client": "workspace:*",
@@ -65,25 +66,19 @@
     "@angular/platform-server": "^21.1.0",
     "@angular/router": "^21.1.0",
     "@angular/ssr": "^21.1.2",
+    "@storyblok/lint-config": "workspace:*",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
     "express": "^5.1.0",
     "jsdom": "^27.1.0",
     "ng-packagr": "^21.1.0",
+    "oxlint": "^1.62.0",
     "rxjs": "~7.8.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
+  "peerDependencies": {
+    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0",
+    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0"
   }
 }

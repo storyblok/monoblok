@@ -1,19 +1,15 @@
-import type { PluginOption } from 'vite';
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { resolve } from 'node:path';
-import basicSsl from '@vitejs/plugin-basic-ssl';
-import tailwindcss from '@tailwindcss/vite';
+import type { PluginOption } from "vite";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { resolve } from "node:path";
+import basicSsl from "@vitejs/plugin-basic-ssl";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    basicSsl(),
-    tailwindcss(),
-  ] as PluginOption[],
+  plugins: [react(), basicSsl(), tailwindcss()] as PluginOption[],
   resolve: {
     alias: {
-      '@storyblok/react': resolve(__dirname, '../../src/index.ts'),
+      "@storyblok/react": resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },
 });

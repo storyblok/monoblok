@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 
-import { resolve } from 'pathe'
+import { resolve } from "pathe";
 
-import { qrcode } from 'vite-plugin-qrcode'
+import { qrcode } from "vite-plugin-qrcode";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,7 +13,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      'storyblok-js-client': resolve(__dirname, '../../src/index.ts'),
+      "storyblok-js-client": resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },
-})
+});

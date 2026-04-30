@@ -1,6 +1,6 @@
-import { InjectionToken, inject, NgZone, Injectable } from '@angular/core';
-import { Story } from '@storyblok/api-client';
-import { type BridgeParams, onStoryblokEditorEvent } from '@storyblok/live-preview';
+import { InjectionToken, inject, NgZone, Injectable } from "@angular/core";
+import { Story } from "@storyblok/api-client";
+import { type BridgeParams, onStoryblokEditorEvent } from "@storyblok/live-preview";
 
 /**å
  * Internal injection token holding the Storyblok bridge configuration.
@@ -8,13 +8,13 @@ import { type BridgeParams, onStoryblokEditorEvent } from '@storyblok/live-previ
  *
  * @internal
  */
-export const LIVE_PREVIEW_CONFIG = new InjectionToken<BridgeParams>('LIVE_PREVIEW_CONFIG');
+export const LIVE_PREVIEW_CONFIG = new InjectionToken<BridgeParams>("LIVE_PREVIEW_CONFIG");
 
 /**
  * Injection token indicating whether live preview is enabled.
  * This is set to `true` by `withLivePreview()`.
  */
-export const LIVE_PREVIEW_ENABLED = new InjectionToken<boolean>('LIVE_PREVIEW_ENABLED');
+export const LIVE_PREVIEW_ENABLED = new InjectionToken<boolean>("LIVE_PREVIEW_ENABLED");
 
 /**
  * Callback function type for live preview updates.
@@ -36,7 +36,7 @@ export class LivePreviewNotEnabledError extends Error {
         `    withLivePreview()  // <-- Add this\n` +
         `  )\n`,
     );
-    this.name = 'LivePreviewNotEnabledError';
+    this.name = "LivePreviewNotEnabledError";
   }
 }
 /**
@@ -47,7 +47,7 @@ export class LivePreviewNotEnabledError extends Error {
  * `withLivePreview()` is added to the providers.
  */
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class LivePreviewService {
   private readonly ngZone = inject(NgZone);
@@ -58,15 +58,15 @@ export class LivePreviewService {
 
   async listen(callback: LivePreviewCallback, options?: BridgeParams): Promise<() => void> {
     if (!this.enabledFlag) {
-      if (typeof ngDevMode === 'undefined' || ngDevMode) {
+      if (typeof ngDevMode === "undefined" || ngDevMode) {
         throw new LivePreviewNotEnabledError();
       }
       return () => {};
     }
 
     const mergedConfig: BridgeParams = {
-      ...(this.baseConfig ?? {}),
-      ...(options ?? {}),
+      ...this.baseConfig,
+      ...options,
     };
 
     return onStoryblokEditorEvent((story) => {

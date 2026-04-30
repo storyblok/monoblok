@@ -36,8 +36,10 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
+      - uses: ./.github/actions/setup-viteplus
+
       - name: Check
-        run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
+        run: pnpm nx run-many --target=build,lint,format:check,test,test:types --parallel=3 -p="${{ matrix.projects }}"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}

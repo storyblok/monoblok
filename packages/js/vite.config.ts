@@ -1,13 +1,12 @@
-import { defineConfig, type Plugin } from 'vitest/config';
-import path from 'node:path';
-import { lightGreen } from 'kolorist';
-import banner from 'vite-plugin-banner';
-import dts from 'vite-plugin-dts';
+import { defineConfig, type Plugin } from "vitest/config";
+import path from "node:path";
+import { lightGreen } from "kolorist";
+import banner from "vite-plugin-banner";
+import dts from "vite-plugin-dts";
 
-import pkg from './package.json';
+import pkg from "./package.json" with { type: "json" };
 
-// eslint-disable-next-line no-console
-console.log(`${lightGreen('StoryblokJS')} v${pkg.version}`);
+console.log(`${lightGreen("StoryblokJS")} v${pkg.version}`);
 
 export default defineConfig({
   plugins: [
@@ -20,32 +19,32 @@ export default defineConfig({
   ] as Plugin[],
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src', 'index.ts'),
-      name: 'storyblok',
+      entry: path.resolve(import.meta.dirname, "src", "index.ts"),
+      name: "storyblok",
       fileName: (format) => {
-        const name = 'storyblok-js';
-        return format === 'es' ? `${name}.mjs` : `${name}.js`;
+        const name = "storyblok-js";
+        return format === "es" ? `${name}.mjs` : `${name}.js`;
       },
     },
     rollupOptions: {
-      external: ['@storyblok/richtext', 'storyblok-js-client'],
+      external: ["@storyblok/richtext", "storyblok-js-client"],
       output: {
         globals: {
-          '@storyblok/richtext': 'StoryblokRichtext',
-          'storyblok-js-client': 'StoryblokClient',
+          "@storyblok/richtext": "StoryblokRichtext",
+          "storyblok-js-client": "StoryblokClient",
         },
       },
     },
   },
   test: {
     globals: true,
-    include: ['./src/**/*.test.ts'],
-    exclude: ['./cypress'],
+    include: ["./src/**/*.test.ts"],
+    exclude: ["./cypress"],
     coverage: {
-      include: ['src'],
-      reporter: ['text', 'json', 'html'],
-      reportsDirectory: './tests/unit/coverage',
+      include: ["src"],
+      reporter: ["text", "json", "html"],
+      reportsDirectory: "./tests/unit/coverage",
     },
-    environment: 'jsdom',
+    environment: "jsdom",
   },
 });

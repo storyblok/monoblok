@@ -1,2 +1,3 @@
 generated
 *.generated.ts
+dist/

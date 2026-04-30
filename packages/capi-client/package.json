@@ -1,21 +1,24 @@
 {
   "name": "@storyblok/api-client",
-  "type": "module",
   "version": "0.2.4",
   "private": false,
   "description": "Storyblok Content Delivery API Client",
-  "author": "",
-  "license": "MIT",
+  "keywords": [],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/capi-client#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "",
   "repository": {
     "type": "git",
     "url": "https://github.com/storyblok/monoblok.git",
     "directory": "packages/capi-client"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -23,19 +26,22 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "generate": "tsx scripts/generate.ts",
-    "build": "tsdown",
-    "test": "vitest run",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
     "@storyblok/region-helper": "workspace:*",
@@ -44,14 +50,13 @@
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.92.3",
     "@msw/source": "^0.6.1",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi": "workspace:*",
     "@types/node": "^24.11.0",
-    "eslint": "^9.39.2",
     "glob": "^13.0.6",
     "msw": "^2.12.9",
+    "oxlint": "^1.62.0",
     "pathe": "^2.0.3",
-    "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
     "vitest": "^4.0.18"
   },

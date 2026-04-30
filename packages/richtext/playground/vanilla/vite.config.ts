@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 
-import { resolve } from 'pathe';
+import { resolve } from "pathe";
 
-import { qrcode } from 'vite-plugin-qrcode';
-import basicSsl from '@vitejs/plugin-basic-ssl';
+import { qrcode } from "vite-plugin-qrcode";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -16,9 +16,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@storyblok/richtext/markdown-parser': resolve(__dirname, '../../src/markdown-parser.ts'),
-      '@storyblok/richtext/html-parser': resolve(__dirname, '../../src/html-parser.ts'),
-      '@storyblok/richtext': resolve(__dirname, '../../src/index.ts'),
+      "@storyblok/richtext/markdown-parser": resolve(
+        import.meta.dirname,
+        "../../src/markdown-parser.ts",
+      ),
+      "@storyblok/richtext/html-parser": resolve(import.meta.dirname, "../../src/html-parser.ts"),
+      "@storyblok/richtext": resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },
 });

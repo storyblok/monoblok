@@ -8,13 +8,19 @@ import {
   isCDNUrl,
   range,
   stringify,
-} from './utils';
-import SbFetch from './sbFetch';
-import type Method from './constants';
-import type { StoryblokContentVersionKeys } from './constants';
-import { STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT, StoryblokContentVersion } from './constants';
-import { createRateLimitConfig, determineRateLimit, MANAGEMENT_API_DEFAULT_RATE_LIMIT, parseRateLimitHeaders, type RateLimitConfig } from './rateLimit';
-import { ThrottleQueueManager } from './throttleQueueManager';
+} from "./utils";
+import SbFetch from "./sbFetch";
+import type Method from "./constants";
+import type { StoryblokContentVersionKeys } from "./constants";
+import { STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT, StoryblokContentVersion } from "./constants";
+import {
+  createRateLimitConfig,
+  determineRateLimit,
+  MANAGEMENT_API_DEFAULT_RATE_LIMIT,
+  parseRateLimitHeaders,
+  type RateLimitConfig,
+} from "./rateLimit";
+import { ThrottleQueueManager } from "./throttleQueueManager";
 
 import type {
   ICacheProvider,
@@ -36,9 +42,9 @@ import type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
-} from './interfaces';
+} from "./interfaces";
 
-export * from './interfaces';
+export * from "./interfaces";
 
 let memory: Partial<IMemoryType> = {};
 
@@ -61,8 +67,8 @@ interface ISbFlatMapped {
 }
 
 const _VERSION = {
-  V1: 'v1',
-  V2: 'v2',
+  V1: "v1",
+  V2: "v2",
 } as const;
 
 type ObjectValues<T> = T[keyof T];
@@ -98,24 +104,23 @@ export class Storyblok {
     let endpoint = config.endpoint || pEndpoint;
 
     if (!endpoint) {
-      const protocol = config.https === false ? 'http' : 'https';
+      const protocol = config.https === false ? "http" : "https";
 
       if (!config.oauthToken) {
-        endpoint = `${protocol}://${getRegionURL(config.region)}/${'v2' as Version}`;
-      }
-      else {
-        endpoint = `${protocol}://${getRegionURL(config.region)}/${'v1' as Version}`;
+        endpoint = `${protocol}://${getRegionURL(config.region)}/${"v2" as Version}`;
+      } else {
+        endpoint = `${protocol}://${getRegionURL(config.region)}/${"v1" as Version}`;
       }
     }
 
     const headers: Headers = new Headers();
 
-    headers.set('Content-Type', 'application/json');
-    headers.set('Accept', 'application/json');
+    headers.set("Content-Type", "application/json");
+    headers.set("Accept", "application/json");
 
     if (config.headers) {
-      const entries
-        = config.headers.constructor.name === 'Headers'
+      const entries =
+        config.headers.constructor.name === "Headers"
           ? config.headers.entries().toArray()
           : Object.entries(config.headers);
 
@@ -133,7 +138,7 @@ export class Storyblok {
     }
 
     if (config.oauthToken) {
-      headers.set('Authorization', config.oauthToken);
+      headers.set("Authorization", config.oauthToken);
     }
 
     // Create rate limit config - user's rateLimit applies only to uncached requests
@@ -144,15 +149,12 @@ export class Storyblok {
     this.retriesDelay = 300;
 
     // Initialize throttle queue manager
-    this.throttleManager = new ThrottleQueueManager(
-      this.throttledRequest.bind(this),
-      1000,
-    );
+    this.throttleManager = new ThrottleQueueManager(this.throttledRequest.bind(this), 1000);
 
-    this.accessToken = config.accessToken || '';
+    this.accessToken = config.accessToken || "";
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
-    this.cache = config.cache || { clear: 'manual' };
+    this.cache = config.cache || { clear: "manual" };
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
     this.stringifiedStoriesCache = {} as Record<string, string>;
@@ -179,24 +181,20 @@ export class Storyblok {
 
     if (Array.isArray(params.resolve_relations)) {
       // Decode URL-encoded strings in array before joining
-      params.resolve_relations = params.resolve_relations.map(decodeIfEncoded).join(',');
-    }
-    else if (typeof params.resolve_relations === 'string') {
+      params.resolve_relations = params.resolve_relations.map(decodeIfEncoded).join(",");
+    } else if (typeof params.resolve_relations === "string") {
       // Decode URL-encoded strings to prevent double-encoding
       params.resolve_relations = decodeIfEncoded(params.resolve_relations);
     }
 
-    if (typeof params.resolve_relations !== 'undefined') {
+    if (typeof params.resolve_relations !== "undefined") {
       params.resolve_level = 2;
     }
 
     return params;
   }
 
-  private factoryParamOptions(
-    url: string,
-    params: ISbStoriesParams,
-  ): ISbStoriesParams {
+  private factoryParamOptions(url: string, params: ISbStoriesParams): ISbStoriesParams {
     if (isCDNUrl(url)) {
       return this.parseParams(params);
     }
@@ -211,24 +209,21 @@ export class Storyblok {
     page: number,
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult> {
-    const query = this.factoryParamOptions(
-      url,
-      getOptionsPage(params, per_page, page),
-    );
+    const query = this.factoryParamOptions(url, getOptionsPage(params, per_page, page));
 
     return this.cacheResponse(url, query, undefined, fetchOptions);
   }
 
   public get(
-    slug: 'cdn/links',
+    slug: "cdn/links",
     params?: ISbLinksParams,
-    fetchOptions?: ISbCustomFetch
+    fetchOptions?: ISbCustomFetch,
   ): Promise<ISbLinksResult>;
 
   public get(
     slug: string,
     params?: ISbStoriesParams,
-    fetchOptions?: ISbCustomFetch
+    fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult>;
 
   public get(
@@ -258,29 +253,19 @@ export class Storyblok {
     fetchOptions?: ISbCustomFetch,
   ): Promise<any[]> {
     const perPage = params?.per_page || 25;
-    const url = `/${slug}`.replace(/\/$/, '');
-    const e = entity ?? url.substring(url.lastIndexOf('/') + 1);
+    const url = `/${slug}`.replace(/\/$/, "");
+    const e = entity ?? url.substring(url.lastIndexOf("/") + 1);
     params.version = params.version || this.version;
 
     const firstPage = 1;
-    const firstRes = await this.makeRequest(
-      url,
-      params,
-      perPage,
-      firstPage,
-      fetchOptions,
-    );
+    const firstRes = await this.makeRequest(url, params, perPage, firstPage, fetchOptions);
     const lastPage = firstRes.total ? Math.ceil(firstRes.total / (firstRes.perPage || perPage)) : 1;
 
-    const restRes: any = await asyncMap(
-      range(firstPage, lastPage),
-      (i: number) => {
-        return this.makeRequest(url, params, perPage, i + 1, fetchOptions);
-      },
-    );
+    const restRes: any = await asyncMap(range(firstPage, lastPage), (i: number) => {
+      return this.makeRequest(url, params, perPage, i + 1, fetchOptions);
+    });
 
-    return flatMap([firstRes, ...restRes], (res: ISbFlatMapped) =>
-      Object.values(res.data[e]));
+    return flatMap([firstRes, ...restRes], (res: ISbFlatMapped) => Object.values(res.data[e]));
   }
 
   public post(
@@ -290,8 +275,19 @@ export class Storyblok {
   ): Promise<ISbResponseData> {
     const url = `/${slug}`;
 
-    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'post', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(
+      undefined,
+      undefined,
+      this.rateLimitConfig,
+      MANAGEMENT_API_DEFAULT_RATE_LIMIT,
+    );
+    return this.throttleManager.execute(
+      rateLimit,
+      "post",
+      url,
+      params,
+      fetchOptions,
+    ) as Promise<ISbResponseData>;
   }
 
   public put(
@@ -301,8 +297,19 @@ export class Storyblok {
   ): Promise<ISbResponseData> {
     const url = `/${slug}`;
 
-    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'put', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(
+      undefined,
+      undefined,
+      this.rateLimitConfig,
+      MANAGEMENT_API_DEFAULT_RATE_LIMIT,
+    );
+    return this.throttleManager.execute(
+      rateLimit,
+      "put",
+      url,
+      params,
+      fetchOptions,
+    ) as Promise<ISbResponseData>;
   }
 
   public delete(
@@ -315,8 +322,19 @@ export class Storyblok {
     }
     const url = `/${slug}`;
 
-    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'delete', url, params, fetchOptions) as Promise<ISbResponseData>;
+    const rateLimit = determineRateLimit(
+      undefined,
+      undefined,
+      this.rateLimitConfig,
+      MANAGEMENT_API_DEFAULT_RATE_LIMIT,
+    );
+    return this.throttleManager.execute(
+      rateLimit,
+      "delete",
+      url,
+      params,
+      fetchOptions,
+    ) as Promise<ISbResponseData>;
   }
 
   public getStories(
@@ -325,7 +343,7 @@ export class Storyblok {
   ): Promise<ISbStories> {
     this._addResolveLevel(params);
 
-    return this.get('cdn/stories', params, fetchOptions);
+    return this.get("cdn/stories", params, fetchOptions);
   }
 
   public getStory(
@@ -347,7 +365,7 @@ export class Storyblok {
   }
 
   private _addResolveLevel(params: ISbStoriesParams | ISbStoryParams): void {
-    if (typeof params.resolve_relations !== 'undefined') {
+    if (typeof params.resolve_relations !== "undefined") {
       params.resolve_level = 2;
     }
   }
@@ -364,19 +382,18 @@ export class Storyblok {
     const node = jtree[treeItem];
 
     if (
-      node
-      && node.fieldtype === 'multilink'
-      && node.linktype === 'story'
-      && typeof node.id === 'string'
-      && this.links[resolveId][node.id]
+      node &&
+      node.fieldtype === "multilink" &&
+      node.linktype === "story" &&
+      typeof node.id === "string" &&
+      this.links[resolveId][node.id]
     ) {
       node.story = this._cleanCopy(this.links[resolveId][node.id]);
-    }
-    else if (
-      node
-      && node.linktype === 'story'
-      && typeof node.uuid === 'string'
-      && this.links[resolveId][node.uuid]
+    } else if (
+      node &&
+      node.linktype === "story" &&
+      typeof node.uuid === "string" &&
+      this.links[resolveId][node.uuid]
     ) {
       node.story = this._cleanCopy(this.links[resolveId][node.uuid]);
     }
@@ -390,7 +407,9 @@ export class Storyblok {
    */
   private getStoryReference(resolveId: string, uuid: string): string | JSON {
     const result = this.relations[resolveId][uuid]
-      ? JSON.parse(this.stringifiedStoriesCache[uuid] || JSON.stringify(this.relations[resolveId][uuid]))
+      ? JSON.parse(
+          this.stringifiedStoriesCache[uuid] || JSON.stringify(this.relations[resolveId][uuid]),
+        )
       : uuid;
     return result;
   }
@@ -411,13 +430,10 @@ export class Storyblok {
     resolveId: string,
   ): void {
     const item = jtree[treeItem];
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       jtree[treeItem] = this.getStoryReference(resolveId, item);
-    }
-    else if (Array.isArray(item)) {
-      jtree[treeItem] = item.map(uuid =>
-        this.getStoryReference(resolveId, uuid),
-      ).filter(Boolean);
+    } else if (Array.isArray(item)) {
+      jtree[treeItem] = item.map((uuid) => this.getStoryReference(resolveId, uuid)).filter(Boolean);
     }
   }
 
@@ -446,7 +462,7 @@ export class Storyblok {
   ): void {
     // Check for nested relations (e.g., "*.event_type" or "spots.event_type")
     const fieldPattern = Array.isArray(fields)
-      ? fields.find(f => f.endsWith(`.${treeItem}`))
+      ? fields.find((f) => f.endsWith(`.${treeItem}`))
       : fields.endsWith(`.${treeItem}`);
 
     if (fieldPattern) {
@@ -476,7 +492,7 @@ export class Storyblok {
     resolveId: string,
   ): void {
     // Internal recursive function to process each node in the tree
-    const enrich = (jtree: ISbStoriesParams | any, path = '') => {
+    const enrich = (jtree: ISbStoriesParams | any, path = "") => {
       // Skip processing if node is null/undefined or marked to stop resolving
       if (!jtree || jtree._stopResolving) {
         return;
@@ -488,7 +504,7 @@ export class Storyblok {
         jtree.forEach((item, index) => enrich(item, `${path}[${index}]`));
       }
       // Handle object nodes
-      else if (typeof jtree === 'object') {
+      else if (typeof jtree === "object") {
         // Process each property in the object
         for (const key in jtree) {
           // Build the current path for the context
@@ -496,7 +512,7 @@ export class Storyblok {
 
           // If this is a component (has component and _uid) or a link,
           // attempt to resolve its relations and links
-          if ((jtree.component && jtree._uid) || jtree.type === 'link') {
+          if ((jtree.component && jtree._uid) || jtree.type === "link") {
             this._insertRelations(jtree, key as keyof ISbStoriesParams, fields, resolveId);
             this._insertLinks(jtree, key as keyof ISbStoriesParams, resolveId);
           }
@@ -535,25 +551,22 @@ export class Storyblok {
           language: params.language,
           version: params.version,
           starts_with: params.starts_with,
-          by_uuids: chunks[chunkIndex].join(','),
+          by_uuids: chunks[chunkIndex].join(","),
         });
 
-        linksRes.data.stories.forEach(
-          (rel: ISbStoryData | ISbLinkURLObject | string) => {
-            links.push(rel);
-          },
-        );
+        linksRes.data.stories.forEach((rel: ISbStoryData | ISbLinkURLObject | string) => {
+          links.push(rel);
+        });
       }
-    }
-    else {
+    } else {
       links = responseData.links;
     }
 
     links.forEach((story: ISbStoryData | any) => {
-      this.links[resolveId][story.uuid] = {
-        ...story,
-        ...{ _stopResolving: true },
-      };
+      this.links[resolveId][story.uuid] = ({
+	...story,
+	_stopResolving: true
+});
     });
   }
 
@@ -580,7 +593,7 @@ export class Storyblok {
           language: params.language,
           version: params.version,
           starts_with: params.starts_with,
-          by_uuids: chunks[chunkIndex].join(','),
+          by_uuids: chunks[chunkIndex].join(","),
           excluding_fields: params.excluding_fields,
         });
 
@@ -594,17 +607,16 @@ export class Storyblok {
         responseData.rels = relations;
         delete responseData.rel_uuids;
       }
-    }
-    else {
+    } else {
       relations = responseData.rels;
     }
 
     if (relations && relations.length > 0) {
       relations.forEach((story: ISbStoryData) => {
-        this.relations[resolveId][story.uuid] = {
-          ...story,
-          ...{ _stopResolving: true },
-        };
+        this.relations[resolveId][story.uuid] = ({
+	...story,
+	_stopResolving: true
+});
       });
     }
   }
@@ -628,38 +640,30 @@ export class Storyblok {
     this.links[resolveId] = {};
     this.relations[resolveId] = {};
 
-    if (
-      typeof params.resolve_relations !== 'undefined'
-      && params.resolve_relations.length > 0
-    ) {
-      if (typeof params.resolve_relations === 'string') {
-        relationParams = params.resolve_relations.split(',');
+    if (typeof params.resolve_relations !== "undefined" && params.resolve_relations.length > 0) {
+      if (typeof params.resolve_relations === "string") {
+        relationParams = params.resolve_relations.split(",");
       }
       await this.resolveRelations(responseData, params, resolveId);
     }
 
     if (
-      params.resolve_links
-      && ['1', 'story', 'url', 'link'].includes(params.resolve_links)
-      && (responseData.links?.length || responseData.link_uuids?.length)
+      params.resolve_links &&
+      ["1", "story", "url", "link"].includes(params.resolve_links) &&
+      (responseData.links?.length || responseData.link_uuids?.length)
     ) {
       await this.resolveLinks(responseData, params, resolveId);
     }
 
     if (this.resolveNestedRelations) {
       for (const relUuid in this.relations[resolveId]) {
-        this.iterateTree(
-          this.relations[resolveId][relUuid],
-          relationParams,
-          resolveId,
-        );
+        this.iterateTree(this.relations[resolveId][relUuid], relationParams, resolveId);
       }
     }
 
     if (responseData.story) {
       this.iterateTree(responseData.story, relationParams, resolveId);
-    }
-    else {
+    } else {
       responseData.stories.forEach((story: ISbStoryData) => {
         this.iterateTree(story, relationParams, resolveId);
       });
@@ -682,7 +686,7 @@ export class Storyblok {
 
     // Check in-memory cache first for published content
     // If cached, skip API call and rate limiting entirely
-    if (params.version === 'published' && url !== '/cdn/spaces/me') {
+    if (params.version === "published" && url !== "/cdn/spaces/me") {
       const cache = await provider.get(cacheKey);
       if (cache) {
         return Promise.resolve(cache);
@@ -700,7 +704,7 @@ export class Storyblok {
         // Execute through the appropriate throttle queue based on rate limit
         const res = (await this.throttleManager.execute(
           rateLimit,
-          'get',
+          "get",
           url,
           params,
           fetchOptions,
@@ -718,35 +722,32 @@ export class Storyblok {
           this.rateLimitConfig.serverHeadersRateLimit = rateLimitHeaders.max;
         }
 
-        if (res.headers?.['per-page']) {
+        if (res.headers?.["per-page"]) {
           response = Object.assign({}, response, {
-            perPage: res.headers['per-page']
-              ? Number.parseInt(res.headers['per-page'])
-              : 0,
-            total: res.headers['per-page']
-              ? Number.parseInt(res.headers.total)
-              : 0,
+            perPage: res.headers["per-page"] ? Number.parseInt(res.headers["per-page"]) : 0,
+            total: res.headers["per-page"] ? Number.parseInt(res.headers.total) : 0,
           });
         }
 
         if (response.data.story || response.data.stories) {
-          const resolveId = (this.resolveCounter
-            = ++this.resolveCounter % 1000);
+          const resolveId = (this.resolveCounter = ++this.resolveCounter % 1000);
           await this.resolveStories(response.data, params, `${resolveId}`);
           response = await this.processInlineAssets(response);
         }
 
-        if (params.version === 'published' && url !== '/cdn/spaces/me') {
+        if (params.version === "published" && url !== "/cdn/spaces/me") {
           await provider.set(cacheKey, response);
         }
 
-        const isCacheClearable = (this.cache.clear === 'onpreview' && params.version === 'draft')
-          || this.cache.clear === 'auto';
+        const isCacheClearable =
+          (this.cache.clear === "onpreview" && params.version === "draft") ||
+          this.cache.clear === "auto";
 
         if (params.token && response.data.cv) {
-          if (isCacheClearable
-            && cacheVersions[params.token] // there is a cache
-            && cacheVersions[params.token] !== response.data.cv // a new cv is incoming
+          if (
+            isCacheClearable &&
+            cacheVersions[params.token] && // there is a cache
+            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
           ) {
             await this.flushCache();
           }
@@ -754,20 +755,15 @@ export class Storyblok {
         }
 
         return resolve(response);
-      }
-      catch (error: Error | any) {
+      } catch (error: Error | any) {
         if (error.response && error.status === 429) {
-          retries = typeof retries === 'undefined' ? 0 : retries + 1;
+          retries = typeof retries === "undefined" ? 0 : retries + 1;
 
           if (retries < this.maxRetries) {
             // eslint-disable-next-line no-console
-            console.log(
-              `Hit rate limit. Retrying in ${this.retriesDelay / 1000} seconds.`,
-            );
+            console.log(`Hit rate limit. Retrying in ${this.retriesDelay / 1000} seconds.`);
             await delay(this.retriesDelay);
-            return this.cacheResponse(url, params, retries)
-              .then(resolve)
-              .catch(reject);
+            return this.cacheResponse(url, params, retries).then(resolve).catch(reject);
           }
         }
         reject(error);
@@ -807,7 +803,7 @@ export class Storyblok {
 
   public cacheProvider(): ICacheProvider {
     switch (this.cache.type) {
-      case 'memory':
+      case "memory":
         return {
           get(key: string) {
             return Promise.resolve(memory[key]);
@@ -824,7 +820,7 @@ export class Storyblok {
             return Promise.resolve(undefined);
           },
         };
-      case 'custom':
+      case "custom":
         if (this.cache.custom) {
           return this.cache.custom;
         }
@@ -859,16 +855,16 @@ export class Storyblok {
     }
 
     const processNode = (node: ISbField): unknown => {
-      if (!node || typeof node !== 'object') {
+      if (!node || typeof node !== "object") {
         return node;
       }
 
       if (Array.isArray(node)) {
-        return node.map(item => processNode(item));
+        return node.map((item) => processNode(item));
       }
 
       let processedNode = { ...node };
-      if (processedNode.fieldtype === 'asset' && Array.isArray(response.data.assets)) {
+      if (processedNode.fieldtype === "asset" && Array.isArray(response.data.assets)) {
         // Enrich the asset with an actual asset object
         processedNode = {
           ...response.data.assets.find((asset: any) => asset.id === processedNode.id),
@@ -878,7 +874,7 @@ export class Storyblok {
 
       // Recursively process all properties
       for (const key in processedNode) {
-        if (typeof processedNode[key] === 'object') {
+        if (typeof processedNode[key] === "object") {
           processedNode[key] = processNode(processedNode[key] as ISbField);
         }
       }

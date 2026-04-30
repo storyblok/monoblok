@@ -1,0 +1,70 @@
+{
+  "name": "@storyblok/lint-config",
+  "version": "0.1.0",
+  "description": "Shared Oxlint configuration for the Storyblok ecosystem",
+  "keywords": [
+    "lint-config",
+    "oxlint",
+    "oxlint-config",
+    "storyblok"
+  ],
+  "license": "MIT",
+  "author": "Storyblok GmbH",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/lint-config"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./base": {
+      "types": "./dist/base.d.mts",
+      "import": "./dist/base.mjs"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.mts",
+      "import": "./dist/vue.mjs"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.mts",
+      "import": "./dist/svelte.mjs"
+    },
+    "./astro": {
+      "types": "./dist/astro.d.mts",
+      "import": "./dist/astro.mjs"
+    },
+    "./nuxt": {
+      "types": "./dist/nuxt.d.mts",
+      "import": "./dist/nuxt.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "oxlint": "*",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "oxlint": ">=0.15.0"
+  }
+}

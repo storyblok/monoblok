@@ -8,7 +8,9 @@
     "docs:validate": "npx @redocly/cli lint --config redocly.yaml",
     "docs:validate:fix": "npx @redocly/cli lint --config redocly.yaml --fix",
     "specs:validate": "npx @redocly/cli lint mapi.yaml resources/**/*.yaml",
-    "build": "redocly bundle"
+    "build": "redocly bundle",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
   },
   "main": "dist",
   "keywords": [

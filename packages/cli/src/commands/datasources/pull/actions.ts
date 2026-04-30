@@ -2,41 +2,10 @@ import { handleAPIError, handleFileSystemError } from '../../../utils';
 import { getMapiClient } from '../../../api';
 import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
+import { fetchAllPages } from '../../../utils/pagination';
 import type { DatasourceEntry, SpaceDatasource } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
-
-/**
- * Generic pagination helper that fetches all pages of data
- * @param fetchFunction - Function that fetches a single page
- * @param extractDataFunction - Function that extracts data array from response
- * @param page - Current page number
- * @param collectedItems - Previously collected items
- * @returns Array of all items across all pages
- */
-async function fetchAllPages<T, R>(
-  fetchFunction: (page: number) => Promise<{ data: T; response: Response }>,
-  extractDataFunction: (data: T) => R[],
-  page = 1,
-  collectedItems: R[] = [],
-): Promise<R[]> {
-  const { data, response } = await fetchFunction(page);
-  const totalHeader = (response.headers.get('total'));
-  const total = Number(totalHeader);
-
-  const fetchedItems = extractDataFunction(data);
-  const allItems = [...collectedItems, ...fetchedItems];
-
-  if (!totalHeader || Number.isNaN(total)) {
-    // No valid 'total' header — assume not paginated, return all collected items plus current page
-    return allItems;
-  }
-
-  if (allItems.length < total && fetchedItems.length > 0) {
-    return fetchAllPages(fetchFunction, extractDataFunction, page + 1, allItems);
-  }
-  return allItems;
-}
 
 /**
  * Fetches entries for a given datasource id in a space.
@@ -105,16 +74,20 @@ export const fetchDatasources = async (spaceId: string): Promise<SpaceDatasource
 export const fetchDatasource = async (spaceId: string, datasourceName: string): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
-    const { data } = await client.datasources.list({
-      path: {
-        space_id: Number(spaceId),
-      },
-      query: {
-        search: datasourceName,
-      },
-      throwOnError: true,
-    });
-    const found = data.datasources?.find((d: SpaceDatasource) => d.name === datasourceName);
+    const matches = await fetchAllPages(
+      (page: number) => client.datasources.list({
+        path: {
+          space_id: Number(spaceId),
+        },
+        query: {
+          page,
+          search: datasourceName,
+        },
+        throwOnError: true,
+      }),
+      data => data.datasources || [],
+    );
+    const found = matches.find((d: SpaceDatasource) => d.name === datasourceName);
     if (!found) { return undefined; }
     // Fetch entries for the found datasource
     const entries = await fetchDatasourceEntries(spaceId, found.id as number);

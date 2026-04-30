@@ -3,7 +3,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import mockedDatasources from './datasource.mock.json' assert { type: 'json' };
 import { getMapiClient } from '../../../api';
-import { fetchDatasources, saveDatasourcesToFiles } from './actions';
+import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { vol } from 'memfs';
 
 const MAX_RETRY_DURATION = 14_000;
@@ -231,6 +231,42 @@ describe('pull datasources actions', () => {
       await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
       await resultPromise;
       expect(requestUrl).toBe('https://mapi.storyblok.com/v1/spaces/54321/datasources?page=1');
+    });
+  });
+
+  describe('fetchDatasource', () => {
+    it('should find a datasource whose match falls on a later page', async () => {
+      const totalDatasources = 30;
+      const allDatasources = Array.from({ length: totalDatasources }, (_, i) => ({
+        id: 1000 + i,
+        name: `match-${String(i + 1).padStart(2, '0')}`,
+        slug: `match-${i + 1}`,
+      }));
+      const requestedPages: number[] = [];
+
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', ({ request }) => {
+          const url = new URL(request.url);
+          const page = Number(url.searchParams.get('page') ?? '1');
+          const perPage = Number(url.searchParams.get('per_page') ?? '25');
+          requestedPages.push(page);
+          const start = (page - 1) * perPage;
+          const slice = allDatasources.slice(start, start + perPage);
+          return HttpResponse.json(
+            { datasources: slice },
+            { headers: { total: String(totalDatasources) } },
+          );
+        }),
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasource_entries', () =>
+          HttpResponse.json({ datasource_entries: [] })),
+      );
+
+      const resultPromise = fetchDatasource('12345', 'match-30');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
+
+      expect(result?.name).toBe('match-30');
+      expect(requestedPages).toEqual([1, 2]);
     });
   });
 

@@ -1,0 +1,29 @@
+{
+  "name": "@storyblok/playground-cli-schema",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "schema:push": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
+    "schema:push:dry": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
+    "schema:push:delete": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID --delete",
+    "schema:push:no-migrations": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID --no-migrations",
+    "schema:pull": "storyblok schema pull -s $STORYBLOK_SPACE_ID --out-dir pulled",
+    "schema:rollback": "storyblok schema rollback -s $STORYBLOK_SPACE_ID",
+    "schema:rollback:latest": "storyblok schema rollback -s $STORYBLOK_SPACE_ID --latest",
+    "ver:1.0.0": "storyblok schema push versions/v1.0.0.ts -s $STORYBLOK_SPACE_ID",
+    "ver:1.1.0": "storyblok schema push versions/v1.1.0.ts -s $STORYBLOK_SPACE_ID",
+    "ver:2.0.0": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID",
+    "ver:2.0.0:migrate": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID --migrations",
+    "composability": "storyblok schema push composability/schema.ts -s $STORYBLOK_SPACE_ID",
+    "validate": "tsx validation/validate.ts"
+  },
+  "dependencies": {
+    "@storyblok/schema": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "storyblok": "workspace:*",
+    "tsx": "^4.21.0"
+  }
+}

@@ -9,11 +9,16 @@ import type { AttrValue } from './types';
  * const cssString = styleToString(styleObj);
  * console.log(cssString); // Output: "color: red; font-size: 16px"
  */
-export function styleToString(style: Record<string, AttrValue>) {
+export function styleToString(
+  style: Record<string, AttrValue>,
+) {
   return Object.entries(style)
-    .filter(([, v]) => isValidStyleValue(v))
-    .map(([k, v]) => `${camelToKebab(k)}: ${v}`)
-    .join('; ');
+    .filter(([, value]) => isValidStyleValue(value))
+    .map(
+      ([key, value]) =>
+        `${camelToKebab(key)}: ${value};`,
+    )
+    .join(' ');
 }
 
 /**

@@ -19,13 +19,13 @@ export const hints: Record<string, string> = {
   rowspan: 'number',
   colwidth: 'number[] | null',
   backgroundColor: 'string | null',
-  body: 'SbBlokData[]',
+  body: 'SbBlokData[] | null',
   emoji: 'string | null',
   name: 'string | null',
   fallbackImage: 'string | null',
   reporter: 'never',
   custom: 'Record<string, string | null>',
-  uuid: 'string',
-  anchor: 'string',
+  uuid: 'string | null',
+  anchor: 'string | null',
   // Expand as needed
 };

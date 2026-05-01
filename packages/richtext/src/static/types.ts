@@ -3,10 +3,16 @@ import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 /** Valid attribute values for DOM elements */
 export type AttrValue = string | number | boolean;
 export type HtmlTag = keyof HTMLElementTagNameMap;
-export interface SbBlokData {
-  _key: string;
-  component: string;
-  [otherKey: string]: unknown;
+
+interface ISbComponentType<T extends string> {
+  _uid?: string;
+  component?: T;
+  _editable?: string;
+}
+type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
+
+export interface SbBlokData extends ISbComponentType<string> {
+  [index: string]: SbBlokKeyDataTypes;
 }
 
 export interface RenderSpec {
@@ -27,24 +33,19 @@ export type RichTextBaseProps<T extends TiptapComponentName> =
   T extends PMNode['type']
     ? Extract<PMNode, { type: T }>
     : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }>
+      ? Extract<PMMark, { type: T }> & { children: string }
       : never;
 
-/** Typed override map for node/mark components */
-export type RichTextComponentProps<
-  T extends TiptapComponentName,
-  TComponent = unknown,
-  ExtraProps extends Record<string, unknown> = Record<string, never>,
-> = RichTextBaseProps<T> &
-  ExtraProps & {
-    components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>;
-  };
-
+/** Generic component map for any renderer target */
 export type StoryblokRichTextComponentMap<
-  TComponent = unknown,
-  ExtraProps extends Record<string, unknown> = Record<string, never>,
+  TComponent = string,
 > = {
   [K in TiptapComponentName]?: (
-    props: RichTextComponentProps<K, TComponent, ExtraProps>
+    props: RichTextBaseProps<K>
   ) => TComponent;
 };
+
+export interface StoryblokRichTextRendererOptions {
+  renderers?: StoryblokRichTextComponentMap<string>;
+  optimizeImages?: boolean;
+}

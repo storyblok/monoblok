@@ -18,11 +18,10 @@ import type { HtmlTag, StoryblokRichTextComponentMap } from './types';
 export function resolveComponent<
   K extends TiptapComponentName,
   TComponent,
-  ExtraProps extends Record<string, unknown> = Record<string, unknown>,
 >(
   type: K,
-  components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>,
-): StoryblokRichTextComponentMap<TComponent, ExtraProps>[K] | undefined {
+  components?: StoryblokRichTextComponentMap<TComponent>,
+): StoryblokRichTextComponentMap<TComponent>[K] | undefined {
   return components?.[type];
 }
 

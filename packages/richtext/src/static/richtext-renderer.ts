@@ -1,7 +1,7 @@
 import { escapeHtml } from '../utils';
 import { escapeAttr, processAttrs } from './attribute';
 import { styleToString } from './style';
-import type { RenderSpec, StoryblokRichTextJson } from './types';
+import type { RenderSpec, StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
 import type { PMNode } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
 
@@ -12,7 +12,8 @@ import { getStaticChildren, isSelfClosing, resolveTag } from './util';
  * richtext nodes and marks, applies attributes and styles, and safely
  * escapes text content. `blok` nodes are not rendered and will log a warning.
  *
- * @param document - The Storyblok RichText JSON document to render
+ * @param document - The Storyblok RichText JSON document, array of nodes, or nullish value
+ * @param options - Optional renderer configuration including custom renderers
  * @returns The rendered HTML string
  *  @example
  * ```ts
@@ -32,11 +33,20 @@ import { getStaticChildren, isSelfClosing, resolveTag } from './util';
  * // <p>Hello World</p>
  * ```
  */
-export function richTextRenderer(document: StoryblokRichTextJson): string {
+export function richTextRenderer(document: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined, options?: StoryblokRichTextRendererOptions): string {
   if (!document) {
     return '';
   }
 
+  // Handle array of nodes
+  if (Array.isArray(document)) {
+    if (document.length === 0) {
+      return '';
+    }
+    return document.map(node => renderNode(node, options)).join('');
+  }
+
+  // Handle single node or doc
   const nodes = document.type === 'doc' ? document.content : [document];
 
   if (!nodes || nodes.length === 0) {
@@ -45,19 +55,26 @@ export function richTextRenderer(document: StoryblokRichTextJson): string {
 
   const parts: string[] = [];
   for (const node of nodes) {
-    parts.push(renderNode(node));
+    parts.push(renderNode(node, options));
   }
   return parts.join('');
 }
 
 /** Renders a single node to HTML. */
-function renderNode(node: StoryblokRichTextJson): string {
+function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRendererOptions): string {
   if (node.type === 'text') {
-    return renderText(node);
+    return renderText(node, options);
   }
-  if (node.type === 'blok') {
+  // Check for custom renderer
+  const customRenderer = options?.renderers?.[node.type as keyof typeof options.renderers];
+
+  if (node.type === 'blok' && !customRenderer) {
     console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
     return '';
+  }
+
+  if (customRenderer) {
+    return (customRenderer as (props: typeof node) => string)(node);
   }
 
   const tag = resolveTag(node);
@@ -67,20 +84,22 @@ function renderNode(node: StoryblokRichTextJson): string {
 
   const selfClosing = isSelfClosing(tag);
   const staticChildren = getStaticChildren(node);
-  const attrs = processAttrs(node.type, node.attrs);
+  const attrs = processAttrs(node.type, node.attrs, {
+    colspan: 'colspan',
+    rowspan: 'rowspan',
+  });
   const styleString = attrs.style ? styleToString(attrs.style) : '';
   const htmlAttrs = attrsToString({
     ...attrs,
     ...(styleString && { style: styleString }),
   });
-
   if (selfClosing) {
     return `<${tag}${htmlAttrs} />`;
   }
 
   // Render children content
   const childContent = node.content
-    ? node.content.map(child => renderNode(child)).join('')
+    ? node.content.map(child => renderNode(child, options)).join('')
     : '';
 
   // Handle static children (e.g., code_block with pre > code structure)
@@ -127,7 +146,7 @@ function renderStaticChildren(
 }
 
 /** Renders a text node with its marks (bold, italic, etc.). */
-function renderText(node: PMNode & { type: 'text' }): string {
+function renderText(node: PMNode & { type: 'text' }, options?: StoryblokRichTextRendererOptions): string {
   const marks = node.marks;
   // Escape HTML entities in text content to prevent XSS
   let result = escapeHtml(node.text);
@@ -138,13 +157,29 @@ function renderText(node: PMNode & { type: 'text' }): string {
 
   // Apply marks in order (innermost first)
   for (const mark of marks) {
+    // Check for custom mark renderer
+    const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
+    if (customRenderer) {
+      // Pass mark props + children (the already-rendered inner content)
+      result = (customRenderer as (props: typeof mark & { children: string }) => string)({
+        ...mark,
+        children: result,
+      });
+      continue;
+    }
+
     const tag = resolveTag(mark);
     if (!tag) {
       continue;
     }
 
     const attrs = processAttrs(mark.type, mark.attrs);
-    const htmlAttrs = attrsToString(attrs);
+    const styleString = attrs.style ? styleToString(attrs.style) : '';
+
+    const htmlAttrs = attrsToString({
+      ...attrs,
+      ...(styleString && { style: styleString }),
+    });
     result = `<${tag}${htmlAttrs}>${result}</${tag}>`;
   }
 

@@ -79,6 +79,10 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
 
   const tag = resolveTag(node);
   if (!tag) {
+    // For nodes without a tag (like nested `doc`), render children directly
+    if (node.content) {
+      return node.content.map(child => renderNode(child, options)).join('');
+    }
     return '';
   }
 

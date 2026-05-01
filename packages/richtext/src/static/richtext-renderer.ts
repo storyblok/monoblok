@@ -1,432 +1,344 @@
 import { escapeHtml } from '../utils';
 import { escapeAttr, processAttrs } from './attribute';
 import { styleToString } from './style';
-import type { RenderSpec, StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
-import type { PMMark, PMNode } from './types.generated';
+import type { AttrValue, RenderSpec, StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
+import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
+
+type TextNode = PMNode & { type: 'text' };
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
- * This is a framework-agnostic static renderer that supports Storyblok
- * richtext nodes and marks, applies attributes and styles, and safely
- * escapes text content. `blok` nodes are not rendered and will log a warning.
+ * @param document - RichText JSON document, array of nodes, or nullish value
+ * @param options - Renderer configuration with custom node/mark renderers
+ * @returns Rendered HTML string
  *
- * @param document - The Storyblok RichText JSON document, array of nodes, or nullish value
- * @param options - Optional renderer configuration including custom renderers
- * @returns The rendered HTML string
- *  @example
+ * @example
  * ```ts
  * const html = richTextRenderer({
  *   type: 'doc',
- *   content: [
- *     {
- *       type: 'paragraph',
- *       content: [
- *         { type: 'text', text: 'Hello World' }
- *       ]
- *     }
- *   ]
+ *   content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }]
  * });
- *
- * console.log(html);
- * // <p>Hello World</p>
+ * // => '<p>Hello</p>'
  * ```
  */
-export function richTextRenderer(document: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined, options?: StoryblokRichTextRendererOptions): string {
+export function richTextRenderer(
+  document: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined,
+  options?: StoryblokRichTextRendererOptions,
+): string {
   if (!document) {
     return '';
   }
 
-  // Handle array of nodes
   if (Array.isArray(document)) {
-    if (document.length === 0) {
-      return '';
-    }
-    return document.map(node => renderNode(node, options)).join('');
+    return renderChildren(document, options);
   }
 
-  // Handle single node or doc
   const nodes = document.type === 'doc' ? document.content : [document];
-
-  if (!nodes || nodes.length === 0) {
-    return '';
-  }
-
-  const parts: string[] = [];
-  for (const node of nodes) {
-    parts.push(renderNode(node, options));
-  }
-  return parts.join('');
+  return nodes?.length ? renderChildren(nodes, options) : '';
 }
 
 /** Renders a single node to HTML. */
 function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRendererOptions): string {
+  // Text nodes: apply marks and escape content
   if (node.type === 'text') {
-    return renderText(node, options);
+    return renderTextNode(node as TextNode, node.marks, options);
   }
-  // Check for custom renderer
+
+  // Custom renderer takes full control
   const customRenderer = options?.renderers?.[node.type as keyof typeof options.renderers];
-
-  if (node.type === 'blok' && !customRenderer) {
-    console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
-    return '';
-  }
-
   if (customRenderer) {
     return (customRenderer as (props: typeof node) => string)(node);
   }
 
-  const tag = resolveTag(node);
-  if (!tag) {
-    // For nodes without a tag (like nested `doc`), render children directly
-    if (node.content) {
-      return node.content.map(child => renderNode(child, options)).join('');
-    }
+  // Blok nodes require custom renderer
+  if (node.type === 'blok') {
+    console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
     return '';
   }
 
-  const selfClosing = isSelfClosing(tag);
-  const staticChildren = getStaticChildren(node);
-  const attrs = processAttrs(node.type, node.attrs, {
-    colspan: 'colspan',
-    rowspan: 'rowspan',
-  });
-  const styleString = attrs.style ? styleToString(attrs.style) : '';
-  const htmlAttrs = attrsToString({
-    ...attrs,
-    ...(styleString && { style: styleString }),
-  });
-  if (selfClosing) {
+  const tag = resolveTag(node);
+
+  // No tag (e.g., nested doc): render children directly
+  if (!tag) {
+    return node.content ? renderChildren(node.content, options) : '';
+  }
+
+  const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
+
+  // Self-closing tags
+  if (isSelfClosing(tag)) {
     return `<${tag}${htmlAttrs} />`;
   }
 
-  // Handle table nodes specially to generate thead/tbody dynamically
+  // Table: special thead/tbody grouping
   if (node.type === 'table') {
-    const tableContent = renderTableContent(node.content, options);
-    return `<${tag}${htmlAttrs}>${tableContent}</${tag}>`;
+    return `<${tag}${htmlAttrs}>${renderTableRows(node.content, options)}</${tag}>`;
   }
 
-  // Render children content with mark merging for text nodes
-  const childContent = node.content
-    ? renderChildrenWithMarkMerging(node.content, options)
-    : '';
+  const content = node.content ? renderChildren(node.content, options) : '';
 
-  // Handle static children (e.g., code_block with pre > code structure)
-  // Static children are wrapped inside the parent tag
+  // Static children (e.g., pre > code)
+  const staticChildren = getStaticChildren(node);
   if (staticChildren) {
-    const innerContent = renderStaticChildren(
-      staticChildren,
-      attrs,
-      childContent,
-    );
-    return `<${tag}${htmlAttrs}>${innerContent}</${tag}>`;
+    const inner = renderStaticStructure(staticChildren, node.attrs, content);
+    return `<${tag}${htmlAttrs}>${inner}</${tag}>`;
   }
 
-  return `<${tag}${htmlAttrs}>${childContent}</${tag}>`;
+  return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
 
 /**
- * Finds the link mark in a text node's marks array.
+ * Renders child nodes, merging adjacent text nodes that share the same link mark.
+ * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
+ * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
  */
-function findLinkMark(node: StoryblokRichTextJson): PMMark | null {
-  if (node.type !== 'text' || !node.marks) {
-    return null;
-  }
-  return node.marks.find(m => m.type === 'link') ?? null;
-}
-
-/**
- * Compares two link marks to check if they have the same attributes.
- */
-function linkMarksEqual(a: PMMark | null, b: PMMark | null): boolean {
-  if (a === null && b === null) {
-    return true;
-  }
-  if (a === null || b === null) {
-    return false;
-  }
-  if (a.type !== 'link' || b.type !== 'link') {
-    return false;
-  }
-
-  const aAttrs = (a.attrs ?? {}) as Record<string, unknown>;
-  const bAttrs = (b.attrs ?? {}) as Record<string, unknown>;
-
-  // Compare relevant link attributes
-  return (
-    aAttrs.href === bAttrs.href
-    && aAttrs.target === bAttrs.target
-    && aAttrs.linktype === bAttrs.linktype
-    && aAttrs.anchor === bAttrs.anchor
-    && aAttrs.uuid === bAttrs.uuid
-  );
-}
-
-/**
- * Renders children with mark merging for adjacent text nodes sharing the same link.
- * Groups consecutive text nodes with identical link marks and renders them
- * under a single <a> tag.
- */
-function renderChildrenWithMarkMerging(
-  children: StoryblokRichTextJson[],
-  options?: StoryblokRichTextRendererOptions,
-): string {
-  const result: string[] = [];
+function renderChildren(children: StoryblokRichTextJson[], options?: StoryblokRichTextRendererOptions): string {
+  let result = '';
   let i = 0;
+  const len = children.length;
 
-  while (i < children.length) {
+  while (i < len) {
     const node = children[i];
-    const linkMark = findLinkMark(node);
+    const linkMark = getTextNodeLinkMark(node);
 
-    // If this text node has a link mark, try to merge with subsequent nodes
     if (linkMark) {
-      const group: StoryblokRichTextJson[] = [node];
-      let j = i + 1;
-
-      // Collect all adjacent text nodes with the same link mark
-      while (j < children.length) {
-        const nextNode = children[j];
-        const nextLinkMark = findLinkMark(nextNode);
-
-        if (nextLinkMark && linkMarksEqual(linkMark, nextLinkMark)) {
-          group.push(nextNode);
-          j++;
-        }
-        else {
-          break;
-        }
+      // Find end of link group (consecutive text nodes with same link)
+      let end = i + 1;
+      while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
+        end++;
       }
-
-      // Render the group under a single link tag
-      result.push(renderLinkGroup(group, linkMark, options));
-      i = j;
+      result += renderLinkGroup(children, i, end, linkMark, options);
+      i = end;
     }
     else {
-      // No link mark, render normally
-      result.push(renderNode(node, options));
+      result += renderNode(node, options);
       i++;
     }
   }
 
-  return result.join('');
-}
-
-/**
- * Renders a group of text nodes under a single link tag.
- * Each text node's inner marks (bold, italic, etc.) are preserved.
- */
-function renderLinkGroup(
-  nodes: StoryblokRichTextJson[],
-  linkMark: PMMark,
-  options?: StoryblokRichTextRendererOptions,
-): string {
-  // Render inner content: each text node with its non-link marks
-  const innerContent = nodes.map((node) => {
-    if (node.type !== 'text') {
-      return renderNode(node, options);
-    }
-
-    // Filter out the link mark, keep only inner marks
-    const innerMarks = node.marks?.filter(m => m.type !== 'link') ?? [];
-
-    // Render text with only inner marks
-    return renderTextWithMarks(node as PMNode & { type: 'text' }, innerMarks, options);
-  }).join('');
-
-  // Wrap with link tag
-  const attrs = processAttrs(linkMark.type, linkMark.attrs);
-  const styleString = attrs.style ? styleToString(attrs.style) : '';
-  const htmlAttrs = attrsToString({
-    ...attrs,
-    ...(styleString && { style: styleString }),
-  });
-
-  const tag = resolveTag(linkMark);
-  if (!tag) {
-    return innerContent;
-  }
-
-  return `<${tag}${htmlAttrs}>${innerContent}</${tag}>`;
-}
-
-/**
- * Renders a text node with a specific set of marks.
- */
-function renderTextWithMarks(
-  node: PMNode & { type: 'text' },
-  marks: PMMark[],
-  options?: StoryblokRichTextRendererOptions,
-): string {
-  let result = escapeHtml(node.text);
-
-  if (marks.length === 0) {
-    return result;
-  }
-
-  // Apply marks in order (innermost first)
-  for (const mark of marks) {
-    const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
-    if (customRenderer) {
-      result = (customRenderer as (props: typeof mark & { children: string }) => string)({
-        ...mark,
-        children: result,
-      });
-      continue;
-    }
-
-    const tag = resolveTag(mark);
-    if (!tag) {
-      continue;
-    }
-
-    const attrs = processAttrs(mark.type, mark.attrs);
-    const styleString = attrs.style ? styleToString(attrs.style) : '';
-    const htmlAttrs = attrsToString({
-      ...attrs,
-      ...(styleString && { style: styleString }),
-    });
-    result = `<${tag}${htmlAttrs}>${result}</${tag}>`;
-  }
-
   return result;
 }
 
-/**
- * Checks if a table row contains header cells.
- * A row is considered a header row if all its cells are tableHeader type.
- */
-function isHeaderRow(row: StoryblokRichTextJson): boolean {
-  if (row.type !== 'tableRow' || !row.content || row.content.length === 0) {
-    return false;
+/** Renders a text node with its marks. */
+function renderTextNode(
+  node: TextNode,
+  marks: PMMark[] | undefined,
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  let html = escapeHtml(node.text);
+
+  if (!marks?.length) {
+    return html;
   }
-  return row.content.every(cell => cell.type === 'tableHeader');
+
+  for (const mark of marks) {
+    html = wrapWithMark(html, mark, options);
+  }
+
+  return html;
 }
 
-/**
- * Renders table content with proper thead/tbody grouping.
- * Header rows (containing only tableHeader cells) go into thead,
- * body rows (containing tableCell cells) go into tbody.
- */
-function renderTableContent(
+/** Wraps content with a single mark tag. */
+function wrapWithMark(
+  content: string,
+  mark: PMMark,
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  // Custom mark renderer
+  const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
+  if (customRenderer) {
+    return (customRenderer as (props: typeof mark & { children: string }) => string)({
+      ...mark,
+      children: content,
+    });
+  }
+
+  const tag = resolveTag(mark);
+  if (!tag) {
+    return content;
+  }
+
+  const htmlAttrs = buildHtmlAttrs(mark.type, mark.attrs);
+  return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+}
+
+// ============================================================================
+// Link Mark Merging
+// ============================================================================
+
+/** Gets link mark from a text node, or null. */
+function getTextNodeLinkMark(node: StoryblokRichTextJson): PMMark | null {
+  if (node.type !== 'text' || !node.marks) {
+    return null;
+  }
+
+  for (const mark of node.marks) {
+    if (mark.type === 'link') {
+      return mark;
+    }
+  }
+  return null;
+}
+
+/** Checks if two link marks have identical attributes. */
+function areLinkMarksEqual(a: PMMark | null, b: PMMark | null): boolean {
+  if (!a || !b) {
+    return false;
+  }
+
+  const aa = (a.attrs ?? {}) as Record<string, unknown>;
+  const ba = (b.attrs ?? {}) as Record<string, unknown>;
+
+  return (
+    aa.href === ba.href
+    && aa.target === ba.target
+    && aa.linktype === ba.linktype
+    && aa.anchor === ba.anchor
+    && aa.uuid === ba.uuid
+  );
+}
+
+/** Renders consecutive text nodes (from start to end) under a single link tag. */
+function renderLinkGroup(
+  children: StoryblokRichTextJson[],
+  start: number,
+  end: number,
+  linkMark: PMMark,
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  // Render each text node with only its non-link marks
+  let inner = '';
+  for (let i = start; i < end; i++) {
+    const node = children[i] as TextNode;
+    const innerMarks = node.marks?.filter(m => m.type !== 'link');
+    inner += renderTextNode(node, innerMarks, options);
+  }
+
+  const tag = resolveTag(linkMark);
+  if (!tag) {
+    return inner;
+  }
+
+  const htmlAttrs = buildHtmlAttrs(linkMark.type, linkMark.attrs);
+  return `<${tag}${htmlAttrs}>${inner}</${tag}>`;
+}
+
+// ============================================================================
+// Table Rendering
+// ============================================================================
+
+/** Renders table rows with thead/tbody grouping based on cell types. */
+function renderTableRows(
   rows: StoryblokRichTextJson[] | undefined,
   options?: StoryblokRichTextRendererOptions,
 ): string {
-  if (!rows || rows.length === 0) {
+  if (!rows?.length) {
     return '';
   }
 
-  const headerRows: StoryblokRichTextJson[] = [];
-  const bodyRows: StoryblokRichTextJson[] = [];
-
-  // Separate header rows from body rows
-  // Header rows must be contiguous at the start
-  let inHeader = true;
-  for (const row of rows) {
-    if (inHeader && isHeaderRow(row)) {
-      headerRows.push(row);
-    }
-    else {
-      inHeader = false;
-      bodyRows.push(row);
-    }
+  // Find where header rows end (contiguous tableHeader rows at start)
+  let headerEnd = 0;
+  while (headerEnd < rows.length && isTableHeaderRow(rows[headerEnd])) {
+    headerEnd++;
   }
 
   let result = '';
 
-  if (headerRows.length > 0) {
-    const headerContent = headerRows.map(row => renderNode(row, options)).join('');
-    result += `<thead>${headerContent}</thead>`;
+  // Render thead
+  if (headerEnd > 0) {
+    result += '<thead>';
+    for (let i = 0; i < headerEnd; i++) {
+      result += renderNode(rows[i], options);
+    }
+    result += '</thead>';
   }
 
-  if (bodyRows.length > 0) {
-    const bodyContent = bodyRows.map(row => renderNode(row, options)).join('');
-    result += `<tbody>${bodyContent}</tbody>`;
+  // Render tbody
+  if (headerEnd < rows.length) {
+    result += '<tbody>';
+    for (let i = headerEnd; i < rows.length; i++) {
+      result += renderNode(rows[i], options);
+    }
+    result += '</tbody>';
   }
 
   return result;
 }
 
-/** Renders static children structure (e.g., code_block with pre > code). */
-function renderStaticChildren(
-  staticChildren: readonly RenderSpec[],
-  attrs: Record<string, unknown>,
-  parentChildren: string = '',
+/** Checks if a row contains only tableHeader cells. */
+function isTableHeaderRow(row: StoryblokRichTextJson): boolean {
+  const cells = row.content;
+  if (!cells?.length) {
+    return false;
+  }
+
+  for (const cell of cells) {
+    if (cell.type !== 'tableHeader') {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Static Children (e.g., pre > code)
+
+/** Renders nested static structure defined in render map. */
+function renderStaticStructure(
+  specs: readonly RenderSpec[],
+  parentAttrs: Record<string, unknown> | undefined,
+  content: string,
 ): string {
-  const parts: string[] = [];
+  let result = '';
 
-  for (const child of staticChildren) {
-    const tag = child.tag;
-    const selfClosing = isSelfClosing(tag);
-    const mergedAttrs = { ...child.attrs, ...attrs };
-    const htmlAttrs = attrsToString(mergedAttrs);
+  for (const spec of specs) {
+    const { tag, children, attrs: specAttrs } = spec;
+    const mergedAttrs = { ...specAttrs, ...parentAttrs };
+    const htmlAttrs = attrsToHtmlString(mergedAttrs);
 
-    if (selfClosing) {
-      parts.push(`<${tag}${htmlAttrs} />`);
-      continue;
+    if (isSelfClosing(tag)) {
+      result += `<${tag}${htmlAttrs} />`;
     }
-
-    const children = child.children
-      ? renderStaticChildren(child.children, attrs, parentChildren)
-      : parentChildren;
-
-    parts.push(`<${tag}${htmlAttrs}>${children}</${tag}>`);
-  }
-
-  return parts.join('');
-}
-
-/** Renders a text node with its marks (bold, italic, etc.). */
-function renderText(node: PMNode & { type: 'text' }, options?: StoryblokRichTextRendererOptions): string {
-  const marks = node.marks;
-  // Escape HTML entities in text content to prevent XSS
-  let result = escapeHtml(node.text);
-
-  if (!marks || marks.length === 0) {
-    return result;
-  }
-
-  // Apply marks in order (innermost first)
-  for (const mark of marks) {
-    // Check for custom mark renderer
-    const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
-    if (customRenderer) {
-      // Pass mark props + children (the already-rendered inner content)
-      result = (customRenderer as (props: typeof mark & { children: string }) => string)({
-        ...mark,
-        children: result,
-      });
-      continue;
+    else {
+      const inner = children
+        ? renderStaticStructure(children, parentAttrs, content)
+        : content;
+      result += `<${tag}${htmlAttrs}>${inner}</${tag}>`;
     }
-
-    const tag = resolveTag(mark);
-    if (!tag) {
-      continue;
-    }
-
-    const attrs = processAttrs(mark.type, mark.attrs);
-    const styleString = attrs.style ? styleToString(attrs.style) : '';
-
-    const htmlAttrs = attrsToString({
-      ...attrs,
-      ...(styleString && { style: styleString }),
-    });
-    result = `<${tag}${htmlAttrs}>${result}</${tag}>`;
   }
 
   return result;
 }
 
-/** Converts an attributes object to an HTML attribute string. */
-function attrsToString(attrs: Record<string, unknown>): string {
-  const entries = Object.entries(attrs).filter(([, v]) => v != null);
+/** Builds HTML attribute string from node/mark type and attrs. */
+function buildHtmlAttrs(type: TiptapComponentName, attrs: Record<string, unknown> | undefined): string {
+  const processed = processAttrs(type, attrs, {
+    colspan: 'colspan',
+    rowspan: 'rowspan',
+  });
 
-  if (entries.length === 0) {
-    return '';
+  // Convert style object to string if present
+  const styleObj = processed.style as Record<string, AttrValue> | undefined;
+  const finalAttrs: Record<string, unknown> = { ...processed };
+
+  if (styleObj) {
+    finalAttrs.style = styleToString(styleObj);
   }
-  const attrParts: string[] = [];
-  for (const [key, value] of entries) {
-    attrParts.push(`${key}="${escapeAttr(value)}"`);
+
+  return attrsToHtmlString(finalAttrs);
+}
+
+/** Converts attribute record to HTML string: ` key="value" key2="value2"` */
+function attrsToHtmlString(attrs: Record<string, unknown>): string {
+  let result = '';
+
+  for (const key in attrs) {
+    const value = attrs[key];
+    if (value != null) {
+      result += ` ${key}="${escapeAttr(value)}"`;
+    }
   }
-  return ` ${attrParts.join(' ')}`;
+
+  return result;
 }

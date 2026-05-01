@@ -101,6 +101,12 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
     return `<${tag}${htmlAttrs} />`;
   }
 
+  // Handle table nodes specially to generate thead/tbody dynamically
+  if (node.type === 'table') {
+    const tableContent = renderTableContent(node.content, options);
+    return `<${tag}${htmlAttrs}>${tableContent}</${tag}>`;
+  }
+
   // Render children content
   const childContent = node.content
     ? node.content.map(child => renderNode(child, options)).join('')
@@ -120,7 +126,62 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
   return `<${tag}${htmlAttrs}>${childContent}</${tag}>`;
 }
 
-/** Renders static children structure (e.g., table > tbody, pre > code). */
+/**
+ * Checks if a table row contains header cells.
+ * A row is considered a header row if all its cells are tableHeader type.
+ */
+function isHeaderRow(row: StoryblokRichTextJson): boolean {
+  if (row.type !== 'tableRow' || !row.content || row.content.length === 0) {
+    return false;
+  }
+  return row.content.every(cell => cell.type === 'tableHeader');
+}
+
+/**
+ * Renders table content with proper thead/tbody grouping.
+ * Header rows (containing only tableHeader cells) go into thead,
+ * body rows (containing tableCell cells) go into tbody.
+ */
+function renderTableContent(
+  rows: StoryblokRichTextJson[] | undefined,
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  if (!rows || rows.length === 0) {
+    return '';
+  }
+
+  const headerRows: StoryblokRichTextJson[] = [];
+  const bodyRows: StoryblokRichTextJson[] = [];
+
+  // Separate header rows from body rows
+  // Header rows must be contiguous at the start
+  let inHeader = true;
+  for (const row of rows) {
+    if (inHeader && isHeaderRow(row)) {
+      headerRows.push(row);
+    }
+    else {
+      inHeader = false;
+      bodyRows.push(row);
+    }
+  }
+
+  let result = '';
+
+  if (headerRows.length > 0) {
+    const headerContent = headerRows.map(row => renderNode(row, options)).join('');
+    result += `<thead>${headerContent}</thead>`;
+  }
+
+  if (bodyRows.length > 0) {
+    const bodyContent = bodyRows.map(row => renderNode(row, options)).join('');
+    result += `<tbody>${bodyContent}</tbody>`;
+  }
+
+  return result;
+}
+
+/** Renders static children structure (e.g., code_block with pre > code). */
 function renderStaticChildren(
   staticChildren: readonly RenderSpec[],
   attrs: Record<string, unknown>,

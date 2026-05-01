@@ -57,7 +57,7 @@ describe('richtext', () => {
         },
       };
       const html = richTextRenderer(image);
-      expect(html).toBe('<img src="https://example.com/image.jpg" alt="An image" title="An image" />');
+      expect(html).toBe('<img id="123" src="https://example.com/image.jpg" alt="An image" title="An image" />');
     });
 
     it('should optimize image attrs', async () => {
@@ -82,7 +82,7 @@ describe('richtext', () => {
       todo: optimizeImage function to return a specific result for testing
       */
       const html = richTextRenderer(image, { optimizeImages: true });
-      expect(html).toBe('<img src="https://example.com/image.jpg" alt="An image" title="An image" />');
+      expect(html).toBe('<img id="123" src="https://example.com/image.jpg" alt="An image" title="An image" />');
     });
 
     it('should render an emoji', async () => {
@@ -429,12 +429,9 @@ describe('richtext', () => {
           },
         ],
       };
-      richTextRenderer(table);
+      const html = richTextRenderer(table);
 
-      /*
-      TODO: this needs to fixed at code level.
-      */
-      // expect(html).toBe('<table><thead><tr><th style="background-color: #F5F5F5;"><p>Header Cell</p></th><th><p>Another Header</p></th></tr></thead><tbody><tr><td><p>Regular Cell</p></td><td><p>Another Cell</p></td></tr></tbody></table>');
+      expect(html).toBe('<table><thead><tr><th colspan="1" rowspan="1"><p>Header Cell</p></th><th colspan="1" rowspan="1"><p>Another Header</p></th></tr></thead><tbody><tr><td colspan="1" rowspan="1"><p>Regular Cell</p></td><td colspan="1" rowspan="1"><p>Another Cell</p></td></tr></tbody></table>');
     });
   });
 
@@ -891,7 +888,7 @@ describe('text Alignment', () => {
     };
 
     const html = richTextRenderer(node);
-    expect(html).toBe('<table><tbody><tr><td style="width: 200px; background-color: #F5F5F5;"><p style="text-align: center;">Styled cell</p></td></tr></tbody></table>');
+    expect(html).toBe('<table><tbody><tr><td colspan="1" rowspan="1" style="width: 200px; background-color: #F5F5F5;"><p style="text-align: center;">Styled cell</p></td></tr></tbody></table>');
   });
 
   it('should handle empty paragraphs with text alignment', async () => {

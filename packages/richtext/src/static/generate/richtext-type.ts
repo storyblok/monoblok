@@ -25,6 +25,11 @@ interface ValibotObjectSchema {
   entries: Record<string, ValibotEntry>;
 }
 
+/** Checks if an entry is optional (without a default value). */
+function isOptionalWithoutDefault(entry: ValibotEntry): boolean {
+  return entry.type === 'optional' && entry.default === undefined;
+}
+
 /**
  * Converts a Valibot entry to a TypeScript type string.
  * Uses the `expects` property but fixes optional types with defaults.
@@ -32,6 +37,11 @@ interface ValibotObjectSchema {
 function entryToTypeString(entry: ValibotEntry): string {
   // For optional with default, use the wrapped type (not "type | undefined")
   if (entry.type === 'optional' && entry.default !== undefined && entry.wrapped) {
+    return entryToTypeString(entry.wrapped);
+  }
+
+  // For optional without default, unwrap and return inner type (optionality handled via `?`)
+  if (entry.type === 'optional' && entry.default === undefined && entry.wrapped) {
     return entryToTypeString(entry.wrapped);
   }
 
@@ -62,7 +72,11 @@ function entryToTypeString(entry: ValibotEntry): string {
 /** Generates inline type string from a Valibot object schema. */
 function schemaToInlineType(schema: ValibotObjectSchema): string {
   const props = Object.entries(schema.entries)
-    .map(([key, entry]) => `${key}: ${entryToTypeString(entry)};`)
+    .map(([key, entry]) => {
+      const isOptional = isOptionalWithoutDefault(entry);
+      const propKey = isOptional ? `${key}?` : key;
+      return `${propKey}: ${entryToTypeString(entry)};`;
+    })
     .join(' ');
   return `{ ${props} }`;
 }

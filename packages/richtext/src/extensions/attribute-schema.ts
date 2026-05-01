@@ -6,6 +6,7 @@ const ParagraphSchema = v.object({
 });
 const HeadingSchema = v.object({
   textAlign: v.nullable(v.picklist(['left', 'center', 'right', 'justify'])),
+  level: v.optional(v.picklist([1, 2, 3, 4, 5, 6]), 1),
 });
 const CodeBlockSchema = v.object({
   class: v.nullable(v.string()),
@@ -16,13 +17,19 @@ const OrderedListSchema = v.object({
 const TableCellSchema = v.object({
   colspan: v.optional(v.number(), 1),
   rowspan: v.optional(v.number(), 1),
-  colwidth: v.array(v.number()),
-  backgroundColor: v.nullable(v.string()),
+  colwidth: v.optional(
+    v.nullable(v.array(v.number())),
+  ),
+  backgroundColor: v.optional(
+    v.nullable(v.string()),
+  ),
 });
 const TableHeaderSchema = v.object({
   colspan: v.optional(v.number(), 1),
   rowspan: v.optional(v.number(), 1),
-  colwidth: v.array(v.number()),
+  colwidth: v.optional(
+    v.nullable(v.array(v.number())),
+  ),
 });
 const ImageSchema = v.object({
   id: v.nullable(v.number()),
@@ -46,7 +53,7 @@ const EmojiSchema = v.object({
 
 /** Attribute schema for mark extensions */
 const LinkSchema = v.object({
-  href: v.string(),
+  href: v.nullable(v.string()),
   uuid: v.nullable(v.string()),
   anchor: v.nullable(v.string()),
   target: v.nullable(
@@ -57,20 +64,26 @@ const LinkSchema = v.object({
       '_top',
     ]),
   ),
-  linktype: v.picklist([
+  linktype: v.nullable(v.picklist([
     'story',
     'url',
     'email',
     'asset',
-  ]),
+  ])),
+  custom: v.optional(
+    v.record(
+      v.string(),
+      v.unknown(),
+    ),
+  ),
 });
 const HighlightSchema = v.object({
   color: v.string(),
 });
 const TextStyleSchema = v.object({
-  color: v.nullable(v.string()),
-  id: v.nullable(v.string()),
-  class: v.nullable(v.string()),
+  color: v.optional(v.nullable(v.string())),
+  id: v.optional(v.nullable(v.string())),
+  class: v.optional(v.nullable(v.string())),
 });
 const AnchorSchema = v.object({
   id: v.string(),

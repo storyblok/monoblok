@@ -42,6 +42,7 @@ describe('richtext', () => {
       const image: Extract<StoryblokRichTextJson, { type: 'image' }> = {
         type: 'image',
         attrs: {
+          id: 123,
           src: 'https://example.com/image.jpg',
           alt: 'An image',
           copyright: '© Storyblok',
@@ -49,6 +50,7 @@ describe('richtext', () => {
           title: 'An image',
           meta_data: {
             alt: 'An image',
+            title: 'An image',
             copyright: '© Storyblok',
             source: 'Storyblok',
           },
@@ -62,12 +64,17 @@ describe('richtext', () => {
       const image: Extract<StoryblokRichTextJson, { type: 'image' }> = {
         type: 'image',
         attrs: {
+          id: 123,
           src: 'https://example.com/image.jpg',
           alt: 'An image',
+          copyright: '© Storyblok',
+          source: 'Storyblok',
           title: 'An image',
           meta_data: {
             alt: 'An image',
             title: 'An image',
+            copyright: '© Storyblok',
+            source: 'Storyblok',
           },
         },
       };
@@ -456,6 +463,8 @@ describe('richtext', () => {
           {
             type: 'link',
             attrs: {
+              uuid: null,
+              anchor: null,
               href: 'https://example.com',
               target: '_blank',
               linktype: 'url',
@@ -475,6 +484,7 @@ describe('richtext', () => {
           {
             type: 'link',
             attrs: {
+              uuid: null,
               href: '/home',
               target: '_self',
               anchor: 'anchor',
@@ -497,6 +507,9 @@ describe('richtext', () => {
             attrs: {
               href: 'jane@example.com',
               linktype: 'email',
+              uuid: null,
+              anchor: null,
+              target: null,
             },
           },
         ],
@@ -515,6 +528,9 @@ describe('richtext', () => {
             attrs: {
               href: 'mailto:hey@hoe.dev',
               linktype: 'email',
+              uuid: null,
+              anchor: null,
+              target: null,
             },
           },
         ],
@@ -555,6 +571,9 @@ describe('richtext', () => {
             attrs: {
               href: 'https://a.storyblok.com/f/67536/400x303/ccbe9ca7b3/nuxt-logo.png',
               linktype: 'asset',
+              uuid: null,
+              anchor: null,
+              target: null,
             },
           },
         ],
@@ -572,6 +591,10 @@ describe('richtext', () => {
             type: 'link',
             attrs: {
               linktype: 'url',
+              uuid: null,
+              anchor: null,
+              target: null,
+              href: null,
             },
           },
         ],
@@ -610,6 +633,10 @@ describe('richtext', () => {
             type: 'link',
             attrs: {
               href: 'https://url.com',
+              linktype: null,
+              uuid: null,
+              anchor: null,
+              target: null,
             },
           },
         ],
@@ -840,6 +867,8 @@ describe('text Alignment', () => {
               attrs: {
                 colwidth: [200],
                 backgroundColor: '#F5F5F5',
+                colspan: 1,
+                rowspan: 1,
               },
               content: [
                 {
@@ -901,7 +930,7 @@ describe('text Alignment', () => {
         {
           type: 'text',
           text: 'link',
-          marks: [{ type: 'link', attrs: { href: '#' } }],
+          marks: [{ type: 'link', attrs: { href: '#', linktype: null, uuid: null, anchor: null, target: null } }],
         },
       ],
     };
@@ -1098,7 +1127,7 @@ describe('renderComponent (blok extension option)', () => {
         content: [
           {
             type: 'heading',
-            attrs: { level: 2 },
+            attrs: { level: 2, textAlign: null },
             content: [{ type: 'text', text: 'Title' }],
           },
           {

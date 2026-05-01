@@ -2,7 +2,7 @@ import { escapeHtml } from '../utils';
 import { escapeAttr, processAttrs } from './attribute';
 import { styleToString } from './style';
 import type { RenderSpec, StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
-import type { PMNode } from './types.generated';
+import type { PMMark, PMNode } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
 
 /**
@@ -107,9 +107,9 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
     return `<${tag}${htmlAttrs}>${tableContent}</${tag}>`;
   }
 
-  // Render children content
+  // Render children content with mark merging for text nodes
   const childContent = node.content
-    ? node.content.map(child => renderNode(child, options)).join('')
+    ? renderChildrenWithMarkMerging(node.content, options)
     : '';
 
   // Handle static children (e.g., code_block with pre > code structure)
@@ -124,6 +124,172 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
   }
 
   return `<${tag}${htmlAttrs}>${childContent}</${tag}>`;
+}
+
+/**
+ * Finds the link mark in a text node's marks array.
+ */
+function findLinkMark(node: StoryblokRichTextJson): PMMark | null {
+  if (node.type !== 'text' || !node.marks) {
+    return null;
+  }
+  return node.marks.find(m => m.type === 'link') ?? null;
+}
+
+/**
+ * Compares two link marks to check if they have the same attributes.
+ */
+function linkMarksEqual(a: PMMark | null, b: PMMark | null): boolean {
+  if (a === null && b === null) {
+    return true;
+  }
+  if (a === null || b === null) {
+    return false;
+  }
+  if (a.type !== 'link' || b.type !== 'link') {
+    return false;
+  }
+
+  const aAttrs = (a.attrs ?? {}) as Record<string, unknown>;
+  const bAttrs = (b.attrs ?? {}) as Record<string, unknown>;
+
+  // Compare relevant link attributes
+  return (
+    aAttrs.href === bAttrs.href
+    && aAttrs.target === bAttrs.target
+    && aAttrs.linktype === bAttrs.linktype
+    && aAttrs.anchor === bAttrs.anchor
+    && aAttrs.uuid === bAttrs.uuid
+  );
+}
+
+/**
+ * Renders children with mark merging for adjacent text nodes sharing the same link.
+ * Groups consecutive text nodes with identical link marks and renders them
+ * under a single <a> tag.
+ */
+function renderChildrenWithMarkMerging(
+  children: StoryblokRichTextJson[],
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < children.length) {
+    const node = children[i];
+    const linkMark = findLinkMark(node);
+
+    // If this text node has a link mark, try to merge with subsequent nodes
+    if (linkMark) {
+      const group: StoryblokRichTextJson[] = [node];
+      let j = i + 1;
+
+      // Collect all adjacent text nodes with the same link mark
+      while (j < children.length) {
+        const nextNode = children[j];
+        const nextLinkMark = findLinkMark(nextNode);
+
+        if (nextLinkMark && linkMarksEqual(linkMark, nextLinkMark)) {
+          group.push(nextNode);
+          j++;
+        }
+        else {
+          break;
+        }
+      }
+
+      // Render the group under a single link tag
+      result.push(renderLinkGroup(group, linkMark, options));
+      i = j;
+    }
+    else {
+      // No link mark, render normally
+      result.push(renderNode(node, options));
+      i++;
+    }
+  }
+
+  return result.join('');
+}
+
+/**
+ * Renders a group of text nodes under a single link tag.
+ * Each text node's inner marks (bold, italic, etc.) are preserved.
+ */
+function renderLinkGroup(
+  nodes: StoryblokRichTextJson[],
+  linkMark: PMMark,
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  // Render inner content: each text node with its non-link marks
+  const innerContent = nodes.map((node) => {
+    if (node.type !== 'text') {
+      return renderNode(node, options);
+    }
+
+    // Filter out the link mark, keep only inner marks
+    const innerMarks = node.marks?.filter(m => m.type !== 'link') ?? [];
+
+    // Render text with only inner marks
+    return renderTextWithMarks(node as PMNode & { type: 'text' }, innerMarks, options);
+  }).join('');
+
+  // Wrap with link tag
+  const attrs = processAttrs(linkMark.type, linkMark.attrs);
+  const styleString = attrs.style ? styleToString(attrs.style) : '';
+  const htmlAttrs = attrsToString({
+    ...attrs,
+    ...(styleString && { style: styleString }),
+  });
+
+  const tag = resolveTag(linkMark);
+  if (!tag) {
+    return innerContent;
+  }
+
+  return `<${tag}${htmlAttrs}>${innerContent}</${tag}>`;
+}
+
+/**
+ * Renders a text node with a specific set of marks.
+ */
+function renderTextWithMarks(
+  node: PMNode & { type: 'text' },
+  marks: PMMark[],
+  options?: StoryblokRichTextRendererOptions,
+): string {
+  let result = escapeHtml(node.text);
+
+  if (marks.length === 0) {
+    return result;
+  }
+
+  // Apply marks in order (innermost first)
+  for (const mark of marks) {
+    const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
+    if (customRenderer) {
+      result = (customRenderer as (props: typeof mark & { children: string }) => string)({
+        ...mark,
+        children: result,
+      });
+      continue;
+    }
+
+    const tag = resolveTag(mark);
+    if (!tag) {
+      continue;
+    }
+
+    const attrs = processAttrs(mark.type, mark.attrs);
+    const styleString = attrs.style ? styleToString(attrs.style) : '';
+    const htmlAttrs = attrsToString({
+      ...attrs,
+      ...(styleString && { style: styleString }),
+    });
+    result = `<${tag}${htmlAttrs}>${result}</${tag}>`;
+  }
+
+  return result;
 }
 
 /**

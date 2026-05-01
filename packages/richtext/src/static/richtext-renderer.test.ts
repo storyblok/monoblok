@@ -1196,61 +1196,61 @@ describe('renderComponent (blok extension option)', () => {
     });
   });
 
-  // describe('mark merging (adjacent text nodes with shared marks)', () => {
-  //   it('should merge link with bold and italic inner marks', () => {
-  //     const doc: StoryblokRichTextJson = {
-  //       type: 'doc',
-  //       content: [{
-  //         type: 'paragraph',
-  //         content: [
-  //           { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-  //           { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-  //           { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-  //           { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-  //           { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url' } }] },
-  //         ],
-  //       }],
-  //     };
+  describe('mark merging (adjacent text nodes with shared marks)', () => {
+    it('should merge link with bold and italic inner marks', () => {
+      const doc: StoryblokRichTextJson = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'normal ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'text', text: 'bold', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/url', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'text', text: ' and ', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'text', text: 'italic', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/url', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'text', text: ' end', marks: [{ type: 'link', attrs: { href: '/url', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+          ],
+        }],
+      };
 
-  //     const html = richTextRenderer(doc);
-  //     expect(html).toBe('<p><a href="/url">normal <strong>bold</strong> and <em>italic</em> end</a></p>');
-  //   });
+      const html = richTextRenderer(doc);
+      expect(html).toBe('<p><a href="/url">normal <strong>bold</strong> and <em>italic</em> end</a></p>');
+    });
 
-  //   it('should handle non-text node breaking a link group', () => {
-  //     const doc: StoryblokRichTextJson = {
-  //       type: 'doc',
-  //       content: [{
-  //         type: 'paragraph',
-  //         content: [
-  //           { type: 'text', text: 'Before ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-  //           { type: 'hard_break' },
-  //           { type: 'text', text: 'After', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url' } }] },
-  //         ],
-  //       }],
-  //     };
+    it('should handle non-text node breaking a link group', () => {
+      const doc: StoryblokRichTextJson = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Before ', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'hard_break' },
+            { type: 'text', text: 'After', marks: [{ type: 'link', attrs: { href: '/x', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+          ],
+        }],
+      };
 
-  //     const html = richTextRenderer(doc);
-  //     expect(html).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
-  //   });
+      const html = richTextRenderer(doc);
+      expect(html).toBe('<p><a href="/x">Before </a><br /><a href="/x">After</a></p>');
+    });
 
-  //   it('should separate groups when any link attr differs', () => {
-  //     const doc: StoryblokRichTextJson = {
-  //       type: 'doc',
-  //       content: [{
-  //         type: 'paragraph',
-  //         content: [
-  //           // Group 1: href /a
-  //           { type: 'text', text: 'A', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
-  //           { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/a', linktype: 'url' } }] },
-  //           // Group 2: same href, different target → separate group
-  //           { type: 'text', text: 'C', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
-  //           { type: 'text', text: 'D', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank' } }] },
-  //         ],
-  //       }],
-  //     };
+    it('should separate groups when any link attr differs', () => {
+      const doc: StoryblokRichTextJson = {
+        type: 'doc',
+        content: [{
+          type: 'paragraph',
+          content: [
+            // Group 1: href /a
+            { type: 'text', text: 'A', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            { type: 'text', text: 'B', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: '/a', linktype: 'url', uuid: null, anchor: null, target: null } }] },
+            // Group 2: same href, different target → separate group
+            { type: 'text', text: 'C', marks: [{ type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank', uuid: null, anchor: null } }] },
+            { type: 'text', text: 'D', marks: [{ type: 'italic' }, { type: 'link', attrs: { href: '/a', linktype: 'url', target: '_blank', uuid: null, anchor: null } }] },
+          ],
+        }],
+      };
 
-  //     const html = richTextRenderer(doc);
-  //     expect(html).toBe('<p><a href="/a">A<strong>B</strong></a><a href="/a" target="_blank">C<em>D</em></a></p>');
-  //   });
-  // });
+      const html = richTextRenderer(doc);
+      expect(html).toBe('<p><a href="/a">A<strong>B</strong></a><a href="/a" target="_blank">C<em>D</em></a></p>');
+    });
+  });
 });

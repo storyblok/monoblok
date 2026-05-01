@@ -17,7 +17,7 @@ import type { StoryblokRichTextImageOptimizationOptions } from '../types';
 import { cleanObject } from '../utils';
 import { computeTableCellAttrs, processBlockAttrs } from './utils';
 import TextAlign from '@tiptap/extension-text-align';
-import { emojiAttributes, imageAttributes } from './attribute-schema';
+import { nodeSchemas } from './attribute-schema';
 
 // Re-export unmodified extensions
 export { Details, DetailsContent, DetailsSummary, Document, Text };
@@ -65,12 +65,7 @@ export const StoryblokBulletList = BulletList.extend({
 export const StoryblokOrderedList = OrderedList.extend({
   name: 'ordered_list',
   addAttributes() {
-    return {
-      ...this.parent?.(),
-      order: {
-        default: 1,
-      },
-    };
+    return nodeSchemas.ordered_list.attributes;
   },
   addOptions() {
     return { ...this.parent!(), itemTypeName: 'list_item' };
@@ -93,11 +88,7 @@ export const StoryblokListItem = ListItem.extend({
 export const StoryblokCodeBlock = CodeBlock.extend({
   name: 'code_block',
   addAttributes() {
-    return {
-      class: {
-        default: null,
-      },
-    };
+    return nodeSchemas.code_block.attributes;
   },
   renderHTML({ node, HTMLAttributes }) {
     const { language: _, ...rest } = HTMLAttributes;
@@ -124,22 +115,13 @@ export const StoryblokTable = Table.extend({
 export const StoryblokTableCell = TableCell.extend({
   addAttributes() {
     return {
-      ...this.parent?.(),
-      colspan: {
-        default: 1,
-      },
-      rowspan: {
-        default: 1,
-      },
+      ...nodeSchemas.tableCell.attributes,
       colwidth: {
         default: null,
         parseHTML: (element: HTMLElement) => {
           const colwidth = element.getAttribute('colwidth');
           return colwidth ? colwidth.split(',').map(Number) : null;
         },
-      },
-      backgroundColor: {
-        default: null,
       },
     };
   },
@@ -161,7 +143,7 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
     return { ...this.parent?.(), optimizeImages: false };
   },
   addAttributes() {
-    return imageAttributes;
+    return nodeSchemas.image.attributes;
   },
   renderHTML({ HTMLAttributes }) {
     const { src, alt, title, srcset, sizes } = HTMLAttributes;
@@ -181,7 +163,7 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
 // Emoji with custom renderHTML
 export const StoryblokEmoji = Emoji.extend({
   addAttributes() {
-    return emojiAttributes;
+    return nodeSchemas.emoji.attributes;
   },
   renderHTML({ HTMLAttributes }) {
     return ['img', {

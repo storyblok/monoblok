@@ -11,7 +11,7 @@ import { TextStyleKit } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { attrsToStyle, cleanObject } from '../utils';
 import { getAllowedStylesForElement, resolveStoryblokLink, supportedAttributesByTagName } from './utils';
-import { linkAttributes } from './attribute-schema';
+import { markSchemas } from './attribute-schema';
 
 // Unmodified mark extensions
 export { Bold, Code, Italic, Strike, Subscript, Superscript, TextStyleKit, Underline };
@@ -31,7 +31,7 @@ export const StoryblokHighlight = Highlight.extend({
 export const StoryblokLink = LinkOriginal.extend({
   addAttributes() {
     return {
-      ...linkAttributes,
+      ...markSchemas.link.attributes,
       href: {
         parseHTML: (element: HTMLElement) => element.getAttribute('href'),
       },
@@ -83,9 +83,7 @@ export const StoryblokLinkWithCustomAttributes = StoryblokLink.extend({
 export const StoryblokAnchor = Mark.create({
   name: 'anchor',
   addAttributes() {
-    return {
-      id: { default: null },
-    };
+    return markSchemas.anchor.attributes;
   },
   parseHTML() {
     return [{ tag: 'span[id]' }];
@@ -134,11 +132,7 @@ export const StoryblokStyled = Mark.create<StyledOptions>({
 export const StoryblokTextStyle = Mark.create({
   name: 'textStyle',
   addAttributes() {
-    return {
-      class: { default: null },
-      id: { default: null },
-      color: { default: null },
-    };
+    return markSchemas.textStyle.attributes;
   },
   parseHTML() {
     return [{

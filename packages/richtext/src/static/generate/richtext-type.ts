@@ -1,8 +1,71 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import type { AttributeSpec, MarkType, NodeType, Schema } from 'prosemirror-model';
+import { markSchemas, nodeSchemas } from '../../extensions/attribute-schema';
 import { getStoryblokExtensions } from '../../extensions';
 import { hints } from './type-hints';
+
+/** Keys derived from nodeSchemas/markSchemas objects. */
+const nodeSchemaKeys = new Set(Object.keys(nodeSchemas));
+const markSchemaKeys = new Set(Object.keys(markSchemas));
+
+/** Valibot schema entry type. */
+interface ValibotEntry {
+  type: string;
+  expects: string;
+  default?: unknown;
+  wrapped?: ValibotEntry;
+  item?: ValibotEntry;
+  entries?: Record<string, ValibotEntry>;
+}
+
+/** Valibot object schema type. */
+interface ValibotObjectSchema {
+  type: 'object';
+  entries: Record<string, ValibotEntry>;
+}
+
+/**
+ * Converts a Valibot entry to a TypeScript type string.
+ * Uses the `expects` property but fixes optional types with defaults.
+ */
+function entryToTypeString(entry: ValibotEntry): string {
+  // For optional with default, use the wrapped type (not "type | undefined")
+  if (entry.type === 'optional' && entry.default !== undefined && entry.wrapped) {
+    return entryToTypeString(entry.wrapped);
+  }
+
+  // For nullable, wrap the inner type with "| null"
+  if (entry.type === 'nullable' && entry.wrapped) {
+    return `${entryToTypeString(entry.wrapped)} | null`;
+  }
+
+  // For nested objects, recurse
+  if (entry.type === 'object' && entry.entries) {
+    return schemaToInlineType(entry as ValibotObjectSchema);
+  }
+
+  // For arrays, get item type
+  if (entry.type === 'array' && entry.item) {
+    return `${entryToTypeString(entry.item)}[]`;
+  }
+
+  // For picklist, expects already has the union format
+  if (entry.type === 'picklist') {
+    return entry.expects;
+  }
+
+  // Default: use expects (string, number, boolean, etc.)
+  return entry.expects;
+}
+
+/** Generates inline type string from a Valibot object schema. */
+function schemaToInlineType(schema: ValibotObjectSchema): string {
+  const props = Object.entries(schema.entries)
+    .map(([key, entry]) => `${key}: ${entryToTypeString(entry)};`)
+    .join(' ');
+  return `{ ${props} }`;
+}
 
 /**
  * Converts a schema attrs object to a TS property string (with type from hints)
@@ -23,17 +86,34 @@ function genAttrsType(attrs: Record<string, AttributeSpec> | undefined): string 
   out += '}';
   return out;
 }
+
 /** Generate all node attribute interfaces and helpers */
 function genAttributeTypes(schema: Schema) {
   let nodeAttrs = '';
   let markAttrs = '';
 
   for (const [name, type] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    nodeAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+    // Use schema type if available, otherwise generate from hints
+    if (nodeSchemaKeys.has(name) && name in nodeSchemas) {
+      const entry = nodeSchemas[name as keyof typeof nodeSchemas];
+      const inlineType = schemaToInlineType(entry.schema as unknown as ValibotObjectSchema);
+      nodeAttrs += `  ${name}: ${inlineType};\n`;
+    }
+    else {
+      nodeAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+    }
   }
 
   for (const [name, type] of Object.entries(schema.marks) as [string, MarkType][]) {
-    markAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+    // Use schema type if available, otherwise generate from hints
+    if (markSchemaKeys.has(name) && name in markSchemas) {
+      const entry = markSchemas[name as keyof typeof markSchemas];
+      const inlineType = schemaToInlineType(entry.schema as unknown as ValibotObjectSchema);
+      markAttrs += `  ${name}: ${inlineType};\n`;
+    }
+    else {
+      markAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+    }
   }
 
   return { nodeAttrs, markAttrs };
@@ -69,9 +149,11 @@ export function generateTypes() {
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   const attributeTypes = genAttributeTypes(schema);
+
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
-  output += `import type { SbBlokData } from './types';\n\n`;
+  output += `import type { SbBlokData } from './types';\n`;
+  output += '\n';
   // --- Attribute types
   output += '/** Attribute types for all Tiptap node extensions */\n';
   output += 'export interface TiptapNodeAttributes {\n';

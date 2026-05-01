@@ -1,31 +1,51 @@
 import * as v from 'valibot'; // 1.31 kB
 
-export const ImageSchema = v.object({
-  id: v.number(),
-  alt: v.string(),
-  src: v.string(),
-  title: v.string(),
-  source: v.string(),
-  copyright: v.string(),
-  meta_data: v.object({
-    alt: v.string(),
-    title: v.string(),
-    source: v.string(),
-    copyright: v.string(),
-  }),
+/** Attribute schema for node extensions */
+const ParagraphSchema = v.object({
+  textAlign: v.nullable(v.picklist(['left', 'center', 'right', 'justify'])),
 });
-export type StoryblokImageAttrs =
-  v.InferOutput<typeof ImageSchema>;
-
-export const EmojiSchema = v.object({
+const HeadingSchema = v.object({
+  textAlign: v.nullable(v.picklist(['left', 'center', 'right', 'justify'])),
+});
+const CodeBlockSchema = v.object({
+  class: v.nullable(v.string()),
+});
+const OrderedListSchema = v.object({
+  order: v.optional(v.number(), 1),
+});
+const TableCellSchema = v.object({
+  colspan: v.optional(v.number(), 1),
+  rowspan: v.optional(v.number(), 1),
+  colwidth: v.array(v.number()),
+  backgroundColor: v.nullable(v.string()),
+});
+const TableHeaderSchema = v.object({
+  colspan: v.optional(v.number(), 1),
+  rowspan: v.optional(v.number(), 1),
+  colwidth: v.array(v.number()),
+});
+const ImageSchema = v.object({
+  id: v.nullable(v.number()),
+  alt: v.nullable(v.string()),
+  src: v.string(),
+  title: v.nullable(v.string()),
+  source: v.nullable(v.string()),
+  copyright: v.nullable(v.string()),
+  meta_data: v.nullable(v.object({
+    alt: v.nullable(v.string()),
+    title: v.nullable(v.string()),
+    source: v.nullable(v.string()),
+    copyright: v.nullable(v.string()),
+  })),
+});
+const EmojiSchema = v.object({
   name: v.string(),
   emoji: v.string(),
   fallbackImage: v.string(),
 });
-export type StoryblokEmojiAttrs =
-  v.InferOutput<typeof EmojiSchema>;
 
-export const LinkSchema = v.object({
+/** Attribute schema for mark extensions */
+const LinkSchema = v.object({
   href: v.string(),
   uuid: v.nullable(v.string()),
   anchor: v.nullable(v.string()),
@@ -44,8 +64,22 @@ export const LinkSchema = v.object({
     'asset',
   ]),
 });
-export type StoryblokLinkAttrs =
-  v.InferOutput<typeof LinkSchema>;
+const HighlightSchema = v.object({
+  color: v.string(),
+});
+const TextStyleSchema = v.object({
+  color: v.nullable(v.string()),
+  id: v.nullable(v.string()),
+  class: v.nullable(v.string()),
+});
+const AnchorSchema = v.object({
+  id: v.string(),
+});
+const StyledSchema = v.object({
+  class: v.nullable(v.string()),
+});
+
+/** Helper to create Tiptap extension attributes from a Valibot schema. */
 const createAttributes = (
   schema: { entries: Record<string, unknown> },
 ) =>
@@ -58,6 +92,62 @@ const createAttributes = (
     ]),
   );
 
-export const imageAttributes = createAttributes(ImageSchema);
-export const emojiAttributes = createAttributes(EmojiSchema);
-export const linkAttributes = createAttributes(LinkSchema);
+/** Node extension schemas with runtime attributes. */
+export const nodeSchemas = {
+  paragraph: {
+    schema: ParagraphSchema,
+    attributes: createAttributes(ParagraphSchema),
+  },
+  heading: {
+    schema: HeadingSchema,
+    attributes: createAttributes(HeadingSchema),
+  },
+  code_block: {
+    schema: CodeBlockSchema,
+    attributes: createAttributes(CodeBlockSchema),
+  },
+  ordered_list: {
+    schema: OrderedListSchema,
+    attributes: createAttributes(OrderedListSchema),
+  },
+  tableCell: {
+    schema: TableCellSchema,
+    attributes: createAttributes(TableCellSchema),
+  },
+  tableHeader: {
+    schema: TableHeaderSchema,
+    attributes: createAttributes(TableHeaderSchema),
+  },
+  image: {
+    schema: ImageSchema,
+    attributes: createAttributes(ImageSchema),
+  },
+  emoji: {
+    schema: EmojiSchema,
+    attributes: createAttributes(EmojiSchema),
+  },
+} as const;
+
+/** Mark extension schemas with runtime attributes. */
+export const markSchemas = {
+  link: {
+    schema: LinkSchema,
+    attributes: createAttributes(LinkSchema),
+  },
+  highlight: {
+    schema: HighlightSchema,
+    attributes: createAttributes(HighlightSchema),
+  },
+  textStyle: {
+    schema: TextStyleSchema,
+    attributes: createAttributes(TextStyleSchema),
+  },
+  anchor: {
+    schema: AnchorSchema,
+    attributes: createAttributes(AnchorSchema),
+  },
+  styled: {
+    schema: StyledSchema,
+    attributes: createAttributes(StyledSchema),
+  },
+} as const;

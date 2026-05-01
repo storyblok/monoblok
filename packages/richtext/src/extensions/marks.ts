@@ -11,6 +11,7 @@ import { TextStyleKit } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { attrsToStyle, cleanObject } from '../utils';
 import { getAllowedStylesForElement, resolveStoryblokLink, supportedAttributesByTagName } from './utils';
+import { linkAttributes } from './attribute-schema';
 
 // Unmodified mark extensions
 export { Bold, Code, Italic, Strike, Subscript, Superscript, TextStyleKit, Underline };
@@ -30,6 +31,7 @@ export const StoryblokHighlight = Highlight.extend({
 export const StoryblokLink = LinkOriginal.extend({
   addAttributes() {
     return {
+      ...linkAttributes,
       href: {
         parseHTML: (element: HTMLElement) => element.getAttribute('href'),
       },

@@ -17,6 +17,7 @@ import type { StoryblokRichTextImageOptimizationOptions } from '../types';
 import { cleanObject } from '../utils';
 import { computeTableCellAttrs, processBlockAttrs } from './utils';
 import TextAlign from '@tiptap/extension-text-align';
+import { emojiAttributes, imageAttributes } from './attribute-schema';
 
 // Re-export unmodified extensions
 export { Details, DetailsContent, DetailsSummary, Document, Text };
@@ -159,6 +160,9 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
   addOptions() {
     return { ...this.parent?.(), optimizeImages: false };
   },
+  addAttributes() {
+    return imageAttributes;
+  },
   renderHTML({ HTMLAttributes }) {
     const { src, alt, title, srcset, sizes } = HTMLAttributes;
     let finalSrc = src;
@@ -176,18 +180,19 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
 
 // Emoji with custom renderHTML
 export const StoryblokEmoji = Emoji.extend({
+  addAttributes() {
+    return emojiAttributes;
+  },
   renderHTML({ HTMLAttributes }) {
-    return ['span', {
-      'data-type': 'emoji',
-      'data-name': HTMLAttributes.name,
-      'data-emoji': HTMLAttributes.emoji,
-    }, ['img', {
+    return ['img', {
       src: HTMLAttributes.fallbackImage,
       alt: HTMLAttributes.alt,
       style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
       draggable: 'false',
       loading: 'lazy',
-    }]];
+      emoji: HTMLAttributes.emoji,
+      name: HTMLAttributes.name,
+    }];
   },
 });
 

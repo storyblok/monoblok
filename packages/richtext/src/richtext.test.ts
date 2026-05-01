@@ -182,10 +182,11 @@ describe('richtext', () => {
         attrs: {
           emoji: '🚀',
           name: 'smile',
+          fallbackImage: 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/1f60b.png',
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="🚀"><img style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy"></span>');
+      expect(html).toBe('<img src="https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/1f60b.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" emoji="🚀" name="smile">');
     });
 
     it('should render a table', async () => {
@@ -914,7 +915,7 @@ describe('richtext', () => {
         },
       };
       const html = render(emoji as unknown as StoryblokRichTextNode<string>);
-      expect(html).toBe('<span data-type="emoji" data-name="smile" data-emoji="😊" key="span-0"><img src="smile.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" key="img-0"></span>');
+      expect(html).toBe('<img src="smile.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top" draggable="false" loading="lazy" emoji="😊" name="smile" key="img-0">');
     });
 
     it('should render a code block with keys', () => {

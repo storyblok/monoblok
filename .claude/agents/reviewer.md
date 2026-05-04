@@ -20,16 +20,6 @@ You have persistent memory in `.claude/agent-memory-local/reviewer/`. Use it to:
 
 Read your `MEMORY.md` at the start of each review. Update it when you discover patterns worth remembering.
 
-## Context
-
-Read the relevant context files based on the packages being reviewed:
-
-- `.claude/context/cli-architecture.md` - CLI patterns (UI module, logger, reporter, session)
-- `.claude/context/testing-patterns.md` - Testing conventions (memfs, msw, Windows compat)
-- `.claude/context/storyrails.md` - When reviewing API interactions, verify correct error handling and request/response formats against backend specs
-- `.claude/context/storyfront.md` - When reviewing bridge protocol or visual editor changes
-- `.claude/context/docs-platform.md` - When reviewing documentation changes
-
 ## Review methodology
 
 ### Phase 1: Code review

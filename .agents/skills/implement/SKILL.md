@@ -27,17 +27,6 @@ Implement the approved plan: $ARGUMENTS
 - Do NOT add comments/docs unless specifically requested
 - Preserve existing code style and patterns
 
-## Context
-
-Read the relevant context files based on what you're implementing:
-
-- `.claude/context/cli-architecture.md` - CLI patterns (commands, session, errors, UI module, spinners)
-- `.claude/context/testing-patterns.md` - Testing conventions (memfs, msw, Windows compat)
-- `.claude/context/storyrails.md` - When implementing API interactions, verify endpoints and error handling
-- `.claude/context/storyfront.md` - When implementing bridge protocol or visual editor changes
-- `.claude/context/storyblok-kotlin.md` - When implementing Kotlin/Android SDK changes
-- `.claude/context/storyblok-swift.md` - When implementing Swift/Apple SDK changes
-
 ## Output Format
 
 ```markdown

@@ -20,30 +20,6 @@ You have persistent memory in `.claude/agent-memory-local/investigator/`. Use it
 
 Read your `MEMORY.md` at the start of each investigation. Update it when you discover something that would help future investigations.
 
-## Context
-
-Read the relevant context files based on the affected package:
-
-**Always relevant:**
-- `.claude/context/cli-architecture.md` - CLI command structure, patterns, conventions
-- `.claude/context/testing-patterns.md` - Testing utilities (memfs, msw, Windows compat)
-
-**When the issue involves API behavior or backend interaction:**
-- `.claude/context/storyrails.md` - Backend API reference (endpoints, models, error codes)
-- Explore the storyrails repo: controllers (`app/controllers/v1/`), models (`app/models/`), services (`app/services/`), serializers (`app/serializers/v1/`)
-
-**When the issue involves the visual editor, bridge protocol, or frontend rendering:**
-- `.claude/context/storyfront.md` - Storyblok UI frontend (Vue 3, editor, bridge protocol)
-- Explore the storyfront repo for bridge and editor code
-
-**When the issue involves SDK docs or the documentation platform:**
-- `.claude/context/docs-platform.md` - Docs site structure, navigation, versioning
-
-**When the issue involves mobile/multiplatform SDKs:**
-- `.claude/context/storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin, Android, KMP targets)
-- `.claude/context/storyblok-swift.md` - Swift SDK (URLSession extension, Apple platforms)
-- Explore the storyblok-kotlin or storyblok-swift repos
-
 ## Investigation methodology
 
 ### Phase 1: Fetch issue details

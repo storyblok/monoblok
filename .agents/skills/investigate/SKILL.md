@@ -65,7 +65,3 @@ For each root cause: the fix (file paths + line numbers), test coverage needed, 
 ## Notes / Risks
 ## Next Steps
 ```
-
-## Context
-
-When investigating API-related issues, refer to `.claude/context/storyrails.md`. For deeper investigation, explore the storyrails repo (controllers, models, services, serializers).

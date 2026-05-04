@@ -39,7 +39,7 @@ logger.error('Operation failed', { context });
 3. **Minimum set** - Happy path + negative case + 1-2 edge cases
 4. **Windows-compatible** - CI runs on Windows too. Use `pathe` (not `node:path`), strip drive letters when comparing with memfs keys, sort directory listings before asserting.
 
-See `.claude/context/testing-patterns.md` for detailed mocking examples (msw, memfs, session).
+See `docs/testing-patterns.md` for detailed mocking examples (msw, memfs, session).
 
 ### Mocking
 - Use `msw` for API mocking (not manual mocks)

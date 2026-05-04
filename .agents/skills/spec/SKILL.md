@@ -31,17 +31,6 @@ Generate a spec for: $ARGUMENTS
 
 ---
 
-## Context
-
-Read the relevant context files based on the project scope:
-
-- `.claude/context/cli-architecture.md` - When speccing CLI commands or features
-- `.claude/context/storyrails.md` - When speccing features that involve API interactions. Explore the storyrails repo for endpoint contracts
-- `.claude/context/docs-platform.md` - When speccing documentation changes
-- `.claude/context/storyfront.md` - When speccing visual editor or bridge protocol features
-- `.claude/context/storyblok-kotlin.md` - When speccing Kotlin/Android SDK features
-- `.claude/context/storyblok-swift.md` - When speccing Swift/Apple SDK features
-
 ## Instructions
 
 1. **Understand the problem** - What pain point does this solve? Who asked for it?

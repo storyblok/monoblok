@@ -20,10 +20,10 @@ The project uses `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <p
 
 ## Storyblok REST and Application Reference
 
-- `../storyrails` (Storyblok backend) - Load when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `spec/integration/openapi/` is the source of truth.
-- `../storyfront` (headless CMS frontend) - Load when matching UI/app behavior, field-type rendering, or admin-side flows.
+- `../storyrails` (Storyblok backend) - Load when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
+- `../storyfront` (headless CMS frontend) - Load when matching UI/app behavior and you need information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
 
-These sibling repos may not be available; ignore them if absent. Check each repo's `AGENTS.md` for how to consult it.
+These sibling repos may not be available; ignore them if absent. Check `../storyrails/monoblok.md` or `../storyfront/monoblok.md` file on how to consult the repo.
 
 ## Conventions
 

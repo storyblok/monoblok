@@ -1,6 +1,6 @@
 import { component$ } from '@builder.io/qwik';
 
-import type { BlokContent } from '@storyblok/schema';
+import type { BlockContent } from '@storyblok/schema';
 import type { StoryblokTypes } from '~/schema/types';
 import { Hero } from './hero';
 import { Intro } from './intro';
@@ -8,10 +8,10 @@ import { Media } from './media';
 import { TeaserList } from './teaser-list';
 
 /** Union of all renderable blok content types — root page or any nested block. */
-type AnyBlokContent = BlokContent<StoryblokTypes['components'], StoryblokTypes['components']>;
+type AnyBlockContent = BlockContent<StoryblokTypes['components'], StoryblokTypes['components']>;
 
 interface StoryblokComponentProps {
-  blok: AnyBlokContent;
+  blok: AnyBlockContent;
 }
 
 /**

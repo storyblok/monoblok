@@ -7,6 +7,7 @@ export const Nav = component$(() => {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
+    { href: '/showcase', label: 'Showcase' },
   ];
 
   return (

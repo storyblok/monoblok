@@ -1,6 +1,6 @@
 # Datasources Push Command
 
-The `datasources push` command allows you to upload datasources and their entries to your Storyblok space.
+The `datasources push` command allows you to upload datasource entries from local files to your Storyblok space. Datasource definitions themselves are typically owned by `storyblok schema push` in code-driven projects.
 
 > [!WARNING]
 > This command requires you have previously used the `datasources pull` command to download those datasources. If you used any flags during the pull (like `--suffix` or `--separate-files`), you must apply them with the same values when pushing to ensure files are found correctly.

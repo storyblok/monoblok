@@ -52,3 +52,7 @@ claude-output
 .storyblok
 .worktrees
 tmp
+.playwright-mcp
+/.storyblok
+docs/superpowers
+DOCS.md

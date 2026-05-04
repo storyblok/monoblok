@@ -1,4 +1,4 @@
-import { handleAPIError, handleFileSystemError } from '../../../utils';
+import { fetchAllPages, handleAPIError, handleFileSystemError } from '../../../utils';
 import { getMapiClient } from '../../../api';
 import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';

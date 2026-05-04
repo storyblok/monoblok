@@ -68,7 +68,7 @@ const preconditions = {
     server.use(
       http.get('https://mapi.storyblok.com/v1/spaces/12345/stories', () =>
         HttpResponse.json({ stories: [story] }, {
-          headers: { Total: '1', 'Per-Page': '100' },
+          headers: { 'Total': '1', 'Per-Page': '100' },
         })),
       http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
         HttpResponse.json({ story })),

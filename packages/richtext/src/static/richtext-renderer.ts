@@ -1,8 +1,8 @@
 import { escapeHtml } from '../utils';
 import { escapeAttr, processAttrs } from './attribute';
 import { styleToString } from './style';
-import type { AttrValue, RenderSpec, StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
+import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions } from './types';
+import type { PMMark, PMNode } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
 
 type TextNode = PMNode & { type: 'text' };
@@ -24,8 +24,8 @@ type TextNode = PMNode & { type: 'text' };
  * ```
  */
 export function richTextRenderer(
-  document: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined,
-  options?: StoryblokRichTextRendererOptions,
+  document: SbRichTextDoc | SbRichTextDoc[] | null | undefined,
+  options?: SbRichTextOptions,
 ): string {
   if (!document) {
     return '';
@@ -40,7 +40,7 @@ export function richTextRenderer(
 }
 
 /** Renders a single node to HTML. */
-function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRendererOptions): string {
+function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
   // Text nodes: apply marks and escape content
   if (node.type === 'text') {
     return renderTextNode(node as TextNode, node.marks, options);
@@ -94,7 +94,7 @@ function renderNode(node: StoryblokRichTextJson, options?: StoryblokRichTextRend
  * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
  * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
  */
-function renderChildren(children: StoryblokRichTextJson[], options?: StoryblokRichTextRendererOptions): string {
+function renderChildren(children: SbRichTextDoc[], options?: SbRichTextOptions): string {
   let result = '';
   let i = 0;
   const len = children.length;
@@ -125,7 +125,7 @@ function renderChildren(children: StoryblokRichTextJson[], options?: StoryblokRi
 function renderTextNode(
   node: TextNode,
   marks: PMMark[] | undefined,
-  options?: StoryblokRichTextRendererOptions,
+  options?: SbRichTextOptions,
 ): string {
   let html = escapeHtml(node.text);
 
@@ -144,7 +144,7 @@ function renderTextNode(
 function wrapWithMark(
   content: string,
   mark: PMMark,
-  options?: StoryblokRichTextRendererOptions,
+  options?: SbRichTextOptions,
 ): string {
   // Custom mark renderer
   const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
@@ -169,7 +169,7 @@ function wrapWithMark(
 // ============================================================================
 
 /** Gets link mark from a text node, or null. */
-function getTextNodeLinkMark(node: StoryblokRichTextJson): PMMark | null {
+function getTextNodeLinkMark(node: SbRichTextDoc): PMMark | null {
   if (node.type !== 'text' || !node.marks) {
     return null;
   }
@@ -202,11 +202,11 @@ function areLinkMarksEqual(a: PMMark | null, b: PMMark | null): boolean {
 
 /** Renders consecutive text nodes (from start to end) under a single link tag. */
 function renderLinkGroup(
-  children: StoryblokRichTextJson[],
+  children: SbRichTextDoc[],
   start: number,
   end: number,
   linkMark: PMMark,
-  options?: StoryblokRichTextRendererOptions,
+  options?: SbRichTextOptions,
 ): string {
   // Render each text node with only its non-link marks
   let inner = '';
@@ -231,8 +231,8 @@ function renderLinkGroup(
 
 /** Renders table rows with thead/tbody grouping based on cell types. */
 function renderTableRows(
-  rows: StoryblokRichTextJson[] | undefined,
-  options?: StoryblokRichTextRendererOptions,
+  rows: SbRichTextDoc[] | undefined,
+  options?: SbRichTextOptions,
 ): string {
   if (!rows?.length) {
     return '';
@@ -268,7 +268,7 @@ function renderTableRows(
 }
 
 /** Checks if a row contains only tableHeader cells. */
-function isTableHeaderRow(row: StoryblokRichTextJson): boolean {
+function isTableHeaderRow(row: SbRichTextDoc): boolean {
   const cells = row.content;
   if (!cells?.length) {
     return false;
@@ -312,7 +312,7 @@ function renderStaticStructure(
 }
 
 /** Builds HTML attribute string from node/mark type and attrs. */
-function buildHtmlAttrs(type: TiptapComponentName, attrs: Record<string, unknown> | undefined): string {
+function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> | undefined): string {
   const processed = processAttrs(type, attrs, {
     colspan: 'colspan',
     rowspan: 'rowspan',

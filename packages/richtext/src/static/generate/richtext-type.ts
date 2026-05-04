@@ -1,7 +1,7 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import type { AttributeSpec, MarkType, NodeType, Schema } from 'prosemirror-model';
-import { markAttrKeys, nodeAttrKeys } from '../../extensions/attribute-types';
+import { markAttrKeys, nodeAttrKeys } from '../../extensions/richtext-attrs';
 import { getStoryblokExtensions } from '../../extensions';
 import { hints } from './type-hints';
 
@@ -90,7 +90,7 @@ export function generateTypes() {
 
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
-  output += `import type { MarkAttrTypeMap, NodeAttrTypeMap } from '../extensions/attribute-types';\n`;
+  output += `import type { MarkAttrTypeMap, NodeAttrTypeMap } from '../extensions/richtext-attrs';\n`;
   output += `import type { SbBlokData } from './types';\n`;
   output += '\n';
   // --- Attribute types
@@ -105,8 +105,6 @@ export function generateTypes() {
   // --- Node name unions
   output += 'export type TiptapNodeName = keyof TiptapNodeAttributes;\n';
   output += 'export type TiptapMarkName = keyof TiptapMarkAttributes;\n';
-  // Remove 'text' from component names since user dont need to provide a component for text nodes
-  output += `export type TiptapComponentName = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;\n\n`;
   // --- PMNode/PMMark
   output += `${genPMNode(schema)}\n\n`;
   output += `${genPMMark(schema)}\n\n`;

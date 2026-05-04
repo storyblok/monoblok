@@ -1,7 +1,7 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
+import type { PMMark, PMNode } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
-import type { HtmlTag, StoryblokRichTextComponentMap } from './types';
+import type { HtmlTag, SbRichTextComponents, SbRichTextElement } from './types';
 
 /**
  * Resolves a component from the provided components map based on the type.
@@ -16,12 +16,12 @@ import type { HtmlTag, StoryblokRichTextComponentMap } from './types';
  * console.log(resolvedComponent); // Output: MyCustomHeading
  */
 export function resolveComponent<
-  K extends TiptapComponentName,
+  K extends SbRichTextElement,
   TComponent,
 >(
   type: K,
-  components?: StoryblokRichTextComponentMap<TComponent>,
-): StoryblokRichTextComponentMap<TComponent>[K] | undefined {
+  components?: SbRichTextComponents<TComponent>,
+): SbRichTextComponents<TComponent>[K] | undefined {
   return components?.[type];
 }
 

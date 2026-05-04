@@ -1,10 +1,9 @@
 import { NODE_RENDER_MAP } from './render-map.generated';
 import { isValidStyleValue, stringToStyle } from './style';
-import type { AttrValue } from './types';
-import type { TiptapComponentName } from './types.generated';
+import type { AttrValue, SbRichTextElement } from './types';
 
 type StyleMap = Partial<{
-  [K in TiptapComponentName]: Record<string, string>;
+  [K in SbRichTextElement]: Record<string, string>;
 }>;
 export type AttrMap = Record<string, string>;
 
@@ -44,13 +43,13 @@ export const EXCLUDED_ATTRS = new Set(['level', 'linktype', 'uuid', 'custom', 'a
  * Applies internal style mappings and allows extending or overriding
  * default attribute mappings via `extendAttrMap`.
  *
- * @param type - {@link TiptapComponentName}
+ * @param type - {@link SbRichTextElement}
  * @param attrs - Attributes from the node/mark
  * @param extendAttrMap - {@link AttrMap} Additional attribute mappings (overrides defaults)
  * @returns Processed attributes with optional `style` object
  */
 export function processAttrs(
-  type: TiptapComponentName,
+  type: SbRichTextElement,
   attrs: Record<string, unknown> = {},
   extendAttrMap: AttrMap = {},
 ) {

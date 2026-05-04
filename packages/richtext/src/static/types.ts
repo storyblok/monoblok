@@ -1,4 +1,7 @@
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
+import type { StoryblokRichTextImageOptimizationOptions as SbRichTextImageOptions } from '../types';
+import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.generated';
+
+export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
 
 /** Valid attribute values for DOM elements */
 export type AttrValue = string | number | boolean;
@@ -26,10 +29,10 @@ export interface RenderSpec {
 }
 
 /** Canonical type for a Storyblok RichText JSON root */
-export type StoryblokRichTextJson = PMNode;
+export type SbRichTextDoc = PMNode;
 
 /** Base props for node/mark components */
-export type RichTextBaseProps<T extends TiptapComponentName> =
+export type SbRichTextProps<T extends SbRichTextElement> =
   T extends PMNode['type']
     ? Extract<PMNode, { type: T }>
     : T extends PMMark['type']
@@ -37,15 +40,17 @@ export type RichTextBaseProps<T extends TiptapComponentName> =
       : never;
 
 /** Generic component map for any renderer target */
-export type StoryblokRichTextComponentMap<
+export type SbRichTextComponents<
   TComponent = string,
 > = {
-  [K in TiptapComponentName]?: (
-    props: RichTextBaseProps<K>
+  [K in SbRichTextElement]?: (
+    props: SbRichTextProps<K>
   ) => TComponent;
 };
 
-export interface StoryblokRichTextRendererOptions {
-  renderers?: StoryblokRichTextComponentMap<string>;
-  optimizeImages?: boolean;
+export interface SbRichTextOptions {
+  renderers?: SbRichTextComponents<string>;
+  optimizeImages?: boolean | Partial<SbRichTextImageOptions>;
 }
+
+export { SbRichTextImageOptions };

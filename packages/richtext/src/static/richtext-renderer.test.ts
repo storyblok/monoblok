@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { richTextRenderer } from './richtext-renderer';
-import type { StoryblokRichTextJson, StoryblokRichTextRendererOptions } from './types';
+import type { SbRichTextDoc, SbRichTextOptions } from './types';
 
 // ============================================================================
 // Test Helpers
 // ============================================================================
 
 /** Creates a text node. */
-const text = (content: string, marks?: StoryblokRichTextJson['marks']): StoryblokRichTextJson => ({
+const text = (content: string, marks?: SbRichTextDoc['marks']): SbRichTextDoc => ({
   type: 'text',
   text: content,
   ...(marks && { marks }),
@@ -17,7 +17,7 @@ const text = (content: string, marks?: StoryblokRichTextJson['marks']): Storyblo
 const linkMark = (
   href: string,
   options: { target?: '_blank' | '_self'; linktype?: 'url' | 'story' | 'email' | 'asset'; anchor?: string } = {},
-): NonNullable<StoryblokRichTextJson['marks']>[number] => ({
+): NonNullable<SbRichTextDoc['marks']>[number] => ({
   type: 'link',
   attrs: {
     href,
@@ -32,7 +32,7 @@ const linkMark = (
 const tableCell = (
   content: string,
   attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
-): StoryblokRichTextJson => ({
+): SbRichTextDoc => ({
   type: 'tableCell',
   content: [{ type: 'paragraph', content: [text(content)] }],
   attrs: {
@@ -44,20 +44,20 @@ const tableCell = (
 });
 
 /** Creates a table header cell. */
-const tableHeader = (content: string): StoryblokRichTextJson => ({
+const tableHeader = (content: string): SbRichTextDoc => ({
   type: 'tableHeader',
   content: [{ type: 'paragraph', content: [text(content)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 
 /** Creates a table row. */
-const tableRow = (cells: StoryblokRichTextJson[]): StoryblokRichTextJson => ({
+const tableRow = (cells: SbRichTextDoc[]): SbRichTextDoc => ({
   type: 'tableRow',
   content: cells,
 });
 
 /** Creates a table. */
-const table = (rows: StoryblokRichTextJson[]): StoryblokRichTextJson => ({
+const table = (rows: SbRichTextDoc[]): SbRichTextDoc => ({
   type: 'table',
   content: rows,
 });
@@ -81,7 +81,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders array of nodes', () => {
-      const nodes: StoryblokRichTextJson[] = [
+      const nodes: SbRichTextDoc[] = [
         { type: 'paragraph', content: [text('First')] },
         { type: 'paragraph', content: [text('Second')] },
       ];
@@ -89,7 +89,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders doc node without wrapper', () => {
-      const doc: StoryblokRichTextJson = {
+      const doc: SbRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('Hello')] }],
       };
@@ -97,7 +97,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders nested doc nodes', () => {
-      const nested: StoryblokRichTextJson = {
+      const nested: SbRichTextDoc = {
         type: 'doc',
         content: [
           { type: 'paragraph', content: [text('Outer')] },
@@ -108,7 +108,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders single non-doc node directly', () => {
-      const node: StoryblokRichTextJson = { type: 'paragraph', content: [text('Direct')] };
+      const node: SbRichTextDoc = { type: 'paragraph', content: [text('Direct')] };
       expect(richTextRenderer(node)).toBe('<p>Direct</p>');
     });
   });
@@ -120,19 +120,19 @@ describe('richTextRenderer', () => {
   describe('block types', () => {
     describe('paragraph', () => {
       it('renders basic paragraph', () => {
-        const node: StoryblokRichTextJson = { type: 'paragraph', content: [text('Hello')] };
+        const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
         expect(richTextRenderer(node)).toBe('<p>Hello</p>');
       });
 
       it('renders empty paragraph', () => {
-        const node: StoryblokRichTextJson = { type: 'paragraph', content: [] };
+        const node: SbRichTextDoc = { type: 'paragraph', content: [] };
         expect(richTextRenderer(node)).toBe('<p></p>');
       });
     });
 
     describe('heading', () => {
       it.each([1, 2, 3, 4, 5, 6] as const)('renders h%i', (level) => {
-        const heading: StoryblokRichTextJson = {
+        const heading: SbRichTextDoc = {
           type: 'heading',
           attrs: { level, textAlign: null },
           content: [text(`Heading ${level}`)],
@@ -143,7 +143,7 @@ describe('richTextRenderer', () => {
 
     describe('blockquote', () => {
       it('renders blockquote', () => {
-        const blockquote: StoryblokRichTextJson = {
+        const blockquote: SbRichTextDoc = {
           type: 'blockquote',
           content: [{ type: 'paragraph', content: [text('Quote')] }],
         };
@@ -153,7 +153,7 @@ describe('richTextRenderer', () => {
 
     describe('lists', () => {
       it('renders bullet list', () => {
-        const list: StoryblokRichTextJson = {
+        const list: SbRichTextDoc = {
           type: 'bullet_list',
           content: [
             { type: 'list_item', content: [{ type: 'paragraph', content: [text('Item 1')] }] },
@@ -164,7 +164,7 @@ describe('richTextRenderer', () => {
       });
 
       it('renders ordered list', () => {
-        const list: StoryblokRichTextJson = {
+        const list: SbRichTextDoc = {
           type: 'ordered_list',
           attrs: { order: 1 },
           content: [
@@ -178,7 +178,7 @@ describe('richTextRenderer', () => {
 
     describe('code block', () => {
       it('renders code block with language class', () => {
-        const codeBlock: StoryblokRichTextJson = {
+        const codeBlock: SbRichTextDoc = {
           type: 'code_block',
           attrs: { class: 'javascript' },
           content: [text('const x = 1;')],
@@ -187,7 +187,7 @@ describe('richTextRenderer', () => {
       });
 
       it('does not leak language as attribute', () => {
-        const codeBlock: StoryblokRichTextJson = {
+        const codeBlock: SbRichTextDoc = {
           type: 'code_block',
           attrs: { class: 'js' },
           content: [text('code')],
@@ -210,7 +210,7 @@ describe('richTextRenderer', () => {
 
     describe('image', () => {
       it('renders image with attributes', () => {
-        const image: StoryblokRichTextJson = {
+        const image: SbRichTextDoc = {
           type: 'image',
           attrs: {
             id: 123,
@@ -228,7 +228,7 @@ describe('richTextRenderer', () => {
       });
 
       it('filters out meta_data, source, and copyright from output', () => {
-        const image: StoryblokRichTextJson = {
+        const image: SbRichTextDoc = {
           type: 'image',
           attrs: {
             id: 1,
@@ -249,7 +249,7 @@ describe('richTextRenderer', () => {
 
     describe('emoji', () => {
       it('renders emoji as image with fallback', () => {
-        const emoji: StoryblokRichTextJson = {
+        const emoji: SbRichTextDoc = {
           type: 'emoji',
           attrs: {
             emoji: '🚀',
@@ -408,7 +408,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders link without href when empty', () => {
-      const node: StoryblokRichTextJson = {
+      const node: SbRichTextDoc = {
         type: 'text',
         text: 'No href',
         marks: [{ type: 'link', attrs: { href: '', linktype: 'url', uuid: null, anchor: null, target: null } }],
@@ -431,7 +431,7 @@ describe('richTextRenderer', () => {
 
   describe('link mark merging', () => {
     it('merges adjacent text nodes with same link', () => {
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [{
           type: 'paragraph',
@@ -445,7 +445,7 @@ describe('richTextRenderer', () => {
     });
 
     it('preserves inner marks when merging', () => {
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [{
           type: 'paragraph',
@@ -460,7 +460,7 @@ describe('richTextRenderer', () => {
     });
 
     it('handles multiple inner marks', () => {
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [{
           type: 'paragraph',
@@ -479,7 +479,7 @@ describe('richTextRenderer', () => {
     });
 
     it('breaks group on non-text node', () => {
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [{
           type: 'paragraph',
@@ -494,7 +494,7 @@ describe('richTextRenderer', () => {
     });
 
     it('separates groups when link attrs differ', () => {
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [{
           type: 'paragraph',
@@ -514,7 +514,7 @@ describe('richTextRenderer', () => {
 
   describe('text alignment', () => {
     it('renders paragraph with text-align style', () => {
-      const p: StoryblokRichTextJson = {
+      const p: SbRichTextDoc = {
         type: 'paragraph',
         attrs: { textAlign: 'right' },
         content: [text('Right')],
@@ -523,7 +523,7 @@ describe('richTextRenderer', () => {
     });
 
     it.each(['left', 'center', 'right', 'justify'] as const)('supports %s alignment', (align) => {
-      const p: StoryblokRichTextJson = {
+      const p: SbRichTextDoc = {
         type: 'paragraph',
         attrs: { textAlign: align },
         content: [text('Text')],
@@ -532,7 +532,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders heading with alignment', () => {
-      const heading: StoryblokRichTextJson = {
+      const heading: SbRichTextDoc = {
         type: 'heading',
         attrs: { level: 2, textAlign: 'center' },
         content: [text('Centered')],
@@ -541,7 +541,7 @@ describe('richTextRenderer', () => {
     });
 
     it('combines alignment with marks', () => {
-      const p: StoryblokRichTextJson = {
+      const p: SbRichTextDoc = {
         type: 'paragraph',
         attrs: { textAlign: 'center' },
         content: [text('Styled', [{ type: 'bold' }])],
@@ -550,7 +550,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders empty paragraph with alignment', () => {
-      const p: StoryblokRichTextJson = {
+      const p: SbRichTextDoc = {
         type: 'paragraph',
         attrs: { textAlign: 'center' },
         content: [],
@@ -565,17 +565,17 @@ describe('richTextRenderer', () => {
 
   describe('custom renderers', () => {
     it('overrides node rendering', () => {
-      const options: StoryblokRichTextRendererOptions = {
+      const options: SbRichTextOptions = {
         renderers: {
           paragraph: ({ content }) => `<div class="custom">${richTextRenderer(content, options)}</div>`,
         },
       };
-      const node: StoryblokRichTextJson = { type: 'paragraph', content: [text('Hello')] };
+      const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
       expect(richTextRenderer(node, options)).toBe('<div class="custom">Hello</div>');
     });
 
     it('overrides mark rendering', () => {
-      const options: StoryblokRichTextRendererOptions = {
+      const options: SbRichTextOptions = {
         renderers: {
           bold: ({ children }) => `<b class="heavy">${children}</b>`,
         },
@@ -584,13 +584,13 @@ describe('richTextRenderer', () => {
     });
 
     it('supports multiple custom renderers', () => {
-      const options: StoryblokRichTextRendererOptions = {
+      const options: SbRichTextOptions = {
         renderers: {
           heading: ({ attrs, content }) => `<h${attrs?.level} class="title">${richTextRenderer(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<strong class="emphasis">${children}</strong>`,
         },
       };
-      const heading: StoryblokRichTextJson = {
+      const heading: SbRichTextDoc = {
         type: 'heading',
         attrs: { level: 1, textAlign: null },
         content: [text('Title', [{ type: 'bold' }])],
@@ -606,7 +606,7 @@ describe('richTextRenderer', () => {
   // ============================================================================
 
   describe('blok nodes', () => {
-    const blokDoc: StoryblokRichTextJson = {
+    const blokDoc: SbRichTextDoc = {
       type: 'doc',
       content: [{
         type: 'blok',
@@ -634,7 +634,7 @@ describe('richTextRenderer', () => {
     });
 
     it('renders with custom blok renderer', () => {
-      const options: StoryblokRichTextRendererOptions = {
+      const options: SbRichTextOptions = {
         renderers: {
           blok: ({ attrs }) => {
             const body = Array.isArray(attrs?.body) ? attrs.body : [];
@@ -648,7 +648,7 @@ describe('richTextRenderer', () => {
     });
 
     it('handles empty body', () => {
-      const emptyBlok: StoryblokRichTextJson = {
+      const emptyBlok: SbRichTextDoc = {
         type: 'doc',
         content: [{ type: 'blok', attrs: { id: 'x', body: [] } }],
       };
@@ -658,7 +658,7 @@ describe('richTextRenderer', () => {
     });
 
     it('handles null body', () => {
-      const nullBlok: StoryblokRichTextJson = {
+      const nullBlok: SbRichTextDoc = {
         type: 'doc',
         content: [{ type: 'blok', attrs: { id: 'x', body: null } }],
       };
@@ -668,12 +668,12 @@ describe('richTextRenderer', () => {
     });
 
     it('works alongside other content', () => {
-      const options: StoryblokRichTextRendererOptions = {
+      const options: SbRichTextOptions = {
         renderers: {
           blok: () => '<widget />',
         },
       };
-      const content: StoryblokRichTextJson = {
+      const content: SbRichTextDoc = {
         type: 'doc',
         content: [
           { type: 'paragraph', content: [text('Before')] },

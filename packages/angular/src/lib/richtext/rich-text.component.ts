@@ -19,11 +19,7 @@ import {
   processAttrs,
   resolveTag,
 } from '@storyblok/richtext/static';
-import type {
-  RenderSpec,
-  StoryblokRichTextJson,
-  TiptapComponentName,
-} from '@storyblok/richtext/static';
+import type { RenderSpec, SbRichTextDoc, SbRichTextElement } from '@storyblok/richtext/static';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 
@@ -37,7 +33,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
 })
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document or array of documents */
-  sbDocument = input.required<StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined>();
+  sbDocument = input.required<SbRichTextDoc | SbRichTextDoc[] | null | undefined>();
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -81,9 +77,7 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Render entry
   // --------------------------------------------------
-  private render(
-    sbDocument: StoryblokRichTextJson | StoryblokRichTextJson[] | null | undefined,
-  ): void {
+  private render(sbDocument: SbRichTextDoc | SbRichTextDoc[] | null | undefined): void {
     const version = ++this.renderVersion;
 
     this.clearContent();
@@ -101,7 +95,7 @@ export class SbRichTextComponent implements OnDestroy {
   }
 
   /** Render a single document */
-  private renderSingleDocument(doc: StoryblokRichTextJson, version: number): void {
+  private renderSingleDocument(doc: SbRichTextDoc, version: number): void {
     const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
 
     for (const node of nodes) {
@@ -112,7 +106,7 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Node renderer (synchronous with deferred async for custom components)
   // --------------------------------------------------
-  private renderNode(node: StoryblokRichTextJson, parent: HTMLElement, version: number): void {
+  private renderNode(node: SbRichTextDoc, parent: HTMLElement, version: number): void {
     if (this.shouldAbort(version)) return;
 
     if (node.type === 'text') {
@@ -185,13 +179,13 @@ export class SbRichTextComponent implements OnDestroy {
 
   /** Async resolution and mounting for lazy-loaded components */
   private async resolveAndMount(
-    node: StoryblokRichTextJson,
+    node: SbRichTextDoc,
     parent: HTMLElement,
     anchor: Node,
     version: number,
   ): Promise<void> {
     // node.type is guaranteed to not be 'text' since text nodes are handled separately
-    const CustomNode = await this.resolveCached(node.type as TiptapComponentName);
+    const CustomNode = await this.resolveCached(node.type as SbRichTextElement);
     if (this.shouldAbort(version, anchor)) return;
 
     const parentNode = anchor.parentNode as HTMLElement;
@@ -208,7 +202,7 @@ export class SbRichTextComponent implements OnDestroy {
   // Text renderer (marks) - synchronous
   // --------------------------------------------------
   private renderTextNode(
-    node: StoryblokRichTextJson & { type: 'text' },
+    node: SbRichTextDoc & { type: 'text' },
     parent: HTMLElement,
     version: number,
   ): void {
@@ -263,7 +257,7 @@ export class SbRichTextComponent implements OnDestroy {
 
   /** Async text node rendering for lazy-loaded mark components */
   private async renderTextNodeAsync(
-    node: StoryblokRichTextJson & { type: 'text' },
+    node: SbRichTextDoc & { type: 'text' },
     parent: HTMLElement,
     anchor: Node,
     version: number,
@@ -322,7 +316,7 @@ export class SbRichTextComponent implements OnDestroy {
   }
 
   /** Resolve component with caching */
-  private async resolveCached(type: TiptapComponentName): Promise<any> {
+  private async resolveCached(type: SbRichTextElement): Promise<any> {
     if (this.componentCache.has(type)) {
       return this.componentCache.get(type);
     }

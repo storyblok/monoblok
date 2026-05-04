@@ -1,5 +1,5 @@
 import { InjectionToken, Type, Injectable, inject } from '@angular/core';
-import type { TiptapComponentName } from '@storyblok/richtext/static';
+import type { SbRichTextElement } from '@storyblok/richtext/static';
 
 import {
   type StoryblokFeature,
@@ -27,7 +27,7 @@ import {
  * ```
  */
 export type SBAngularComponentMap = Partial<
-  Record<TiptapComponentName, Type<any> | StoryblokComponentLoader>
+  Record<SbRichTextElement, Type<any> | StoryblokComponentLoader>
 >;
 
 /**
@@ -44,11 +44,11 @@ export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SBAngularCompone
  * Caches resolved components to avoid repeated dynamic imports.
  */
 @Injectable({ providedIn: 'root' })
-export class StoryblokRichtextResolver extends BaseComponentResolver<TiptapComponentName> {
+export class StoryblokRichtextResolver extends BaseComponentResolver<SbRichTextElement> {
   protected readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
 
   /** Get all registered segment types (for determining which nodes become component nodes). */
-  getRegisteredTypes(): TiptapComponentName[] {
+  getRegisteredTypes(): SbRichTextElement[] {
     return this.getRegisteredKeys();
   }
 }

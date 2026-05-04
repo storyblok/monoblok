@@ -1,6 +1,10 @@
 ---
 name: review-and-qa
 description: Review the changes for <commit|branch|pr> and create a QA review plan
+model: opus
+context: fork
+agent: reviewer
+effort: high
 ---
 
 # Review Changes

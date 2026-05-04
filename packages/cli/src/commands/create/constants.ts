@@ -40,8 +40,8 @@ export const templates = {
     location: 'https://localhost:3000/',
   },
   NEXT: {
-    name: 'Next',
-    value: 'next',
+    name: 'Next.js',
+    value: 'nextjs',
     template: 'https://github.com/storyblok/blueprint-core-nextjs',
     location: 'https://localhost:3000/',
   },

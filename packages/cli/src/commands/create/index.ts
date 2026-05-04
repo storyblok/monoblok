@@ -137,7 +137,7 @@ export const createCommand = program
       const templates = await fetchBlueprintRepositories();
       spinnerBlueprints.succeed('Starter templates fetched successfully');
 
-      if (!templates) {
+      if (templates.length === 0) {
         spinnerBlueprints.failed();
         konsola.warn('No starter templates found. Please contact support@storyblok.com');
         konsola.br();

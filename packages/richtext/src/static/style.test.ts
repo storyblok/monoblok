@@ -63,7 +63,7 @@ describe('styleToString', () => {
         textAlign: 'center',
         backgroundColor: 'red',
       }),
-    ).toBe('text-align: center; background-color: red');
+    ).toBe('text-align: center; background-color: red;');
   });
 
   it('handles numbers', () => {
@@ -71,7 +71,7 @@ describe('styleToString', () => {
       styleToString({
         width: 200,
       }),
-    ).toBe('width: 200');
+    ).toBe('width: 200;');
   });
 
   it('filters empty values', () => {
@@ -80,7 +80,7 @@ describe('styleToString', () => {
         color: '',
         width: 100,
       }),
-    ).toBe('width: 100');
+    ).toBe('width: 100;');
   });
 
   it('returns empty string for empty object', () => {
@@ -94,6 +94,6 @@ describe('styleToString', () => {
         width: '',
         height: 100,
       }),
-    ).toBe('height: 100');
+    ).toBe('height: 100;');
   });
 });

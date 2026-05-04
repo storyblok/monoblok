@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
-import type { Component } from '@storyblok/management-api-client/resources/components';
 import { findComponentSchemas, isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from './utils';
+import { FileSystemError } from '../../utils/error/filesystem-error';
 
 describe('isStoryPublishedWithoutChanges', () => {
   it('should return true for published stories without changes', () => {
@@ -43,41 +43,15 @@ describe('isStoryWithUnpublishedChanges', () => {
 
 const COMPONENTS_DIR = '.storyblok/components/12345';
 
-const preconditions = {
-  hasSingleComponentFile(components: Partial<Component>[]) {
-    const otherFiles = [
-      { name: 'other_a' },
-      { name: 'other_b' },
-    ];
-    vol.fromJSON(Object.fromEntries([...otherFiles, components].map((f) => {
-      const suffix = Math.random() < 0.5 ? '.suffix' : '';
-      return [
-        join(COMPONENTS_DIR, `${'name' in f ? f.name : 'components'}${suffix}.json`),
-        JSON.stringify(f),
-      ];
-    })));
-  },
-  hasSeparateComponentFiles(components: Partial<Component>[]) {
-    const otherFiles = [
-      { name: 'other_a' },
-      { name: 'other_b' },
-    ];
-    vol.fromJSON(Object.fromEntries([...otherFiles, ...components].map((c) => {
-      const suffix = Math.random() < 0.5 ? '.suffix' : '';
-      return [
-        join(COMPONENTS_DIR, `${c.name}${suffix}.json`),
-        JSON.stringify(c),
-      ];
-    })));
-  },
-};
-
 describe('findComponentSchemas', () => {
-  it('should return all component schemas found in single component file', async () => {
+  it('should return name-to-schema map from component files', async () => {
     const componentA = { name: 'component_a', schema: { field_a: {} }, component_group_uuid: null };
     const componentB = { name: 'component_b', schema: { field_b: {} }, component_group_uuid: randomUUID() };
-    // @ts-expect-error Our Component type is wrong.
-    preconditions.hasSingleComponentFile([componentA, componentB]);
+
+    vol.fromJSON({
+      [join(COMPONENTS_DIR, 'component_a.json')]: JSON.stringify(componentA),
+      [join(COMPONENTS_DIR, 'component_b.json')]: JSON.stringify(componentB),
+    });
 
     expect(await findComponentSchemas(COMPONENTS_DIR)).toEqual({
       component_a: componentA.schema,
@@ -85,28 +59,36 @@ describe('findComponentSchemas', () => {
     });
   });
 
-  it('should return all component schemas found in separate files', async () => {
-    const componentA = { name: 'component_a', schema: { field_a: {} }, component_group_uuid: null };
-    const componentB = { name: 'component_b', schema: { field_b: {} }, component_group_uuid: randomUUID() };
-    // @ts-expect-error Our Component type is wrong.
-    preconditions.hasSeparateComponentFiles([componentA, componentB]);
+  it('should return empty object when directory does not exist', async () => {
+    expect(await findComponentSchemas('/nonexistent/path')).toEqual({});
+  });
+
+  it('should include components from suffix-tagged files (e.g. pulled with --suffix dev)', async () => {
+    // Users who pull components with --suffix dev get components.dev.json.
+    // findComponentSchemas must still find those schemas for story validation.
+    const componentC = { name: 'component_c', schema: { field_c: {} }, component_group_uuid: null };
+
+    vol.fromJSON({
+      [join(COMPONENTS_DIR, 'components.dev.json')]: JSON.stringify([componentC]),
+    });
 
     expect(await findComponentSchemas(COMPONENTS_DIR)).toEqual({
-      component_a: componentA.schema,
-      component_b: componentB.schema,
+      component_c: componentC.schema,
     });
   });
 
-  it('should return all component schemas found in separate files and single file', async () => {
-    const componentA = { name: 'component_a', schema: { field_a: {} }, component_group_uuid: null };
-    const componentB = { name: 'component_b', schema: { field_b: {} }, component_group_uuid: randomUUID() };
-    // @ts-expect-error Our Component type is wrong.
-    preconditions.hasSeparateComponentFiles([componentA]);
-    preconditions.hasSingleComponentFile([componentB]);
+  it('should throw with validation context when duplicate components are detected', async () => {
+    const component = { name: 'hero', schema: { title: {} }, component_group_uuid: null };
 
-    expect(await findComponentSchemas(COMPONENTS_DIR)).toEqual({
-      component_a: componentA.schema,
-      component_b: componentB.schema,
+    vol.fromJSON({
+      [join(COMPONENTS_DIR, 'components.json')]: JSON.stringify([component]),
+      [join(COMPONENTS_DIR, 'components.dev.json')]: JSON.stringify([component]),
+    });
+
+    await expect(findComponentSchemas(COMPONENTS_DIR)).rejects.toSatisfy((error: FileSystemError) => {
+      return error instanceof FileSystemError
+        && error.message.includes('Failed to load component schemas for content validation')
+        && error.message.includes('Duplicate components found');
     });
   });
 });

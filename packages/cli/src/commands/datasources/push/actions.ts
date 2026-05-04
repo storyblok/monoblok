@@ -3,9 +3,8 @@ import { join } from 'pathe';
 import chalk from 'chalk';
 import type { DatasourceEntry, SpaceDatasource, SpaceDatasourcesData } from '../constants';
 import type { DatasourceCreate, DatasourceUpdate } from '../../../types';
-import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { ReadDatasourcesOptions } from './constants';
-import { readJsonFile, resolvePath, shouldUseSeparateFiles } from '../../../utils/filesystem';
+import { filterJsonBySuffix, readJsonFile, resolvePath } from '../../../utils/filesystem';
 import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils/error/api-error';
 import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
@@ -166,13 +165,20 @@ export const deleteDatasourceEntry = async (spaceId: string, entryId: number): P
   }
 };
 
+function isDatasource(item: unknown): item is SpaceDatasource {
+  return typeof item === 'object'
+    && item !== null
+    && 'slug' in item
+    && typeof item.slug === 'string';
+}
+
 export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Promise<SpaceDatasourcesData> => {
-  const { from, path, separateFiles, suffix } = options;
+  const { from, path, suffix } = options;
   const resolvedPath = resolvePath(path, `datasources/${from}`);
 
-  // Check if directory exists first
+  let files: string[];
   try {
-    await readdir(resolvedPath);
+    files = await readdir(resolvedPath);
   }
   catch (error) {
     const message = `No local datasources found for space ${chalk.bold(from)}. To push datasources, you need to pull them first:
@@ -191,64 +197,45 @@ export const readDatasourcesFiles = async (options: ReadDatasourcesOptions): Pro
     );
   }
 
-  // Determine read mode: explicit flag takes precedence, otherwise auto-detect
-  if (await shouldUseSeparateFiles(resolvedPath, DEFAULT_DATASOURCES_FILENAME, separateFiles, suffix)) {
-    return await readSeparateFiles(resolvedPath, suffix);
-  }
+  const datasourceMap = new Map<string, { datasource: SpaceDatasource; file: string }>();
+  const duplicates: string[] = [];
 
-  return await readConsolidatedFiles(resolvedPath, suffix);
-};
-
-async function readSeparateFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
-  const files = await readdir(resolvedPath);
-  const datasources: SpaceDatasource[] = [];
-
-  const filteredFiles = files.filter((file) => {
-    if (suffix) {
-      return file.endsWith(`.${suffix}.json`);
+  for (const file of filterJsonBySuffix(files, suffix)) {
+    const { data, error } = await readJsonFile<unknown>(join(resolvedPath, file));
+    if (error) {
+      handleFileSystemError('read', error);
+      continue;
     }
-    else {
-      // Regex to match files with a pattern like .<suffix>.json
-      return !/\.\w+\.json$/.test(file);
-    }
-  });
 
-  for (const file of filteredFiles) {
-    const filePath = join(resolvedPath, file);
-
-    if (file.endsWith('.json') || file.endsWith(`${suffix}.json`)) {
-      // Skip consolidated files - any file matching datasources.json or datasources.*.json pattern
-      if (file === `${DEFAULT_DATASOURCES_FILENAME}.json` || new RegExp(`^${DEFAULT_DATASOURCES_FILENAME}\\.\\w+\\.json$`).test(file)) {
-        continue;
+    for (const item of data) {
+      if (isDatasource(item)) {
+        const existing = datasourceMap.get(item.slug);
+        if (existing) {
+          duplicates.push(`Datasource "${item.slug}" found in both "${existing.file}" and "${file}"`);
+        }
+        datasourceMap.set(item.slug, { datasource: item, file });
       }
-      const result = await readJsonFile<SpaceDatasource>(filePath);
-      if (result.error) {
-        handleFileSystemError('read', result.error);
-        continue;
-      }
-      datasources.push(...result.data);
     }
   }
 
-  return {
-    datasources,
-  };
-}
-
-async function readConsolidatedFiles(resolvedPath: string, suffix?: string): Promise<SpaceDatasourcesData> {
-  const datasourcesPath = join(resolvedPath, suffix ? `${DEFAULT_DATASOURCES_FILENAME}.${suffix}.json` : `${DEFAULT_DATASOURCES_FILENAME}.json`);
-  const datasourcesResult = await readJsonFile<SpaceDatasource>(datasourcesPath);
-
-  if (datasourcesResult.error || !datasourcesResult.data.length) {
+  if (duplicates.length) {
     throw new FileSystemError(
       'file_not_found',
       'read',
-      datasourcesResult.error || new Error('Datasources file is empty'),
-      `No datasources found in ${datasourcesPath}. Please make sure you have pulled the datasources first.`,
+      new Error('Duplicate datasources detected'),
+      `Duplicate datasources found in ${resolvedPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. datasources.json and datasources.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull datasources again in the format you intend`,
     );
   }
 
-  return {
-    datasources: datasourcesResult.data,
-  };
-}
+  const datasources = [...datasourceMap.values()].map(({ datasource }) => datasource);
+  if (!datasources.length) {
+    throw new FileSystemError(
+      'file_not_found',
+      'read',
+      new Error('No datasource data found'),
+      `No datasources found in ${resolvedPath}. Please make sure you have pulled the datasources first.`,
+    );
+  }
+
+  return { datasources };
+};

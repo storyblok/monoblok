@@ -17,7 +17,7 @@ const pushCmd = datasourcesCommand
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the datasources before pushing')
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files')
-  .option('--su, --suffix <suffix>', 'Suffix to add to the datasource name')
+  .option('--su, --suffix <suffix>', 'Load only files matching *.<suffix>.json (e.g. datasources.dev.json)')
   .option('-s, --space <space>', 'space ID');
 
 pushCmd

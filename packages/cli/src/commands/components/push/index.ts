@@ -21,7 +21,7 @@ const pushCmd = componentsCommand
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
-  .option('--su, --suffix <suffix>', 'Suffix to add to the component name')
+  .option('--su, --suffix <suffix>', 'Load only files matching *.<suffix>.json (e.g. components.dev.json)')
   .option('-s, --space <space>', 'space ID');
 
 pushCmd

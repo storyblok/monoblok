@@ -1,4 +1,5 @@
 import { escapeHtml } from '../utils';
+import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
 import { styleToString } from './style';
 import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions } from './types';
@@ -65,6 +66,11 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
     return node.content ? renderChildren(node.content, options) : '';
   }
 
+  // Image nodes: apply optimization if configured
+  if (node.type === 'image' && options?.optimizeImages) {
+    return renderOptimizedImage(node, options);
+  }
+
   const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
 
   // Self-closing tags
@@ -87,6 +93,28 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
   }
 
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+}
+
+/** Renders an image node with optimization applied. */
+function renderOptimizedImage(node: SbRichTextDoc, options: SbRichTextOptions): string {
+  const attrs = node.attrs as Record<string, unknown> | undefined;
+  const src = attrs?.src as string | undefined;
+
+  if (!src) {
+    return buildHtmlAttrs('image', attrs) ? `<img${buildHtmlAttrs('image', attrs)} />` : '<img />';
+  }
+
+  const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(src, options.optimizeImages);
+
+  // Merge original attrs with optimized attrs
+  const mergedAttrs = {
+    ...attrs,
+    src: optimizedSrc,
+    ...extraAttrs,
+  };
+
+  const htmlAttrs = buildHtmlAttrs('image', mergedAttrs);
+  return `<img${htmlAttrs} />`;
 }
 
 /**

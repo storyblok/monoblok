@@ -245,6 +245,82 @@ describe('richTextRenderer', () => {
         expect(html).not.toContain('copyright=');
         expect(html).not.toContain('meta_data=');
       });
+
+      it('renders optimized image with optimizeImages: true', () => {
+        const image: SbRichTextDoc = {
+          type: 'image',
+          attrs: {
+            id: 1,
+            src: 'https://a.storyblok.com/f/12345/image.jpg',
+            alt: 'Test',
+            title: null,
+            source: null,
+            copyright: null,
+            meta_data: null,
+          },
+        };
+        const html = richTextRenderer(image, { optimizeImages: true });
+        expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/"');
+      });
+
+      it('renders optimized image with width and height', () => {
+        const image: SbRichTextDoc = {
+          type: 'image',
+          attrs: {
+            id: 1,
+            src: 'https://a.storyblok.com/f/12345/image.jpg',
+            alt: 'Test',
+            title: null,
+            source: null,
+            copyright: null,
+            meta_data: null,
+          },
+        };
+        const html = richTextRenderer(image, {
+          optimizeImages: { width: 800, height: 600 },
+        });
+        expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/800x600/"');
+        expect(html).toContain('width="800"');
+        expect(html).toContain('height="600"');
+      });
+
+      it('renders optimized image with filters', () => {
+        const image: SbRichTextDoc = {
+          type: 'image',
+          attrs: {
+            id: 1,
+            src: 'https://a.storyblok.com/f/12345/image.jpg',
+            alt: 'Test',
+            title: null,
+            source: null,
+            copyright: null,
+            meta_data: null,
+          },
+        };
+        const html = richTextRenderer(image, {
+          optimizeImages: { filters: { quality: 80, format: 'webp' } },
+        });
+        expect(html).toContain('filters:quality(80):format(webp)');
+      });
+
+      it('renders optimized image with loading attribute', () => {
+        const image: SbRichTextDoc = {
+          type: 'image',
+          attrs: {
+            id: 1,
+            src: 'https://a.storyblok.com/f/12345/image.jpg',
+            alt: 'Test',
+            title: null,
+            source: null,
+            copyright: null,
+            meta_data: null,
+          },
+        };
+        const html = richTextRenderer(image, {
+          optimizeImages: { loading: 'lazy' },
+        });
+        expect(html).toContain('loading="lazy"');
+      });
     });
 
     describe('emoji', () => {

@@ -1,7 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
-import { defineProp } from './define-prop';
 import { createStoryHelpers } from './create-story-helpers';
 import type { Story } from './define-story';
 
@@ -9,26 +8,26 @@ const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-    count: defineProp(defineField({ type: 'number' }), { pos: 2 }),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+    defineField('count', { type: 'number' }),
+  ],
 });
 
 const _teaserBlock = defineBlock({
   name: 'teaser',
-  schema: {
-    text: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('text', { type: 'text' }),
+  ],
 });
 
 const heroBlock = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    blocks: defineProp(defineField({ type: 'bloks' }), { pos: 2, required: true }),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('blocks', { type: 'bloks', required: true }),
+  ],
 });
 
 interface StoryblokTypes {

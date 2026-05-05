@@ -1,15 +1,15 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, defineField, defineProp } from '@storyblok/schema';
+import { defineBlock, defineField } from '@storyblok/schema';
 import { defineStoryCreate, defineStoryUpdate } from '@storyblok/schema/mapi';
 import { createManagementApiClient } from '../index';
 import type { StoryMapi } from '../generated/stories/types.gen';
 
 const teaserComponent = defineBlock({
   name: 'teaser',
-  schema: {
-    text: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    image: defineProp(defineField({ type: 'asset' }), { pos: 2 }),
-  },
+  schema: [
+    defineField('text', { type: 'text' }),
+    defineField('image', { type: 'asset' }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',
@@ -19,12 +19,12 @@ const heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
   // is_nestable defaults to true — hero can appear both as a story and in bloks
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    count: defineProp(defineField({ type: 'number' }), { pos: 2 }),
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('count', { type: 'number' }),
     // bloks field without a whitelist — resolves to nestable components (hero + teaser; page excluded)
-    sections: defineProp(defineField({ type: 'bloks' }), { pos: 3 }),
-  },
+    defineField('sections', { type: 'bloks' }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',
@@ -34,22 +34,13 @@ const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    body: defineProp(defineField({ type: 'richtext' }), { pos: 2 }),
-    teasers: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name] }),
-      { pos: 3 },
-    ),
-    hero: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [heroComponent.name] }),
-      { pos: 4 },
-    ),
-    blocks: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [heroComponent.name, teaserComponent.name] }),
-      { pos: 5 },
-    ),
-  },
+  schema: [
+    defineField('headline', { type: 'text' }),
+    defineField('body', { type: 'richtext' }),
+    defineField('teasers', { type: 'bloks', component_whitelist: [teaserComponent.name] }),
+    defineField('hero', { type: 'bloks', component_whitelist: [heroComponent.name] }),
+    defineField('blocks', { type: 'bloks', component_whitelist: [heroComponent.name, teaserComponent.name] }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',

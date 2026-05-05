@@ -7,12 +7,11 @@ import {
   defineDatasourceEntry,
   defineField,
   defineLink,
-  defineProp,
   defineSpace,
   defineStory,
   defineTag,
 } from './index';
-import { defineAsset as defineMapiAsset } from './mapi/index';
+import { defineBlockCreate, defineAsset as defineMapiAsset } from './mapi/index';
 import {
   assetSchema,
   contentValueSchemas,
@@ -24,7 +23,7 @@ import {
 } from './zod/index';
 import {
   assetSchema as mapiAssetSchema,
-  componentSchema as mapiComponentSchema,
+  componentCreateSchema as mapiComponentCreateSchema,
   fieldSchema as mapiFieldSchema,
 } from './zod/mapi/index';
 
@@ -91,13 +90,13 @@ describe('schema integration', () => {
     const heroBlock = defineBlock({
       name: 'hero',
       is_root: true,
-      schema: {
-        headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-        body: defineProp(defineField({ type: 'textarea' }), { pos: 2 }),
-        published: defineProp(defineField({ type: 'boolean' }), { pos: 3 }),
-        priority: defineProp(defineField({ type: 'number' }), { pos: 4 }),
-        background: defineProp(defineField({ type: 'asset' }), { pos: 5 }),
-      },
+      schema: [
+        defineField('headline', { type: 'text', required: true }),
+        defineField('body', { type: 'textarea' }),
+        defineField('published', { type: 'boolean' }),
+        defineField('priority', { type: 'number' }),
+        defineField('background', { type: 'asset' }),
+      ],
     });
 
     it('should produce content values that satisfy the per-type content schemas', () => {
@@ -145,17 +144,17 @@ describe('schema integration', () => {
       expect(mapiAssetSchema.safeParse(asset).success).toBe(true);
     });
 
-    it('should validate every prop in a defineBlock() schema via fieldSchema', () => {
-      const block = defineBlock({
+    it('should validate every prop in a defineBlockCreate() schema via fieldSchema', () => {
+      const block = defineBlockCreate({
         name: 'hero',
         is_root: true,
         schema: {
-          headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-          background: defineProp(defineField({ type: 'asset' }), { pos: 2 }),
-          related: defineProp(defineField({ type: 'bloks', component_whitelist: ['teaser'] }), { pos: 3 }),
+          headline: { type: 'text', pos: 1, required: true },
+          background: { type: 'asset', pos: 2 },
+          related: { type: 'bloks', component_whitelist: ['teaser'], pos: 3 },
         },
       });
-      for (const prop of Object.values(block.schema)) {
+      for (const prop of Object.values(block.schema ?? {})) {
         expect(mapiFieldSchema.safeParse(prop).success).toBe(true);
       }
     });
@@ -164,22 +163,15 @@ describe('schema integration', () => {
       expect(mapiFieldSchema.safeParse({ type: 'not-a-real-type', pos: 1 }).success).toBe(false);
     });
 
-    it('should accept a full defineBlock() result against the MAPI component schema', () => {
-      const block = defineBlock({
+    it('should accept a full defineBlockCreate() result against the MAPI component create schema', () => {
+      const block = defineBlockCreate({
         name: 'hero',
         is_root: true,
         schema: {
-          headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
+          headline: { type: 'text', pos: 1, required: true },
         },
-        created_at: ISO_DATETIME,
-        updated_at: ISO_DATETIME,
       });
-      // `component_group_uuid` defaults to `null`, but the generated schema
-      // marks the field as `string().uuid().optional()` (no null). Strip it
-      // for the parse — this is a known shape mismatch outside the scope of
-      // this test.
-      const { component_group_uuid: _, ...candidate } = block;
-      expect(mapiComponentSchema.safeParse(candidate).success).toBe(true);
+      expect(mapiComponentCreateSchema.safeParse(block).success).toBe(true);
     });
   });
 });

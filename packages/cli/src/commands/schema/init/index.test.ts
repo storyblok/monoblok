@@ -133,7 +133,6 @@ describe('schema init command', () => {
     expect(content).toContain('defineBlock(');
     expect(content).toContain('name: \'hero\'');
     expect(content).toContain('defineField(');
-    expect(content).toContain('defineProp(');
   });
 
   it('should generate folder files', async () => {

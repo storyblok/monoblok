@@ -8,11 +8,8 @@ import {
   stripKeys,
 } from '../utils';
 
-/** Fields on a schema field entry that belong in the prop config (second arg of defineProp). */
-const PROP_CONFIG_KEYS = new Set(['pos', 'required']);
-
-/** Fields to strip from individual schema field entries. */
-const FIELD_STRIP_KEYS = new Set(['id']);
+/** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
+const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
 
 /**
  * Converts a string to camelCase.
@@ -66,28 +63,12 @@ export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug
 }
 
 /**
- * Generates a `defineProp(defineField({...}), {...})` code string for a single schema field.
- * Splits field-level config from prop-level config (pos, required).
+ * Generates a `defineField('name', {...})` code string for a single schema field.
+ * Position is implicit in the array index, so `pos` is stripped from the config.
  */
-function generateFieldCode(fieldData: Record<string, unknown>, depth: number): string {
-  const fieldConfig: Record<string, unknown> = {};
-  const propConfig: Record<string, unknown> = {};
-
+function generateFieldCode(fieldName: string, fieldData: Record<string, unknown>, depth: number): string {
   const clean = stripKeys(fieldData, FIELD_STRIP_KEYS);
-
-  for (const [key, value] of Object.entries(clean)) {
-    if (PROP_CONFIG_KEYS.has(key)) {
-      propConfig[key] = value;
-    }
-    else {
-      fieldConfig[key] = value;
-    }
-  }
-
-  const fieldStr = `defineField(${formatValue(fieldConfig, depth + 1)})`;
-  const propStr = formatValue(propConfig, depth + 1);
-
-  return `defineProp(${fieldStr}, ${propStr})`;
+  return `defineField('${fieldName.replace(/'/g, '\\\'')}', ${formatValue(clean, depth + 1)})`;
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */
@@ -120,7 +101,6 @@ export function generateComponentFile(component: Component, componentFolders?: C
   lines.push('import {');
   lines.push('  defineBlock,');
   lines.push('  defineField,');
-  lines.push('  defineProp,');
   lines.push('} from \'@storyblok/schema\';');
 
   if (matchedFolder) {
@@ -167,21 +147,21 @@ export function generateComponentFile(component: Component, componentFolders?: C
     lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1)},`);
   }
 
-  // Schema fields
+  // Schema fields — emitted as an ordered array of `defineField('name', {...})` calls.
   if (clean.schema && typeof clean.schema === 'object') {
     const schema = clean.schema as Record<string, Record<string, unknown>>;
     const sortedFields = sortSchemaByPos(schema);
 
     if (sortedFields.length > 0) {
-      lines.push(`${INDENT}schema: {`);
+      lines.push(`${INDENT}schema: [`);
       for (const [fieldName, fieldData] of sortedFields) {
-        const fieldCode = generateFieldCode(fieldData, 2);
-        lines.push(`${INDENT}${INDENT}${fieldName}: ${fieldCode},`);
+        const fieldCode = generateFieldCode(fieldName, fieldData, 2);
+        lines.push(`${INDENT}${INDENT}${fieldCode},`);
       }
-      lines.push(`${INDENT}},`);
+      lines.push(`${INDENT}],`);
     }
     else {
-      lines.push(`${INDENT}schema: {},`);
+      lines.push(`${INDENT}schema: [],`);
     }
   }
 

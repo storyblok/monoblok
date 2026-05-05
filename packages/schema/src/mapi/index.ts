@@ -7,7 +7,6 @@
  */
 
 export type { BlokContentInput as BlockContentInput } from '../generated/mapi-types';
-export { defineBlock } from '../helpers/define-block';
 export { defineDatasource } from '../helpers/define-datasource';
 export { createStoryHelpers } from './helpers/create-story-helpers';
 export { defineAsset, defineAssetCreate, defineAssetUpdate } from './helpers/define-asset';

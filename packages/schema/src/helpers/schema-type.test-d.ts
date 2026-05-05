@@ -1,7 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
-import { defineProp } from './define-prop';
 import { defineDatasource } from './define-datasource';
 import { defineBlockFolder } from '../mapi/helpers/define-block-folder';
 import type { Schema } from './schema-type';
@@ -10,16 +9,16 @@ const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('headline', { type: 'text' }),
+  ],
 });
 
 const heroBlock = defineBlock({
   name: 'hero',
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+  ],
 });
 
 const layoutFolder = defineBlockFolder({ name: 'Layout' });

@@ -23,7 +23,6 @@ import { createApiClient } from '@storyblok/api-client';
 import {
   defineBlock,
   defineField,
-  defineProp,
 } from '@storyblok/schema';
 import {
   createStoryHelpers,
@@ -40,38 +39,40 @@ const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    image: defineProp(defineField({ type: 'asset' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('title', { type: 'text', required: true }),
+    defineField('image', { type: 'asset' }),
+  ],
 });
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0 }),
-    items: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name] }),
-      { pos: 1, required: true },
-    ),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('items', {
+      type: 'bloks',
+      component_whitelist: [teaserComponent.name],
+      required: true,
+    }),
+  ],
 });
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    rating: defineProp(defineField({ type: 'number' }), { pos: 1 }),
-    is_featured: defineProp(defineField({ type: 'boolean' }), { pos: 2 }),
-    body: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name] }),
-      { pos: 3, required: true },
-    ),
-    any_blocks: defineProp(
-      defineField({ type: 'bloks' }),
-      { pos: 4, required: true },
-    ),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+    defineField('rating', { type: 'number' }),
+    defineField('is_featured', { type: 'boolean' }),
+    defineField('body', {
+      type: 'bloks',
+      component_whitelist: [teaserComponent.name, sectionComponent.name],
+      required: true,
+    }),
+    defineField('any_blocks', {
+      type: 'bloks',
+      required: true,
+    }),
+  ],
 });
 
 interface StoryblokTypes {

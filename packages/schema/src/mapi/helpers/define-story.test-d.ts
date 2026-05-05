@@ -1,42 +1,42 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from '../../helpers/define-block';
 import { defineField } from '../../helpers/define-field';
-import { defineProp } from '../../helpers/define-prop';
 import type { Story, StoryCreate, StoryUpdate } from './define-story';
 
 const _pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+  ],
 });
 
 const _heroBlock = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    blocks: defineProp(defineField({ type: 'bloks' }), { pos: 2, required: true }),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('blocks', { type: 'bloks', required: true }),
+  ],
 });
 
 const _teaserBlock = defineBlock({
   name: 'teaser',
-  schema: {
-    text: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('text', { type: 'text' }),
+  ],
 });
 
 const _sectionBlock = defineBlock({
   name: 'section',
-  schema: {
-    items: defineProp(
-      defineField({ type: 'bloks', component_whitelist: ['teaser'] as const }),
-      { pos: 1, required: true },
-    ),
-  },
+  schema: [
+    defineField('items', {
+      type: 'bloks',
+      component_whitelist: ['teaser'],
+      required: true,
+    }),
+  ],
 });
 
 type Schema = typeof _pageBlock | typeof _heroBlock | typeof _teaserBlock | typeof _sectionBlock;

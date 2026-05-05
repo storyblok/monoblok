@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { defineField } from './define-field';
-import { defineProp } from './define-prop';
 import { defineBlock } from './define-block';
 
 describe('defineBlock', () => {
   it('should return a type safe block', () => {
     const input = {
       name: 'page',
-      schema: {
-        headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-      },
+      schema: [
+        defineField('headline', { type: 'text' }),
+      ],
     };
     const result = defineBlock(input);
 
@@ -20,7 +19,10 @@ describe('defineBlock', () => {
       is_root: false,
       is_nestable: true,
       component_group_uuid: null,
-      ...input,
+      name: 'page',
+      schema: {
+        headline: { type: 'text', pos: 0 },
+      },
     });
   });
 
@@ -28,9 +30,21 @@ describe('defineBlock', () => {
     const result = defineBlock({
       name: 'page',
       component_group_uuid: 'shared-group',
-      schema: {},
+      schema: [],
     });
 
     expect(result.component_group_uuid).toBe('shared-group');
+  });
+
+  it('should throw when two fields share the same name', () => {
+    expect(() =>
+      defineBlock({
+        name: 'page',
+        schema: [
+          defineField('headline', { type: 'text' }),
+          defineField('headline', { type: 'textarea' }),
+        ],
+      }),
+    ).toThrow(/duplicate field name "headline"/);
   });
 });

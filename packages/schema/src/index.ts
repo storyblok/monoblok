@@ -19,8 +19,6 @@ export { defineField } from './helpers/define-field';
 export type { AssetFieldValue, BlockContent, BlockContentInput, BlocksFieldValue, Field, FieldType, FieldValue, FieldValueInput, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue } from './helpers/define-field';
 export { defineLink } from './helpers/define-link';
 export type { Link } from './helpers/define-link';
-export { defineProp } from './helpers/define-prop';
-export type { Prop, PropConfig } from './helpers/define-prop';
 export { defineSpace } from './helpers/define-space';
 export type { Space } from './helpers/define-space';
 export { defineStory } from './helpers/define-story';

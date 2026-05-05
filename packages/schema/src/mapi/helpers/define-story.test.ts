@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { defineField } from '../../helpers/define-field';
-import { defineProp } from '../../helpers/define-prop';
 import { defineBlock } from '../../helpers/define-block';
 import { defineStory, defineStoryCreate, defineStoryUpdate } from './define-story';
 
@@ -8,9 +7,9 @@ describe('mapi/defineStory', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: {
-      headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    },
+    schema: [
+      defineField('headline', { type: 'text' }),
+    ],
   });
 
   it('should return a type safe MAPI story', () => {
@@ -37,9 +36,9 @@ describe('mapi/defineStoryCreate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: {
-      headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    },
+    schema: [
+      defineField('headline', { type: 'text' }),
+    ],
   });
 
   it('should auto-inject component into content', () => {
@@ -69,9 +68,9 @@ describe('mapi/defineStoryUpdate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: {
-      headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    },
+    schema: [
+      defineField('headline', { type: 'text' }),
+    ],
   });
 
   it('should auto-inject component into content', () => {

@@ -21,7 +21,6 @@ import { createManagementApiClient } from '@storyblok/management-api-client';
 import {
   defineBlock,
   defineField,
-  defineProp,
 } from '@storyblok/schema';
 import {
   createStoryHelpers,
@@ -52,43 +51,31 @@ const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    image: defineProp(defineField({ type: 'asset' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('title', { type: 'text', required: true }),
+    defineField('image', { type: 'asset' }),
+  ],
 });
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0 }),
-    items: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name] }),
-      { pos: 1, required: true },
-    ),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('items', { type: 'bloks', component_whitelist: [teaserComponent.name], required: true }),
+  ],
 });
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    rating: defineProp(defineField({ type: 'number' }), { pos: 1 }),
-    is_featured: defineProp(defineField({ type: 'boolean' }), { pos: 2 }),
-    description: defineProp(defineField({ type: 'richtext' }), { pos: 3 }),
-    body: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name] }),
-      { pos: 4, required: true },
-    ),
-    category: defineProp(
-      defineField({ type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG }),
-      { pos: 5 },
-    ),
-    any_blocks: defineProp(
-      defineField({ type: 'bloks' }),
-      { pos: 6, required: true },
-    ),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+    defineField('rating', { type: 'number' }),
+    defineField('is_featured', { type: 'boolean' }),
+    defineField('description', { type: 'richtext' }),
+    defineField('body', { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], required: true }),
+    defineField('category', { type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG }),
+    defineField('any_blocks', { type: 'bloks', required: true }),
+  ],
 });
 
 interface StoryblokTypes {

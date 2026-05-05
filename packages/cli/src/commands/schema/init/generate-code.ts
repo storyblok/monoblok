@@ -178,7 +178,7 @@ export function generateComponentFile(component: Component, componentFolders?: C
 export function generateFolderFile(folder: ComponentFolder): string {
   const lines: string[] = [];
 
-  lines.push('import { defineBlockFolder } from \'@storyblok/schema/mapi\';');
+  lines.push('import { defineBlockFolder } from \'@storyblok/schema\';');
   lines.push('');
 
   const varName = folderVarName(folder.name);
@@ -253,7 +253,7 @@ export function generateSchemaFile(
 
   // Import Schema and Story type helpers
   lines.push('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
-  lines.push('import type { Story as InferStoryMapi } from \'@storyblok/schema/mapi\';');
+  lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
   // Import components

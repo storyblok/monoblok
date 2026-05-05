@@ -21,17 +21,9 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
-    "./mapi": {
-      "import": "./dist/mapi/index.mjs",
-      "require": "./dist/mapi/index.cjs"
-    },
     "./zod": {
       "import": "./dist/zod/index.mjs",
       "require": "./dist/zod/index.cjs"
-    },
-    "./zod/mapi": {
-      "import": "./dist/zod/mapi/index.mjs",
-      "require": "./dist/zod/mapi/index.cjs"
     },
     "./package.json": "./package.json"
   },
@@ -40,14 +32,8 @@
   "types": "./dist/index.d.cts",
   "typesVersions": {
     "*": {
-      "mapi": [
-        "./dist/mapi/index.d.mts"
-      ],
       "zod": [
         "./dist/zod/index.d.mts"
-      ],
-      "zod/mapi": [
-        "./dist/zod/mapi/index.d.mts"
       ]
     }
   },

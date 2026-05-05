@@ -43,8 +43,8 @@ node ./dist/index.mjs schema pull --space "$STORYBLOK_SPACE_ID" --out-dir ../../
 #    the generated files live outside a workspace package, e.g. .claude/tmp/):
 #    import { defineBlock } from '@storyblok/schema'
 #    -> import { defineBlock } from '/abs/path/to/monoblok/packages/schema/src/index'
-#    import { defineBlockFolder } from '@storyblok/schema/mapi'
-#    -> import { defineBlockFolder } from '/abs/path/to/monoblok/packages/schema/src/mapi/index'
+#    import { defineBlockFolder } from '@storyblok/schema'
+#    -> import { defineBlockFolder } from '/abs/path/to/monoblok/packages/schema/src/index'
 
 # 4. Push back — should show all entities as "unchanged"
 node ./dist/index.mjs schema push ../../.claude/tmp/schema-test/schema.ts --space "$STORYBLOK_SPACE_ID" --dry-run --no-migrations

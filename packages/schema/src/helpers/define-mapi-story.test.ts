@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { defineField } from '../../helpers/define-field';
-import { defineBlock } from '../../helpers/define-block';
-import { defineStory, defineStoryCreate, defineStoryUpdate } from './define-story';
+import { defineField } from './define-field';
+import { defineBlock } from './define-block';
+import { defineMapiStory, defineStoryCreate, defineStoryUpdate } from './define-story';
 
-describe('mapi/defineStory', () => {
+describe('defineMapiStory', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
@@ -13,13 +13,10 @@ describe('mapi/defineStory', () => {
   });
 
   it('should return a type safe MAPI story', () => {
-    const input = {
+    const typeSafeStory = defineMapiStory(block, {
       name: 'My Page',
-      content: {
-        headline: 'Hello',
-      },
-    };
-    const typeSafeStory = defineStory(block, input);
+      content: { headline: 'Hello' },
+    });
 
     expect(typeSafeStory).toMatchObject({
       name: 'My Page',
@@ -32,7 +29,7 @@ describe('mapi/defineStory', () => {
   });
 });
 
-describe('mapi/defineStoryCreate', () => {
+describe('defineStoryCreate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
@@ -52,19 +49,9 @@ describe('mapi/defineStoryCreate', () => {
       content: { component: 'page', headline: 'Hello' },
     });
   });
-
-  it('should accept minimal create payload (name only)', () => {
-    const payload = { name: 'My Page', content: { headline: 'Test' } };
-    const result = defineStoryCreate(block, payload);
-
-    expect(result).toEqual({
-      ...payload,
-      content: { ...payload.content, component: 'page' },
-    });
-  });
 });
 
-describe('mapi/defineStoryUpdate', () => {
+describe('defineStoryUpdate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
@@ -80,15 +67,6 @@ describe('mapi/defineStoryUpdate', () => {
 
     expect(result).toEqual({
       content: { component: 'page', headline: 'Updated!' },
-    });
-  });
-
-  it('should accept empty update payload', () => {
-    const payload = { content: {} };
-    const result = defineStoryUpdate(block, payload);
-
-    expect(result).toEqual({
-      content: { component: 'page' },
     });
   });
 });

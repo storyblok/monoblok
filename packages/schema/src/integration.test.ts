@@ -1,31 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  defineAsset,
   defineBlock,
+  defineBlockCreate,
   defineDatasource,
   defineDatasourceEntry,
   defineField,
   defineLink,
+  defineMapiAsset,
   defineSpace,
   defineStory,
   defineTag,
 } from './index';
-import { defineBlockCreate, defineAsset as defineMapiAsset } from './mapi/index';
 import {
-  assetSchema,
+  componentCreateSchema,
   contentValueSchemas,
   datasourceEntrySchema,
   datasourceSchema,
+  fieldSchema,
   linkSchema,
-  spaceSchema,
+  mapiAssetSchema,
+  mapiSpaceSchema,
   tagSchema,
 } from './zod/index';
-import {
-  assetSchema as mapiAssetSchema,
-  componentCreateSchema as mapiComponentCreateSchema,
-  fieldSchema as mapiFieldSchema,
-} from './zod/mapi/index';
 
 // Validates that helper output composes with the generated Zod schemas
 // end-to-end. Unit tests cover each helper's defaults; this exercises the
@@ -37,24 +34,6 @@ const UUID = '11111111-1111-4111-8111-111111111111';
 
 describe('schema integration', () => {
   describe('content delivery API read schemas', () => {
-    it('should accept a defineAsset() result', () => {
-      const asset = defineAsset({
-        filename: 'https://a.storyblok.com/f/1/image.png',
-        created_at: ISO_DATETIME,
-        updated_at: ISO_DATETIME,
-      });
-      expect(assetSchema.safeParse(asset).success).toBe(true);
-    });
-
-    it('should reject an asset with a non-string filename', () => {
-      const asset = { ...defineAsset({
-        filename: 'https://a.storyblok.com/f/1/image.png',
-        created_at: ISO_DATETIME,
-        updated_at: ISO_DATETIME,
-      }), filename: 123 as unknown as string };
-      expect(assetSchema.safeParse(asset).success).toBe(false);
-    });
-
     it('should accept a defineDatasource() result', () => {
       const datasource = defineDatasource({
         name: 'Colors',
@@ -77,7 +56,7 @@ describe('schema integration', () => {
 
     it('should accept a defineSpace() result', () => {
       const space = defineSpace({ name: 'My Space', domain: 'example.com' });
-      expect(spaceSchema.safeParse(space).success).toBe(true);
+      expect(mapiSpaceSchema.safeParse(space).success).toBe(true);
     });
 
     it('should accept a defineTag() result', () => {
@@ -135,7 +114,7 @@ describe('schema integration', () => {
   });
 
   describe('management API helpers', () => {
-    it('should accept a mapi defineAsset() result against the MAPI asset schema', () => {
+    it('should accept a defineMapiAsset() result against the MAPI asset schema', () => {
       const asset = defineMapiAsset({
         filename: 'hero.png',
         created_at: ISO_DATETIME,
@@ -155,12 +134,12 @@ describe('schema integration', () => {
         },
       });
       for (const prop of Object.values(block.schema ?? {})) {
-        expect(mapiFieldSchema.safeParse(prop).success).toBe(true);
+        expect(fieldSchema.safeParse(prop).success).toBe(true);
       }
     });
 
     it('should reject a prop with an unknown field type', () => {
-      expect(mapiFieldSchema.safeParse({ type: 'not-a-real-type', pos: 1 }).success).toBe(false);
+      expect(fieldSchema.safeParse({ type: 'not-a-real-type', pos: 1 }).success).toBe(false);
     });
 
     it('should accept a full defineBlockCreate() result against the MAPI component create schema', () => {
@@ -171,7 +150,7 @@ describe('schema integration', () => {
           headline: { type: 'text', pos: 1, required: true },
         },
       });
-      expect(mapiComponentCreateSchema.safeParse(block).success).toBe(true);
+      expect(componentCreateSchema.safeParse(block).success).toBe(true);
     });
   });
 });

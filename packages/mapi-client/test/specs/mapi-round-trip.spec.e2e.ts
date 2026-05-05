@@ -19,24 +19,22 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
 import {
-  defineBlock,
-  defineField,
-} from '@storyblok/schema';
-import {
   createStoryHelpers,
+  defineBlock,
   defineBlockCreate,
   defineBlockFolderCreate,
   defineDatasourceCreate,
   defineDatasourceEntryCreate,
+  defineField,
   defineInternalTagCreate,
   definePresetCreate,
-} from '@storyblok/schema/mapi';
+} from '@storyblok/schema';
 import {
   componentSchema,
   datasourceEntrySchema,
   datasourceSchema,
   storySchema,
-} from '@storyblok/schema/zod/mapi';
+} from '@storyblok/schema/zod';
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);

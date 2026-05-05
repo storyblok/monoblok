@@ -1,6 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, defineField } from '@storyblok/schema';
-import { defineStoryCreate, defineStoryUpdate } from '@storyblok/schema/mapi';
+import { defineBlock, defineField, defineStoryCreate, defineStoryUpdate } from '@storyblok/schema';
 import { createManagementApiClient } from '../index';
 import type { StoryMapi } from '../generated/stories/types.gen';
 

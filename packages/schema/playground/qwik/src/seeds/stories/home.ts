@@ -1,4 +1,4 @@
-import { createStoryHelpers } from '@storyblok/schema/mapi';
+import { createStoryHelpers } from '@storyblok/schema';
 import type { Asset } from '@storyblok/management-api-client';
 import { pageBlock } from '../../schema/components/page';
 import { heroBlock } from '../../schema/components/hero';

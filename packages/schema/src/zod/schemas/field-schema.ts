@@ -17,7 +17,7 @@ import {
   tableField,
   textareaField,
   textField,
-} from '../../../generated/mapi-zod-schemas';
+} from '../../generated/mapi-zod-schemas';
 
 /**
  * Union Zod schema for all field types.

@@ -1,6 +1,6 @@
 import type { Block } from './define-block';
 import type { Datasource } from './define-datasource';
-import type { ComponentFolder } from '../mapi/helpers/define-block-folder';
+import type { ComponentFolder } from './define-block-folder';
 
 /**
  * Derives a schema types interface from a schema object.

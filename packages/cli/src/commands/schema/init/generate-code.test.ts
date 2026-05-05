@@ -157,7 +157,7 @@ describe('generateFolderFile', () => {
 
     const result = generateFolderFile(folder as any);
 
-    expect(result).toContain('import { defineBlockFolder } from \'@storyblok/schema/mapi\';');
+    expect(result).toContain('import { defineBlockFolder } from \'@storyblok/schema\';');
     expect(result).toContain('export const contentBlocksFolder = defineBlockFolder({');
     expect(result).toContain('  name: \'Content Blocks\',');
     expect(result).toContain('  uuid: \'abc-123\',');
@@ -200,7 +200,7 @@ describe('generateSchemaFile', () => {
 
     // Imports Schema and Story helpers
     expect(result).toContain('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
-    expect(result).toContain('import type { Story as InferStoryMapi } from \'@storyblok/schema/mapi\';');
+    expect(result).toContain('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
 
     // Imports components (value imports, not type-only)
     expect(result).toContain('import { pageBlock } from \'./components/page\';');

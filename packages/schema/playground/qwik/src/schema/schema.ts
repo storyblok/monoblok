@@ -1,5 +1,4 @@
-import type { Schema as InferSchema, Story as InferStory } from '@storyblok/schema';
-import type { Story as InferStoryMapi } from '@storyblok/schema/mapi';
+import type { Schema as InferSchema, Story as InferStory, MapiStory as InferStoryMapi } from '@storyblok/schema';
 
 import { articleBlock } from './components/article';
 import { bannerBlock } from './components/banner';

@@ -1,4 +1,4 @@
-import type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate } from '../../generated/mapi-types';
+import type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate } from '../generated/mapi-types';
 
 export type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate };
 
@@ -14,7 +14,7 @@ type BlockFolderInput = { name: string } & Partial<Omit<ComponentFolder, 'name'>
  * API-assigned fields (`id`, `uuid`) are optional and filled with safe defaults.
  *
  * @example
- * import { defineBlockFolder } from '@storyblok/schema/mapi';
+ * import { defineBlockFolder } from '@storyblok/schema';
  * const folder = defineBlockFolder({ name: 'Layout' });
  */
 export const defineBlockFolder = (blockFolder: BlockFolderInput): ComponentFolder => ({
@@ -26,7 +26,7 @@ export const defineBlockFolder = (blockFolder: BlockFolderInput): ComponentFolde
  * Defines a block folder creation payload for the MAPI.
  *
  * @example
- * import { defineBlockFolderCreate } from '@storyblok/schema/mapi';
+ * import { defineBlockFolderCreate } from '@storyblok/schema';
  * const payload = defineBlockFolderCreate({ name: 'Layout' });
  */
 export const defineBlockFolderCreate = (blockFolder: ComponentFolderCreate): ComponentFolderCreate => blockFolder;
@@ -35,7 +35,7 @@ export const defineBlockFolderCreate = (blockFolder: ComponentFolderCreate): Com
  * Defines a block folder update payload for the MAPI.
  *
  * @example
- * import { defineBlockFolderUpdate } from '@storyblok/schema/mapi';
+ * import { defineBlockFolderUpdate } from '@storyblok/schema';
  * const payload = defineBlockFolderUpdate({ name: 'Updated Layout' });
  */
 export const defineBlockFolderUpdate = (blockFolder: ComponentFolderUpdate): ComponentFolderUpdate => blockFolder;

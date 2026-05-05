@@ -1,9 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, defineField } from '@storyblok/schema';
-import {
-  defineBlockCreate,
-  defineBlockUpdate,
-} from '@storyblok/schema/mapi';
+import { defineBlock, defineBlockCreate, defineBlockUpdate, defineField } from '@storyblok/schema';
 import { createManagementApiClient } from '../index';
 import type { Component as ComponentMapi } from '../generated/components/types.gen';
 

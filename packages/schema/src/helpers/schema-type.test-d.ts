@@ -2,7 +2,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
 import { defineDatasource } from './define-datasource';
-import { defineBlockFolder } from '../mapi/helpers/define-block-folder';
+import { defineBlockFolder } from './define-block-folder';
 import type { Schema } from './schema-type';
 
 const pageBlock = defineBlock({

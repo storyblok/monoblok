@@ -211,7 +211,6 @@ const CAPI_NAMES = new Set([
   'table_field_value',
   'richtext_field_value',
   'plugin_field_value',
-  'Asset',
   'Datasource',
   // New CAPI entity types (appear in context.types via their kebab-capi aliases)
   'space_capi',
@@ -507,7 +506,7 @@ async function main() {
   // since the bundled dist preserves the original component names.
   // -------------------------------------------------------------------------
   const MISSING_TYPES: Array<{ typeName: string; schemaName: string }> = [
-    // CAPI shared types (already handled by the legacy path below, kept for compatibility)
+    // MAPI Asset — no standalone CAPI Asset endpoint exists; CDN users use AssetFieldValue.
     { typeName: 'Asset', schemaName: 'Asset' },
     { typeName: 'Datasource', schemaName: 'Datasource' },
     // MAPI datasource types (in context.schemas, not context.types)

@@ -1,4 +1,4 @@
-import type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from '../../generated/mapi-types';
+import type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from '../generated/mapi-types';
 
 const ASSET_FOLDER_DEFAULTS = {
   id: 1,

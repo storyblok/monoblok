@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { component as generatedComponent } from '../../../generated/mapi-zod-schemas';
+import { component as generatedComponent } from '../../generated/mapi-zod-schemas';
 import { fieldSchema } from './field-schema';
 
 /**

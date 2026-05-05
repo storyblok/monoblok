@@ -1,4 +1,4 @@
-import type { InternalTag, InternalTagCreate, InternalTagUpdate } from '../../generated/mapi-types';
+import type { InternalTag, InternalTagCreate, InternalTagUpdate } from '../generated/mapi-types';
 
 export type { InternalTag, InternalTagCreate, InternalTagUpdate };
 
@@ -13,7 +13,7 @@ type InternalTagInput = { name: string } & Partial<Omit<InternalTag, 'name'>>;
  * API-assigned fields (`id`) are optional and filled with safe defaults.
  *
  * @example
- * import { defineInternalTag } from '@storyblok/schema/mapi';
+ * import { defineInternalTag } from '@storyblok/schema';
  * const tag = defineInternalTag({ name: 'hero' });
  */
 export const defineInternalTag = (internalTag: InternalTagInput): InternalTag => ({
@@ -25,7 +25,7 @@ export const defineInternalTag = (internalTag: InternalTagInput): InternalTag =>
  * Defines an internal tag creation payload for the MAPI.
  *
  * @example
- * import { defineInternalTagCreate } from '@storyblok/schema/mapi';
+ * import { defineInternalTagCreate } from '@storyblok/schema';
  * const payload = defineInternalTagCreate({ name: 'hero', object_type: 'asset' });
  */
 export const defineInternalTagCreate = (internalTag: InternalTagCreate): InternalTagCreate => internalTag;
@@ -34,7 +34,7 @@ export const defineInternalTagCreate = (internalTag: InternalTagCreate): Interna
  * Defines an internal tag update payload for the MAPI.
  *
  * @example
- * import { defineInternalTagUpdate } from '@storyblok/schema/mapi';
+ * import { defineInternalTagUpdate } from '@storyblok/schema';
  * const payload = defineInternalTagUpdate({ name: 'hero-image' });
  */
 export const defineInternalTagUpdate = (internalTag: InternalTagUpdate): InternalTagUpdate => internalTag;

@@ -1,4 +1,4 @@
-import type { Preset, PresetCreate, PresetUpdate } from '../../generated/mapi-types';
+import type { Preset, PresetCreate, PresetUpdate } from '../generated/mapi-types';
 
 export type { Preset, PresetCreate, PresetUpdate };
 
@@ -13,7 +13,7 @@ type PresetInput = { name: string; component_id: number } & Partial<Omit<Preset,
  * API-assigned fields (`id`) are optional and filled with safe defaults.
  *
  * @example
- * import { definePreset } from '@storyblok/schema/mapi';
+ * import { definePreset } from '@storyblok/schema';
  * const preset = definePreset({ name: 'Hero Dark', component_id: 42 });
  */
 export const definePreset = (preset: PresetInput): Preset => ({ ...PRESET_DEFAULTS, ...preset });
@@ -22,7 +22,7 @@ export const definePreset = (preset: PresetInput): Preset => ({ ...PRESET_DEFAUL
  * Defines a preset creation payload for the MAPI.
  *
  * @example
- * import { definePresetCreate } from '@storyblok/schema/mapi';
+ * import { definePresetCreate } from '@storyblok/schema';
  * const payload = definePresetCreate({ name: 'Hero Dark', component_id: 42 });
  */
 export const definePresetCreate = (preset: PresetCreate): PresetCreate => preset;
@@ -31,7 +31,7 @@ export const definePresetCreate = (preset: PresetCreate): PresetCreate => preset
  * Defines a preset update payload for the MAPI.
  *
  * @example
- * import { definePresetUpdate } from '@storyblok/schema/mapi';
+ * import { definePresetUpdate } from '@storyblok/schema';
  * const payload = definePresetUpdate({ name: 'Hero Light' });
  */
 export const definePresetUpdate = (preset: PresetUpdate): PresetUpdate => preset;

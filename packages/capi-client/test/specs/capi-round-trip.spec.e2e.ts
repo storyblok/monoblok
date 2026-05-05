@@ -21,13 +21,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
 import { createApiClient } from '@storyblok/api-client';
 import {
+  createStoryHelpers,
   defineBlock,
+  defineBlockCreate,
   defineField,
 } from '@storyblok/schema';
-import {
-  createStoryHelpers,
-  defineBlockCreate,
-} from '@storyblok/schema/mapi';
 import { spaceSchema, storySchema } from '@storyblok/schema/zod';
 
 const token = process.env.STORYBLOK_TOKEN!;

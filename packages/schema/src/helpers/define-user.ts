@@ -1,4 +1,4 @@
-import type { User, UserUpdate } from '../../generated/mapi-types';
+import type { User, UserUpdate } from '../generated/mapi-types';
 
 export type { User, UserUpdate };
 
@@ -15,7 +15,7 @@ type UserInput = { email: string } & Partial<Omit<User, 'email'>>;
  * API-assigned fields (`id`, `created_at`, `updated_at`) are optional and filled with safe defaults.
  *
  * @example
- * import { defineUser } from '@storyblok/schema/mapi';
+ * import { defineUser } from '@storyblok/schema';
  * const user = defineUser({ email: 'dev@example.com' });
  */
 export const defineUser = (user: UserInput): User => ({ ...USER_DEFAULTS, ...user });
@@ -24,7 +24,7 @@ export const defineUser = (user: UserInput): User => ({ ...USER_DEFAULTS, ...use
  * Defines a user update payload for the MAPI (updateMe endpoint).
  *
  * @example
- * import { defineUserUpdate } from '@storyblok/schema/mapi';
+ * import { defineUserUpdate } from '@storyblok/schema';
  * const payload = defineUserUpdate({ firstname: 'Jane', lastname: 'Doe' });
  */
 export const defineUserUpdate = (user: UserUpdate): UserUpdate => user;

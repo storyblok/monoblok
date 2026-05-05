@@ -1,5 +1,7 @@
-import type { Component as ComponentGenerated, ComponentSchemaField as Field } from '../generated/mapi-types';
+import type { ComponentCreate, Component as ComponentGenerated, ComponentUpdate, ComponentSchemaField as Field } from '../generated/mapi-types';
 import type { Prettify } from '../utils/prettify';
+
+export type { ComponentCreate, ComponentUpdate };
 
 const BLOCK_DEFAULTS = {
   id: 1,
@@ -126,3 +128,19 @@ export function defineBlock(block: any) {
   });
   return { ...BLOCK_DEFAULTS, ...block, schema: schemaRecord };
 }
+
+/**
+ * Defines a block creation payload for the MAPI.
+ *
+ * @example
+ * const payload = defineBlockCreate({ name: 'page', schema: { ... } });
+ */
+export const defineBlockCreate = (block: ComponentCreate): ComponentCreate => block;
+
+/**
+ * Defines a block update payload for the MAPI.
+ *
+ * @example
+ * const payload = defineBlockUpdate({ display_name: 'Page' });
+ */
+export const defineBlockUpdate = (block: ComponentUpdate): ComponentUpdate => block;

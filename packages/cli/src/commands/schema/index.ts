@@ -1,4 +1,4 @@
 import './command';
 import './push';
-import './pull';
+import './init';
 import './rollback';

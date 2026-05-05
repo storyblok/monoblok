@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { resolve } from 'pathe';
 
 import { colorPalette, commands } from '../../../constants';
@@ -7,29 +8,51 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { schemaCommand } from '../command';
-import type { SchemaPullOptions } from './constants';
+import type { SchemaInitOptions } from './constants';
 import { fetchRemoteSchema } from '../actions';
 import { writeSchemaFiles } from './actions';
 
+async function isTargetEmpty(targetPath: string): Promise<boolean> {
+  try {
+    const entries = await readdir(targetPath);
+    return entries.every(entry => entry.startsWith('.'));
+  }
+  catch (maybeError) {
+    const error = maybeError as NodeJS.ErrnoException;
+    if (error?.code === 'ENOENT') { return true; }
+    throw error;
+  }
+}
+
 schemaCommand
-  .command('pull')
-  .description('Bootstrap local TypeScript schema files from an existing Storyblok space')
+  .command('init')
+  .description('Initialize a local code-driven schema workspace from an existing Storyblok space (one-time bootstrap)')
   .option('-s, --space <space>', 'space ID')
   .option('--out-dir <dir>', 'Output directory for generated bootstrap files', '.storyblok/schema')
-  .action(async (options: SchemaPullOptions, command) => {
+  .action(async (options: SchemaInitOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
     const { space, verbose } = command.optsWithGlobals();
     const { state } = session();
 
-    ui.title(commands.SCHEMA, colorPalette.SCHEMA, 'Pulling schema...');
-    logger.info('Schema pull started', { space });
+    ui.title(commands.SCHEMA, colorPalette.SCHEMA, 'Initializing schema...');
+    logger.info('Schema init started', { space });
 
     if (!requireAuthentication(state, verbose)) { return; }
 
     if (!space) {
       handleError(new CommandError('Please provide the space as argument --space SPACE_ID.'), verbose);
+      return;
+    }
+
+    const targetPath = resolve(options.outDir);
+
+    if (!(await isTargetEmpty(targetPath))) {
+      handleError(
+        new CommandError(`Target directory ${targetPath} is not empty. \`schema init\` is a one-time bootstrap and refuses to overwrite existing files. Use \`schema push\` for ongoing changes, or remove the directory to re-bootstrap.`),
+        verbose,
+      );
       return;
     }
 
@@ -51,7 +74,6 @@ schemaCommand
       fetchSpinner.succeed(`Found: ${rawComponents.length} components, ${rawComponentFolders.length} component folders, ${rawDatasources.length} datasources`);
 
       // 2. Generate and write files
-      const targetPath = resolve(options.outDir);
       const writeSpinner = ui.createSpinner(`Generating TypeScript files to ${targetPath}...`);
       const writtenFiles = await writeSchemaFiles(targetPath, rawComponents, rawComponentFolders, rawDatasources);
 
@@ -60,7 +82,7 @@ schemaCommand
 
       writeSpinner.succeed(`Generated ${writtenFiles.length} files`);
       ui.list(writtenFiles);
-      ui.warn('`schema pull` is intended as a bootstrap step for adopting an existing space. Review generated files before continuing.');
+      ui.warn('`schema init` is a one-time bootstrap step for adopting an existing space. Review generated files before continuing.');
       ui.info('After bootstrapping, keep your local schema as the source of truth and use `schema push` for ongoing changes.');
       ui.info('Make sure `@storyblok/schema` is installed in the project that imports these files (e.g. `pnpm add @storyblok/schema`).');
     }
@@ -69,8 +91,8 @@ schemaCommand
       handleError(toError(maybeError), verbose);
     }
     finally {
-      logger.info('Schema pull finished', { summary });
-      reporter.addSummary('schemaPullResults', summary);
+      logger.info('Schema init finished', { summary });
+      reporter.addSummary('schemaInitResults', summary);
       reporter.finalize();
     }
   });

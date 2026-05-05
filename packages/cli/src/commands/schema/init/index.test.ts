@@ -107,7 +107,7 @@ const preconditions = {
   },
 };
 
-describe('schema pull command', () => {
+describe('schema init command', () => {
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 
   afterEach(() => {
@@ -123,7 +123,7 @@ describe('schema pull command', () => {
     const comp = makeMockComponent({ name: 'hero', is_nestable: true });
     preconditions.hasRemoteSchema({ components: [comp] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     const componentFile = files.find(f => f.includes('/components/hero.ts'));
@@ -140,7 +140,7 @@ describe('schema pull command', () => {
     const folder = makeMockFolder({ name: 'Content Blocks' });
     preconditions.hasRemoteSchema({ folders: [folder] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     const folderFile = files.find(f => f.includes('/components/folders/content-blocks.ts'));
@@ -155,7 +155,7 @@ describe('schema pull command', () => {
     const ds = makeMockDatasource({ name: 'Categories', slug: 'categories' });
     preconditions.hasRemoteSchema({ datasources: [ds] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     const dsFile = files.find(f => f.includes('/datasources/categories.ts'));
@@ -171,7 +171,7 @@ describe('schema pull command', () => {
     const comp = makeMockComponent({ name: 'page', is_root: true });
     preconditions.hasRemoteSchema({ components: [comp] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
 
@@ -188,7 +188,7 @@ describe('schema pull command', () => {
     const comp = makeMockComponent({ name: 'hero' });
     preconditions.hasRemoteSchema({ components: [comp] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     expect(files.some(f => f.includes('.storyblok/schema/components/hero.ts'))).toBe(true);
@@ -199,7 +199,7 @@ describe('schema pull command', () => {
     const comp = makeMockComponent({ name: 'hero' });
     preconditions.hasRemoteSchema({ components: [comp] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE, '--out-dir', './custom/output']);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE, '--out-dir', './custom/output']);
 
     const files = Object.keys(vol.toJSON());
     expect(files.some(f => f.includes('custom/output/components/hero.ts'))).toBe(true);
@@ -209,7 +209,7 @@ describe('schema pull command', () => {
   it('should handle API errors gracefully', async () => {
     preconditions.failsToFetchRemote();
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     // Should not throw — error is handled
   });
@@ -217,17 +217,17 @@ describe('schema pull command', () => {
   it('should handle empty remote space', async () => {
     preconditions.hasEmptyRemote();
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     // Should still generate schema.ts even with no entities
     expect(files.some(f => f.endsWith('/schema.ts'))).toBe(true);
   });
 
-  it('should warn that pull is a bootstrap step', async () => {
+  it('should warn that init is a bootstrap step', async () => {
     preconditions.hasEmptyRemote();
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('bootstrap step'));
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('source of truth'));
@@ -245,7 +245,7 @@ describe('schema pull command', () => {
 
     preconditions.hasRemoteSchema({ components: [comp] });
 
-    await schemaCommand.parseAsync(['node', 'test', 'pull', '--space', DEFAULT_SPACE]);
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     const componentFile = files.find(f => f.includes('/components/hero.ts'));
@@ -256,5 +256,39 @@ describe('schema pull command', () => {
     expect(content).toContain('internal_tag_ids');
     expect(content).not.toContain('metadata');
     expect(content).not.toContain('api-field-id');
+  });
+
+  it('should refuse when the target directory is not empty', async () => {
+    vol.fromJSON({
+      '.storyblok/schema/components/existing.ts': '// existing',
+    });
+    let unhandledRequest = false;
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () => {
+        unhandledRequest = true;
+        return HttpResponse.json({ components: [] });
+      }),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    expect(unhandledRequest).toBe(false);
+    const schemaFiles = Object.keys(vol.toJSON()).filter(f => f.includes('.storyblok/schema/'));
+    expect(schemaFiles).toEqual(expect.arrayContaining([expect.stringContaining('existing.ts')]));
+    expect(schemaFiles.some(f => f.includes('schema.ts'))).toBe(false);
+  });
+
+  it('should treat a directory containing only hidden files as empty', async () => {
+    vol.fromJSON({
+      '.storyblok/schema/.gitkeep': '',
+      '.storyblok/schema/.DS_Store': '',
+    });
+    const comp = makeMockComponent({ name: 'hero' });
+    preconditions.hasRemoteSchema({ components: [comp] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.includes('.storyblok/schema/components/hero.ts'))).toBe(true);
   });
 });

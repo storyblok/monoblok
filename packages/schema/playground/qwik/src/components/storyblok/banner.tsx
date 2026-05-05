@@ -1,9 +1,9 @@
 import { component$ } from '@builder.io/qwik';
 import type { BlockContent } from '@storyblok/schema';
-import type { Components } from '~/schema/schema';
+import type { Blocks } from '~/schema/schema';
 import type { bannerBlock } from '../../schema/components/banner';
 
-type BannerContent = BlockContent<typeof bannerBlock, Components>;
+type BannerContent = BlockContent<typeof bannerBlock, Blocks>;
 
 interface BannerProps {
   blok: BannerContent;

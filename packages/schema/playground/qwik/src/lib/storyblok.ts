@@ -1,6 +1,6 @@
 import { createApiClient } from '@storyblok/api-client';
 
-import type { Schema } from '../schema/schema';
+import type { StoryblokTypes } from '../schema/types';
 
 /**
  * Type-safe Storyblok Content Delivery API client.
@@ -21,5 +21,5 @@ export function createStoryblokClient() {
     cache: {
       strategy: 'network-first',
     },
-  }).withTypes<Schema>();
+  }).withTypes<StoryblokTypes>();
 }

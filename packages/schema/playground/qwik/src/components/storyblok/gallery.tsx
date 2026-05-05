@@ -1,9 +1,9 @@
 import { component$ } from '@builder.io/qwik';
 import type { BlockContent } from '@storyblok/schema';
-import type { Components } from '~/schema/schema';
+import type { Blocks } from '~/schema/schema';
 import type { galleryBlock } from '../../schema/components/gallery';
 
-type GalleryContent = BlockContent<typeof galleryBlock, Components>;
+type GalleryContent = BlockContent<typeof galleryBlock, Blocks>;
 
 interface GalleryProps {
   blok: GalleryContent;

@@ -1,10 +1,10 @@
 import { component$ } from '@builder.io/qwik';
 import type { BlockContent } from '@storyblok/schema';
-import type { Components } from '~/schema/schema';
+import type { Blocks } from '~/schema/schema';
 import type { statItemBlock, statsBlock } from '../../schema/components/stats';
 
-type StatsContent = BlockContent<typeof statsBlock, Components>;
-type StatItemContent = BlockContent<typeof statItemBlock, Components>;
+type StatsContent = BlockContent<typeof statsBlock, Blocks>;
+type StatItemContent = BlockContent<typeof statItemBlock, Blocks>;
 
 interface StatsProps {
   blok: StatsContent;

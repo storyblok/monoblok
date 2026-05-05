@@ -1,9 +1,9 @@
 import { component$ } from '@builder.io/qwik';
 import type { BlockContent } from '@storyblok/schema';
-import type { Components } from '~/schema/schema';
+import type { Blocks } from '~/schema/schema';
 import type { comparisonTableBlock } from '../../schema/components/comparison-table';
 
-type ComparisonTableContent = BlockContent<typeof comparisonTableBlock, Components>;
+type ComparisonTableContent = BlockContent<typeof comparisonTableBlock, Blocks>;
 
 interface ComparisonTableProps {
   blok: ComparisonTableContent;

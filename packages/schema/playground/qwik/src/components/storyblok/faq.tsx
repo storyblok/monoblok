@@ -2,11 +2,11 @@ import { component$ } from '@builder.io/qwik';
 import { richTextResolver } from '@storyblok/richtext';
 import type { StoryblokRichTextDocumentNode } from '@storyblok/richtext';
 import type { BlockContent } from '@storyblok/schema';
-import type { Components } from '~/schema/schema';
+import type { Blocks } from '~/schema/schema';
 import type { faqBlock, faqItemBlock } from '../../schema/components/faq';
 
-type FaqContent = BlockContent<typeof faqBlock, Components>;
-type FaqItemContent = BlockContent<typeof faqItemBlock, Components>;
+type FaqContent = BlockContent<typeof faqBlock, Blocks>;
+type FaqItemContent = BlockContent<typeof faqItemBlock, Blocks>;
 
 interface FaqProps {
   blok: FaqContent;

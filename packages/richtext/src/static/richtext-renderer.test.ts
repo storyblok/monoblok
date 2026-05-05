@@ -183,7 +183,7 @@ describe('richTextRenderer', () => {
           attrs: { class: 'javascript' },
           content: [text('const x = 1;')],
         };
-        expect(richTextRenderer(codeBlock)).toBe('<pre class="javascript"><code class="javascript">const x = 1;</code></pre>');
+        expect(richTextRenderer(codeBlock)).toBe('<pre><code class="javascript">const x = 1;</code></pre>');
       });
 
       it('does not leak language as attribute', () => {
@@ -198,13 +198,13 @@ describe('richTextRenderer', () => {
 
     describe('horizontal rule', () => {
       it('renders hr as self-closing', () => {
-        expect(richTextRenderer({ type: 'horizontal_rule' })).toBe('<hr />');
+        expect(richTextRenderer({ type: 'horizontal_rule' })).toBe('<hr>');
       });
     });
 
     describe('hard break', () => {
       it('renders br as self-closing', () => {
-        expect(richTextRenderer({ type: 'hard_break' })).toBe('<br />');
+        expect(richTextRenderer({ type: 'hard_break' })).toBe('<br>');
       });
     });
 
@@ -223,7 +223,7 @@ describe('richTextRenderer', () => {
           },
         };
         expect(richTextRenderer(image)).toBe(
-          '<img id="123" src="https://example.com/image.jpg" alt="An image" title="Image title" />',
+          '<img id="123" src="https://example.com/image.jpg" alt="An image" title="Image title">',
         );
       });
 
@@ -566,7 +566,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/x">Before </a><br /><a href="/x">After</a></p>');
+      expect(richTextRenderer(content)).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
     });
 
     it('separates groups when link attrs differ', () => {

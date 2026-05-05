@@ -14,12 +14,15 @@ import {
   untracked,
 } from '@angular/core';
 import {
+  getInnerMarks,
   getStaticChildren,
+  groupLinkNodes,
   isSelfClosing,
   processAttrs,
   resolveTag,
+  splitTableRows,
 } from '@storyblok/richtext/static';
-import type { RenderSpec, SbRichTextDoc, SbRichTextElement } from '@storyblok/richtext/static';
+import type { PMMark, RenderSpec, SbRichTextDoc, SbRichTextElement } from '@storyblok/richtext/static';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 
@@ -97,10 +100,102 @@ export class SbRichTextComponent implements OnDestroy {
   /** Render a single document */
   private renderSingleDocument(doc: SbRichTextDoc, version: number): void {
     const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
+    this.renderChildren(nodes, this.hostElement, version);
+  }
 
-    for (const node of nodes) {
-      this.renderNode(node, this.hostElement, version);
+  /**
+   * Renders child nodes with link mark merging.
+   * Adjacent text nodes with the same link mark are grouped under a single anchor element.
+   */
+  private renderChildren(children: SbRichTextDoc[], parent: HTMLElement, version: number): void {
+    const groups = groupLinkNodes(children);
+
+    for (const group of groups) {
+      if (this.shouldAbort(version)) return;
+
+      if (group.linkMark) {
+        // Render grouped text nodes under a single link
+        this.renderLinkGroup(group.nodes, group.linkMark, parent, version);
+      } else {
+        // Render single node normally
+        this.renderNode(group.nodes[0], parent, version);
+      }
     }
+  }
+
+  /**
+   * Renders a group of text nodes that share the same link mark.
+   * Creates a single anchor element containing all the text nodes with their inner marks.
+   */
+  private renderLinkGroup(
+    nodes: SbRichTextDoc[],
+    linkMark: PMMark,
+    parent: HTMLElement,
+    version: number,
+  ): void {
+    // Check if link mark has a custom component
+    const CustomLink = this.resolver.getSync(linkMark.type);
+
+    if (CustomLink) {
+      // For custom link components, render each text node separately
+      // since we can't easily project multiple nodes into ng-content
+      for (const node of nodes) {
+        this.renderTextNode(node as SbRichTextDoc & { type: 'text' }, parent, version);
+      }
+      return;
+    }
+
+    // Create the link element
+    const tag = resolveTag(linkMark);
+    if (!tag) {
+      // No tag, render text nodes directly
+      for (const node of nodes) {
+        this.renderTextNode(node as SbRichTextDoc & { type: 'text' }, parent, version);
+      }
+      return;
+    }
+
+    const linkEl = this.renderer.createElement(tag);
+    this.applyAttributes(linkEl, processAttrs(linkMark.type, linkMark.attrs));
+
+    // Render each text node with only its inner marks (excluding the link mark)
+    for (const node of nodes) {
+      if (node.type !== 'text') continue;
+
+      const innerMarks = getInnerMarks(node);
+      let current: Node = this.renderer.createText(node.text || '');
+
+      // Apply inner marks
+      for (const mark of innerMarks) {
+        const CustomMark = this.resolver.getSync(mark.type);
+
+        if (CustomMark) {
+          const ref = createComponent(CustomMark, {
+            environmentInjector: this.envInjector,
+            projectableNodes: [[current]],
+          });
+
+          ref.setInput('data', mark);
+          this.appRef.attachView(ref.hostView);
+          this.componentRefs.push(ref);
+
+          current = (ref.hostView as any).rootNodes[0];
+          continue;
+        }
+
+        const markTag = resolveTag(mark);
+        if (!markTag) continue;
+
+        const el = this.renderer.createElement(markTag);
+        this.applyAttributes(el, processAttrs(mark.type, mark.attrs));
+        this.renderer.appendChild(el, current);
+        current = el;
+      }
+
+      this.renderer.appendChild(linkEl, current);
+    }
+
+    this.renderer.appendChild(parent, linkEl);
   }
 
   // --------------------------------------------------
@@ -151,7 +246,14 @@ export class SbRichTextComponent implements OnDestroy {
     // Native HTML node (synchronous)
     // -------------------------
     const tag = resolveTag(node);
-    if (!tag) return;
+
+    // No tag (e.g., nested doc): render children directly
+    if (!tag) {
+      if (node.content) {
+        this.renderChildren(node.content, parent, version);
+      }
+      return;
+    }
 
     const el = this.renderer.createElement(tag);
     const attrs = processAttrs(node.type, node.attrs);
@@ -163,18 +265,52 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     if (!isSelfClosing(tag)) {
-      const contentHost = staticChildren
-        ? this.createStaticScaffold(staticChildren, el, attrs)
-        : el;
+      // Special handling for tables: group rows into thead/tbody
+      if (node.type === 'table' && node.content) {
+        this.renderTableContent(node.content, el, version);
+      } else {
+        const contentHost = staticChildren
+          ? this.createStaticScaffold(staticChildren, el, attrs)
+          : el;
 
-      if (node.content) {
-        for (const child of node.content) {
-          this.renderNode(child, contentHost, version);
+        if (node.content) {
+          this.renderChildren(node.content, contentHost, version);
         }
       }
     }
 
     this.renderer.appendChild(parent, el);
+  }
+
+  /**
+   * Renders table content with proper thead/tbody grouping.
+   * Header rows (containing only tableHeader cells) go in thead,
+   * remaining rows go in tbody.
+   */
+  private renderTableContent(
+    rows: SbRichTextDoc[],
+    tableEl: HTMLElement,
+    version: number,
+  ): void {
+    const { headerRows, bodyRows } = splitTableRows(rows);
+
+    // Render thead if there are header rows
+    if (headerRows.length > 0) {
+      const thead = this.renderer.createElement('thead');
+      for (const row of headerRows) {
+        this.renderNode(row, thead, version);
+      }
+      this.renderer.appendChild(tableEl, thead);
+    }
+
+    // Render tbody if there are body rows
+    if (bodyRows.length > 0) {
+      const tbody = this.renderer.createElement('tbody');
+      for (const row of bodyRows) {
+        this.renderNode(row, tbody, version);
+      }
+      this.renderer.appendChild(tableEl, tbody);
+    }
   }
 
   /** Async resolution and mounting for lazy-loaded components */

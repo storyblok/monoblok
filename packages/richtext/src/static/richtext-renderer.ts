@@ -1,6 +1,7 @@
 import { escapeHtml } from '../utils';
 import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
+import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
 import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions } from './types';
 import type { PMMark, PMNode } from './types.generated';
@@ -75,7 +76,7 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
 
   // Self-closing tags
   if (isSelfClosing(tag)) {
-    return `<${tag}${htmlAttrs} />`;
+    return `<${tag}${htmlAttrs}>`;
   }
 
   // Table: special thead/tbody grouping
@@ -89,7 +90,7 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
     const inner = renderStaticStructure(staticChildren, node.attrs, content);
-    return `<${tag}${htmlAttrs}>${inner}</${tag}>`;
+    return `<${tag}>${inner}</${tag}>`;
   }
 
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
@@ -101,7 +102,7 @@ function renderOptimizedImage(node: SbRichTextDoc, options: SbRichTextOptions): 
   const src = attrs?.src as string | undefined;
 
   if (!src) {
-    return buildHtmlAttrs('image', attrs) ? `<img${buildHtmlAttrs('image', attrs)} />` : '<img />';
+    return buildHtmlAttrs('image', attrs) ? `<img${buildHtmlAttrs('image', attrs)}>` : '<img>';
   }
 
   const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(src, options.optimizeImages);
@@ -114,7 +115,7 @@ function renderOptimizedImage(node: SbRichTextDoc, options: SbRichTextOptions): 
   };
 
   const htmlAttrs = buildHtmlAttrs('image', mergedAttrs);
-  return `<img${htmlAttrs} />`;
+  return `<img${htmlAttrs}>`;
 }
 
 /**
@@ -196,38 +197,6 @@ function wrapWithMark(
 // Link Mark Merging
 // ============================================================================
 
-/** Gets link mark from a text node, or null. */
-function getTextNodeLinkMark(node: SbRichTextDoc): PMMark | null {
-  if (node.type !== 'text' || !node.marks) {
-    return null;
-  }
-
-  for (const mark of node.marks) {
-    if (mark.type === 'link') {
-      return mark;
-    }
-  }
-  return null;
-}
-
-/** Checks if two link marks have identical attributes. */
-function areLinkMarksEqual(a: PMMark | null, b: PMMark | null): boolean {
-  if (!a || !b) {
-    return false;
-  }
-
-  const aa = (a.attrs ?? {}) as Record<string, unknown>;
-  const ba = (b.attrs ?? {}) as Record<string, unknown>;
-
-  return (
-    aa.href === ba.href
-    && aa.target === ba.target
-    && aa.linktype === ba.linktype
-    && aa.anchor === ba.anchor
-    && aa.uuid === ba.uuid
-  );
-}
-
 /** Renders consecutive text nodes (from start to end) under a single link tag. */
 function renderLinkGroup(
   children: SbRichTextDoc[],
@@ -295,21 +264,6 @@ function renderTableRows(
   return result;
 }
 
-/** Checks if a row contains only tableHeader cells. */
-function isTableHeaderRow(row: SbRichTextDoc): boolean {
-  const cells = row.content;
-  if (!cells?.length) {
-    return false;
-  }
-
-  for (const cell of cells) {
-    if (cell.type !== 'tableHeader') {
-      return false;
-    }
-  }
-  return true;
-}
-
 // Static Children (e.g., pre > code)
 
 /** Renders nested static structure defined in render map. */
@@ -326,7 +280,7 @@ function renderStaticStructure(
     const htmlAttrs = attrsToHtmlString(mergedAttrs);
 
     if (isSelfClosing(tag)) {
-      result += `<${tag}${htmlAttrs} />`;
+      result += `<${tag}${htmlAttrs}>`;
     }
     else {
       const inner = children

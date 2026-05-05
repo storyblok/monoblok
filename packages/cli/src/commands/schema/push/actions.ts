@@ -4,7 +4,7 @@ import type { Component, ComponentCreate, ComponentFolder, ComponentFolderCreate
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { getLogger } from '../../../lib/logger/logger';
-import { fetchAllPages, handleAPIError } from '../../../utils';
+import { handleAPIError } from '../../../utils';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -112,32 +112,6 @@ export function toComponentFolderCreate(input: unknown): ComponentFolderCreate {
     name: typeof input.name === 'string' ? input.name : '',
     ...(typeof input.parent_id === 'number' && { parent_id: input.parent_id }),
   } satisfies ComponentFolderCreate;
-}
-
-/** Fetches remote components, component folders, and datasources from the MAPI. */
-export async function fetchRemoteSchema(spaceId: string) {
-  const client = getMapiClient();
-  const spaceIdNum = Number(spaceId);
-
-  const [componentsRes, foldersRes, rawDatasources] = await Promise.all([
-    client.components.list({ path: { space_id: spaceIdNum }, throwOnError: true }),
-    client.componentFolders.list({ path: { space_id: spaceIdNum }, throwOnError: true }),
-    fetchAllPages(
-      (page: number) => client.datasources.list({ path: { space_id: spaceIdNum }, query: { page }, throwOnError: true }),
-      data => data?.datasources ?? [],
-    ),
-  ]);
-
-  const rawComponents = componentsRes.data?.components ?? [];
-  const rawComponentFolders = foldersRes.data?.component_groups ?? [];
-
-  const remote: RemoteSchemaData = {
-    components: new Map(rawComponents.map(c => [c.name, c])),
-    componentFolders: new Map(rawComponentFolders.map(f => [f.name, f])),
-    datasources: new Map(rawDatasources.map(d => [d.name, d])),
-  };
-
-  return { remote, rawComponents, rawComponentFolders, rawDatasources };
 }
 
 /** Formats diff results for CLI display using chalk colors. */

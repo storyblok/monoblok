@@ -8,7 +8,7 @@ import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { schemaCommand } from '../command';
 import type { SchemaPullOptions } from './constants';
-import { fetchRemoteSchema } from '../push/actions';
+import { fetchRemoteSchema } from '../actions';
 import { writeSchemaFiles } from './actions';
 
 schemaCommand

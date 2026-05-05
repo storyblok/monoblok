@@ -2,7 +2,6 @@ import { fetchAllPages, handleAPIError, handleFileSystemError } from '../../../u
 import { getMapiClient } from '../../../api';
 import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import { fetchAllPages } from '../../../utils/pagination';
 import type { DatasourceEntry, SpaceDatasource } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';

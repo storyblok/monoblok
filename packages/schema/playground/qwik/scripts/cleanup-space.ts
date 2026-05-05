@@ -23,15 +23,63 @@ const client = createManagementApiClient({
   throwOnError: true,
 });
 
-async function deleteStories() {
-  const { data } = await client.stories.list({ query: { per_page: 100 } });
-  const stories = data?.stories ?? [];
+const PER_PAGE = 100;
+
+async function fetchAllPages<T, R>(
+  fetchPage: (page: number) => Promise<{ data: T; response: Response }>,
+  extract: (data: T) => R[],
+): Promise<R[]> {
+  const items: R[] = [];
+  let page = 1;
+  while (true) {
+    const { data, response } = await fetchPage(page);
+    const pageItems = extract(data);
+    items.push(...pageItems);
+    const totalHeader = response.headers.get('total');
+    if (!totalHeader) {
+      return items;
+    }
+    const total = Number(totalHeader);
+    if (Number.isNaN(total) || items.length >= total || pageItems.length === 0) {
+      return items;
+    }
+    page++;
+  }
+}
+
+async function listStories() {
+  return fetchAllPages(
+    page => client.stories.list({ query: { page, per_page: PER_PAGE } }),
+    data => data?.stories ?? [],
+  );
+}
+
+async function listAssets() {
+  return fetchAllPages(
+    page => client.assets.list({ query: { page, per_page: PER_PAGE } }),
+    data => data?.assets ?? [],
+  );
+}
+
+async function listDatasources() {
+  return fetchAllPages(
+    page => client.datasources.list({ query: { page, per_page: PER_PAGE } }),
+    data => data?.datasources ?? [],
+  );
+}
+
+async function deleteStories(stories: Awaited<ReturnType<typeof listStories>>) {
   if (stories.length === 0) {
     return;
   }
 
   console.info(`Deleting ${stories.length} story/stories...`);
-  for (const story of stories) {
+  // Deepest paths first so a folder's children are gone before the folder is
+  // deleted; otherwise the cascade-delete leaves orphan ids that 404.
+  const ordered = [...stories].sort(
+    (a, b) => (b.full_slug?.split('/').length ?? 0) - (a.full_slug?.split('/').length ?? 0),
+  );
+  for (const story of ordered) {
     if (story.id) {
       await client.stories.delete(story.id);
       console.info(`  Deleted: ${story.full_slug}`);
@@ -39,24 +87,22 @@ async function deleteStories() {
   }
 }
 
-async function deleteAssets() {
-  const { data } = await client.assets.list({ query: { per_page: 100 } });
-  const assets = data?.assets ?? [];
+async function deleteAssets(assets: Awaited<ReturnType<typeof listAssets>>) {
   if (assets.length === 0) {
     return;
   }
 
   console.info(`Deleting ${assets.length} asset(s)...`);
   const ids = assets.map(a => a.id).filter((id): id is number => id !== undefined);
-  if (ids.length > 0) {
-    await client.assets.deleteMany({ body: { ids } });
-    console.info(`  Deleted ${ids.length} asset(s).`);
+  // MAPI deleteMany rejects payloads above 100 ids, so chunk the call.
+  for (let i = 0; i < ids.length; i += PER_PAGE) {
+    const chunk = ids.slice(i, i + PER_PAGE);
+    await client.assets.deleteMany({ body: { ids: chunk } });
+    console.info(`  Deleted ${chunk.length} asset(s).`);
   }
 }
 
-async function deleteDatasources() {
-  const { data } = await client.datasources.list({ query: { per_page: 100 } });
-  const datasources = data?.datasources ?? [];
+async function deleteDatasources(datasources: Awaited<ReturnType<typeof listDatasources>>) {
   if (datasources.length === 0) {
     return;
   }
@@ -72,9 +118,14 @@ async function deleteDatasources() {
 
 async function main() {
   try {
-    await deleteAssets();
-    await deleteStories();
-    await deleteDatasources();
+    const [assets, stories, datasources] = await Promise.all([
+      listAssets(),
+      listStories(),
+      listDatasources(),
+    ]);
+    await deleteAssets(assets);
+    await deleteStories(stories);
+    await deleteDatasources(datasources);
     console.info('Cleanup complete.');
   }
   catch (err) {

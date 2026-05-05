@@ -108,6 +108,11 @@
         "dependsOn": [
           "generate"
         ]
+      },
+      "test": {
+        "dependsOn": [
+          "generate"
+        ]
       }
     }
   }

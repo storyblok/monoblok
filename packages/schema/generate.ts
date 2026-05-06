@@ -242,6 +242,7 @@ const MAPI_NAMES = new Set([
   'DatasourceUpdate',
   'ComponentSchemaField',
   'base_field',
+  'value_field',
   'text_field',
   'textarea_field',
   'richtext_field',

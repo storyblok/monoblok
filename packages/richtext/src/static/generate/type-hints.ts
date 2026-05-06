@@ -1,31 +1,8 @@
-// Could extend for more attributes if needed
+/**
+ * Fallback type hints for extensions without Valibot schemas.
+ * Currently only used for the `blok` extension attributes.
+ */
 export const hints: Record<string, string> = {
-  level: '1 | 2 | 3 | 4 | 5 | 6',
-  textAlign: '\'left\' | \'center\' | \'right\' | \'justify\' | null',
-  color: 'string | null',
-  class: 'string | null',
   id: 'string | null',
-  href: 'string',
-  linktype: '\'url\' | \'story\' | \'asset\' | \'email\'',
-  src: 'string',
-  alt: 'string',
-  title: 'string | null',
-  width: 'number | string | null',
-  height: 'number | string | null',
-  rel: 'string | null',
-  target: '\'_self\' | \'_blank\' | \'_parent\' | \'_top\' | null',
-  order: 'number',
-  colspan: 'number',
-  rowspan: 'number',
-  colwidth: 'number[] | null',
-  backgroundColor: 'string | null',
-  body: 'SbBlokData[]',
-  emoji: 'string | null',
-  name: 'string | null',
-  fallbackImage: 'string | null',
-  reporter: 'never',
-  custom: 'Record<string, string | null>',
-  uuid: 'string',
-  anchor: 'string',
-  // Expand as needed
+  body: 'SbBlokData[] | null',
 };

@@ -7,9 +7,12 @@ import {
 } from './define-story';
 import type { MapiStory, Story, StoryComponent, StoryCreate, StoryUpdate } from './define-story';
 
-interface StoryblokTypesConfig {
-  components: Block;
-}
+type StoryblokTypesConfig = { components: Block } | { blocks: Block };
+
+type ResolveComponents<T extends StoryblokTypesConfig> =
+  T extends { components: infer C extends Block } ? C
+    : T extends { blocks: infer B extends Block } ? B
+      : never;
 
 type DefineStoryTyped<TBlocks extends Block> =
   <const TBlock extends StoryComponent>(
@@ -38,16 +41,16 @@ type DefineStoryUpdateTyped<TBlocks extends Block> =
 /**
  * Creates story helper functions pre-bound to your component type union.
  *
+ * `withTypes<T>()` accepts either `{ components: ... }` or `{ blocks: ... }` — the
+ * latter matches the `Schema` type produced by `InferSchema`, so a project's
+ * `Schema` can be passed directly without an extra wrapper.
+ *
  * @example
  * ```ts
- * import type { pageComponent, teaserComponent } from './schema';
- *
- * type StoryblokTypes = {
- *   components: typeof pageComponent | typeof teaserComponent;
- * };
+ * import type { Schema } from './schema';
  *
  * const { defineStory, defineMapiStory, defineStoryCreate, defineStoryUpdate } =
- *   createStoryHelpers().withTypes<StoryblokTypes>();
+ *   createStoryHelpers().withTypes<Schema>();
  * ```
  */
 export function createStoryHelpers() {
@@ -57,16 +60,16 @@ export function createStoryHelpers() {
     defineStoryCreate: defineStoryCreateImpl,
     defineStoryUpdate: defineStoryUpdateImpl,
     withTypes<T extends StoryblokTypesConfig>() {
-      const defineStory: DefineStoryTyped<T['components']> = (component, story) =>
+      const defineStory: DefineStoryTyped<ResolveComponents<T>> = (component, story) =>
         defineStoryImpl(component, story as any);
 
-      const defineMapiStory: DefineMapiStoryTyped<T['components']> = (component, story) =>
+      const defineMapiStory: DefineMapiStoryTyped<ResolveComponents<T>> = (component, story) =>
         defineMapiStoryImpl(component, story as any);
 
-      const defineStoryCreate: DefineStoryCreateTyped<T['components']> = (component, story) =>
+      const defineStoryCreate: DefineStoryCreateTyped<ResolveComponents<T>> = (component, story) =>
         defineStoryCreateImpl(component, story as any);
 
-      const defineStoryUpdate: DefineStoryUpdateTyped<T['components']> = (component, story) =>
+      const defineStoryUpdate: DefineStoryUpdateTyped<ResolveComponents<T>> = (component, story) =>
         defineStoryUpdateImpl(component, story as any);
 
       return { defineStory, defineMapiStory, defineStoryCreate, defineStoryUpdate };

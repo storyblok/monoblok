@@ -23,6 +23,29 @@ allOf:
         description: Array of enabled toolbar elements
         items:
           type: string
+          enum:
+            - bold
+            - italic
+            - inlinecode
+            - code
+            - h1
+            - h2
+            - h3
+            - h4
+            - h5
+            - h6
+            - list
+            - olist
+            - quote
+            - hrule
+            - link
+            - image
+            - paragraph
+            - help
+            - toggle-richtext
+            - auto
+            - ltr
+            - rtl
       allow_multiline:
         type: boolean
         description: Whether to allow empty paragraphs

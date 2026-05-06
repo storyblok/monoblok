@@ -97,25 +97,30 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
 }
 
 /** Renders an image node with optimization applied. */
-function renderOptimizedImage(node: SbRichTextDoc, options: SbRichTextOptions): string {
+function renderOptimizedImage(
+  node: SbRichTextDoc,
+  options: SbRichTextOptions,
+): string {
   const attrs = node.attrs as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
 
-  if (!src) {
-    return buildHtmlAttrs('image', attrs) ? `<img${buildHtmlAttrs('image', attrs)}>` : '<img>';
+  let finalAttrs: Record<string, unknown> | undefined = attrs;
+
+  if (src) {
+    const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(
+      src,
+      options.optimizeImages,
+    );
+
+    finalAttrs = {
+      ...attrs,
+      src: optimizedSrc,
+      ...extraAttrs,
+    };
   }
 
-  const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(src, options.optimizeImages);
-
-  // Merge original attrs with optimized attrs
-  const mergedAttrs = {
-    ...attrs,
-    src: optimizedSrc,
-    ...extraAttrs,
-  };
-
-  const htmlAttrs = buildHtmlAttrs('image', mergedAttrs);
-  return `<img${htmlAttrs}>`;
+  const htmlAttrs = buildHtmlAttrs('image', finalAttrs);
+  return htmlAttrs ? `<img${htmlAttrs}>` : '<img>';
 }
 
 /**

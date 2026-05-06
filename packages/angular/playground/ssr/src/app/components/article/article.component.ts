@@ -1,9 +1,9 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { SbRichTextComponent, type StoryblokRichTextJson } from '@storyblok/angular';
+import { SbRichTextComponent, type SbRichTextDoc } from '@storyblok/angular';
 
 export interface ArticleBlok {
   title?: string;
-  content?: StoryblokRichTextJson;
+  content?: SbRichTextDoc;
 }
 
 @Component({

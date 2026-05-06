@@ -1,12 +1,21 @@
-import type { PMMark, PMNode, TiptapComponentName } from './types.generated';
+import type { StoryblokRichTextImageOptimizationOptions as SbRichTextImageOptions } from '../types';
+import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.generated';
+
+export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
 
 /** Valid attribute values for DOM elements */
 export type AttrValue = string | number | boolean;
 export type HtmlTag = keyof HTMLElementTagNameMap;
-export interface SbBlokData {
-  _key: string;
-  component: string;
-  [otherKey: string]: unknown;
+
+interface ISbComponentType<T extends string> {
+  _uid?: string;
+  component?: T;
+  _editable?: string;
+}
+type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
+
+export interface SbBlokData extends ISbComponentType<string> {
+  [index: string]: SbBlokKeyDataTypes;
 }
 
 export interface RenderSpec {
@@ -20,31 +29,28 @@ export interface RenderSpec {
 }
 
 /** Canonical type for a Storyblok RichText JSON root */
-export type StoryblokRichTextJson = PMNode;
+export type SbRichTextDoc = PMNode;
 
 /** Base props for node/mark components */
-export type RichTextBaseProps<T extends TiptapComponentName> =
+export type SbRichTextProps<T extends SbRichTextElement> =
   T extends PMNode['type']
     ? Extract<PMNode, { type: T }>
     : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }>
+      ? Extract<PMMark, { type: T }> & { children: string }
       : never;
 
-/** Typed override map for node/mark components */
-export type RichTextComponentProps<
-  T extends TiptapComponentName,
-  TComponent = unknown,
-  ExtraProps extends Record<string, unknown> = Record<string, never>,
-> = RichTextBaseProps<T> &
-  ExtraProps & {
-    components?: StoryblokRichTextComponentMap<TComponent, ExtraProps>;
-  };
-
-export type StoryblokRichTextComponentMap<
-  TComponent = unknown,
-  ExtraProps extends Record<string, unknown> = Record<string, never>,
+/** Generic component map for any renderer target */
+export type SbRichTextComponents<
+  TComponent = string,
 > = {
-  [K in TiptapComponentName]?: (
-    props: RichTextComponentProps<K, TComponent, ExtraProps>
+  [K in SbRichTextElement]?: (
+    props: SbRichTextProps<K>
   ) => TComponent;
 };
+
+export interface SbRichTextOptions {
+  renderers?: SbRichTextComponents<string>;
+  optimizeImages?: boolean | Partial<SbRichTextImageOptions>;
+}
+
+export { SbRichTextImageOptions };

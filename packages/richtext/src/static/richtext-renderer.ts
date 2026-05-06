@@ -1,166 +1,326 @@
 import { escapeHtml } from '../utils';
+import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
+import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
-import type { RenderSpec, StoryblokRichTextJson } from './types';
-import type { PMNode } from './types.generated';
+import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions } from './types';
+import type { PMMark, PMNode } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
+
+type TextNode = PMNode & { type: 'text' };
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
- * This is a framework-agnostic static renderer that supports Storyblok
- * richtext nodes and marks, applies attributes and styles, and safely
- * escapes text content. `blok` nodes are not rendered and will log a warning.
+ * @param document - RichText JSON document, array of nodes, or nullish value
+ * @param options - Renderer configuration with custom node/mark renderers
+ * @returns Rendered HTML string
  *
- * @param document - The Storyblok RichText JSON document to render
- * @returns The rendered HTML string
- *  @example
+ * @example
  * ```ts
  * const html = richTextRenderer({
  *   type: 'doc',
- *   content: [
- *     {
- *       type: 'paragraph',
- *       content: [
- *         { type: 'text', text: 'Hello World' }
- *       ]
- *     }
- *   ]
+ *   content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }]
  * });
- *
- * console.log(html);
- * // <p>Hello World</p>
+ * // => '<p>Hello</p>'
  * ```
  */
-export function richTextRenderer(document: StoryblokRichTextJson): string {
+export function richTextRenderer(
+  document: SbRichTextDoc | SbRichTextDoc[] | null | undefined,
+  options?: SbRichTextOptions,
+): string {
   if (!document) {
     return '';
   }
 
+  if (Array.isArray(document)) {
+    return renderChildren(document, options);
+  }
+
   const nodes = document.type === 'doc' ? document.content : [document];
-
-  if (!nodes || nodes.length === 0) {
-    return '';
-  }
-
-  const parts: string[] = [];
-  for (const node of nodes) {
-    parts.push(renderNode(node));
-  }
-  return parts.join('');
+  return nodes?.length ? renderChildren(nodes, options) : '';
 }
 
 /** Renders a single node to HTML. */
-function renderNode(node: StoryblokRichTextJson): string {
+function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
+  // Text nodes: apply marks and escape content
   if (node.type === 'text') {
-    return renderText(node);
+    return renderTextNode(node as TextNode, node.marks, options);
   }
+
+  // Custom renderer takes full control
+  const customRenderer = options?.renderers?.[node.type as keyof typeof options.renderers];
+  if (customRenderer) {
+    return (customRenderer as (props: typeof node) => string)(node);
+  }
+
+  // Blok nodes require custom renderer
   if (node.type === 'blok') {
     console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
     return '';
   }
 
   const tag = resolveTag(node);
+
+  // No tag (e.g., nested doc): render children directly
   if (!tag) {
-    return '';
+    return node.content ? renderChildren(node.content, options) : '';
   }
 
-  const selfClosing = isSelfClosing(tag);
+  // Image nodes: apply optimization if configured
+  if (node.type === 'image' && options?.optimizeImages) {
+    return renderOptimizedImage(node, options);
+  }
+
+  const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
+
+  // Self-closing tags
+  if (isSelfClosing(tag)) {
+    return `<${tag}${htmlAttrs}>`;
+  }
+
+  // Table: special thead/tbody grouping
+  if (node.type === 'table') {
+    return `<${tag}${htmlAttrs}>${renderTableRows(node.content, options)}</${tag}>`;
+  }
+
+  const content = node.content ? renderChildren(node.content, options) : '';
+
+  // Static children (e.g., pre > code)
   const staticChildren = getStaticChildren(node);
-  const attrs = processAttrs(node.type, node.attrs);
-  const styleString = attrs.style ? styleToString(attrs.style) : '';
-  const htmlAttrs = attrsToString({
-    ...attrs,
-    ...(styleString && { style: styleString }),
-  });
-
-  if (selfClosing) {
-    return `<${tag}${htmlAttrs} />`;
-  }
-
-  // Render children content
-  const childContent = node.content
-    ? node.content.map(child => renderNode(child)).join('')
-    : '';
-
-  // Handle static children (e.g., code_block with pre > code structure)
-  // Static children are wrapped inside the parent tag
   if (staticChildren) {
-    const innerContent = renderStaticChildren(
-      staticChildren,
-      attrs,
-      childContent,
-    );
-    return `<${tag}${htmlAttrs}>${innerContent}</${tag}>`;
+    const inner = renderStaticStructure(staticChildren, node.attrs, content);
+    return `<${tag}>${inner}</${tag}>`;
   }
 
-  return `<${tag}${htmlAttrs}>${childContent}</${tag}>`;
+  return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
 
-/** Renders static children structure (e.g., table > tbody, pre > code). */
-function renderStaticChildren(
-  staticChildren: readonly RenderSpec[],
-  attrs: Record<string, unknown>,
-  parentChildren: string = '',
-): string {
-  const parts: string[] = [];
+/** Renders an image node with optimization applied. */
+function renderOptimizedImage(node: SbRichTextDoc, options: SbRichTextOptions): string {
+  const attrs = node.attrs as Record<string, unknown> | undefined;
+  const src = attrs?.src as string | undefined;
 
-  for (const child of staticChildren) {
-    const tag = child.tag;
-    const selfClosing = isSelfClosing(tag);
-    const mergedAttrs = { ...child.attrs, ...attrs };
-    const htmlAttrs = attrsToString(mergedAttrs);
-
-    if (selfClosing) {
-      parts.push(`<${tag}${htmlAttrs} />`);
-      continue;
-    }
-
-    const children = child.children
-      ? renderStaticChildren(child.children, attrs, parentChildren)
-      : parentChildren;
-
-    parts.push(`<${tag}${htmlAttrs}>${children}</${tag}>`);
+  if (!src) {
+    return buildHtmlAttrs('image', attrs) ? `<img${buildHtmlAttrs('image', attrs)}>` : '<img>';
   }
 
-  return parts.join('');
+  const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(src, options.optimizeImages);
+
+  // Merge original attrs with optimized attrs
+  const mergedAttrs = {
+    ...attrs,
+    src: optimizedSrc,
+    ...extraAttrs,
+  };
+
+  const htmlAttrs = buildHtmlAttrs('image', mergedAttrs);
+  return `<img${htmlAttrs}>`;
 }
 
-/** Renders a text node with its marks (bold, italic, etc.). */
-function renderText(node: PMNode & { type: 'text' }): string {
-  const marks = node.marks;
-  // Escape HTML entities in text content to prevent XSS
-  let result = escapeHtml(node.text);
+/**
+ * Renders child nodes, merging adjacent text nodes that share the same link mark.
+ * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
+ * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
+ */
+function renderChildren(children: SbRichTextDoc[], options?: SbRichTextOptions): string {
+  let result = '';
+  let i = 0;
+  const len = children.length;
 
-  if (!marks || marks.length === 0) {
-    return result;
-  }
+  while (i < len) {
+    const node = children[i];
+    const linkMark = getTextNodeLinkMark(node);
 
-  // Apply marks in order (innermost first)
-  for (const mark of marks) {
-    const tag = resolveTag(mark);
-    if (!tag) {
-      continue;
+    if (linkMark) {
+      // Find end of link group (consecutive text nodes with same link)
+      let end = i + 1;
+      while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
+        end++;
+      }
+      result += renderLinkGroup(children, i, end, linkMark, options);
+      i = end;
     }
-
-    const attrs = processAttrs(mark.type, mark.attrs);
-    const htmlAttrs = attrsToString(attrs);
-    result = `<${tag}${htmlAttrs}>${result}</${tag}>`;
+    else {
+      result += renderNode(node, options);
+      i++;
+    }
   }
 
   return result;
 }
 
-/** Converts an attributes object to an HTML attribute string. */
-function attrsToString(attrs: Record<string, unknown>): string {
-  const entries = Object.entries(attrs).filter(([, v]) => v != null);
+/** Renders a text node with its marks. */
+function renderTextNode(
+  node: TextNode,
+  marks: PMMark[] | undefined,
+  options?: SbRichTextOptions,
+): string {
+  let html = escapeHtml(node.text);
 
-  if (entries.length === 0) {
+  if (!marks?.length) {
+    return html;
+  }
+
+  for (const mark of marks) {
+    html = wrapWithMark(html, mark, options);
+  }
+
+  return html;
+}
+
+/** Wraps content with a single mark tag. */
+function wrapWithMark(
+  content: string,
+  mark: PMMark,
+  options?: SbRichTextOptions,
+): string {
+  // Custom mark renderer
+  const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
+  if (customRenderer) {
+    return (customRenderer as (props: typeof mark & { children: string }) => string)({
+      ...mark,
+      children: content,
+    });
+  }
+
+  const tag = resolveTag(mark);
+  if (!tag) {
+    return content;
+  }
+
+  const htmlAttrs = buildHtmlAttrs(mark.type, mark.attrs);
+  return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+}
+
+// ============================================================================
+// Link Mark Merging
+// ============================================================================
+
+/** Renders consecutive text nodes (from start to end) under a single link tag. */
+function renderLinkGroup(
+  children: SbRichTextDoc[],
+  start: number,
+  end: number,
+  linkMark: PMMark,
+  options?: SbRichTextOptions,
+): string {
+  // Render each text node with only its non-link marks
+  let inner = '';
+  for (let i = start; i < end; i++) {
+    const node = children[i] as TextNode;
+    const innerMarks = node.marks?.filter(m => m.type !== 'link');
+    inner += renderTextNode(node, innerMarks, options);
+  }
+
+  const tag = resolveTag(linkMark);
+  if (!tag) {
+    return inner;
+  }
+
+  const htmlAttrs = buildHtmlAttrs(linkMark.type, linkMark.attrs);
+  return `<${tag}${htmlAttrs}>${inner}</${tag}>`;
+}
+
+// ============================================================================
+// Table Rendering
+// ============================================================================
+
+/** Renders table rows with thead/tbody grouping based on cell types. */
+function renderTableRows(
+  rows: SbRichTextDoc[] | undefined,
+  options?: SbRichTextOptions,
+): string {
+  if (!rows?.length) {
     return '';
   }
-  const attrParts: string[] = [];
-  for (const [key, value] of entries) {
-    attrParts.push(`${key}="${escapeAttr(value)}"`);
+
+  // Find where header rows end (contiguous tableHeader rows at start)
+  let headerEnd = 0;
+  while (headerEnd < rows.length && isTableHeaderRow(rows[headerEnd])) {
+    headerEnd++;
   }
-  return ` ${attrParts.join(' ')}`;
+
+  let result = '';
+
+  // Render thead
+  if (headerEnd > 0) {
+    result += '<thead>';
+    for (let i = 0; i < headerEnd; i++) {
+      result += renderNode(rows[i], options);
+    }
+    result += '</thead>';
+  }
+
+  // Render tbody
+  if (headerEnd < rows.length) {
+    result += '<tbody>';
+    for (let i = headerEnd; i < rows.length; i++) {
+      result += renderNode(rows[i], options);
+    }
+    result += '</tbody>';
+  }
+
+  return result;
+}
+
+// Static Children (e.g., pre > code)
+
+/** Renders nested static structure defined in render map. */
+function renderStaticStructure(
+  specs: readonly RenderSpec[],
+  parentAttrs: Record<string, unknown> | undefined,
+  content: string,
+): string {
+  let result = '';
+
+  for (const spec of specs) {
+    const { tag, children, attrs: specAttrs } = spec;
+    const mergedAttrs = { ...specAttrs, ...parentAttrs };
+    const htmlAttrs = attrsToHtmlString(mergedAttrs);
+
+    if (isSelfClosing(tag)) {
+      result += `<${tag}${htmlAttrs}>`;
+    }
+    else {
+      const inner = children
+        ? renderStaticStructure(children, parentAttrs, content)
+        : content;
+      result += `<${tag}${htmlAttrs}>${inner}</${tag}>`;
+    }
+  }
+
+  return result;
+}
+
+/** Builds HTML attribute string from node/mark type and attrs. */
+function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> | undefined): string {
+  const processed = processAttrs(type, attrs, {
+    colspan: 'colspan',
+    rowspan: 'rowspan',
+  });
+
+  // Convert style object to string if present
+  const styleObj = processed.style as Record<string, AttrValue> | undefined;
+  const finalAttrs: Record<string, unknown> = { ...processed };
+
+  if (styleObj) {
+    finalAttrs.style = styleToString(styleObj);
+  }
+
+  return attrsToHtmlString(finalAttrs);
+}
+
+/** Converts attribute record to HTML string: ` key="value" key2="value2"` */
+function attrsToHtmlString(attrs: Record<string, unknown>): string {
+  let result = '';
+
+  for (const key in attrs) {
+    const value = attrs[key];
+    if (value != null) {
+      result += ` ${key}="${escapeAttr(value)}"`;
+    }
+  }
+
+  return result;
 }

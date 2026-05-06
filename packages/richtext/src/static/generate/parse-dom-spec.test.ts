@@ -57,7 +57,7 @@ describe('parseDOMSpec', () => {
     expect(result).toEqual(
       {
         attrs: {
-          style: 'display: none',
+          style: 'display: none;',
         },
         tag: 'span',
       },
@@ -95,7 +95,7 @@ describe('parseDOMSpec', () => {
             attrs: {
               draggable: 'false',
               loading: 'lazy',
-              style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
+              style: 'width: 1.25em; height: 1.25em; vertical-align: text-top;',
             },
             tag: 'img',
           },

@@ -1,12 +1,16 @@
-import { InjectionToken, Type, Injectable, inject } from '@angular/core';
-import type { TiptapComponentName } from '@storyblok/richtext/static';
+import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/core';
+import type { SbRichTextElement } from '@storyblok/richtext/static';
 
-import {
-  type StoryblokFeature,
-  BaseComponentResolver,
-  StoryblokComponentLoader,
-} from '../components.feature';
+import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
+import { RichTextComponentProps } from '../types';
 
+export type RichTextAngularComponent<T extends SbRichTextElement> = Type<{
+  data: InputSignal<RichTextComponentProps<T>>;
+}>;
+
+type RichtextComponentLoader<T extends SbRichTextElement> = () => Promise<
+  RichTextAngularComponent<T>
+>;
 /**
  * Map of Storyblok segment types to Angular components.
  * Supports both eager (direct) and lazy (dynamic import) loading.
@@ -14,27 +18,27 @@ import {
  * @example
  * ```typescript
  * // Eager loading (bundled immediately)
- * const components: SBAngularComponentMap = {
+ * const components: SbAngularComponentMap = {
  *   link: CustomLinkComponent,
  *   image: OptimizedImageComponent,
  * };
  *
  * // Lazy loading (loaded on-demand) - recommended
- * const components: SBAngularComponentMap = {
+ * const components: SbAngularComponentMap = {
  *   link: () => import('./custom-link').then(m => m.CustomLinkComponent),
  *   image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
  * };
  * ```
  */
-export type SBAngularComponentMap = Partial<
-  Record<TiptapComponentName, Type<any> | StoryblokComponentLoader>
->;
+export type SbAngularComponentMap = {
+  [K in SbRichTextElement]?: RichtextComponentLoader<K>;
+};
 
 /**
  * Injection token for richtext component overrides.
  * Defaults to an empty map if not provided.
  */
-export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SBAngularComponentMap>(
+export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SbAngularComponentMap>(
   'STORYBLOK_RICHTEXT_COMPONENTS',
   { factory: () => ({}) },
 );
@@ -44,11 +48,11 @@ export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SBAngularCompone
  * Caches resolved components to avoid repeated dynamic imports.
  */
 @Injectable({ providedIn: 'root' })
-export class StoryblokRichtextResolver extends BaseComponentResolver<TiptapComponentName> {
+export class StoryblokRichtextResolver extends BaseComponentResolver<SbRichTextElement> {
   protected readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
 
   /** Get all registered segment types (for determining which nodes become component nodes). */
-  getRegisteredTypes(): TiptapComponentName[] {
+  getRegisteredTypes(): SbRichTextElement[] {
     return this.getRegisteredKeys();
   }
 }
@@ -82,7 +86,7 @@ export class StoryblokRichtextResolver extends BaseComponentResolver<TiptapCompo
  * ```
  */
 export function withStoryblokRichtextComponents(
-  components: SBAngularComponentMap,
+  components: SbAngularComponentMap,
 ): StoryblokFeature {
   return {
     ɵkind: 'richtext',

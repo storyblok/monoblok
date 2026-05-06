@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from 'vitest/config';
-import path from 'node:path';
+import { resolve } from 'node:path';
 import { lightGreen } from 'kolorist';
 import banner from 'vite-plugin-banner';
 import dts from 'vite-plugin-dts';
@@ -13,6 +13,7 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
+      rollupTypes: true,
     }),
     banner({
       content: `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`,
@@ -20,11 +21,26 @@ export default defineConfig({
   ] as Plugin[],
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src', 'index.ts'),
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        api: resolve(__dirname, 'src/api.ts'),
+        bridge: resolve(__dirname, 'src/bridge.ts'),
+        editable: resolve(__dirname, 'src/editable.ts'),
+      },
       name: 'storyblok',
-      fileName: (format) => {
-        const name = 'storyblok-js';
-        return format === 'es' ? `${name}.mjs` : `${name}.js`;
+      fileName: (format, entry) => {
+        return format === 'es' ? `${entry}.mjs` : `${entry}.js`;
+      },
+      formats: ['es', 'cjs'],
+    },
+    rollupOptions: {
+      external: ['@storyblok/richtext', 'storyblok-js-client'],
+      output: {
+        preserveModules: true,
+        globals: {
+          '@storyblok/richtext': 'StoryblokRichtext',
+          'storyblok-js-client': 'StoryblokClient',
+        },
       },
     },
     rollupOptions: {

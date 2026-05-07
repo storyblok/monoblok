@@ -123,6 +123,13 @@ describe('storyblokClient', () => {
 
       expect(client.maxRetries).toBe(5);
     });
+    it('should set retriesDelay', () => {
+      client = new StoryblokClient({
+        retriesDelay: 1000,
+      });
+
+      expect(client.retriesDelay).toBe(1000);
+    });
     // TODO: seems like implmentation is missing
     it.skip('should desactivate resolveNestedRelations', () => {
       client = new StoryblokClient({

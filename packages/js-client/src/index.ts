@@ -141,7 +141,7 @@ export class Storyblok {
     this.rateLimitConfig = createRateLimitConfig(config.rateLimit, !!config.oauthToken);
 
     this.maxRetries = config.maxRetries || 10;
-    this.retriesDelay = 300;
+    this.retriesDelay = config.retriesDelay || 300;
 
     // Initialize throttle queue manager
     this.throttleManager = new ThrottleQueueManager(

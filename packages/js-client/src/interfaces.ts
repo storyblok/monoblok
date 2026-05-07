@@ -245,6 +245,7 @@ export interface ISbConfig {
   headers?: any;
   region?: string;
   maxRetries?: number;
+  retriesDelay?: number;
   https?: boolean;
   rateLimit?: number;
   endpoint?: string;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { richTextRenderer } from './richtext-renderer';
+import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
 
 // ============================================================================
@@ -67,18 +67,18 @@ const table = (rows: SbRichTextDoc[]): SbRichTextDoc => ({
 // Tests: Input Handling
 // ============================================================================
 
-describe('richTextRenderer', () => {
+describe('renderRichText', () => {
   describe('input handling', () => {
     it('returns empty string for null input', () => {
-      expect(richTextRenderer(null)).toBe('');
+      expect(renderRichText(null)).toBe('');
     });
 
     it('returns empty string for undefined input', () => {
-      expect(richTextRenderer(undefined)).toBe('');
+      expect(renderRichText(undefined)).toBe('');
     });
 
     it('returns empty string for empty array', () => {
-      expect(richTextRenderer([])).toBe('');
+      expect(renderRichText([])).toBe('');
     });
 
     it('renders array of nodes', () => {
@@ -86,7 +86,7 @@ describe('richTextRenderer', () => {
         { type: 'paragraph', content: [text('First')] },
         { type: 'paragraph', content: [text('Second')] },
       ];
-      expect(richTextRenderer(nodes)).toBe('<p>First</p><p>Second</p>');
+      expect(renderRichText(nodes)).toBe('<p>First</p><p>Second</p>');
     });
 
     it('renders doc node without wrapper', () => {
@@ -94,7 +94,7 @@ describe('richTextRenderer', () => {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('Hello')] }],
       };
-      expect(richTextRenderer(doc)).toBe('<p>Hello</p>');
+      expect(renderRichText(doc)).toBe('<p>Hello</p>');
     });
 
     it('renders nested doc nodes', () => {
@@ -105,12 +105,12 @@ describe('richTextRenderer', () => {
           { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] },
         ],
       };
-      expect(richTextRenderer(nested)).toBe('<p>Outer</p><p>Inner</p>');
+      expect(renderRichText(nested)).toBe('<p>Outer</p><p>Inner</p>');
     });
 
     it('renders single non-doc node directly', () => {
       const node: SbRichTextDoc = { type: 'paragraph', content: [text('Direct')] };
-      expect(richTextRenderer(node)).toBe('<p>Direct</p>');
+      expect(renderRichText(node)).toBe('<p>Direct</p>');
     });
   });
 
@@ -122,12 +122,12 @@ describe('richTextRenderer', () => {
     describe('paragraph', () => {
       it('renders basic paragraph', () => {
         const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
-        expect(richTextRenderer(node)).toBe('<p>Hello</p>');
+        expect(renderRichText(node)).toBe('<p>Hello</p>');
       });
 
       it('renders empty paragraph', () => {
         const node: SbRichTextDoc = { type: 'paragraph', content: [] };
-        expect(richTextRenderer(node)).toBe('<p></p>');
+        expect(renderRichText(node)).toBe('<p></p>');
       });
     });
 
@@ -138,7 +138,7 @@ describe('richTextRenderer', () => {
           attrs: { level, textAlign: null },
           content: [text(`Heading ${level}`)],
         };
-        expect(richTextRenderer(heading)).toBe(`<h${level}>Heading ${level}</h${level}>`);
+        expect(renderRichText(heading)).toBe(`<h${level}>Heading ${level}</h${level}>`);
       });
     });
 
@@ -148,7 +148,7 @@ describe('richTextRenderer', () => {
           type: 'blockquote',
           content: [{ type: 'paragraph', content: [text('Quote')] }],
         };
-        expect(richTextRenderer(blockquote)).toBe('<blockquote><p>Quote</p></blockquote>');
+        expect(renderRichText(blockquote)).toBe('<blockquote><p>Quote</p></blockquote>');
       });
     });
 
@@ -161,7 +161,7 @@ describe('richTextRenderer', () => {
             { type: 'list_item', content: [{ type: 'paragraph', content: [text('Item 2')] }] },
           ],
         };
-        expect(richTextRenderer(list)).toBe('<ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul>');
+        expect(renderRichText(list)).toBe('<ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul>');
       });
 
       it('renders ordered list', () => {
@@ -173,7 +173,7 @@ describe('richTextRenderer', () => {
             { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
           ],
         };
-        expect(richTextRenderer(list)).toBe('<ol order="1"><li><p>First</p></li><li><p>Second</p></li></ol>');
+        expect(renderRichText(list)).toBe('<ol order="1"><li><p>First</p></li><li><p>Second</p></li></ol>');
       });
     });
 
@@ -184,7 +184,7 @@ describe('richTextRenderer', () => {
           attrs: { class: 'javascript' },
           content: [text('const x = 1;')],
         };
-        expect(richTextRenderer(codeBlock)).toBe('<pre><code class="javascript">const x = 1;</code></pre>');
+        expect(renderRichText(codeBlock)).toBe('<pre><code class="javascript">const x = 1;</code></pre>');
       });
 
       it('does not leak language as attribute', () => {
@@ -193,19 +193,19 @@ describe('richTextRenderer', () => {
           attrs: { class: 'js' },
           content: [text('code')],
         };
-        expect(richTextRenderer(codeBlock)).not.toContain('language=');
+        expect(renderRichText(codeBlock)).not.toContain('language=');
       });
     });
 
     describe('horizontal rule', () => {
       it('renders hr as self-closing', () => {
-        expect(richTextRenderer({ type: 'horizontal_rule' })).toBe('<hr>');
+        expect(renderRichText({ type: 'horizontal_rule' })).toBe('<hr>');
       });
     });
 
     describe('hard break', () => {
       it('renders br as self-closing', () => {
-        expect(richTextRenderer({ type: 'hard_break' })).toBe('<br>');
+        expect(renderRichText({ type: 'hard_break' })).toBe('<br>');
       });
     });
 
@@ -223,7 +223,7 @@ describe('richTextRenderer', () => {
             meta_data: null,
           },
         };
-        expect(richTextRenderer(image)).toBe(
+        expect(renderRichText(image)).toBe(
           '<img id="123" src="https://example.com/image.jpg" alt="An image" title="Image title">',
         );
       });
@@ -241,7 +241,7 @@ describe('richTextRenderer', () => {
             meta_data: { alt: 'meta', title: null, source: null, copyright: null },
           },
         };
-        const html = richTextRenderer(image);
+        const html = renderRichText(image);
         expect(html).not.toContain('source=');
         expect(html).not.toContain('copyright=');
         expect(html).not.toContain('meta_data=');
@@ -260,7 +260,7 @@ describe('richTextRenderer', () => {
             meta_data: null,
           },
         };
-        const html = richTextRenderer(image, { optimizeImages: true });
+        const html = renderRichText(image, { optimizeImages: true });
         expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/"');
       });
 
@@ -277,7 +277,7 @@ describe('richTextRenderer', () => {
             meta_data: null,
           },
         };
-        const html = richTextRenderer(image, {
+        const html = renderRichText(image, {
           optimizeImages: { width: 800, height: 600 },
         });
         expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/800x600/"');
@@ -298,7 +298,7 @@ describe('richTextRenderer', () => {
             meta_data: null,
           },
         };
-        const html = richTextRenderer(image, {
+        const html = renderRichText(image, {
           optimizeImages: { filters: { quality: 80, format: 'webp' } },
         });
         expect(html).toContain('filters:quality(80):format(webp)');
@@ -317,7 +317,7 @@ describe('richTextRenderer', () => {
             meta_data: null,
           },
         };
-        const html = richTextRenderer(image, {
+        const html = renderRichText(image, {
           optimizeImages: { loading: 'lazy' },
         });
         expect(html).toContain('loading="lazy"');
@@ -334,7 +334,7 @@ describe('richTextRenderer', () => {
             fallbackImage: 'https://cdn.example.com/rocket.png',
           },
         };
-        const html = richTextRenderer(emoji);
+        const html = renderRichText(emoji);
         expect(html).toBe('<img data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" draggable="false" loading="lazy" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">');
       });
     });
@@ -347,7 +347,7 @@ describe('richTextRenderer', () => {
   describe('tables', () => {
     it('renders basic table with tbody', () => {
       const t = table([tableRow([tableCell('A'), tableCell('B')])]);
-      expect(richTextRenderer(t)).toBe(
+      expect(renderRichText(t)).toBe(
         '<table><tbody><tr><td colspan="1" rowspan="1"><p>A</p></td><td colspan="1" rowspan="1"><p>B</p></td></tr></tbody></table>',
       );
     });
@@ -357,7 +357,7 @@ describe('richTextRenderer', () => {
         tableRow([tableHeader('H1'), tableHeader('H2')]),
         tableRow([tableCell('C1'), tableCell('C2')]),
       ]);
-      expect(richTextRenderer(t)).toBe(
+      expect(renderRichText(t)).toBe(
         '<table><thead><tr><th colspan="1" rowspan="1"><p>H1</p></th><th colspan="1" rowspan="1"><p>H2</p></th></tr></thead>'
         + '<tbody><tr><td colspan="1" rowspan="1"><p>C1</p></td><td colspan="1" rowspan="1"><p>C2</p></td></tr></tbody></table>',
       );
@@ -365,22 +365,22 @@ describe('richTextRenderer', () => {
 
     it('renders colspan and rowspan', () => {
       const t = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
-      expect(richTextRenderer(t)).toContain('colspan="2" rowspan="2"');
+      expect(renderRichText(t)).toContain('colspan="2" rowspan="2"');
     });
 
     it('renders colwidth as style', () => {
       const t = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
-      expect(richTextRenderer(t)).toContain('style="width: 200px;"');
+      expect(renderRichText(t)).toContain('style="width: 200px;"');
     });
 
     it('renders backgroundColor as style', () => {
       const t = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
-      expect(richTextRenderer(t)).toContain('background-color: #FF0000;');
+      expect(renderRichText(t)).toContain('background-color: #FF0000;');
     });
 
     it('combines multiple styles', () => {
       const t = table([tableRow([tableCell('Styled', { colwidth: [100], backgroundColor: '#00FF00' })])]);
-      const html = richTextRenderer(t);
+      const html = renderRichText(t);
       expect(html).toContain('width: 100px;');
       expect(html).toContain('background-color: #00FF00;');
     });
@@ -393,57 +393,57 @@ describe('richTextRenderer', () => {
   describe('marks', () => {
     it('renders bold', () => {
       const node = text('Bold', [{ type: 'bold' }]);
-      expect(richTextRenderer(node)).toBe('<strong>Bold</strong>');
+      expect(renderRichText(node)).toBe('<strong>Bold</strong>');
     });
 
     it('renders italic', () => {
       const node = text('Italic', [{ type: 'italic' }]);
-      expect(richTextRenderer(node)).toBe('<em>Italic</em>');
+      expect(renderRichText(node)).toBe('<em>Italic</em>');
     });
 
     it('renders strike', () => {
       const node = text('Strike', [{ type: 'strike' }]);
-      expect(richTextRenderer(node)).toBe('<s>Strike</s>');
+      expect(renderRichText(node)).toBe('<s>Strike</s>');
     });
 
     it('renders underline', () => {
       const node = text('Underline', [{ type: 'underline' }]);
-      expect(richTextRenderer(node)).toBe('<u>Underline</u>');
+      expect(renderRichText(node)).toBe('<u>Underline</u>');
     });
 
     it('renders code', () => {
       const node = text('code', [{ type: 'code' }]);
-      expect(richTextRenderer(node)).toBe('<code>code</code>');
+      expect(renderRichText(node)).toBe('<code>code</code>');
     });
 
     it('renders superscript', () => {
       const node = text('sup', [{ type: 'superscript' }]);
-      expect(richTextRenderer(node)).toBe('<sup>sup</sup>');
+      expect(renderRichText(node)).toBe('<sup>sup</sup>');
     });
 
     it('renders subscript', () => {
       const node = text('sub', [{ type: 'subscript' }]);
-      expect(richTextRenderer(node)).toBe('<sub>sub</sub>');
+      expect(renderRichText(node)).toBe('<sub>sub</sub>');
     });
 
     it('renders nested marks', () => {
       const node = text('Bold Italic', [{ type: 'bold' }, { type: 'italic' }]);
-      expect(richTextRenderer(node)).toBe('<em><strong>Bold Italic</strong></em>');
+      expect(renderRichText(node)).toBe('<em><strong>Bold Italic</strong></em>');
     });
 
     it('renders anchor mark as span with id', () => {
       const node = text('Anchored', [{ type: 'anchor', attrs: { id: 'section-1' } }]);
-      expect(richTextRenderer(node)).toBe('<span id="section-1">Anchored</span>');
+      expect(renderRichText(node)).toBe('<span id="section-1">Anchored</span>');
     });
 
     it('renders styled mark with class', () => {
       const node = text('Styled', [{ type: 'styled', attrs: { class: 'highlight' } }]);
-      expect(richTextRenderer(node)).toBe('<span class="highlight">Styled</span>');
+      expect(renderRichText(node)).toBe('<span class="highlight">Styled</span>');
     });
 
     it('renders textStyle with color', () => {
       const node = text('Red', [{ type: 'textStyle', attrs: { color: 'red', id: null, class: null } }]);
-      expect(richTextRenderer(node)).toBe('<span style="color: red;">Red</span>');
+      expect(renderRichText(node)).toBe('<span style="color: red;">Red</span>');
     });
   });
 
@@ -454,32 +454,32 @@ describe('richTextRenderer', () => {
   describe('links', () => {
     it('renders external URL link', () => {
       const node = text('Click', [linkMark('https://example.com', { target: '_blank' })]);
-      expect(richTextRenderer(node)).toBe('<a href="https://example.com" target="_blank">Click</a>');
+      expect(renderRichText(node)).toBe('<a href="https://example.com" target="_blank">Click</a>');
     });
 
     it('renders internal story link', () => {
       const node = text('Page', [linkMark('/about', { linktype: 'story' })]);
-      expect(richTextRenderer(node)).toBe('<a href="/about">Page</a>');
+      expect(renderRichText(node)).toBe('<a href="/about">Page</a>');
     });
 
     it('renders story link with anchor', () => {
       const node = text('Section', [linkMark('/page', { linktype: 'story', anchor: 'intro' })]);
-      expect(richTextRenderer(node)).toBe('<a href="/page#intro">Section</a>');
+      expect(renderRichText(node)).toBe('<a href="/page#intro">Section</a>');
     });
 
     it('renders email link with mailto:', () => {
       const node = text('Email', [linkMark('test@example.com', { linktype: 'email' })]);
-      expect(richTextRenderer(node)).toBe('<a href="mailto:test@example.com">Email</a>');
+      expect(renderRichText(node)).toBe('<a href="mailto:test@example.com">Email</a>');
     });
 
     it('does not duplicate mailto: prefix', () => {
       const node = text('Email', [linkMark('mailto:test@example.com', { linktype: 'email' })]);
-      expect(richTextRenderer(node)).toBe('<a href="mailto:test@example.com">Email</a>');
+      expect(renderRichText(node)).toBe('<a href="mailto:test@example.com">Email</a>');
     });
 
     it('renders asset link', () => {
       const node = text('Download', [linkMark('https://assets.example.com/file.pdf', { linktype: 'asset' })]);
-      expect(richTextRenderer(node)).toBe('<a href="https://assets.example.com/file.pdf">Download</a>');
+      expect(renderRichText(node)).toBe('<a href="https://assets.example.com/file.pdf">Download</a>');
     });
 
     it('renders link without href when empty', () => {
@@ -488,12 +488,12 @@ describe('richTextRenderer', () => {
         text: 'No href',
         marks: [{ type: 'link', attrs: { href: '', linktype: 'url', uuid: null, anchor: null, target: null } }],
       };
-      expect(richTextRenderer(node)).toBe('<a>No href</a>');
+      expect(renderRichText(node)).toBe('<a>No href</a>');
     });
 
     it('filters null attributes', () => {
       const node = text('Link', [linkMark('/')]);
-      const html = richTextRenderer(node);
+      const html = renderRichText(node);
       expect(html).not.toContain('target=');
       expect(html).not.toContain('uuid=');
       expect(html).not.toContain('anchor=');
@@ -509,7 +509,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      const html = richTextRenderer(node);
+      const html = renderRichText(node);
       expect(html).toBe('<p><a href="https://example.com" title="google" rel="noopener" data-custom="foo">Click me</a></p>');
     });
   });
@@ -530,7 +530,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/url">Hello World</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/url">Hello World</a></p>');
     });
     it('merge groups when link with same custom attributes', () => {
       const content: SbRichTextDoc = {
@@ -543,7 +543,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/a" title="google">Hello Storyblok</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/a" title="google">Hello Storyblok</a></p>');
     });
     it('preserves inner marks when merging', () => {
       const content: SbRichTextDoc = {
@@ -557,7 +557,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/url">normal <strong>bold</strong> text</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/url">normal <strong>bold</strong> text</a></p>');
     });
 
     it('handles multiple inner marks', () => {
@@ -574,7 +574,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe(
+      expect(renderRichText(content)).toBe(
         '<p><a href="/url">start <strong>bold</strong> and <em>italic</em> end</a></p>',
       );
     });
@@ -591,7 +591,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
     });
 
     it('separates groups when link attrs differ', () => {
@@ -605,7 +605,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/a">A</a><a href="/a" target="_blank">B</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/a">A</a><a href="/a" target="_blank">B</a></p>');
     });
     it('separates groups when link with different custom attributes', () => {
       const content: SbRichTextDoc = {
@@ -618,7 +618,7 @@ describe('richTextRenderer', () => {
           ],
         }],
       };
-      expect(richTextRenderer(content)).toBe('<p><a href="/a" title="google">A</a><a href="/a" title="new">B</a></p>');
+      expect(renderRichText(content)).toBe('<p><a href="/a" title="google">A</a><a href="/a" title="new">B</a></p>');
     });
   });
 
@@ -633,7 +633,7 @@ describe('richTextRenderer', () => {
         attrs: { textAlign: 'right' },
         content: [text('Right')],
       };
-      expect(richTextRenderer(p)).toBe('<p style="text-align: right;">Right</p>');
+      expect(renderRichText(p)).toBe('<p style="text-align: right;">Right</p>');
     });
 
     it.each(['left', 'center', 'right', 'justify'] as const)('supports %s alignment', (align) => {
@@ -642,7 +642,7 @@ describe('richTextRenderer', () => {
         attrs: { textAlign: align },
         content: [text('Text')],
       };
-      expect(richTextRenderer(p)).toContain(`text-align: ${align};`);
+      expect(renderRichText(p)).toContain(`text-align: ${align};`);
     });
 
     it('renders heading with alignment', () => {
@@ -651,7 +651,7 @@ describe('richTextRenderer', () => {
         attrs: { level: 2, textAlign: 'center' },
         content: [text('Centered')],
       };
-      expect(richTextRenderer(heading)).toBe('<h2 style="text-align: center;">Centered</h2>');
+      expect(renderRichText(heading)).toBe('<h2 style="text-align: center;">Centered</h2>');
     });
 
     it('combines alignment with marks', () => {
@@ -660,7 +660,7 @@ describe('richTextRenderer', () => {
         attrs: { textAlign: 'center' },
         content: [text('Styled', [{ type: 'bold' }])],
       };
-      expect(richTextRenderer(p)).toBe('<p style="text-align: center;"><strong>Styled</strong></p>');
+      expect(renderRichText(p)).toBe('<p style="text-align: center;"><strong>Styled</strong></p>');
     });
 
     it('renders empty paragraph with alignment', () => {
@@ -669,7 +669,7 @@ describe('richTextRenderer', () => {
         attrs: { textAlign: 'center' },
         content: [],
       };
-      expect(richTextRenderer(p)).toBe('<p style="text-align: center;"></p>');
+      expect(renderRichText(p)).toBe('<p style="text-align: center;"></p>');
     });
   });
 
@@ -681,11 +681,11 @@ describe('richTextRenderer', () => {
     it('overrides node rendering', () => {
       const options: SbRichTextOptions = {
         renderers: {
-          paragraph: ({ content }) => `<div class="custom">${richTextRenderer(content, options)}</div>`,
+          paragraph: ({ content }) => `<div class="custom">${renderRichText(content, options)}</div>`,
         },
       };
       const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
-      expect(richTextRenderer(node, options)).toBe('<div class="custom">Hello</div>');
+      expect(renderRichText(node, options)).toBe('<div class="custom">Hello</div>');
     });
 
     it('overrides mark rendering', () => {
@@ -694,13 +694,13 @@ describe('richTextRenderer', () => {
           bold: ({ children }) => `<b class="heavy">${children}</b>`,
         },
       };
-      expect(richTextRenderer(text('Bold', [{ type: 'bold' }]), options)).toBe('<b class="heavy">Bold</b>');
+      expect(renderRichText(text('Bold', [{ type: 'bold' }]), options)).toBe('<b class="heavy">Bold</b>');
     });
 
     it('supports multiple custom renderers', () => {
       const options: SbRichTextOptions = {
         renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} class="title">${richTextRenderer(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }) => `<h${attrs?.level} class="title">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<strong class="emphasis">${children}</strong>`,
         },
       };
@@ -709,8 +709,29 @@ describe('richTextRenderer', () => {
         attrs: { level: 1, textAlign: null },
         content: [text('Title', [{ type: 'bold' }])],
       };
-      expect(richTextRenderer(heading, options)).toBe(
+      expect(renderRichText(heading, options)).toBe(
         '<h1 class="title"><strong class="emphasis">Title</strong></h1>',
+      );
+    });
+
+    it('allows custom code_block renderer to control attribute placement', () => {
+      const options: SbRichTextOptions = {
+        renderers: {
+          code_block: ({ attrs, content }) => {
+            const lang = (attrs?.class as string) || '';
+            // User decides: class on <pre>, data-lang on <code>
+            return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, options)}</code></pre>`;
+          },
+        },
+      };
+      const codeBlock: SbRichTextDoc = {
+        type: 'code_block',
+        attrs: { class: 'typescript' },
+        content: [text('const x: number = 1;')],
+      };
+      const html = renderRichText(codeBlock, options);
+      expect(html).toBe(
+        '<pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre>',
       );
     });
   });
@@ -736,14 +757,14 @@ describe('richTextRenderer', () => {
 
     it('warns when no custom renderer provided', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      richTextRenderer(blokDoc);
+      renderRichText(blokDoc);
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('blok'));
       warnSpy.mockRestore();
     });
 
     it('returns empty string without custom renderer', () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(richTextRenderer(blokDoc)).toBe('');
+      expect(renderRichText(blokDoc)).toBe('');
       vi.restoreAllMocks();
     });
 
@@ -756,7 +777,7 @@ describe('richTextRenderer', () => {
           },
         },
       };
-      expect(richTextRenderer(blokDoc, options)).toBe(
+      expect(renderRichText(blokDoc, options)).toBe(
         '<button data-uid="1">Click Me</button><button data-uid="2">Submit</button>',
       );
     });
@@ -767,7 +788,7 @@ describe('richTextRenderer', () => {
         content: [{ type: 'blok', attrs: { id: 'x', body: [] } }],
       };
       vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(richTextRenderer(emptyBlok)).toBe('');
+      expect(renderRichText(emptyBlok)).toBe('');
       vi.restoreAllMocks();
     });
 
@@ -777,7 +798,7 @@ describe('richTextRenderer', () => {
         content: [{ type: 'blok', attrs: { id: 'x', body: null } }],
       };
       vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(richTextRenderer(nullBlok)).toBe('');
+      expect(renderRichText(nullBlok)).toBe('');
       vi.restoreAllMocks();
     });
 
@@ -795,7 +816,7 @@ describe('richTextRenderer', () => {
           { type: 'paragraph', content: [text('After')] },
         ],
       };
-      expect(richTextRenderer(content, options)).toBe('<p>Before</p><widget /><p>After</p>');
+      expect(renderRichText(content, options)).toBe('<p>Before</p><widget /><p>After</p>');
     });
   });
 
@@ -806,12 +827,12 @@ describe('richTextRenderer', () => {
   describe('xSS prevention', () => {
     it('escapes HTML in text content', () => {
       const node = text('<script>alert("xss")</script>');
-      expect(richTextRenderer(node)).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+      expect(renderRichText(node)).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
     });
 
     it('escapes HTML in attributes', () => {
       const node = text('Link', [linkMark('javascript:alert("xss")')]);
-      expect(richTextRenderer(node)).toContain('href="javascript:alert(&quot;xss&quot;)"');
+      expect(renderRichText(node)).toContain('href="javascript:alert(&quot;xss&quot;)"');
     });
   });
 });

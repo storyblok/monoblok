@@ -18,14 +18,14 @@ type TextNode = PMNode & { type: 'text' };
  *
  * @example
  * ```ts
- * const html = richTextRenderer({
+ * const html = renderRichText({
  *   type: 'doc',
  *   content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }]
  * });
  * // => '<p>Hello</p>'
  * ```
  */
-export function richTextRenderer(
+export function renderRichText(
   document: SbRichTextDoc | SbRichTextDoc[] | null | undefined,
   options?: SbRichTextOptions,
 ): string {
@@ -43,7 +43,6 @@ export function richTextRenderer(
 
 /** Renders a single node to HTML. */
 function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
-  // Text nodes: apply marks and escape content
   if (node.type === 'text') {
     return renderTextNode(node as TextNode, node.marks, options);
   }
@@ -54,7 +53,6 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
     return (customRenderer as (props: typeof node) => string)(node);
   }
 
-  // Blok nodes require custom renderer
   if (node.type === 'blok') {
     console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
     return '';
@@ -67,29 +65,25 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
     return node.content ? renderChildren(node.content, options) : '';
   }
 
-  // Image nodes: apply optimization if configured
   if (node.type === 'image' && options?.optimizeImages) {
     return renderOptimizedImage(node, options);
   }
 
   const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
 
-  // Self-closing tags
   if (isSelfClosing(tag)) {
     return `<${tag}${htmlAttrs}>`;
   }
 
-  // Table: special thead/tbody grouping
   if (node.type === 'table') {
     return `<${tag}${htmlAttrs}>${renderTableRows(node.content, options)}</${tag}>`;
   }
 
   const content = node.content ? renderChildren(node.content, options) : '';
 
-  // Static children (e.g., pre > code)
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
-    const inner = renderStaticStructure(staticChildren, node.attrs, content);
+    const inner = renderStaticStructure(node.type, staticChildren, node.attrs, content);
     return `<${tag}>${inner}</${tag}>`;
   }
 
@@ -208,7 +202,6 @@ function renderLinkGroup(
   linkMark: PMMark,
   options?: SbRichTextOptions,
 ): string {
-  // Render each text node with only its non-link marks
   let inner = '';
   for (let i = start; i < end; i++) {
     const node = children[i] as TextNode;
@@ -244,7 +237,6 @@ function renderTableRows(
 
   let result = '';
 
-  // Render thead
   if (headerEnd > 0) {
     result += '<thead>';
     for (let i = 0; i < headerEnd; i++) {
@@ -253,7 +245,6 @@ function renderTableRows(
     result += '</thead>';
   }
 
-  // Render tbody
   if (headerEnd < rows.length) {
     result += '<tbody>';
     for (let i = headerEnd; i < rows.length; i++) {
@@ -269,6 +260,7 @@ function renderTableRows(
 
 /** Renders nested static structure defined in render map. */
 function renderStaticStructure(
+  type: SbRichTextElement,
   specs: readonly RenderSpec[],
   parentAttrs: Record<string, unknown> | undefined,
   content: string,
@@ -278,14 +270,14 @@ function renderStaticStructure(
   for (const spec of specs) {
     const { tag, children, attrs: specAttrs } = spec;
     const mergedAttrs = { ...specAttrs, ...parentAttrs };
-    const htmlAttrs = attrsToHtmlString(mergedAttrs);
+    const htmlAttrs = buildHtmlAttrs(type, mergedAttrs);
 
     if (isSelfClosing(tag)) {
       result += `<${tag}${htmlAttrs}>`;
     }
     else {
       const inner = children
-        ? renderStaticStructure(children, parentAttrs, content)
+        ? renderStaticStructure(type, children, parentAttrs, content)
         : content;
       result += `<${tag}${htmlAttrs}>${inner}</${tag}>`;
     }
@@ -301,7 +293,6 @@ function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> 
     rowspan: 'rowspan',
   });
 
-  // Convert style object to string if present
   const styleObj = processed.style as Record<string, AttrValue> | undefined;
   const finalAttrs: Record<string, unknown> = { ...processed };
 

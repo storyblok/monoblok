@@ -1,23 +1,13 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type StoryblokRichTextJson } from '@storyblok/angular';
 
 export interface TeaserBlok {
   headline?: string;
-  text?: StoryblokRichTextJson;
 }
 
 @Component({
   selector: 'app-teaser',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // imports: [SbRichTextComponent],
-  template: `
-    <div>
-      <h2>{{ blok().headline }}</h2>
-      <!-- @if (blok().text) {
-        <sb-rich-text [sbDocument]="blok().text!" />
-      } -->
-    </div>
-  `,
+  template: ` <h2>{{ blok().headline }}</h2> `,
 })
 export class TeaserComponent {
   readonly blok = input.required<TeaserBlok>();

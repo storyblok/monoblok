@@ -65,7 +65,6 @@ export const StoryblokOrderedList = OrderedList.extend({
   name: 'ordered_list',
   addAttributes() {
     return {
-      ...this.parent?.(),
       order: {
         default: 1,
       },
@@ -177,17 +176,15 @@ export const StoryblokImage = Image.extend<{ optimizeImages: boolean | Partial<S
 // Emoji with custom renderHTML
 export const StoryblokEmoji = Emoji.extend({
   renderHTML({ HTMLAttributes }) {
-    return ['span', {
-      'data-type': 'emoji',
-      'data-name': HTMLAttributes.name,
+    return ['img', {
       'data-emoji': HTMLAttributes.emoji,
-    }, ['img', {
-      src: HTMLAttributes.fallbackImage,
-      alt: HTMLAttributes.alt,
-      style: 'width: 1.25em; height: 1.25em; vertical-align: text-top',
-      draggable: 'false',
-      loading: 'lazy',
-    }]];
+      'data-name': HTMLAttributes.name,
+      'src': HTMLAttributes.fallbackImage,
+      'alt': HTMLAttributes.alt,
+      'style': 'width: 1.25em; height: 1.25em; vertical-align: text-top',
+      'draggable': 'false',
+      'loading': 'lazy',
+    }];
   },
 });
 

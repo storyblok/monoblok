@@ -14,10 +14,8 @@ interface DOMObjectSpec {
 /** Attribute object in a DOM spec */
 type AttrsObject = Record<string, AttrValue>;
 
-// Custom DOM specs for nodes that need special handling (e.g. table)
-const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {
-  table: ['table', ['tbody', 0]],
-};
+// Custom DOM specs for nodes that need special handling
+const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {};
 
 /** Parses a ProseMirror DOMOutputSpec into a RenderSpec. */
 export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {

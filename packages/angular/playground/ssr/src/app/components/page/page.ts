@@ -2,13 +2,13 @@ import { Component, ChangeDetectionStrategy, input, computed } from '@angular/co
 import {
   SbRichTextComponent,
   type SbBlokData,
-  type StoryblokRichTextJson,
+  type SbRichTextDoc,
   StoryblokComponent,
 } from '@storyblok/angular';
 
 export interface PageBlok {
   body?: SbBlokData[];
-  richText?: StoryblokRichTextJson;
+  richText?: SbRichTextDoc;
 }
 
 @Component({

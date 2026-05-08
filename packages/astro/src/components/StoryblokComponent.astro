@@ -1,6 +1,7 @@
 ---
 import options from 'virtual:storyblok-options';
-import { toCamelCase, type SbBlokData } from '@storyblok/astro';
+import { toCamelCase } from '../utils/toCamelCase';
+import type { SbBlokData } from '../types';
 import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import { storyblokComponents } from 'virtual:import-storyblok-components';
 

@@ -8,12 +8,31 @@ export default defineConfig(() => {
   return {
     build: {
       lib: {
-        entry: path.resolve(__dirname, 'src/index.ts'),
-        name: 'storyblokAstro',
-        fileName: format => `storyblok-astro.${format}.js`,
+        entry: {
+          'index': path.resolve(__dirname, 'src/index.ts'),
+          'richtext': path.resolve(__dirname, 'src/richtext.ts'),
+          'types': path.resolve(__dirname, 'src/types.ts'),
+          'utils/toCamelCase': path.resolve(__dirname, 'src/utils/toCamelCase.ts'),
+        },
+        formats: ['es'],
       },
       rollupOptions: {
-        external: ['astro', '@astrijs/check', 'typescript'],
+        external: [
+          'astro',
+          '@astrojs/check',
+          'typescript',
+          '@storyblok/js',
+          '@storyblok/richtext',
+          'storyblok-js-client',
+          'morphdom',
+          'camelcase',
+        ],
+        output: {
+          preserveModules: true,
+          preserveModulesRoot: 'src',
+          entryFileNames: '[name].js',
+          chunkFileNames: 'chunks/[name]-[hash].js',
+        },
       },
     },
     plugins: [

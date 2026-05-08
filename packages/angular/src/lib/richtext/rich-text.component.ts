@@ -119,10 +119,8 @@ export class SbRichTextComponent implements OnDestroy {
       if (this.shouldAbort(version)) return;
 
       if (group.linkMark) {
-        // Render grouped text nodes under a single link
         this.renderLinkGroup(group.nodes, group.linkMark, parent, version);
       } else {
-        // Render single node normally
         this.renderNode(group.nodes[0], parent, version);
       }
     }
@@ -150,10 +148,8 @@ export class SbRichTextComponent implements OnDestroy {
       return;
     }
 
-    // Create the link element
     const tag = resolveTag(linkMark);
     if (!tag) {
-      // No tag, render text nodes directly
       for (const node of nodes) {
         this.renderTextNode(node as SbRichTextDoc & { type: 'text' }, parent, version);
       }
@@ -170,7 +166,6 @@ export class SbRichTextComponent implements OnDestroy {
       const innerMarks = getInnerMarks(node);
       let current: Node = this.renderer.createText(node.text || '');
 
-      // Apply inner marks
       for (const mark of innerMarks) {
         const CustomMark = this.resolver.getSync(mark.type);
 
@@ -218,7 +213,6 @@ export class SbRichTextComponent implements OnDestroy {
     const syncComponent = this.resolver.getSync(node.type);
 
     if (syncComponent) {
-      // Custom component available synchronously
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
       this.mountComponent(syncComponent, { data: node }, parent, anchor);
@@ -227,7 +221,6 @@ export class SbRichTextComponent implements OnDestroy {
 
     // Check if this type has an async loader registered
     if (this.resolver.has(node.type)) {
-      // Create placeholder and resolve async
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
       this.resolveAndMount(node, parent, anchor, version);
@@ -270,7 +263,6 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     if (!isSelfClosing(tag)) {
-      // Special handling for tables: group rows into thead/tbody
       if (node.type === 'table' && node.content) {
         this.renderTableContent(node.content, el, version);
       } else {
@@ -295,7 +287,6 @@ export class SbRichTextComponent implements OnDestroy {
   private renderTableContent(rows: SbRichTextDoc[], tableEl: HTMLElement, version: number): void {
     const { headerRows, bodyRows } = splitTableRows(rows);
 
-    // Render thead if there are header rows
     if (headerRows.length > 0) {
       const thead = this.renderer.createElement('thead');
       for (const row of headerRows) {
@@ -304,7 +295,6 @@ export class SbRichTextComponent implements OnDestroy {
       this.renderer.appendChild(tableEl, thead);
     }
 
-    // Render tbody if there are body rows
     if (bodyRows.length > 0) {
       const tbody = this.renderer.createElement('tbody');
       for (const row of bodyRows) {
@@ -321,7 +311,6 @@ export class SbRichTextComponent implements OnDestroy {
     anchor: Node,
     version: number,
   ): Promise<void> {
-    // node.type is guaranteed to not be 'text' since text nodes are handled separately
     const CustomNode = await this.resolveCached(node.type as SbRichTextElement);
     if (this.shouldAbort(version, anchor)) return;
 

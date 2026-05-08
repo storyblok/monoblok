@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SbRichTextComponent } from './rich-text.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 import { SbRichTextDoc } from '@storyblok/richtext/static';
+import type { RichTextComponentProps } from '../types';
 
 /**
  * Mock custom node component
@@ -16,7 +17,7 @@ import { SbRichTextDoc } from '@storyblok/richtext/static';
   </div>`,
 })
 class MockCustomParagraphComponent {
-  data = input<SbRichTextDoc>();
+  readonly data = input.required<RichTextComponentProps<'paragraph'>>();
 }
 
 /**
@@ -28,7 +29,7 @@ class MockCustomParagraphComponent {
   template: `<span class="custom-link"><ng-content /></span>`,
 })
 class MockCustomMarkComponent {
-  data = input<SbRichTextDoc>();
+  readonly data = input.required<RichTextComponentProps<'link'>>();
 }
 
 /**
@@ -957,6 +958,50 @@ describe('SbRichTextComponent', () => {
 
       expect(customMark).toBeTruthy();
       expect(customMark.textContent.trim()).toContain('Bold Link');
+    });
+
+    it('allows custom code_block component to control attribute placement', async () => {
+      @Component({
+        selector: 'app-custom-code-block',
+        standalone: true,
+        imports: [SbRichTextComponent],
+        template: `
+          <pre class="language-{{ lang() }}">
+          <code [attr.data-lang]="lang()">
+            <sb-rich-text [sbDocument]="data()?.content" />
+          </code>
+        </pre>
+        `,
+      })
+      class MockCustomCodeBlockComponent {
+        readonly data = input.required<RichTextComponentProps<'code_block'>>();
+        lang = () => (this.data()?.attrs?.['class'] as string) || '';
+      }
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ code_block: MockCustomCodeBlockComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const codeBlock: SbRichTextDoc = {
+        type: 'code_block',
+        attrs: { class: 'js' },
+        content: [text('const x: number = 1;')],
+      };
+      fixture.componentRef.setInput('sbDocument', codeBlock);
+      fixture.detectChanges();
+
+      const pre = fixture.nativeElement.querySelector('pre');
+      const code = fixture.nativeElement.querySelector('code');
+      expect(pre?.className).toBe('language-js');
+      expect(code?.getAttribute('data-lang')).toBe('js');
     });
   });
 

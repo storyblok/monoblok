@@ -12,7 +12,7 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { createStoriesForLevel, groupStoriesByDepth, makeAppendToManifestFSTransport, makeCleanupStoryFSTransport, makeWriteStoryAPITransport, mapReferencesStream, readLocalStoriesStream, scanLocalStoryIndex, writeStoryStream } from '../streams';
 import { findComponentSchemas } from '../utils';
 import { loadAssetMap } from '../../assets/utils';
-import { prefetchTargetStories } from '../actions';
+import { prefetchTargetStoriesByKeys } from '../actions';
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from '../validate-story';
 import { FailureCollector } from './failure-report';
 
@@ -120,17 +120,13 @@ pushCmd
         visit(story.content);
       };
 
-      const fetchProgress = ui.createProgressBar({ title: 'Matching Stories...'.padEnd(21) });
-      const existingTargetStories = await prefetchTargetStories(space, {
-        onTotal: total => fetchProgress.setTotal(total),
-        onIncrement: count => fetchProgress.increment(count),
-      });
-      fetchProgress.stop();
-
       /**
        * Pass 1: Scan local stories, group by depth, and create remote
        * placeholders level-by-level so that parent folders exist before
        * their children are created.
+       *
+       * Scan happens before the prefetch so we know which slugs and ids
+       * to look up — the prefetch only fetches what the push actually needs.
        */
       const scanProgress = ui.createProgressBar({ title: 'Scanning Stories...'.padEnd(21) });
       const storyIndex = await scanLocalStoryIndex({
@@ -150,6 +146,28 @@ pushCmd
       });
       const levels = groupStoriesByDepth(storyIndex);
       scanProgress.stop();
+
+      // Targeted prefetch: only the local stories' slugs + manifest-mapped ids.
+      // For a small push against a large target space, this is O(local) calls
+      // instead of O(target/100) — and they run concurrently through the MAPI throttle.
+      const localSlugs = storyIndex.map(entry => entry.full_slug).filter(Boolean);
+      const localIdSet = new Set(storyIndex.map(entry => entry.id));
+      const manifestIds: number[] = [];
+      for (const [key, value] of maps.stories.entries()) {
+        if (typeof key === 'number' && localIdSet.has(key) && typeof value === 'number') {
+          manifestIds.push(value);
+        }
+      }
+      const fetchProgress = ui.createProgressBar({ title: 'Matching Stories...'.padEnd(21) });
+      const existingTargetStories = await prefetchTargetStoriesByKeys(
+        space,
+        { slugs: localSlugs, ids: manifestIds },
+        {
+          onTotal: total => fetchProgress.setTotal(total),
+          onIncrement: count => fetchProgress.increment(count),
+        },
+      );
+      fetchProgress.stop();
 
       const creationProgress = ui.createProgressBar({ title: 'Creating Stories...'.padEnd(21) });
       const processProgress = ui.createProgressBar({ title: 'Processing Stories...'.padEnd(21) });

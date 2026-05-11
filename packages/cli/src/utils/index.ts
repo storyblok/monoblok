@@ -3,6 +3,7 @@ import { dirname } from 'pathe';
 import type { RegionCode } from '../constants';
 import { regions } from '../constants';
 
+export * from './array';
 export * from './auth';
 export * from './error/';
 export * from './format';

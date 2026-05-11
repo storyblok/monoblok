@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchStories } from './actions';
+import { fetchStories, prefetchTargetStoriesByKeys } from './actions';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 
@@ -272,6 +272,174 @@ describe('stories/actions', () => {
         'pull_stories',
         expect.anything(),
       );
+    });
+  });
+
+  describe('prefetchTargetStoriesByKeys', () => {
+    const space = '12345';
+
+    const buildRemoteStory = (overrides: { id: number; uuid: string; full_slug: string; is_folder?: boolean }) => ({
+      ...mockStories[0],
+      ...overrides,
+      slug: overrides.full_slug.split('/').pop()!,
+      is_folder: overrides.is_folder ?? false,
+    });
+
+    it('returns empty maps when no keys are provided', async () => {
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: [], ids: [] });
+      expect(result.bySlug.size).toBe(0);
+      expect(result.byId.size).toBe(0);
+    });
+
+    it('fetches stories by slug and indexes them by normalized full_slug and id', async () => {
+      const remote = buildRemoteStory({ id: 7, uuid: 'uuid-7', full_slug: 'home' });
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+          const url = new URL(request.url);
+          expect(url.searchParams.get('by_slugs')).toBe('home');
+          return HttpResponse.json(
+            { stories: [remote] },
+            { headers: { 'Total': '1', 'Per-Page': '100' } },
+          );
+        }),
+      );
+
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: ['home'], ids: [] });
+
+      expect(result.bySlug.get('home')).toEqual([
+        { id: 7, uuid: 'uuid-7', is_folder: false },
+      ]);
+      expect(result.byId.get(7)).toEqual({ id: 7, uuid: 'uuid-7', is_folder: false });
+    });
+
+    it('stores folder + startpage that share a full_slug as separate entries', async () => {
+      const folder = buildRemoteStory({ id: 10, uuid: 'uuid-folder', full_slug: 'about', is_folder: true });
+      const startpage = buildRemoteStory({ id: 11, uuid: 'uuid-startpage', full_slug: 'about', is_folder: false });
+
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () =>
+          HttpResponse.json(
+            { stories: [folder, startpage] },
+            { headers: { 'Total': '2', 'Per-Page': '100' } },
+          )),
+      );
+
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: ['about'], ids: [] });
+
+      const entries = result.bySlug.get('about');
+      expect(entries).toHaveLength(2);
+      expect(entries).toEqual(expect.arrayContaining([
+        { id: 10, uuid: 'uuid-folder', is_folder: true },
+        { id: 11, uuid: 'uuid-startpage', is_folder: false },
+      ]));
+    });
+
+    it('omits slugs that have no remote match', async () => {
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () =>
+          HttpResponse.json(
+            { stories: [] },
+            { headers: { 'Total': '0', 'Per-Page': '100' } },
+          )),
+      );
+
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: ['missing'], ids: [] });
+
+      expect(result.bySlug.has('missing')).toBe(false);
+    });
+
+    it('treats slugs as exact matches (no wildcard interpretation)', async () => {
+      let captured: string | null = null;
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+          captured = new URL(request.url).searchParams.get('by_slugs');
+          return HttpResponse.json(
+            { stories: [] },
+            { headers: { 'Total': '0', 'Per-Page': '100' } },
+          );
+        }),
+      );
+
+      await prefetchTargetStoriesByKeys(space, { slugs: ['foo/bar'], ids: [] });
+
+      // The literal slug is sent as-is; callers should not be expected to
+      // escape characters because real Storyblok slugs cannot contain `*`/`?`.
+      expect(captured).toBe('foo/bar');
+    });
+
+    it('fetches stories by id and indexes them by id and full_slug', async () => {
+      const remote = buildRemoteStory({ id: 99, uuid: 'uuid-99', full_slug: 'pricing' });
+      let captured: string | null = null;
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+          const url = new URL(request.url);
+          captured = url.searchParams.get('by_ids');
+          expect(url.searchParams.get('by_slugs')).toBeNull();
+          return HttpResponse.json(
+            { stories: [remote] },
+            { headers: { 'Total': '1', 'Per-Page': '100' } },
+          );
+        }),
+      );
+
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: [], ids: [99] });
+
+      expect(captured).toBe('99');
+      expect(result.byId.get(99)).toEqual({ id: 99, uuid: 'uuid-99', is_folder: false });
+      expect(result.bySlug.get('pricing')).toEqual([
+        { id: 99, uuid: 'uuid-99', is_folder: false },
+      ]);
+    });
+
+    it('paginates when a chunk returns more results than one page', async () => {
+      const perPage = 100;
+      const page1 = Array.from({ length: perPage }, (_, i) =>
+        buildRemoteStory({ id: i + 1, uuid: `uuid-p1-${i + 1}`, full_slug: `s${i + 1}` }));
+      const page2 = [
+        buildRemoteStory({ id: 1001, uuid: 'uuid-p2-1', full_slug: 's1', is_folder: true }),
+        buildRemoteStory({ id: 1002, uuid: 'uuid-p2-2', full_slug: 's2', is_folder: true }),
+      ];
+      const total = page1.length + page2.length;
+
+      const pagesSeen: number[] = [];
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', ({ request }) => {
+          const page = Number(new URL(request.url).searchParams.get('page') || '1');
+          pagesSeen.push(page);
+          const stories = page === 1 ? page1 : page === 2 ? page2 : [];
+          return HttpResponse.json(
+            { stories },
+            { headers: { 'Total': String(total), 'Per-Page': String(perPage) } },
+          );
+        }),
+      );
+
+      const slugs = page1.map(s => s.full_slug);
+      const result = await prefetchTargetStoriesByKeys(space, { slugs, ids: [] });
+
+      expect(pagesSeen).toEqual([1, 2]);
+      expect(result.byId.size).toBe(total);
+      // s1 and s2 each appear on page 2 as folders alongside their page-1 entry.
+      expect(result.bySlug.get('s1')).toHaveLength(2);
+      expect(result.bySlug.get('s2')).toHaveLength(2);
+      expect(result.bySlug.get('s3')).toHaveLength(1);
+    });
+
+    it('deduplicates a story returned by both slug and id queries', async () => {
+      const remote = buildRemoteStory({ id: 42, uuid: 'uuid-42', full_slug: 'shared' });
+
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/stories', () =>
+          HttpResponse.json(
+            { stories: [remote] },
+            { headers: { 'Total': '1', 'Per-Page': '100' } },
+          )),
+      );
+
+      const result = await prefetchTargetStoriesByKeys(space, { slugs: ['shared'], ids: [42] });
+
+      expect(result.bySlug.get('shared')).toHaveLength(1);
+      expect(result.byId.get(42)?.uuid).toBe('uuid-42');
     });
   });
 });

@@ -136,16 +136,26 @@ const preconditions = {
     }
   },
   canListStories(stories: MockStory[], space = DEFAULT_SPACE) {
-    const perPage = 2;
+    // The push command issues targeted list calls filtered by `by_slugs` or
+    // `by_ids`. Honor both filters so the handler matches the real MAPI shape;
+    // fall back to returning everything for any unfiltered callers.
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, ({ request }) => {
         const url = new URL(request.url);
-        const page = Number(url.searchParams.get('page') || '1');
-        const start = (page - 1) * perPage;
-        const pageStories = stories.slice(start, start + perPage);
+        const bySlugs = url.searchParams.get('by_slugs');
+        const byIds = url.searchParams.get('by_ids');
+        let matched: MockStory[] = stories;
+        if (bySlugs !== null) {
+          const slugSet = new Set(bySlugs.split(',').map(s => s.replace(/\/$/, '')));
+          matched = stories.filter(s => slugSet.has(String(s.full_slug ?? s.slug).replace(/\/$/, '')));
+        }
+        else if (byIds !== null) {
+          const idSet = new Set(byIds.split(',').map(n => Number(n)));
+          matched = stories.filter(s => idSet.has(s.id));
+        }
         return HttpResponse.json(
-          { stories: pageStories },
-          { headers: { 'Total': String(stories.length), 'Per-Page': String(perPage) } },
+          { stories: matched },
+          { headers: { 'Total': String(matched.length), 'Per-Page': '100' } },
         );
       }),
     );

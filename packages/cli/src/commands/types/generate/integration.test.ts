@@ -51,14 +51,13 @@ describe('types generate integration', () => {
   describe('reading components from separate files', () => {
     it('should read separate component files and generate types', async () => {
       vol.fromJSON({
-        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.json': JSON.stringify(mockComponent2),
       });
 
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        separateFiles: true,
         verbose: false,
       });
 
@@ -77,14 +76,13 @@ describe('types generate integration', () => {
 
     it('should read separate component files with suffix and generate types', async () => {
       vol.fromJSON({
-        '/project/components/12345/hero.dev.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.dev.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.dev.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.dev.json': JSON.stringify(mockComponent2),
       });
 
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        separateFiles: true,
         suffix: 'dev',
         verbose: false,
       });
@@ -100,36 +98,18 @@ describe('types generate integration', () => {
       expect(result).toContain('export interface Hero');
       expect(result).toContain('export interface Feature');
     });
-
-    it('should fail when explicitly using consolidated mode on separate files', async () => {
-      // Passing separateFiles: false explicitly should NOT auto-detect
-      vol.fromJSON({
-        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
-      });
-
-      await expect(
-        readComponentsFiles({
-          from: '12345',
-          path: '/project',
-          separateFiles: false,
-          verbose: false,
-        }),
-      ).rejects.toThrow('No components found');
-    });
   });
 
   describe('auto-detecting input format', () => {
     it('should auto-detect separate files when components.json is absent', async () => {
       vol.fromJSON({
-        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.json': JSON.stringify(mockComponent2),
       });
 
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        // separateFiles not specified - auto-detect
         verbose: false,
       });
 
@@ -144,7 +124,6 @@ describe('types generate integration', () => {
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        // separateFiles not specified - auto-detect
         verbose: false,
       });
 
@@ -153,8 +132,8 @@ describe('types generate integration', () => {
 
     it('should auto-detect separate files with suffix', async () => {
       vol.fromJSON({
-        '/project/components/12345/hero.dev.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.dev.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.dev.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.dev.json': JSON.stringify(mockComponent2),
       });
 
       const componentsData = await readComponentsFiles({
@@ -171,8 +150,8 @@ describe('types generate integration', () => {
       // This is the exact scenario from issue #530:
       // Components pulled with --sf (separate JSON files), but user wants single .d.ts output
       vol.fromJSON({
-        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.json': JSON.stringify(mockComponent2),
       });
 
       // Read without separateFiles - auto-detect picks separate files mode
@@ -206,7 +185,6 @@ describe('types generate integration', () => {
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        separateFiles: false,
         verbose: false,
       });
 
@@ -226,14 +204,13 @@ describe('types generate integration', () => {
   describe('generating separate type files from separate component files', () => {
     it('should read separate component files and generate separate type files', async () => {
       vol.fromJSON({
-        '/project/components/12345/hero.json': JSON.stringify([mockComponent1]),
-        '/project/components/12345/feature.json': JSON.stringify([mockComponent2]),
+        '/project/components/12345/hero.json': JSON.stringify(mockComponent1),
+        '/project/components/12345/feature.json': JSON.stringify(mockComponent2),
       });
 
       const componentsData = await readComponentsFiles({
         from: '12345',
         path: '/project',
-        separateFiles: true,
         verbose: false,
       });
 

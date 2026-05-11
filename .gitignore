@@ -49,3 +49,7 @@ vite.config.ts.timestamp-*
 .zed
 .rules
 .worktrees
+CLAUDE.md
+.claude
+claude-output
+.storyblok

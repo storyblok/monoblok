@@ -19,6 +19,7 @@ import { resolveFolderReferences } from './resolve-folders';
 import { saveChangeset } from './changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
 import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
+import { writeLocalComponents } from './write-local-components';
 
 schemaCommand
   .command('push <entry-file>')
@@ -29,6 +30,8 @@ schemaCommand
   .option('--delete', 'Delete remote entities not present in local schema', false)
   .option('--migrations', 'Generate scaffold migration files for breaking changes', true)
   .addOption(new Option('--no-migrations', 'Skip migration generation for breaking changes'))
+  .option('--write-components', 'Write component schemas as local JSON files after push (also removes local files for components deleted via --delete)', true)
+  .addOption(new Option('--no-write-components', 'Skip writing local component files'))
   .action(async (entryFile: string, options: SchemaPushOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -197,19 +200,41 @@ schemaCommand
       });
       logger.info('Changeset saved', { path: changesetPath });
 
-      // 9. Execute push
-      if (diffResult.creates === 0 && diffResult.updates === 0 && (!options.delete || diffResult.stale === 0)) {
+      // 9. Execute push (skipped when nothing to push)
+      const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0 && (!options.delete || diffResult.stale === 0);
+      if (nothingToPush) {
         ui.ok('Everything up to date — nothing to push.');
-        return;
+      }
+      else {
+        const pushSpinner = ui.createSpinner('Pushing schema...');
+        const result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+
+        summary.total = result.created + result.updated + result.deleted;
+        summary.succeeded = summary.total;
+
+        pushSpinner.succeed(`Pushed ${result.created} creations, ${result.updated} updates${result.deleted > 0 ? `, ${result.deleted} deletions` : ''}.`);
       }
 
-      const pushSpinner = ui.createSpinner('Pushing schema...');
-      const result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
-
-      summary.total = result.created + result.updated + result.deleted;
-      summary.succeeded = summary.total;
-
-      pushSpinner.succeed(`Pushed ${result.created} creations, ${result.updated} updates${result.deleted > 0 ? `, ${result.deleted} deletions` : ''}.`);
+      // 10. Write local component files (keeps disk in sync with intended schema state,
+      // even when nothing was pushed — so a fresh checkout on an already-in-sync space
+      // can still run `stories push` without an extra `components pull` step).
+      if (options.writeComponents) {
+        try {
+          await writeLocalComponents({
+            space,
+            basePath,
+            resolved,
+            diffResult,
+            deleteRemoved: options.delete,
+            ui,
+            logger,
+          });
+        }
+        catch (writeError) {
+          ui.warn(`Failed to write local component files: ${toError(writeError).message}`);
+          logger.warn('Failed to write local component files', { error: toError(writeError).message });
+        }
+      }
     }
     catch (maybeError) {
       summary.failed += 1;

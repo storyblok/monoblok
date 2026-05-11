@@ -225,6 +225,65 @@ describe('schema push command', () => {
 
     const files = Object.keys(vol.toJSON());
     expect(files.some(f => f.includes('schema/changesets/'))).toBe(true);
+    // Default: writes per-component local files so stories push can validate without a separate `components pull`.
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(true);
+  });
+
+  it('should skip writing local component files when --no-write-components is used', async () => {
+    const localComp = makeMockComponent({ name: 'hero' });
+    preconditions.hasLocalSchema({
+      components: [localComp] as any,
+      componentFolders: [],
+      datasources: [],
+    });
+    preconditions.hasEmptyRemote();
+    preconditions.canCreateComponents([localComp]);
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--no-write-components']);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(false);
+  });
+
+  it('should not remove local stale files when --delete is combined with --no-write-components', async () => {
+    const localComp = makeMockComponent({ name: 'hero', schema: { title: { type: 'text', pos: 0 } } });
+    const staleComp = makeMockComponent({ name: 'footer' });
+    // Pre-seed a local file for the stale component to verify it survives.
+    vol.fromJSON({
+      [`.storyblok/components/${DEFAULT_SPACE}/footer.json`]: JSON.stringify({ name: 'footer', schema: {} }),
+    });
+    preconditions.hasLocalSchema({
+      components: [localComp] as any,
+      componentFolders: [],
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([localComp, staleComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.canDeleteComponents();
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--delete', '--no-write-components']);
+
+    const files = Object.keys(vol.toJSON());
+    // Local stale file is preserved — the opt-out covers writes AND deletes.
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/footer.json`))).toBe(true);
+    // And no new files are written either.
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(false);
+  });
+
+  it('should not write local component files in --dry-run mode', async () => {
+    const localComp = makeMockComponent({ name: 'hero' });
+    preconditions.hasLocalSchema({
+      components: [localComp] as any,
+      componentFolders: [],
+      datasources: [],
+    });
+    preconditions.hasEmptyRemote();
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--dry-run']);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(false);
   });
 
   it('should detect unchanged components and skip push', async () => {
@@ -241,6 +300,10 @@ describe('schema push command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('nothing to push'));
+    // Local files are still written so a fresh checkout can run `stories push`
+    // even when the remote space is already in sync with the schema.
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(true);
   });
 
   it('should show stale warning without --delete', async () => {

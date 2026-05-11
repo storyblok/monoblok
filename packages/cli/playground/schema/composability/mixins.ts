@@ -1,36 +1,31 @@
-import { defineBlock, defineField } from '@storyblok/schema';
-import { wrap } from '../helpers';
+import { defineField } from '@storyblok/schema';
+import type { Field } from '@storyblok/schema';
 
-type AnySchema = Record<string, unknown>;
-type BlockInput = Parameters<typeof defineBlock>[0];
+type NamedField = Field & { name: string };
 
-export function withTracking<T extends BlockInput>(block: T) {
-  return defineBlock({
-    ...block,
-    schema: wrap({
-      ...(block.schema as AnySchema),
-      tracking_id: defineField({
-        type: 'text',
-        max_length: 50,
-        description: 'Analytics tracking identifier',
-      }),
+/** Appends a `tracking_id` field to any schema array. */
+export function withTracking<const T extends readonly NamedField[]>(schema: T) {
+  return [
+    ...schema,
+    defineField('tracking_id', {
+      type: 'text',
+      max_length: 50,
+      description: 'Analytics tracking identifier',
     }),
-  });
+  ];
 }
 
-export function withSection<T extends BlockInput>(
-  block: T,
+/** Prepends a collapsible `section` grouping field to any schema array. */
+export function withSection<const T extends readonly NamedField[]>(
+  schema: T,
   config: { title: string; keys: string[] },
 ) {
-  return defineBlock({
-    ...block,
-    schema: wrap({
-      section: defineField({
-        type: 'section',
-        keys: config.keys,
-        fieldset: { title: config.title, collapsible: true, collapsed: false },
-      }),
-      ...(block.schema as AnySchema),
+  return [
+    defineField('section', {
+      type: 'section',
+      keys: config.keys,
+      fieldset: { title: config.title, collapsible: true, collapsed: false },
     }),
-  });
+    ...schema,
+  ];
 }

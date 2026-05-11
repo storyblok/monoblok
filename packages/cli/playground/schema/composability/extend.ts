@@ -1,45 +1,46 @@
 import { defineBlock, defineField } from '@storyblok/schema';
 import { headlineField, imageField } from './fields';
 import { ctaFields, seoFields } from './field-groups';
-import { wrap } from '../helpers';
 
-const baseHeroBlock = defineBlock({
+// The base schema array is exported so variants can spread from it.
+export const heroBaseSchema = [
+  { ...headlineField, required: true },
+  imageField,
+  ...ctaFields(),
+];
+
+export const baseHeroBlock = defineBlock({
   name: 'hero',
   is_nestable: true,
-  schema: wrap({
-    headline: { ...headlineField, required: true },
-    image: imageField,
-    ...ctaFields(),
-  }),
+  schema: heroBaseSchema,
 });
 
+// Extend: append SEO fields
 export const heroWithSeoBlock = defineBlock({
-  ...baseHeroBlock,
   name: 'hero_with_seo',
-  schema: wrap({
-    ...baseHeroBlock.schema,
-    ...seoFields(),
-  }),
+  is_nestable: true,
+  schema: [...heroBaseSchema, ...seoFields()],
 });
 
+// Override: replace headline with a shorter max_length
 export const heroCompactBlock = defineBlock({
-  ...baseHeroBlock,
   name: 'hero_compact',
   display_name: 'Hero (Compact)',
-  schema: wrap({
-    ...baseHeroBlock.schema,
-    headline: defineField({ type: 'text', max_length: 60, required: false }),
-  }),
+  is_nestable: true,
+  schema: [
+    defineField('headline', { type: 'text', max_length: 60 }),
+    imageField,
+    ...ctaFields(),
+  ],
 });
 
-export const heroNoCta = (() => {
-  const { cta_label, cta_link, ...rest } = baseHeroBlock.schema;
-  return defineBlock({
-    ...baseHeroBlock,
-    name: 'hero_no_cta',
-    display_name: 'Hero (No CTA)',
-    schema: rest,
-  });
-})();
-
-export { baseHeroBlock };
+// Omit: drop CTA fields
+export const heroNoCta = defineBlock({
+  name: 'hero_no_cta',
+  display_name: 'Hero (No CTA)',
+  is_nestable: true,
+  schema: [
+    { ...headlineField, required: true },
+    imageField,
+  ],
+});

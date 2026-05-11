@@ -1,11 +1,9 @@
-import { defineBlock, defineField, defineDatasource } from '@storyblok/schema';
-import { defineBlockFolder } from '@storyblok/schema/mapi';
-import { themeOptionField } from './fields';
+import { defineBlock, defineBlockFolder, defineDatasource, defineField } from '@storyblok/schema';
+import { headlineField, imageField, themeOptionField } from './fields';
 import { seoFields } from './field-groups';
-import { createSectionBlock, createCardBlock } from './factories';
-import { baseHeroBlock, heroWithSeoBlock, heroCompactBlock, heroNoCta } from './extend';
-import { withTracking, withSection } from './mixins';
-import { wrap } from '../helpers';
+import { createCardBlock, createSectionBlock } from './factories';
+import { baseHeroBlock, heroCompactBlock, heroNoCta, heroWithSeoBlock } from './extend';
+import { withSection, withTracking } from './mixins';
 
 const layoutFolder = defineBlockFolder({ name: 'Layout' });
 const contentFolder = defineBlockFolder({ name: 'Content' });
@@ -29,7 +27,7 @@ const textSection = createSectionBlock({
 const serviceCard = createCardBlock({
   name: 'service_card',
   folderUuid: cardsFolder.uuid,
-  extraFields: { theme: themeOptionField },
+  extraFields: [themeOptionField],
 });
 
 const teamMemberCard = createCardBlock({
@@ -37,24 +35,42 @@ const teamMemberCard = createCardBlock({
   folderUuid: cardsFolder.uuid,
 });
 
-const trackedAboutSection = withTracking({
-  ...aboutSection,
+// Mixin: append a tracking_id field to an existing schema array
+const trackedAboutSection = defineBlock({
   name: 'tracked_about_section',
   display_name: 'About Section (Tracked)',
+  is_nestable: true,
+  component_group_uuid: layoutFolder.uuid,
+  schema: withTracking([
+    { ...headlineField, required: true },
+    defineField('body', { type: 'richtext', customize_toolbar: true, toolbar: ['bold', 'italic', 'link'] }),
+    imageField,
+  ]),
 });
 
-const sectionedTeamCard = withSection(
-  { ...teamMemberCard, name: 'sectioned_team_card' },
-  { title: 'Team Member Details', keys: ['title', 'description', 'image'] },
-);
+// Mixin: prepend a collapsible section grouping to a schema array
+const sectionedTeamCard = defineBlock({
+  name: 'sectioned_team_card',
+  is_nestable: true,
+  component_group_uuid: cardsFolder.uuid,
+  schema: withSection(
+    [
+      defineField('title', { type: 'text', max_length: 80, required: true }),
+      defineField('description', { type: 'textarea', max_length: 300 }),
+      imageField,
+      defineField('link', { type: 'multilink' }),
+    ],
+    { title: 'Team Member Details', keys: ['title', 'description', 'image'] },
+  ),
+});
 
 const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: wrap({
+  schema: [
     ...seoFields(),
-    body: defineField({
+    defineField('body', {
       type: 'bloks',
       component_whitelist: [
         baseHeroBlock.name,
@@ -68,7 +84,7 @@ const pageBlock = defineBlock({
         sectionedTeamCard.name,
       ],
     }),
-  }),
+  ],
 });
 
 export const schema = {

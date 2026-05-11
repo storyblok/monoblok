@@ -1,5 +1,4 @@
-import type { Schema as InferSchema, Story as InferStory } from '@storyblok/schema';
-import type { Story as InferStoryMapi } from '@storyblok/schema/mapi';
+import type { Schema as InferSchema, Story as InferStory, MapiStory } from '@storyblok/schema';
 import { pageBlock } from './components/page';
 import { heroBlock } from './components/hero';
 import { featureCardBlock } from './components/feature-card';
@@ -15,13 +14,7 @@ export const schema = {
   datasources: { iconsDatasource, colorsDatasource },
 };
 
-export default () => {
-  console.log('should be ignored');
-};
-
-export const shouldBeIgnored = 42;
-
 export type Schema = InferSchema<typeof schema>;
 export type Blocks = Schema['blocks'];
 export type Story = InferStory<Blocks>;
-export type StoryMapi = InferStoryMapi<Blocks>;
+export type StoryMapi = MapiStory<Blocks>;

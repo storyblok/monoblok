@@ -1,8 +1,8 @@
 {
   "name": "@storyblok/playground-cli-schema",
+  "type": "module",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "schema:push": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
     "schema:push:dry": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",

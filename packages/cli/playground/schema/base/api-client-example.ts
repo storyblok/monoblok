@@ -1,12 +1,12 @@
 import { createApiClient } from '@storyblok/api-client';
-import type { Blocks } from './schema';
+import type { Schema } from './schema';
 
 /**
- * Pass the `Blocks` union from your schema to `.withTypes()` to get
- * fully typed story responses — discriminated by `content.component`.
+ * Pass your `Schema` type to `.withTypes()` to get fully typed story
+ * responses — discriminated by `content.component`.
  */
 const client = createApiClient({ accessToken: 'your-token' })
-  .withTypes<{ components: Blocks }>();
+  .withTypes<Schema>();
 
 async function example() {
   const { data } = await client.stories.get('home');

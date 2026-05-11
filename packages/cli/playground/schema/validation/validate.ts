@@ -9,9 +9,8 @@
  * Run: pnpm validate
  */
 import type { Schema as InferSchema } from '@storyblok/schema';
-import { createStoryHelpers } from '@storyblok/schema/mapi';
-import { contentValueSchemas } from '@storyblok/schema/zod';
-import { componentSchema, storyCreateSchema } from '@storyblok/schema/zod/mapi';
+import { createStoryHelpers } from '@storyblok/schema';
+import { componentSchema, contentValueSchemas, storyCreateSchema } from '@storyblok/schema/zod';
 
 import { featureCardBlock } from '../base/components/feature-card';
 import { heroBlock } from '../base/components/hero';
@@ -21,10 +20,8 @@ import type { schema } from '../base/schema';
 // ── Types ────────────────────────────────────────────────────────────
 
 type Schema = InferSchema<typeof schema>;
-type Blocks = Schema['blocks'];
-interface StoryblokTypes { components: Blocks }
 
-const { defineStoryCreate } = createStoryHelpers().withTypes<StoryblokTypes>();
+const { defineStoryCreate } = createStoryHelpers().withTypes<Schema>();
 
 // ── Validate component definitions (MAPI) ────────────────────────────
 //

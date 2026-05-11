@@ -77,6 +77,66 @@ describe('readLocalStoriesStream', () => {
     expect(results[0].id).toBe(1);
     expect(errors).toHaveLength(1);
   });
+
+  it('should yield a story whose uuid contains underscores when its filename passes the filter', async () => {
+    const uuidWithUnderscore = 'legacy_id_123';
+    const storyA = {
+      name: 'Story A',
+      id: 100,
+      uuid: uuidWithUnderscore,
+      parent_id: 0,
+      is_folder: false,
+      slug: 'story-a',
+      content: { _uid: 'x', component: 'page', title: 'real content' },
+    };
+    writeStory(storyA);
+
+    const stream = readLocalStoriesStream({
+      directoryPath: STORIES_DIR,
+      fileFilter: () => true,
+    });
+    const results = await collectStream(stream);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].uuid).toBe(uuidWithUnderscore);
+    expect(results[0].content.title).toBe('real content');
+  });
+
+  it('should not read files rejected by fileFilter', async () => {
+    const keepUuid = randomUUID();
+    const dropUuid = randomUUID();
+    writeStory({
+      name: 'Keep',
+      id: 1,
+      uuid: keepUuid,
+      parent_id: 0,
+      is_folder: false,
+      slug: 'keep',
+    });
+    writeStory({
+      name: 'Drop',
+      id: 2,
+      uuid: dropUuid,
+      parent_id: 0,
+      is_folder: false,
+      slug: 'drop',
+    });
+    // Overwrite the "drop" file with invalid JSON; if the filter works,
+    // the stream must never attempt to parse it.
+    vol.fromJSON({ [join(STORIES_DIR, `drop_${dropUuid}.json`)]: '{not json' });
+
+    const errors: string[] = [];
+    const stream = readLocalStoriesStream({
+      directoryPath: STORIES_DIR,
+      fileFilter: ({ filename }) => filename.startsWith('keep_'),
+      onStoryError: (_err, filename) => { errors.push(filename); },
+    });
+    const results = await collectStream(stream);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].uuid).toBe(keepUuid);
+    expect(errors).toEqual([]);
+  });
 });
 
 describe('normalizeFullSlug', () => {
@@ -186,6 +246,35 @@ describe('scanLocalStoryIndex', () => {
     const entries = await scanLocalStoryIndex({ directoryPath: STORIES_DIR });
 
     expect(entries).toHaveLength(1);
+  });
+
+  it('should report an error for stories missing a uuid', async () => {
+    // Story JSON with no `uuid` field — multiple such stories would otherwise
+    // collide on an empty-string key when the push command builds its maps.
+    vol.fromJSON({
+      [join(STORIES_DIR, 'no-uuid_unknown.json')]: JSON.stringify({
+        id: 50,
+        slug: 'no-uuid',
+        name: 'No UUID',
+        full_slug: 'no-uuid',
+        is_folder: false,
+        parent_id: 0,
+        content: { _uid: '1', component: 'page' },
+      }),
+    });
+
+    const errors: Array<{ filename: string; message: string }> = [];
+    const entries = await scanLocalStoryIndex({
+      directoryPath: STORIES_DIR,
+      onError(error, filename) {
+        errors.push({ filename, message: error.message });
+      },
+    });
+
+    expect(entries).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].filename).toBe('no-uuid_unknown.json');
+    expect(errors[0].message).toMatch(/uuid/i);
   });
 });
 

@@ -122,6 +122,22 @@ describe('customFetch', () => {
     });
   });
 
+  it('should attach url and method to FetchError for HTTP errors', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => Promise.resolve({ message: 'Not Found' }),
+    });
+
+    await expect(
+      customFetch('https://api.test.com/spaces/1/stories', { method: 'POST', body: {} }),
+    ).rejects.toMatchObject({
+      request: { url: 'https://api.test.com/spaces/1/stories', method: 'POST' },
+    });
+  });
+
   it('should handle network errors', async () => {
     mockFetch.mockRejectedValue(new Error('Network Error'));
 
@@ -132,6 +148,7 @@ describe('customFetch', () => {
         statusText: 'Network Error',
         data: null,
       },
+      request: { url: 'https://api.test.com', method: 'GET' },
     });
   });
 

@@ -1,5 +1,3 @@
-tmp
 agent-local-memory
 settings.local.json
-context/storyfront.md
-context/storyrails.md
+agent-memory-local/

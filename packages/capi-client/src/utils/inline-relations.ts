@@ -18,6 +18,24 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
   typeof value.component === 'string' && typeof value._uid === 'string';
 
+/**
+ * Decodes a string if it appears to be URL-encoded.
+ * Detects common encoded characters (%2C for comma, %20 for space, etc.)
+ */
+const decodeIfEncoded = (value: string): string => {
+  // Check if the string contains URL-encoded characters (% followed by hex digits)
+  if (/%[0-9A-F]{2}/i.test(value)) {
+    try {
+      return decodeURIComponent(value);
+    }
+    catch {
+      // If decoding fails (malformed encoding), return original
+      return value;
+    }
+  }
+  return value;
+};
+
 const inlineStoryContentInternal = <TStory extends StoryCapi | StoryWithInlinedRelations>(
   story: TStory,
   relationPaths: ReadonlySet<RelationPath>,
@@ -77,7 +95,10 @@ export const parseResolveRelations = (query: Record<string, unknown>): RelationP
     return [];
   }
 
-  return query.resolve_relations
+  // Decode URL-encoded strings to handle pre-encoded input
+  const resolveRelations = decodeIfEncoded(query.resolve_relations);
+
+  return resolveRelations
     .split(',')
     .map(path => path.trim())
     .filter((path): path is RelationPath => {

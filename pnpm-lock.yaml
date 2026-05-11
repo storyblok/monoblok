@@ -43,9 +43,6 @@ importers:
       '@storyblok/api-client':
         specifier: workspace:*
         version: link:../capi-client
-      '@storyblok/js':
-        specifier: workspace:*
-        version: link:../js
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../live-preview
@@ -21435,7 +21432,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.11.0
+      '@types/node': 20.19.37
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -26358,7 +26355,7 @@ snapshots:
 
   happy-dom@20.8.9:
     dependencies:
-      '@types/node': 24.11.0
+      '@types/node': 20.19.37
       '@types/whatwg-mimetype': 3.0.2
       '@types/ws': 8.18.1
       entities: 7.0.1

@@ -2,12 +2,24 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - next
+      - alpha
+      - beta
+      - rc
+      - "*-v[0-9]" # mantainance branches (IMPORTANT: naming must be <pkg>-vX (i.e.: react-sdk-v3, richtext-v5, etc)
     paths-ignore:
       - "**/*.md"
       - "docs/**"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - next
+      - alpha
+      - beta
+      - rc
+      - "*-v[0-9]"
     paths-ignore:
       - "**/*.md"
       - "docs/**"

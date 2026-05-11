@@ -1,5 +1,10 @@
 import { getActiveConfig } from '../lib/config';
 
+export interface FetchErrorRequest {
+  url?: string;
+  method?: string;
+}
+
 export class FetchError extends Error {
   response: {
     status: number;
@@ -7,10 +12,17 @@ export class FetchError extends Error {
     data?: Record<string, unknown> | null;
   };
 
-  constructor(message: string, response: { status: number; statusText: string; data?: Record<string, unknown> | null }) {
+  request: FetchErrorRequest;
+
+  constructor(
+    message: string,
+    response: { status: number; statusText: string; data?: Record<string, unknown> | null },
+    request: FetchErrorRequest = {},
+  ) {
     super(message);
     this.name = 'FetchError';
     this.response = response;
+    this.request = request;
   }
 }
 
@@ -28,6 +40,7 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
   const { api } = getActiveConfig(); // live config includes CLI overrides (maxRetries, maxConcurrency, etc.)
   const maxRetries = options.maxRetries ?? api.maxRetries;
   const baseDelay = options.baseDelay ?? 500; // 500ms base delay
+  const requestContext: FetchErrorRequest = { url, method: options.method ?? 'GET' };
   let attempt = 0;
 
   while (attempt <= maxRetries) {
@@ -61,7 +74,7 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
           status: response.status,
           statusText: response.statusText,
           data: null,
-        });
+        }, requestContext);
       }
 
       if (!response.ok) {
@@ -77,7 +90,7 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
           status: response.status,
           statusText: response.statusText,
           data,
-        });
+        }, requestContext);
       }
 
       return {
@@ -95,7 +108,7 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
         status: 0,
         statusText: 'Network Error',
         data: null,
-      });
+      }, requestContext);
     }
   }
 
@@ -103,5 +116,5 @@ export async function customFetch<T>(url: string, options: FetchOptions = {}): P
     status: 429,
     statusText: 'Rate Limit Exceeded',
     data: null,
-  });
+  }, requestContext);
 }

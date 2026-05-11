@@ -144,4 +144,53 @@ describe('handleAPIError', () => {
       expect((e as APIError).errorId).toBe('generic');
     }
   });
+
+  it('should forward request url and method from FetchError into APIError.getInfo()', () => {
+    const error = new FetchError(
+      'HTTP error! status: 404',
+      { status: 404, statusText: 'Not Found', data: { message: 'Missing' } },
+      { url: 'https://api.test.com/v1/spaces/1/stories', method: 'POST' },
+    );
+
+    try {
+      handleAPIError('create_story', error);
+    }
+    catch (e) {
+      const info = (e as APIError).getInfo();
+      expect(info.request).toEqual({
+        url: 'https://api.test.com/v1/spaces/1/stories',
+        method: 'POST',
+      });
+    }
+  });
+
+  it('should forward request context when a non-FetchError carries a request field', () => {
+    const error = Object.assign(new Error('Not found'), {
+      response: { status: 404, statusText: 'Not Found', data: null },
+      request: { url: 'https://api.test.com/v1/spaces/1/stories/42', method: 'PUT' },
+    });
+
+    try {
+      handleAPIError('update_story', error);
+    }
+    catch (e) {
+      const info = (e as APIError).getInfo();
+      expect(info.request).toEqual({
+        url: 'https://api.test.com/v1/spaces/1/stories/42',
+        method: 'PUT',
+      });
+    }
+  });
+
+  it('should omit request from APIError.getInfo() when no url or method is available', () => {
+    const error = new ClientError('Not Found', { status: 404, statusText: 'Not Found', data: null });
+
+    try {
+      handleAPIError('create_story', error);
+    }
+    catch (e) {
+      const info = (e as APIError).getInfo() as Record<string, unknown>;
+      expect('request' in info).toBe(false);
+    }
+  });
 });

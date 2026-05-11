@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { ISbStoryData } from '@/types';
+import { consumeCachedStory } from '../core/story-cache';
 import StoryblokServerComponent from './server-component';
 
 interface StoryblokServerStoryProps extends Omit<Record<string, unknown>, 'story'> {
@@ -20,11 +21,7 @@ const StoryblokServerStory = forwardRef<HTMLElement, StoryblokServerStoryProps>(
     }
 
     // Handle cached story updates (for revalidation scenarios)
-    if (globalThis?.storyCache.has(story.uuid)) {
-      story = globalThis.storyCache.get(story.uuid);
-      // Delete the story from the cache to avoid draft content leaking
-      globalThis.storyCache.delete(story.uuid);
-    }
+    story = consumeCachedStory(story);
 
     // Parse story content if it's a string
     if (typeof story.content === 'string') {

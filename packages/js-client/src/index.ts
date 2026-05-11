@@ -1,5 +1,6 @@
 import {
   asyncMap,
+  decodeIfEncoded,
   delay,
   flatMap,
   getOptionsPage,
@@ -177,7 +178,12 @@ export class Storyblok {
     }
 
     if (Array.isArray(params.resolve_relations)) {
-      params.resolve_relations = params.resolve_relations.join(',');
+      // Decode URL-encoded strings in array before joining
+      params.resolve_relations = params.resolve_relations.map(decodeIfEncoded).join(',');
+    }
+    else if (typeof params.resolve_relations === 'string') {
+      // Decode URL-encoded strings to prevent double-encoding
+      params.resolve_relations = decodeIfEncoded(params.resolve_relations);
     }
 
     if (typeof params.resolve_relations !== 'undefined') {

@@ -86,6 +86,26 @@ export const flatMap = (arr: ISbResult[] = [], func: FlatMapFn) =>
   arr.map(func).reduce((xs, ys) => [...xs, ...ys], []);
 
 /**
+ * Decodes a string if it appears to be URL-encoded.
+ * Detects common encoded characters (%2C for comma, %20 for space, etc.)
+ * @param value - The string to potentially decode
+ * @returns The decoded string, or the original if not encoded
+ */
+export const decodeIfEncoded = (value: string): string => {
+  // Check if the string contains URL-encoded characters (% followed by hex digits)
+  if (/%[0-9A-F]{2}/i.test(value)) {
+    try {
+      return decodeURIComponent(value);
+    }
+    catch {
+      // If decoding fails (malformed encoding), return original
+      return value;
+    }
+  }
+  return value;
+};
+
+/**
  * Stringifies an object into a URL query string
  * @param params - Parameters to stringify
  * @param prefix - Prefix for nested keys

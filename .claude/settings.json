@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(pnpm nx *)",
+      "Bash(pnpm install)",
+      "Bash(pnpm --filter *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git blame *)",
+      "Bash(git branch *)",
+      "Bash(git worktree *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(mkdir -p claude-output)"
+    ]
+  }
+}

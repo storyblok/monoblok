@@ -1,4 +1,4 @@
-import { InjectionToken, Type, Provider } from '@angular/core';
+import { InjectionToken, Type, Provider, Directive } from '@angular/core';
 
 /**
  * Lazy component loader function type.
@@ -102,4 +102,74 @@ export function isComponentLoader(
   component: Type<any> | StoryblokComponentLoader,
 ): component is StoryblokComponentLoader {
   return typeof component === 'function' && component.length === 0 && !component.prototype;
+}
+
+/**
+ * Generic registry type for component maps.
+ * Maps keys of type K to either eager components or lazy loaders.
+ */
+export type ComponentRegistry<K extends string = string> = Partial<
+  Record<K, Type<unknown> | StoryblokComponentLoader>
+>;
+
+/**
+ * Abstract base class for component resolvers.
+ * Provides common logic for resolving components from a registry with caching support.
+ *
+ * @typeParam K - The key type used in the registry (e.g., string, StoryblokSegmentType)
+ */
+@Directive()
+export abstract class BaseComponentResolver<K extends string = string> {
+  protected abstract readonly registry: ComponentRegistry<K> | null;
+  protected readonly cache = new Map<K, Type<unknown>>();
+
+  /** Check if a component is registered for the given key. */
+  has(key: K): boolean {
+    return this.registry?.[key] != null;
+  }
+
+  /**
+   * Get the component synchronously if it's eagerly loaded or already cached.
+   * Returns null if the component needs to be loaded asynchronously.
+   */
+  getSync(key: K): Type<unknown> | null {
+    if (this.cache.has(key)) {
+      return this.cache.get(key)!;
+    }
+
+    const entry = this.registry?.[key];
+    if (!entry) return null;
+
+    if (!isComponentLoader(entry)) {
+      this.cache.set(key, entry);
+      return entry;
+    }
+
+    return null;
+  }
+
+  /** Resolve a component asynchronously. Handles both eager and lazy components. */
+  async resolve(key: K): Promise<Type<unknown> | null> {
+    if (this.cache.has(key)) {
+      return this.cache.get(key)!;
+    }
+
+    const entry = this.registry?.[key];
+    if (!entry) return null;
+
+    let component: Type<unknown>;
+    if (isComponentLoader(entry)) {
+      component = await entry();
+    } else {
+      component = entry;
+    }
+
+    this.cache.set(key, component);
+    return component;
+  }
+
+  /** Get all registered keys. */
+  getRegisteredKeys(): K[] {
+    return this.registry ? (Object.keys(this.registry) as K[]) : [];
+  }
 }

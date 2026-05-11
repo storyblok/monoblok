@@ -55,6 +55,34 @@ describe('parseResolveRelations', () => {
 
     expect(relationPaths).toEqual(['page.author', 'page.categories']);
   });
+
+  it('should handle URL-encoded resolve_relations strings', () => {
+    const relationPaths = parseResolveRelations({
+      resolve_relations: 'dodoNewsItem.tags%2CgooseProductMetadata.systemGenerationRef%2CgooseProductMetadata.productGroupRef',
+    });
+
+    expect(relationPaths).toEqual([
+      'dodoNewsItem.tags',
+      'gooseProductMetadata.systemGenerationRef',
+      'gooseProductMetadata.productGroupRef',
+    ]);
+  });
+
+  it('should handle URL-encoded strings with spaces', () => {
+    const relationPaths = parseResolveRelations({
+      resolve_relations: 'page.author%2C%20page.categories',
+    });
+
+    expect(relationPaths).toEqual(['page.author', 'page.categories']);
+  });
+
+  it('should handle non-encoded strings normally', () => {
+    const relationPaths = parseResolveRelations({
+      resolve_relations: 'page.author,page.categories',
+    });
+
+    expect(relationPaths).toEqual(['page.author', 'page.categories']);
+  });
 });
 
 describe('inlineStoryContent', () => {

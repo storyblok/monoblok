@@ -71,12 +71,19 @@ export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown,
     throw new APIError(errorId, action, error, customMessage);
   }
 
-  // Handle non-FetchError objects that have a response property (e.g. mapi-client ClientError)
+  // Handle non-FetchError objects that have a response property (e.g. mapi-client ClientError).
+  // ClientError itself doesn't carry request context, but some wrappers attach
+  // a `request` field — forward it best-effort so verbose output can show it.
   const response = (error as any)?.response;
   if (response?.status) {
+    const reqCandidate = (error as any)?.request;
     const wrappedError = new FetchError(
       response.statusText ?? (error as Error).message,
       { status: response.status, statusText: response.statusText ?? '', data: response.data },
+      {
+        url: typeof reqCandidate?.url === 'string' ? reqCandidate.url : undefined,
+        method: typeof reqCandidate?.method === 'string' ? reqCandidate.method : undefined,
+      },
     );
     const errorId = getErrorId(response.status);
     throw new APIError(errorId, action, wrappedError, customMessage);
@@ -123,6 +130,8 @@ export class APIError extends Error {
   }
 
   getInfo() {
+    const request = this.error?.request;
+    const hasRequestContext = Boolean(request && (request.url || request.method));
     return {
       name: this.name,
       message: this.message,
@@ -131,6 +140,7 @@ export class APIError extends Error {
       errorId: this.errorId,
       stack: this.stack,
       responseData: this.response?.data,
+      ...(hasRequestContext ? { request: { url: request!.url, method: request!.method } } : {}),
     };
   }
 }

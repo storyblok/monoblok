@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { ISbStoryData, StoryblokBridgeConfigV2 } from '@/types';
+import { consumeCachedStory } from '../core/story-cache';
 import StoryblokServerComponent from '../server/server-component';
 import StoryblokLiveEditing from './live-editing';
 
@@ -17,11 +18,7 @@ const StoryblokStory = forwardRef<HTMLElement, StoryblokStoryProps>(
       return null;
     }
 
-    if (globalThis?.storyCache.has(story.uuid)) {
-      story = globalThis.storyCache.get(story.uuid);
-      // Delete the story from the cache to avoid draft content leaking
-      globalThis.storyCache.delete(story.uuid);
-    }
+    story = consumeCachedStory(story);
 
     if (typeof story.content === 'string') {
       try {

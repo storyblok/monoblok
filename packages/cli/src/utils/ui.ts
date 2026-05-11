@@ -15,9 +15,15 @@ interface ErrorOptions {
   margin?: boolean;
 }
 
-const noopProgressBar = {
+interface ProgressBar {
+  increment: (count?: number) => void;
+  setTotal: (total: number) => void;
+  stop: () => void;
+}
+
+const noopProgressBar: ProgressBar = {
   increment: () => {},
-  setTotal: (_n: number) => {},
+  setTotal: () => {},
   stop: () => {},
 };
 
@@ -114,8 +120,16 @@ export class UI {
     }
   }
 
-  createProgressBar(options: { title: string }) {
-    return this.multiBar?.create(0, 0, options) || noopProgressBar;
+  createProgressBar(options: { title: string }): ProgressBar {
+    const bar = this.multiBar?.create(0, 0, options);
+    if (!bar) { return noopProgressBar; }
+    return {
+      increment: (count = 1) => bar.increment(count),
+      // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
+      // Floor at 1 so an empty phase stays a clean 0/1 instead.
+      setTotal: total => bar.setTotal(Math.max(total, 1)),
+      stop: () => bar.stop(),
+    };
   }
 
   stopAllProgressBars() {

@@ -263,7 +263,7 @@ export const readComponentsFiles = async (
     result = await loadComponents(resolvedPath, { suffix });
   }
   catch (error) {
-    if (error instanceof FileSystemError) {
+    if (error instanceof FileSystemError && error.code !== 'ENOENT') {
       throw error;
     }
     const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:

@@ -1,6 +1,5 @@
 import { join } from 'pathe';
-import { handleFileSystemError } from '../../utils';
-import { CommandError } from '../../utils/error/command-error';
+import { FileSystemError, handleFileSystemError } from '../../utils';
 import type { Component, ComponentFolder, InternalTag, Preset } from './constants';
 import { filterJsonBySuffix, readDirectory, readJsonFile } from '../../utils/filesystem';
 
@@ -78,7 +77,10 @@ export async function loadComponents(
   }
 
   if (duplicates.length) {
-    throw new CommandError(
+    throw new FileSystemError(
+      'invalid_argument',
+      'read',
+      new Error('Duplicate components detected'),
       `Duplicate components found in ${directoryPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. components.json and components.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull components again in the format you intend`,
     );
   }

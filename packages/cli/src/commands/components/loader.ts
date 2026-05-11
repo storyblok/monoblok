@@ -1,8 +1,8 @@
-import { readdir } from 'node:fs/promises';
 import { join } from 'pathe';
-import { FileSystemError, handleFileSystemError } from '../../utils';
+import { handleFileSystemError } from '../../utils';
+import { CommandError } from '../../utils/error/command-error';
 import type { Component, ComponentFolder, InternalTag, Preset } from './constants';
-import { filterJsonBySuffix, readJsonFile } from '../../utils/filesystem';
+import { filterJsonBySuffix, readDirectory, readJsonFile } from '../../utils/filesystem';
 
 export interface ComponentsData {
   components: Component[];
@@ -38,7 +38,7 @@ export async function loadComponents(
   directoryPath: string,
   options?: { suffix?: string },
 ): Promise<ComponentsData> {
-  const files = await readdir(directoryPath);
+  const files = await readDirectory(directoryPath);
   const { suffix } = options ?? {};
 
   const componentMap = new Map<string, { component: Component; file: string }>();
@@ -78,10 +78,7 @@ export async function loadComponents(
   }
 
   if (duplicates.length) {
-    throw new FileSystemError(
-      'file_not_found',
-      'read',
-      new Error('Duplicate components detected'),
+    throw new CommandError(
       `Duplicate components found in ${directoryPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. components.json and components.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull components again in the format you intend`,
     );
   }

@@ -9,6 +9,7 @@
 3. **Plan first** - For non-trivial changes, write a plan before coding
 4. **Verify always** - Run lint/typecheck/tests before considering work done
 5. **No new deps** - Avoid adding dependencies unless strictly necessary
+6. **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
 
 ## Monorepo setup
 

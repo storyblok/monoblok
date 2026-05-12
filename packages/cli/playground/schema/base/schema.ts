@@ -1,15 +1,18 @@
 import type { Schema as InferSchema, Story as InferStory, MapiStory } from '@storyblok/schema';
-import { pageBlock } from './components/page';
-import { heroBlock } from './components/hero';
-import { featureCardBlock } from './components/feature-card';
-import { kitchenSinkBlock } from './components/kitchen-sink';
-import { emptyBlock } from './components/empty-block';
-import { layoutFolder } from './components/folders/layout';
-import { contentFolder } from './components/folders/content';
+import { pageBlock } from './blocks/page';
+import { articleBlock } from './blocks/article';
+import { heroBlock } from './blocks/hero';
+import { featureCardBlock } from './blocks/feature-card';
+import { kitchenSinkBlock } from './blocks/kitchen-sink';
+import { emptyBlock } from './blocks/empty-block';
+import { layoutFolder } from './blocks/folders/layout';
+import { contentFolder } from './blocks/folders/content';
 import { colorsDatasource, iconsDatasource } from './datasources';
 
+export const contentTypes = { pageBlock, articleBlock };
+
 export const schema = {
-  blocks: { pageBlock, heroBlock, featureCardBlock, kitchenSinkBlock, emptyBlock },
+  blocks: { ...contentTypes, heroBlock, featureCardBlock, kitchenSinkBlock, emptyBlock },
   blockFolders: { layoutFolder, contentFolder },
   datasources: { iconsDatasource, colorsDatasource },
 };

@@ -4,6 +4,7 @@ const heroBlock = defineBlock({
   name: 'hero',
   is_nestable: true,
   schema: [
+    // 1.1.0 - Adds subtitle and cta_link
     defineField('headline', { type: 'text', max_length: 120, required: true }),
     defineField('subtitle', { type: 'text', max_length: 200, translatable: true }),
     defineField('image', { type: 'asset', filetypes: ['images'] }),
@@ -16,6 +17,7 @@ const pageBlock = defineBlock({
   is_root: true,
   is_nestable: false,
   schema: [
+    // 1.1.0 - Adds title
     defineField('title', { type: 'text', max_length: 70 }),
     defineField('body', { type: 'bloks', component_whitelist: [heroBlock.name] }),
   ],

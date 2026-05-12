@@ -1,6 +1,6 @@
 import { defineBlock, defineField } from '@storyblok/schema';
-import { headlineField, imageField } from './fields';
-import { ctaFields, seoFields } from './field-groups';
+import { headlineField, imageField } from './1_fields';
+import { ctaFields, seoFields } from './2_field-groups';
 
 // The base schema array is exported so variants can spread from it.
 export const heroBaseSchema = [

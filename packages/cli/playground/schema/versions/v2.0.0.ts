@@ -1,10 +1,10 @@
 import { defineBlock, defineField } from '@storyblok/schema';
 
-// Breaking: hero renames 'headline' → 'title' and replaces 'image' with 'gallery' (multiasset)
 const heroBlock = defineBlock({
   name: 'hero',
   is_nestable: true,
   schema: [
+    // Breaking: hero renames 'headline' → 'title' and replaces 'image' with 'gallery' (multiasset)
     defineField('title', { type: 'text', max_length: 120, required: true }),
     defineField('subtitle', { type: 'text', max_length: 200, translatable: true }),
     defineField('gallery', { type: 'multiasset', filetypes: ['images'] }),

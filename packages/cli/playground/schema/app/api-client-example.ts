@@ -1,5 +1,5 @@
 import { createApiClient } from '@storyblok/api-client';
-import type { Schema } from './schema';
+import type { Schema } from '../base/schema';
 
 /**
  * Pass your `Schema` type to `.withTypes<Schema>()`.
@@ -17,7 +17,7 @@ const client = createApiClient({ accessToken: 'your-token' })
 
 async function getHomePage() {
   const { data } = await client.stories.get('home');
-  if (!data) return;
+  if (!data) { return; }
 
   const { story } = data;
 
@@ -28,14 +28,18 @@ async function getHomePage() {
   // body is a discriminated union — narrow by `component`
   for (const block of story.content.body ?? []) {
     if (block.component === 'hero') {
-      // TypeScript knows the full hero schema here
-      console.log(block.headline);
+      console.log(block.cta_label);
       console.log(block.cta_link);
     }
-
-    if (block.component === 'feature_card') {
+    else if (block.component === 'feature_card') {
       console.log(block.title);
       console.log(block.is_highlighted);
+    }
+    else if (block.component === 'kitchen_sink') {
+      console.log(block.option_field);
+    }
+    else if (block.component === 'empty_block') { // component exists, but page.allow_list doesn't include it
+      console.log(block);
     }
   }
 }
@@ -46,7 +50,7 @@ async function listBlogPosts() {
   const { data } = await client.stories.list({
     query: { starts_with: 'blog/', per_page: 25 },
   });
-  if (!data) return;
+  if (!data) { return; }
 
   for (const story of data.stories) {
     // Each story's content is typed to root blocks (page)

@@ -1,9 +1,9 @@
 import { defineBlock, defineBlockFolder, defineDatasource, defineField } from '@storyblok/schema';
-import { headlineField, imageField, themeOptionField } from './fields';
-import { seoFields } from './field-groups';
-import { createCardBlock, createSectionBlock } from './factories';
-import { baseHeroBlock, heroCompactBlock, heroNoCta, heroWithSeoBlock } from './extend';
-import { withSection, withTracking } from './mixins';
+import { headlineField, imageField, themeOptionField } from './1_fields';
+import { seoFields } from './2_field-groups';
+import { createCardBlock, createSectionBlock } from './4_factories';
+import { baseHeroBlock, heroCompactBlock, heroNoCta, heroWithSeoBlock } from './3_extend';
+import { withSection, withTracking } from './5_mixins';
 
 const layoutFolder = defineBlockFolder({ name: 'Layout' });
 const contentFolder = defineBlockFolder({ name: 'Content' });

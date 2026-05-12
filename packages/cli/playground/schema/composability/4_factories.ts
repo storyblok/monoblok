@@ -1,6 +1,6 @@
 import { defineBlock, defineField } from '@storyblok/schema';
-import { bodyField, headlineField, imageField } from './fields';
-import { ctaFields } from './field-groups';
+import { bodyField, headlineField, imageField } from './1_fields';
+import { ctaFields } from './2_field-groups';
 import type { Field } from '@storyblok/schema';
 
 type NamedField = Field & { name: string };

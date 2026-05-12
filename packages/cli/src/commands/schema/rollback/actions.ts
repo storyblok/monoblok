@@ -5,17 +5,11 @@ import { createTwoFilesPatch } from 'diff';
 
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from '../types';
 import { applyDefaults, COMPONENT_DEFAULTS } from '../utils';
-import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../push/serialize';
+import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../serialize';
 import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils';
 import { fileExists, readDirectory } from '../../../utils/filesystem';
-import {
-  toComponentCreate,
-  toComponentFolderCreate,
-  toComponentUpdate,
-  toDatasourceCreate,
-  toDatasourceUpdate,
-} from '../push/actions';
+import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [

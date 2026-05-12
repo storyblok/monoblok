@@ -113,6 +113,11 @@ export function formatValue(value: unknown, depth: number): string {
   return String(value);
 }
 
+/** Converts an ISO timestamp to a filesystem-safe string (replaces `:` and `.` with `-`). */
+export function fileTimestamp(iso: string): string {
+  return iso.replace(/[:.]/g, '-');
+}
+
 /** Strips keys from an object, removing undefined and null values from optional fields. */
 export function stripKeys(obj: Record<string, unknown>, keysToStrip: Set<string>): Record<string, unknown> {
   const result: Record<string, unknown> = {};

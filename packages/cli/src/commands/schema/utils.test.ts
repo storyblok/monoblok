@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyDefaults, formatValue, stripKeys } from './utils';
+import { applyDefaults, fileTimestamp, formatValue, stripKeys } from './utils';
+
+describe('fileTimestamp', () => {
+  it('should replace colons with hyphens', () => {
+    expect(fileTimestamp('2024-01-15T10:30:00')).toBe('2024-01-15T10-30-00');
+  });
+
+  it('should replace dots with hyphens', () => {
+    expect(fileTimestamp('2024-01-15T10:30:00.000Z')).toBe('2024-01-15T10-30-00-000Z');
+  });
+
+  it('should produce a filesystem-safe string', () => {
+    const result = fileTimestamp('2024-01-15T10:30:00.000Z');
+    expect(result).not.toMatch(/[:.]/);
+  });
+});
 
 describe('formatValue', () => {
   it('should format null and undefined as strings', () => {

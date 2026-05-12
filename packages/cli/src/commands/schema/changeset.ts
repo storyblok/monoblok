@@ -2,11 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'pathe';
 
 import type { ChangesetData } from './types';
-
-/** Creates a filesystem-safe timestamp string for file names. */
-function fileTimestamp(iso: string): string {
-  return iso.replace(/[:.]/g, '-');
-}
+import { fileTimestamp } from './utils';
 
 /** Ensures a directory exists, creating it recursively if needed. */
 async function ensureDir(dir: string): Promise<void> {

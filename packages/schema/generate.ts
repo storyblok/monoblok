@@ -184,12 +184,6 @@ function snakeToPascal(name: string): string {
   return name.replace(/(^|_)([a-z])/g, (_, __, c: string) => c.toUpperCase());
 }
 
-/** Convert snake_case to camelCase. */
-function snakeToCamel(name: string): string {
-  const pascal = snakeToPascal(name);
-  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
-}
-
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -289,28 +283,6 @@ const MAPI_NAMES = new Set([
   'Collaborator',
 ]);
 
-/** Extra zod-only CAPI names (no type equivalent). */
-const CAPI_ZOD_EXTRA = new Set([
-  'space_id',
-  'identifier',
-]);
-
-/** Extra zod-only MAPI names (no type equivalent). */
-const MAPI_ZOD_EXTRA = new Set([
-  'importStory_Body',
-  'translate_Body',
-  'StoryVersionComparison',
-  'getUnpublishedDependencies_Body',
-  'create_Body',
-  'update_Body',
-  'bulkMove_Body',
-  'restoreVersion_Body',
-  'ComponentVersion',
-  'upload_Body',
-  'SignedResponseObject',
-  'deleteMany_Body',
-]);
-
 /**
  * PascalCase aliases in the old output that were `type Foo = bar;` or `const Foo = bar;`.
  * These are redundant now that canonical names are PascalCase.
@@ -341,17 +313,6 @@ const TYPE_RENAME: Record<string, string> = {
   datasource_entry_capi: 'DatasourceEntry',
 };
 
-/** Zod schema rename overrides. */
-const ZOD_RENAME: Record<string, string> = {
-  story_capi: 'story',
-  story_mapi: 'story',
-  // New CAPI entity Zod renames
-  space_capi: 'space',
-  link_capi: 'link',
-  tag_capi: 'tag',
-  datasource_entry_capi: 'datasourceEntry',
-};
-
 /** Get the PascalCase type name for an old name. */
 function getTypeName(oldName: string): string {
   if (TYPE_RENAME[oldName]) {
@@ -361,17 +322,6 @@ function getTypeName(oldName: string): string {
     return oldName;
   }
   return snakeToPascal(oldName);
-}
-
-/** Get the camelCase zod schema name for an old name. */
-function getZodName(oldName: string): string {
-  if (ZOD_RENAME[oldName]) {
-    return ZOD_RENAME[oldName];
-  }
-  if (/^[A-Z]/.test(oldName)) {
-    return snakeToCamel(oldName);
-  }
-  return snakeToCamel(oldName);
 }
 
 /**
@@ -414,14 +364,6 @@ function renameTypeReferences(body: string, renameMap: Map<string, string>): str
   }
 
   return body;
-}
-
-/**
- * Rename zod schema references inside a schema body string.
- * Same approach: rename known schema names but not property keys.
- */
-function renameZodReferences(body: string, renameMap: Map<string, string>): string {
-  return renameTypeReferences(body, renameMap);
 }
 
 // ---------------------------------------------------------------------------
@@ -580,14 +522,6 @@ async function main() {
     }
   }
 
-  const zodRenameMap = new Map<string, string>();
-  for (const name of [...allNames, ...CAPI_ZOD_EXTRA, ...MAPI_ZOD_EXTRA]) {
-    const newName = getZodName(name);
-    if (newName !== name) {
-      zodRenameMap.set(name, newName);
-    }
-  }
-
   // -------------------------------------------------------------------------
   // Process types: rename, split, and categorize
   // -------------------------------------------------------------------------
@@ -629,91 +563,6 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // Process zod schemas: rename, split, and categorize
-  // -------------------------------------------------------------------------
-  const capiZod: Array<{ name: string; body: string }> = [];
-  const mapiZod: Array<{ name: string; body: string }> = [];
-
-  // Zod alias names (const aliases that just reference another schema)
-  const ZOD_ALIAS_NAMES = new Set([
-    'Story',
-    'StoryCreate',
-    'StoryUpdate',
-    'StoryCreateRequest',
-    'StoryUpdateRequest',
-    'StoryVersion',
-    'UnpublishedStory',
-    'ComponentContent',
-    'Component',
-    'ComponentCreate',
-    'ComponentUpdate',
-    'DatasourceCreate',
-    'DatasourceUpdate',
-  ]);
-
-  // Build the full zod output once for fixups (especially blok_content fix)
-  const fullZodRendered = renderRaw(mergedContext, 'schemas');
-
-  // Apply the blok_content z.record fixup on the full output
-  let fixedZodOutput = fullZodRendered;
-  fixedZodOutput = fixedZodOutput.replace(
-    /(export const blok_content: z\.ZodType = z\.lazy\(\(\) =>\s*)z\.record\(/,
-    '$1z.object({\n    _uid: z.string(),\n    component: z.string(),\n    _editable: z.string().optional(),\n  }).and(z.record(',
-  );
-  fixedZodOutput = fixedZodOutput.replace(
-    /(export const blok_content[\s\S]*?z\.record\([\s\S]*?\)\s*)\);/,
-    '$1));',
-  );
-
-  // Now split individual schema exports from the fixed output
-  const zodExportRegex = /^export const (\w+)[\s:]/gm;
-  const zodExportPositions: Array<{ name: string; start: number }> = [];
-  let match: RegExpExecArray | null = zodExportRegex.exec(fixedZodOutput);
-  while (match !== null) {
-    zodExportPositions.push({ name: match[1], start: match.index });
-    match = zodExportRegex.exec(fixedZodOutput);
-  }
-
-  const zodExports: Map<string, string> = new Map();
-  for (let i = 0; i < zodExportPositions.length; i++) {
-    const { name, start } = zodExportPositions[i];
-    const end = i + 1 < zodExportPositions.length
-      ? zodExportPositions[i + 1].start
-      : fixedZodOutput.length;
-    zodExports.set(name, fixedZodOutput.substring(start, end).trimEnd());
-  }
-
-  const isCAPIZod = (name: string) => CAPI_NAMES.has(name) || CAPI_ZOD_EXTRA.has(name);
-  const isMAPIZod = (name: string) => MAPI_NAMES.has(name) || MAPI_ZOD_EXTRA.has(name);
-
-  for (const [oldName, rawBody] of zodExports) {
-    // Skip zod aliases
-    if (ZOD_ALIAS_NAMES.has(oldName)) {
-      continue;
-    }
-
-    const newName = getZodName(oldName);
-
-    let body = rawBody;
-    // Rename the declaration
-    if (oldName !== newName) {
-      body = body.replace(
-        new RegExp(`\\bexport const ${escapeRegex(oldName)}\\b`),
-        `export const ${newName}`,
-      );
-    }
-    // Rename references
-    body = renameZodReferences(body, zodRenameMap);
-
-    if (isCAPIZod(oldName)) {
-      capiZod.push({ name: newName, body });
-    }
-    if (isMAPIZod(oldName)) {
-      mapiZod.push({ name: newName, body });
-    }
-  }
-
-  // -------------------------------------------------------------------------
   // Strip per-item "// Auto-generated" headers from bodies
   // (Each renderRaw call adds the template header; we only want it once per file.)
   // -------------------------------------------------------------------------
@@ -724,13 +573,6 @@ async function main() {
   for (const t of mapiTypes) {
     t.body = stripHeader(t.body);
   }
-  for (const z of capiZod) {
-    z.body = stripHeader(z.body);
-  }
-  for (const z of mapiZod) {
-    z.body = stripHeader(z.body);
-  }
-
   // -------------------------------------------------------------------------
   // Determine cross-file imports
   // Exclude names that the MAPI file itself exports (to avoid self-imports).
@@ -746,19 +588,6 @@ async function main() {
     }
     if (new RegExp(`\\b${escapeRegex(name)}\\b`).test(mapiTypeBodies)) {
       mapiTypeImports.push(name);
-    }
-  }
-
-  const capiZodNameSet = new Set(capiZod.map(z => z.name));
-  const mapiZodNameSet = new Set(mapiZod.map(z => z.name));
-  const mapiZodBodies = mapiZod.map(z => z.body).join('\n');
-  const mapiZodImports: string[] = [];
-  for (const name of capiZodNameSet) {
-    if (mapiZodNameSet.has(name)) {
-      continue;
-    }
-    if (new RegExp(`\\b${escapeRegex(name)}\\b`).test(mapiZodBodies)) {
-      mapiZodImports.push(name);
     }
   }
 
@@ -780,21 +609,6 @@ async function main() {
   writeFileSync(
     resolve(generatedDir, 'mapi-types.ts'),
     `${header}${mapiTypeImportLine}\n${mapiTypes.map(t => t.body).join('\n\n')}\n`,
-  );
-
-  // zod-schemas.ts (CAPI + shared)
-  writeFileSync(
-    resolve(generatedDir, 'zod-schemas.ts'),
-    `${header}\nimport { z } from 'zod';\n\n${capiZod.map(z => z.body).join('\n\n')}\n`,
-  );
-
-  // mapi-zod-schemas.ts (MAPI-only)
-  const mapiZodImportLine = mapiZodImports.length > 0
-    ? `import { ${mapiZodImports.sort().join(', ')} } from './zod-schemas';\n`
-    : '';
-  writeFileSync(
-    resolve(generatedDir, 'mapi-zod-schemas.ts'),
-    `${header}\nimport { z } from 'zod';\n${mapiZodImportLine}\n${mapiZod.map(z => z.body).join('\n\n')}\n`,
   );
 }
 

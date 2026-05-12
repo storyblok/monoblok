@@ -26,7 +26,6 @@ import {
   defineBlockCreate,
   defineField,
 } from '@storyblok/schema';
-import { spaceSchema, storySchema } from '@storyblok/schema/zod';
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
@@ -308,22 +307,6 @@ describe('schema + capi-client CAPI round-trip', () => {
       else {
         throw new Error('Unexpected component discriminant');
       }
-    });
-  });
-
-  describe('zod validation', () => {
-    it('should pass Zod storySchema validation for a fetched CAPI story', async () => {
-      const capiClient = createApiClient({ accessToken: previewToken });
-      const res = await capiClient.stories.get(STORY_SLUG);
-      const result = storySchema.safeParse(res.data?.story);
-      expect(result.success, JSON.stringify(result.error?.issues, null, 2)).toBe(true);
-    });
-
-    it('should pass Zod spaceSchema validation for the space info response', async () => {
-      const capiClient = createApiClient({ accessToken: previewToken });
-      const spaceRes = await capiClient.spaces.get();
-      const result = spaceSchema.safeParse(spaceRes.data?.space);
-      expect(result.success, JSON.stringify(result.error?.issues, null, 2)).toBe(true);
     });
   });
 

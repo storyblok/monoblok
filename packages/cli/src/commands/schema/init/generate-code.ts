@@ -2,7 +2,7 @@ import type { Component, ComponentFolder, Datasource } from '../../../types';
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
-  FOLDER_PULL_STRIP_KEYS,
+  FOLDER_INIT_STRIP_KEYS,
   formatValue,
   INDENT,
   stripKeys,
@@ -184,7 +184,7 @@ export function generateFolderFile(folder: ComponentFolder): string {
   const varName = folderVarName(folder.name);
   lines.push(`export const ${varName} = defineBlockFolder({`);
 
-  const clean = stripKeys(folder as unknown as Record<string, unknown>, FOLDER_PULL_STRIP_KEYS);
+  const clean = stripKeys(folder as unknown as Record<string, unknown>, FOLDER_INIT_STRIP_KEYS);
 
   // Enforce property order: name first, then rest
   if (clean.name !== undefined) {

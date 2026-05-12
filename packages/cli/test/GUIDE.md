@@ -33,11 +33,11 @@ The `schema` command uses TypeScript entry files (not JSON). When test files liv
 
 ### Test patterns
 
-**Round-trip (pull → push idempotency):**
+**Round-trip (init → push idempotency):**
 ```bash
 # 1. Seed space with has-default-components
-# 2. Pull
-node ./dist/index.mjs schema pull --space "$STORYBLOK_SPACE_ID" --out-dir ../../.claude/tmp/schema-test
+# 2. Init
+node ./dist/index.mjs schema init --space "$STORYBLOK_SPACE_ID" --out-dir ../../.claude/tmp/schema-test
 
 # 3. Rewrite @storyblok/schema imports to absolute source paths (only needed when
 #    the generated files live outside a workspace package, e.g. .claude/tmp/):

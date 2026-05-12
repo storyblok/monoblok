@@ -236,10 +236,36 @@ Each helper has a matching exported type (for example, `MapiAsset`, `AssetFolder
 
 The `@storyblok/schema/zod` subpath exposes Zod schemas generated from the Management and Content API OpenAPI specifications. The naming mirrors the define helpers: CDN schemas use the bare name, MAPI schemas use the `mapi` prefix where a CDN collision exists, and MAPI-only schemas keep their bare name.
 
-```ts
-import { storySchema, mapiStorySchema, componentSchema } from '@storyblok/schema/zod';
+These schemas are most useful for tooling authors and migration script writers, where data enters the process from outside TypeScript's reach. If a `defineBlock()` call compiles, the output is already correct by construction and does not need runtime validation.
 
-const parsed = storySchema.parse(unknownStory);
+#### Migration input validation
+
+The primary use case is validating hand-authored JSON (component or story definitions) before a migration script pushes them to Storyblok. This catches structural errors and typos before they reach the API.
+
+```ts
+import { createBodySchema, storyCreateRequestSchema } from '@storyblok/schema/zod';
+
+const component = createBodySchema.parse(JSON.parse(fs.readFileSync('component.json', 'utf8')));
+const story = storyCreateRequestSchema.parse(JSON.parse(fs.readFileSync('story.json', 'utf8')));
 ```
 
-Exports include `storySchema`, `mapiStorySchema`, `datasourceSchema`, `mapiDatasourceSchema`, `datasourceEntrySchema`, `mapiDatasourceEntrySchema`, `linkSchema`, `tagSchema`, `spaceSchema`, `mapiSpaceSchema`, `mapiAssetSchema`, `assetFolderSchema`, `presetSchema`, `internalTagSchema`, `userSchema`, the full set of MAPI field schemas (`textFieldSchema`, `richtextFieldSchema`, `assetFieldSchema`, `bloksFieldSchema`, `markdownFieldSchema`, `optionFieldSchema`, `optionsFieldSchema`, `datetimeFieldSchema`, `numberFieldSchema`, `booleanFieldSchema`, `tableFieldSchema`, `multilinkFieldSchema`, `multiassetFieldSchema`, `customFieldSchema`, `sectionFieldSchema`, `tabFieldSchema`, `textareaFieldSchema`, `baseFieldSchema`), the high-level `componentSchema`, and MAPI request-body schemas such as `createBodySchema`, `updateBodySchema`, `storyCreateRequestSchema`, and `storyUpdateRequestSchema`.
+Use `parse` in scripts where a thrown error with a structured message is the right failure mode. Use `safeParse` when you want to collect all validation issues before aborting.
+
+#### Field schema for dynamic tooling
+
+`fieldSchema` is a discriminated union of all 17 field types. It is useful in tooling that processes component fields dynamically and needs to branch on `type` at runtime.
+
+```ts
+import { fieldSchema } from '@storyblok/schema/zod';
+
+for (const field of Object.values(component.schema ?? {})) {
+  const parsed = fieldSchema.parse(field);
+  if (parsed.type === 'asset') {
+    // narrowed to AssetField
+  }
+}
+```
+
+#### Full export list
+
+Exports include `storySchema`, `mapiStorySchema`, `datasourceSchema`, `mapiDatasourceSchema`, `datasourceEntrySchema`, `mapiDatasourceEntrySchema`, `linkSchema`, `tagSchema`, `spaceSchema`, `mapiSpaceSchema`, `mapiAssetSchema`, `assetFolderSchema`, `presetSchema`, `internalTagSchema`, `userSchema`, the full set of MAPI field schemas (`textFieldSchema`, `richtextFieldSchema`, `assetFieldSchema`, `bloksFieldSchema`, `markdownFieldSchema`, `optionFieldSchema`, `optionsFieldSchema`, `datetimeFieldSchema`, `numberFieldSchema`, `booleanFieldSchema`, `tableFieldSchema`, `multilinkFieldSchema`, `multiassetFieldSchema`, `customFieldSchema`, `sectionFieldSchema`, `tabFieldSchema`, `textareaFieldSchema`, `baseFieldSchema`), the high-level `componentSchema`, `fieldSchema`, `contentValueSchemas`, and MAPI request-body schemas such as `createBodySchema`, `updateBodySchema`, `storyCreateRequestSchema`, and `storyUpdateRequestSchema`.

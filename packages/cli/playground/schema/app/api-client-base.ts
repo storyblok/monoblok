@@ -23,7 +23,7 @@ async function getStoryBySlug(slug: string) {
   switch (story.content.component) {
     case 'page':
       // <PageHead title={story.content.seo_title} description={story.content.seo_description} />
-      console.log(story.content.seo_title);
+      console.log(story.content);
       console.log(story.content.seo_description);
 
       // body bloks are typed to page's component_whitelist: hero | feature_card | kitchen_sink
@@ -38,15 +38,16 @@ async function getStoryBySlug(slug: string) {
           console.log(block.title);
           console.log(block.is_highlighted);
         }
-        else if (block.component === 'empty_block') { // Block exists - but the page.whitelist doesn't include it
-          // console.log(block.option_field);
-        }
+        // Block exists - but the page.whitelist doesn't include it
+        // else if (block.component === 'empty_block') {
+
+        // }
       }
       break;
 
     case 'article':
       // <ArticleTemplate title={story.content.title} author={story.content.author} />
-      console.log(story.content.title);
+      console.log(story.content.);
       console.log(story.content.author);
       console.log(story.content.published_at);
       break;

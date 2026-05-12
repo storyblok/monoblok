@@ -4,19 +4,12 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "schema:init": "storyblok schema init -s $STORYBLOK_SPACE_ID",
     "schema:push": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
-    "schema:push:dry": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
-    "schema:push:delete": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID --delete",
-    "schema:push:no-migrations": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID --no-migrations",
-    "schema:pull": "storyblok schema pull -s $STORYBLOK_SPACE_ID --out-dir pulled",
     "schema:rollback": "storyblok schema rollback -s $STORYBLOK_SPACE_ID",
-    "schema:rollback:latest": "storyblok schema rollback -s $STORYBLOK_SPACE_ID --latest",
     "ver:1.0.0": "storyblok schema push versions/v1.0.0.ts -s $STORYBLOK_SPACE_ID",
     "ver:1.1.0": "storyblok schema push versions/v1.1.0.ts -s $STORYBLOK_SPACE_ID",
-    "ver:2.0.0": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID",
-    "ver:2.0.0:migrate": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID --migrations",
-    "composability": "storyblok schema push composability/schema.ts -s $STORYBLOK_SPACE_ID",
-    "validate": "tsx validation/validate.ts"
+    "ver:2.0.0": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID"
   },
   "dependencies": {
     "@storyblok/api-client": "workspace:*",

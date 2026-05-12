@@ -207,7 +207,14 @@ schemaCommand
       }
       else {
         const pushSpinner = ui.createSpinner('Pushing schema...');
-        const result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+        let result: Awaited<ReturnType<typeof executePush>>;
+        try {
+          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+        }
+        catch (error) {
+          pushSpinner.failed('Failed to push schema');
+          throw error;
+        }
 
         summary.total = result.created + result.updated + result.deleted;
         summary.succeeded = summary.total;

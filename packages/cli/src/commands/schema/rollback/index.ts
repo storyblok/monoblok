@@ -129,7 +129,14 @@ schemaCommand
 
       // 8. Execute rollback
       const rollbackSpinner = ui.createSpinner('Applying rollback...');
-      const result = await executeRollback(space, ops, remote);
+      let result: Awaited<ReturnType<typeof executeRollback>>;
+      try {
+        result = await executeRollback(space, ops, remote);
+      }
+      catch (error) {
+        rollbackSpinner.failed('Failed to apply rollback');
+        throw error;
+      }
 
       summary.total = result.created + result.updated + result.deleted;
       summary.succeeded = summary.total;

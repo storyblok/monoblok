@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 
+import type { Component, ComponentFolder, Datasource } from '../../../types';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { getLogger } from '../../../lib/logger/logger';

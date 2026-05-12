@@ -10,7 +10,7 @@ import { session } from '../../../session';
 import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
 import { fetchRemoteSchema } from '../actions';
-import { saveChangeset } from '../push/changeset';
+import { saveChangeset } from '../changeset';
 import type { SchemaRollbackOptions } from './constants';
 import { buildRollbackOps, executeRollback, formatRollbackOutput, listChangesets, loadChangeset } from './actions';
 

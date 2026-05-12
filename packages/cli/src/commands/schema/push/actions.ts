@@ -6,8 +6,6 @@ import { getLogger } from '../../../lib/logger/logger';
 import { handleAPIError } from '../../../utils';
 import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
-export { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
-
 /** Formats diff results for CLI display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
   const lines: string[] = [];

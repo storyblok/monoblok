@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { Component, ComponentFolder, Datasource } from '../../../types';
 import type { DiffResult, RemoteSchemaData, SchemaData } from '../types';
-import { buildChangesetEntries, formatDiffOutput, toComponentCreate, toComponentFolderCreate, toDatasourceCreate, toDatasourceUpdate } from './actions';
+import { buildChangesetEntries, formatDiffOutput } from './actions';
+import { toComponentCreate, toComponentFolderCreate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 describe('toComponentCreate', () => {
   it('should strip API-assigned fields from a component', () => {

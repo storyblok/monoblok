@@ -4,7 +4,7 @@ import {
   serializeComponent,
   serializeComponentFolder,
   serializeDatasource,
-} from './serialize';
+} from '../serialize';
 
 describe('serializeComponent', () => {
   it('should serialize a component to defineBlock() code', () => {

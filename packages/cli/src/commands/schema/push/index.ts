@@ -16,7 +16,7 @@ import { diffSchema } from './diff-schema';
 import { fetchRemoteSchema } from '../actions';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { resolveFolderReferences } from './resolve-folders';
-import { saveChangeset } from './changeset';
+import { saveChangeset } from '../changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
 import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
 import { writeLocalComponents } from './write-local-components';

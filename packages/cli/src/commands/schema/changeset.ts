@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'pathe';
 
-import type { ChangesetData } from '../types';
+import type { ChangesetData } from './types';
 
 /** Creates a filesystem-safe timestamp string for file names. */
 function fileTimestamp(iso: string): string {

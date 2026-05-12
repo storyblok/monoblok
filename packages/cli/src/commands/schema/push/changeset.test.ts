@@ -3,7 +3,7 @@ import { vol } from 'memfs';
 
 import type { ChangesetData } from '../types';
 
-import { saveChangeset } from './changeset';
+import { saveChangeset } from '../changeset';
 
 describe('saveChangeset', () => {
   it('should write changeset JSON to the correct path', async () => {

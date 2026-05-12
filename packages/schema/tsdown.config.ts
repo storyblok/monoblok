@@ -7,10 +7,8 @@ export default defineConfig({
   attw: true,
   exports: true,
   publint: true,
-  external: ['zod'],
   entry: {
-    'index': './src/index.ts',
-    'zod/index': './src/zod/index.ts',
+    index: './src/index.ts',
   },
   outDir: './dist',
   format: ['esm', 'cjs'],

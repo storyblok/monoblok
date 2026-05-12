@@ -29,6 +29,12 @@ import {
   defineInternalTagCreate,
   definePresetCreate,
 } from '@storyblok/schema';
+import {
+  componentSchema,
+  datasourceEntrySchema,
+  datasourceSchema,
+  storySchema,
+} from '@storyblok/schema/zod';
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
@@ -326,6 +332,15 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(folder?.name).toBe(`${PREFIX}folder`);
       expect(comp?.component_group_uuid).toBe(folder?.uuid);
     });
+
+    it('should pass Zod componentSchema validation for raw API response, including per-field validation', async () => {
+      const res = await client.components.get(pageComponentId);
+      // componentSchema overrides the generated component.schema field with
+      // z.record(fieldSchema), so each field entry is validated against the
+      // discriminated field union — not just accepted as an open object.
+      const result = componentSchema.safeParse(res.data?.component);
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('datasources', () => {
@@ -348,6 +363,23 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(entries.find(e => e.value === 'tech')?.name).toBe('Technology');
       expect(entries.find(e => e.value === 'design')?.name).toBe('Design');
       expect(entries.find(e => e.value === 'business')?.name).toBe('Business');
+    });
+
+    it('should pass Zod datasourceSchema validation for raw API response', async () => {
+      const res = await client.datasources.list();
+      const ds = res.data?.datasources?.find(d => d.id === datasourceId);
+      const result = datasourceSchema.safeParse(ds);
+      expect(result.success).toBe(true);
+    });
+
+    it('should pass Zod datasourceEntrySchema validation for each raw entry', async () => {
+      const res = await client.datasourceEntries.list({
+        query: { datasource_id: datasourceId, per_page: 100 },
+      });
+      for (const entry of res.data?.datasource_entries ?? []) {
+        const result = datasourceEntrySchema.safeParse(entry);
+        expect(result.success, JSON.stringify(result.error?.issues, null, 2)).toBe(true);
+      }
     });
   });
 
@@ -515,6 +547,14 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(story.content.rating).toBe(100);
       expect(story.content.is_featured).toBe(false);
       expect(story.content.category).toBe('design');
+    });
+
+    it('should pass Zod MAPI story schema validation for raw API response', async () => {
+      const res = await client.stories.get(storyId);
+      // MAPI stories include extra fields (breadcrumbs, stage, last_author, etc.)
+      // not present in the CAPI story schema, so we use the MAPI Zod entry point here.
+      const result = storySchema.safeParse(res.data?.story);
+      expect(result.success).toBe(true);
     });
   });
 });

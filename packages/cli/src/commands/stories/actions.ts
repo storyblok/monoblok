@@ -2,6 +2,7 @@ import type { StoryCreate, StoryUpdate } from '../../types';
 import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, Story, TargetStoryRef } from './constants';
 import { normalizeFullSlug } from './constants';
 import { getMapiClient } from '../../api';
+import { chunk } from '../../utils/array';
 import { handleAPIError } from '../../utils/error/api-error';
 
 /**
@@ -143,43 +144,125 @@ export const updateStory = async (
   }
 };
 
-export const prefetchTargetStories = async (spaceId: string, options?: {
-  onTotal?: (total: number) => void;
-  onIncrement?: (count: number) => void;
-}): Promise<ExistingTargetStories> => {
+// 100 keys per chunk: matches MAPI's `per_page=100` so id queries fill a page
+// exactly (1 result per id) and slug queries paginate when folder + startpage
+// pairs push the result count above one page. At ~30 char slugs, 100 entries
+// ≈ 3 KB — well below typical URL length limits.
+const PREFETCH_CHUNK_SIZE = 100;
+const PREFETCH_PER_PAGE = 100;
+
+const addRef = (result: ExistingTargetStories, story: Story): void => {
+  const ref: TargetStoryRef = { id: story.id, uuid: story.uuid, is_folder: story.is_folder };
+  if (story.full_slug) {
+    const key = normalizeFullSlug(story.full_slug);
+    const existing = result.bySlug.get(key);
+    if (existing) {
+      // Avoid duplicates if the same story comes back via both by_slugs and by_ids.
+      if (!existing.some(r => r.id === ref.id)) {
+        existing.push(ref);
+      }
+    }
+    else {
+      result.bySlug.set(key, [ref]);
+    }
+  }
+  result.byId.set(story.id, ref);
+};
+
+/**
+ * Fetches every page of a single chunk query (`by_slugs` / `by_ids`).
+ * A 100-id chunk returns ≤100 stories and resolves in one page; a 100-slug
+ * chunk may exceed 100 results when slugs match folder + startpage pairs.
+ */
+const fetchChunkAllPages = async (
+  spaceId: string,
+  params: StoriesQueryParams,
+  onPageStories: (stories: Story[]) => void,
+): Promise<void> => {
+  let page = 1;
+  while (true) {
+    const response = await fetchStories(spaceId, { ...params, page, per_page: PREFETCH_PER_PAGE });
+    if (!response) {
+      return;
+    }
+    onPageStories(response.stories);
+    const total = Number(response.headers.get('Total'));
+    const perPage = Number(response.headers.get('Per-Page')) || PREFETCH_PER_PAGE;
+    if (!Number.isFinite(total) || total <= page * perPage) {
+      return;
+    }
+    page++;
+  }
+};
+
+/**
+ * Targeted prefetch: fetches only the remote stories that match the local push set,
+ * either by `full_slug` (cross-space duplicate matching, same-space slug fallback)
+ * or by numeric id (resume against a same-space manifest).
+ *
+ * Slug and id batches are dispatched concurrently through the MAPI client's
+ * existing throttle (default `maxConcurrency = 6`, adapts to the server's
+ * `X-RateLimit-Policy` header, auto-retries 429).
+ */
+export const prefetchTargetStoriesByKeys = async (
+  spaceId: string,
+  keys: { slugs: Iterable<string>; ids: Iterable<number> },
+  options?: {
+    onTotal?: (total: number) => void;
+    onIncrement?: (count: number) => void;
+  },
+): Promise<ExistingTargetStories> => {
   const result: ExistingTargetStories = {
     bySlug: new Map(),
     byId: new Map(),
   };
-  let page = 1;
-  let totalPages = 1;
-  while (page <= totalPages) {
-    const response = await fetchStories(spaceId, { page, per_page: 100 });
-    if (!response) {
-      break;
+
+  const slugSet = new Set<string>();
+  for (const slug of keys.slugs) {
+    if (slug) {
+      slugSet.add(normalizeFullSlug(slug));
     }
-    const total = Number(response.headers.get('Total'));
-    const perPage = Number(response.headers.get('Per-Page'));
-    totalPages = Math.ceil(total / perPage);
-    if (page === 1) {
-      options?.onTotal?.(total);
-    }
-    for (const story of response.stories) {
-      const ref: TargetStoryRef = { id: story.id, uuid: story.uuid, is_folder: story.is_folder };
-      if (story.full_slug) {
-        const key = normalizeFullSlug(story.full_slug);
-        const existing = result.bySlug.get(key);
-        if (existing) {
-          existing.push(ref);
-        }
-        else {
-          result.bySlug.set(key, [ref]);
-        }
-      }
-      result.byId.set(story.id, ref);
-    }
-    options?.onIncrement?.(response.stories.length);
-    page++;
   }
+  const idSet = new Set<number>();
+  for (const id of keys.ids) {
+    if (typeof id === 'number' && Number.isFinite(id)) {
+      idSet.add(id);
+    }
+  }
+
+  options?.onTotal?.(slugSet.size + idSet.size);
+
+  if (slugSet.size === 0 && idSet.size === 0) {
+    return result;
+  }
+
+  const slugChunks = chunk(slugSet, PREFETCH_CHUNK_SIZE);
+  const idChunks = chunk(idSet, PREFETCH_CHUNK_SIZE);
+
+  const requests: Array<Promise<void>> = [];
+
+  for (const slugs of slugChunks) {
+    requests.push((async () => {
+      await fetchChunkAllPages(spaceId, { by_slugs: slugs.join(',') }, (stories) => {
+        for (const story of stories) {
+          addRef(result, story);
+        }
+      });
+      options?.onIncrement?.(slugs.length);
+    })());
+  }
+
+  for (const ids of idChunks) {
+    requests.push((async () => {
+      await fetchChunkAllPages(spaceId, { by_ids: ids.join(',') }, (stories) => {
+        for (const story of stories) {
+          addRef(result, story);
+        }
+      });
+      options?.onIncrement?.(ids.length);
+    })());
+  }
+
+  await Promise.all(requests);
   return result;
 };

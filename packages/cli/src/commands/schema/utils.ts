@@ -19,8 +19,8 @@ export const DATASOURCE_STRIP_KEYS = new Set(['id', 'created_at', 'updated_at'])
 /** Fields to strip from Datasource dimension entries before serialization. */
 export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set(['id', 'datasource_id', 'created_at', 'updated_at']);
 
-/** Fields to strip from ComponentFolder during pull code generation (keeps uuid for identity). */
-export const FOLDER_PULL_STRIP_KEYS = new Set(['id']);
+/** Fields to strip from ComponentFolder during init code generation (keeps uuid for identity). */
+export const FOLDER_INIT_STRIP_KEYS = new Set(['id']);
 
 /** Fields to strip from ComponentFolder before serialization for diffing (strips uuid for cross-space portability). */
 export const FOLDER_STRIP_KEYS = new Set(['id', 'uuid']);
@@ -111,6 +111,11 @@ export function formatValue(value: unknown, depth: number): string {
     return `{\n${props.join('\n')}\n${indent}}`;
   }
   return String(value);
+}
+
+/** Converts an ISO timestamp to a filesystem-safe string (replaces `:` and `.` with `-`). */
+export function fileTimestamp(iso: string): string {
+  return iso.replace(/[:.]/g, '-');
 }
 
 /** Strips keys from an object, removing undefined and null values from optional fields. */

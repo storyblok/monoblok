@@ -1,118 +1,11 @@
 import chalk from 'chalk';
 
-import type { Component, ComponentCreate, ComponentFolder, ComponentFolderCreate, ComponentSchemaField, ComponentUpdate, Datasource, DatasourceCreate } from '../../../types';
+import type { Component, ComponentFolder, Datasource } from '../../../types';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { getLogger } from '../../../lib/logger/logger';
 import { handleAPIError } from '../../../utils';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isSchemaField(value: unknown): value is ComponentSchemaField {
-  return isRecord(value) && 'type' in value;
-}
-
-/** Converts a Component's schema (which includes _uid/component sentinels) to a clean record. */
-function toSchemaRecord(schema: Record<string, unknown>): Record<string, ComponentSchemaField> {
-  const result: Record<string, ComponentSchemaField> = {};
-  for (const [key, value] of Object.entries(schema)) {
-    if (key === '_uid' || key === 'component' || !isSchemaField(value)) { continue; }
-    result[key] = value;
-  }
-  return result;
-}
-
-/** Builds the shared component payload fields used for both create and update. */
-function buildComponentPayload(input: unknown) {
-  if (!isRecord(input)) { return { name: '' }; }
-
-  return {
-    name: typeof input.name === 'string' ? input.name : '',
-    // Fields in COMPONENT_DEFAULTS are always sent with their reset value so that
-    // removing a field from the local schema actually clears it on the API.
-    // (Root-level fields are additive on MAPI update — omitting preserves the old value.)
-    display_name: typeof input.display_name === 'string' ? input.display_name : '',
-    color: typeof input.color === 'string' ? input.color : '',
-    icon: typeof input.icon === 'string' ? input.icon : '',
-    preview_field: typeof input.preview_field === 'string' ? input.preview_field : '',
-    internal_tag_ids: Array.isArray(input.internal_tag_ids) ? input.internal_tag_ids : [],
-    // Conditionally sent: only included when explicitly set in local schema
-    ...(isRecord(input.schema) && { schema: toSchemaRecord(input.schema) }),
-    ...(typeof input.is_root === 'boolean' && { is_root: input.is_root }),
-    ...(typeof input.is_nestable === 'boolean' && { is_nestable: input.is_nestable }),
-    ...(typeof input.component_group_uuid === 'string' && { component_group_uuid: input.component_group_uuid }),
-  };
-}
-
-/** Converts an unknown input to a ComponentCreate-compatible payload. */
-export function toComponentCreate(input: unknown): ComponentCreate {
-  return buildComponentPayload(input) satisfies ComponentCreate;
-}
-
-/** Converts an unknown input to a DatasourceCreate-compatible payload. */
-export function toDatasourceCreate(input: unknown): DatasourceCreate {
-  if (!isRecord(input)) { return { name: '', slug: '' }; }
-
-  const result: DatasourceCreate = {
-    name: typeof input.name === 'string' ? input.name : '',
-    slug: typeof input.slug === 'string' ? input.slug : '',
-  };
-
-  if (Array.isArray(input.dimensions)) {
-    result.dimensions_attributes = input.dimensions
-      .filter((d: unknown) => isRecord(d) && typeof d.name === 'string' && typeof d.entry_value === 'string')
-      .map((d: Record<string, unknown>) => ({
-        name: d.name as string,
-        entry_value: d.entry_value as string,
-      }));
-  }
-
-  return result;
-}
-
-/**
- * Builds a datasource update payload that handles dimension deletions.
- * The Storyblok API requires `{ id, _destroy: true }` to remove dimensions;
- * an empty `dimensions_attributes` array is a no-op.
- */
-export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<string, unknown> {
-  const base = toDatasourceCreate(input);
-  const localDims = base.dimensions_attributes ?? [];
-  const remoteDims = remote.dimensions ?? [];
-
-  if (remoteDims.length === 0) { return base; }
-
-  const localKeys = new Set(localDims.map(d => `${d.name}::${d.entry_value}`));
-  const destroyEntries = remoteDims
-    .filter(rd => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
-    .map(rd => ({ id: rd.id, _destroy: true }));
-
-  if (destroyEntries.length > 0) {
-    return {
-      ...base,
-      dimensions_attributes: [...localDims, ...destroyEntries],
-    };
-  }
-
-  return base;
-}
-
-/** Converts an unknown input to a ComponentUpdate-compatible payload. */
-export function toComponentUpdate(input: unknown): ComponentUpdate {
-  return buildComponentPayload(input) satisfies ComponentUpdate;
-}
-
-/** Converts an unknown input to a ComponentFolderCreate-compatible payload. */
-export function toComponentFolderCreate(input: unknown): ComponentFolderCreate {
-  if (!isRecord(input)) { return { name: '' }; }
-
-  return {
-    name: typeof input.name === 'string' ? input.name : '',
-    ...(typeof input.parent_id === 'number' && { parent_id: input.parent_id }),
-  } satisfies ComponentFolderCreate;
-}
+import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** Formats diff results for CLI display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
@@ -196,42 +89,46 @@ export async function executePush(
   const createdFolderUuids = new Map<string, string>();
 
   // 1. Upsert component folders first (components may reference them)
-  for (const diff of diffResult.diffs.filter(d => d.type === 'componentFolder')) {
-    const localFolder = local.componentFolders.find(f => f.name === diff.name);
-    if (diff.action === 'create' && localFolder) {
-      const payload = toComponentFolderCreate(localFolder);
-      try {
+  const folderDiffs = diffResult.diffs.filter(d => d.type === 'componentFolder');
+  const folderResults = await Promise.allSettled(
+    folderDiffs.map(async (diff) => {
+      const localFolder = local.componentFolders.find(f => f.name === diff.name);
+      if (diff.action === 'create' && localFolder) {
         const response = await client.componentFolders.create({
           path: { space_id: spaceIdNum },
-          body: { component_group: payload },
+          body: { component_group: toComponentFolderCreate(localFolder) },
           throwOnError: true,
         });
-        const remoteUuid = response.data?.component_group?.uuid;
-        if (remoteUuid) {
-          createdFolderUuids.set(diff.name, remoteUuid);
-        }
-        created++;
+        return { action: 'created' as const, uuid: response.data?.component_group?.uuid };
       }
-      catch (error) {
-        handleAPIError('push_component_group', error as Error, `Failed to create component folder ${diff.name}`);
-      }
-    }
-    else if (diff.action === 'update' && localFolder) {
-      const existing = remote.componentFolders.get(diff.name);
-      if (existing?.id) {
-        const payload = toComponentFolderCreate(localFolder);
-        try {
+      if (diff.action === 'update' && localFolder) {
+        const existing = remote.componentFolders.get(diff.name);
+        if (existing?.id) {
           await client.componentFolders.update(existing.id, {
             path: { space_id: spaceIdNum },
-            body: { component_group: payload },
+            body: { component_group: toComponentFolderCreate(localFolder) },
             throwOnError: true,
           });
-          updated++;
-        }
-        catch (error) {
-          handleAPIError('update_component_group', error as Error, `Failed to update component folder ${diff.name}`);
+          return { action: 'updated' as const };
         }
       }
+    }),
+  );
+  for (let i = 0; i < folderResults.length; i++) {
+    const result = folderResults[i];
+    const diff = folderDiffs[i];
+    if (result.status === 'fulfilled') {
+      if (result.value?.action === 'created') {
+        if (result.value.uuid) { createdFolderUuids.set(diff.name, result.value.uuid); }
+        created++;
+      }
+      else if (result.value?.action === 'updated') {
+        updated++;
+      }
+    }
+    else {
+      const eventId = diff.action === 'create' ? 'push_component_group' : 'update_component_group';
+      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component folder ${diff.name}`);
     }
   }
 
@@ -256,129 +153,149 @@ export async function executePush(
   }
 
   // 3. Upsert components
-  for (const diff of diffResult.diffs.filter(d => d.type === 'component')) {
-    if (skippedComponents.has(diff.name)) { continue; }
-    const localComp = local.components.find(c => c.name === diff.name);
-    if (diff.action === 'create' && localComp) {
-      const payload = toComponentCreate(localComp);
-      try {
+  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component' && !skippedComponents.has(d.name));
+  const componentResults = await Promise.allSettled(
+    componentDiffs.map(async (diff) => {
+      const localComp = local.components.find(c => c.name === diff.name);
+      if (diff.action === 'create' && localComp) {
         await client.components.create({
           path: { space_id: spaceIdNum },
-          body: { component: payload },
+          body: { component: toComponentCreate(localComp) },
           throwOnError: true,
         });
-        created++;
+        return 'created' as const;
       }
-      catch (error) {
-        handleAPIError('push_component', error as Error, `Failed to create component ${diff.name}`);
-      }
-    }
-    else if (diff.action === 'update' && localComp) {
-      const existing = remote.components.get(diff.name);
-      if (existing?.id) {
-        const payload = toComponentUpdate(localComp);
-        try {
+      if (diff.action === 'update' && localComp) {
+        const existing = remote.components.get(diff.name);
+        if (existing?.id) {
           await client.components.update(existing.id, {
             path: { space_id: spaceIdNum },
-            body: { component: payload },
+            body: { component: toComponentUpdate(localComp) },
             throwOnError: true,
           });
-          updated++;
-        }
-        catch (error) {
-          handleAPIError('update_component', error as Error, `Failed to update component ${diff.name}`);
+          return 'updated' as const;
         }
       }
+    }),
+  );
+  for (let i = 0; i < componentResults.length; i++) {
+    const result = componentResults[i];
+    const diff = componentDiffs[i];
+    if (result.status === 'fulfilled') {
+      if (result.value === 'created') { created++; }
+      else if (result.value === 'updated') { updated++; }
+    }
+    else {
+      const eventId = diff.action === 'create' ? 'push_component' : 'update_component';
+      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component ${diff.name}`);
     }
   }
 
   // 4. Upsert datasources
-  for (const diff of diffResult.diffs.filter(d => d.type === 'datasource')) {
-    const localDs = local.datasources.find(d => d.name === diff.name);
-    if (diff.action === 'create' && localDs) {
-      const payload = toDatasourceCreate(localDs);
-      try {
+  const datasourceDiffs = diffResult.diffs.filter(d => d.type === 'datasource');
+  const datasourceResults = await Promise.allSettled(
+    datasourceDiffs.map(async (diff) => {
+      const localDs = local.datasources.find(d => d.name === diff.name);
+      if (diff.action === 'create' && localDs) {
         await client.datasources.create({
           path: { space_id: spaceIdNum },
-          body: { datasource: payload },
+          body: { datasource: toDatasourceCreate(localDs) },
           throwOnError: true,
         });
-        created++;
+        return 'created' as const;
       }
-      catch (error) {
-        handleAPIError('push_datasource', error as Error, `Failed to create datasource ${diff.name}`);
-      }
-    }
-    else if (diff.action === 'update' && localDs) {
-      const existing = remote.datasources.get(diff.name);
-      if (existing?.id) {
-        const payload = toDatasourceUpdate(localDs, existing);
-        try {
+      if (diff.action === 'update' && localDs) {
+        const existing = remote.datasources.get(diff.name);
+        if (existing?.id) {
           await client.datasources.update(existing.id, {
             path: { space_id: spaceIdNum },
-            body: { datasource: payload },
+            body: { datasource: toDatasourceUpdate(localDs, existing) },
             throwOnError: true,
           });
-          updated++;
-        }
-        catch (error) {
-          handleAPIError('update_datasource', error as Error, `Failed to update datasource ${diff.name}`);
+          return 'updated' as const;
         }
       }
+    }),
+  );
+  for (let i = 0; i < datasourceResults.length; i++) {
+    const result = datasourceResults[i];
+    const diff = datasourceDiffs[i];
+    if (result.status === 'fulfilled') {
+      if (result.value === 'created') { created++; }
+      else if (result.value === 'updated') { updated++; }
+    }
+    else {
+      const eventId = diff.action === 'create' ? 'push_datasource' : 'update_datasource';
+      handleAPIError(eventId, result.reason, `Failed to ${diff.action} datasource ${diff.name}`);
     }
   }
 
   // 5. Delete stale entities if --delete flag is set
   if (options.delete) {
     // Delete stale components
-    for (const diff of diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale')) {
-      const existing = remote.components.get(diff.name);
-      if (existing?.id) {
-        try {
+    const staleComponents = diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale');
+    const deleteComponentResults = await Promise.allSettled(
+      staleComponents.map(async (diff) => {
+        const existing = remote.components.get(diff.name);
+        if (existing?.id) {
           await client.components.delete(existing.id, {
             path: { space_id: spaceIdNum },
             throwOnError: true,
           });
-          deleted++;
+          return true;
         }
-        catch (error) {
-          handleAPIError('push_component', error as Error, `Failed to delete component ${diff.name}`);
-        }
+      }),
+    );
+    for (let i = 0; i < deleteComponentResults.length; i++) {
+      const result = deleteComponentResults[i];
+      if (result.status === 'fulfilled') {
+        if (result.value) { deleted++; }
       }
+      else { handleAPIError('push_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
     }
 
     // Delete stale datasources
-    for (const diff of diffResult.diffs.filter(d => d.type === 'datasource' && d.action === 'stale')) {
-      const existing = remote.datasources.get(diff.name);
-      if (existing?.id) {
-        try {
+    const staleDatasources = diffResult.diffs.filter(d => d.type === 'datasource' && d.action === 'stale');
+    const deleteDatasourceResults = await Promise.allSettled(
+      staleDatasources.map(async (diff) => {
+        const existing = remote.datasources.get(diff.name);
+        if (existing?.id) {
           await client.datasources.delete(existing.id, {
             path: { space_id: spaceIdNum },
             throwOnError: true,
           });
-          deleted++;
+          return true;
         }
-        catch (error) {
-          handleAPIError('delete_datasource', error as Error, `Failed to delete datasource ${diff.name}`);
-        }
+      }),
+    );
+    for (let i = 0; i < deleteDatasourceResults.length; i++) {
+      const result = deleteDatasourceResults[i];
+      if (result.status === 'fulfilled') {
+        if (result.value) { deleted++; }
       }
+      else { handleAPIError('delete_datasource', result.reason, `Failed to delete datasource ${staleDatasources[i].name}`); }
     }
 
     // Delete stale component folders (last, since components may reference them)
-    for (const diff of diffResult.diffs.filter(d => d.type === 'componentFolder' && d.action === 'stale')) {
-      const existing = remote.componentFolders.get(diff.name);
-      if (existing?.id) {
-        try {
+    const staleFolders = diffResult.diffs.filter(d => d.type === 'componentFolder' && d.action === 'stale');
+    const deleteFolderResults = await Promise.allSettled(
+      staleFolders.map(async (diff) => {
+        const existing = remote.componentFolders.get(diff.name);
+        if (existing?.id) {
           await client.componentFolders.delete(existing.id, {
             path: { space_id: spaceIdNum },
             throwOnError: true,
           });
-          deleted++;
+          return true;
         }
-        catch (error) {
-          handleAPIError('push_component_group', error as Error, `Failed to delete folder ${diff.name}`);
-        }
+      }),
+    );
+    for (let i = 0; i < deleteFolderResults.length; i++) {
+      const result = deleteFolderResults[i];
+      if (result.status === 'fulfilled') {
+        if (result.value) { deleted++; }
       }
+      else { handleAPIError('push_component_group', result.reason, `Failed to delete folder ${staleFolders[i].name}`); }
     }
   }
 

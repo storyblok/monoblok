@@ -2,7 +2,7 @@ import { createTwoFilesPatch } from 'diff';
 
 import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from '../utils';
-import { serializeComponent, serializeComponentFolder, serializeDatasource } from './serialize';
+import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../serialize';
 
 type EntityType = 'component' | 'componentFolder' | 'datasource';
 

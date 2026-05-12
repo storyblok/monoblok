@@ -48,7 +48,7 @@ importers:
     dependencies:
       '@storyblok/api-client':
         specifier: workspace:*
-        version: file:packages/capi-client(zod@4.3.6)
+        version: link:../capi-client
       '@storyblok/live-preview':
         specifier: workspace:*
         version: link:../live-preview
@@ -478,7 +478,7 @@ importers:
     devDependencies:
       storyblok:
         specifier: workspace:*
-        version: file:packages/cli(@types/node@25.6.0)(magicast@0.5.2)(zod@3.25.76)
+        version: file:packages/cli(@types/node@25.6.0)(magicast@0.5.2)
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -1505,9 +1505,6 @@ importers:
       vitest:
         specifier: ^4.1.3
         version: 4.1.3(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@24.11.0)(typescript@5.8.3))(vite@8.0.10(@types/node@24.11.0)(esbuild@0.27.3)(jiti@2.6.1)(less@4.6.4)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
 
   packages/schema/playground/astro:
     dependencies:
@@ -6531,9 +6528,6 @@ packages:
     resolution: {integrity: sha512-2FNTv05If7ib79VPDA/r9eUet76jewXFH2y2K5vuge6SXbRHtWBhcaRmu+6QpF4/WRNoJj5XYRSwLGXDxysBGA==}
     engines: {node: ^12.20 || >=14.13}
 
-  '@storyblok/api-client@file:packages/capi-client':
-    resolution: {directory: packages/capi-client, type: directory}
-
   '@storyblok/astro@9.0.5':
     resolution: {integrity: sha512-1AQfiERx7KMcfln9l1JjlExP6ivEGkn7oW7DTvC3P+q2E5Zu10EgG61FP7WbnLf0MaiqULk2jG0daEPHNPF//Q==}
     peerDependencies:
@@ -6590,11 +6584,6 @@ packages:
 
   '@storyblok/schema@file:packages/schema':
     resolution: {directory: packages/schema, type: directory}
-    peerDependencies:
-      zod: ^3.25.76
-    peerDependenciesMeta:
-      zod:
-        optional: true
 
   '@storyblok/vue@file:packages/vue':
     resolution: {directory: packages/vue, type: directory}
@@ -22324,14 +22313,6 @@ snapshots:
       '@types/json-schema': 7.0.15
       utility-types: 3.11.0
 
-  '@storyblok/api-client@file:packages/capi-client(zod@4.3.6)':
-    dependencies:
-      '@storyblok/region-helper': file:packages/region-helper
-      '@storyblok/schema': file:packages/schema(zod@4.3.6)
-      ky: 1.14.3
-    transitivePeerDependencies:
-      - zod
-
   '@storyblok/astro@9.0.5(astro@6.2.2(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.6.1)(less@4.6.4)(lightningcss@1.32.0)(rollup@4.59.0)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@storyblok/js': 5.1.4
@@ -22540,13 +22521,11 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@storyblok/management-api-client@file:packages/mapi-client(zod@3.25.76)':
+  '@storyblok/management-api-client@file:packages/mapi-client':
     dependencies:
       '@storyblok/region-helper': file:packages/region-helper
-      '@storyblok/schema': file:packages/schema(zod@3.25.76)
+      '@storyblok/schema': file:packages/schema
       ky: 1.14.3
-    transitivePeerDependencies:
-      - zod
 
   '@storyblok/nuxt@file:packages/nuxt(nuxt@4.3.1(@parcel/watcher@2.5.6)(@types/node@25.6.0)(@vercel/functions@3.4.3)(@vue/compiler-sfc@3.5.30)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4)(ioredis@5.10.0)(less@4.6.4)(lightningcss@1.32.0)(magicast@0.5.2)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-rc.17)(rollup@4.59.0)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.3)(jiti@2.6.1)(less@4.6.4)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.8.2))(vue@3.5.30(typescript@5.9.3))':
     dependencies:
@@ -22674,13 +22653,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@storyblok/schema@file:packages/schema(zod@3.25.76)':
-    optionalDependencies:
-      zod: 3.25.76
-
-  '@storyblok/schema@file:packages/schema(zod@4.3.6)':
-    optionalDependencies:
-      zod: 4.3.6
+  '@storyblok/schema@file:packages/schema': {}
 
   '@storyblok/vue@file:packages/vue(vue@3.5.29(typescript@5.6.3))':
     dependencies:
@@ -34503,11 +34476,11 @@ snapshots:
 
   storyblok-js-client@file:packages/js-client: {}
 
-  storyblok@file:packages/cli(@types/node@25.6.0)(magicast@0.5.2)(zod@3.25.76):
+  storyblok@file:packages/cli(@types/node@25.6.0)(magicast@0.5.2):
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@25.6.0)
       '@storyblok/js': file:packages/js
-      '@storyblok/management-api-client': file:packages/mapi-client(zod@3.25.76)
+      '@storyblok/management-api-client': file:packages/mapi-client
       '@storyblok/region-helper': file:packages/region-helper
       '@topcli/spinner': 2.1.2
       async-sema: 3.1.1
@@ -34532,7 +34505,6 @@ snapshots:
       - bufferutil
       - magicast
       - utf-8-validate
-      - zod
 
   stream-combiner@0.0.4:
     dependencies:

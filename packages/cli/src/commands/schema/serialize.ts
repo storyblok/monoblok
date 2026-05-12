@@ -5,7 +5,7 @@ import {
   FOLDER_STRIP_KEYS,
   formatValue,
   stripKeys,
-} from '../utils';
+} from './utils';
 
 /** Sorts schema fields by `pos` for stable ordering and strips API-assigned field-level keys. */
 function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): Record<string, Record<string, unknown>> {

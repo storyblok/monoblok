@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'pathe';
 
 import { resolvePath } from '../../../../utils/filesystem';
+import { fileTimestamp } from '../../utils';
 import type { BreakingChange } from './types';
 
 /** Compatible type pairs that don't need a content migration. */
@@ -114,11 +115,6 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
   const body = lines.length > 0 ? `\n${lines.join('\n')}` : '\n';
 
   return `export default function (block) {${body}  return block;\n}\n`;
-}
-
-/** Converts an ISO timestamp to a filesystem-safe string. */
-function fileTimestamp(iso: string): string {
-  return iso.replace(/[:.]/g, '-');
 }
 
 /** Options for writing a migration file. */

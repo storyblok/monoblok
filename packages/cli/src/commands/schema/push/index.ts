@@ -16,7 +16,7 @@ import { diffSchema } from './diff-schema';
 import { fetchRemoteSchema } from '../actions';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { resolveFolderReferences } from './resolve-folders';
-import { saveChangeset } from './changeset';
+import { saveChangeset } from '../changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
 import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
 import { writeLocalComponents } from './write-local-components';
@@ -207,7 +207,14 @@ schemaCommand
       }
       else {
         const pushSpinner = ui.createSpinner('Pushing schema...');
-        const result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+        let result: Awaited<ReturnType<typeof executePush>>;
+        try {
+          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+        }
+        catch (error) {
+          pushSpinner.failed('Failed to push schema');
+          throw error;
+        }
 
         summary.total = result.created + result.updated + result.deleted;
         summary.succeeded = summary.total;

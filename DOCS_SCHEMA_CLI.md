@@ -132,6 +132,10 @@ storyblok schema rollback --latest --space 12345 --dry-run
 
 Applying a rollback writes a new changeset capturing the rollback operation itself, so a rollback can be rolled back.
 
+## Datasources and entries
+
+`storyblok schema push` owns datasource definitions: it creates, updates, and (with `--delete`) removes datasources in the space. Datasource entries are out of scope for `schema push`. Use `storyblok datasources push` to sync entries after the datasource definition exists.
+
 ## Workflow notes
 
 The recommended flow keeps the local schema as the source of truth:

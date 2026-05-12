@@ -10,7 +10,7 @@ import { session } from '../../../session';
 import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
 import { fetchRemoteSchema } from '../actions';
-import { saveChangeset } from '../push/changeset';
+import { saveChangeset } from '../changeset';
 import type { SchemaRollbackOptions } from './constants';
 import { buildRollbackOps, executeRollback, formatRollbackOutput, listChangesets, loadChangeset } from './actions';
 
@@ -129,7 +129,14 @@ schemaCommand
 
       // 8. Execute rollback
       const rollbackSpinner = ui.createSpinner('Applying rollback...');
-      const result = await executeRollback(space, ops, remote);
+      let result: Awaited<ReturnType<typeof executeRollback>>;
+      try {
+        result = await executeRollback(space, ops, remote);
+      }
+      catch (error) {
+        rollbackSpinner.failed('Failed to apply rollback');
+        throw error;
+      }
 
       summary.total = result.created + result.updated + result.deleted;
       summary.succeeded = summary.total;

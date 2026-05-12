@@ -1,6 +1,6 @@
 # `@storyblok/schema` Reference
 
-`@storyblok/schema` is Storyblok's shared schema layer. It exports TypeScript types, `define*` helpers for authoring Storyblok content shapes (components, fields, stories, datasources, and more) in code, and optional Zod schemas for runtime validation.
+`@storyblok/schema` is Storyblok's shared schema layer. It exports TypeScript types and `define*` helpers for authoring Storyblok content shapes (components, fields, stories, datasources, and more) in code.
 
 ## Requirements
 
@@ -8,20 +8,12 @@ This package is compatible with Node.js 18 and above.
 
 This package ships as ES modules with CommonJS fallbacks.
 
-Zod schemas are exposed under the `@storyblok/schema/zod` subpath and require `zod` (`>=3.25.76`) as a peer dependency. The `zod` peer dependency is optional, so projects that only need types can omit it.
-
 This package is framework agnostic and can be used in any TypeScript project.
 
 ## Installation
 
 ```bash
 npm i @storyblok/schema
-```
-
-To use Zod schemas, install `zod` alongside it:
-
-```bash
-npm i @storyblok/schema zod
 ```
 
 ## Example
@@ -62,12 +54,9 @@ export type Schema = InferSchema<typeof schema>;
 
 ## Usage
 
-The package exposes two groups of utilities:
+The package exposes typed factories and types (`define*` helpers) for components, fields, stories, datasources, presets, assets, links, tags, internal tags, users, and spaces.
 
-- **Define helpers** (default entrypoint `@storyblok/schema`): typed factories and types for components, fields, stories, datasources, presets, assets, links, tags, internal tags, users, and spaces.
-- **Zod schemas** (subpath `@storyblok/schema/zod`): runtime validators generated from the Management and Content API specs.
-
-Names follow a convention. CDN (Content Delivery API) helpers use the bare name (`defineStory`, `storySchema`). MAPI (Management API) helpers use the `Mapi`/`mapi` prefix where a CDN counterpart exists (`defineMapiStory`, `mapiStorySchema`). MAPI-only entities keep the bare name (`defineBlockFolder`, `assetFolderSchema`).
+Names follow a convention. CDN (Content Delivery API) helpers use the bare name (`defineStory`). MAPI (Management API) helpers use the `Mapi` prefix where a CDN counterpart exists (`defineMapiStory`). MAPI-only entities keep the bare name (`defineBlockFolder`).
 
 ### defineBlock()
 
@@ -231,15 +220,3 @@ The package exposes the same factory pattern for every Storyblok entity. Each `d
 | `defineUser`, `defineUserUpdate` | User (MAPI-only). |
 
 Each helper has a matching exported type (for example, `MapiAsset`, `AssetFolderCreate`, and `Preset`).
-
-### Zod schemas
-
-The `@storyblok/schema/zod` subpath exposes Zod schemas generated from the Management and Content API OpenAPI specifications. The naming mirrors the define helpers: CDN schemas use the bare name, MAPI schemas use the `mapi` prefix where a CDN collision exists, and MAPI-only schemas keep their bare name.
-
-```ts
-import { storySchema, mapiStorySchema, componentSchema } from '@storyblok/schema/zod';
-
-const parsed = storySchema.parse(unknownStory);
-```
-
-Exports include `storySchema`, `mapiStorySchema`, `datasourceSchema`, `mapiDatasourceSchema`, `datasourceEntrySchema`, `mapiDatasourceEntrySchema`, `linkSchema`, `tagSchema`, `spaceSchema`, `mapiSpaceSchema`, `mapiAssetSchema`, `assetFolderSchema`, `presetSchema`, `internalTagSchema`, `userSchema`, the full set of MAPI field schemas (`textFieldSchema`, `richtextFieldSchema`, `assetFieldSchema`, `bloksFieldSchema`, `markdownFieldSchema`, `optionFieldSchema`, `optionsFieldSchema`, `datetimeFieldSchema`, `numberFieldSchema`, `booleanFieldSchema`, `tableFieldSchema`, `multilinkFieldSchema`, `multiassetFieldSchema`, `customFieldSchema`, `sectionFieldSchema`, `tabFieldSchema`, `textareaFieldSchema`, `baseFieldSchema`), the high-level `componentSchema`, and MAPI request-body schemas such as `createBodySchema`, `updateBodySchema`, `storyCreateRequestSchema`, and `storyUpdateRequestSchema`.

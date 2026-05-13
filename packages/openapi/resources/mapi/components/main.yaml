@@ -15,8 +15,6 @@ paths:
       summary: Retrieve Multiple Components
       parameters:
         - $ref: ../shared/parameters.yaml#/space_id
-        - $ref: ../shared/pagination.yaml#/page
-        - $ref: ../shared/pagination.yaml#/per_page
         - name: by_ids
           in: query
           required: false

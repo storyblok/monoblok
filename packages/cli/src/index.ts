@@ -17,6 +17,7 @@ import './commands/logs';
 import './commands/reports';
 import './commands/assets';
 import './commands/stories';
+import './commands/schema';
 
 import { colorPalette } from './constants';
 

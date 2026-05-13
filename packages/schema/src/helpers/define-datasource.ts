@@ -1,4 +1,5 @@
 import type { Datasource } from '../generated/types';
+import type { DatasourceCreate, DatasourceUpdate } from '../generated/mapi-types';
 import type { Prettify } from '../utils/prettify';
 
 const DATASOURCE_DEFAULTS = {
@@ -7,7 +8,7 @@ const DATASOURCE_DEFAULTS = {
   updated_at: '',
 };
 
-export type { Datasource };
+export type { Datasource, DatasourceCreate, DatasourceUpdate };
 
 /** Fields that have safe defaults and may be omitted from datasource input. */
 type DatasourceOptional = keyof typeof DATASOURCE_DEFAULTS;
@@ -33,3 +34,19 @@ export function defineDatasource(datasource: DatasourceInput): Datasource;
 export function defineDatasource(datasource: any) {
   return { ...DATASOURCE_DEFAULTS, ...datasource };
 }
+
+/**
+ * Defines a datasource creation payload for the MAPI.
+ *
+ * @example
+ * const payload = defineDatasourceCreate({ name: 'Colors', slug: 'colors' });
+ */
+export const defineDatasourceCreate = (datasource: DatasourceCreate): DatasourceCreate => datasource;
+
+/**
+ * Defines a datasource update payload for the MAPI.
+ *
+ * @example
+ * const payload = defineDatasourceUpdate({ name: 'Updated Colors' });
+ */
+export const defineDatasourceUpdate = (datasource: DatasourceUpdate): DatasourceUpdate => datasource;

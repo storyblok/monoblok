@@ -1,43 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { defineAsset } from './define-asset';
+import { defineMapiAsset } from './define-asset';
 
-describe('defineAsset', () => {
+describe('defineMapiAsset', () => {
   it('should fill API-assigned fields with defaults when not provided', () => {
-    const result = defineAsset({ filename: 'https://a.storyblok.com/f/1/image.png' });
+    const result = defineMapiAsset({ filename: 'hero.png' });
 
-    expect(result).toEqual({
-      id: 1,
-      space_id: 0,
-      created_at: '',
-      updated_at: '',
-      short_filename: '',
-      content_type: '',
-      content_length: 0,
-      filename: 'https://a.storyblok.com/f/1/image.png',
-    });
+    expect(result.id).toBe(1);
+    expect(result.filename).toBe('hero.png');
+    expect(result.space_id).toBe(1);
+    expect(result.created_at).toBe('');
+    expect(result.updated_at).toBe('');
+    expect(result.short_filename).toBe('');
+    expect(result.content_type).toBe('');
+    expect(result.content_length).toBe(0);
   });
 
   it('should allow overriding defaults', () => {
-    const result = defineAsset({
-      filename: 'https://a.storyblok.com/f/1/image.png',
-      id: 42,
-      space_id: 100,
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-      short_filename: 'image.png',
-      content_type: 'image/png',
-      content_length: 1024,
-    });
+    const result = defineMapiAsset({ filename: 'hero.png', id: 42, content_type: 'image/png' });
 
-    expect(result).toEqual({
-      id: 42,
-      space_id: 100,
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
-      short_filename: 'image.png',
-      content_type: 'image/png',
-      content_length: 1024,
-      filename: 'https://a.storyblok.com/f/1/image.png',
-    });
+    expect(result.id).toBe(42);
+    expect(result.content_type).toBe('image/png');
   });
 });

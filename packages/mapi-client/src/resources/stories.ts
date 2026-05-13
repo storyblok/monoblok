@@ -21,8 +21,7 @@ import type {
 } from '../generated/stories/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
-import type { Block as Component } from '@storyblok/schema';
-import type { Story as MapiStory, StoryCreate as MapiStoryCreate, StoryUpdate as MapiStoryUpdate } from '@storyblok/schema/mapi';
+import type { Block as Component, MapiStory, StoryCreate as MapiStoryCreate, StoryUpdate as MapiStoryUpdate } from '@storyblok/schema';
 
 export type StoryListQuery = NonNullable<ListData['query']>;
 

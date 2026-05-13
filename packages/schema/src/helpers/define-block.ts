@@ -1,5 +1,7 @@
-import type { Component as ComponentGenerated } from '../generated/mapi-types';
+import type { ComponentCreate, Component as ComponentGenerated, ComponentUpdate, ComponentSchemaField as Field } from '../generated/mapi-types';
 import type { Prettify } from '../utils/prettify';
+
+export type { ComponentCreate, ComponentUpdate };
 
 const BLOCK_DEFAULTS = {
   id: 1,
@@ -7,9 +9,19 @@ const BLOCK_DEFAULTS = {
   updated_at: '',
   is_root: false,
   is_nestable: true,
+  component_group_uuid: null,
 };
 
-export type BlockSchema = ComponentGenerated['schema'];
+/** Input form: an ordered array of named fields. The array index becomes `pos`. */
+export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;
+
+/** Wire form: the MAPI object map keyed by field name. This is what `defineBlock` returns. */
+export type BlockSchema = Record<string, Field & { required?: boolean }>;
+
+/** Converts an array-form schema input into the wire-shape object map at the type level. */
+export type SchemaArrayToRecord<T extends BlockSchemaInput> = {
+  [F in T[number] as F['name']]: Omit<F, 'name'>;
+};
 
 /**
  * A Storyblok block.
@@ -19,12 +31,14 @@ export type Block<
   TBlockSchema extends BlockSchema = BlockSchema,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
+  TComponentGroupUuid extends string | null = string | null,
 > = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable'> & {
+  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
     name: TName;
     schema: TBlockSchema;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
+    component_group_uuid?: TComponentGroupUuid;
   }
 >;
 
@@ -41,53 +55,92 @@ type BlockOptional = keyof typeof BLOCK_DEFAULTS;
 
 type BlockInput<
   TName extends string = string,
-  TBlockSchema extends BlockSchema = BlockSchema,
+  TInputSchema extends BlockSchemaInput = BlockSchemaInput,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  TComponentGroupUuid extends string | null = null,
 > = Prettify<
-  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, BlockOptional>
-  & Partial<Pick<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, BlockOptional>>
+  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
+    name: TName;
+    schema: TInputSchema;
+    is_root?: TIsRoot;
+    is_nestable?: TIsNestable;
+    component_group_uuid?: TComponentGroupUuid;
+  } & Partial<Pick<ComponentGenerated, Exclude<BlockOptional, 'is_root' | 'is_nestable' | 'component_group_uuid'>>>
 >;
 
 type DefinedBlock<
-  TName extends string = string,
-  TBlockSchema extends BlockSchema = BlockSchema,
-  TIsRoot extends boolean = boolean,
-  TIsNestable extends boolean = boolean,
+  TName extends string,
+  TBlockSchema,
+  TIsRoot extends boolean,
+  TIsNestable extends boolean,
+  TComponentGroupUuid extends string | null,
 > = Prettify<
-  Omit<Block<TName, TBlockSchema, TIsRoot, TIsNestable>, 'is_root' | 'is_nestable'> & {
+  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
+    name: TName;
+    schema: TBlockSchema;
     is_root: TIsRoot;
     is_nestable: TIsNestable;
+    component_group_uuid: TComponentGroupUuid;
   }
 >;
 
 /**
- * Returns a full {@link Block} with all fields populated. API-assigned
- * fields are optional and default to safe values.
+ * Returns a {@link Block} with object-shape `schema` (matches the MAPI wire
+ * shape). The user-facing input is an ordered array of `defineField` calls;
+ * the array index becomes the field's `pos` in the returned map. Throws if
+ * two fields share the same `name`.
  *
  * @example
  * const pageBlock = defineBlock({
  *   name: 'page',
  *   is_root: true,
- *   schema: {
- *     headline: defineProp(headlineField, { pos: 1 }),
- *   },
+ *   schema: [
+ *     defineField('headline', { type: 'text', required: true }),
+ *   ],
  * });
  */
-// Overload: provides strict generic types so callers get full
-// type inference for block name, schema, is_root, and is_nestable.
 export function defineBlock<
   TName extends string,
-  TBlockSchema extends BlockSchema,
+  const TInputSchema extends BlockSchemaInput,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  TComponentGroupUuid extends string | null = null,
 >(
-  block: BlockInput<TName, TBlockSchema, TIsRoot, TIsNestable>,
-): DefinedBlock<TName, TBlockSchema, TIsRoot, TIsNestable>;
+  block: BlockInput<TName, TInputSchema, TIsRoot, TIsNestable, TComponentGroupUuid>,
+): DefinedBlock<TName, SchemaArrayToRecord<TInputSchema>, TIsRoot, TIsNestable, TComponentGroupUuid>;
 
-// Implementation signature: uses a loose parameter type because
-// TypeScript requires the implementation signature to be assignable
-// to all overloads. Not visible to callers.
 export function defineBlock(block: any) {
-  return { ...BLOCK_DEFAULTS, ...block };
+  const inputSchema = Array.isArray(block?.schema) ? block.schema : [];
+  const seen = new Set<string>();
+  const schemaRecord: Record<string, unknown> = {};
+  inputSchema.forEach((field: any, index: number) => {
+    const name = field?.name;
+    if (typeof name !== 'string') {
+      return;
+    }
+    if (seen.has(name)) {
+      throw new Error(`defineBlock: duplicate field name "${name}" in block "${block?.name ?? ''}"`);
+    }
+    seen.add(name);
+    const { name: _name, ...rest } = field;
+    schemaRecord[name] = { ...rest, pos: index };
+  });
+  return { ...BLOCK_DEFAULTS, ...block, schema: schemaRecord };
 }
+
+/**
+ * Defines a block creation payload for the MAPI.
+ *
+ * @example
+ * const payload = defineBlockCreate({ name: 'page', schema: { ... } });
+ */
+export const defineBlockCreate = (block: ComponentCreate): ComponentCreate => block;
+
+/**
+ * Defines a block update payload for the MAPI.
+ *
+ * @example
+ * const payload = defineBlockUpdate({ display_name: 'Page' });
+ */
+export const defineBlockUpdate = (block: ComponentUpdate): ComponentUpdate => block;

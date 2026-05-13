@@ -98,9 +98,6 @@ allOf:
               type: string
             published:
               type: boolean
-      release_id:
-        type: integer
-        description: ID of the current release.
       scheduled_dates:
         type:
           - string

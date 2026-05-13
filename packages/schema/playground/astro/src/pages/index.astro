@@ -1,0 +1,36 @@
+---
+import '../global.css';
+import { createStoryblokClient } from '../lib/storyblok';
+import StoryblokComponent from '../components/storyblok/storyblok-component.astro';
+
+const client = createStoryblokClient();
+const result = await client.stories.get('home', { query: { version: 'draft' } });
+const story = result.data?.story ?? null;
+
+const content = story?.content.component === 'page' ? story.content : null;
+const title = content?.seo_title ?? story?.name ?? 'Home';
+const description = content?.seo_description ?? '';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+  </head>
+  <body>
+    {story
+      ? <main><StoryblokComponent blok={story.content} /></main>
+      : (
+        <main class="flex min-h-screen items-center justify-center">
+          <p class="text-gray-500">
+            Homepage story not found. Run <code>pnpm seed</code> to create it.
+          </p>
+        </main>
+      )
+    }
+  </body>
+</html>

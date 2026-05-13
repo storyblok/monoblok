@@ -1,9 +1,9 @@
-import type { Asset } from '../generated/types';
-import type { Prettify } from '../utils/prettify';
+import type { Asset, AssetCreate, AssetUpdate } from '../generated/mapi-types';
 
-const ASSET_DEFAULTS = {
+const MAPI_ASSET_DEFAULTS = {
   id: 1,
-  space_id: 0,
+  filename: '',
+  space_id: 1,
   created_at: '',
   updated_at: '',
   short_filename: '',
@@ -11,28 +11,32 @@ const ASSET_DEFAULTS = {
   content_length: 0,
 };
 
-export type { Asset };
+export type MapiAsset = Asset;
+export type { AssetCreate, AssetUpdate };
 
-/** Fields that have safe defaults and may be omitted from asset input. */
-type AssetOptional = keyof typeof ASSET_DEFAULTS;
-
-type AssetInput = Prettify<Omit<Asset, AssetOptional> & Partial<Pick<Asset, AssetOptional>>>;
+type MapiAssetInput = { filename: string } & Partial<Omit<Asset, 'filename'>>;
 
 /**
- * Returns a full {@link Asset} with all fields populated. API-assigned
- * fields are optional and default to safe values.
+ * Defines a MAPI asset (standalone asset entity).
+ * For asset fields embedded in story content, use {@link AssetFieldValue} instead.
  *
  * @example
- * const myAsset = defineAsset({
- *   filename: 'https://a.storyblok.com/f/1/image.png'
- * });
+ * const asset = defineMapiAsset({ filename: 'hero.png' });
  */
-// Overload: provides the strict public signature for callers.
-export function defineAsset(asset: AssetInput): Asset;
+export const defineMapiAsset = (asset: MapiAssetInput): MapiAsset => ({ ...MAPI_ASSET_DEFAULTS, ...asset });
 
-// Implementation signature: uses a loose parameter type because
-// TypeScript requires the implementation signature to be assignable
-// to all overloads. Not visible to callers.
-export function defineAsset(asset: any) {
-  return { ...ASSET_DEFAULTS, ...asset };
-}
+/**
+ * Defines an asset creation payload for the upload flow.
+ *
+ * @example
+ * const payload = defineAssetCreate({ filename: 'hero.png', alt: 'Hero image' });
+ */
+export const defineAssetCreate = (asset: AssetCreate): AssetCreate => asset;
+
+/**
+ * Defines an asset update payload.
+ *
+ * @example
+ * const payload = defineAssetUpdate({ alt: 'Updated hero image' });
+ */
+export const defineAssetUpdate = (asset: AssetUpdate): AssetUpdate => asset;

@@ -18,12 +18,12 @@ import type {
 } from '../generated/components/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
-import type { ComponentCreate as SchemaComponentCreate, ComponentUpdate as SchemaComponentUpdate } from '@storyblok/schema/mapi';
+import type { ComponentCreate as SchemaComponentCreate, ComponentUpdate as SchemaComponentUpdate } from '@storyblok/schema';
 
 /**
  * Body type for component creation that accepts schema types.
  *
- * The `@storyblok/schema/mapi` package generates `ComponentCreate` with a
+ * The `@storyblok/schema` package generates `ComponentCreate` with a
  * differently-shaped `ComponentSchemaField` union than the mapi-client's own
  * generated type. This bridge type uses the schema type so that output from
  * `defineComponentCreate()` is directly assignable.

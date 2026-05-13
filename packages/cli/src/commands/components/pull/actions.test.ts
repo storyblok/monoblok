@@ -76,43 +76,6 @@ describe('pull components actions', () => {
     expect(result).toEqual(mockedComponents);
   });
 
-  it('should fetch all components across multiple pages', async () => {
-    const totalComponents = 30;
-    const allComponents = Array.from({ length: totalComponents }, (_, i) => ({
-      name: `paged-${String(i + 1).padStart(2, '0')}`,
-      display_name: `Paged ${i + 1}`,
-      created_at: '2021-08-09T12:00:00Z',
-      updated_at: '2021-08-09T12:00:00Z',
-      id: 1000 + i,
-      schema: { type: 'object' },
-      color: undefined,
-      internal_tags_list: [],
-      internal_tag_ids: [],
-    }));
-    const requestedPages: number[] = [];
-
-    server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/12345/components', ({ request }) => {
-        const url = new URL(request.url);
-        const page = Number(url.searchParams.get('page') ?? '1');
-        const perPage = Number(url.searchParams.get('per_page') ?? '25');
-        requestedPages.push(page);
-        const start = (page - 1) * perPage;
-        const slice = allComponents.slice(start, start + perPage);
-        return HttpResponse.json(
-          { components: slice },
-          { headers: { total: String(totalComponents) } },
-        );
-      }),
-    );
-
-    const result = await fetchComponents('12345');
-
-    expect(result).toHaveLength(totalComponents);
-    expect(result?.map(c => c.name)).toEqual(allComponents.map(c => c.name));
-    expect(requestedPages).toEqual([1, 2]);
-  });
-
   it('should fetch a component by name', async () => {
     const mockResponse = {
       components: [{

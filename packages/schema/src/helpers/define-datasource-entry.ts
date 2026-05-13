@@ -1,36 +1,60 @@
-import type { DatasourceEntry } from '../generated/types';
+import type { DatasourceEntry as CapiDatasourceEntry } from '../generated/types';
+import type { DatasourceEntryCreate, DatasourceEntryUpdate, DatasourceEntry as MapiDatasourceEntryGenerated } from '../generated/mapi-types';
 import type { Prettify } from '../utils/prettify';
 
 const DATASOURCE_ENTRY_DEFAULTS = {
   id: 1,
 };
 
-export type { DatasourceEntry };
+export type DatasourceEntry = CapiDatasourceEntry;
+export type MapiDatasourceEntry = MapiDatasourceEntryGenerated;
+export type { DatasourceEntryCreate, DatasourceEntryUpdate };
 
-/** Fields that have safe defaults and may be omitted from datasource entry input. */
 type DatasourceEntryOptional = keyof typeof DATASOURCE_ENTRY_DEFAULTS;
 
 type DatasourceEntryInput = Prettify<
-  Omit<DatasourceEntry, DatasourceEntryOptional>
-  & Partial<Pick<DatasourceEntry, DatasourceEntryOptional>>
+  Omit<CapiDatasourceEntry, DatasourceEntryOptional>
+  & Partial<Pick<CapiDatasourceEntry, DatasourceEntryOptional>>
 >;
 
+type MapiDatasourceEntryInput = { name: string; datasource_id: number } & Partial<Omit<MapiDatasourceEntryGenerated, 'name' | 'datasource_id'>>;
+
 /**
- * Returns a full {@link DatasourceEntry} with all fields populated. API-assigned
- * fields are optional and default to safe values.
+ * Returns a full {@link DatasourceEntry} (CDN shape) with all fields populated.
  *
  * @example
- * const entry = defineDatasourceEntry({
- *   name: 'red',
- *   value: '#ff0000',
- * });
+ * const entry = defineDatasourceEntry({ name: 'red', value: '#ff0000' });
  */
-// Overload: provides the strict public signature for callers.
 export function defineDatasourceEntry(datasourceEntry: DatasourceEntryInput): DatasourceEntry;
 
-// Implementation signature: uses a loose parameter type because
-// TypeScript requires the implementation signature to be assignable
-// to all overloads. Not visible to callers.
 export function defineDatasourceEntry(datasourceEntry: any) {
   return { ...DATASOURCE_ENTRY_DEFAULTS, ...datasourceEntry };
 }
+
+/**
+ * Returns a full {@link MapiDatasourceEntry} (MAPI shape) with all fields populated.
+ * Requires `datasource_id` to identify which datasource the entry belongs to.
+ *
+ * @example
+ * const entry = defineMapiDatasourceEntry({ name: 'red', datasource_id: 42 });
+ */
+export const defineMapiDatasourceEntry = (entry: MapiDatasourceEntryInput): MapiDatasourceEntry => ({
+  ...DATASOURCE_ENTRY_DEFAULTS,
+  ...entry,
+});
+
+/**
+ * Defines a datasource entry creation payload for the MAPI.
+ *
+ * @example
+ * const payload = defineDatasourceEntryCreate({ name: 'red', value: '#ff0000', datasource_id: 42 });
+ */
+export const defineDatasourceEntryCreate = (entry: DatasourceEntryCreate): DatasourceEntryCreate => entry;
+
+/**
+ * Defines a datasource entry update payload for the MAPI.
+ *
+ * @example
+ * const payload = defineDatasourceEntryUpdate({ value: '#ff0000' });
+ */
+export const defineDatasourceEntryUpdate = (entry: DatasourceEntryUpdate): DatasourceEntryUpdate => entry;

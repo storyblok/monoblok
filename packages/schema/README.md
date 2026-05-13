@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/schema</h1>
  <p>
-    Shared Storyblok schema types and optional Zod schemas generated from the Management and Content API specifications
+    Shared Storyblok schema types generated from the Management and Content API specifications
   </p>
   <br />
 </div>
@@ -30,7 +30,6 @@
 ## Features
 
 - **Generated Types**: TypeScript types generated from Storyblok Management and Content API OpenAPI specifications
-- **Optional Zod Schemas**: Runtime validation via the `@storyblok/schema/zod` and `@storyblok/schema/zod/mapi` subpaths when `zod` is installed
 - **Shared Schema Layer**: Reuse the same Storyblok content shapes across packages and integrations
 - **Framework Agnostic**: Use the package in any TypeScript project without framework-specific dependencies
 - **Monorepo Aligned**: Built from the same source specifications used throughout the Storyblok monoblok repository

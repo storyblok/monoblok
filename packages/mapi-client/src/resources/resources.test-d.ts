@@ -15,7 +15,7 @@ import {
   defineSpaceCreate,
   defineSpaceUpdate,
   defineUserUpdate,
-} from '@storyblok/schema/mapi';
+} from '@storyblok/schema';
 import { createManagementApiClient } from '../index';
 
 const CLIENT_CONFIG = { personalAccessToken: 'test-token', spaceId: 12345 };

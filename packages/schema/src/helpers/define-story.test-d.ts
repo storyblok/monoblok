@@ -1,7 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
-import { defineProp } from './define-prop';
 import { defineStory, type Story } from './define-story';
 
 describe('defineStory type inference', () => {
@@ -9,10 +8,10 @@ describe('defineStory type inference', () => {
     const block = defineBlock({
       name: 'page',
       is_root: true,
-      schema: {
-        headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-        count: defineProp(defineField({ type: 'number' }), { pos: 2 }),
-      },
+      schema: [
+        defineField('headline', { type: 'text', required: true }),
+        defineField('count', { type: 'number' }),
+      ],
     });
 
     const story = defineStory(block, {
@@ -34,9 +33,9 @@ describe('defineStory type inference', () => {
     const block = defineBlock({
       name: 'page',
       is_root: true,
-      schema: {
-        headline: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-      },
+      schema: [
+        defineField('headline', { type: 'text' }),
+      ],
     });
 
     defineStory(block, {
@@ -51,26 +50,26 @@ const _pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+  ],
 });
 
 const _heroBlock = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-    blocks: defineProp(defineField({ type: 'bloks' }), { pos: 2, required: true }),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('blocks', { type: 'bloks', required: true }),
+  ],
 });
 
 const _teaserBlock = defineBlock({
   name: 'teaser',
   // nestable by default (is_root: false, is_nestable: true)
-  schema: {
-    text: defineProp(defineField({ type: 'text' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('text', { type: 'text' }),
+  ],
 });
 
 type Schema = typeof _pageBlock | typeof _heroBlock | typeof _teaserBlock;

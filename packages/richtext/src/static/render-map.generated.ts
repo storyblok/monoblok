@@ -10,21 +10,6 @@ export const NODE_RENDER_MAP = {
   },
   doc: null,
   text: null,
-  details: {
-    tag: 'details',
-    content: true,
-  },
-  detailsContent: {
-    tag: 'div',
-    attrs: {
-      'data-type': 'detailsContent',
-    },
-    content: true,
-  },
-  detailsSummary: {
-    tag: 'summary',
-    content: true,
-  },
   emoji: {
     tag: 'img',
     attrs: {

@@ -2,7 +2,6 @@ import Emoji from '@tiptap/extension-emoji';
 import type { CodeBlockAttrs, ExtensionOptions, HeadingAttrs, ImageAttrs, ParagraphAttrs, TableCellAttrs, TableHeaderAttrs } from './richtext-attrs';
 import { Node } from '@tiptap/core';
 import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
-import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
 import Blockquote from '@tiptap/extension-blockquote';
 import CodeBlock from '@tiptap/extension-code-block';
@@ -15,7 +14,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import { mapToAttribute } from './utils';
 
-export { Details, DetailsContent, DetailsSummary, Document, Text };
+export { Document, Text };
 
 export function buildEmojiExtension(
   options?: ExtensionOptions<'emoji'>,

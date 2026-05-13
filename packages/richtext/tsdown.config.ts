@@ -7,7 +7,6 @@ const tiptapGlobals: Record<string, string> = {
   '@tiptap/extension-bold': 'TiptapBold',
   '@tiptap/extension-code': 'TiptapCode',
   '@tiptap/extension-code-block': 'TiptapCodeBlock',
-  '@tiptap/extension-details': 'TiptapDetails',
   '@tiptap/extension-document': 'TiptapDocument',
   '@tiptap/extension-emoji': 'TiptapEmoji',
   '@tiptap/extension-hard-break': 'TiptapHardBreak',
@@ -34,7 +33,6 @@ const sharedConfig = {
   dts: true,
   exports: true,
   external: ['mdast'],
-  inlineOnly: false,
   outDir: './dist',
   publint: true,
   sourcemap: true,
@@ -63,15 +61,13 @@ export default [
     entry: { index: './src/index.ts' },
     format: ['cjs', 'umd'],
     globalName: 'StoryblokRichtext',
-    outputOptions: {
-      globals: tiptapGlobals,
-    },
   }),
   defineConfig({
     ...sharedConfig,
     entry: { 'markdown-parser': './src/markdown-parser.ts' },
     format: ['cjs', 'umd'],
     globalName: 'StoryblokRichtextMarkdownParser',
+    inlineOnly: false,
     outputOptions: {
       globals: {
         'markdown-it': 'markdownit',
@@ -84,6 +80,7 @@ export default [
     entry: { 'html-parser': './src/html-parser.ts' },
     format: ['cjs', 'umd'],
     globalName: 'StoryblokRichtextHtmlParser',
+    inlineOnly: false,
     outputOptions: {
       globals: {
         'node-html-parser': 'NodeHtmlParser',

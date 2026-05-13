@@ -1,4 +1,4 @@
-import { buildBlockquoteExtension, buildBulletListExtension, buildCodeBlockExtension, buildComponentBlokExtension, buildEmojiExtension, buildHardBreakExtension, buildHeadingExtension, buildHorizontalRuleExtension, buildImageExtension, buildListItemExtension, buildOrderedListExtension, buildParagraphExtension, buildTableCellExtension, buildTableExtension, buildTableHeaderExtension, buildTableRowExtension, Details, DetailsContent, DetailsSummary, Document, Text } from './nodes';
+import { buildBlockquoteExtension, buildBulletListExtension, buildCodeBlockExtension, buildComponentBlokExtension, buildEmojiExtension, buildHardBreakExtension, buildHeadingExtension, buildHorizontalRuleExtension, buildImageExtension, buildListItemExtension, buildOrderedListExtension, buildParagraphExtension, buildTableCellExtension, buildTableExtension, buildTableHeaderExtension, buildTableRowExtension, Document, Text } from './nodes';
 import type { ExtensionKey, ExtensionOptions } from './richtext-attrs';
 import { Bold, buildAnchorExtension, buildHighlightExtension, buildLinkExtension, buildStyledExtension, buildTextStyleExtension, Code, Italic, Reporter, Strike, Subscript, Superscript, Underline } from './marks';
 
@@ -28,9 +28,6 @@ export function getStoryblokTiptapExtensions(options: GetStoryblokTiptapExtensio
   return {
     document: Document,
     text: Text,
-    details: Details,
-    detailsContent: DetailsContent,
-    detailsSummary: DetailsSummary,
     emoji: buildEmojiExtension(parsers?.emoji),
     paragraph: buildParagraphExtension(parsers?.paragraph),
     blockquote: buildBlockquoteExtension(),

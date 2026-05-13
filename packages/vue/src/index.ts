@@ -26,22 +26,22 @@ export * from './types';
 
 export {
   apiPlugin,
-  asTag,
-  BlockTypes,
-  ComponentBlok,
-  LinkTypes,
-  MarkTypes,
-  renderRichText,
-  richTextResolver,
   StoryblokClient,
-  type StoryblokRichTextDocumentNode,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';
+
+export {
+  type PMMark,
+  type PMNode,
+  renderRichText,
+  type RenderSpec,
+  type SbRichTextComponents,
+  type SbRichTextDoc,
+  type SbRichTextElement,
+  type SbRichTextImageOptions,
+  type SbRichTextOptions,
+  type SbRichTextProps,
+} from '@storyblok/richtext';
 
 const vEditableDirective: Directive<HTMLElement> = {
   beforeMount(el, binding) {

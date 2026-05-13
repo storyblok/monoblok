@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import { ref, type VNode, watch } from 'vue';
-import type {
-  StoryblokRichTextNode,
-} from '@storyblok/js';
-import { useStoryblokRichText } from '../composables/useStoryblokRichText';
-import type { StoryblokRichTextProps } from '../types';
+import { computed, type VNode } from 'vue';
+import type { SbRichTextDoc } from '@storyblok/richtext';
+import { type StoryblokRichTextRendererOptions, useStoryblokRichText } from '../composables/useStoryblokRichText';
+
+interface StoryblokRichTextProps extends Omit<StoryblokRichTextRendererOptions, 'StoryblokComponent'> {
+  doc: SbRichTextDoc | SbRichTextDoc[] | null | undefined;
+}
 
 const props = defineProps<StoryblokRichTextProps>();
 
-const renderedDoc = ref();
-const root = () => renderedDoc.value;
-
-watch([() => props.doc, () => props.tiptapExtensions], ([doc, tiptapExtensions]) => {
-  const { render } = useStoryblokRichText({
-    tiptapExtensions: tiptapExtensions as Record<string, any>,
-  });
-  renderedDoc.value = render(doc as StoryblokRichTextNode<VNode | VNode[]>);
-}, {
-  immediate: true,
-  deep: true,
+const render = useStoryblokRichText({
+  optimizeImage: props.optimizeImage,
+  components: props.components,
 });
+
+const renderedDoc = computed<VNode | VNode[] | null>(() => {
+  return render(props.doc);
+});
+
+const root = () => renderedDoc.value;
 </script>
 
 <template>

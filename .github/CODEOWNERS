@@ -1,4 +1,4 @@
-.github/workflows/ @storyblok/plugins
-.github/actions/ @storyblok/plugins
+.github/workflows/ @storyblok/dx
+.github/actions/ @storyblok/dx
 
 packages/region-helper @storyblok/plugins

@@ -55,6 +55,11 @@ export default [
     entry: { 'html-parser': './src/html-parser.ts' },
     format: 'esm',
   }),
+  defineConfig({
+    ...sharedConfig,
+    entry: { 'test-utils': './src/test-utils/index.ts' },
+    format: 'esm',
+  }),
   // CJS + UMD
   defineConfig({
     ...sharedConfig,

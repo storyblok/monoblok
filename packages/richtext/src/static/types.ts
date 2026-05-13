@@ -30,6 +30,7 @@ export interface RenderSpec {
 
 /** Canonical type for a Storyblok RichText JSON root */
 export type SbRichTextDoc = PMNode;
+export type TextNode = PMNode & { type: 'text' };
 
 /** Base props for node/mark components */
 export type SbRichTextProps<T extends SbRichTextElement> =

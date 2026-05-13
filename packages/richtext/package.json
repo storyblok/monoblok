@@ -33,6 +33,7 @@
       "import": "./dist/markdown-parser.mjs",
       "require": "./dist/markdown-parser.cjs"
     },
+    "./test-utils": "./dist/test-utils.mjs",
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
@@ -45,6 +46,9 @@
       ],
       "html-parser": [
         "./dist/html-parser.d.cts"
+      ],
+      "test-utils": [
+        "./dist/test-utils.d.mts"
       ]
     }
   },

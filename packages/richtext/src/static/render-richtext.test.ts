@@ -1,67 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
-
-// ============================================================================
-// Test Helpers
-// ============================================================================
-
-/** Creates a text node. */
-const text = (content: string, marks?: SbRichTextDoc['marks']): SbRichTextDoc => ({
-  type: 'text',
-  text: content,
-  ...(marks && { marks }),
-});
-
-/** Creates a link mark. */
-const linkMark = (
-  href: string,
-  options: { target?: '_blank' | '_self'; linktype?: 'url' | 'story' | 'email' | 'asset'; anchor?: string; custom?: Record<string, unknown> } = {},
-): NonNullable<SbRichTextDoc['marks']>[number] => ({
-  type: 'link',
-  attrs: {
-    href,
-    linktype: options.linktype ?? 'url',
-    target: options.target ?? null,
-    anchor: options.anchor ?? null,
-    uuid: null,
-    custom: options.custom ?? undefined,
-  },
-});
-
-/** Creates a table cell. */
-const tableCell = (
-  content: string,
-  attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
-): SbRichTextDoc => ({
-  type: 'tableCell',
-  content: [{ type: 'paragraph', content: [text(content)] }],
-  attrs: {
-    colspan: attrs.colspan ?? 1,
-    rowspan: attrs.rowspan ?? 1,
-    ...(attrs.colwidth && { colwidth: attrs.colwidth }),
-    ...(attrs.backgroundColor && { backgroundColor: attrs.backgroundColor }),
-  },
-});
-
-/** Creates a table header cell. */
-const tableHeader = (content: string): SbRichTextDoc => ({
-  type: 'tableHeader',
-  content: [{ type: 'paragraph', content: [text(content)] }],
-  attrs: { colspan: 1, rowspan: 1 },
-});
-
-/** Creates a table row. */
-const tableRow = (cells: SbRichTextDoc[]): SbRichTextDoc => ({
-  type: 'tableRow',
-  content: cells,
-});
-
-/** Creates a table. */
-const table = (rows: SbRichTextDoc[]): SbRichTextDoc => ({
-  type: 'table',
-  content: rows,
-});
+import { integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
 
 // ============================================================================
 // Tests: Input Handling
@@ -80,184 +20,20 @@ describe('renderRichText', () => {
     it('returns empty string for empty array', () => {
       expect(renderRichText([])).toBe('');
     });
-
-    it('renders array of nodes', () => {
-      const nodes: SbRichTextDoc[] = [
-        { type: 'paragraph', content: [text('First')] },
-        { type: 'paragraph', content: [text('Second')] },
-      ];
-      expect(renderRichText(nodes)).toBe('<p>First</p><p>Second</p>');
-    });
-
-    it('renders doc node without wrapper', () => {
-      const doc: SbRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('Hello')] }],
-      };
-      expect(renderRichText(doc)).toBe('<p>Hello</p>');
-    });
-
-    it('renders nested doc nodes', () => {
-      const nested: SbRichTextDoc = {
-        type: 'doc',
-        content: [
-          { type: 'paragraph', content: [text('Outer')] },
-          { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] },
-        ],
-      };
-      expect(renderRichText(nested)).toBe('<p>Outer</p><p>Inner</p>');
-    });
-
-    it('renders single non-doc node directly', () => {
-      const node: SbRichTextDoc = { type: 'paragraph', content: [text('Direct')] };
-      expect(renderRichText(node)).toBe('<p>Direct</p>');
-    });
   });
 
   // ============================================================================
-  // Tests: Block Types
+  // Tests: Node Types
   // ============================================================================
 
-  describe('block types', () => {
-    describe('paragraph', () => {
-      it('renders basic paragraph', () => {
-        const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
-        expect(renderRichText(node)).toBe('<p>Hello</p>');
-      });
-
-      it('renders empty paragraph', () => {
-        const node: SbRichTextDoc = { type: 'paragraph', content: [] };
-        expect(renderRichText(node)).toBe('<p></p>');
+  describe('nodes', () => {
+    nodeFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const result = renderRichText(input);
+        expect(result).toBe(expected);
       });
     });
-
-    describe('heading', () => {
-      it.each([1, 2, 3, 4, 5, 6] as const)('renders h%i', (level) => {
-        const heading: SbRichTextDoc = {
-          type: 'heading',
-          attrs: { level, textAlign: null },
-          content: [text(`Heading ${level}`)],
-        };
-        expect(renderRichText(heading)).toBe(`<h${level}>Heading ${level}</h${level}>`);
-      });
-    });
-
-    describe('blockquote', () => {
-      it('renders blockquote', () => {
-        const blockquote: SbRichTextDoc = {
-          type: 'blockquote',
-          content: [{ type: 'paragraph', content: [text('Quote')] }],
-        };
-        expect(renderRichText(blockquote)).toBe('<blockquote><p>Quote</p></blockquote>');
-      });
-    });
-
-    describe('lists', () => {
-      it('renders bullet list', () => {
-        const list: SbRichTextDoc = {
-          type: 'bullet_list',
-          content: [
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Item 1')] }] },
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Item 2')] }] },
-          ],
-        };
-        expect(renderRichText(list)).toBe('<ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul>');
-      });
-
-      it('renders ordered list', () => {
-        const list: SbRichTextDoc = {
-          type: 'ordered_list',
-          attrs: { order: 1 },
-          content: [
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('First')] }] },
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
-          ],
-        };
-        expect(renderRichText(list)).toBe('<ol><li><p>First</p></li><li><p>Second</p></li></ol>');
-      });
-      it('renders ordered list at 5', () => {
-        const list: SbRichTextDoc = {
-          type: 'ordered_list',
-          attrs: { order: 5 },
-          content: [
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('First')] }] },
-            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
-          ],
-        };
-        expect(renderRichText(list)).toBe('<ol start="5"><li><p>First</p></li><li><p>Second</p></li></ol>');
-      });
-    });
-
-    describe('code block', () => {
-      it('renders code block with language class', () => {
-        const codeBlock: SbRichTextDoc = {
-          type: 'code_block',
-          attrs: { class: 'javascript' },
-          content: [text('const x = 1;')],
-        };
-        expect(renderRichText(codeBlock)).toBe('<pre><code class="javascript">const x = 1;</code></pre>');
-      });
-
-      it('does not leak language as attribute', () => {
-        const codeBlock: SbRichTextDoc = {
-          type: 'code_block',
-          attrs: { class: 'js' },
-          content: [text('code')],
-        };
-        expect(renderRichText(codeBlock)).not.toContain('language=');
-      });
-    });
-
-    describe('horizontal rule', () => {
-      it('renders hr as self-closing', () => {
-        expect(renderRichText({ type: 'horizontal_rule' })).toBe('<hr>');
-      });
-    });
-
-    describe('hard break', () => {
-      it('renders br as self-closing', () => {
-        expect(renderRichText({ type: 'hard_break' })).toBe('<br>');
-      });
-    });
-
-    describe('image', () => {
-      it('renders image with attributes', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 123,
-            src: 'https://example.com/image.jpg',
-            alt: 'An image',
-            title: 'Image title',
-            source: null,
-            copyright: null,
-            meta_data: null,
-          },
-        };
-        expect(renderRichText(image)).toBe(
-          '<img id="123" src="https://example.com/image.jpg" alt="An image" title="Image title">',
-        );
-      });
-
-      it('filters out meta_data, source, and copyright from output', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 1,
-            src: 'https://example.com/img.jpg',
-            alt: 'Alt',
-            title: null,
-            source: 'Source',
-            copyright: '© 2024',
-            meta_data: { alt: 'meta', title: null, source: null, copyright: null },
-          },
-        };
-        const html = renderRichText(image);
-        expect(html).not.toContain('source=');
-        expect(html).not.toContain('copyright=');
-        expect(html).not.toContain('meta_data=');
-      });
-
+    describe('image optimization', () => {
       it('renders optimized image with optimizeImages: true', () => {
         const image: SbRichTextDoc = {
           type: 'image',
@@ -334,21 +110,6 @@ describe('renderRichText', () => {
         expect(html).toContain('loading="lazy"');
       });
     });
-
-    describe('emoji', () => {
-      it('renders emoji as image with fallback', () => {
-        const emoji: SbRichTextDoc = {
-          type: 'emoji',
-          attrs: {
-            emoji: '🚀',
-            name: 'rocket',
-            fallbackImage: 'https://cdn.example.com/rocket.png',
-          },
-        };
-        const html = renderRichText(emoji);
-        expect(html).toBe('<img draggable="false" loading="lazy" data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">');
-      });
-    });
   });
 
   // ============================================================================
@@ -356,45 +117,11 @@ describe('renderRichText', () => {
   // ============================================================================
 
   describe('tables', () => {
-    it('renders basic table with tbody', () => {
-      const tableSchema = table([tableRow([tableCell('A'), tableCell('B')])]);
-      expect(renderRichText(tableSchema)).toBe(
-        '<table><tbody><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table>',
-      );
-    });
-
-    it('renders table with thead and tbody', () => {
-      const tableSchema = table([
-        tableRow([tableHeader('H1'), tableHeader('H2')]),
-        tableRow([tableCell('C1'), tableCell('C2')]),
-      ]);
-      expect(renderRichText(tableSchema)).toBe(
-        '<table><thead><tr><th><p>H1</p></th><th><p>H2</p></th></tr></thead>'
-        + '<tbody><tr><td><p>C1</p></td><td><p>C2</p></td></tr></tbody></table>',
-      );
-    });
-
-    it('renders colspan and rowspan', () => {
-      const tableSchema = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
-      const html = renderRichText(tableSchema);
-      expect(html).toContain('colspan="2" rowspan="2"');
-    });
-
-    it('renders colwidth as style', () => {
-      const tableSchema = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
-      expect(renderRichText(tableSchema)).toContain('style="width: 200px;"');
-    });
-
-    it('renders backgroundColor as style', () => {
-      const tableSchema = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
-      expect(renderRichText(tableSchema)).toContain('background-color: #FF0000;');
-    });
-
-    it('combines multiple styles', () => {
-      const tableSchema = table([tableRow([tableCell('Styled', { colwidth: [100], backgroundColor: '#00FF00' })])]);
-      const html = renderRichText(tableSchema);
-      expect(html).toContain('width: 100px;');
-      expect(html).toContain('background-color: #00FF00;');
+    tableFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const result = renderRichText(input);
+        expect(result).toBe(expected);
+      });
     });
   });
 
@@ -403,59 +130,11 @@ describe('renderRichText', () => {
   // ============================================================================
 
   describe('marks', () => {
-    it('renders bold', () => {
-      const node = text('Bold', [{ type: 'bold' }]);
-      expect(renderRichText(node)).toBe('<strong>Bold</strong>');
-    });
-
-    it('renders italic', () => {
-      const node = text('Italic', [{ type: 'italic' }]);
-      expect(renderRichText(node)).toBe('<em>Italic</em>');
-    });
-
-    it('renders strike', () => {
-      const node = text('Strike', [{ type: 'strike' }]);
-      expect(renderRichText(node)).toBe('<s>Strike</s>');
-    });
-
-    it('renders underline', () => {
-      const node = text('Underline', [{ type: 'underline' }]);
-      expect(renderRichText(node)).toBe('<u>Underline</u>');
-    });
-
-    it('renders code', () => {
-      const node = text('code', [{ type: 'code' }]);
-      expect(renderRichText(node)).toBe('<code>code</code>');
-    });
-
-    it('renders superscript', () => {
-      const node = text('sup', [{ type: 'superscript' }]);
-      expect(renderRichText(node)).toBe('<sup>sup</sup>');
-    });
-
-    it('renders subscript', () => {
-      const node = text('sub', [{ type: 'subscript' }]);
-      expect(renderRichText(node)).toBe('<sub>sub</sub>');
-    });
-
-    it('renders nested marks', () => {
-      const node = text('Bold Italic', [{ type: 'bold' }, { type: 'italic' }]);
-      expect(renderRichText(node)).toBe('<em><strong>Bold Italic</strong></em>');
-    });
-
-    it('renders anchor mark as span with id', () => {
-      const node = text('Anchored', [{ type: 'anchor', attrs: { id: 'section-1' } }]);
-      expect(renderRichText(node)).toBe('<span id="section-1">Anchored</span>');
-    });
-
-    it('renders styled mark with class', () => {
-      const node = text('Styled', [{ type: 'styled', attrs: { class: 'highlight' } }]);
-      expect(renderRichText(node)).toBe('<span class="highlight">Styled</span>');
-    });
-
-    it('renders textStyle with color', () => {
-      const node = text('Red', [{ type: 'textStyle', attrs: { color: 'red', id: null, class: null } }]);
-      expect(renderRichText(node)).toBe('<span style="color: red;">Red</span>');
+    markFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const result = renderRichText(input);
+        expect(result).toBe(expected);
+      });
     });
   });
 
@@ -464,227 +143,25 @@ describe('renderRichText', () => {
   // ============================================================================
 
   describe('links', () => {
-    it('renders external URL link', () => {
-      const node = text('Click', [linkMark('https://example.com', { target: '_blank' })]);
-      expect(renderRichText(node)).toBe('<a href="https://example.com" target="_blank">Click</a>');
-    });
-
-    it('renders internal story link', () => {
-      const node = text('Page', [linkMark('/about', { linktype: 'story' })]);
-      expect(renderRichText(node)).toBe('<a href="/about">Page</a>');
-    });
-
-    it('renders story link with anchor', () => {
-      const node = text('Section', [linkMark('/page', { linktype: 'story', anchor: 'intro' })]);
-      expect(renderRichText(node)).toBe('<a href="/page#intro">Section</a>');
-    });
-
-    it('renders email link with mailto:', () => {
-      const node = text('Email', [linkMark('test@example.com', { linktype: 'email' })]);
-      expect(renderRichText(node)).toBe('<a href="mailto:test@example.com">Email</a>');
-    });
-
-    it('does not duplicate mailto: prefix', () => {
-      const node = text('Email', [linkMark('mailto:test@example.com', { linktype: 'email' })]);
-      expect(renderRichText(node)).toBe('<a href="mailto:test@example.com">Email</a>');
-    });
-
-    it('renders asset link', () => {
-      const node = text('Download', [linkMark('https://assets.example.com/file.pdf', { linktype: 'asset' })]);
-      expect(renderRichText(node)).toBe('<a href="https://assets.example.com/file.pdf">Download</a>');
-    });
-
-    it('renders link without href when empty', () => {
-      const node: SbRichTextDoc = {
-        type: 'text',
-        text: 'No href',
-        marks: [{ type: 'link', attrs: { href: '', linktype: 'url', uuid: null, anchor: null, target: null } }],
-      };
-      expect(renderRichText(node)).toBe('<a>No href</a>');
-    });
-
-    it('filters null attributes', () => {
-      const node = text('Link', [linkMark('/')]);
-      const html = renderRichText(node);
-      expect(html).not.toContain('target=');
-      expect(html).not.toContain('uuid=');
-      expect(html).not.toContain('anchor=');
-    });
-    it('should render a link with text, and custom attrs', () => {
-      const node: SbRichTextDoc = {
-        type: 'paragraph',
-        content: [{
-          type: 'text',
-          text: 'Click me',
-          marks: [
-            linkMark('https://example.com', { linktype: 'url', custom: { 'title': 'google', 'rel': 'noopener', 'data-custom': 'foo' } }),
-          ],
-        }],
-      };
-      const html = renderRichText(node);
-      expect(html).toBe('<p><a href="https://example.com" title="google" rel="noopener" data-custom="foo">Click me</a></p>');
+    linkFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const result = renderRichText(input);
+        expect(result).toBe(expected);
+      });
     });
   });
-
   // ============================================================================
-  // Tests: Link Mark Merging
+  // Tests: Integration
   // ============================================================================
 
-  describe('link mark merging', () => {
-    it('merges adjacent text nodes with same link', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('Hello ', [linkMark('/url')]),
-            text('World', [linkMark('/url')]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/url">Hello World</a></p>');
-    });
-    it('merge groups when link with same custom attributes', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('Hello ', [linkMark('/a', { custom: { title: 'google' } })]),
-            text('Storyblok', [linkMark('/a', { custom: { title: 'google' } })]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/a" title="google">Hello Storyblok</a></p>');
-    });
-    it('preserves inner marks when merging', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('normal ', [linkMark('/url')]),
-            text('bold', [{ type: 'bold' }, linkMark('/url')]),
-            text(' text', [linkMark('/url')]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/url">normal <strong>bold</strong> text</a></p>');
-    });
-
-    it('handles multiple inner marks', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('start ', [linkMark('/url')]),
-            text('bold', [{ type: 'bold' }, linkMark('/url')]),
-            text(' and ', [linkMark('/url')]),
-            text('italic', [{ type: 'italic' }, linkMark('/url')]),
-            text(' end', [linkMark('/url')]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe(
-        '<p><a href="/url">start <strong>bold</strong> and <em>italic</em> end</a></p>',
-      );
-    });
-
-    it('breaks group on non-text node', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('Before ', [linkMark('/x')]),
-            { type: 'hard_break' },
-            text('After', [linkMark('/x')]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/x">Before </a><br><a href="/x">After</a></p>');
-    });
-
-    it('separates groups when link attrs differ', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('A', [linkMark('/a')]),
-            text('B', [linkMark('/a', { target: '_blank' })]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/a">A</a><a href="/a" target="_blank">B</a></p>');
-    });
-    it('separates groups when link with different custom attributes', () => {
-      const content: SbRichTextDoc = {
-        type: 'doc',
-        content: [{
-          type: 'paragraph',
-          content: [
-            text('A', [linkMark('/a', { custom: { title: 'google' } })]),
-            text('B', [linkMark('/a', { custom: { title: 'new' } })]),
-          ],
-        }],
-      };
-      expect(renderRichText(content)).toBe('<p><a href="/a" title="google">A</a><a href="/a" title="new">B</a></p>');
+  describe('integration', () => {
+    integrationFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const result = renderRichText(input);
+        expect(result).toBe(expected);
+      });
     });
   });
-
-  // ============================================================================
-  // Tests: Text Alignment
-  // ============================================================================
-
-  describe('text alignment', () => {
-    it('renders paragraph with text-align style', () => {
-      const p: SbRichTextDoc = {
-        type: 'paragraph',
-        attrs: { textAlign: 'right' },
-        content: [text('Right')],
-      };
-      expect(renderRichText(p)).toBe('<p style="text-align: right;">Right</p>');
-    });
-
-    it.each(['left', 'center', 'right', 'justify'] as const)('supports %s alignment', (align) => {
-      const p: SbRichTextDoc = {
-        type: 'paragraph',
-        attrs: { textAlign: align },
-        content: [text('Text')],
-      };
-      expect(renderRichText(p)).toContain(`text-align: ${align};`);
-    });
-
-    it('renders heading with alignment', () => {
-      const heading: SbRichTextDoc = {
-        type: 'heading',
-        attrs: { level: 2, textAlign: 'center' },
-        content: [text('Centered')],
-      };
-      expect(renderRichText(heading)).toBe('<h2 style="text-align: center;">Centered</h2>');
-    });
-
-    it('combines alignment with marks', () => {
-      const p: SbRichTextDoc = {
-        type: 'paragraph',
-        attrs: { textAlign: 'center' },
-        content: [text('Styled', [{ type: 'bold' }])],
-      };
-      expect(renderRichText(p)).toBe('<p style="text-align: center;"><strong>Styled</strong></p>');
-    });
-
-    it('renders empty paragraph with alignment', () => {
-      const p: SbRichTextDoc = {
-        type: 'paragraph',
-        attrs: { textAlign: 'center' },
-        content: [],
-      };
-      expect(renderRichText(p)).toBe('<p style="text-align: center;"></p>');
-    });
-  });
-
   // ============================================================================
   // Tests: Custom Renderers
   // ============================================================================

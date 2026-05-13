@@ -127,9 +127,6 @@ export const nodeAttrMap = {
   horizontal_rule: {} as NoAttrs,
   table: {} as NoAttrs,
   tableRow: {} as NoAttrs,
-  details: {} as NoAttrs,
-  detailsContent: {} as NoAttrs,
-  detailsSummary: {} as NoAttrs,
 } satisfies Record<TiptapNodeName, unknown>;
 
 export type NodeAttrTypeMap = typeof nodeAttrMap;

@@ -3,11 +3,9 @@ import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
 import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
-import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions } from './types';
-import type { PMMark, PMNode } from './types.generated';
+import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, TextNode } from './types';
+import type { PMMark } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
-
-type TextNode = PMNode & { type: 'text' };
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -44,7 +42,7 @@ export function renderRichText(
 /** Renders a single node to HTML. */
 function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
   if (node.type === 'text') {
-    return renderTextNode(node as TextNode, node.marks, options);
+    return renderTextNode(node, node.marks, options);
   }
 
   // Custom renderer takes full control

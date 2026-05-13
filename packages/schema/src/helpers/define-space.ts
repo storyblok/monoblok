@@ -1,35 +1,34 @@
-import type { Space } from '../generated/types';
-import type { Prettify } from '../utils/prettify';
+import type { Space, SpaceCreate, SpaceUpdate } from '../generated/mapi-types';
+
+export type { Space, SpaceCreate, SpaceUpdate };
 
 const SPACE_DEFAULTS = {
   id: 1,
-  version: 1,
-  language_codes: [],
 };
 
-export type { Space };
-
-/** Fields that have safe defaults and may be omitted from space input. */
-type SpaceOptional = keyof typeof SPACE_DEFAULTS;
-
-type SpaceInput = Prettify<Omit<Space, SpaceOptional> & Partial<Pick<Space, SpaceOptional>>>;
+type SpaceInput = { name: string } & Partial<Omit<Space, 'name'>>;
 
 /**
- * Returns a full {@link Space} with all fields populated. API-assigned
- * fields are optional and default to safe values.
+ * Defines a space for the MAPI.
+ * `name` is required; API-assigned fields (`id`) default to safe values.
  *
  * @example
- * const space = defineSpace({
- *   name: 'My Space',
- *   domain: 'example.com',
- * });
+ * const space = defineSpace({ name: 'My Space' });
  */
-// Overload: provides the strict public signature for callers.
-export function defineSpace(space: SpaceInput): Space;
+export const defineSpace = (space: SpaceInput): Space => ({ ...SPACE_DEFAULTS, ...space });
 
-// Implementation signature: uses a loose parameter type because
-// TypeScript requires the implementation signature to be assignable
-// to all overloads. Not visible to callers.
-export function defineSpace(space: any) {
-  return { ...SPACE_DEFAULTS, ...space };
-}
+/**
+ * Defines a space creation payload for the MAPI.
+ *
+ * @example
+ * const payload = defineSpaceCreate({ name: 'My New Space' });
+ */
+export const defineSpaceCreate = (space: SpaceCreate): SpaceCreate => space;
+
+/**
+ * Defines a space update payload for the MAPI.
+ *
+ * @example
+ * const payload = defineSpaceUpdate({ name: 'Updated Space Name' });
+ */
+export const defineSpaceUpdate = (space: SpaceUpdate): SpaceUpdate => space;

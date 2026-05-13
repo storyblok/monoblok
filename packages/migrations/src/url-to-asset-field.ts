@@ -12,6 +12,11 @@ export function urlToAssetField(
 
   return {
     fieldtype: 'asset',
+    // `id` must be truthy: the CLI's `assets push` pipeline gates the
+    // local→remote asset map on `if (localAssetResult.id)` (see
+    // packages/cli/src/commands/assets/pipelines.ts), so an `id: 0` entry
+    // is skipped and the later `stories push` ref-mapper can't rewrite
+    // references to the uploaded asset.
     id: 1,
     filename: url,
     name,

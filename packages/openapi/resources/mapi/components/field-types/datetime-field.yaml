@@ -1,5 +1,6 @@
 allOf:
   - $ref: './base-field.yaml'
+  - $ref: './value-field.yaml'
   - type: object
     description: Datetime field configuration
     required:

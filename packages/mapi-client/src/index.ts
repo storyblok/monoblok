@@ -48,9 +48,8 @@ export type {
   TableFieldValue,
 } from '@storyblok/schema';
 
-// Domain types: single source of truth in @storyblok/schema/mapi
+// Domain types: single source of truth in @storyblok/schema
 export type {
-  Asset,
   AssetCreate,
   AssetFolder,
   AssetFolderCreate,
@@ -64,22 +63,23 @@ export type {
   ComponentUpdate,
   Datasource,
   DatasourceCreate,
-  DatasourceEntry,
   DatasourceEntryCreate,
   DatasourceEntryUpdate,
   DatasourceUpdate,
   InternalTag,
   InternalTagCreate,
   InternalTagUpdate,
+  MapiAsset as Asset,
+  MapiDatasourceEntry as DatasourceEntry,
+  MapiStory as Story,
   Preset,
   PresetCreate,
   PresetUpdate,
   Space,
   SpaceCreate,
   SpaceUpdate,
-  Story,
   StoryCreate,
   StoryUpdate,
   User,
   UserUpdate,
-} from '@storyblok/schema/mapi';
+} from '@storyblok/schema';

@@ -24,19 +24,9 @@ export { useStoryblokState } from './use-storyblok-state';
 
 export {
   apiPlugin,
-  asTag,
-  BlockTypes,
-  ComponentBlok,
   loadStoryblokBridge,
-  MarkTypes,
   registerStoryblokBridge,
   renderRichText,
-  richTextResolver,
   storyblokEditable,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';

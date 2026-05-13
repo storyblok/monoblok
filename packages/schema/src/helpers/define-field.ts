@@ -155,16 +155,16 @@ export type FieldValueInput<
 >;
 
 /**
- * Returns a full {@link Field}.
+ * Returns a {@link Field} stamped with the given `name`. Use inside a
+ * {@link defineBlock} `schema` array — `pos` is inferred from array index.
  *
  * @example
- * const bloks = defineField({
- *   type: 'bloks',
- *   component_whitelist: ['teaser', 'hero'],
- * });
+ * defineField('headline', { type: 'text', max_length: 100, required: true });
  */
 export const defineField = <
+  const TName extends string,
   const TField extends Field,
 >(
+  name: TName,
   field: TField,
-): TField => field;
+): Omit<TField, 'name'> & { name: TName } => ({ ...field, name });

@@ -305,9 +305,12 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   };
 }
 
-interface StoryblokTypesConfig {
-  components: Component;
-}
+type StoryblokTypesConfig = { components: Component } | { blocks: Component };
+
+type ResolveComponents<T extends StoryblokTypesConfig> =
+  T extends { components: infer C extends Component } ? C
+    : T extends { blocks: infer B extends Component } ? B
+      : never;
 
 /**
  * The return type of `createManagementApiClient`, parameterised by `TComponents` so that
@@ -322,17 +325,18 @@ export type ManagementApiClient<
    * Returns the same client instance cast to a version that narrows story content
    * to the provided component types. No runtime cost — type parameter is erased.
    *
+   * Accepts either `{ components: ... }` or `{ blocks: ... }` — the latter matches the
+   * `Schema` type produced by `@storyblok/schema`'s `InferSchema`.
+   *
    * @example
    * ```ts
-   * import type { pageBlock, heroBlock } from './blocks';
-   *
-   * type StoryblokTypes = { components: typeof pageBlock | typeof heroBlock };
+   * import type { Schema } from './schema';
    *
    * const client = createManagementApiClient({ personalAccessToken: '...' })
-   *   .withTypes<StoryblokTypes>();
+   *   .withTypes<Schema>();
    * ```
    */
-  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<T['components'], DefaultThrowOnError>;
+  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;
 };
 
 export const createManagementApiClient = <
@@ -345,7 +349,7 @@ export const createManagementApiClient = <
     ...resources,
     stories: createStoriesResource<Component, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
-      return self as unknown as ManagementApiClient<T['components'], DefaultThrowOnError>;
+      return self as unknown as ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;
     },
   };
   return self;

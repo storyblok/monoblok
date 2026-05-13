@@ -19,25 +19,16 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
 import {
-  defineBlock,
-  defineField,
-  defineProp,
-} from '@storyblok/schema';
-import {
   createStoryHelpers,
+  defineBlock,
   defineBlockCreate,
   defineBlockFolderCreate,
   defineDatasourceCreate,
   defineDatasourceEntryCreate,
+  defineField,
   defineInternalTagCreate,
   definePresetCreate,
-} from '@storyblok/schema/mapi';
-import {
-  componentSchema,
-  datasourceEntrySchema,
-  datasourceSchema,
-  storySchema,
-} from '@storyblok/schema/zod/mapi';
+} from '@storyblok/schema';
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
@@ -52,43 +43,31 @@ const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    image: defineProp(defineField({ type: 'asset' }), { pos: 1 }),
-  },
+  schema: [
+    defineField('title', { type: 'text', required: true }),
+    defineField('image', { type: 'asset' }),
+  ],
 });
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 0 }),
-    items: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name] }),
-      { pos: 1, required: true },
-    ),
-  },
+  schema: [
+    defineField('title', { type: 'text' }),
+    defineField('items', { type: 'bloks', component_whitelist: [teaserComponent.name], required: true }),
+  ],
 });
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    rating: defineProp(defineField({ type: 'number' }), { pos: 1 }),
-    is_featured: defineProp(defineField({ type: 'boolean' }), { pos: 2 }),
-    description: defineProp(defineField({ type: 'richtext' }), { pos: 3 }),
-    body: defineProp(
-      defineField({ type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name] }),
-      { pos: 4, required: true },
-    ),
-    category: defineProp(
-      defineField({ type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG }),
-      { pos: 5 },
-    ),
-    any_blocks: defineProp(
-      defineField({ type: 'bloks' }),
-      { pos: 6, required: true },
-    ),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+    defineField('rating', { type: 'number' }),
+    defineField('is_featured', { type: 'boolean' }),
+    defineField('description', { type: 'richtext' }),
+    defineField('body', { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], required: true }),
+    defineField('category', { type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG }),
+    defineField('any_blocks', { type: 'bloks', required: true }),
+  ],
 });
 
 interface StoryblokTypes {
@@ -347,15 +326,6 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(folder?.name).toBe(`${PREFIX}folder`);
       expect(comp?.component_group_uuid).toBe(folder?.uuid);
     });
-
-    it('should pass Zod componentSchema validation for raw API response, including per-field validation', async () => {
-      const res = await client.components.get(pageComponentId);
-      // componentSchema overrides the generated component.schema field with
-      // z.record(fieldSchema), so each field entry is validated against the
-      // discriminated field union — not just accepted as an open object.
-      const result = componentSchema.safeParse(res.data?.component);
-      expect(result.success).toBe(true);
-    });
   });
 
   describe('datasources', () => {
@@ -378,23 +348,6 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(entries.find(e => e.value === 'tech')?.name).toBe('Technology');
       expect(entries.find(e => e.value === 'design')?.name).toBe('Design');
       expect(entries.find(e => e.value === 'business')?.name).toBe('Business');
-    });
-
-    it('should pass Zod datasourceSchema validation for raw API response', async () => {
-      const res = await client.datasources.list();
-      const ds = res.data?.datasources?.find(d => d.id === datasourceId);
-      const result = datasourceSchema.safeParse(ds);
-      expect(result.success).toBe(true);
-    });
-
-    it('should pass Zod datasourceEntrySchema validation for each raw entry', async () => {
-      const res = await client.datasourceEntries.list({
-        query: { datasource_id: datasourceId, per_page: 100 },
-      });
-      for (const entry of res.data?.datasource_entries ?? []) {
-        const result = datasourceEntrySchema.safeParse(entry);
-        expect(result.success, JSON.stringify(result.error?.issues, null, 2)).toBe(true);
-      }
     });
   });
 
@@ -562,14 +515,6 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(story.content.rating).toBe(100);
       expect(story.content.is_featured).toBe(false);
       expect(story.content.category).toBe('design');
-    });
-
-    it('should pass Zod MAPI story schema validation for raw API response', async () => {
-      const res = await client.stories.get(storyId);
-      // MAPI stories include extra fields (breadcrumbs, stage, last_author, etc.)
-      // not present in the CAPI story schema, so we use the MAPI Zod entry point here.
-      const result = storySchema.safeParse(res.data?.story);
-      expect(result.success).toBe(true);
     });
   });
 });

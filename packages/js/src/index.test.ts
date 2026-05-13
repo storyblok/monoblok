@@ -4,19 +4,11 @@ import {
   storyblokEditable,
   storyblokInit,
 } from '../src';
-import type { SbInitResult, SbPluginFactory, StoryblokRichTextNode } from '../src';
+import type { SbInitResult, SbPluginFactory, SbRichTextDoc } from '../src';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { loadBridge } from './bridge';
 
-const { renderMock, richTextResolverMock } = vi.hoisted(() => {
-  const renderMock = vi.fn(() => '<p>Rendered HTML</p>');
-  const richTextResolverMock = vi.fn(() => ({ render: renderMock }));
-  return { renderMock, richTextResolverMock };
-});
-vi.mock('@storyblok/richtext', () => ({
-  richTextResolver: richTextResolverMock,
-}));
 describe('@storyblok/js', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -300,24 +292,24 @@ describe('@storyblok/js', () => {
     });
 
     it('should call render with the provided data', () => {
-      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
+      const data: SbRichTextDoc = { type: 'doc', content: [] };
 
-      renderRichText(data);
+      const html = renderRichText(data);
 
-      expect(richTextResolverMock).toHaveBeenCalledWith(undefined);
-      expect(renderMock).toHaveBeenCalledWith(data);
+      expect(html).toBe('');
     });
 
-    it('should forward tiptapExtensions to richTextResolver', () => {
-      const data = { type: 'doc', content: [] } as StoryblokRichTextNode<string>;
-      const options = {
-        tiptapExtensions: { link: { name: 'link' } },
-      };
+    it('should use renderers for customize elements', () => {
+      const data: SbRichTextDoc = { type: 'doc', content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] },
+      ] };
 
-      renderRichText(data, options as any);
-
-      expect(richTextResolverMock).toHaveBeenCalledWith(options);
-      expect(renderMock).toHaveBeenCalledWith(data);
+      const html = renderRichText(data, {
+        renderers: {
+          paragraph: ({ content }) => `<div>${renderRichText(content)}</div>`,
+        },
+      });
+      expect(html).toBe('<div>Hello</div>');
     });
   });
 
@@ -365,7 +357,7 @@ describe('@storyblok/js', () => {
       // Mock being in an iframe
       const originalLocation = window.location;
       delete (window as any).location;
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         href: 'http://localhost',
       };
@@ -387,7 +379,10 @@ describe('@storyblok/js', () => {
       expect(callback).toHaveBeenCalled();
 
       // Restore original location
-      window.location = originalLocation;
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+      });
     });
 
     it('should warn when not in editor mode', () => {

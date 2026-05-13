@@ -28,6 +28,9 @@ env:
   HUSKY: 0
   NX_REJECT_UNKNOWN_LOCAL_CACHE: 0
 
+permissions:
+  contents: read
+
 jobs:
   build:
     environment: test
@@ -45,6 +48,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-node
 
@@ -58,6 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-node
 

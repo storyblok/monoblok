@@ -1,18 +1,32 @@
 name: Setup Node
 description: Setup node
+inputs:
+  cache:
+    description: Restore/save pnpm and Nx caches
+    required: false
+    default: "true"
 runs:
   using: "composite"
   steps:
     - uses: ./.github/actions/cache-monorepo
+      if: ${{ inputs.cache == 'true' }}
 
     - name: Install pnpm
       uses: pnpm/action-setup@v4 # no need to specify version, it reads from package.json -> packageManager
 
-    - name: Setup Node.js
+    - name: Setup Node.js with cache
+      if: ${{ inputs.cache == 'true' }}
       uses: actions/setup-node@v6
       with:
         node-version-file: ".nvmrc"
         cache: "pnpm"
+
+    - name: Setup Node.js without cache
+      if: ${{ inputs.cache != 'true' }}
+      uses: actions/setup-node@v6
+      with:
+        node-version-file: ".nvmrc"
+        package-manager-cache: false
 
     - name: Install dependencies
       shell: bash

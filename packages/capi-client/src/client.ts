@@ -144,9 +144,12 @@ export interface ContentApiClientConfig<
   fetch?: typeof globalThis.fetch;
 }
 
-interface StoryblokTypesConfig {
-  components: Component;
-}
+type StoryblokTypesConfig = { components: Component } | { blocks: Component };
+
+type ResolveComponents<T extends StoryblokTypesConfig> =
+  T extends { components: infer C extends Component } ? C
+    : T extends { blocks: infer B extends Component } ? B
+      : never;
 
 /**
  * The return type of `createApiClient`, parameterised by `TComponents` and `InlineRelations`
@@ -163,18 +166,19 @@ export type ContentApiClient<
    * Returns the same client instance cast to a version that narrows story content
    * to the provided component types. No runtime cost — the type parameter is erased.
    *
+   * Accepts either `{ components: ... }` or `{ blocks: ... }` — the latter matches the
+   * `Schema` type produced by `@storyblok/schema`'s `InferSchema`.
+   *
    * @example
    * ```ts
-   * import type { pageBlock, heroBlock } from './blocks';
-   *
-   * type StoryblokTypes = { components: typeof pageBlock | typeof heroBlock };
+   * import type { Schema } from './schema';
    *
    * const client = createApiClient({ accessToken: 'your-token' })
-   *   .withTypes<StoryblokTypes>();
+   *   .withTypes<Schema>();
    * // story.content is now typed as a discriminated union
    * ```
    */
-  withTypes: <T extends StoryblokTypesConfig>() => ContentApiClient<T['components'], InlineRelations, ThrowOnError>;
+  withTypes: <T extends StoryblokTypesConfig>() => ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError>;
 };
 
 // ---------------------------------------------------------------------------
@@ -417,8 +421,8 @@ export const createApiClient = <
   const base = createApiClientBase(config);
   const self: ContentApiClient<Component, InlineRelations, ThrowOnError> = {
     ...base,
-    withTypes<T extends StoryblokTypesConfig>(): ContentApiClient<T['components'], InlineRelations, ThrowOnError> {
-      return self as unknown as ContentApiClient<T['components'], InlineRelations, ThrowOnError>;
+    withTypes<T extends StoryblokTypesConfig>(): ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError> {
+      return self as unknown as ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError>;
     },
   };
   return self;

@@ -1,5 +1,6 @@
 allOf:
   - $ref: './base-field.yaml'
+  - $ref: './value-field.yaml'
   - type: object
     description: Richtext field configuration
     required:
@@ -17,6 +18,59 @@ allOf:
         description: Array of enabled toolbar elements
         items:
           type: string
+          enum:
+            - ai-complete
+            - ai-shorten
+            - ai-extend
+            - ai-rephrase
+            - ai-summarize
+            - ai-simplify
+            - ai-tone
+            - ai-emoji
+            - ai-translate
+            - ai-tldr
+            - ai-spelling
+            - blok
+            - ltr
+            - rtl
+            - export
+            - import
+            - bold
+            - list
+            - inlinecode
+            - code
+            - color
+            - copy
+            - cut
+            - emoji
+            - h1
+            - h2
+            - h3
+            - h4
+            - h5
+            - h6
+            - highlight
+            - unset
+            - hrule
+            - image
+            - italic
+            - link
+            - anchor
+            - olist
+            - paragraph
+            - paste-action
+            - paste
+            - quote
+            - redo
+            - strike
+            - subscript
+            - superscript
+            - underline
+            - undo
+            - align-left
+            - align-center
+            - align-right
+            - align-justify
       style_options:
         type: array
         description: Custom CSS styles for the richtext field

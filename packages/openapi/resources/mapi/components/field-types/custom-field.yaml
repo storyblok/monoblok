@@ -1,5 +1,6 @@
 allOf:
   - $ref: './base-field.yaml'
+  - $ref: './value-field.yaml'
   - type: object
     description: Custom (field plugin) field configuration
     required:
@@ -13,26 +14,25 @@ allOf:
         type: string
         description: Technical name of the field plugin
       options:
+        type: array
         description: Plugin-specific options
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            value:
+              type: string
       required_fields:
         type: string
         description: Comma-separated list of required field names in the plugin
-      custom_css:
+      source:
         type: string
-        description: Custom CSS for the field
-      custom_js:
+        description: Source for plugin-provided options (`self` or `internal` for datasource)
+        enum: [self, internal]
+      datasource_slug:
         type: string
-        description: Custom JavaScript for the field
-      api_connection:
-        type: object
-        description: API connection configuration
-        properties:
-          url:
-            type: string
-            description: API URL
-          headers:
-            type: object
-            description: API headers
-          params:
-            type: object
-            description: API parameters
+        description: Slug of the internal datasource when `source` is `internal`
+      external_datasource:
+        type: string
+        description: URL to an external datasource when `source` is set accordingly

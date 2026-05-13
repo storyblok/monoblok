@@ -130,6 +130,10 @@ const richtextFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMapper
  * Multilink field reference mapper.
  */
 const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
   if (data.linktype !== 'story') {
     return data;
   }
@@ -164,6 +168,10 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }
  * so that the Storyblok Image Service (/m/...) works correctly.
  */
 const assetFieldRefMapper: RefMapper = (data, { maps }) => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
   const mappedAsset = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;
 
   if (!mappedAsset) {

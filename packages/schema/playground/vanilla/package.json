@@ -1,0 +1,23 @@
+{
+  "name": "@storyblok/playground-cli-schema",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "schema:init": "storyblok schema init -s $STORYBLOK_SPACE_ID",
+    "schema:push": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
+    "schema:rollback": "storyblok schema rollback -s $STORYBLOK_SPACE_ID",
+    "ver:1.0.0": "storyblok schema push versions/v1.0.0.ts -s $STORYBLOK_SPACE_ID",
+    "ver:1.1.0": "storyblok schema push versions/v1.1.0.ts -s $STORYBLOK_SPACE_ID",
+    "ver:2.0.0": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID"
+  },
+  "dependencies": {
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/schema": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "storyblok": "workspace:*",
+    "tsx": "^4.21.0"
+  }
+}

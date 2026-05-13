@@ -96,7 +96,7 @@ export const upsertComponent = async (
     schema: toWritableSchema(schema),
     is_root,
     is_nestable,
-    component_group_uuid,
+    component_group_uuid: component_group_uuid ?? undefined,
     color: color ?? undefined,
     icon: icon ?? undefined,
     preview_field: preview_field ?? undefined,

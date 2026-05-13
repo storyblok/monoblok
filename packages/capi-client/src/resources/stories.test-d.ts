@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, defineField, defineProp } from '@storyblok/schema';
+import { defineBlock, defineField } from '@storyblok/schema';
 
 import { createApiClient } from '../index';
 import type { StoryCapi } from '../generated/stories';
@@ -7,10 +7,10 @@ import type { StoryCapi } from '../generated/stories';
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({
   name: 'teaser',
-  schema: {
-    text: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-    image: defineProp(defineField({ type: 'asset' }), { pos: 2 }),
-  },
+  schema: [
+    defineField('text', { type: 'text', required: true }),
+    defineField('image', { type: 'asset' }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',
@@ -19,12 +19,12 @@ const _teaserComponent = defineBlock({
 const _heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: {
-    title: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-    count: defineProp(defineField({ type: 'number' }), { pos: 2, required: true }),
+  schema: [
+    defineField('title', { type: 'text', required: true }),
+    defineField('count', { type: 'number', required: true }),
     // bloks field without a whitelist — resolves to nestable components only
-    sections: defineProp(defineField({ type: 'bloks' }), { pos: 3, required: true }),
-  },
+    defineField('sections', { type: 'bloks', required: true }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',
@@ -34,22 +34,13 @@ const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: {
-    headline: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-    body: defineProp(defineField({ type: 'richtext' }), { pos: 2 }),
-    teasers: defineProp(
-      defineField({ type: 'bloks', component_whitelist: ['teaser'] }),
-      { pos: 3, required: true },
-    ),
-    hero: defineProp(
-      defineField({ type: 'bloks', component_whitelist: ['hero'] }),
-      { pos: 4, required: true },
-    ),
-    blocks: defineProp(
-      defineField({ type: 'bloks', component_whitelist: ['hero', 'teaser'] }),
-      { pos: 5, required: true },
-    ),
-  },
+  schema: [
+    defineField('headline', { type: 'text', required: true }),
+    defineField('body', { type: 'richtext' }),
+    defineField('teasers', { type: 'bloks', component_whitelist: ['teaser'], required: true }),
+    defineField('hero', { type: 'bloks', component_whitelist: ['hero'], required: true }),
+    defineField('blocks', { type: 'bloks', component_whitelist: ['hero', 'teaser'], required: true }),
+  ],
   id: 0,
   created_at: '',
   updated_at: '',
@@ -236,21 +227,21 @@ describe('resolve_relations type narrowing', () => {
   const _authorComponent = defineBlock({
     name: 'author',
     is_root: true,
-    schema: {
-      bio: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
-    },
+    schema: [
+      defineField('bio', { type: 'text', required: true }),
+    ],
   });
   const _articleComponent = defineBlock({
     name: 'article',
     is_root: true,
-    schema: {
-      title: defineProp(defineField({ type: 'text' }), { pos: 0, required: true }),
+    schema: [
+      defineField('title', { type: 'text', required: true }),
       // In Storyblok, this would be an option field with source: internal_stories.
       // At the schema level it's just a text/option field (string).
       // resolve_relations is what tells the client to inline it.
-      author: defineProp(defineField({ type: 'option' }), { pos: 1, required: true }),
-      category: defineProp(defineField({ type: 'option' }), { pos: 2, required: true }),
-    },
+      defineField('author', { type: 'option', required: true }),
+      defineField('category', { type: 'option', required: true }),
+    ],
   });
 
   interface RelationStoryblokTypes { components: typeof _authorComponent | typeof _articleComponent }
@@ -364,12 +355,12 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
     id: 42,
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
-    schema: {
-      title: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-      price: defineProp(defineField({ type: 'number' }), { pos: 2, required: true }),
-      tags: defineProp(defineField({ type: 'options' }), { pos: 3, required: true }),
-      description: defineProp(defineField({ type: 'richtext' }), { pos: 4 }),
-    },
+    schema: [
+      defineField('title', { type: 'text', required: true }),
+      defineField('price', { type: 'number', required: true }),
+      defineField('tags', { type: 'options', required: true }),
+      defineField('description', { type: 'richtext' }),
+    ],
   });
 
   const _featureComponent = defineBlock({
@@ -378,9 +369,9 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
     id: 43,
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
-    schema: {
-      label: defineProp(defineField({ type: 'text' }), { pos: 1, required: true }),
-    },
+    schema: [
+      defineField('label', { type: 'text', required: true }),
+    ],
   });
 
   interface ProductTypes {

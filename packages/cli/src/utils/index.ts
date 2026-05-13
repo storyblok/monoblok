@@ -9,6 +9,7 @@ export * from './format';
 export * from './konsola';
 export * from './object';
 export * from './package';
+export * from './pagination';
 export * from './types';
 
 export const __filename = fileURLToPath(import.meta.url);

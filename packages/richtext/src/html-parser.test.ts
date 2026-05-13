@@ -328,7 +328,7 @@ describe('hTML → Richtext (strict): Node types', () => {
     it('parses blok from custom data-component markup', () => {
       const html = '<div data-component="hero" data-id="abc-123" data-props=\'{"title":"Hello"}\'></div>';
       const result = htmlToStoryblokRichtext(html, {
-        extensions: {
+        parsers: {
           blok: {
             parseHTML: () => [{ tag: 'div[data-component]' }],
             attributeParsers: {
@@ -886,11 +886,11 @@ describe('hTML → Richtext (strict): Complex structures', () => {
 // Tests: Custom Extensions
 // ============================================================================
 
-describe('hTML → Richtext (strict): Custom extensions', () => {
+describe('hTML → Richtext (strict): Custom parsers', () => {
   it('parses emoji with custom extension', () => {
     const html = '<div data-type="emoji" data-test="rocket" data-emoji="🚀"><img src="https://cdn.example.com/rocket.png" alt="🚀"></div>';
     const result = htmlToStoryblokRichtext(html, {
-      extensions: {
+      parsers: {
         emoji: {
           parseHTML: () => [{ tag: 'div[data-type="emoji"]' }],
           attributeParsers: {
@@ -921,7 +921,7 @@ describe('hTML → Richtext (strict): Custom extensions', () => {
   it('parses code block with custom language extraction', () => {
     const html = '<pre><code class="language-typescript">const greeting: string = "Hello";</code></pre>';
     const result = htmlToStoryblokRichtext(html, {
-      extensions: {
+      parsers: {
         code_block: {
           attributeParsers: {
             class: (el) => {
@@ -950,7 +950,7 @@ describe('hTML → Richtext (strict): Custom extensions', () => {
       data-copyright="© 2024 Photographer Name"
     >`;
     const result = htmlToStoryblokRichtext(html, {
-      extensions: {
+      parsers: {
         image: {
           attributeParsers: {
             source: mapToAttribute('data-source'),

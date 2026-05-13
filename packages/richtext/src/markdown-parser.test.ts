@@ -259,7 +259,7 @@ describe('markdownToStoryblokRichtext', () => {
   it('allows custom heading level', () => {
     const markdown = '## Custom Heading';
     const result = markdownToStoryblokRichtext(markdown, {
-      extensions: {
+      parsers: {
         heading: {
           attributeParsers: {
             level: () => 5,
@@ -284,7 +284,7 @@ describe('markdownToStoryblokRichtext', () => {
   it('customizes paragraph extension to be center aligned', () => {
     const md = 'Paragraph with custom attr.';
     const result = markdownToStoryblokRichtext(md, {
-      extensions: {
+      parsers: {
         paragraph: {
           attributeParsers: {
             textAlign: () => 'center',

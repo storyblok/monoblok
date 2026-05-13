@@ -13,8 +13,8 @@ import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensio
  * By default, whitespace is not preserved during parsing.
  *
  * @param html - The HTML string to convert.
- * @param options - Optional configuration for parsing behavior and extensions.
- * @param options.extensions - Custom extension configuration, including attribute parsers.
+ * @param options - Optional configuration for parsing behavior.
+ * @param options.parsers - Custom parser configuration for node/mark types.
  * @param options.allowCustomAttributes - Whether to allow non-standard attributes.
  * @param options.styleOptions - List of style properties to parse from inline styles.
  * @param options.preserveWhitespace - Whether to preserve whitespace during parsing.
@@ -23,7 +23,7 @@ import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensio
  *
  * @example
  * const result = htmlToStoryblokRichtext(html, {
- *   extensions: {
+ *   parsers: {
  *     image: {
  *       attributeParsers: {
  *         source: mapToAttribute('data-source'),
@@ -40,7 +40,7 @@ export function htmlToStoryblokRichtext(
   options?: HTMLParserOptions,
 ) {
   const allExtensions = getStoryblokTiptapExtensions({
-    extensions: options?.extensions,
+    parsers: options?.parsers,
     enableReporter: true,
     allowCustomAttributes: options?.allowCustomAttributes,
     styleOptions: options?.styleOptions || [],

@@ -7,12 +7,12 @@ export interface StyleOption {
   value: string;
 }
 
-export type StoryblokNodeExtensionOptionsMap = {
+export type StoryblokParserOptionsMap = {
   [K in ExtensionKey]?: ExtensionOptions<K>;
 };
 
 export interface HTMLParserOptions {
-  extensions?: StoryblokNodeExtensionOptionsMap;
+  parsers?: StoryblokParserOptionsMap;
   allowCustomAttributes?: boolean;
   styleOptions?: StyleOption[];
   preserveWhitespace?: boolean;
@@ -23,7 +23,7 @@ interface GetStoryblokTiptapExtensionsOptions extends HTMLParserOptions {
 }
 
 export function getStoryblokTiptapExtensions(options: GetStoryblokTiptapExtensionsOptions) {
-  const extensions = options?.extensions || {};
+  const parsers = options?.parsers || {};
   const enableReporter = options?.enableReporter || false;
   return {
     document: Document,
@@ -31,22 +31,22 @@ export function getStoryblokTiptapExtensions(options: GetStoryblokTiptapExtensio
     details: Details,
     detailsContent: DetailsContent,
     detailsSummary: DetailsSummary,
-    emoji: buildEmojiExtension(extensions?.emoji),
-    paragraph: buildParagraphExtension(extensions?.paragraph),
+    emoji: buildEmojiExtension(parsers?.emoji),
+    paragraph: buildParagraphExtension(parsers?.paragraph),
     blockquote: buildBlockquoteExtension(),
-    heading: buildHeadingExtension(extensions?.heading),
+    heading: buildHeadingExtension(parsers?.heading),
     bulletList: buildBulletListExtension(),
-    orderedList: buildOrderedListExtension(extensions?.ordered_list),
+    orderedList: buildOrderedListExtension(parsers?.ordered_list),
     listItem: buildListItemExtension(),
-    codeBlock: buildCodeBlockExtension(extensions?.code_block),
+    codeBlock: buildCodeBlockExtension(parsers?.code_block),
     hardBreak: buildHardBreakExtension(),
     horizontalRule: buildHorizontalRuleExtension(),
-    image: buildImageExtension(extensions?.image),
+    image: buildImageExtension(parsers?.image),
     table: buildTableExtension(),
     tableRow: buildTableRowExtension(),
-    tableCell: buildTableCellExtension(extensions?.tableCell),
-    tableHeader: buildTableHeaderExtension(extensions?.tableHeader),
-    blok: buildComponentBlokExtension(extensions?.blok),
+    tableCell: buildTableCellExtension(parsers?.tableCell),
+    tableHeader: buildTableHeaderExtension(parsers?.tableHeader),
+    blok: buildComponentBlokExtension(parsers?.blok),
     bold: Bold,
     italic: Italic,
     strike: Strike,
@@ -54,11 +54,11 @@ export function getStoryblokTiptapExtensions(options: GetStoryblokTiptapExtensio
     code: Code,
     superscript: Superscript,
     subscript: Subscript,
-    highlight: buildHighlightExtension(extensions?.highlight),
-    textStyle: buildTextStyleExtension(extensions?.textStyle),
-    link: buildLinkExtension(extensions?.link),
-    anchor: buildAnchorExtension(extensions?.anchor),
-    styled: buildStyledExtension(extensions?.styled),
+    highlight: buildHighlightExtension(parsers?.highlight),
+    textStyle: buildTextStyleExtension(parsers?.textStyle),
+    link: buildLinkExtension(parsers?.link),
+    anchor: buildAnchorExtension(parsers?.anchor),
+    styled: buildStyledExtension(parsers?.styled),
     ...(enableReporter && { reporter: Reporter }),
   };
 }

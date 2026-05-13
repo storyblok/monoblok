@@ -26,7 +26,6 @@ const tiptapGlobals: Record<string, string> = {
   '@tiptap/extension-text': 'TiptapText',
   '@tiptap/extension-text-style': 'TiptapTextStyle',
   '@tiptap/extension-underline': 'TiptapUnderline',
-  '@tiptap/extension-text-align': 'TiptapTextAlign',
 };
 
 const sharedConfig = {

@@ -96,7 +96,6 @@
     "@tiptap/extension-superscript": "^3.22.3",
     "@tiptap/extension-table": "^3.22.3",
     "@tiptap/extension-text": "^3.22.3",
-    "@tiptap/extension-text-align": "^3.22.3",
     "@tiptap/extension-text-style": "^3.22.3",
     "@tiptap/extension-underline": "^3.22.3",
     "@tiptap/html": "^3.22.3",

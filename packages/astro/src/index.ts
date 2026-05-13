@@ -11,9 +11,6 @@ export { toCamelCase } from './utils/toCamelCase';
 export {
   loadStoryblokBridge,
   renderRichText,
-  // New richtext
-  richTextResolver,
-  segmentStoryblokRichText,
   storyblokEditable,
 } from '@storyblok/js';
 export { storyblokIntegration as storyblok };

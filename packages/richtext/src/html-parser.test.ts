@@ -1,34 +1,274 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { htmlToStoryblokRichtext } from './html-parser';
-import { richTextResolver } from './richtext';
-import { Mark, Node } from '@tiptap/core';
-import Heading from '@tiptap/extension-heading';
-import Link from '@tiptap/extension-link';
+import { renderRichText, type SbRichTextDoc } from './static';
+import { mapToAttribute } from './extensions/utils';
 
-// ── Nodes ──────────────────────────────────────────────────────────────────
+// ============================================================================
+// Helper
+// ============================================================================
+function doc(content: SbRichTextDoc | SbRichTextDoc[]): SbRichTextDoc {
+  return {
+    type: 'doc',
+    content: Array.isArray(content) ? content : [content],
+  };
+}
 
-describe('hTML → Richtext: Nodes', () => {
-  describe('emoji', () => {
-    it('parses an emoji span', () => {
-      const html = '<span data-type="emoji" data-name="rocket" data-emoji="🚀"><img src="https://cdn.example.com/rocket.png" alt="🚀"></span>';
-      const result = htmlToStoryblokRichtext(html);
-      expect(result.content[0]).toMatchObject({
+// ============================================================================
+// Tests: Input Handling
+// ============================================================================
+
+describe('hTML → Richtext (strict): Input handling', () => {
+  it('returns doc with empty paragraph for empty string', () => {
+    const document = htmlToStoryblokRichtext('');
+    expect(document).toMatchObject(doc({ type: 'paragraph' }));
+  });
+
+  it('returns doc with empty paragraph for whitespace-only input', () => {
+    const document = htmlToStoryblokRichtext('   \n\t  ');
+    expect(document).toMatchObject(doc({ type: 'paragraph' }));
+  });
+
+  it('parses simple text as paragraph', () => {
+    const document = htmlToStoryblokRichtext('Hello World');
+    expect(document).toMatchObject(doc({ type: 'paragraph', content: [{ type: 'text', text: 'Hello World' }] }));
+  });
+});
+
+// ============================================================================
+// Tests: Node Types
+// ============================================================================
+
+describe('hTML → Richtext (strict): Node types', () => {
+  describe('paragraph', () => {
+    it('parses paragraph and renders back to identical HTML', () => {
+      const html = '<p>Hello</p>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
         type: 'paragraph',
+        attrs: { textAlign: null },
+        content: [{ type: 'text', text: 'Hello' }],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+
+    it('parses empty paragraph', () => {
+      const document = htmlToStoryblokRichtext('<p></p>');
+      expect(document).toMatchObject(doc({ type: 'paragraph' }));
+      expect(document.content![0].content).toBeUndefined();
+    });
+
+    it('parses multiple paragraphs', () => {
+      const document = htmlToStoryblokRichtext('<p>First</p><p>Second</p>');
+      expect(document.content).toHaveLength(2);
+      expect(document).toMatchObject(doc([
+        { type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'First' }] },
+        { type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Second' }] },
+      ]));
+    });
+    it('parses paragraphs with textAlign attribute', () => {
+      const document = htmlToStoryblokRichtext('<p style="text-align: center;">First</p><p style="text-align: right;">Second</p>');
+      expect(document.content).toHaveLength(2);
+      expect(document).toMatchObject(doc([
+        { type: 'paragraph', attrs: { textAlign: 'center' }, content: [{ type: 'text', text: 'First' }] },
+        { type: 'paragraph', attrs: { textAlign: 'right' }, content: [{ type: 'text', text: 'Second' }] },
+      ]));
+    });
+  });
+
+  describe('heading', () => {
+    it.each([1, 2, 3, 4, 5, 6] as const)('parses h%i and renders back', (level) => {
+      const html = `<h${level}>Heading ${level}</h${level}>`;
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
+        type: 'heading',
+        attrs: { level, textAlign: null },
+        content: [{ type: 'text', text: `Heading ${level}` }],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+
+    it('parses heading with nested marks', () => {
+      const document = htmlToStoryblokRichtext('<h1><strong>Bold</strong> Heading</h1>');
+      expect(document).toMatchObject(doc({
+        type: 'heading',
+        attrs: { level: 1, textAlign: null },
+        content: [
+          { type: 'text', text: 'Bold', marks: [{ type: 'bold' }] },
+          { type: 'text', text: ' Heading' },
+        ],
+      }));
+    });
+  });
+
+  describe('blockquote', () => {
+    it('parses blockquote and renders back', () => {
+      const html = '<blockquote><p>Quote</p></blockquote>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
+        type: 'blockquote',
+        content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Quote' }] }],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+
+    it('parses nested blockquotes', () => {
+      const document = htmlToStoryblokRichtext('<blockquote><p>Outer</p><blockquote><p>Inner</p></blockquote></blockquote>');
+      expect(document).toMatchObject(doc({
+        type: 'blockquote',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Outer' }] },
+          { type: 'blockquote', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Inner' }] }] },
+        ],
+      }));
+    });
+  });
+
+  describe('bullet_list', () => {
+    it('parses bullet list and renders back', () => {
+      const html = '<ul><li><p>Item 1</p></li><li><p>Item 2</p></li></ul>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
+        type: 'bullet_list',
+        content: [
+          { type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Item 1' }] }] },
+          { type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Item 2' }] }] },
+        ],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+
+    it('parses nested bullet lists', () => {
+      const document = htmlToStoryblokRichtext('<ul><li><p>Parent</p><ul><li><p>Child</p></li></ul></li></ul>');
+      expect(document).toMatchObject(doc({
+        type: 'bullet_list',
         content: [{
-          type: 'emoji',
-          attrs: {
-            name: 'rocket',
-          },
+          type: 'list_item',
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'Parent' }] },
+            { type: 'bullet_list', content: [{ type: 'list_item', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Child' }] }] }] },
+          ],
         }],
+      }));
+    });
+  });
+
+  describe('ordered_list', () => {
+    it('parses ordered list and renders back', () => {
+      const html = '<ol><li><p>First</p></li><li><p>Second</p></li></ol>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
+        type: 'ordered_list',
+        attrs: { order: 1 },
+        content: [
+          { type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'First' }] }] },
+          { type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Second' }] }] },
+        ],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+
+    it('preserves start attribute', () => {
+      const document = htmlToStoryblokRichtext('<ol start="5"><li><p>Fifth</p></li></ol>');
+      expect(document).toEqual(doc({
+        type: 'ordered_list',
+        attrs: { order: 5 },
+        content: [{ type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Fifth' }] }] }],
+      }));
+    });
+  });
+
+  describe('code_block', () => {
+    it('parses code block', () => {
+      const document = htmlToStoryblokRichtext('<pre><code>const x = 1;</code></pre>');
+      expect(document).toEqual(doc({
+        type: 'code_block',
+        attrs: { class: null },
+        content: [{ type: 'text', text: 'const x = 1;' }],
+      }));
+    });
+
+    it('parses multiline code block', () => {
+      const document = htmlToStoryblokRichtext('<pre><code>function hello() {\n  console.log("Hello");\n}</code></pre>');
+      expect(document.content![0]).toMatchObject({
+        type: 'code_block',
+        content: [{ type: 'text', text: 'function hello() {\n  console.log("Hello");\n}' }],
       });
     });
   });
 
+  describe('horizontal_rule', () => {
+    it('parses hr', () => {
+      const document = htmlToStoryblokRichtext('<hr>');
+      expect(document).toEqual(doc({ type: 'horizontal_rule' }));
+    });
+
+    it('parses self-closing hr', () => {
+      const document = htmlToStoryblokRichtext('<hr/>');
+      expect(document.content![0]).toMatchObject({ type: 'horizontal_rule' });
+    });
+  });
+
+  describe('hard_break', () => {
+    it('parses br inside paragraph and renders back', () => {
+      const html = '<p>Line1<br>Line2</p>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
+        type: 'paragraph',
+        attrs: { textAlign: null },
+        content: [
+          { type: 'text', text: 'Line1' },
+          { type: 'hard_break' },
+          { type: 'text', text: 'Line2' },
+        ],
+      }));
+      expect(renderRichText(document)).toBe(html);
+    });
+  });
+
+  describe('image', () => {
+    it('parses image with all attributes', () => {
+      const document = htmlToStoryblokRichtext('<img src="https://example.com/image.jpg" alt="An image" title="Image title">');
+      expect(document.content![0]).toMatchObject({
+        type: 'image',
+        attrs: {
+          src: 'https://example.com/image.jpg',
+          alt: 'An image',
+          title: 'Image title',
+        },
+      });
+    });
+
+    it('parses image inside paragraph', () => {
+      const document = htmlToStoryblokRichtext('<p><img src="https://example.com/img.jpg"></p>');
+      expect(document.content![0]).toBeDefined();
+    });
+  });
+
+  describe('emoji', () => {
+    it('parses emoji node type', () => {
+      const document = htmlToStoryblokRichtext('<p><img data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png"></p>');
+      expect(document.content![0].type).toBe('paragraph');
+    });
+  });
+
   describe('table', () => {
-    it('parses a basic table with headers and cells', () => {
-      const html = '<table><thead><tr><th>H1</th><th>H2</th></tr></thead><tbody><tr><td>C1</td><td>C2</td></tr></tbody></table>';
-      const result = htmlToStoryblokRichtext(html);
-      expect(result.content[0]).toMatchObject({
+    it('parses table with tbody', () => {
+      const document = htmlToStoryblokRichtext('<table><tbody><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table>');
+      expect(document.content![0]).toMatchObject({
+        type: 'table',
+        content: [{
+          type: 'tableRow',
+          content: [
+            { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }] },
+            { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B' }] }] },
+          ],
+        }],
+      });
+    });
+
+    it('parses table with thead and tbody', () => {
+      const document = htmlToStoryblokRichtext('<table><thead><tr><th><p>H1</p></th><th><p>H2</p></th></tr></thead><tbody><tr><td><p>C1</p></td><td><p>C2</p></td></tr></tbody></table>');
+      expect(document.content![0]).toMatchObject({
         type: 'table',
         content: [
           {
@@ -49,44 +289,32 @@ describe('hTML → Richtext: Nodes', () => {
       });
     });
 
-    it('parses table cells with colspan and rowspan', () => {
-      const html = '<table><tbody><tr><td colspan="2">Span 2 cols</td></tr><tr><td rowspan="2">Span 2 rows</td><td>Normal</td></tr></tbody></table>';
-      const result = htmlToStoryblokRichtext(html);
-      const firstRow = result.content[0].content[0];
-      expect(firstRow.content[0].attrs).toMatchObject({ colspan: 2 });
-      const secondRow = result.content[0].content[1];
-      expect(secondRow.content[0].attrs).toMatchObject({ rowspan: 2 });
+    it('parses table with colspan and rowspan', () => {
+      const document = htmlToStoryblokRichtext('<table><tbody><tr><td colspan="2" rowspan="2"><p>Merged</p></td></tr></tbody></table>');
+      const cell = document.content![0].content![0].content![0];
+      expect(cell.attrs).toMatchObject({ colspan: 2, rowspan: 2 });
     });
 
-    it('parses table cells with marks inside', () => {
-      const html = '<table><tbody><tr><td><strong>Bold cell</strong></td><td><em>Italic cell</em></td></tr></tbody></table>';
-      const result = htmlToStoryblokRichtext(html);
-      const row = result.content[0].content[0];
-      expect(row.content[0].content[0].content[0]).toMatchObject({ type: 'text', text: 'Bold cell', marks: [{ type: 'bold' }] });
-      expect(row.content[1].content[0].content[0]).toMatchObject({ type: 'text', text: 'Italic cell', marks: [{ type: 'italic' }] });
-    });
-
-    it('parses a table without thead (body-only)', () => {
-      const html = '<table><tbody><tr><td>A</td><td>B</td></tr></tbody></table>';
-      const result = htmlToStoryblokRichtext(html);
-      expect(result.content[0]).toMatchObject({
+    it('parses table and renders back', () => {
+      const html = '<table><tbody><tr><td colspan="1" rowspan="1"><p>A</p></td><td colspan="1" rowspan="1"><p>B</p></td></tr></tbody></table>';
+      const document = htmlToStoryblokRichtext(html);
+      expect(document).toEqual(doc({
         type: 'table',
         content: [{
           type: 'tableRow',
           content: [
-            { type: 'tableCell' },
-            { type: 'tableCell' },
+            { type: 'tableCell', attrs: { colspan: 1, rowspan: 1, backgroundColor: null, colwidth: null }, content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'A' }] }] },
+            { type: 'tableCell', attrs: { colspan: 1, rowspan: 1, backgroundColor: null, colwidth: null }, content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'B' }] }] },
           ],
         }],
-      });
+      }));
     });
   });
 
   describe('details', () => {
-    it('parses a details/summary element', () => {
-      const html = '<details><summary>Click to expand</summary><p>Hidden content</p></details>';
-      const result = htmlToStoryblokRichtext(html);
-      expect(result.content[0]).toMatchObject({
+    it('parses details with summary', () => {
+      const document = htmlToStoryblokRichtext('<details><summary>Click to expand</summary><p>Hidden content</p></details>');
+      expect(document.content![0]).toMatchObject({
         type: 'details',
         content: [
           { type: 'detailsSummary', content: [{ type: 'text', text: 'Click to expand' }] },
@@ -95,588 +323,664 @@ describe('hTML → Richtext: Nodes', () => {
       });
     });
   });
+
+  describe('blok', () => {
+    it('parses blok from custom data-component markup', () => {
+      const html = '<div data-component="hero" data-id="abc-123" data-props=\'{"title":"Hello"}\'></div>';
+      const result = htmlToStoryblokRichtext(html, {
+        extensions: {
+          blok: {
+            parseHTML: () => [{ tag: 'div[data-component]' }],
+            attributeParsers: {
+              id: mapToAttribute('data-id'),
+              body: (el) => {
+                const jsonData = el.getAttribute('data-props');
+                const component = el.getAttribute('data-component');
+                if (jsonData && component) {
+                  return [{ _uid: el.getAttribute('data-id') || 'uid', component, ...JSON.parse(jsonData) }];
+                }
+                return null;
+              },
+            },
+          },
+        },
+      });
+      expect(result).toEqual(doc({
+        type: 'blok',
+        attrs: {
+          id: 'abc-123',
+          body: [{ _uid: 'abc-123', component: 'hero', title: 'Hello' }],
+        },
+      }));
+    });
+  });
 });
 
-// ── Marks ──────────────────────────────────────────────────────────────────
+// ============================================================================
+// Tests: Mark Types
+// ============================================================================
 
-describe('hTML → Richtext: Marks', () => {
-  describe('link', () => {
-    it('parses a simple URL link', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="https://example.com">Click here</a></p>');
-      expect(result.content[0].content[0]).toMatchObject({
+describe('hTML → Richtext (strict): Mark types', () => {
+  describe('bold', () => {
+    it('parses <strong> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><strong>Bold</strong></p>');
+      expect(document.content![0].content![0]).toMatchObject({
         type: 'text',
-        text: 'Click here',
-        marks: [{
-          type: 'link',
-          attrs: { href: 'https://example.com', linktype: 'url' },
-        }],
+        text: 'Bold',
+        marks: [{ type: 'bold' }],
       });
     });
 
-    it('parses a link with target="_blank"', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="https://example.com" target="_blank">New tab</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs).toMatchObject({
-        href: 'https://example.com',
-        target: '_blank',
-        linktype: 'url',
+    it('parses <b> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><b>Bold</b></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Bold',
+        marks: [{ type: 'bold' }],
+      });
+    });
+  });
+
+  describe('italic', () => {
+    it('parses <em> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><em>Italic</em></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Italic',
+        marks: [{ type: 'italic' }],
       });
     });
 
-    it('parses a story link with data-uuid and data-linktype', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="/about" data-uuid="abc-123" data-linktype="story">About</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs).toMatchObject({
-        href: '/about',
-        uuid: 'abc-123',
-        linktype: 'story',
+    it('parses <i> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><i>Italic</i></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Italic',
+        marks: [{ type: 'italic' }],
+      });
+    });
+  });
+
+  describe('strike', () => {
+    it('parses <s> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><s>Strike</s></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Strike',
+        marks: [{ type: 'strike' }],
       });
     });
 
-    it('parses a story link with data-anchor', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="/page" data-uuid="uuid-1" data-anchor="section" data-linktype="story">Link</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs).toMatchObject({
-        href: '/page',
-        uuid: 'uuid-1',
-        anchor: 'section',
-        linktype: 'story',
+    it('parses <del> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><del>Strike</del></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Strike',
+        marks: [{ type: 'strike' }],
       });
     });
+  });
 
-    it('parses an email link', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="mailto:info@example.com" data-linktype="email">Email us</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs).toMatchObject({
-        href: 'mailto:info@example.com',
-        linktype: 'email',
+  describe('underline', () => {
+    it('parses <u> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><u>Underline</u></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Underline',
+        marks: [{ type: 'underline' }],
       });
     });
+  });
 
-    it('parses an asset link', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="https://a.storyblok.com/f/000/doc.pdf" data-linktype="asset">Download</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs).toMatchObject({
-        href: 'https://a.storyblok.com/f/000/doc.pdf',
-        linktype: 'asset',
+  describe('code', () => {
+    it('parses <code> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><code>code</code></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'code',
+        marks: [{ type: 'code' }],
       });
     });
+  });
 
-    it('defaults linktype to "url" when no data-linktype', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="/path">Link</a></p>');
-      expect(result.content[0].content[0].marks[0].attrs.linktype).toBe('url');
+  describe('superscript', () => {
+    it('parses <sup> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><sup>sup</sup></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'sup',
+        marks: [{ type: 'superscript' }],
+      });
+    });
+  });
+
+  describe('subscript', () => {
+    it('parses <sub> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><sub>sub</sub></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'sub',
+        marks: [{ type: 'subscript' }],
+      });
+    });
+  });
+
+  describe('highlight', () => {
+    it('parses <mark> tag', () => {
+      const document = htmlToStoryblokRichtext('<p><mark>Highlighted</mark></p>');
+      expect(document.content![0].content![0]).toMatchObject({
+        type: 'text',
+        text: 'Highlighted',
+        marks: [{ type: 'highlight' }],
+      });
+    });
+  });
+
+  describe('textStyle', () => {
+    it('parses span with inline color style', () => {
+      const document = htmlToStoryblokRichtext('<p><span style="color: red">Colored</span></p>');
+      expect(document).toEqual(
+        doc({
+          type: 'paragraph',
+          attrs: { textAlign: null },
+          content: [
+            {
+              type: 'text',
+              text: 'Colored',
+              marks: [{ type: 'textStyle', attrs: { color: 'red' } }],
+            },
+          ],
+        }),
+      );
     });
   });
 
   describe('anchor', () => {
-    it('parses <span id="..."> as anchor mark', () => {
-      const result = htmlToStoryblokRichtext('<p><span id="my-anchor">Anchored text</span></p>');
-      const marks = result.content[0].content[0].marks;
-      const anchorMark = marks?.find((m: any) => m.type === 'anchor');
-      expect(anchorMark).toMatchObject({ type: 'anchor', attrs: { id: 'my-anchor' } });
-    });
-  });
-});
-
-// ── Options & Configuration ────────────────────────────────────────────────
-
-describe('hTML → Richtext: Options & configuration', () => {
-  describe('styled mark with styleOptions', () => {
-    it('parses <span class="..."> with allowed style class', () => {
-      const result = htmlToStoryblokRichtext(
-        '<p><span class="highlight-blue">Styled text</span></p>',
-        { styleOptions: [{ name: 'Blue Highlight', value: 'highlight-blue' }] },
-      );
-      expect(result.content[0].content[0]).toMatchObject({
-        type: 'text',
-        text: 'Styled text',
-        marks: [{ type: 'styled', attrs: { class: 'highlight-blue' } }],
-      });
-    });
-
-    it('ignores unrecognized style classes', () => {
-      const result = htmlToStoryblokRichtext(
-        '<p><span class="unknown-style">text</span></p>',
-        { styleOptions: [{ name: 'Other', value: 'known-style' }] },
-      );
-      const text = result.content[0].content[0];
-      const styledMark = text.marks?.find((m: any) => m.type === 'styled');
-      expect(styledMark).toBeUndefined();
-    });
-
-    it('extracts only allowed classes from multi-class span', () => {
-      const result = htmlToStoryblokRichtext(
-        '<p><span class="allowed-1 disallowed">text</span></p>',
-        { styleOptions: [{ name: 'Allowed', value: 'allowed-1' }] },
-      );
-      const text = result.content[0].content[0];
-      const styledMark = text.marks?.find((m: any) => m.type === 'styled');
-      expect(styledMark).toMatchObject({ type: 'styled', attrs: { class: 'allowed-1' } });
-    });
-
-    it('preserves styleOptions on inline elements (exact)', () => {
-      const resultStyleOptions = htmlToStoryblokRichtext(
-        '<p>foo <span class="style-1 invalid-style">bar</span></p><p>baz <span class="style-2">qux</span></p><p>corge <span class="style-3">grault</span> <a href="/home">Home</a></p>',
-        {
-          styleOptions: [
-            { name: 'Style1', value: 'style-1' },
-            { name: 'Style2', value: 'style-2' },
-          ],
-        },
-      );
-      expect(resultStyleOptions).toEqual({
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: {
-              textAlign: null,
-            },
-            content: [
-              { type: 'text', text: 'foo ' },
-              { type: 'text', marks: [{ type: 'styled', attrs: { class: 'style-1' } }], text: 'bar' },
-            ],
-          },
-          {
-            type: 'paragraph',
-            attrs: {
-              textAlign: null,
-            },
-            content: [
-              { type: 'text', text: 'baz ' },
-              { type: 'text', marks: [{ type: 'styled', attrs: { class: 'style-2' } }], text: 'qux' },
-            ],
-          },
-          {
-            type: 'paragraph',
-            attrs: {
-              textAlign: null,
-            },
-            content: [
-              { type: 'text', text: 'corge grault ' },
-              {
-                text: 'Home',
-                type: 'text',
-                marks: [{
-                  type: 'link',
-                  attrs: { href: '/home', uuid: null, anchor: null, target: null, linktype: 'url' },
-                }],
-              },
-            ],
-          },
-        ],
-      });
+    it('parses span with id attribute', () => {
+      const document = htmlToStoryblokRichtext('<p><span id="section-1">Anchored</span></p>');
+      const textNode = document.content![0].content![0];
+      expect(textNode).toMatchObject({ type: 'text', text: 'Anchored' });
+      const anchorMark = textNode.marks?.find(m => m.type === 'anchor');
+      expect(anchorMark).toMatchObject({ type: 'anchor', attrs: { id: 'section-1' } });
     });
   });
 
-  describe('unsupported and custom attributes', () => {
-    it('does not preserve unsupported attributes by default (exact)', () => {
-      const resultDefault = htmlToStoryblokRichtext(
-        '<p class="unsupported">Hello <a data-unsupported-custom-attribute="whatever" target="_blank" href="/home">world!</a></p>',
-      );
-      expect(resultDefault).toEqual({
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: {
-              textAlign: null,
-            },
-            content: [
-              { text: 'Hello ', type: 'text' },
-              {
-                text: 'world!',
-                type: 'text',
-                marks: [{
-                  type: 'link',
-                  attrs: { href: '/home', uuid: null, anchor: null, target: '_blank', linktype: 'url' },
-                }],
-              },
-            ],
-          },
-        ],
-      });
-    });
-
-    it('preserves custom attributes on <a> when allowCustomAttributes is true (exact)', () => {
-      const resultAllowCustomAttributes = htmlToStoryblokRichtext(
-        '<p class="unsupported">Hello <a data-supported-custom-attribute="whatever" target="_blank" href="/home">world!</a></p>',
-        { allowCustomAttributes: true },
-      );
-      expect(resultAllowCustomAttributes).toEqual({
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            attrs: {
-              textAlign: null,
-            },
-            content: [
-              { text: 'Hello ', type: 'text' },
-              {
-                text: 'world!',
-                type: 'text',
-                marks: [{
-                  type: 'link',
-                  attrs: {
-                    custom: { 'data-supported-custom-attribute': 'whatever' },
-                    href: '/home',
-                    uuid: null,
-                    anchor: null,
-                    target: '_blank',
-                    linktype: 'url',
-                  },
-                }],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
-
-  describe('data loss warnings', () => {
-    it('warns the user when transformation leads to data loss', () => {
-      const warn = vi.spyOn(console, 'warn');
-
-      const unsupportedAttributes = '<p id="foo" class="unsupported">Hello <a target="_blank" href="/home">world!</a></p>';
-      const unsupportedStyles = '<p>Hello <span class="supported unsupported">world!</span></p>';
-      htmlToStoryblokRichtext(
-        [unsupportedAttributes, unsupportedStyles].join(''),
-        { styleOptions: [{ name: 'supported', value: 'supported' }] },
-      );
-
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[StoryblokRichText] - `id` "foo" on `<p>` can not be transformed to rich text.'));
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[StoryblokRichText] - `class` "unsupported" on `<p>` can not be transformed to rich text.'));
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[StoryblokRichText] - `class` "unsupported" on `<span>` can not be transformed to rich text.'));
-    });
-  });
-
-  describe('custom Tiptap extensions', () => {
-    it('allows overriding a node extension for parsing', () => {
-      const html = '<h2>Custom Heading</h2>';
-      const result = htmlToStoryblokRichtext(html, {
-        tiptapExtensions: {
-          heading: Heading.extend({
-            addAttributes() {
-              return {
-                ...this.parent?.(),
-                level: {
-                  parseHTML: () => {
-                    return 99;
-                  },
-                },
-              };
-            },
-          }),
-        },
-      });
-      expect(result).toMatchObject({
-        type: 'doc',
+  describe('styled', () => {
+    it('parses span with class attribute', () => {
+      const document = htmlToStoryblokRichtext('<p><span class="highlight">Styled</span></p>');
+      expect(document).toEqual(doc({
+        type: 'paragraph',
+        attrs: { textAlign: null },
         content: [{
-          type: 'heading',
-          attrs: { level: 99 },
-          content: [{ type: 'text', text: 'Custom Heading' }],
+          type: 'text',
+          text: 'Styled',
+          marks: [{ type: 'styled', attrs: { class: 'highlight' } }],
         }],
-      });
+      }));
+    });
+  });
+
+  describe('nested marks', () => {
+    it('parses multiple nested marks', () => {
+      const document = htmlToStoryblokRichtext('<p><strong><em>Bold Italic</em></strong></p>');
+      expect(document).toEqual(doc({
+        type: 'paragraph',
+        attrs: { textAlign: null },
+        content: [{
+          type: 'text',
+          text: 'Bold Italic',
+          marks: [{ type: 'bold' }, { type: 'italic' }],
+        }],
+      }));
     });
 
-    it('allows overriding a mark extension for parsing', () => {
-      const html = '<p><a href="/about" data-linktype="story" data-uuid="abc-123">About</a></p>';
-      const CustomLink = Link.extend({
-        addAttributes() {
-          return {
-            ...this.parent?.(),
-            href: { parseHTML: (el: HTMLElement) => el.getAttribute('href') },
-            linktype: {
-              default: 'url',
-              parseHTML: (el: HTMLElement) => el.getAttribute('data-linktype') || 'url',
-            },
-            uuid: {
-              default: null,
-              parseHTML: (el: HTMLElement) => el.getAttribute('data-uuid') || null,
-            },
-            customParsed: {
-              default: false,
-              parseHTML: () => true,
-            },
-          };
-        },
-      });
-
-      const result = htmlToStoryblokRichtext(html, {
-        tiptapExtensions: { link: CustomLink },
-      });
-
-      const linkText = result.content[0].content[0];
-      expect(linkText.marks[0].attrs).toMatchObject({
-        href: '/about',
-        linktype: 'story',
-        uuid: 'abc-123',
-        customParsed: true,
-      });
+    it('handles adjacent text with different marks', () => {
+      const document = htmlToStoryblokRichtext('<p><strong>Bold</strong><em>Italic</em></p>');
+      expect(document.content![0].content).toHaveLength(2);
+      expect(document.content![0].content![0]).toMatchObject({ type: 'text', text: 'Bold', marks: [{ type: 'bold' }] });
+      expect(document.content![0].content![1]).toMatchObject({ type: 'text', text: 'Italic', marks: [{ type: 'italic' }] });
     });
+  });
 
-    it('allows adding a completely new node type', () => {
-      const Callout = Node.create({
-        name: 'callout',
-        group: 'block',
-        content: 'inline*',
-        parseHTML() {
-          return [{ tag: 'div[data-callout]' }];
-        },
-        renderHTML() {
-          return ['div', { 'data-callout': '' }, 0];
-        },
-      });
-
-      const html = '<div data-callout>This is a callout</div>';
-      const result = htmlToStoryblokRichtext(html, {
-        tiptapExtensions: { callout: Callout },
-      });
-
-      expect(result.content[0]).toMatchObject({
-        type: 'callout',
-        content: [{ type: 'text', text: 'This is a callout' }],
-      });
+  describe('plain span', () => {
+    it('parses plain span as plain text', () => {
+      const document = htmlToStoryblokRichtext('<p><span>Plain text</span></p>');
+      expect(document.content![0].content![0]).toMatchObject({ type: 'text', text: 'Plain text' });
     });
   });
 });
 
-// ── Roundtrip: HTML → Richtext → HTML ─────────────────────────────────────
-//
-// Tests that custom tiptapExtensions work in both directions:
-// the same extension defines parseHTML (for the parser) and
-// renderHTML (for the renderer).
+// ============================================================================
+// Tests: Links
+// ============================================================================
 
-describe('roundtrip: HTML → Richtext → HTML', () => {
-  it('roundtrips a custom heading extension', () => {
-    const CustomHeading = Heading.extend({
-      renderHTML({ node, HTMLAttributes }) {
-        const { level, ...rest } = HTMLAttributes;
-        return [`h${node.attrs.level}`, { class: 'custom', ...rest }, 0];
-      },
+describe('hTML → Richtext (strict): Links', () => {
+  it('parses external URL link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="https://example.com" target="_blank">Click</a></p>');
+    expect(document.content![0].content![0]).toMatchObject({
+      type: 'text',
+      text: 'Click',
+      marks: [{ type: 'link', attrs: { href: 'https://example.com', target: '_blank', linktype: 'url' } }],
     });
-
-    const html = '<h2>Hello World</h2>';
-    const extensions = { heading: CustomHeading };
-
-    // Parse: HTML → JSON
-    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
-    expect(json.content[0]).toMatchObject({
-      type: 'heading',
-      attrs: { level: 2 },
-      content: [{ type: 'text', text: 'Hello World' }],
-    });
-
-    // Render: JSON → HTML (uses the custom renderHTML)
-    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
-    expect(output).toBe('<h2 class="custom">Hello World</h2>');
   });
 
-  it('roundtrips a custom link mark extension', () => {
-    const CustomLink = Link.extend({
-      addAttributes() {
-        return {
-          href: { parseHTML: (el: HTMLElement) => el.getAttribute('href') },
-          target: { parseHTML: (el: HTMLElement) => el.getAttribute('target') || null },
-          linktype: {
-            default: 'url',
-            parseHTML: (el: HTMLElement) => el.getAttribute('data-linktype') || 'url',
-          },
-        };
-      },
-      renderHTML({ HTMLAttributes }) {
-        if (HTMLAttributes.linktype === 'story') {
-          return ['a', { href: HTMLAttributes.href, class: 'internal-link' }, 0];
-        }
-        return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
-      },
+  it('parses internal link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="/about">About</a></p>');
+    expect(document.content![0].content![0]).toMatchObject({
+      type: 'text',
+      text: 'About',
+      marks: [{ type: 'link', attrs: { href: '/about', linktype: 'url' } }],
     });
+  });
 
-    const extensions = { link: CustomLink };
-
-    // Parse: HTML → JSON (story link with data-linktype)
-    const storyHtml = '<p><a href="/about" data-linktype="story">About</a></p>';
-    const storyJson = htmlToStoryblokRichtext(storyHtml, { tiptapExtensions: extensions });
-    expect(storyJson.content[0].content[0].marks[0].attrs).toMatchObject({
+  it('parses story link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="/about" data-uuid="abc-123" data-linktype="story">About</a></p>');
+    expect(document.content![0].content![0].marks![0].attrs).toMatchObject({
       href: '/about',
+      uuid: 'abc-123',
       linktype: 'story',
     });
-
-    // Render: JSON → HTML (story link gets class="internal-link")
-    const storyOutput = richTextResolver({ tiptapExtensions: extensions }).render(storyJson);
-    expect(storyOutput).toBe('<p><a href="/about" class="internal-link">About</a></p>');
-
-    // Parse + render: external link
-    const extHtml = '<p><a href="https://example.com" target="_blank">Example</a></p>';
-    const extJson = htmlToStoryblokRichtext(extHtml, { tiptapExtensions: extensions });
-    const extOutput = richTextResolver({ tiptapExtensions: extensions }).render(extJson);
-    expect(extOutput).toBe('<p><a href="https://example.com" target="_blank">Example</a></p>');
   });
 
-  it('roundtrips a completely new node type', () => {
-    const Callout = Node.create({
-      name: 'callout',
-      group: 'block',
-      content: 'inline*',
-      addAttributes() {
-        return {
-          type: {
-            default: 'info',
-            parseHTML: (el: HTMLElement) => el.getAttribute('data-type') || 'info',
-          },
-        };
-      },
-      parseHTML() {
-        return [{ tag: 'div[data-callout]' }];
-      },
-      renderHTML({ HTMLAttributes }) {
-        return ['div', { 'data-callout': '', 'data-type': HTMLAttributes.type, 'class': `callout-${HTMLAttributes.type}` }, 0];
-      },
+  it('parses story link with anchor', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="/page#intro" data-linktype="story" data-anchor="intro">Section</a></p>');
+    expect(document.content![0].content![0].marks![0].attrs).toMatchObject({
+      href: '/page#intro',
+      linktype: 'story',
+      anchor: 'intro',
     });
-
-    const extensions = { callout: Callout };
-
-    // Parse: HTML → JSON
-    const html = '<div data-callout data-type="warning">Watch out!</div>';
-    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
-    expect(json.content[0]).toMatchObject({
-      type: 'callout',
-      attrs: { type: 'warning' },
-      content: [{ type: 'text', text: 'Watch out!' }],
-    });
-
-    // Render: JSON → HTML
-    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
-    expect(output).toBe('<div data-callout="" data-type="warning" class="callout-warning">Watch out!</div>');
   });
 
-  it('roundtrips a custom mark with extra attributes', () => {
-    const CustomHighlight = Mark.create({
-      name: 'highlight',
-      addAttributes() {
-        return {
-          color: {
-            default: 'yellow',
-            parseHTML: (el: HTMLElement) => el.getAttribute('data-color') || 'yellow',
-          },
-        };
-      },
-      parseHTML() {
-        return [{ tag: 'mark' }];
-      },
-      renderHTML({ HTMLAttributes }) {
-        return ['mark', { 'data-color': HTMLAttributes.color, 'style': `background-color: ${HTMLAttributes.color}` }, 0];
-      },
+  it('parses email link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="mailto:test@example.com" data-linktype="email">Email</a></p>');
+    expect(document.content![0].content![0].marks![0].attrs).toMatchObject({
+      href: 'mailto:test@example.com',
+      linktype: 'email',
     });
+  });
 
-    const extensions = { highlight: CustomHighlight };
+  it('parses asset link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="https://assets.example.com/file.pdf" data-linktype="asset">Download</a></p>');
+    expect(document.content![0].content![0].marks![0].attrs).toMatchObject({
+      href: 'https://assets.example.com/file.pdf',
+      linktype: 'asset',
+    });
+  });
 
-    // Parse: HTML → JSON
-    const html = '<p><mark data-color="pink">Important</mark></p>';
-    const json = htmlToStoryblokRichtext(html, { tiptapExtensions: extensions });
-    expect(json.content[0].content[0]).toMatchObject({
+  it('parses tel: link', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="tel:+44 3457 911 911">+44 3457 911 911</a></p>');
+    expect(document.content![0].content![0]).toMatchObject({
       type: 'text',
-      text: 'Important',
-      marks: [{ type: 'highlight', attrs: { color: 'pink' } }],
+      text: '+44 3457 911 911',
+      marks: [{ type: 'link', attrs: { href: 'tel:+44 3457 911 911', linktype: 'url' } }],
     });
+  });
 
-    // Render: JSON → HTML
-    const output = richTextResolver({ tiptapExtensions: extensions }).render(json);
-    expect(output).toBe('<p><mark data-color="pink" style="background-color: pink">Important</mark></p>');
+  it('parses link with custom attributes', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="https://example.com" title="google" rel="noopener" data-custom="foo">Click me</a></p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{
+        type: 'text',
+        marks: [{
+          type: 'link',
+          attrs: {
+            href: 'https://example.com',
+            uuid: null,
+            anchor: null,
+            target: null,
+            linktype: 'url',
+            custom: { 'title': 'google', 'rel': 'noopener', 'data-custom': 'foo' },
+          },
+        }],
+        text: 'Click me',
+      }],
+    }));
+  });
+
+  it('defaults linktype to url', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="/path">Link</a></p>');
+    expect(document.content![0].content![0].marks![0].attrs!.linktype).toBe('url');
+  });
+
+  it('renders external link back to HTML', () => {
+    const document = htmlToStoryblokRichtext('<p><a href="https://example.com" target="_blank">Click</a></p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{
+        type: 'text',
+        text: 'Click',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com', target: '_blank', anchor: null, custom: {}, linktype: 'url', uuid: null } }],
+      }],
+    }));
   });
 });
 
-// ── Reported Issues / Regressions ──────────────────────────────────────────
-//
-// Tests derived from customer-reported issues.
-// These ensure the parser output is compatible with Storyblok's Tiptap editor.
+// ============================================================================
+// Tests: Node Type Naming Convention
+// ============================================================================
 
-describe('hTML → Richtext: Editor compatibility (reported issues)', () => {
-  describe('links must be marks on text nodes, never standalone nodes', () => {
-    it('renders links as text nodes with link marks, not as link nodes', () => {
-      const result = htmlToStoryblokRichtext('<p>Click <a href="https://example.com">here</a> please.</p>');
-      const content = result.content[0].content;
-      const linkNode = content[1];
-      expect(linkNode.type).toBe('text');
-      expect(linkNode.text).toBe('here');
-      expect(linkNode.marks).toEqual(
-        expect.arrayContaining([expect.objectContaining({ type: 'link' })]),
-      );
-      expect(content.every((n: any) => n.type !== 'link')).toBe(true);
+describe('hTML → Richtext (strict): Node type naming', () => {
+  it('uses snake_case for list types', () => {
+    const document = htmlToStoryblokRichtext('<ul><li><p>A</p></li></ul><ol><li><p>B</p></li></ol>');
+    expect(document.content![0].type).toBe('bullet_list');
+    expect(document.content![0].content![0].type).toBe('list_item');
+    expect(document.content![1].type).toBe('ordered_list');
+    expect(document.content![1].content![0].type).toBe('list_item');
+  });
+
+  it('uses snake_case for code_block', () => {
+    const document = htmlToStoryblokRichtext('<pre><code>x</code></pre>');
+    expect(document.content![0].type).toBe('code_block');
+  });
+
+  it('uses snake_case for horizontal_rule', () => {
+    const document = htmlToStoryblokRichtext('<hr>');
+    expect(document.content![0].type).toBe('horizontal_rule');
+  });
+
+  it('uses snake_case for hard_break', () => {
+    const document = htmlToStoryblokRichtext('<p>a<br>b</p>');
+    expect(document.content![0].content![1].type).toBe('hard_break');
+  });
+
+  it('uses camelCase for table types', () => {
+    const document = htmlToStoryblokRichtext('<table><thead><tr><th><p>H</p></th></tr></thead><tbody><tr><td><p>C</p></td></tr></tbody></table>');
+    expect(document.content![0].type).toBe('table');
+    expect(document.content![0].content![0].type).toBe('tableRow');
+    expect(document.content![0].content![0].content![0].type).toBe('tableHeader');
+    expect(document.content![0].content![1].content![0].type).toBe('tableCell');
+  });
+
+  it('uses camelCase for details types', () => {
+    const document = htmlToStoryblokRichtext('<details><summary>Summary</summary><p>Content</p></details>');
+    expect(document.content![0].type).toBe('details');
+    expect(document.content![0].content![0].type).toBe('detailsSummary');
+    expect(document.content![0].content![1].type).toBe('detailsContent');
+  });
+});
+
+// ============================================================================
+// Tests: Edge Cases
+// ============================================================================
+
+describe('hTML → Richtext (strict): Edge cases', () => {
+  it('handles malformed HTML gracefully', () => {
+    const document = htmlToStoryblokRichtext('<p>Unclosed paragraph');
+    expect(document.content![0]).toMatchObject({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'Unclosed paragraph' }],
     });
+  });
 
-    it('renders link inside heading as text with link mark', () => {
-      const html = '<h1>Custom Heading with <a href="https://example.com">a link</a>.</h1>';
-      const result = htmlToStoryblokRichtext(html);
-      expect(result.content[0]).toMatchObject({
-        type: 'heading',
-        attrs: { level: 1 },
+  it('handles HTML entities', () => {
+    const document = htmlToStoryblokRichtext('<p>&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;</p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ text: '<script>alert("xss")</script>', type: 'text' }],
+    }));
+  });
+
+  it('handles unicode characters', () => {
+    const document = htmlToStoryblokRichtext('<p>Hello 🌍🚀</p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ text: 'Hello 🌍🚀', type: 'text' }],
+    }));
+  });
+
+  it('handles empty elements', () => {
+    const document = htmlToStoryblokRichtext('<p></p><h1></h1><blockquote></blockquote>');
+    expect(document).toEqual(doc([
+      { type: 'paragraph', attrs: { textAlign: null } },
+      { type: 'heading', attrs: { level: 1, textAlign: null } },
+      { type: 'blockquote', content: [{ type: 'paragraph', attrs: { textAlign: null } }] },
+    ]));
+  });
+
+  it('strips unsupported elements but keeps content', () => {
+    const document = htmlToStoryblokRichtext('<p><span>Text in span</span></p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ text: 'Text in span', type: 'text' }],
+    }));
+  });
+
+  it('handles special characters', () => {
+    const document = htmlToStoryblokRichtext('<p>Special chars: &amp; &lt; &gt; &quot; &#39;</p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ text: 'Special chars: & < > " \'', type: 'text' }],
+    }));
+  });
+
+  it('handles non-breaking spaces', () => {
+    const document = htmlToStoryblokRichtext('<p>Hello&nbsp;World</p>');
+    expect(document).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ text: 'Hello\u00A0World', type: 'text' }],
+    }));
+  });
+});
+
+// ============================================================================
+// Tests: Complex Structures
+// ============================================================================
+
+describe('hTML → Richtext (strict): Complex structures', () => {
+  it('parses mixed content: paragraphs, headings, lists', () => {
+    const document = htmlToStoryblokRichtext(`
+      <h1>Title</h1>
+      <p>Introduction paragraph.</p>
+      <h2>Section 1</h2>
+      <ul><li><p>Item A</p></li><li><p>Item B</p></li></ul>
+      <h2>Section 2</h2>
+      <ol><li><p>Step 1</p></li><li><p>Step 2</p></li></ol>
+    `);
+    expect(document.content!.length).toBeGreaterThan(5);
+    expect(document.content![0]).toMatchObject({ type: 'heading', attrs: { level: 1 } });
+    expect(document.content![1]).toMatchObject({ type: 'paragraph' });
+    expect(document.content![2]).toMatchObject({ type: 'heading', attrs: { level: 2 } });
+    expect(document.content![3]).toMatchObject({ type: 'bullet_list' });
+    expect(document.content![4]).toMatchObject({ type: 'heading', attrs: { level: 2 } });
+    expect(document.content![5]).toMatchObject({ type: 'ordered_list' });
+  });
+
+  it('parses blockquote with nested formatting', () => {
+    const document = htmlToStoryblokRichtext('<blockquote><p><strong>Important:</strong> This is a <em>quote</em>.</p></blockquote>');
+    expect(document.content![0]).toMatchObject({
+      type: 'blockquote',
+      content: [{
+        type: 'paragraph',
         content: [
-          { type: 'text', text: 'Custom Heading with ' },
-          {
-            type: 'text',
-            text: 'a link',
-            marks: [{
-              type: 'link',
-              attrs: expect.objectContaining({ href: 'https://example.com' }),
-            }],
-          },
+          { type: 'text', text: 'Important:', marks: [{ type: 'bold' }] },
+          { type: 'text', text: ' This is a ' },
+          { type: 'text', text: 'quote', marks: [{ type: 'italic' }] },
           { type: 'text', text: '.' },
         ],
-      });
+      }],
     });
   });
 
-  describe('telephone links', () => {
-    it('parses tel: links correctly', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="tel:+44 3457 911 911">+44 3457 911 911</a></p>');
-      const linkText = result.content[0].content[0];
-      expect(linkText).toMatchObject({
-        type: 'text',
-        text: '+44 3457 911 911',
-        marks: [{
-          type: 'link',
-          attrs: expect.objectContaining({ href: 'tel:+44 3457 911 911' }),
-        }],
-      });
+  it('parses table with marks inside cells', () => {
+    const document = htmlToStoryblokRichtext('<table><tbody><tr><td><p><strong>Bold cell</strong></p></td><td><p><em>Italic cell</em></p></td></tr></tbody></table>');
+    const row = document.content![0].content![0];
+    expect(row.content![0].content![0].content![0]).toMatchObject({
+      type: 'text',
+      text: 'Bold cell',
+      marks: [{ type: 'bold' }],
     });
-
-    it('parses tel: links with target and title attributes', () => {
-      const result = htmlToStoryblokRichtext('<p><a href="tel:+44 3457 911 911" target="" title="">+44 3457 911 911</a></p>');
-      const linkText = result.content[0].content[0];
-      expect(linkText.type).toBe('text');
-      expect(linkText.marks[0].type).toBe('link');
-      expect(linkText.marks[0].attrs.href).toBe('tel:+44 3457 911 911');
+    expect(row.content![1].content![0].content![0]).toMatchObject({
+      type: 'text',
+      text: 'Italic cell',
+      marks: [{ type: 'italic' }],
     });
   });
 
-  describe('snake_case vs camelCase node type names', () => {
-    it('uses snake_case for list types', () => {
-      const result = htmlToStoryblokRichtext('<ul><li>A</li></ul><ol><li>B</li></ol>');
-      expect(result.content[0].type).toBe('bullet_list');
-      expect(result.content[0].content[0].type).toBe('list_item');
-      expect(result.content[1].type).toBe('ordered_list');
-      expect(result.content[1].content[0].type).toBe('list_item');
+  it('parses heading with link inside', () => {
+    const document = htmlToStoryblokRichtext('<h1>Custom Heading with <a href="https://example.com">a link</a>.</h1>');
+    expect(document.content![0]).toMatchObject({
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [
+        { type: 'text', text: 'Custom Heading with ' },
+        { type: 'text', text: 'a link', marks: [{ type: 'link', attrs: expect.objectContaining({ href: 'https://example.com' }) }] },
+        { type: 'text', text: '.' },
+      ],
     });
+  });
 
-    it('uses snake_case for code_block', () => {
-      const result = htmlToStoryblokRichtext('<pre><code>x</code></pre>');
-      expect(result.content[0].type).toBe('code_block');
-    });
+  it('parses complex table with headers, merged cells, and formatting', () => {
+    const html = `<table><thead><tr><th colspan="2"><p><strong>Header</strong></p></th></tr></thead><tbody><tr><td rowspan="2"><p>Spans rows</p></td><td><p>Normal</p></td></tr><tr><td><p><a href="https://example.com">Link in cell</a></p></td></tr></tbody></table>`;
+    const document = htmlToStoryblokRichtext(html);
+    expect(document).toEqual(
+      doc({
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [{
+              type: 'tableHeader',
+              attrs: { colspan: 2, rowspan: 1, colwidth: null },
+              content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Header', marks: [{ type: 'bold' }] }] }],
+            }],
+          },
+          {
+            type: 'tableRow',
+            content: [
+              {
+                type: 'tableCell',
+                attrs: { rowspan: 2, colspan: 1, colwidth: null, backgroundColor: null },
+                content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Spans rows' }] }],
+              },
+              {
+                type: 'tableCell',
+                attrs: { rowspan: 1, colspan: 1, colwidth: null, backgroundColor: null },
+                content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Normal' }] }],
+              },
+            ],
+          },
+          {
+            type: 'tableRow',
+            content: [{
+              type: 'tableCell',
+              attrs: { rowspan: 1, colspan: 1, colwidth: null, backgroundColor: null },
+              content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'text', text: 'Link in cell', marks: [{ type: 'link', attrs: expect.objectContaining({ href: 'https://example.com' }) }] }] }],
+            }],
+          },
+        ],
+      }),
+    );
+    expect(renderRichText(document)).toBe(html);
+  });
+});
 
-    it('uses snake_case for horizontal_rule', () => {
-      const result = htmlToStoryblokRichtext('<hr>');
-      expect(result.content[0].type).toBe('horizontal_rule');
-    });
+// ============================================================================
+// Tests: Custom Extensions
+// ============================================================================
 
-    it('uses snake_case for hard_break', () => {
-      const result = htmlToStoryblokRichtext('<p>a<br>b</p>');
-      expect(result.content[0].content[1].type).toBe('hard_break');
+describe('hTML → Richtext (strict): Custom extensions', () => {
+  it('parses emoji with custom extension', () => {
+    const html = '<div data-type="emoji" data-test="rocket" data-emoji="🚀"><img src="https://cdn.example.com/rocket.png" alt="🚀"></div>';
+    const result = htmlToStoryblokRichtext(html, {
+      extensions: {
+        emoji: {
+          parseHTML: () => [{ tag: 'div[data-type="emoji"]' }],
+          attributeParsers: {
+            name: mapToAttribute(['data-test', 'data-name']),
+            emoji: mapToAttribute('data-emoji'),
+            fallbackImage: (el) => {
+              const img = el.querySelector('img');
+              return img ? img.getAttribute('src')! : null;
+            },
+          },
+        },
+      },
     });
+    expect(result).toEqual(doc({
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{
+        type: 'emoji',
+        attrs: {
+          name: 'rocket',
+          emoji: '🚀',
+          fallbackImage: 'https://cdn.example.com/rocket.png',
+        },
+      }],
+    }));
+  });
 
-    it('uses camelCase for table types', () => {
-      const result = htmlToStoryblokRichtext('<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>C</td></tr></tbody></table>');
-      expect(result.content[0].type).toBe('table');
-      expect(result.content[0].content[0].type).toBe('tableRow');
-      expect(result.content[0].content[0].content[0].type).toBe('tableHeader');
-      expect(result.content[0].content[1].content[0].type).toBe('tableCell');
+  it('parses code block with custom language extraction', () => {
+    const html = '<pre><code class="language-typescript">const greeting: string = "Hello";</code></pre>';
+    const result = htmlToStoryblokRichtext(html, {
+      extensions: {
+        code_block: {
+          attributeParsers: {
+            class: (el) => {
+              const codeEl = el.querySelector('code');
+              const className = codeEl?.getAttribute('class') || '';
+              const match = className.match(/(?:language|lang)-(\w+)/);
+              return match ? match[1] : null;
+            },
+          },
+        },
+      },
     });
+    expect(result).toEqual(doc({
+      type: 'code_block',
+      attrs: { class: 'typescript' },
+      content: [{ type: 'text', text: 'const greeting: string = "Hello";' }],
+    }));
+  });
+
+  it('parses image with custom meta_data extraction', () => {
+    const html = `<img 
+      src="https://a.storyblok.com/f/12345/800x600/image.jpg" 
+      alt="A beautiful landscape" 
+      title="Mountain View"
+      data-source="Unsplash"
+      data-copyright="© 2024 Photographer Name"
+    >`;
+    const result = htmlToStoryblokRichtext(html, {
+      extensions: {
+        image: {
+          attributeParsers: {
+            source: mapToAttribute('data-source'),
+            copyright: mapToAttribute('data-copyright'),
+            meta_data: el => ({
+              alt: mapToAttribute('alt')(el),
+              title: el.getAttribute('title'),
+              source: el.getAttribute('data-source'),
+              copyright: el.getAttribute('data-copyright'),
+            }),
+          },
+        },
+      },
+    });
+    expect(result).toEqual(doc({
+      type: 'image',
+      attrs: {
+        id: null,
+        src: 'https://a.storyblok.com/f/12345/800x600/image.jpg',
+        alt: 'A beautiful landscape',
+        title: 'Mountain View',
+        source: 'Unsplash',
+        copyright: '© 2024 Photographer Name',
+        meta_data: {
+          alt: 'A beautiful landscape',
+          title: 'Mountain View',
+          source: 'Unsplash',
+          copyright: '© 2024 Photographer Name',
+        },
+      },
+    }));
   });
 });

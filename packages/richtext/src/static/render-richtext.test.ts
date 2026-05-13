@@ -173,7 +173,18 @@ describe('renderRichText', () => {
             { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
           ],
         };
-        expect(renderRichText(list)).toBe('<ol order="1"><li><p>First</p></li><li><p>Second</p></li></ol>');
+        expect(renderRichText(list)).toBe('<ol><li><p>First</p></li><li><p>Second</p></li></ol>');
+      });
+      it('renders ordered list at 5', () => {
+        const list: SbRichTextDoc = {
+          type: 'ordered_list',
+          attrs: { order: 5 },
+          content: [
+            { type: 'list_item', content: [{ type: 'paragraph', content: [text('First')] }] },
+            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
+          ],
+        };
+        expect(renderRichText(list)).toBe('<ol start="5"><li><p>First</p></li><li><p>Second</p></li></ol>');
       });
     });
 
@@ -335,7 +346,7 @@ describe('renderRichText', () => {
           },
         };
         const html = renderRichText(emoji);
-        expect(html).toBe('<img data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" draggable="false" loading="lazy" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">');
+        expect(html).toBe('<img draggable="false" loading="lazy" data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">');
       });
     });
   });
@@ -346,41 +357,42 @@ describe('renderRichText', () => {
 
   describe('tables', () => {
     it('renders basic table with tbody', () => {
-      const t = table([tableRow([tableCell('A'), tableCell('B')])]);
-      expect(renderRichText(t)).toBe(
-        '<table><tbody><tr><td colspan="1" rowspan="1"><p>A</p></td><td colspan="1" rowspan="1"><p>B</p></td></tr></tbody></table>',
+      const tableSchema = table([tableRow([tableCell('A'), tableCell('B')])]);
+      expect(renderRichText(tableSchema)).toBe(
+        '<table><tbody><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table>',
       );
     });
 
     it('renders table with thead and tbody', () => {
-      const t = table([
+      const tableSchema = table([
         tableRow([tableHeader('H1'), tableHeader('H2')]),
         tableRow([tableCell('C1'), tableCell('C2')]),
       ]);
-      expect(renderRichText(t)).toBe(
-        '<table><thead><tr><th colspan="1" rowspan="1"><p>H1</p></th><th colspan="1" rowspan="1"><p>H2</p></th></tr></thead>'
-        + '<tbody><tr><td colspan="1" rowspan="1"><p>C1</p></td><td colspan="1" rowspan="1"><p>C2</p></td></tr></tbody></table>',
+      expect(renderRichText(tableSchema)).toBe(
+        '<table><thead><tr><th><p>H1</p></th><th><p>H2</p></th></tr></thead>'
+        + '<tbody><tr><td><p>C1</p></td><td><p>C2</p></td></tr></tbody></table>',
       );
     });
 
     it('renders colspan and rowspan', () => {
-      const t = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
-      expect(renderRichText(t)).toContain('colspan="2" rowspan="2"');
+      const tableSchema = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
+      const html = renderRichText(tableSchema);
+      expect(html).toContain('colspan="2" rowspan="2"');
     });
 
     it('renders colwidth as style', () => {
-      const t = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
-      expect(renderRichText(t)).toContain('style="width: 200px;"');
+      const tableSchema = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
+      expect(renderRichText(tableSchema)).toContain('style="width: 200px;"');
     });
 
     it('renders backgroundColor as style', () => {
-      const t = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
-      expect(renderRichText(t)).toContain('background-color: #FF0000;');
+      const tableSchema = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
+      expect(renderRichText(tableSchema)).toContain('background-color: #FF0000;');
     });
 
     it('combines multiple styles', () => {
-      const t = table([tableRow([tableCell('Styled', { colwidth: [100], backgroundColor: '#00FF00' })])]);
-      const html = renderRichText(t);
+      const tableSchema = table([tableRow([tableCell('Styled', { colwidth: [100], backgroundColor: '#00FF00' })])]);
+      const html = renderRichText(tableSchema);
       expect(html).toContain('width: 100px;');
       expect(html).toContain('background-color: #00FF00;');
     });

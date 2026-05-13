@@ -1,54 +1,31 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
-import type { AttributeSpec, MarkType, NodeType, Schema } from 'prosemirror-model';
-import { markAttrKeys, nodeAttrKeys } from '../../extensions/richtext-attrs';
-import { getStoryblokExtensions } from '../../extensions';
-import { hints } from './type-hints';
+import type { MarkType, NodeType, Schema } from 'prosemirror-model';
+import { allAttrKeys, type ExtensionAttrMap } from '../../extensions/richtext-attrs';
+import { getStoryblokTiptapExtensions } from '../../extensions';
 
-const nodeAttrKeySet = new Set<string>(nodeAttrKeys);
-const markAttrKeySet = new Set<string>(markAttrKeys);
-
-/**
- * Converts a schema attrs object to a TS property string (with type from hints)
- * E.g. { color: { default: null } } -> 'color?: string | null;'
- */
-function getAttrType(attrName: string): string {
-  return hints[attrName] || 'unknown';
-}
-
-function genAttrsType(attrs: Record<string, AttributeSpec> | undefined): string {
-  if (!attrs || Object.keys(attrs).length === 0) {
-    return 'Record<string, never>';
-  }
-  let out = '{ ';
-  for (const [attrName] of Object.entries(attrs)) {
-    const typeStr = getAttrType(attrName);
-    out += `${attrName}?: ${typeStr}; `;
-  }
-  out += '}';
-  return out;
-}
+const attrKeySet = new Set<keyof ExtensionAttrMap>(allAttrKeys);
 
 /** Generate all node attribute interfaces and helpers */
 function genAttributeTypes(schema: Schema) {
   let nodeAttrs = '';
   let markAttrs = '';
 
-  for (const [name, type] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    if (nodeAttrKeySet.has(name)) {
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    if (attrKeySet.has(name as keyof ExtensionAttrMap)) {
       nodeAttrs += `  ${name}: NodeAttrTypeMap['${name}'];\n`;
     }
     else {
-      nodeAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+      nodeAttrs += `  ${name}: unknown;\n`;
     }
   }
 
-  for (const [name, type] of Object.entries(schema.marks) as [string, MarkType][]) {
-    if (markAttrKeySet.has(name)) {
+  for (const [name] of Object.entries(schema.marks) as [string, MarkType][]) {
+    if (attrKeySet.has(name as keyof ExtensionAttrMap)) {
       markAttrs += `  ${name}: MarkAttrTypeMap['${name}'];\n`;
     }
     else {
-      markAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+      markAttrs += `  ${name}: unknown;\n`;
     }
   }
 
@@ -81,9 +58,7 @@ function genPMMark(schema: Schema): string {
 }
 
 export function generateTypes() {
-  const defaultExtensions = getStoryblokExtensions({
-    allowCustomAttributes: true,
-  });
+  const defaultExtensions = getStoryblokTiptapExtensions({});
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   const attributeTypes = genAttributeTypes(schema);
@@ -91,7 +66,6 @@ export function generateTypes() {
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
   output += `import type { MarkAttrTypeMap, NodeAttrTypeMap } from '../extensions/richtext-attrs';\n`;
-  output += `import type { SbBlokData } from './types';\n`;
   output += '\n';
   // --- Attribute types
   output += '/** Attribute types for all Tiptap node extensions */\n';

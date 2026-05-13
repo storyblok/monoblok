@@ -209,6 +209,15 @@ function renderLinkGroup(
     inner += renderTextNode(node, innerMarks, options);
   }
 
+  // Custom link renderer
+  const customRenderer = options?.renderers?.[linkMark.type as keyof typeof options.renderers];
+  if (customRenderer) {
+    return (customRenderer as (props: typeof linkMark & { children: string }) => string)({
+      ...linkMark,
+      children: inner,
+    });
+  }
+
   const tag = resolveTag(linkMark);
   if (!tag) {
     return inner;

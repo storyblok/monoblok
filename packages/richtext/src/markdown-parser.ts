@@ -2,7 +2,7 @@ import MarkdownIt from 'markdown-it';
 import { type HTMLParserOptions, htmlToStoryblokRichtext } from './html-parser';
 
 export interface MarkdownParserOptions {
-  tiptapExtensions?: HTMLParserOptions['tiptapExtensions'];
+  extensions?: HTMLParserOptions['extensions'];
 }
 
 export function markdownToStoryblokRichtext(
@@ -10,5 +10,6 @@ export function markdownToStoryblokRichtext(
   options: MarkdownParserOptions = {},
 ) {
   const html = new MarkdownIt({ html: false, linkify: true, typographer: true, breaks: true }).render(md);
-  return htmlToStoryblokRichtext(html, options);
+  return htmlToStoryblokRichtext(html, { extensions: options.extensions });
 }
+export { mapToAttribute } from './extensions/utils';

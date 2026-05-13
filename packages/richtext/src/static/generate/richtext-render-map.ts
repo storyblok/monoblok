@@ -1,8 +1,8 @@
 import { type AnyExtension, getSchema } from '@tiptap/core';
-import { getStoryblokExtensions } from '../../extensions';
 import type { Schema } from 'prosemirror-model';
 import { MarkType, NodeType } from 'prosemirror-model';
 import { parseDOMSpec } from './parse-dom-spec';
+import { getStoryblokTiptapExtensions } from '../../extensions';
 
 /**
  * Known dynamic resolvers (hand-written, minimal set)
@@ -76,7 +76,7 @@ function generateRenderEntries(
 }
 
 export function generateRenderMap() {
-  const defaultExtensions = getStoryblokExtensions();
+  const defaultExtensions = getStoryblokTiptapExtensions({});
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   let output = '';

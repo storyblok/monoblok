@@ -42,12 +42,19 @@ const DEFAULT_ATTR_MAP: AttrMap = {
   rowspan: 'rowSpan',
   name: 'data-name',
   emoji: 'data-emoji',
+  order: 'start',
 };
 
 /**
  * Attributes that should be excluded from the output.
  */
 export const EXCLUDED_ATTRS = new Set(['level', 'linktype', 'uuid', 'anchor', 'meta_data', 'copyright', 'source']);
+
+/**
+ * Attributes that should be excluded when they have their default value of 1.
+ * These are HTML defaults and including them adds unnecessary markup.
+ */
+const DEFAULT_VALUE_ONE_ATTRS = new Set(['colspan', 'rowspan', 'order']);
 
 // ============================================================================
 // Helper Functions
@@ -139,6 +146,11 @@ function processAttribute(
     return;
   }
 
+  // Skip attributes that have their default HTML value of 1
+  if (DEFAULT_VALUE_ONE_ATTRS.has(key) && value === 1) {
+    return;
+  }
+
   // Handle style-mapped attributes
   if (key in styleMap) {
     const cssProp = styleMap[key]!;
@@ -194,7 +206,7 @@ export function processAttrs(
 
   const styleMap = STYLE_MAP[type] || {};
   const attrMap = { ...DEFAULT_ATTR_MAP, ...extendAttrMap };
-  const mergedAttrs = { ...attrs, ...staticAttrs };
+  const mergedAttrs = { ...staticAttrs, ...attrs };
 
   for (const [key, value] of Object.entries(mergedAttrs)) {
     processAttribute(key, value, type, styleMap, attrMap, style, rest);

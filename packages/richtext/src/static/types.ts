@@ -1,4 +1,4 @@
-import type { StoryblokRichTextImageOptimizationOptions as SbRichTextImageOptions } from '../types';
+import type { SbRichTextImageOptions } from '../types';
 import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
 export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;

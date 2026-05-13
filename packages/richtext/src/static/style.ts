@@ -55,10 +55,10 @@ export function stringToStyle(style: string): Record<string, string> {
     }, {});
 }
 
-function kebabToCamel(str: string) {
+export function kebabToCamel(str: string) {
   return str.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 }
-function camelToKebab(str: string) {
+export function camelToKebab(str: string) {
   return str.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
 }
 export function isValidStyleValue(value: unknown) {

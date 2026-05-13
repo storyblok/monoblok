@@ -1,4 +1,11 @@
-/** Node Attribute Types */
+import type { MarkSpec, NodeSpec } from 'prosemirror-model';
+import type { SbBlokData } from '../static/types';
+import type { TiptapMarkName, TiptapNodeName } from '../static/types.generated';
+
+/** For node and mark that do not have any attribute support */
+export type NoAttrs = Record<string, never>;
+
+/** Node Attributes */
 
 export interface ParagraphAttrs {
   textAlign: 'left' | 'center' | 'right' | 'justify' | null;
@@ -61,11 +68,11 @@ export interface EmojiAttrs {
 
 export interface BlokAttrs {
   id: string | null;
-  body: Record<string, unknown>[] | null;
+  body: SbBlokData[] | null;
   [key: string]: unknown;
 }
 
-/** Mark Attribute Types */
+/** Mark Attributes */
 
 export interface LinkAttrs {
   href: string | null;
@@ -99,44 +106,76 @@ export interface StyledAttrs {
   [key: string]: unknown;
 }
 
-/** Maps node names to their attribute types. */
-export interface NodeAttrTypeMap {
-  paragraph: ParagraphAttrs;
-  heading: HeadingAttrs;
-  code_block: CodeBlockAttrs;
-  ordered_list: OrderedListAttrs;
-  tableCell: TableCellAttrs;
-  tableHeader: TableHeaderAttrs;
-  image: ImageAttrs;
-  emoji: EmojiAttrs;
+/** Attribute Maps */
+
+export const nodeAttrMap = {
+  paragraph: {} as ParagraphAttrs,
+  heading: {} as HeadingAttrs,
+  code_block: {} as CodeBlockAttrs,
+  ordered_list: {} as OrderedListAttrs,
+  tableCell: {} as TableCellAttrs,
+  tableHeader: {} as TableHeaderAttrs,
+  image: {} as ImageAttrs,
+  emoji: {} as EmojiAttrs,
+  blok: {} as BlokAttrs,
+  doc: {} as NoAttrs,
+  text: {} as NoAttrs,
+  blockquote: {} as NoAttrs,
+  bullet_list: {} as NoAttrs,
+  list_item: {} as NoAttrs,
+  hard_break: {} as NoAttrs,
+  horizontal_rule: {} as NoAttrs,
+  table: {} as NoAttrs,
+  tableRow: {} as NoAttrs,
+  details: {} as NoAttrs,
+  detailsContent: {} as NoAttrs,
+  detailsSummary: {} as NoAttrs,
+} satisfies Record<TiptapNodeName, unknown>;
+
+export type NodeAttrTypeMap = typeof nodeAttrMap;
+
+export const markAttrMap = {
+  link: {} as LinkAttrs,
+  highlight: {} as HighlightAttrs,
+  textStyle: {} as TextStyleAttrs,
+  anchor: {} as AnchorAttrs,
+  styled: {} as StyledAttrs,
+  superscript: {} as NoAttrs,
+  subscript: {} as NoAttrs,
+  bold: {} as NoAttrs,
+  italic: {} as NoAttrs,
+  strike: {} as NoAttrs,
+  underline: {} as NoAttrs,
+  code: {} as NoAttrs,
+} satisfies Record<TiptapMarkName, unknown>;
+
+export type MarkAttrTypeMap = typeof markAttrMap;
+
+export type ExtensionAttrMap = Exclude<NodeAttrTypeMap & MarkAttrTypeMap, 'reporter'>;
+export type ExtensionKey = keyof ExtensionAttrMap;
+export type ExtensionAttrs<K extends ExtensionKey> = ExtensionAttrMap[K];
+
+export const allAttrKeys = [
+  ...Object.keys(nodeAttrMap),
+  ...Object.keys(markAttrMap),
+] as ExtensionKey[];
+
+/** Conditional typing for Node vs Mark */
+
+type ParseHTMLReturn<T extends ExtensionKey> =
+  T extends keyof NodeAttrTypeMap
+    ? NonNullable<NodeSpec['parseDOM']>
+    : T extends keyof MarkAttrTypeMap
+      ? NonNullable<MarkSpec['parseDOM']>
+      : never;
+
+/** Extension Options */
+export interface ExtensionOptions<K extends ExtensionKey> {
+  parseHTML?: () => ParseHTMLReturn<K> | undefined;
+
+  attributeParsers?: Partial<{
+    [P in keyof ExtensionAttrs<K>]: (
+      el: HTMLElement
+    ) => ExtensionAttrs<K>[P] | null | undefined;
+  }>;
 }
-
-/** Maps mark names to their attribute types. */
-export interface MarkAttrTypeMap {
-  link: LinkAttrs;
-  highlight: HighlightAttrs;
-  textStyle: TextStyleAttrs;
-  anchor: AnchorAttrs;
-  styled: StyledAttrs;
-}
-
-/** Runtime keys for NodeAttrTypeMap (type-checked via satisfies). */
-export const nodeAttrKeys: (keyof NodeAttrTypeMap)[] = [
-  'paragraph',
-  'heading',
-  'code_block',
-  'ordered_list',
-  'tableCell',
-  'tableHeader',
-  'image',
-  'emoji',
-];
-
-/** Runtime keys for MarkAttrTypeMap (type-checked via satisfies). */
-export const markAttrKeys: (keyof MarkAttrTypeMap)[] = [
-  'link',
-  'highlight',
-  'textStyle',
-  'anchor',
-  'styled',
-];

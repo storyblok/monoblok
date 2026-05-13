@@ -1,24 +1,13 @@
-import React, { forwardRef } from 'react';
-
-import { convertAttributesInElement } from '../utils';
-import type { StoryblokRichTextProps } from '../types';
+import { forwardRef } from 'react';
 import { useStoryblokServerRichText } from './richtext';
+import type { StoryblokRichtextProps } from '@/core/richtext-hoc';
 
-const StoryblokRichText = forwardRef<HTMLDivElement, StoryblokRichTextProps>(
-  ({ doc, tiptapExtensions }, ref) => {
-    if (!doc) {
-      return null;
-    }
-    const { render } = useStoryblokServerRichText({
-      tiptapExtensions,
-    });
-
-    const html = render(doc);
-    const formattedHtml = convertAttributesInElement(html as React.ReactElement);
-
+const StoryblokRichText = forwardRef<HTMLDivElement, StoryblokRichtextProps>(
+  ({ document, optimizeImage, components }, ref) => {
+    const html = useStoryblokServerRichText({ document, optimizeImage, components });
     return (
       <div ref={ref}>
-        {formattedHtml}
+        {html}
       </div>
     );
   },

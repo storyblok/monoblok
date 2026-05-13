@@ -1,4 +1,3 @@
-import React from 'react';
 import { StoryblokRichText, useStoryblok } from '@storyblok/react';
 
 function RichtextPage() {

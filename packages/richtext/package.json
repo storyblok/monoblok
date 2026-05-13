@@ -163,6 +163,21 @@
         "outputs": [
           "{projectRoot}/dist/**"
         ]
+      },
+      "test": {
+        "dependsOn": [
+          "generate"
+        ]
+      },
+      "test:types": {
+        "dependsOn": [
+          "generate"
+        ]
+      },
+      "lint": {
+        "dependsOn": [
+          "generate"
+        ]
       }
     }
   }

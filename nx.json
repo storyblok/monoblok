@@ -37,8 +37,10 @@
   "release": {
     "projectsRelationship": "independent",
     "projects": ["packages/*"],
+    "releaseTagPatternCheckAllBranchesWhen": ["alpha", "beta", "next"],
     "version": {
       "conventionalCommits": true,
+      "updateDependents": "never",
       "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
         "skipLockFileUpdate": true

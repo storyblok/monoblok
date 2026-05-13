@@ -1,5 +1,5 @@
 import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/core';
-import type { SbRichTextElement } from '@storyblok/richtext/static';
+import type { SbRichTextElement } from '@storyblok/richtext';
 
 import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
 import { RichTextComponentProps } from '../types';

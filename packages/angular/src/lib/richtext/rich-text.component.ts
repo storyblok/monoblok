@@ -21,13 +21,8 @@ import {
   processAttrs,
   resolveTag,
   splitTableRows,
-} from '@storyblok/richtext/static';
-import type {
-  PMMark,
-  RenderSpec,
-  SbRichTextDoc,
-  SbRichTextElement,
-} from '@storyblok/richtext/static';
+} from '@storyblok/richtext';
+import type { PMMark, RenderSpec, SbRichTextDoc, SbRichTextElement } from '@storyblok/richtext';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 

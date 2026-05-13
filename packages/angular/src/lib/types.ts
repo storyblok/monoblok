@@ -1,5 +1,5 @@
 import { ISbComponentType } from '@storyblok/live-preview';
-import { SbRichTextElement, SbRichTextProps } from '@storyblok/richtext/static';
+import { SbRichTextElement, SbRichTextProps } from '@storyblok/richtext';
 
 export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
 

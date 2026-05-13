@@ -2,7 +2,7 @@ import { Component, input, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SbRichTextComponent } from './rich-text.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
-import { SbRichTextDoc } from '@storyblok/richtext/static';
+import { SbRichTextDoc } from '@storyblok/richtext';
 import type { RichTextComponentProps } from '../types';
 
 /**
@@ -310,7 +310,22 @@ describe('SbRichTextComponent', () => {
         fixture.detectChanges();
         const html = fixture.nativeElement.innerHTML.trim();
 
-        expect(html).toBe('<ol order="1"><li><p>First</p></li><li><p>Second</p></li></ol>');
+        expect(html).toBe('<ol><li><p>First</p></li><li><p>Second</p></li></ol>');
+      });
+      it('renders ordered list with custom start', async () => {
+        const list: SbRichTextDoc = {
+          type: 'ordered_list',
+          attrs: { order: 5 },
+          content: [
+            { type: 'list_item', content: [{ type: 'paragraph', content: [text('First')] }] },
+            { type: 'list_item', content: [{ type: 'paragraph', content: [text('Second')] }] },
+          ],
+        };
+        fixture.componentRef.setInput('sbDocument', list);
+        fixture.detectChanges();
+        const html = fixture.nativeElement.innerHTML.trim();
+
+        expect(html).toBe('<ol start="5"><li><p>First</p></li><li><p>Second</p></li></ol>');
       });
     });
 
@@ -377,7 +392,7 @@ describe('SbRichTextComponent', () => {
         const html = fixture.nativeElement.innerHTML.trim();
 
         expect(html).toBe(
-          '<img data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" draggable="false" loading="lazy" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">',
+          '<img draggable="false" loading="lazy" data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">',
         );
       });
     });
@@ -395,7 +410,7 @@ describe('SbRichTextComponent', () => {
       const html = fixture.nativeElement.innerHTML.trim();
 
       expect(html).toBe(
-        '<table><tbody><tr><td colspan="1" rowspan="1"><p>A</p></td><td colspan="1" rowspan="1"><p>B</p></td></tr></tbody></table>',
+        '<table><tbody><tr><td><p>A</p></td><td><p>B</p></td></tr></tbody></table>',
       );
     });
 
@@ -409,14 +424,14 @@ describe('SbRichTextComponent', () => {
       const html = fixture.nativeElement.innerHTML.trim();
 
       expect(html).toBe(
-        '<table><thead><tr><th colspan="1" rowspan="1"><p>H1</p></th><th colspan="1" rowspan="1"><p>H2</p></th></tr></thead>' +
-          '<tbody><tr><td colspan="1" rowspan="1"><p>C1</p></td><td colspan="1" rowspan="1"><p>C2</p></td></tr></tbody></table>',
+        '<table><thead><tr><th><p>H1</p></th><th><p>H2</p></th></tr></thead>' +
+          '<tbody><tr><td><p>C1</p></td><td><p>C2</p></td></tr></tbody></table>',
       );
     });
 
     it('renders colspan and rowspan', async () => {
-      const t = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
-      fixture.componentRef.setInput('sbDocument', t);
+      const tableSchema = table([tableRow([tableCell('Merged', { colspan: 2, rowspan: 2 })])]);
+      fixture.componentRef.setInput('sbDocument', tableSchema);
       fixture.detectChanges();
       const html = fixture.nativeElement.innerHTML.trim();
 
@@ -424,8 +439,8 @@ describe('SbRichTextComponent', () => {
     });
 
     it('renders colwidth as style', async () => {
-      const t = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
-      fixture.componentRef.setInput('sbDocument', t);
+      const tableSchema = table([tableRow([tableCell('Wide', { colwidth: [200] })])]);
+      fixture.componentRef.setInput('sbDocument', tableSchema);
       fixture.detectChanges();
       const html = fixture.nativeElement.innerHTML.trim();
 
@@ -433,8 +448,8 @@ describe('SbRichTextComponent', () => {
     });
 
     it('renders backgroundColor as style', async () => {
-      const t = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
-      fixture.componentRef.setInput('sbDocument', t);
+      const tableSchema = table([tableRow([tableCell('Colored', { backgroundColor: '#FF0000' })])]);
+      fixture.componentRef.setInput('sbDocument', tableSchema);
       fixture.detectChanges();
       const html = fixture.nativeElement.innerHTML.trim();
 
@@ -442,10 +457,10 @@ describe('SbRichTextComponent', () => {
     });
 
     it('combines multiple styles', async () => {
-      const t = table([
+      const tableSchema = table([
         tableRow([tableCell('Styled', { colwidth: [100], backgroundColor: '#00FF00' })]),
       ]);
-      fixture.componentRef.setInput('sbDocument', t);
+      fixture.componentRef.setInput('sbDocument', tableSchema);
       fixture.detectChanges();
       const html = fixture.nativeElement.innerHTML.trim();
 

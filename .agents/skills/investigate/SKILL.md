@@ -15,8 +15,12 @@ Investigate the following GitHub issue: $ARGUMENTS
 
 ### Phase 1: Fetch Issue Details
 
-1. Parse the input (full URL, `#123`, or `123`)
-2. Fetch with `gh issue view <number> --json title,body,labels,comments,author,createdAt,state`
+1. Parse the input:
+   - `WDX-123` or `linear.app` URL → **Linear ticket**
+   - `#123`, bare number, or `github.com` URL → **GitHub issue**
+2. Fetch the ticket:
+   - **GitHub:** `gh issue view <number> --json title,body,labels,comments,author,createdAt,state`
+   - **Linear:** `bash .agents/skills/triage/scripts/linear-fetch.sh issue WDX-123`
 3. Extract: error messages, stack traces, reproduction steps, environment details
 
 ### Phase 2: Identify Affected Package(s)

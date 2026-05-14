@@ -30,7 +30,7 @@ export async function pushWithDependencyGraph(
   space: string,
   spaceState: SpaceComponentsDataState,
 
-  maxConcurrency: number = getActiveConfig().api.maxConcurrency,
+  maxConcurrency: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
   // Build and validate the dependency graph with colocated target data
   const context: GraphBuildingContext = { spaceState };

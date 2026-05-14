@@ -23,7 +23,9 @@ export type PlainObject = Record<string, any>;
 
 export interface ApiConfig {
   maxRetries: number;
-  maxConcurrency: number;
+  rateLimit: number;
+  /** @deprecated Use `rateLimit` instead. @todo(next-major): Remove this field. */
+  maxConcurrency?: number;
 }
 
 export interface LogConsoleConfig {

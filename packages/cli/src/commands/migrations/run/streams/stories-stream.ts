@@ -1,9 +1,10 @@
 import { pipeline, Readable, Transform } from 'node:stream';
-import { Sema } from 'async-sema';
+import type { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams, Story } from '../../../stories/constants';
 import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../lib/logger/logger';
+import { createConcurrencyLock } from '../../../../utils/concurrency';
 import { ERROR_CODES } from '../constants';
 
 /**
@@ -89,12 +90,12 @@ export async function* storiesIterator(
 class StoriesStream extends Transform {
   private semaphore: Sema;
 
-  constructor(private spaceId: string, private batchSize: number, private onProgress?: () => void) {
+  constructor(private spaceId: string, private onProgress?: () => void) {
     super({
       objectMode: true,
     });
 
-    this.semaphore = new Sema(this.batchSize);
+    this.semaphore = createConcurrencyLock();
   }
 
   async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {
@@ -130,19 +131,17 @@ class StoriesStream extends Transform {
 export const createStoriesStream = async ({
   spaceId,
   params,
-  batchSize = 100,
   onTotal,
   onProgress,
 }: {
   spaceId: string;
   params: StoriesQueryParams;
-  batchSize: number;
   onTotal: (total: number) => void;
   onProgress: () => void;
 }): Promise<Readable> => {
   const iterator = storiesIterator(spaceId, params, onTotal);
   const listStoriesStream = Readable.from(iterator);
-  return pipeline(listStoriesStream, new StoriesStream(spaceId, batchSize, onProgress), (err) => {
+  return pipeline(listStoriesStream, new StoriesStream(spaceId, onProgress), (err) => {
     if (err) {
       console.error(err);
       getLogger().error(err.message, { errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });

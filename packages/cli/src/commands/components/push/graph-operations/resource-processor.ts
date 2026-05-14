@@ -18,7 +18,7 @@ export async function processAllResources(
   graph: DependencyGraph,
   space: string,
 
-  maxConcurrency: number = getActiveConfig().api.maxConcurrency,
+  maxConcurrency: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };

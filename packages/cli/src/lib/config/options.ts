@@ -32,9 +32,15 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     parser: parseNumber,
   },
   {
+    flags: '--api-rate-limit <number>',
+    description: 'Maximum number of concurrent HTTP requests the CLI executes against the API',
+    defaultValue: DEFAULT_GLOBAL_CONFIG.api.rateLimit,
+    parser: parseNumber,
+  },
+  // @todo(next-major): Remove deprecated --api-max-concurrency flag.
+  {
     flags: '--api-max-concurrency <number>',
-    description: 'Maximum concurrent API requests executed by the CLI',
-    defaultValue: DEFAULT_GLOBAL_CONFIG.api.maxConcurrency,
+    description: '[Deprecated] Use --api-rate-limit instead.',
     parser: parseNumber,
   },
   // Boolean flags that default to true need both positive and negative forms

@@ -26,7 +26,6 @@ describe('updateStream', () => {
         space: '12345',
         publish: 'published',
         dryRun: false,
-        batchSize: 10,
       });
 
       vi.mocked(updateStory).mockResolvedValue({
@@ -107,7 +106,6 @@ describe('updateStream', () => {
         space: '12345',
         publish: 'published-with-changes',
         dryRun: false,
-        batchSize: 10,
       });
 
       vi.mocked(updateStory).mockResolvedValue({
@@ -188,7 +186,6 @@ describe('updateStream', () => {
         space: '12345',
         publish: 'all',
         dryRun: false,
-        batchSize: 10,
       });
 
       vi.mocked(updateStory).mockResolvedValue({
@@ -266,7 +263,6 @@ describe('updateStream', () => {
       const updateStream = new UpdateStream({
         space: '12345',
         dryRun: false,
-        batchSize: 10,
       });
 
       vi.mocked(updateStory).mockResolvedValue({

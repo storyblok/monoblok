@@ -6,7 +6,7 @@ const BASE_GLOBAL_CONFIG: GlobalConfig = {
   path: undefined,
   api: {
     maxRetries: 3,
-    maxConcurrency: 6,
+    rateLimit: 6,
   },
   log: {
     console: {

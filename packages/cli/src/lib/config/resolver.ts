@@ -78,6 +78,13 @@ export async function resolveConfig(
   const knownModuleKeys = getModuleNames(root);
   for (const layer of layers) {
     const { modules, ...globalLayer } = layer;
+    // @todo(next-major): Remove deprecated api.maxConcurrency support from config files.
+    // Handle deprecated api.maxConcurrency from config files
+    if (globalLayer.api?.maxConcurrency !== undefined) {
+      console.warn('[storyblok] Config option `api.maxConcurrency` is deprecated. Use `api.rateLimit` instead.');
+      globalLayer.api.rateLimit = globalLayer.api.maxConcurrency;
+      delete globalLayer.api.maxConcurrency;
+    }
     // Later layers overwrite earlier ones because loadConfigLayers orders them from general to specific.
     mergeDeep(globalResolved, globalLayer);
     if (modules && isPlainObject(modules)) {
@@ -87,6 +94,15 @@ export async function resolveConfig(
   }
 
   applyCliOverrides(commandChain, globalResolved, localResolved);
+
+  // @todo(next-major): Remove deprecated --api-max-concurrency CLI flag support.
+  // Handle deprecated --api-max-concurrency CLI flag
+  const globalResolvedApi = globalResolved.api;
+  if (globalResolvedApi?.maxConcurrency !== undefined) {
+    console.warn('[storyblok] CLI flag `--api-max-concurrency` is deprecated. Use `--api-rate-limit` instead.');
+    globalResolvedApi.rateLimit = globalResolvedApi.maxConcurrency;
+    delete globalResolvedApi.maxConcurrency;
+  }
 
   const resolved = structuredClone(defaultConfig);
   mergeDeep(resolved as PlainObject, globalResolved);

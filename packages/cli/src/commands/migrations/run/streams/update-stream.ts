@@ -1,10 +1,11 @@
 import { Writable } from 'node:stream';
-import { Sema } from 'async-sema';
+import type { Sema } from 'async-sema';
 import type { StoryUpdate } from '../../../../types';
 import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../lib/logger/logger';
+import { createConcurrencyLock } from '../../../../utils/concurrency';
 import { ERROR_CODES } from '../constants';
 import { toError } from '../../../../utils/error';
 
@@ -12,7 +13,6 @@ export interface UpdateStreamOptions {
   space: string;
   publish?: 'all' | 'published' | 'published-with-changes';
   dryRun?: boolean;
-  batchSize?: number;
   onProgress?: (current: number) => void;
   onTotal?: (total: number) => void;
 }
@@ -29,7 +29,6 @@ export interface UpdateStreamResult {
  */
 export class UpdateStream extends Writable {
   private results: UpdateStreamResult;
-  private readonly batchSize: number;
   private semaphore: Sema;
 
   constructor(private options: UpdateStreamOptions) {
@@ -37,14 +36,13 @@ export class UpdateStream extends Writable {
       objectMode: true,
     });
 
-    this.batchSize = options.batchSize || 10;
     this.results = {
       successful: [],
       failed: [],
       totalProcessed: 0,
     };
 
-    this.semaphore = new Sema(this.batchSize);
+    this.semaphore = createConcurrencyLock();
   }
 
   async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {

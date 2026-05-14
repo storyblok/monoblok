@@ -93,7 +93,6 @@ runCmd
           query,
           starts_with: startsWith,
         },
-        batchSize: 12,
         onTotal: (total) => {
           storiesProgress.setTotal(total);
           migrationsProgress.setTotal(total);
@@ -121,7 +120,6 @@ runCmd
         space,
         publish,
         dryRun,
-        batchSize: 12,
         onProgress: () => {
           updateProgress.increment();
         },

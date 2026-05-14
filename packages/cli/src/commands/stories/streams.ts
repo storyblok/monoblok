@@ -1,16 +1,23 @@
 import { readFile, unlink } from 'node:fs/promises';
 import { extname, join, resolve } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
-import { Sema } from 'async-sema';
+import type { Sema } from 'async-sema';
 import { createStory, fetchStories, fetchStory, updateStory } from './actions';
 import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry, TargetStoryRef } from './constants';
 import { normalizeFullSlug } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
+import { createConcurrencyLock } from '../../utils/concurrency';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 
-const apiConcurrencyLock = new Sema(12);
+let _apiConcurrencyLock: Sema | null = null;
+const getApiConcurrencyLock = (): Sema => {
+  if (!_apiConcurrencyLock) {
+    _apiConcurrencyLock = createConcurrencyLock();
+  }
+  return _apiConcurrencyLock;
+};
 
 export const fetchStoriesStream = ({
   spaceId,
@@ -92,7 +99,7 @@ export const fetchStoryStream = ({
     objectMode: true,
     async transform(listStory: Story, _encoding, callback) {
       // Wait for a slot
-      await apiConcurrencyLock.acquire();
+      await getApiConcurrencyLock().acquire();
 
       const task = fetchStory(spaceId, listStory.id.toString())
         .then((story) => {
@@ -107,7 +114,7 @@ export const fetchStoryStream = ({
         })
         .finally(() => {
           onIncrement?.();
-          apiConcurrencyLock.release();
+          getApiConcurrencyLock().release();
           processing.delete(task);
         });
       processing.add(task);
@@ -357,7 +364,7 @@ export const createStoriesForLevel = async ({
   onStoryError?: (error: Error, entry: StoryIndexEntry) => void;
 }): Promise<void> => {
   const processEntry = async (entry: StoryIndexEntry) => {
-    await apiConcurrencyLock.acquire();
+    await getApiConcurrencyLock().acquire();
     try {
       // Primary: check manifest mapping (from a previous push).
       const mappedStoryId = maps.stories?.get(entry.id);
@@ -427,7 +434,7 @@ export const createStoriesForLevel = async ({
       onStoryError?.(toError(maybeError), entry);
     }
     finally {
-      apiConcurrencyLock.release();
+      getApiConcurrencyLock().release();
     }
   };
 
@@ -519,7 +526,7 @@ export const writeStoryStream = ({
   return new Writable({
     objectMode: true,
     async write(mappedLocalStory: Story, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
+      await getApiConcurrencyLock().acquire();
 
       const task = (async () => {
         try {
@@ -536,7 +543,7 @@ export const writeStoryStream = ({
       processing.add(task);
       task.finally(() => {
         onIncrement?.();
-        apiConcurrencyLock.release();
+        getApiConcurrencyLock().release();
         processing.delete(task);
       });
 

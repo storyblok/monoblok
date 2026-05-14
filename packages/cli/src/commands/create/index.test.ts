@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCommand } from './';
-import { handleError, konsola, requireAuthentication, toHumanReadable } from '../../utils';
+import { handleError, requireAuthentication, toHumanReadable } from '../../utils';
 import { confirm, input, select } from '@inquirer/prompts';
 
 import { createSpace } from '../spaces';
@@ -36,7 +36,6 @@ vi.mock('../../api', () => ({
   getMapiClient: vi.fn(),
 }));
 
-vi.mock('../../utils/konsola');
 vi.mock('../../utils', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, any>;
   return {
@@ -44,14 +43,6 @@ vi.mock('../../utils', async (importOriginal) => {
     requireAuthentication: vi.fn(),
     handleError: vi.fn(),
     toHumanReadable: vi.fn(),
-    konsola: {
-      ok: vi.fn(),
-      title: vi.fn(),
-      br: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      info: vi.fn(),
-    },
     isVitest: true,
   };
 });
@@ -61,7 +52,18 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
   confirm: vi.fn(),
 }));
+const { mockedUI } = vi.hoisted(() => ({
+  mockedUI: {
+    ok: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 
+vi.mock('../../utils/ui', () => ({
+  getUI: vi.fn(() => mockedUI),
+}));
 // Helper function to create a complete Space mock object
 const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   name: 'Test Space',
@@ -69,7 +71,6 @@ const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   uniq_domain: 'test-uniq-domain',
   plan: 'starter',
   plan_level: 1,
-  limits: {},
   created_at: '2024-01-01T00:00:00Z',
   id: 12345,
   role: 'admin',
@@ -83,7 +84,6 @@ const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   duplicatable: false,
   request_count_today: 0,
   exceeded_requests: 0,
-  billing_address: {},
   routes: [],
   trial: false,
   default_root: '',
@@ -91,9 +91,7 @@ const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   has_pending_tasks: false,
   ai_translation_disabled: false,
   first_token: 'space-token-123',
-  options: {},
   collaborator: [],
-  owner: {},
   ...overrides,
 });
 
@@ -148,10 +146,10 @@ describe('createCommand', () => {
       expect(createSpace).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
       // Should show success message
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Your react project is ready 🎉 !'),
       );
-      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+      expect(mockedUI.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
     });
 
     it('should work with --token even when not logged in', async () => {
@@ -228,7 +226,7 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', '--template', 'invalid-template']);
 
-      expect(konsola.warn).toHaveBeenCalledWith(
+      expect(mockedUI.warn).toHaveBeenCalledWith(
         expect.stringContaining('Invalid template "invalid-template"'),
       );
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
@@ -250,7 +248,7 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', './my-project', '--blueprint', 'react']);
 
-      expect(konsola.warn).toHaveBeenCalledWith('The --blueprint flag is deprecated. Please use --template instead.');
+      expect(mockedUI.warn).toHaveBeenCalledWith('The --blueprint flag is deprecated. Please use --template instead.');
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
     });
 
@@ -268,7 +266,7 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', './my-project', '--blueprint', 'react', '--template', 'vue']);
 
-      expect(konsola.warn).toHaveBeenCalledWith('Both --blueprint and --template provided. Using --template and ignoring --blueprint.');
+      expect(mockedUI.warn).toHaveBeenCalledWith('Both --blueprint and --template provided. Using --template and ignoring --blueprint.');
       expect(generateProject).toHaveBeenCalledWith('vue', 'my-project', expect.any(String));
     });
 
@@ -289,8 +287,8 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', '--blueprint', 'invalid-blueprint']);
 
-      expect(konsola.warn).toHaveBeenCalledWith('The --blueprint flag is deprecated. Please use --template instead.');
-      expect(konsola.warn).toHaveBeenCalledWith(
+      expect(mockedUI.warn).toHaveBeenCalledWith('The --blueprint flag is deprecated. Please use --template instead.');
+      expect(mockedUI.warn).toHaveBeenCalledWith(
         expect.stringContaining('Invalid template "invalid-blueprint"'),
       );
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
@@ -399,7 +397,7 @@ describe('createCommand', () => {
 
       // Verify project generation
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Project my-project created successfully'),
         true,
       );
@@ -415,13 +413,13 @@ describe('createCommand', () => {
 
       // Verify browser opening
       expect(openSpaceInBrowser).toHaveBeenCalledWith(12345, 'eu');
-      expect(konsola.info).toHaveBeenCalledWith('Opened space in your browser');
+      expect(mockedUI.info).toHaveBeenCalledWith('Opened space in your browser');
 
       // Verify final success messages
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Your react project is ready 🎉 !'),
       );
-      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+      expect(mockedUI.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
     });
 
     it('should handle project generation failure', async () => {
@@ -492,9 +490,9 @@ describe('createCommand', () => {
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
-      expect(konsola.warn).toHaveBeenCalledWith('Failed to open browser: Failed to open browser');
+      expect(mockedUI.warn).toHaveBeenCalledWith('Failed to open browser: Failed to open browser');
       expect(generateSpaceUrl).toHaveBeenCalledWith(12345, 'eu');
-      expect(konsola.info).toHaveBeenCalledWith(
+      expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually open your space at:'),
       );
     });
@@ -622,7 +620,7 @@ describe('createCommand', () => {
 
       // Verify project generation still happens
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Project my-project created successfully'),
         true,
       );
@@ -634,7 +632,7 @@ describe('createCommand', () => {
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
 
       // Verify success message still shows
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Your react project is ready 🎉 !'),
       );
     });
@@ -679,22 +677,22 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
 
       // Should show project creation success
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Project my-project created successfully'),
         true,
       );
 
       // Should show final success message
-      expect(konsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Your react project is ready 🎉 !'),
       );
 
       // Should show next steps
-      expect(konsola.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
+      expect(mockedUI.info).toHaveBeenCalledWith(expect.stringContaining('Next steps:'));
 
       // Should NOT show space-related success messages
-      expect(konsola.ok).not.toHaveBeenCalledWith('Created .env file with Storyblok access token', true);
-      expect(konsola.info).not.toHaveBeenCalledWith('Opened space in your browser');
+      expect(mockedUI.ok).not.toHaveBeenCalledWith('Created .env file with Storyblok access token', true);
+      expect(mockedUI.info).not.toHaveBeenCalledWith('Opened space in your browser');
     });
 
     it('should handle project generation failure even when skipping space creation', async () => {
@@ -935,7 +933,7 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
         // Should show warning message (note: American spelling "organization")
-        expect(konsola.warn).toHaveBeenCalledWith(
+        expect(mockedUI.warn).toHaveBeenCalledWith(
           'Space creation in this region is limited to Enterprise accounts. If you\'re part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.',
         );
 
@@ -969,7 +967,7 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
         // Should show organization-specific success message
-        expect(konsola.ok).toHaveBeenCalledWith(
+        expect(mockedUI.ok).toHaveBeenCalledWith(
           expect.stringContaining('Storyblok space created in organization Test Organization'),
         );
       });
@@ -995,7 +993,7 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
         // Should show partner-specific success message
-        expect(konsola.ok).toHaveBeenCalledWith(
+        expect(mockedUI.ok).toHaveBeenCalledWith(
           expect.stringContaining('Storyblok space created in partner portal'),
         );
       });
@@ -1022,13 +1020,13 @@ describe('createCommand', () => {
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
         // Should show generic success message (not org or partner specific)
-        expect(konsola.ok).toHaveBeenCalledWith(
+        expect(mockedUI.ok).toHaveBeenCalledWith(
           expect.stringMatching(/^Storyblok space created, preview url and \.env configured automatically/),
         );
-        expect(konsola.ok).not.toHaveBeenCalledWith(
+        expect(mockedUI.ok).not.toHaveBeenCalledWith(
           expect.stringContaining('organization'),
         );
-        expect(konsola.ok).not.toHaveBeenCalledWith(
+        expect(mockedUI.ok).not.toHaveBeenCalledWith(
           expect.stringContaining('partner portal'),
         );
       });
@@ -1044,7 +1042,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(konsola.error).toHaveBeenCalledWith('Failed to fetch user info. Your session may have expired.');
+        expect(mockedUI.error).toHaveBeenCalledWith('Failed to fetch user info. Your session may have expired.');
         expect(generateProject).toHaveBeenCalled();
         expect(createSpace).not.toHaveBeenCalled();
       });

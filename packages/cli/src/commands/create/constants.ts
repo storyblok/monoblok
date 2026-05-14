@@ -7,8 +7,18 @@ export interface CreateOptions {
   token?: string; // Access token for Storyblok
   region?: RegionCode;
 }
+type TemplateTechnology = 'REACT' | 'VUE' | 'SVELTE' | 'ASTRO' | 'NUXT' | 'NEXTJS' | 'ELEVENTY' | 'ANGULAR';
 
-export const templates = {
+export interface Template {
+  name: string;
+  value: string;
+  template: string;
+  location: string;
+  description?: string | null;
+  updated_at?: string;
+  stars?: number;
+}
+export const templates: Record<TemplateTechnology, Template> = {
   REACT: {
     name: 'React',
     value: 'react',
@@ -39,7 +49,7 @@ export const templates = {
     template: 'https://github.com/storyblok/blueprint-core-nuxt',
     location: 'https://localhost:3000/',
   },
-  NEXT: {
+  NEXTJS: {
     name: 'Next.js',
     value: 'nextjs',
     template: 'https://github.com/storyblok/blueprint-core-nextjs',
@@ -51,17 +61,10 @@ export const templates = {
     template: 'https://github.com/storyblok/blueprint-core-eleventy',
     location: 'https://localhost:8080/',
   },
+  ANGULAR: {
+    name: 'Angular',
+    value: 'angular',
+    template: 'https://github.com/storyblok/blueprint-core-angular',
+    location: 'https://localhost:4200/',
+  },
 } as const;
-
-/**
- * Interface for dynamic templates
- */
-export interface DynamicTemplate {
-  name: string;
-  value: string;
-  template: string;
-  location: string;
-  description?: string | null;
-  updated_at?: string;
-  stars?: number;
-}

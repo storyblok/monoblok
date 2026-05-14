@@ -6,8 +6,10 @@ import { appDomains, type RegionCode } from '../../constants';
 import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
 import open from 'open';
 import { createOctokit } from '../../github';
-import { handleAPIError, konsola } from '../../utils';
-import { type DynamicTemplate, templates } from './constants';
+import { type Template, templates } from './constants';
+import { getUI } from '../../utils/ui';
+
+const ui = getUI({ enabled: true });
 
 /** Repository item from GitHub search API response */
 type SearchReposResponse = Awaited<ReturnType<ReturnType<typeof createOctokit>['rest']['search']['repos']>>;
@@ -123,24 +125,24 @@ export async function handleEnvFileCreation(resolvedPath: string, token?: string
     envVars.STORYBLOK_REGION = region;
   }
   if (Object.keys(envVars).length === 0) {
-    konsola.info('No environment variables to write');
+    ui.info('No environment variables to write');
     return true;
   }
   try {
     await createEnvFile(resolvedPath, envVars);
     const writtenKeys = Object.keys(envVars).join(', ');
-    konsola.ok(`Created .env file with: ${writtenKeys}`, true);
+    ui.ok(`Created .env file with: ${writtenKeys}`, true);
     return true;
   }
   catch (error) {
-    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+    ui.warn(`Failed to create .env file: ${(error as Error).message}`);
     if (token) {
-      konsola.info(
+      ui.info(
         `You can manually add STORYBLOK_DELIVERY_API_TOKEN to your .env file.`,
       );
     }
     if (region) {
-      konsola.info(
+      ui.info(
         `You can manually add STORYBLOK_REGION to your .env file.`,
       );
     }
@@ -200,24 +202,15 @@ export const extractPortFromTopics = (topics: string[]): string => {
 };
 
 /**
- * Finds a matching static template by value
- * @param value - The template value to search for
- * @returns The matching static template or undefined
- */
-const findStaticTemplate = (value: string) => {
-  return Object.values(templates).find(t => t.value === value);
-};
-
-/**
  * Converts a GitHub repository to the format expected by the CLI
  * Uses static template name and location as priority if available
  * @param repo - GitHub repository data from search API
  * @returns Formatted blueprint object
  */
-export const repositoryToTemplate = (repo: SearchRepoItem): DynamicTemplate => {
+export const repositoryToTemplate = (repo: SearchRepoItem): Template => {
   const technology = repo.name.replace('blueprint-core-', '');
   const port = extractPortFromTopics(repo.topics || []);
-  const staticTemplate = findStaticTemplate(technology);
+  const staticTemplate = templates[technology.toUpperCase() as keyof typeof templates];
 
   return {
     // Prioritize static template name over derived name
@@ -232,20 +225,7 @@ export const repositoryToTemplate = (repo: SearchRepoItem): DynamicTemplate => {
   };
 };
 
-/**
- * Converts static templates to DynamicTemplate format for fallback
- * @returns Array of DynamicTemplate objects
- */
-const getStaticTemplatesAsFallback = (): DynamicTemplate[] => {
-  return Object.values(templates).map(t => ({
-    name: t.name,
-    value: t.value,
-    template: t.template,
-    location: t.location,
-  }));
-};
-
-export const fetchBlueprintRepositories = async (): Promise<DynamicTemplate[]> => {
+export const fetchBlueprintRepositories = async (): Promise<Template[]> => {
   try {
     const octokit = createOctokit();
 
@@ -265,10 +245,8 @@ export const fetchBlueprintRepositories = async (): Promise<DynamicTemplate[]> =
 
     return blueprints;
   }
-  catch (error) {
-    // Fallback to static templates if GitHub search fails
-    handleAPIError('fetch_blueprints', error as Error, 'Failed to fetch blueprints from GitHub');
-    konsola.warn('Using offline template list');
-    return getStaticTemplatesAsFallback();
+  catch {
+    ui.warn('Failed to fetch blueprints from GitHub. Using offline template list.');
+    return Object.values(templates);
   }
 };

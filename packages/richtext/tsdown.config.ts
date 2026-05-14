@@ -32,7 +32,7 @@ const sharedConfig = {
   clean: true,
   dts: true,
   exports: true,
-  external: ['mdast'],
+  external: ['mdast', '@tiptap/core', '@tiptap/html', '@tiptap/suggestion', 'prosemirror-model', 'prosemirror-state', 'prosemirror-transform', 'prosemirror-view', 'prosemirror-commands', 'prosemirror-collab', 'prosemirror-changeset', 'orderedmap'],
   outDir: './dist',
   publint: true,
   sourcemap: true,

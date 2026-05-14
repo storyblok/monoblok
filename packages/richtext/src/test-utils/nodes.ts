@@ -91,10 +91,10 @@ export const nodeFixtures: HtmlFixture[] = [
     title: 'emoji',
     input: {
       type: 'emoji',
-      attrs: { emoji: '🚀', name: 'rocket', fallbackImage: 'https://cdn.example.com/rocket.png' },
+      attrs: { fallbackImage: 'https://cdn.example.com/rocket.png', name: 'rocket', emoji: '🚀' },
     },
     expected:
-          '<img draggable="false" loading="lazy" data-emoji="🚀" data-name="rocket" src="https://cdn.example.com/rocket.png" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">',
+          '<img draggable="false" loading="lazy" src="https://cdn.example.com/rocket.png" data-name="rocket" data-emoji="🚀" style="width: 1.25em; height: 1.25em; vertical-align: text-top;">',
   },
   // need to add heading and with heading alignment
 ];

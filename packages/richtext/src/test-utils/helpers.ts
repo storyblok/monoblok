@@ -58,3 +58,7 @@ export const table = (rows: SbRichTextDoc[]): SbRichTextDoc => ({
   type: 'table',
   content: rows,
 });
+export const doc = (content: SbRichTextDoc | SbRichTextDoc[]): SbRichTextDoc => ({
+  type: 'doc',
+  content: Array.isArray(content) ? content : [content],
+});

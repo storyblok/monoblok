@@ -217,7 +217,7 @@ describe('SbRichTextComponent', () => {
         template: `
           <pre class="language-{{ lang() }}">
           <code [attr.data-lang]="lang()">
-            <sb-rich-text [sbDocument]="data()?.content" />
+            <sb-rich-text [sbDocument]="data().content" />
           </code>
         </pre>
         `,

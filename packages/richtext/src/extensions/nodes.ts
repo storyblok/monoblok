@@ -22,7 +22,9 @@ export function buildEmojiExtension(
   const parser = options?.attributeParsers;
 
   return Emoji.extend({
-    parseHTML: options?.parseHTML,
+    parseHTML: options?.parseHTML ?? (() => {
+      return [{ tag: 'img[data-emoji]' }, { tag: 'span[data-emoji]' }];
+    }),
     addAttributes() {
       return {
         fallbackImage: {
@@ -187,7 +189,23 @@ export function buildCodeBlockExtension(options?: ExtensionOptions<'code_block'>
       return {
         class: {
           default: null,
-          parseHTML: parser?.class,
+          parseHTML: parser?.class || ((el) => {
+            const code = el.querySelector('code');
+
+            // Priority 1: code element
+            if (code) {
+              return (
+                code.getAttribute('data-language')
+                || code.getAttribute('class')
+              );
+            }
+
+            // Priority 2: pre element
+            return (
+              el.getAttribute('data-language')
+              || el.getAttribute('class')
+            );
+          }),
         },
       };
     },
@@ -219,9 +237,30 @@ export function buildTableExtension() {
   });
 }
 
-const parseTableWidth = (element: HTMLElement) => {
+const parseTableWidth = (element: HTMLElement): number[] | null => {
+  // 1️⃣ colwidth attribute
   const colwidth = element.getAttribute('colwidth');
-  return colwidth ? colwidth.split(',').map(Number) : null;
+
+  if (colwidth) {
+    const values = colwidth
+      .split(',')
+      .map(v => Number(v.trim()))
+      .filter(v => !Number.isNaN(v));
+
+    return values.length ? values : null;
+  }
+
+  // 2️⃣ inline style width
+  const styleWidth = element.style?.width;
+
+  if (styleWidth) {
+    const numeric = Number.parseFloat(styleWidth); // handles "100px"
+    if (!Number.isNaN(numeric)) {
+      return [numeric];
+    }
+  }
+
+  return null;
 };
 
 export function buildTableCellExtension(options?: ExtensionOptions<'tableCell'>) {
@@ -238,7 +277,7 @@ export function buildTableCellExtension(options?: ExtensionOptions<'tableCell'>)
         },
         backgroundColor: {
           default: null,
-          parseHTML: parser?.backgroundColor,
+          parseHTML: parser?.backgroundColor ?? mapToAttribute(undefined, 'background-color'),
         },
       };
     },
@@ -300,13 +339,13 @@ export function buildImageExtension(
           default: null,
           parseHTML: parser?.id,
         },
-        alt: {
-          default: null,
-          parseHTML: parser?.alt,
-        },
         src: {
           default: null,
           parseHTML: parser?.src,
+        },
+        alt: {
+          default: null,
+          parseHTML: parser?.alt,
         },
         title: {
           default: null,
@@ -321,7 +360,7 @@ export function buildImageExtension(
           parseHTML: parser?.copyright,
         },
         meta_data: {
-          default: {},
+          default: null,
           parseHTML: parser?.meta_data,
         },
       };

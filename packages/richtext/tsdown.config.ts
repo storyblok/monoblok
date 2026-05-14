@@ -38,35 +38,40 @@ const sharedConfig = {
   sourcemap: true,
 };
 
+const entries = [
+  { name: 'index', path: './src/index.ts' },
+  { name: 'markdown-parser', path: './src/markdown-parser.ts' },
+  { name: 'html-parser', path: './src/html-parser.ts' },
+  { name: 'test-utils', path: './src/test-utils/index.ts' },
+];
+
 export default [
-  // ESM — one entry per config to avoid chunk splitting on .d.mts files
-  defineConfig({
-    ...sharedConfig,
-    entry: { index: './src/index.ts' },
-    format: 'esm',
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { 'markdown-parser': './src/markdown-parser.ts' },
-    format: 'esm',
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { 'html-parser': './src/html-parser.ts' },
-    format: 'esm',
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { 'test-utils': './src/test-utils/index.ts' },
-    format: 'esm',
-  }),
-  // CJS + UMD
+  // ESM builds
+  ...entries.map(e =>
+    defineConfig({
+      ...sharedConfig,
+      entry: { [e.name]: e.path },
+      format: 'esm',
+    }),
+  ),
+
+  // CJS + UMD main entry
   defineConfig({
     ...sharedConfig,
     entry: { index: './src/index.ts' },
     format: ['cjs', 'umd'],
+    inlineOnly: false,
     globalName: 'StoryblokRichtext',
   }),
+  defineConfig({
+    ...sharedConfig,
+    entry: { 'test-utils': './src/test-utils/index.ts' },
+    format: ['cjs', 'umd'],
+    inlineOnly: false,
+    globalName: 'StoryblokRichtextTestUtils',
+  }),
+
+  // Markdown parser CJS + UMD
   defineConfig({
     ...sharedConfig,
     entry: { 'markdown-parser': './src/markdown-parser.ts' },
@@ -80,6 +85,8 @@ export default [
       },
     },
   }),
+
+  // HTML parser CJS + UMD
   defineConfig({
     ...sharedConfig,
     entry: { 'html-parser': './src/html-parser.ts' },

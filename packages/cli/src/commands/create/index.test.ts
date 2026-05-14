@@ -58,6 +58,8 @@ const { mockedUI } = vi.hoisted(() => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    title: vi.fn(),
+    br: vi.fn(),
   },
 }));
 
@@ -541,7 +543,7 @@ describe('createCommand', () => {
       ['vue', 'VUE'],
       ['svelte', 'SVELTE'],
       ['nuxt', 'NUXT'],
-      ['next', 'NEXT'],
+      ['nextjs', 'NEXTJS'],
     ])('should handle %s template correctly', async (template, templateKey) => {
       // Use createMockSpace to ensure the mock matches the Space type
       const mockSpace = createMockSpace({ id: 12345, first_token: 'space-token-123' });
@@ -555,7 +557,7 @@ describe('createCommand', () => {
         { name: 'Vue', value: 'vue', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Svelte', value: 'svelte', template: '', location: 'https://localhost:5173/', description: '', updated_at: '' },
         { name: 'Nuxt', value: 'nuxt', template: '', location: 'https://localhost:3000/', description: '', updated_at: '' },
-        { name: 'Next', value: 'next', template: '', location: 'https://localhost:3000/', description: '', updated_at: '' },
+        { name: 'Next.js', value: 'nextjs', template: '', location: 'https://localhost:3000/', description: '', updated_at: '' },
       ]);
 
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', template]);

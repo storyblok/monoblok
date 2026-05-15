@@ -232,6 +232,17 @@ export interface ISbCache {
   type?: 'none' | 'memory' | 'custom';
   clear?: 'auto' | 'manual' | 'onpreview';
   custom?: ICacheProvider;
+  /**
+   * Controls how the `cv` (content version) query parameter is managed.
+   *
+   * - `'auto'` (default): automatically attach the tracked `cv` to
+   *   subsequent CDN requests for cache busting.
+   * - `'manual'`: do not attach `cv` to outgoing requests. The client still
+   *   tracks cv internally for cache invalidation (flushing when cv changes),
+   *   but the query parameter is not sent. Useful for SSR with edge caching
+   *   where stable URLs are required.
+   */
+  cv?: 'auto' | 'manual';
 }
 
 export interface ISbConfig {

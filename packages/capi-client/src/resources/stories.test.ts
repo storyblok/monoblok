@@ -1002,3 +1002,28 @@ describe('cache and cv', () => {
     expect(thirdResult.data?.marker).toBe('fresh');
   });
 });
+
+describe('cache.cv: manual', () => {
+  it('should not attach cv to subsequent requests', async () => {
+    const capturedUrls: string[] = [];
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories', ({ request }) => {
+        capturedUrls.push(request.url);
+        return HttpResponse.json({
+          stories: [makeStory('s1', { component: 'page', _uid: 'u1' })],
+          cv: 999,
+        });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: 'test-token',
+      cache: { cv: 'manual' },
+    });
+
+    await client.stories.list({ query: { version: 'published' } });
+    await client.stories.list({ query: { version: 'published', page: 2 } });
+
+    const secondUrl = new URL(capturedUrls[1]!);
+    expect(secondUrl.searchParams.has('cv')).toBe(false);
+  });
+});

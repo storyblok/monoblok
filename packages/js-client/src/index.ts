@@ -80,6 +80,7 @@ export class Storyblok {
   public links: LinksType;
   public version: StoryblokContentVersionKeys | undefined;
   private rateLimitConfig: RateLimitConfig;
+  private cvMode: 'auto' | 'manual';
   /**
    * @deprecated This property is deprecated. Use the standalone `richTextResolver` from `@storyblok/richtext` instead.
    * @see https://github.com/storyblok/richtext
@@ -153,6 +154,7 @@ export class Storyblok {
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
     this.cache = config.cache || { clear: 'manual' };
+    this.cvMode = config.cache?.cv ?? 'auto';
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
     this.stringifiedStoriesCache = {} as Record<string, string>;
@@ -173,7 +175,7 @@ export class Storyblok {
       params.token = this.getToken();
     }
 
-    if (!params.cv) {
+    if (!params.cv && this.cvMode === 'auto') {
       params.cv = cacheVersions[params.token];
     }
 

@@ -15,7 +15,8 @@ MONOBLOK_ROOT="$(git rev-parse --show-toplevel)"
 
 add_worktree() {
   local name="$1"
-  local worktree_path="./.worktrees/$name"
+  local slug="${name//\//-}"
+  local worktree_path="./.worktrees/$slug"
 
   cd "$MONOBLOK_ROOT" || exit 1
 
@@ -34,7 +35,7 @@ add_worktree() {
   [ -d "$MONOBLOK_ROOT/claude-output" ] && cp -r "$MONOBLOK_ROOT/claude-output" .
 
   # Copy all .env files (preserving directory structure, excluding node_modules)
-  (cd "$MONOBLOK_ROOT" && find . -name '.env*' -not -path '*/node_modules/*' -print0 | while IFS= read -r -d '' f; do
+  (cd "$MONOBLOK_ROOT" && find . -name '.env*' -not -path '*/node_modules/*' -not -path '*/.worktrees/*' -print0 | while IFS= read -r -d '' f; do
     mkdir -p "$(dirname "$worktree_path/$f")"
     cp "$f" "$worktree_path/$f"
   done)
@@ -77,12 +78,14 @@ add_worktree() {
 
 remove_worktree() {
   local name="$1"
+  local slug="${name//\//-}"
+  local worktree_path="./.worktrees/$slug"
 
   cd "$MONOBLOK_ROOT" || exit 1
 
   # Clean up project-level Claude config symlinks
   local worktree_abs
-  worktree_abs=$(cd "../$name" 2>/dev/null && pwd) || true
+  worktree_abs=$(cd "$worktree_path" 2>/dev/null && pwd) || true
   if [ -n "$worktree_abs" ]; then
     local worktree_project_key
     worktree_project_key=$(echo "$worktree_abs" | tr '/' '-' | tr -d '@')
@@ -95,14 +98,13 @@ remove_worktree() {
   fi
 
   # Copy claude-output artifacts back to the main repo
-  local worktree_path="../$name"
   if [ -d "$worktree_path/claude-output" ]; then
     mkdir -p "$MONOBLOK_ROOT/claude-output"
     cp -r "$worktree_path/claude-output/." "$MONOBLOK_ROOT/claude-output/"
     echo "Copied claude-output artifacts back to main repo"
   fi
 
-  git worktree remove --force "../$name"
+  git worktree remove --force "$worktree_path"
   git branch -D "$name" 2>/dev/null || echo "Branch '$name' already deleted, skipping"
 }
 

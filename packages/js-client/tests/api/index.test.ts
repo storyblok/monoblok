@@ -214,5 +214,51 @@ describe('storyblokClient (MSW)', () => {
       expect(cvBefore).not.toBe(undefined);
       expect(cvAfterFirst).toBe(cvAfterSecond);
     });
+
+    describe('cache.cv: manual', () => {
+      it('should not attach cv to subsequent requests', async () => {
+        const capturedUrls: string[] = [];
+        server.use(
+          http.get(`${BASE_URL}/cdn/stories`, ({ request }) => {
+            capturedUrls.push(request.url);
+            return HttpResponse.json(
+              { stories: [], cv: 12345 },
+              { headers: { 'Total': '0', 'Per-Page': '25' } },
+            );
+          }),
+        );
+
+        const manualClient = new StoryblokClient({
+          accessToken: 'manual-cv-unique',
+          cache: { cv: 'manual' },
+        });
+
+        await manualClient.get('cdn/stories', { version: 'published' });
+        await manualClient.get('cdn/stories', { version: 'published', page: 2 });
+
+        expect(capturedUrls).toHaveLength(2);
+        const secondUrl = new URL(capturedUrls[1]!);
+        expect(secondUrl.searchParams.has('cv')).toBe(false);
+      });
+
+      it('should still track cv internally for cache invalidation', async () => {
+        server.use(
+          http.get(`${BASE_URL}/cdn/stories`, () =>
+            HttpResponse.json(
+              { stories: [], cv: 77777 },
+              { headers: { 'Total': '0', 'Per-Page': '25' } },
+            )),
+        );
+
+        const manualClient = new StoryblokClient({
+          accessToken: 'manual-cv-track',
+          cache: { cv: 'manual' },
+        });
+
+        await manualClient.get('cdn/stories', { version: 'published' });
+
+        expect(manualClient.cacheVersion()).toBe(77777);
+      });
+    });
   });
 });

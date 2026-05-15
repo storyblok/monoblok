@@ -51,6 +51,17 @@ interface CacheConfig {
   /** Time-to-live in milliseconds for cached entries. @default 60_000 */
   ttlMs?: number;
   /**
+   * Controls how the `cv` (content version) query parameter is managed.
+   *
+   * - `'auto'` (default): automatically attach the tracked `cv` to
+   *   subsequent published requests for cache busting.
+   * - `'manual'`: do not attach `cv` to outgoing requests. The client still
+   *   tracks cv internally for cache invalidation (flushing when cv changes),
+   *   but the query parameter is not sent. Useful for SSR with edge caching
+   *   where stable URLs are required.
+   */
+  cv?: 'auto' | 'manual';
+  /**
    * Controls when the cache is flushed on cv change.
    *
    * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
@@ -135,6 +146,7 @@ export const createApiClient = <
     : createStrategy('cache-first');
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const cacheFlush = cache.flush ?? 'auto';
+  const cvMode = cache.cv ?? 'auto';
   let currentCv: number | undefined;
 
   const client: Client = createClient(
@@ -234,7 +246,7 @@ export const createApiClient = <
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
     cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
-    const query = currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
+    const query = cvMode === 'auto' && currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {

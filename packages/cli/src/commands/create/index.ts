@@ -1,4 +1,4 @@
-import { CommandError, handleError, isRegion, isVitest, konsola, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, isVitest, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands, type RegionCode, regions } from '../../constants';
 import { performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
@@ -12,34 +12,37 @@ import { createSpace, type SpaceCreate } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
+import { getUI } from '../../utils/ui';
+
+const ui = getUI({ enabled: true });
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
-  konsola.br();
-  konsola.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
-  konsola.br();
-  konsola.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
-  konsola.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+  ui.br();
+  ui.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
+  ui.br();
+  ui.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
+  ui.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
 }
 
 // Helper to handle interactive login prompt
 async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
   try {
-    konsola.br();
+    ui.br();
     const shouldLogin = await confirm({
       message: 'Would you like to login now?',
       default: true,
     });
 
     if (!shouldLogin) {
-      konsola.warn('Login cancelled. You can login later using the "storyblok login" command.');
+      ui.warn('Login cancelled. You can login later using the "storyblok login" command.');
       return null;
     }
 
     return await performInteractiveLogin({ verbose, showWelcomeMessage: true });
   }
   catch (error) {
-    konsola.br();
+    ui.br();
     handleError(error as Error, verbose);
     return null;
   }
@@ -61,7 +64,7 @@ export const createCommand = program
     `The region to apply to the generated project template (does not affect space creation).`,
   )
   .action(async (projectPath: string, options: CreateOptions) => {
-    konsola.title(`${commands.CREATE}`, colorPalette.CREATE);
+    ui.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
     // Command options - handle backward compatibility
@@ -74,11 +77,11 @@ export const createCommand = program
     // Handle deprecated blueprint option
     let selectedTemplate = template;
     if (blueprint && !template) {
-      konsola.warn(`The --blueprint flag is deprecated. Please use --template instead.`);
+      ui.warn(`The --blueprint flag is deprecated. Please use --template instead.`);
       selectedTemplate = blueprint;
     }
     else if (blueprint && template) {
-      konsola.warn(`Both --blueprint and --template provided. Using --template and ignoring --blueprint.`);
+      ui.warn(`Both --blueprint and --template provided. Using --template and ignoring --blueprint.`);
     }
 
     const { state, initializeSession } = session();
@@ -137,10 +140,10 @@ export const createCommand = program
       const templates = await fetchBlueprintRepositories();
       spinnerBlueprints.succeed('Starter templates fetched successfully');
 
-      if (!templates) {
+      if (templates.length === 0) {
         spinnerBlueprints.failed();
-        konsola.warn('No starter templates found. Please contact support@storyblok.com');
-        konsola.br();
+        ui.warn('No starter templates found. Please contact support@storyblok.com');
+        ui.br();
         return;
       }
 
@@ -151,8 +154,8 @@ export const createCommand = program
         const isValidTemplate = validTemplates.find(bp => bp.value === selectedTemplate);
         if (!isValidTemplate) {
           const validOptions = validTemplates.map(bp => bp.value).join(', ');
-          konsola.warn(`Invalid template "${chalk.hex(colorPalette.CREATE)(selectedTemplate)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`);
-          konsola.br();
+          ui.warn(`Invalid template "${chalk.hex(colorPalette.CREATE)(selectedTemplate)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`);
+          ui.br();
           // Reset template to show interactive selection
           technologyTemplate = undefined;
         }
@@ -194,12 +197,12 @@ export const createCommand = program
       const targetDirectory = dirname(resolvedPath);
       const projectName = basename(resolvedPath);
 
-      konsola.br();
-      konsola.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`);
+      ui.br();
+      ui.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`);
 
       // Generate the project from the template
       await generateProject(technologyTemplate!, projectName, targetDirectory);
-      konsola.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
+      ui.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
 
       // If token is provided, use it as the access token, skip space creation, and update env
       let createdSpace;
@@ -230,10 +233,10 @@ export const createCommand = program
           userData = user;
         }
         catch {
-          konsola.error('Failed to fetch user info. Your session may have expired.');
+          ui.error('Failed to fetch user info. Your session may have expired.');
           const loginResult = await promptForLogin(verbose);
           if (!loginResult) {
-            konsola.br();
+            ui.br();
             return;
           }
           // Re-initialize session and retry fetching user
@@ -247,8 +250,8 @@ export const createCommand = program
             userData = user;
           }
           catch (retryError) {
-            konsola.error('Failed to fetch user info after login.', retryError);
-            konsola.br();
+            ui.error('Failed to fetch user info after login.', retryError);
+            ui.br();
             return;
           }
         }
@@ -274,8 +277,8 @@ export const createCommand = program
           whereToCreateSpace = 'org';
         }
         if (region !== regions.EU && !userData.has_org) {
-          konsola.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
-          konsola.br();
+          ui.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+          ui.br();
           return;
         }
 
@@ -307,12 +310,12 @@ export const createCommand = program
         if (createdSpace?.id) {
           try {
             await openSpaceInBrowser(createdSpace.id, region!);
-            konsola.info(`Opened space in your browser`);
+            ui.info(`Opened space in your browser`);
           }
           catch (error) {
-            konsola.warn(`Failed to open browser: ${(error as Error).message}`);
+            ui.warn(`Failed to open browser: ${(error as Error).message}`);
             const spaceUrl = generateSpaceUrl(createdSpace.id, region!);
-            konsola.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
+            ui.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
           }
         }
 
@@ -320,19 +323,19 @@ export const createCommand = program
         showNextSteps(technologyTemplate!, finalProjectPath);
         if (createdSpace?.first_token) {
           if (whereToCreateSpace === 'org') {
-            konsola.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
+            ui.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else if (whereToCreateSpace === 'partner') {
-            konsola.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
+            ui.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
           else {
-            konsola.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
+            ui.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
           }
         }
       }
       catch (error) {
         spinnerSpace.failed();
-        konsola.br();
+        ui.br();
         handleError(error as Error, verbose);
         return;
       }
@@ -342,8 +345,8 @@ export const createCommand = program
     catch (error) {
       spinnerSpace.failed();
       spinnerBlueprints.failed();
-      konsola.br();
+      ui.br();
       handleError(error as Error, verbose);
     }
-    konsola.br();
+    ui.br();
   });

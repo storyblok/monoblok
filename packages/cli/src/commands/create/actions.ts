@@ -6,8 +6,14 @@ import { appDomains, type RegionCode } from '../../constants';
 import { FileSystemError, handleFileSystemError } from '../../utils/error/filesystem-error';
 import open from 'open';
 import { createOctokit } from '../../github';
-import { handleAPIError, konsola } from '../../utils';
-import type { DynamicTemplate } from './constants';
+import { type Template, templates } from './constants';
+import { getUI } from '../../utils/ui';
+
+const ui = getUI({ enabled: true });
+
+/** Repository item from GitHub search API response */
+type SearchReposResponse = Awaited<ReturnType<ReturnType<typeof createOctokit>['rest']['search']['repos']>>;
+type SearchRepoItem = SearchReposResponse['data']['items'][number];
 /**
  * Generates a new project from a Storyblok blueprint template
  * @param blueprint - The blueprint name (react, vue, svelte, etc.)
@@ -119,24 +125,24 @@ export async function handleEnvFileCreation(resolvedPath: string, token?: string
     envVars.STORYBLOK_REGION = region;
   }
   if (Object.keys(envVars).length === 0) {
-    konsola.info('No environment variables to write');
+    ui.info('No environment variables to write');
     return true;
   }
   try {
     await createEnvFile(resolvedPath, envVars);
     const writtenKeys = Object.keys(envVars).join(', ');
-    konsola.ok(`Created .env file with: ${writtenKeys}`, true);
+    ui.ok(`Created .env file with: ${writtenKeys}`, true);
     return true;
   }
   catch (error) {
-    konsola.warn(`Failed to create .env file: ${(error as Error).message}`);
+    ui.warn(`Failed to create .env file: ${(error as Error).message}`);
     if (token) {
-      konsola.info(
+      ui.info(
         `You can manually add STORYBLOK_DELIVERY_API_TOKEN to your .env file.`,
       );
     }
     if (region) {
-      konsola.info(
+      ui.info(
         `You can manually add STORYBLOK_REGION to your .env file.`,
       );
     }
@@ -197,25 +203,29 @@ export const extractPortFromTopics = (topics: string[]): string => {
 
 /**
  * Converts a GitHub repository to the format expected by the CLI
- * @param repo - GitHub repository data
+ * Uses static template name and location as priority if available
+ * @param repo - GitHub repository data from search API
  * @returns Formatted blueprint object
  */
-export const repositoryToTemplate = (repo: any): DynamicTemplate => {
+export const repositoryToTemplate = (repo: SearchRepoItem): Template => {
   const technology = repo.name.replace('blueprint-core-', '');
   const port = extractPortFromTopics(repo.topics || []);
+  const staticTemplate = templates[technology.toUpperCase() as keyof typeof templates];
 
   return {
-    name: technology.charAt(0).toUpperCase() + technology.slice(1),
+    // Prioritize static template name over derived name
+    name: staticTemplate?.name || technology.charAt(0).toUpperCase() + technology.slice(1),
     value: technology,
     template: repo.clone_url,
-    location: port ? `https://localhost:${port}/` : 'https://localhost:3000/',
+    // Prioritize static template location over topic-derived port
+    location: staticTemplate?.location || (port ? `https://localhost:${port}/` : 'https://localhost:3000/'),
     description: repo.description,
     updated_at: repo.updated_at,
     stars: repo.stargazers_count,
   };
 };
 
-export const fetchBlueprintRepositories = async () => {
+export const fetchBlueprintRepositories = async (): Promise<Template[]> => {
   try {
     const octokit = createOctokit();
 
@@ -235,8 +245,8 @@ export const fetchBlueprintRepositories = async () => {
 
     return blueprints;
   }
-  catch (error) {
-    // Fallback to hardcoded blueprints if GitHub search fails
-    handleAPIError('fetch_blueprints', error as Error, 'Failed to fetch blueprints from GitHub');
+  catch {
+    ui.warn('Failed to fetch blueprints from GitHub. Using offline template list.');
+    return Object.values(templates);
   }
 };

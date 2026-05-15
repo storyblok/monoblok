@@ -6,7 +6,6 @@ import open from 'open';
 import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
 
-// Mock external dependencies
 vi.mock('node:child_process');
 vi.mock('node:fs/promises', () => ({
   default: {
@@ -15,18 +14,19 @@ vi.mock('node:fs/promises', () => ({
 }));
 vi.mock('open');
 vi.mock('../../utils/filesystem');
-// Mock github module for fetchBlueprintRepositories tests
 vi.mock('../../github', () => ({
   createOctokit: vi.fn(),
 }));
-// Mock utils module for error handling and konsola
-vi.mock('../../utils', () => ({
-  handleAPIError: vi.fn(),
-  konsola: {
+const { mockedUI } = vi.hoisted(() => ({
+  mockedUI: {
     ok: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
   },
+}));
+
+vi.mock('../../utils/ui', () => ({
+  getUI: vi.fn(() => mockedUI),
 }));
 
 const mockedSpawn = vi.mocked(spawn);
@@ -36,10 +36,7 @@ const mockedFsAccess = vi.mocked(fs.access);
 
 // Import the mocked modules
 const { createOctokit } = await import('../../github');
-const { handleAPIError, konsola } = await import('../../utils');
 const mockedCreateOctokit = vi.mocked(createOctokit);
-const mockedHandleAPIError = vi.mocked(handleAPIError);
-const mockedKonsola = vi.mocked(konsola);
 
 describe('create actions', () => {
   beforeEach(() => {
@@ -49,16 +46,13 @@ describe('create actions', () => {
 
   describe('generateProject', () => {
     it('should generate project successfully when directory does not exist', async () => {
-      // Mock fs.access to throw ENOENT (directory doesn't exist)
       const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
       accessError.code = 'ENOENT';
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
-      // Mock successful spawn process
       const mockProcess = {
         on: vi.fn((event: string, callback: (code: number) => void) => {
           if (event === 'close') {
-            // Simulate successful completion
             setTimeout(() => callback(0), 0);
           }
         }),
@@ -79,7 +73,6 @@ describe('create actions', () => {
     });
 
     it('should throw FileSystemError when directory already exists', async () => {
-      // Mock fs.access to succeed (directory exists)
       mockedFsAccess.mockResolvedValueOnce(undefined);
 
       await expect(generateProject('vue', 'existing-project')).rejects.toThrow(
@@ -94,7 +87,6 @@ describe('create actions', () => {
     });
 
     it('should handle filesystem errors other than ENOENT', async () => {
-      // Mock fs.access to throw EACCES (permission denied)
       const accessError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
       accessError.code = 'EACCES';
       mockedFsAccess.mockRejectedValueOnce(accessError);
@@ -108,16 +100,13 @@ describe('create actions', () => {
     });
 
     it('should handle spawn process failure', async () => {
-      // Mock fs.access to throw ENOENT (directory doesn't exist)
       const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
       accessError.code = 'ENOENT';
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
-      // Mock failed spawn process
       const mockProcess = {
         on: vi.fn((event: string, callback: (code: number) => void) => {
           if (event === 'close') {
-            // Simulate failure
             setTimeout(() => callback(1), 0);
           }
         }),
@@ -130,12 +119,10 @@ describe('create actions', () => {
     });
 
     it('should handle spawn process error', async () => {
-      // Mock fs.access to throw ENOENT (directory doesn't exist)
       const accessError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
       accessError.code = 'ENOENT';
       mockedFsAccess.mockRejectedValueOnce(accessError);
 
-      // Mock spawn process error
       const mockProcess = {
         on: vi.fn((event: string, callback: (error: Error) => void) => {
           if (event === 'error') {
@@ -248,10 +235,7 @@ describe('create actions', () => {
         '/test/project/.env',
         expect.stringContaining('STORYBLOK_REGION=us'),
       );
-      expect(mockedKonsola.ok).toHaveBeenCalledWith(
-        expect.stringContaining('Created .env file with'),
-        true,
-      );
+      expect(mockedUI.ok).toHaveBeenCalledWith(expect.stringContaining('Created .env file with'), true);
     });
 
     it('should create .env file with only token', async () => {
@@ -264,7 +248,7 @@ describe('create actions', () => {
         '/test/project/.env',
         expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=test-token-456'),
       );
-      expect(mockedKonsola.ok).toHaveBeenCalledWith(
+      expect(mockedUI.ok).toHaveBeenCalledWith(
         expect.stringContaining('Created .env file with'),
         true,
       );
@@ -280,17 +264,14 @@ describe('create actions', () => {
         '/test/project/.env',
         expect.stringContaining('STORYBLOK_REGION=ap'),
       );
-      expect(mockedKonsola.ok).toHaveBeenCalledWith(
-        expect.stringContaining('Created .env file with'),
-        true,
-      );
+      expect(mockedUI.ok).toHaveBeenCalledWith(expect.stringContaining('Created .env file with'), true);
     });
 
     it('should return true and log info when no environment variables provided', async () => {
       const result = await handleEnvFileCreation('/test/project');
 
       expect(result).toBe(true);
-      expect(mockedKonsola.info).toHaveBeenCalledWith('No environment variables to write');
+      expect(mockedUI.info).toHaveBeenCalledWith('No environment variables to write');
       expect(mockedSaveToFile).not.toHaveBeenCalled();
     });
 
@@ -301,13 +282,13 @@ describe('create actions', () => {
       const result = await handleEnvFileCreation('/test/project', 'test-token-789', 'eu');
 
       expect(result).toBe(false);
-      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+      expect(mockedUI.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to create .env file: Permission denied'),
       );
-      expect(mockedKonsola.info).toHaveBeenCalledWith(
+      expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
       );
-      expect(mockedKonsola.info).toHaveBeenCalledWith(
+      expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_REGION'),
       );
     });
@@ -319,13 +300,13 @@ describe('create actions', () => {
       const result = await handleEnvFileCreation('/test/project', 'test-token');
 
       expect(result).toBe(false);
-      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+      expect(mockedUI.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to create .env file'),
       );
-      expect(mockedKonsola.info).toHaveBeenCalledWith(
+      expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
       );
-      expect(mockedKonsola.info).not.toHaveBeenCalledWith(
+      expect(mockedUI.info).not.toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_REGION'),
       );
     });
@@ -337,13 +318,13 @@ describe('create actions', () => {
       const result = await handleEnvFileCreation('/test/project', undefined, 'ca');
 
       expect(result).toBe(false);
-      expect(mockedKonsola.warn).toHaveBeenCalledWith(
+      expect(mockedUI.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to create .env file'),
       );
-      expect(mockedKonsola.info).not.toHaveBeenCalledWith(
+      expect(mockedUI.info).not.toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_DELIVERY_API_TOKEN'),
       );
-      expect(mockedKonsola.info).toHaveBeenCalledWith(
+      expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_REGION'),
       );
     });
@@ -406,25 +387,21 @@ describe('create actions', () => {
 
 describe('extractPortFromTopics', () => {
   it('should extract a valid port from topics', () => {
-    // This topic array contains a valid port topic
     const topics = ['foo', 'bar', 'port-8080', 'baz'];
     expect(extractPortFromTopics(topics)).toBe('8080');
   });
 
   it('should return default port if no port topic is found', () => {
-    // No port topic present, should fallback to 3000
     const topics = ['foo', 'bar', 'baz'];
     expect(extractPortFromTopics(topics)).toBe('3000');
   });
 
   it('should return default port if port is invalid', () => {
-    // Port topic is not a valid number
     const topics = ['port-abc', 'foo'];
     expect(extractPortFromTopics(topics)).toBe('3000');
   });
 
   it('should return default port if port is out of range', () => {
-    // Port is too high
     const topics = ['port-70000'];
     expect(extractPortFromTopics(topics)).toBe('3000');
   });
@@ -432,7 +409,6 @@ describe('extractPortFromTopics', () => {
 
 describe('repositoryToTemplate', () => {
   it('should convert a repo object to a DynamicTemplate', () => {
-    // Mock repo object with expected fields
     const repo = {
       name: 'blueprint-core-vue',
       topics: ['port-5173'],
@@ -440,7 +416,7 @@ describe('repositoryToTemplate', () => {
       description: 'A Vue starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const template = repositoryToTemplate(repo);
+    const template = repositoryToTemplate(repo as any);
     expect(template).toEqual({
       name: 'Vue',
       value: 'vue',
@@ -451,7 +427,19 @@ describe('repositoryToTemplate', () => {
     });
   });
 
-  it('should fallback to default port if no port topic', () => {
+  it('should fallback to default port if no port topic and no static template match', () => {
+    const repo = {
+      name: 'blueprint-core-unknown',
+      topics: [],
+      clone_url: 'https://github.com/storyblok/blueprint-core-unknown.git',
+      description: 'An unknown starter',
+      updated_at: '2024-01-01T00:00:00Z',
+    };
+    const template = repositoryToTemplate(repo as any);
+    expect(template.location).toBe('https://localhost:3000/');
+  });
+
+  it('should use static template location when available', () => {
     const repo = {
       name: 'blueprint-core-react',
       topics: [],
@@ -459,14 +447,13 @@ describe('repositoryToTemplate', () => {
       description: 'A React starter',
       updated_at: '2024-01-01T00:00:00Z',
     };
-    const template = repositoryToTemplate(repo);
-    expect(template.location).toBe('https://localhost:3000/');
+    const template = repositoryToTemplate(repo as any);
+    expect(template.location).toBe('https://localhost:5173/');
   });
 });
 
 describe('fetchBlueprintRepositories', () => {
   it('should fetch and map repositories to blueprints', async () => {
-    // Mock Octokit and its response
     const mockRepos = [
       {
         name: 'blueprint-core-vue',
@@ -484,7 +471,6 @@ describe('fetchBlueprintRepositories', () => {
         updated_at: '2024-01-02T00:00:00Z',
         stargazers_count: 75,
       },
-      // Should be filtered out - not a blueprint
       {
         name: 'not-a-blueprint',
         topics: [],
@@ -502,12 +488,10 @@ describe('fetchBlueprintRepositories', () => {
       },
     };
 
-    // Mock createOctokit to return our mockOctokit
     mockedCreateOctokit.mockReturnValue(mockOctokit as any);
 
     const blueprints = await fetchBlueprintRepositories();
 
-    // Verify GitHub API was called correctly
     expect(mockedCreateOctokit).toHaveBeenCalled();
     expect(mockOctokit.rest.search.repos).toHaveBeenCalledWith({
       q: 'org:storyblok blueprint-core-',
@@ -516,37 +500,45 @@ describe('fetchBlueprintRepositories', () => {
       per_page: 100,
     });
 
-    // Only blueprint-core-* repos should be mapped and sorted alphabetically
     expect(blueprints).toHaveLength(2);
     expect(blueprints?.[0]?.name).toBe('React');
     expect(blueprints?.[1]?.name).toBe('Vue');
 
-    // Verify blueprint structure
     expect(blueprints?.[0]).toEqual({
       name: 'React',
       value: 'react',
       template: 'https://github.com/storyblok/blueprint-core-react.git',
-      location: 'https://localhost:3000/',
+      location: 'https://localhost:5173/', // From static templates
       description: 'A React starter',
       updated_at: '2024-01-02T00:00:00Z',
       stars: 75,
     });
   });
 
-  it('should handle errors and call handleAPIError', async () => {
-    // Mock createOctokit to throw an error
+  it('should handle errors and call show warning', async () => {
     const octokitError = new Error('GitHub API error');
     mockedCreateOctokit.mockImplementation(() => {
       throw octokitError;
     });
 
     await fetchBlueprintRepositories();
-
-    // Verify error handling was called
-    expect(mockedHandleAPIError).toHaveBeenCalledWith(
-      'fetch_blueprints',
-      octokitError,
-      'Failed to fetch blueprints from GitHub',
+    expect(mockedUI.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to fetch blueprints from GitHub. Using offline template list.'),
     );
+  });
+
+  it('should return static templates as fallback when GitHub API fails', async () => {
+    const octokitError = new Error('GitHub API error');
+    mockedCreateOctokit.mockImplementation(() => {
+      throw octokitError;
+    });
+
+    const blueprints = await fetchBlueprintRepositories();
+
+    expect(blueprints).toBeDefined();
+    expect(blueprints.length).toBeGreaterThan(0);
+    expect(blueprints.some(bp => bp.value === 'react')).toBe(true);
+    expect(blueprints.some(bp => bp.value === 'vue')).toBe(true);
+    expect(blueprints.some(bp => bp.value === 'nuxt')).toBe(true);
   });
 });

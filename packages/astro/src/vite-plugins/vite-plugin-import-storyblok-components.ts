@@ -1,7 +1,7 @@
 import { normalizeAstroExtension } from '../utils/normalizeAstroExtension';
 import { normalizePath } from '../utils/normalizePath';
 import { toCamelCase } from '../utils/toCamelCase';
-import type { Plugin, ViteDevServer } from 'vite';
+import type { Plugin } from 'vite';
 
 // Virtual module identifiers for Vite's module system
 const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
@@ -18,28 +18,8 @@ export function vitePluginImportStoryblokComponents(
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
 ): Plugin {
-  let server: ViteDevServer | undefined;
-  let reloadTimer: ReturnType<typeof setTimeout> | undefined;
-
-  function triggerReload() {
-    if (!server) {
-      return;
-    }
-    clearTimeout(reloadTimer);
-    reloadTimer = setTimeout(() => {
-      server?.ws.send({
-        type: 'full-reload',
-      });
-    }, 50);
-  }
   return {
     name: 'vite-plugin-import-storyblok-components',
-    configureServer(viteServer) {
-      server = viteServer;
-      viteServer.httpServer?.once('close', () => {
-        clearTimeout(reloadTimer);
-      });
-    },
     /**
      * Resolves virtual module imports
      */
@@ -81,32 +61,6 @@ export function vitePluginImportStoryblokComponents(
 
       return moduleCode;
     },
-    handleHotUpdate(ctx) {
-      const filePath = ctx.file;
-      const isAstroFile = filePath.endsWith('.astro');
-      if (!isAstroFile) {
-        return;
-      }
-      const isInStoryblokFolder = filePath.includes('/storyblok/');
-      const registryFiles = Object.values(components);
-      const isRegistryMatch = registryFiles.some((componentPath) => {
-        const normalizedComponentPath = getComponentFullPath(componentsDir, componentPath);
-        return filePath.includes(normalizedComponentPath.replace(/\.\.\//g, ''));
-      });
-      let isFallbackMatch = false;
-      if (customFallbackComponent) {
-        const fallbackPath = getComponentFullPath(
-          componentsDir,
-          customFallbackComponent,
-        ).replace(/\.\.\//g, '');
-        isFallbackMatch = filePath.includes(fallbackPath);
-      }
-      if (!isInStoryblokFolder && !isRegistryMatch && !isFallbackMatch) {
-        return;
-      }
-      triggerReload();
-      return [];
-    },
   };
 }
 /**
@@ -136,22 +90,26 @@ function generateModuleCode(
     import { toCamelCase } from '@storyblok/astro';
 
     // Dynamically import all Storyblok components using Vite's glob import
-    const modules = import.meta.glob('${globPattern}');
+    const modules = import.meta.glob('${globPattern}', { eager: true });
     // Process imported modules into a components object
     const storyblokComponents = {};
+    const createComponentLoader = (module) => {
+      return async () => module?.default ?? module;
+    };
     for (const filePath in modules) {
       // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
-      const componentName = fileName?.replace(/\\.[^/.]+$/, '');
+      const name = fileName?.replace(/\\.[^/.]+$/, '');
 
-        if (componentName) {
+        if (name) {
           // Convert filename to camelCase for Storyblok component naming
-          const camelCaseName = toCamelCase(componentName);
+          const componentName = toCamelCase(name);
 
-          storyblokComponents[camelCaseName] = async () => {
-          const module = await modules[filePath]();
-          return module.default || module;
-        };
+          Object.defineProperty(storyblokComponents, componentName, {
+              enumerable: true,
+              configurable: true,
+              get: () => createComponentLoader(modules[filePath]),
+          });
       }
     }
     
@@ -186,18 +144,18 @@ async function resolveFallbackComponent(
       );
     }
 
-    return `
-      storyblokComponents['FallbackComponent'] = async () => {
-        const module = await import('${resolved.id}');
-        return module.default || module;
-      };`;
+    return createManualComponentDefinition('FallbackComponent', resolved.id);
   }
 
   return `
-    storyblokComponents['FallbackComponent'] = async () => {
-      const module = await import('@storyblok/astro/FallbackComponent.astro');
-      return module.default || module;
-    };`;
+      import FallbackComponent from '@storyblok/astro/FallbackComponent.astro';
+
+      Object.defineProperty(storyblokComponents, 'FallbackComponent', {
+      enumerable: true,
+      configurable: true,
+      get: () => createComponentLoader(FallbackComponentModule),
+    });
+    `;
 }
 /**
  * Resolves user-provided Storyblok components into import statements.
@@ -214,31 +172,25 @@ async function resolveUserComponents(
   componentsDir: string,
   enableFallback: boolean,
 ): Promise<string[]> {
-  const imports: string[] = [];
+  const resolvedComponents: string[] = [];
 
   for await (const [key, value] of Object.entries(components)) {
     const pathWithExt = getComponentFullPath(componentsDir, value);
-    const resolvedId = await ctx.resolve(pathWithExt);
+    const resolved = await ctx.resolve(pathWithExt);
 
-    if (!resolvedId) {
+    if (!resolved) {
       if (!enableFallback) {
         throw new Error(
           `Component could not be found for blok "${key}"! Does "${pathWithExt}" exist?`,
         );
       }
-    }
-    else {
-      const camelCaseName = toCamelCase(key);
-
-      imports.push(`
-      storyblokComponents['${camelCaseName}'] = async () => {
-        const module = await import('${resolvedId.id}');
-        return module.default || module;
-      };`);
-    }
+      continue;
+    };
+    const componentName = toCamelCase(key);
+    resolvedComponents.push(createManualComponentDefinition(componentName, resolved.id));
   }
 
-  return imports;
+  return resolvedComponents;
 }
 
 /**
@@ -264,4 +216,17 @@ function getComponentFullPath(
   const normalizedComponentsDir = normalizePath(componentsDir);
   const fullComponentPath = `${normalizedComponentsDir}${normalizePath(componentPath)}`;
   return normalizeAstroExtension(fullComponentPath);
+}
+function createManualComponentDefinition(
+  componentName: string,
+  importPath: string,
+): string {
+  return `
+    import ${componentName} from '${importPath}';
+    Object.defineProperty(storyblokComponents, '${componentName}', {
+      enumerable: true,
+      configurable: true,
+      get: () => createComponentLoader(${componentName}),
+    });
+`.trim();
 }

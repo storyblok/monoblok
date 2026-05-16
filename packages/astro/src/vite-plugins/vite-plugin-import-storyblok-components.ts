@@ -1,8 +1,11 @@
 import { normalizeAstroExtension } from '../utils/normalizeAstroExtension';
 import { normalizePath } from '../utils/normalizePath';
 import { toCamelCase } from '../utils/toCamelCase';
-import type { Plugin } from 'vite';
+import type { Plugin, ViteDevServer } from 'vite';
 
+// Virtual module identifiers for Vite's module system
+const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
+const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 /**
  * Vite plugin that automatically imports Storyblok components from a specified directory
  * and merges them with optional user-provided component mappings.
@@ -15,13 +18,28 @@ export function vitePluginImportStoryblokComponents(
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
 ): Plugin {
-  // Virtual module identifiers for Vite's module system
-  const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
-  const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
+  let server: ViteDevServer | undefined;
+  let reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
+  function triggerReload() {
+    if (!server) {
+      return;
+    }
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      server?.ws.send({
+        type: 'full-reload',
+      });
+    }, 50);
+  }
   return {
     name: 'vite-plugin-import-storyblok-components',
-
+    configureServer(viteServer) {
+      server = viteServer;
+      viteServer.httpServer?.once('close', () => {
+        clearTimeout(reloadTimer);
+      });
+    },
     /**
      * Resolves virtual module imports
      */
@@ -62,6 +80,32 @@ export function vitePluginImportStoryblokComponents(
       );
 
       return moduleCode;
+    },
+    handleHotUpdate(ctx) {
+      const filePath = ctx.file;
+      const isAstroFile = filePath.endsWith('.astro');
+      if (!isAstroFile) {
+        return;
+      }
+      const isInStoryblokFolder = filePath.includes('/storyblok/');
+      const registryFiles = Object.values(components);
+      const isRegistryMatch = registryFiles.some((componentPath) => {
+        const normalizedComponentPath = getComponentFullPath(componentsDir, componentPath);
+        return filePath.includes(normalizedComponentPath.replace(/\.\.\//g, ''));
+      });
+      let isFallbackMatch = false;
+      if (customFallbackComponent) {
+        const fallbackPath = getComponentFullPath(
+          componentsDir,
+          customFallbackComponent,
+        ).replace(/\.\.\//g, '');
+        isFallbackMatch = filePath.includes(fallbackPath);
+      }
+      if (!isInStoryblokFolder && !isRegistryMatch && !isFallbackMatch) {
+        return;
+      }
+      triggerReload();
+      return [];
     },
   };
 }

@@ -307,6 +307,17 @@ export class Storyblok {
     return this.throttleManager.execute(rateLimit, 'put', url, params, fetchOptions) as Promise<ISbResponseData>;
   }
 
+  public patch(
+    slug: string,
+    params: ISbStoriesParams | ISbContentMangmntAPI = {},
+    fetchOptions?: ISbCustomFetch,
+  ): Promise<ISbResponseData> {
+    const url = `/${slug}`;
+
+    const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
+    return this.throttleManager.execute(rateLimit, 'patch', url, params, fetchOptions) as Promise<ISbResponseData>;
+  }
+
   public delete(
     slug: string,
     params: ISbStoriesParams | ISbContentMangmntAPI = {},

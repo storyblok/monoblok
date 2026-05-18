@@ -80,6 +80,9 @@ Storyblok.post(`spaces/${spaceId}/stories`, {
 Storyblok.put(`spaces/${spaceId}/stories/1`, {
   story: { name: "xy", slug: "xy" },
 });
+Storyblok.patch(`spaces/${spaceId}/stories/1/experiments/select_winner`, {
+  winner_id: 42,
+});
 Storyblok.delete(`spaces/${spaceId}/stories/1`);
 ```
 
@@ -140,6 +143,8 @@ We added retro-compatibility when using `resolve_assets: 1` parameter under V2. 
   - (`oauthToken` String, optional - The personal access token you can find in your account at https://app.storyblok.com/#/me/account?tab=token. This is mandatory only if you are using the Management API.)
   - (`cache` Object, optional)
     - (`type` String, optional - `none` or `memory`)
+    - (`clear` String, optional - `auto`, `onpreview`, or `manual`. Default: `manual`)
+    - (`cv` String, optional - `auto` or `manual`. Default: `auto`. Controls content version tracking. See [CV management](#cv-management).)
   - (`responseInterceptor` Function, optional - You can pass a function and return the result. For security reasons, Storyblok client will deal only with the response interceptor.)
   - (`region` String, optional)
   - (`https` Boolean, optional)
@@ -164,6 +169,23 @@ let Storyblok = new StoryblokClient({
   cache: {
     clear: "auto",
     type: "memory",
+  },
+});
+```
+
+### CV management
+
+By default (`cv: 'auto'`), the client tracks the `cv` (content version) returned by the CDN API and automatically appends it to every subsequent published request, enabling cache invalidation across deployments.
+
+Set `cv: 'manual'` to opt out of this automatic tracking. This is useful in SSR/edge caching scenarios where appending a tracked `cv` would defeat CDN cache reuse, or when cache invalidation is handled externally via webhooks.
+
+```javascript
+let Storyblok = new StoryblokClient({
+  accessToken: <YOUR_SPACE_ACCESS_TOKEN>,
+  cache: {
+    clear: "auto",
+    type: "memory",
+    cv: "manual", // disable automatic cv tracking
   },
 });
 ```
@@ -307,7 +329,7 @@ window.storyblok.on('input', (event) => {
 
 ### Custom Fetch parameter
 
-You can now pass an aditional paramater to the following calls: `get`, `getAll`, `post`, `put`, `delete`, `getStory` and `getStories`. This parameter is optional and it is the same as the Fetch API [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request) parameter.
+You can now pass an aditional paramater to the following calls: `get`, `getAll`, `post`, `put`, `patch`, `delete`, `getStory` and `getStories`. This parameter is optional and it is the same as the Fetch API [RequestInit](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request) parameter.
 **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
 
 **Example**
@@ -449,6 +471,29 @@ Storyblok.put('spaces/<YOUR_SPACE_ID>/stories/1', {
 
 ```javascript
 Storyblok.delete('spaces/<YOUR_SPACE_ID>/stories/1')
+  .then((response) => {
+    console.log(response)
+  })
+  .catch((error) => {
+    console.log(error)
+  })
+```
+
+#### Method `Storyblok#patch` (only management api)
+
+**Parameters**
+
+- `[return]` Promise, Object `response`
+- `slug` String, _required_. Path to the Management API endpoint.
+- `params` Object, _optional_. Request body. Options can be found in the [API documentation](https://www.storyblok.com/docs/api/management/v1?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-js-client).
+- `fetchOptions` Object, _optional_, Fetch options can be found in the [Fetch API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch). **_It's important to note that we extended the `RequestInit` interface omitting the `method` parameter. This is because the method is already defined by the Storyblok client._**
+
+**Example**
+
+```javascript
+Storyblok.patch(`spaces/<YOUR_SPACE_ID>/stories/<STORY_ID>/experiments/select_winner`, {
+  winner_id: <VARIANT_ID>,
+})
   .then((response) => {
     console.log(response)
   })

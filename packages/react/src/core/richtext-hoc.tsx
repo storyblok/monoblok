@@ -1,4 +1,4 @@
-import type { PMMark, PMNode, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextImageOptions } from '@storyblok/richtext';
+import type { BaseSbRichTextProps, PMMark, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextImageOptions, SbRichTextProps, TextNode } from '@storyblok/richtext';
 import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
 import React, { type ComponentType, type ElementType, type ReactNode, useMemo } from 'react';
 
@@ -7,36 +7,28 @@ import React, { type ComponentType, type ElementType, type ReactNode, useMemo } 
  * Similar to SbRichTextProps but uses ReactNode for children instead of string.
  */
 export type SbReactRichTextProps<T extends SbRichTextElement> =
-  T extends PMNode['type']
-    ? Extract<PMNode, { type: T }> & { children?: ReactNode }
-    : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }> & { children?: ReactNode }
-      : never;
-
+  BaseSbRichTextProps<T, { children?: ReactNode }, { children?: ReactNode }>;
 /**
  * Type-safe component map for React richtext renderer
  */
-export type SBReactComponentMap = {
+export type SbReactComponentMap = {
   [K in SbRichTextElement]?: ComponentType<SbReactRichTextProps<K>>;
 };
 
 function resolveComponent<K extends SbRichTextElement>(
   type: K,
-  components?: SBReactComponentMap,
+  components?: SbReactComponentMap,
 ): ComponentType<SbReactRichTextProps<K>> | undefined {
   return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
 }
 interface RendererOptions {
   optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SBReactComponentMap;
-  StoryblokComponent?: ElementType;
+  components?: SbReactComponentMap;
 }
 
 export interface StoryblokRichtextProps extends RendererOptions {
   document: SbRichTextDoc | SbRichTextDoc[] | null | undefined;
 }
-
-type TextNode = PMNode & { type: 'text' };
 
 interface CreateRichTextHookOptions {
   isServerContext?: boolean;
@@ -46,8 +38,16 @@ export function createRichTextHook(StoryblokComponent: ElementType, _options?: C
   return function useRichText({ document, optimizeImage, components }: StoryblokRichtextProps) {
     const render = useStoryblokRichText({
       optimizeImage,
-      components,
-      StoryblokComponent,
+      components: {
+        ...components,
+        blok: ({ attrs }: SbRichTextProps<'blok'>) => (
+          <>
+            {Array.isArray(attrs?.body) && attrs?.body?.map((blok, index) => (
+              <StoryblokComponent blok={blok} key={blok._uid || index} />
+            ))}
+          </>
+        ),
+      },
     });
 
     return render(document);
@@ -147,22 +147,6 @@ function renderNode(node: SbRichTextDoc, options: RendererOptions, key: React.Ke
         {node.content ? renderChildren(node.content, options) : null}
       </Custom>
     );
-  }
-
-  // Blok node - render nested components
-  if (node.type === 'blok') {
-    const blokData = (node as PMNode & { type: 'blok' }).attrs?.body;
-    if (Array.isArray(blokData) && options.StoryblokComponent) {
-      const SbComponent = options.StoryblokComponent;
-      return (
-        <React.Fragment key={key}>
-          {blokData.map((blok, index) => (
-            <SbComponent blok={blok} key={blok._uid || index} />
-          ))}
-        </React.Fragment>
-      );
-    }
-    return null;
   }
 
   // Default element rendering

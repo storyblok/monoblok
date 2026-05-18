@@ -96,25 +96,24 @@ function generateModuleCode(
     const createComponentLoader = (module) => {
       return async () => module?.default ?? module;
     };
+    const registerComponent = (name, component) => {
+      Object.defineProperty(storyblokComponents, name, {
+        enumerable: true,
+        configurable: true,
+        get: () => createComponentLoader(component),
+      });
+    };
     for (const filePath in modules) {
       // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
-      const name = fileName?.replace(/\\.[^/.]+$/, '');
-
-        if (name) {
-          // Convert filename to camelCase for Storyblok component naming
-          const componentName = toCamelCase(name);
-
-          Object.defineProperty(storyblokComponents, componentName, {
-              enumerable: true,
-              configurable: true,
-              get: () => createComponentLoader(modules[filePath]),
-          });
+      const componentName = toCamelCase(fileName?.replace(/\.[^/.]+$/, '') ?? '');
+      if (componentName) {
+        registerComponent(componentName, modules[filePath]);
       }
     }
     
     // Manual components
-    ${manualImports.join('\n')}
+    ${manualImports.join('\n\n')}
     // Add fallback component if enabled
     ${fallbackImport}    
     // Export the components object for use in Storyblok initialization
@@ -131,31 +130,28 @@ async function resolveFallbackComponent(
   if (!enableFallbackComponent) {
     return '';
   }
-
-  if (customFallbackComponent) {
-    const customPath = getComponentFullPath(
-      componentsDir,
-      customFallbackComponent,
-    );
-    const resolved = await ctx.resolve(customPath);
-    if (!resolved) {
-      throw new Error(
-        `Custom fallback component could not be found. Does "${customPath}" exist?`,
-      );
-    }
-
-    return createManualComponentDefinition('FallbackComponent', resolved.id);
+  if (!customFallbackComponent) {
+    return createComponentRegistrationCode({
+      componentName: 'FallbackComponent',
+      importPath: '@storyblok/astro/FallbackComponent.astro',
+    });
   }
 
-  return `
-      import FallbackComponent from '@storyblok/astro/FallbackComponent.astro';
+  const componentPath = getComponentFullPath(
+    componentsDir,
+    customFallbackComponent,
+  );
+  const resolved = await ctx.resolve(componentPath);
+  if (!resolved) {
+    throw new Error(
+      `Custom fallback component could not be found. Does "${componentPath}" exist?`,
+    );
+  }
 
-      Object.defineProperty(storyblokComponents, 'FallbackComponent', {
-      enumerable: true,
-      configurable: true,
-      get: () => createComponentLoader(FallbackComponentModule),
-    });
-    `;
+  return createComponentRegistrationCode({
+    componentName: 'FallbackComponent',
+    importPath: resolved.id,
+  });
 }
 /**
  * Resolves user-provided Storyblok components into import statements.
@@ -174,22 +170,24 @@ async function resolveUserComponents(
 ): Promise<string[]> {
   const resolvedComponents: string[] = [];
 
-  for await (const [key, value] of Object.entries(components)) {
-    const pathWithExt = getComponentFullPath(componentsDir, value);
-    const resolved = await ctx.resolve(pathWithExt);
+  for (const [blokName, componentPath] of Object.entries(components)) {
+    const fullPath = getComponentFullPath(componentsDir, componentPath);
+    const resolved = await ctx.resolve(fullPath);
 
     if (!resolved) {
       if (!enableFallback) {
         throw new Error(
-          `Component could not be found for blok "${key}"! Does "${pathWithExt}" exist?`,
+          `Component could not be found for blok "${blokName}"! Does "${fullPath}" exist?`,
         );
       }
       continue;
     };
-    const componentName = toCamelCase(key);
-    resolvedComponents.push(createManualComponentDefinition(componentName, resolved.id));
+    const componentName = toCamelCase(blokName);
+    resolvedComponents.push(createComponentRegistrationCode({
+      componentName,
+      importPath: resolved.id,
+    }));
   }
-
   return resolvedComponents;
 }
 
@@ -217,16 +215,18 @@ function getComponentFullPath(
   const fullComponentPath = `${normalizedComponentsDir}${normalizePath(componentPath)}`;
   return normalizeAstroExtension(fullComponentPath);
 }
-function createManualComponentDefinition(
-  componentName: string,
-  importPath: string,
-): string {
+
+interface CreateComponentRegistrationCodeOptions {
+  componentName: string;
+  importPath: string;
+}
+
+function createComponentRegistrationCode({
+  componentName,
+  importPath,
+}: CreateComponentRegistrationCodeOptions): string {
   return `
-    import ${componentName} from '${importPath}';
-    Object.defineProperty(storyblokComponents, '${componentName}', {
-      enumerable: true,
-      configurable: true,
-      get: () => createComponentLoader(${componentName}),
-    });
+  import ${componentName} from '${importPath}';
+  registerComponent('${componentName}', ${componentName});
 `.trim();
 }

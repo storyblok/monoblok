@@ -1,7 +1,7 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
 import type { PMMark, PMNode } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
-import type { HtmlTag, SbRichTextComponents, SbRichTextElement } from './types';
+import type { HtmlTag, SbRichTextElement, SbRichTextRenderers } from './types';
 
 /**
  * Resolves a component from the provided components map based on the type.
@@ -20,8 +20,8 @@ export function resolveComponent<
   TComponent,
 >(
   type: K,
-  components?: SbRichTextComponents<TComponent>,
-): SbRichTextComponents<TComponent>[K] | undefined {
+  components?: SbRichTextRenderers<TComponent>,
+): SbRichTextRenderers<TComponent>[K] | undefined {
   return components?.[type];
 }
 

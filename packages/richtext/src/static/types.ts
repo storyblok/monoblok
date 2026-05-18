@@ -32,25 +32,35 @@ export interface RenderSpec {
 export type SbRichTextDoc = PMNode;
 export type TextNode = PMNode & { type: 'text' };
 
-/** Base props for node/mark components */
-export type SbRichTextProps<T extends SbRichTextElement> =
+type ResolveRichTextElement<T extends SbRichTextElement> =
   T extends PMNode['type']
     ? Extract<PMNode, { type: T }>
     : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }> & { children: string }
+      ? Extract<PMMark, { type: T }>
       : never;
 
-/** Generic component map for any renderer target */
-export type SbRichTextComponents<
-  TComponent = string,
-> = {
-  [K in SbRichTextElement]?: (
-    props: SbRichTextProps<K>
-  ) => TComponent;
-};
+export type BaseSbRichTextProps<
+  T extends SbRichTextElement,
+  ExtraNodeProps extends object = object,
+  ExtraMarkProps extends object = object,
+> =
+  T extends PMNode['type']
+    ? ResolveRichTextElement<T> & ExtraNodeProps
+    : T extends PMMark['type']
+      ? ResolveRichTextElement<T> & ExtraMarkProps
+      : never;
 
+/** Base props for node/mark components */
+export type SbRichTextProps<T extends SbRichTextElement> =
+  BaseSbRichTextProps<T, object, { children: string }>;
+
+/** Generic component map for any renderer target */
+
+export type SbRichTextRenderers<TOutput> = {
+  [K in SbRichTextElement]?: (props: SbRichTextProps<K>) => TOutput;
+};
 export interface SbRichTextOptions {
-  renderers?: SbRichTextComponents<string>;
+  renderers?: SbRichTextRenderers<string>;
   optimizeImages?: boolean | Partial<SbRichTextImageOptions>;
 }
 

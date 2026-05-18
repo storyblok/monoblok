@@ -109,8 +109,7 @@
     "@tiptap/suggestion": "^3.22.3",
     "emojibase": "^17.0.0",
     "happy-dom": "^20.8.8",
-    "markdown-it": "^14.1.0",
-    "storyblok-js-client": "workspace:*"
+    "markdown-it": "^14.1.0"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",

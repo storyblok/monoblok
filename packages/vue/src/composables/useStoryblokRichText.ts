@@ -1,12 +1,14 @@
-import type { Component, MaybeRefOrGetter, VNode } from 'vue';
+import type { Component, MaybeRefOrGetter, VNode, VNodeChild } from 'vue';
 import { computed, createTextVNode, h, toValue } from 'vue';
 import type {
+  BaseSbRichTextProps,
   PMMark,
-  PMNode,
   RenderSpec,
   SbRichTextDoc,
   SbRichTextElement,
   SbRichTextImageOptions,
+  SbRichTextProps,
+  TextNode,
 } from '@storyblok/richtext';
 import {
   buildStoryblokImage,
@@ -18,7 +20,6 @@ import {
   resolveTag,
   splitTableRows,
 } from '@storyblok/richtext';
-import StoryblokComponent from '../components/StoryblokComponent.vue';
 
 /**
  * Props type for Vue richtext node/mark components.
@@ -39,39 +40,38 @@ import StoryblokComponent from '../components/StoryblokComponent.vue';
  * </template>
  * ```
  */
-export type SbVueRichTextProps<T extends SbRichTextElement> =
-  T extends PMNode['type']
-    ? Extract<PMNode, { type: T }>
-    : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }>
-      : never;
-
+export type SbVueRichTextProps<
+  T extends SbRichTextElement,
+> = BaseSbRichTextProps<T>;
 /**
  * Type-safe component map for Vue richtext renderer.
  * Components receive node/mark props and content via the default slot.
  */
-export type SbVueComponentMap = {
-  [K in SbRichTextElement]?: Component<SbVueRichTextProps<K>>;
-};
 
+export type RichTextRenderer<TProps> =
+  | Component<TProps>
+  | ((props: TProps) => VNodeChild);
+
+export type SbVueRichTextComponents = {
+  [K in SbRichTextElement]?: RichTextRenderer<
+    SbVueRichTextProps<K>
+  >;
+};
 function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
-  components?: SbVueComponentMap,
+  components?: SbVueRichTextComponents,
 ): Component<SbVueRichTextProps<K>> | undefined {
   return components?.[type] as Component<SbVueRichTextProps<K>> | undefined;
 }
 
 export interface StoryblokRichTextRendererOptions {
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
-  components?: SbVueComponentMap;
-  StoryblokComponent?: Component;
+  components?: SbVueRichTextComponents;
 }
 
-export interface StoryblokRichtextProps extends StoryblokRichTextRendererOptions {
+export interface StoryblokRichTextProps extends StoryblokRichTextRendererOptions {
   document: MaybeRefOrGetter<SbRichTextDoc | SbRichTextDoc[] | null | undefined>;
 }
-
-type TextNode = PMNode & { type: 'text' };
 
 interface CreateRichTextHookOptions {
   isServerContext?: boolean;
@@ -84,11 +84,21 @@ export function createRichTextHook(
   StoryblokComp: Component,
   _options?: CreateRichTextHookOptions,
 ) {
-  return function useRichText({ document, optimizeImage, components }: StoryblokRichtextProps) {
+  return function useRichText({ document, optimizeImage, components }: StoryblokRichTextProps) {
     const render = useStoryblokRichText({
       optimizeImage,
-      components,
-      StoryblokComponent: StoryblokComp,
+      components: {
+        ...components,
+        blok: ({ attrs }: SbRichTextProps<'blok'>) =>
+          Array.isArray(attrs?.body)
+            ? attrs.body.map((blok, index) =>
+                h(StoryblokComp, {
+                  blok,
+                  key: blok._uid || index,
+                }),
+              )
+            : null,
+      },
     });
 
     return computed(() => render(toValue(document)));
@@ -100,10 +110,7 @@ export function createRichTextHook(
  * Returns a render function that converts rich text JSON to VNodes.
  */
 export function useStoryblokRichText(options: StoryblokRichTextRendererOptions = {}) {
-  return createStoryblokRenderer({
-    ...options,
-    StoryblokComponent: options.StoryblokComponent ?? StoryblokComponent,
-  });
+  return createStoryblokRenderer(options);
 }
 
 /**
@@ -191,21 +198,6 @@ function renderNode(node: SbRichTextDoc, options: StoryblokRichTextRendererOptio
   if (Custom) {
     const children = node.content ? renderChildren(node.content, options) : null;
     return h(Custom, { key, ...node }, children ? () => children : undefined);
-  }
-
-  // Blok node - render nested components
-  if (node.type === 'blok') {
-    const blokData = (node as PMNode & { type: 'blok' }).attrs?.body;
-    if (Array.isArray(blokData) && blokData.length > 0 && options.StoryblokComponent) {
-      const SbComp = options.StoryblokComponent;
-      const blokVNodes = blokData.map((blok, index) =>
-        h(SbComp, { blok, key: blok._uid || index }),
-      );
-      // Return single blok or wrap multiple in div
-      return blokVNodes.length === 1 ? blokVNodes[0] : h('div', { key }, blokVNodes);
-    }
-    // Return empty text node for empty blok
-    return createTextVNode('');
   }
 
   // Default element rendering

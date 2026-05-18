@@ -4,8 +4,14 @@
     "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "Node",
-    "types": ["vitest/globals"],
+    "types": [
+      "vitest/globals"
+    ],
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.ts", "src/**/*.test.ts"]
+  "include": [
+    "vite.config.ts",
+    "src/**/*.ts",
+    "src/**/*.vue"
+  ]
 }

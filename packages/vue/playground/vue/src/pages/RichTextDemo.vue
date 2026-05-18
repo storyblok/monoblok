@@ -25,5 +25,5 @@ setTimeout(() => {
 </script>
 
 <template>
-  <StoryblokRichText v-if="story?.content.richText" :doc="story?.content.richText" />
+  <StoryblokRichText v-if="story?.content.richText" :document="story?.content.richText" />
 </template>

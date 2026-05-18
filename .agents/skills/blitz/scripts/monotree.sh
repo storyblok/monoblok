@@ -10,8 +10,9 @@ set -euo pipefail
 #
 # Expects to be run from the monoblok root directory (or any subdirectory).
 
-# Resolve monoblok root (git toplevel)
-MONOBLOK_ROOT="$(git rev-parse --show-toplevel)"
+# Resolve monoblok root via the shared .git common dir so this works from any
+# location: main repo, worktree, or a subdirectory of either.
+MONOBLOK_ROOT="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)"
 
 add_worktree() {
   local name="$1"
@@ -100,12 +101,22 @@ remove_worktree() {
   # Copy claude-output artifacts back to the main repo
   if [ -d "$worktree_path/claude-output" ]; then
     mkdir -p "$MONOBLOK_ROOT/claude-output"
-    cp -r "$worktree_path/claude-output/." "$MONOBLOK_ROOT/claude-output/"
-    echo "Copied claude-output artifacts back to main repo"
+    src_dir=$(cd "$worktree_path/claude-output" && pwd)
+    dst_dir=$(cd "$MONOBLOK_ROOT/claude-output" && pwd)
+    if [ "$src_dir" != "$dst_dir" ]; then
+      cp -r "$worktree_path/claude-output/." "$MONOBLOK_ROOT/claude-output/"
+      echo "Copied claude-output artifacts back to main repo"
+    fi
   fi
 
+  # Look up the real branch name before the worktree is removed
+  local branch
+  branch=$(git -C "$worktree_path" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch="$name"
+
   git worktree remove --force "$worktree_path"
-  git branch -D "$name" 2>/dev/null || echo "Branch '$name' already deleted, skipping"
+  if [ -n "$branch" ] && [ "$branch" != "HEAD" ]; then
+    git branch -D "$branch" 2>/dev/null || echo "Branch '$branch' already deleted, skipping"
+  fi
 }
 
 list_worktrees() {

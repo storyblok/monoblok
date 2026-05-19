@@ -5,12 +5,14 @@ on:
       - "!**"
     branches:
       - "**"
+      - "!main"
 
 env:
   PNPM_CACHE_FOLDER: .pnpm-store
   HUSKY: 0 # Bypass husky commit hook for CI
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number }}
@@ -24,6 +26,8 @@ jobs:
         node-version: [20]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-node
       - name: Install dependencies

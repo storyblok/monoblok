@@ -3,6 +3,7 @@ const _METHOD = {
   DELETE: 'delete',
   POST: 'post',
   PUT: 'put',
+  PATCH: 'patch',
 } as const;
 
 type ObjectValues<T> = T[keyof T];

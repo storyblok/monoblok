@@ -68,6 +68,12 @@ class SbFetch {
     return this._methodHandler('put');
   }
 
+  public patch(url: string, params: ISbStoriesParams) {
+    this.url = url;
+    this.parameters = params;
+    return this._methodHandler('patch');
+  }
+
   public delete(url: string, params?: ISbStoriesParams) {
     this.url = url;
     this.parameters = params ?? {} as ISbStoriesParams;

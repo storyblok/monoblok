@@ -38,7 +38,7 @@ vi.mock('../src/sbFetch', () => {
 });
 
 describe('storyblokClient', () => {
-  let client;
+  let client: any;
 
   beforeEach(() => {
     // Setup default mocks
@@ -790,6 +790,27 @@ describe('storyblokClient', () => {
       expect(result).toEqual({
         data: {
           stories: [{ id: 1, title: 'Update' }],
+        },
+        headers: {},
+        status: 200,
+      });
+    });
+  });
+
+  describe('patch', () => {
+    it('should patch data to the API', async () => {
+      const mockExecute = vi.fn().mockResolvedValue({
+        data: {
+          story: { id: 1, title: 'Patch' },
+        },
+        headers: {},
+        status: 200,
+      });
+      client.throttleManager.execute = mockExecute;
+      const result = await client.patch('test', { data: 'test' });
+      expect(result).toEqual({
+        data: {
+          story: { id: 1, title: 'Patch' },
         },
         headers: {},
         status: 200,

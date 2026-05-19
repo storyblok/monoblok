@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ISbFetch } from './sbFetch';
 import SbFetch from './sbFetch';
 import { headersToObject } from '../tests/utils';
+import type { ISbStoriesParams } from './interfaces';
 
 describe('sbFetch', () => {
   let sbFetch: SbFetch;
@@ -95,6 +96,27 @@ describe('sbFetch', () => {
         'https://api.storyblok.com/v2/stories/1',
         {
           method: 'put',
+          body: JSON.stringify(testPayload),
+          headers: expect.any(Headers),
+          signal: expect.any(AbortSignal),
+        },
+      );
+    });
+  });
+
+  describe('patch', () => {
+    it('should handle PATCH requests correctly', async () => {
+      const testPayload = { winner_id: 42 } as ISbStoriesParams;
+      const response = new Response(JSON.stringify({ data: 'test' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      mockFetch.mockResolvedValue(response);
+      await sbFetch.patch('stories/1/experiments/select_winner', testPayload);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.storyblok.com/v2/stories/1/experiments/select_winner',
+        {
+          method: 'patch',
           body: JSON.stringify(testPayload),
           headers: expect.any(Headers),
           signal: expect.any(AbortSignal),

@@ -69,9 +69,9 @@ export class LivePreviewService {
       ...(options ?? {}),
     };
 
-    return onStoryblokEditorEvent((story) => {
+    return onStoryblokEditorEvent<Story>((story) => {
       this.ngZone.run(() => {
-        callback(story as Story);
+        callback(story);
       });
     }, mergedConfig);
   }

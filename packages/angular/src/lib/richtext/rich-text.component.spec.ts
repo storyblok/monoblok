@@ -13,7 +13,7 @@ import type { RichTextComponentProps } from '../types';
   standalone: true,
   imports: [SbRichTextComponent],
   template: `<div class="custom-node">
-    <sb-rich-text [sbDocument]="data()?.content" />
+    <sb-rich-text [sbDocument]="data().content" />
   </div>`,
 })
 class MockCustomParagraphComponent {

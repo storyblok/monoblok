@@ -58,7 +58,8 @@
     "svelte": "^5.0.0"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*"
+    "@storyblok/js": "workspace:*",
+    "@storyblok/richtext": "workspace:*"
   },
   "devDependencies": {
     "@cypress/svelte": "^3.0.0",

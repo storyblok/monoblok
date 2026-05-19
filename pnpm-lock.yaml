@@ -1312,6 +1312,9 @@ importers:
       '@storyblok/js':
         specifier: workspace:*
         version: link:../js
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../richtext
     devDependencies:
       '@cypress/svelte':
         specifier: ^3.0.0

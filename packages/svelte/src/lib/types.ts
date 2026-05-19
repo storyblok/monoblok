@@ -10,7 +10,6 @@ export interface SbSvelteSDKOptions extends SbSDKOptions {
 }
 
 export type {
-  BlockTypes,
   ISbAlternateObject,
   ISbCache,
   ISbConfig,
@@ -21,7 +20,6 @@ export type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
-  MarkTypes,
   SbBlokData,
   SbBlokKeyDataTypes,
   SbSDKOptions,
@@ -29,11 +27,5 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-  StoryblokRichTextDocumentNode,
-  StoryblokRichTextImageOptimizationOptions,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeTypes,
-  StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';

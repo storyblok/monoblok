@@ -9,9 +9,11 @@ export * from './types';
 export { isEditorRequest } from './utils/isEditorRequest';
 export { toCamelCase } from './utils/toCamelCase';
 export {
+  apiPlugin,
   loadStoryblokBridge,
-  renderRichText,
   storyblokEditable,
+  storyblokInit,
 } from '@storyblok/js';
 export { storyblokIntegration as storyblok };
-export { apiPlugin, storyblokInit } from '@storyblok/js';
+export type { SbRichTextDoc, SbRichTextOptions, SbRichTextProps, SbRichTextRenderers } from '@storyblok/richtext';
+export { buildStoryblokImage, renderRichText } from '@storyblok/richtext';

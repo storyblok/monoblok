@@ -116,6 +116,9 @@ importers:
       '@storyblok/js':
         specifier: workspace:*
         version: link:../js
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../richtext
       camelcase:
         specifier: ^8.0.0
         version: 8.0.0

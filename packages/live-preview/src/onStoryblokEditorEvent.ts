@@ -1,14 +1,15 @@
 import type { BridgeParams } from '@storyblok/preview-bridge';
-import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
-
 import { loadStoryblokBridge } from './loadStoryblokBridge';
 import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
 
 /**
+ * Base story type used internally.
+ */
+/**
  * Internal listener registry for Storyblok `input` events.
  * Each listener receives the updated story data from the Visual Editor.
  */
-const inputListeners = new Set<(story: ISbStoryData) => void>();
+const inputListeners = new Set<(story: unknown) => void>();
 
 /**
  * Tracks whether the Storyblok Preview Bridge event listeners
@@ -48,7 +49,7 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
 
       if (event.action === 'input' && event.story) {
         for (const listener of inputListeners) {
-          listener(event.story as ISbStoryData);
+          listener(event.story);
         }
         return;
       }
@@ -65,28 +66,15 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
 /**
  * Registers a callback for Storyblok Visual Editor live preview updates.
  *
- * This utility connects to the Storyblok Preview Bridge and listens
- * for Visual Editor events.
+ * The consumer provides the expected story type through the generic `T`.
  *
- * Behavior:
- * - **input** → Calls the provided callback with the updated story data.
- * - **change** → Reloads the page.
- * - **published** → Reloads the page.
- *
- * Multiple listeners can be registered simultaneously. Each call returns
- * a cleanup function that removes the registered listener.
- *
- * @typeParam T - The Storyblok component schema type.
+ * @typeParam T - Story type expected by the consumer.
  *
  * @param callback
  * Callback executed when the Visual Editor sends an `input` event.
  *
  * @param bridgeOptions
- * Optional configuration for the Storyblok Preview Bridge.
- * This configuration is applied **only during the first initialization**.
- *
- * @returns
- * A cleanup function that removes the registered listener.
+ * Optional configuration for the Preview Bridge.
  *
  * @example
  * ```ts
@@ -99,15 +87,15 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
  * ```
  */
 export async function onStoryblokEditorEvent<
-  T extends ISbComponentType<string> = ISbComponentType<string>,
+  T = unknown,
 >(
-  callback: (story: ISbStoryData<T>) => void,
+  callback: (story: T) => void,
   bridgeOptions?: BridgeParams,
 ): Promise<() => void> {
   await initializeBridge(bridgeOptions);
 
-  const listener = (story: ISbStoryData) => {
-    callback(story as ISbStoryData<T>);
+  const listener = (story: unknown) => {
+    callback(story as T);
   };
 
   inputListeners.add(listener);

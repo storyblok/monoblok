@@ -19,21 +19,20 @@
     "live-preview",
     "storyblok"
   ],
+  "sideEffects": false,
   "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    },
+    ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
+  "types": "./dist/index.d.mts",
   "files": [
     "dist"
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "scripts": {
     "build": "tsdown",
@@ -50,9 +49,7 @@
   "devDependencies": {
     "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^24.11.0",
-    "bumpp": "^10.4.1",
     "eslint": "^9.39.2",
-    "storyblok-js-client": "workspace:*",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"

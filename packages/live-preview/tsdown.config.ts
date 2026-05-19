@@ -1,10 +1,10 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  format: ['esm', 'cjs'],
+  format: ['esm'],
   exports: true,
   sourcemap: true,
   dts: true,
-  attw: true,
+  attw: false,
   publint: true,
 });

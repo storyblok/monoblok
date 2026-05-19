@@ -1,16 +1,17 @@
 ---
-import { renderRichText, storyblokEditable } from '@storyblok/astro';
+import { storyblokEditable } from '@storyblok/astro';
+import Heading from '../components/richtext/Heading.astro';
+import Bold from '../components/richtext/Bold.astro';
+import StoryblokRichText from '@storyblok/astro/StoryblokRichText.astro';
 
 const { blok } = Astro.props;
-
-const html = renderRichText(blok.text);
 ---
 
 <div {...storyblokEditable(blok)}>
   <h2 class="heading">
     {blok.headline}
   </h2>
-  <Fragment set:html={html} />
+  <StoryblokRichText document={blok?.text} components={{ heading: Heading, bold: Bold }} />
 </div>
 <style>
   .heading {

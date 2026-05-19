@@ -17,3 +17,6 @@ export {
 export { storyblokIntegration as storyblok };
 export type { SbRichTextDoc, SbRichTextOptions, SbRichTextProps, SbRichTextRenderers } from '@storyblok/richtext';
 export { buildStoryblokImage, renderRichText } from '@storyblok/richtext';
+
+// Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.
+export { type PMMark, processAttrs, resolveComponent, resolveTag, styleToString } from '@storyblok/richtext';

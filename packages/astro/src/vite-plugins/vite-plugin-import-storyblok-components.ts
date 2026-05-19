@@ -3,6 +3,9 @@ import { normalizePath } from '../utils/normalizePath';
 import { toCamelCase } from '../utils/toCamelCase';
 import type { Plugin } from 'vite';
 
+// Virtual module identifiers for Vite's module system
+const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
+const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 /**
  * Vite plugin that automatically imports Storyblok components from a specified directory
  * and merges them with optional user-provided component mappings.
@@ -15,13 +18,8 @@ export function vitePluginImportStoryblokComponents(
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
 ): Plugin {
-  // Virtual module identifiers for Vite's module system
-  const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
-  const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
-
   return {
     name: 'vite-plugin-import-storyblok-components',
-
     /**
      * Resolves virtual module imports
      */
@@ -92,27 +90,30 @@ function generateModuleCode(
     import { toCamelCase } from '@storyblok/astro';
 
     // Dynamically import all Storyblok components using Vite's glob import
-    const modules = import.meta.glob('${globPattern}');
+    const modules = import.meta.glob('${globPattern}', { eager: true });
     // Process imported modules into a components object
     const storyblokComponents = {};
+    const createComponentLoader = (module) => {
+      return async () => module?.default ?? module;
+    };
+    const registerComponent = (name, component) => {
+      Object.defineProperty(storyblokComponents, name, {
+        enumerable: true,
+        configurable: true,
+        get: () => createComponentLoader(component),
+      });
+    };
     for (const filePath in modules) {
       // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
-      const componentName = fileName?.replace(/\\.[^/.]+$/, '');
-
-        if (componentName) {
-          // Convert filename to camelCase for Storyblok component naming
-          const camelCaseName = toCamelCase(componentName);
-
-          storyblokComponents[camelCaseName] = async () => {
-          const module = await modules[filePath]();
-          return module.default || module;
-        };
+      const componentName = toCamelCase(fileName?.replace(/\.[^/.]+$/, '') ?? '');
+      if (componentName) {
+        registerComponent(componentName, modules[filePath]);
       }
     }
     
     // Manual components
-    ${manualImports.join('\n')}
+    ${manualImports.join('\n\n')}
     // Add fallback component if enabled
     ${fallbackImport}    
     // Export the components object for use in Storyblok initialization
@@ -129,31 +130,28 @@ async function resolveFallbackComponent(
   if (!enableFallbackComponent) {
     return '';
   }
-
-  if (customFallbackComponent) {
-    const customPath = getComponentFullPath(
-      componentsDir,
-      customFallbackComponent,
-    );
-    const resolved = await ctx.resolve(customPath);
-    if (!resolved) {
-      throw new Error(
-        `Custom fallback component could not be found. Does "${customPath}" exist?`,
-      );
-    }
-
-    return `
-      storyblokComponents['FallbackComponent'] = async () => {
-        const module = await import('${resolved.id}');
-        return module.default || module;
-      };`;
+  if (!customFallbackComponent) {
+    return createComponentRegistrationCode({
+      componentName: 'FallbackComponent',
+      importPath: '@storyblok/astro/FallbackComponent.astro',
+    });
   }
 
-  return `
-    storyblokComponents['FallbackComponent'] = async () => {
-      const module = await import('@storyblok/astro/FallbackComponent.astro');
-      return module.default || module;
-    };`;
+  const componentPath = getComponentFullPath(
+    componentsDir,
+    customFallbackComponent,
+  );
+  const resolved = await ctx.resolve(componentPath);
+  if (!resolved) {
+    throw new Error(
+      `Custom fallback component could not be found. Does "${componentPath}" exist?`,
+    );
+  }
+
+  return createComponentRegistrationCode({
+    componentName: 'FallbackComponent',
+    importPath: resolved.id,
+  });
 }
 /**
  * Resolves user-provided Storyblok components into import statements.
@@ -170,31 +168,27 @@ async function resolveUserComponents(
   componentsDir: string,
   enableFallback: boolean,
 ): Promise<string[]> {
-  const imports: string[] = [];
+  const resolvedComponents: string[] = [];
 
-  for await (const [key, value] of Object.entries(components)) {
-    const pathWithExt = getComponentFullPath(componentsDir, value);
-    const resolvedId = await ctx.resolve(pathWithExt);
+  for (const [blokName, componentPath] of Object.entries(components)) {
+    const fullPath = getComponentFullPath(componentsDir, componentPath);
+    const resolved = await ctx.resolve(fullPath);
 
-    if (!resolvedId) {
+    if (!resolved) {
       if (!enableFallback) {
         throw new Error(
-          `Component could not be found for blok "${key}"! Does "${pathWithExt}" exist?`,
+          `Component could not be found for blok "${blokName}"! Does "${fullPath}" exist?`,
         );
       }
-    }
-    else {
-      const camelCaseName = toCamelCase(key);
-
-      imports.push(`
-      storyblokComponents['${camelCaseName}'] = async () => {
-        const module = await import('${resolvedId.id}');
-        return module.default || module;
-      };`);
-    }
+      continue;
+    };
+    const componentName = toCamelCase(blokName);
+    resolvedComponents.push(createComponentRegistrationCode({
+      componentName,
+      importPath: resolved.id,
+    }));
   }
-
-  return imports;
+  return resolvedComponents;
 }
 
 /**
@@ -220,4 +214,19 @@ function getComponentFullPath(
   const normalizedComponentsDir = normalizePath(componentsDir);
   const fullComponentPath = `${normalizedComponentsDir}${normalizePath(componentPath)}`;
   return normalizeAstroExtension(fullComponentPath);
+}
+
+interface CreateComponentRegistrationCodeOptions {
+  componentName: string;
+  importPath: string;
+}
+
+function createComponentRegistrationCode({
+  componentName,
+  importPath,
+}: CreateComponentRegistrationCodeOptions): string {
+  return `
+  import ${componentName} from '${importPath}';
+  registerComponent('${componentName}', ${componentName});
+`.trim();
 }

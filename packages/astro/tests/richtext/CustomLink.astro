@@ -1,0 +1,11 @@
+---
+import type { SbRichTextProps } from '../../src/index';
+
+type Props = SbRichTextProps<'link'>;
+
+const { attrs } = Astro.props;
+
+const href = attrs?.anchor ? `${attrs.href}#${attrs.anchor}` : (attrs?.href ?? '');
+---
+
+<a data-type="custom-link" href={href} target={attrs?.target ?? '_self'}><slot /></a>

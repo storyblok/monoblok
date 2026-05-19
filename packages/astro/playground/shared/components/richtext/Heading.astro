@@ -1,0 +1,11 @@
+---
+import type { SbRichTextProps } from '@storyblok/astro';
+
+type Props = SbRichTextProps<'heading'>;
+
+const { attrs } = Astro.props;
+---
+
+<p data-level={attrs?.level}>
+  <slot />
+</p>

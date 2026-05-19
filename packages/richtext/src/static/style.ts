@@ -1,5 +1,3 @@
-import type { AttrValue } from './types';
-
 /**
  * Converts a style object to a CSS string.
  * @param style - The style object to convert.
@@ -10,7 +8,7 @@ import type { AttrValue } from './types';
  * console.log(cssString); // Output: "color: red; font-size: 16px"
  */
 export function styleToString(
-  style: Record<string, AttrValue>,
+  style: Record<string, unknown>,
 ) {
   return Object.entries(style)
     .filter(([, value]) => isValidStyleValue(value))

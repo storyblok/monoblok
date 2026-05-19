@@ -1,6 +1,6 @@
 import { NODE_RENDER_MAP } from './render-map.generated';
 import { isValidStyleValue, stringToStyle } from './style';
-import type { AttrValue, SbRichTextElement } from './types';
+import type { SbRichTextElement } from './types';
 
 type StyleMap = Partial<{
   [K in SbRichTextElement]: Record<string, string>;
@@ -86,8 +86,8 @@ function resolveStoryblokLinkHref(attrs: Record<string, unknown>): string | unde
  */
 function getStaticAttrsFromRenderMap(
   type: SbRichTextElement,
-): { staticAttrs: Record<string, unknown>; staticStyle: Record<string, AttrValue> } {
-  const staticStyle: Record<string, AttrValue> = {};
+): { staticAttrs: Record<string, unknown>; staticStyle: Record<string, unknown> } {
+  const staticStyle: Record<string, unknown> = {};
   let staticAttrs: Record<string, unknown> = {};
 
   if (!(type in NODE_RENDER_MAP)) {
@@ -118,7 +118,7 @@ function getStaticAttrsFromRenderMap(
  * Converts an attribute value to a CSS value based on the style map.
  * Handles arrays (e.g., colwidth) and primitive values.
  */
-function convertToStyleValue(value: unknown): AttrValue | undefined {
+function convertToStyleValue(value: unknown): unknown | undefined {
   if (Array.isArray(value)) {
     return value[0] != null ? `${value[0]}px` : undefined;
   }
@@ -139,7 +139,7 @@ function processAttribute(
   type: SbRichTextElement,
   styleMap: Record<string, string>,
   attrMap: AttrMap,
-  style: Record<string, AttrValue>,
+  style: Record<string, unknown>,
   rest: Record<string, unknown>,
 ): void {
   if (!isValidStyleValue(value) || EXCLUDED_ATTRS.has(key)) {
@@ -201,7 +201,7 @@ export function processAttrs(
   extendAttrMap: AttrMap = {},
 ): Record<string, unknown> {
   const { staticAttrs, staticStyle } = getStaticAttrsFromRenderMap(type);
-  const style: Record<string, AttrValue> = { ...staticStyle };
+  const style: Record<string, unknown> = { ...staticStyle };
   const rest: Record<string, unknown> = {};
 
   const styleMap = STYLE_MAP[type] || {};

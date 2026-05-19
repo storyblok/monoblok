@@ -3,8 +3,6 @@ import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.gen
 
 export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
 
-/** Valid attribute values for DOM elements */
-export type AttrValue = string | number | boolean;
 export type HtmlTag = keyof HTMLElementTagNameMap;
 
 interface ISbComponentType<T extends string> {
@@ -20,7 +18,7 @@ export interface SbBlokData extends ISbComponentType<string> {
 
 export interface RenderSpec {
   tag: string;
-  attrs?: Record<string, AttrValue> & {
+  attrs?: Record<string, unknown> & {
     style?: string;
   };
   content?: boolean;

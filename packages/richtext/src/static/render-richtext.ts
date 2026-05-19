@@ -3,7 +3,7 @@ import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
 import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
-import type { AttrValue, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, TextNode } from './types';
+import type { RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, TextNode } from './types';
 import type { PMMark } from './types.generated';
 import { getStaticChildren, isSelfClosing, resolveTag } from './util';
 
@@ -294,13 +294,13 @@ function renderStaticStructure(
 }
 
 /** Builds HTML attribute string from node/mark type and attrs. */
-function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> | undefined): string {
+export function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> | undefined): string {
   const processed = processAttrs(type, attrs, {
     colspan: 'colspan',
     rowspan: 'rowspan',
   });
 
-  const styleObj = processed.style as Record<string, AttrValue> | undefined;
+  const styleObj = processed.style as Record<string, unknown> | undefined;
   const finalAttrs: Record<string, unknown> = { ...processed };
 
   if (styleObj) {

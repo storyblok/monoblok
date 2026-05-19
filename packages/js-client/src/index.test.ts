@@ -1,5 +1,5 @@
 import StoryblokClient from '.';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ResponseFn } from './sbFetch';
 import SbFetch from './sbFetch';
 import type { ISbLink, ISbStoryData } from './interfaces';
@@ -130,6 +130,13 @@ describe('storyblokClient', () => {
 
       expect(client.retriesDelay).toBe(1000);
     });
+    it('should respect retriesDelay of 0', () => {
+      client = new StoryblokClient({
+        retriesDelay: 0,
+      });
+
+      expect(client.retriesDelay).toBe(0);
+    });
     // TODO: seems like implmentation is missing
     it.skip('should desactivate resolveNestedRelations', () => {
       client = new StoryblokClient({
@@ -226,6 +233,76 @@ describe('storyblokClient', () => {
     it('should clear the cache version', async () => {
       client.clearCacheVersion('test-token');
       expect(client.cacheVersion()).toEqual(0);
+    });
+  });
+
+  describe('retry behaviour on 429', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should retry the request after a 429 using the configured retriesDelay', async () => {
+      client = new StoryblokClient({
+        retriesDelay: 500,
+        maxRetries: 3,
+      });
+
+      const mockGet = vi.fn()
+        .mockRejectedValueOnce({
+          status: 429,
+          statusText: 'Too Many Requests',
+          response: {},
+        })
+        .mockResolvedValueOnce({
+          data: { story: { id: 1 } },
+          headers: {},
+          status: 200,
+        });
+
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+        baseURL: 'https://api.storyblok.com/v2',
+      };
+
+      const promise = client.cacheResponse('/cdn/stories', { token: 'test-token' });
+      await vi.advanceTimersByTimeAsync(500);
+
+      await expect(promise).resolves.toMatchObject({ data: { story: { id: 1 } } });
+      expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('should give up after maxRetries 429 responses', async () => {
+      client = new StoryblokClient({
+        retriesDelay: 10,
+        maxRetries: 2,
+      });
+
+      const mockGet = vi.fn().mockRejectedValue({
+        status: 429,
+        statusText: 'Too Many Requests',
+        response: {},
+      });
+
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+        baseURL: 'https://api.storyblok.com/v2',
+      };
+
+      const promise = client.cacheResponse('/cdn/stories', { token: 'test-token' });
+      const assertion = expect(promise).rejects.toMatchObject({ status: 429 });
+      await vi.advanceTimersByTimeAsync(100);
+      await assertion;
+
+      // Initial call + 2 retries = 3 total
+      expect(mockGet).toHaveBeenCalledTimes(3);
     });
   });
 

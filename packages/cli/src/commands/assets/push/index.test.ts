@@ -206,7 +206,7 @@ const preconditions = {
       )),
     );
   },
-  hasTargetAssetInternalTags(tags: Array<{ id: number; name: string }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
+  hasAssetInternalTags(tags: Array<{ id: number; name: string }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, () => HttpResponse.json(
         { internal_tags: tags },
@@ -1418,7 +1418,11 @@ describe('assets push command', () => {
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
-    preconditions.hasTargetAssetInternalTags(
+    preconditions.hasAssetInternalTags(
+      [{ id: sourceTagId, name: 'shared-tag' }],
+      { space: DEFAULT_SPACE },
+    );
+    preconditions.hasAssetInternalTags(
       [{ id: targetTagId, name: 'shared-tag' }],
       { space: targetSpace },
     );
@@ -1460,7 +1464,11 @@ describe('assets push command', () => {
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
-    preconditions.hasTargetAssetInternalTags([], { space: targetSpace });
+    preconditions.hasAssetInternalTags(
+      [{ id: sourceTagId, name: 'missing-tag' }],
+      { space: DEFAULT_SPACE },
+    );
+    preconditions.hasAssetInternalTags([], { space: targetSpace });
     preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);

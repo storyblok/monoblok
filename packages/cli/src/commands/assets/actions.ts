@@ -4,7 +4,7 @@ import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsMap, AssetListQuery, AssetUpdate, AssetUpload } from './types';
 
 export interface AssetInternalTag {
   id: number;
@@ -66,6 +66,40 @@ export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInte
   catch (maybeError) {
     handleAPIError('pull_asset_internal_tags', toError(maybeError));
   }
+};
+
+/**
+ * Builds the source→target `AssetInternalTagsMap` for `assets push` (WDX-332).
+ *
+ * Fetches tags from both spaces and joins them by name so source-space tag IDs
+ * carried in pulled sidecars can be translated to target-space IDs. Also returns
+ * `sourceNamesById` so the command layer can produce helpful warnings for tag
+ * names absent from the target space.
+ *
+ * When source and target are the same space, returns an identity map and skips
+ * the redundant second fetch.
+ */
+export const scanAssetInternalTagsMap = async (
+  fromSpace: string,
+  targetSpace: string,
+): Promise<{ map: AssetInternalTagsMap; sourceNamesById: ReadonlyMap<number, string> }> => {
+  const sourceTags = await fetchAssetInternalTags(fromSpace);
+  const sourceNamesById = new Map(sourceTags.map(tag => [tag.id, tag.name]));
+
+  if (fromSpace === targetSpace) {
+    return { map: new Map(sourceTags.map(tag => [tag.id, tag.id])), sourceNamesById };
+  }
+
+  const targetTags = await fetchAssetInternalTags(targetSpace);
+  const targetByName = new Map(targetTags.map(tag => [tag.name, tag.id]));
+  const map = new Map<number, number>();
+  for (const tag of sourceTags) {
+    const targetId = targetByName.get(tag.name);
+    if (typeof targetId === 'number') {
+      map.set(tag.id, targetId);
+    }
+  }
+  return { map, sourceNamesById };
 };
 
 export const downloadFile = async (filename: string) => {

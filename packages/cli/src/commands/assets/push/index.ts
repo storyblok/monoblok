@@ -18,11 +18,10 @@ import {
   makeCreateAssetFolderAPITransport,
   makeGetAssetAPITransport,
   makeGetAssetFolderAPITransport,
-  makeMapInternalTagIdsTransport,
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
-import { fetchAssetInternalTags } from '../actions';
+import { scanAssetInternalTagsMap } from '../actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpload } from '../types';
 import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
@@ -155,41 +154,37 @@ pushCmd
         ? makeCleanupAssetFSTransport()
         : () => Promise.resolve();
 
-      // Build a target-space tag name → id map so that source-space tag IDs in
-      // pulled sidecars are translated to the matching target-space IDs by name
-      // (WDX-332). Tag names that do not exist in target are dropped + warned.
-      const targetAssetInternalTags = await fetchAssetInternalTags(targetSpace);
-      const targetTagNameToId = new Map<string, number>(
-        targetAssetInternalTags.map(tag => [tag.name, tag.id]),
-      );
-      const unmappedTagNames = new Set<string>();
-      const mapInternalTagIdsTransport = makeMapInternalTagIdsTransport(
-        targetTagNameToId,
-        (name) => { unmappedTagNames.add(name); },
-      );
+      // Build a source→target asset internal tag id map so source-space ids in
+      // pulled sidecars are translated to the matching target-space ids
+      // (WDX-332). Source ids without a name match in target are dropped and
+      // surfaced via a single aggregated warning after the pipeline.
+      const { map: assetInternalTags, sourceNamesById } = await scanAssetInternalTagsMap(fromSpace, targetSpace);
+      const unmappedTagIds = new Set<number>();
+      const onUnmappedTag = (sourceId: number) => { unmappedTagIds.add(sourceId); };
 
       summaries.push(...await upsertAssetsPipeline({
         assetBinaryPath,
         assetData,
         directoryPath: assetsDirectoryPath,
         logger,
-        maps,
+        maps: { ...maps, assetInternalTags },
         transports: {
           getAsset: getAssetTransport,
           createAsset: createAssetTransport,
           updateAsset: updateAssetTransport,
           appendAssetManifest: assetManifestTransport,
           cleanupAsset: cleanupAssetTransport,
-          mapInternalTagIds: mapInternalTagIdsTransport,
         },
         ui,
+        onUnmappedTag,
       }));
 
-      if (unmappedTagNames.size > 0) {
-        const names = [...unmappedTagNames].sort();
-        const message = `Dropped ${names.length} unknown internal asset tag${names.length === 1 ? '' : 's'} not present in target space: ${names.join(', ')}`;
+      if (unmappedTagIds.size > 0) {
+        const sortedIds = [...unmappedTagIds].sort((a, b) => a - b);
+        const labels = sortedIds.map(id => sourceNamesById.get(id) ?? `#${id}`);
+        const message = `Dropped ${labels.length} unknown internal asset tag${labels.length === 1 ? '' : 's'} not present in target space: ${labels.join(', ')}`;
         ui.warn(message);
-        logger.warn(message, { unmappedTagNames: names });
+        logger.warn(message, { unmappedTagIds: sortedIds });
       }
 
       /**

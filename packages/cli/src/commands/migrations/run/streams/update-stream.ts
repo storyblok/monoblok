@@ -5,7 +5,7 @@ import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../lib/logger/logger';
-import { createConcurrencyLock } from '../../../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../../../utils/concurrency';
 import { ERROR_CODES } from '../constants';
 import { toError } from '../../../../utils/error';
 
@@ -42,7 +42,7 @@ export class UpdateStream extends Writable {
       totalProcessed: 0,
     };
 
-    this.semaphore = createConcurrencyLock();
+    this.semaphore = createPipelineBackpressureLock();
   }
 
   async _write(chunk: { storyId: number; name: string | undefined; content: StoryContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {

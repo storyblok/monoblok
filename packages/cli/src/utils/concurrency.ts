@@ -1,10 +1,13 @@
 import { Sema } from 'async-sema';
 import { getActiveConfig } from '../lib/config';
 
-// Default used when rateLimit is disabled (<=0) or unset
-const DEFAULT_CONCURRENCY = 12;
+// 2× the per-second rate limit so the pipeline always has work queued for the
+// next API window without over-loading memory.
+const PIPELINE_BACKPRESSURE_MULTIPLIER = 2;
+const DEFAULT_PIPELINE_BACKPRESSURE = 12;
 
-export function createConcurrencyLock(limit?: number): Sema {
-  const n = limit ?? getActiveConfig().api.rateLimit;
-  return new Sema(n > 0 ? n : DEFAULT_CONCURRENCY);
+export function createPipelineBackpressureLock(limit?: number): Sema {
+  const rateLimit = getActiveConfig().api.rateLimit;
+  const n = limit ?? (rateLimit > 0 ? rateLimit * PIPELINE_BACKPRESSURE_MULTIPLIER : DEFAULT_PIPELINE_BACKPRESSURE);
+  return new Sema(n);
 }

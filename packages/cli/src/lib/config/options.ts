@@ -33,7 +33,7 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
   },
   {
     flags: '--api-rate-limit <number>',
-    description: 'Maximum number of concurrent HTTP requests the CLI executes against the API',
+    description: 'Maximum MAPI requests per second (default: 6)',
     defaultValue: DEFAULT_GLOBAL_CONFIG.api.rateLimit,
     parser: parseNumber,
   },

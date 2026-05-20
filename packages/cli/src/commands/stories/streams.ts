@@ -7,16 +7,16 @@ import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry,
 import { normalizeFullSlug } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
-import { createConcurrencyLock } from '../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../utils/concurrency';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 
-let _apiConcurrencyLock: Sema | null = null;
-const getApiConcurrencyLock = (): Sema => {
-  if (!_apiConcurrencyLock) {
-    _apiConcurrencyLock = createConcurrencyLock();
+let _pipelineSlot: Sema | null = null;
+const getPipelineSlot = (): Sema => {
+  if (!_pipelineSlot) {
+    _pipelineSlot = createPipelineBackpressureLock();
   }
-  return _apiConcurrencyLock;
+  return _pipelineSlot;
 };
 
 export const fetchStoriesStream = ({
@@ -99,7 +99,7 @@ export const fetchStoryStream = ({
     objectMode: true,
     async transform(listStory: Story, _encoding, callback) {
       // Wait for a slot
-      await getApiConcurrencyLock().acquire();
+      await getPipelineSlot().acquire();
 
       const task = fetchStory(spaceId, listStory.id.toString())
         .then((story) => {
@@ -114,7 +114,7 @@ export const fetchStoryStream = ({
         })
         .finally(() => {
           onIncrement?.();
-          getApiConcurrencyLock().release();
+          getPipelineSlot().release();
           processing.delete(task);
         });
       processing.add(task);
@@ -364,7 +364,7 @@ export const createStoriesForLevel = async ({
   onStoryError?: (error: Error, entry: StoryIndexEntry) => void;
 }): Promise<void> => {
   const processEntry = async (entry: StoryIndexEntry) => {
-    await getApiConcurrencyLock().acquire();
+    await getPipelineSlot().acquire();
     try {
       // Primary: check manifest mapping (from a previous push).
       const mappedStoryId = maps.stories?.get(entry.id);
@@ -434,7 +434,7 @@ export const createStoriesForLevel = async ({
       onStoryError?.(toError(maybeError), entry);
     }
     finally {
-      getApiConcurrencyLock().release();
+      getPipelineSlot().release();
     }
   };
 
@@ -526,7 +526,7 @@ export const writeStoryStream = ({
   return new Writable({
     objectMode: true,
     async write(mappedLocalStory: Story, _encoding, callback) {
-      await getApiConcurrencyLock().acquire();
+      await getPipelineSlot().acquire();
 
       const task = (async () => {
         try {
@@ -543,7 +543,7 @@ export const writeStoryStream = ({
       processing.add(task);
       task.finally(() => {
         onIncrement?.();
-        getApiConcurrencyLock().release();
+        getPipelineSlot().release();
         processing.delete(task);
       });
 

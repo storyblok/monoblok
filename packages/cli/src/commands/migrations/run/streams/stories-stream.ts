@@ -4,7 +4,7 @@ import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams, Story } from '../../../stories/constants';
 import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../lib/logger/logger';
-import { createConcurrencyLock } from '../../../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../../../utils/concurrency';
 import { ERROR_CODES } from '../constants';
 
 /**
@@ -95,7 +95,7 @@ class StoriesStream extends Transform {
       objectMode: true,
     });
 
-    this.semaphore = createConcurrencyLock();
+    this.semaphore = createPipelineBackpressureLock();
   }
 
   async _transform(chunk: Omit<Story, 'content'>, _encoding: string, callback: (error?: Error | null, data?: any) => void) {

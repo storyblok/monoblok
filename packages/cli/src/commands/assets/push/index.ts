@@ -156,7 +156,7 @@ pushCmd
 
       // Build a source→target asset internal tag id map so source-space ids in
       // pulled sidecars are translated to the matching target-space ids
-      // (WDX-332). Source ids without a name match in target are dropped and
+      // Source ids without a name match in target are dropped and
       // surfaced via a single aggregated warning after the pipeline.
       const { map: assetInternalTags, sourceNamesById } = await scanAssetInternalTagsMap(fromSpace, targetSpace);
       const unmappedTagIds = new Set<number>();

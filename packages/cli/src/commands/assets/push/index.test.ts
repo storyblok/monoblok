@@ -1405,9 +1405,6 @@ describe('assets push command', () => {
     }));
   });
 
-  // WDX-332: source-space `internal_tag_ids` carried in the pulled sidecar must
-  // be translated to the matching target-space tag IDs by name, or dropped when
-  // no target tag with the same name exists.
   it('should translate source-space internal_tag_ids to target-space tag IDs by name', async () => {
     const targetSpace = '54321';
     const sourceTagId = 111;

@@ -713,7 +713,7 @@ const processAsset = async ({
   else if (hasShortFilename(localAsset)) {
     // `internal_tags_list` is server-managed (read-only) and must not be sent.
     // `internal_tag_ids` is rewritten through `maps.assetInternalTags` so
-    // source-space IDs are translated to target-space IDs (WDX-332). When the
+    // source-space IDs are translated to target-space IDs. When the
     // source has no tag metadata, omit the field entirely so mapi-client skips
     // the follow-up metadata PUT for tagless assets.
     const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset as AssetUpload & {

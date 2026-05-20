@@ -69,7 +69,7 @@ export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInte
 };
 
 /**
- * Builds the source→target `AssetInternalTagsMap` for `assets push` (WDX-332).
+ * Builds the source→target `AssetInternalTagsMap` for `assets push`.
  *
  * Fetches tags from both spaces and joins them by name so source-space tag IDs
  * carried in pulled sidecars can be translated to target-space IDs. Also returns

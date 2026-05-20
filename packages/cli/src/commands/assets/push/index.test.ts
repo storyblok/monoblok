@@ -59,6 +59,10 @@ const server = setupServer(
     { message: 'Not Found' },
     { status: 404 },
   )),
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/internal_tags', () => HttpResponse.json(
+    { internal_tags: [] },
+    { headers: { 'Total': '0', 'Per-Page': '100' } },
+  )),
 );
 
 const preconditions = {
@@ -199,6 +203,14 @@ const preconditions = {
       http.put(`https://mapi.storyblok.com/v1/spaces/${space}/asset_folders/:folderId`, () => HttpResponse.json(
         { message: 'Update failed' },
         { status: 500 },
+      )),
+    );
+  },
+  hasTargetAssetInternalTags(tags: Array<{ id: number; name: string }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, () => HttpResponse.json(
+        { internal_tags: tags },
+        { headers: { 'Total': String(tags.length), 'Per-Page': '100' } },
       )),
     );
   },
@@ -1391,5 +1403,76 @@ describe('assets push command', () => {
     expect(storyActions.fetchStories).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
       reference_search: localAsset.filename,
     }));
+  });
+
+  // WDX-332: source-space `internal_tag_ids` carried in the pulled sidecar must
+  // be translated to the matching target-space tag IDs by name, or dropped when
+  // no target tag with the same name exists.
+  it('should translate source-space internal_tag_ids to target-space tag IDs by name', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 111;
+    const targetTagId = 999;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'shared-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasTargetAssetInternalTags(
+      [{ id: targetTagId, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    expect(createPayload).not.toHaveProperty('internal_tags_list');
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should omit internal_tag_ids from the create payload when the source has no tag metadata', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    expect(createPayload).not.toHaveProperty('internal_tag_ids');
+    expect(createPayload).not.toHaveProperty('internal_tags_list');
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should drop unmapped internal tag names with a warning', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 222;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'missing-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasTargetAssetInternalTags([], { space: targetSpace });
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: missing-tag'),
+    );
+    expect(process.exitCode).not.toBe(1);
   });
 });

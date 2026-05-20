@@ -17,6 +17,7 @@ import type {
   CreateAssetTransport,
   GetAssetFolderTransport,
   GetAssetTransport,
+  MapInternalTagIdsTransport,
   UpdateAssetFolderTransport,
   UpdateAssetTransport,
 } from './streams';
@@ -100,6 +101,7 @@ export const upsertAssetsPipeline = async ({
     updateAsset: UpdateAssetTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset: CleanupAssetTransport;
+    mapInternalTagIds?: MapInternalTagIdsTransport;
   };
   ui: UI;
 }): Promise<Summaries> => {

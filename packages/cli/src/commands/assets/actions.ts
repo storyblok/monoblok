@@ -2,8 +2,14 @@ import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
+import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
 import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+
+export interface AssetInternalTag {
+  id: number;
+  name: string;
+}
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
@@ -35,6 +41,30 @@ export const fetchAssets = async ({ spaceId, params }: {
   }
   catch (maybeError) {
     handleAPIError('pull_assets', toError(maybeError));
+  }
+};
+
+/**
+ * Fetches every internal tag of type `asset` for the given space.
+ *
+ * Used by `assets push` to translate source-space `internal_tag_ids` carried in
+ * pulled sidecars into the target space's tag IDs by matching on tag name.
+ */
+export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInternalTag[]> => {
+  try {
+    const client = getMapiClient();
+    const tags = await fetchAllPages(
+      (page: number) => client.internalTags.list({
+        path: { space_id: Number(spaceId) },
+        query: { page, by_object_type: 'asset' },
+        throwOnError: true,
+      }),
+      data => data?.internal_tags ?? [],
+    );
+    return tags.filter((tag): tag is AssetInternalTag => typeof tag?.id === 'number' && typeof tag?.name === 'string');
+  }
+  catch (maybeError) {
+    handleAPIError('pull_asset_internal_tags', toError(maybeError));
   }
 };
 

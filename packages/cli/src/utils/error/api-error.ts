@@ -31,6 +31,7 @@ export const API_ACTIONS = {
   push_asset_folder: 'Failed to push asset folder',
   push_asset_create: 'Failed to create asset',
   push_asset_update: 'Failed to update asset',
+  pull_asset_internal_tags: 'Failed to pull asset internal tags',
   pull_datasources: 'Failed to pull datasources',
   push_datasource: 'Failed to push datasource',
   update_datasource: 'Failed to update datasource',

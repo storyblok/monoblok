@@ -574,6 +574,32 @@ export const makeAppendAssetFolderManifestFSTransport = ({ manifestFile }: { man
     }));
   };
 
+export type MapInternalTagIdsTransport = (asset: {
+  internal_tag_ids?: ReadonlyArray<number | string> | null;
+  internal_tags_list?: ReadonlyArray<{ id: number; name: string }> | null;
+}) => string[];
+
+export const makeMapInternalTagIdsTransport = (
+  targetTagNameToId: ReadonlyMap<string, number>,
+  onUnmappedTag?: (name: string) => void,
+): MapInternalTagIdsTransport => (asset) => {
+  const list = asset.internal_tags_list;
+  if (!Array.isArray(list) || list.length === 0) {
+    return (asset.internal_tag_ids ?? []).map(id => String(id));
+  }
+  const mapped: string[] = [];
+  for (const tag of list) {
+    const targetId = targetTagNameToId.get(tag.name);
+    if (typeof targetId === 'number') {
+      mapped.push(String(targetId));
+    }
+    else {
+      onUnmappedTag?.(tag.name);
+    }
+  }
+  return mapped;
+};
+
 export type GetAssetTransport = (assetId: number) => Promise<Asset | undefined>;
 
 export const makeGetAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
@@ -636,6 +662,7 @@ const processAsset = async ({
     updateAsset: UpdateAssetTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
+    mapInternalTagIds?: MapInternalTagIdsTransport;
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
 }): Promise<{ status: 'created' | 'updated'; remoteAsset: Asset }> => {
@@ -645,6 +672,18 @@ const processAsset = async ({
     ? maps.assets.get(localAsset.id)?.new.id || localAsset.id
     : undefined;
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
+
+  const resolveInternalTagIds = (source: typeof localAsset | Asset): string[] => {
+    if (transports.mapInternalTagIds) {
+      return transports.mapInternalTagIds(source as {
+        internal_tag_ids?: ReadonlyArray<number | string> | null;
+        internal_tags_list?: ReadonlyArray<{ id: number; name: string }> | null;
+      });
+    }
+    return 'internal_tag_ids' in source && Array.isArray(source.internal_tag_ids)
+      ? source.internal_tag_ids.map(id => String(id))
+      : [];
+  };
 
   let newRemoteAsset: Asset;
   let status: 'created' | 'updated';
@@ -661,7 +700,7 @@ const processAsset = async ({
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
       expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
       publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
-      internal_tag_ids: 'internal_tag_ids' in localAsset ? localAsset.internal_tag_ids : remoteAsset.internal_tag_ids,
+      internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset) : remoteAsset.internal_tag_ids,
       meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
     };
 
@@ -677,9 +716,21 @@ const processAsset = async ({
     status = 'updated';
   }
   else if (hasShortFilename(localAsset)) {
+    // `internal_tags_list` is server-managed (read-only) and must not be sent.
+    // `internal_tag_ids` is rewritten via mapInternalTagIds so source-space IDs
+    // are translated to target-space IDs by name (WDX-332). When the source has
+    // no tag metadata, omit the field entirely so mapi-client skips the
+    // follow-up metadata PUT for tagless assets.
+    const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset as AssetUpload & {
+      internal_tags_list?: ReadonlyArray<{ id: number; name: string }> | null;
+    };
+    const hasSourceTagMetadata = 'internal_tag_ids' in localAsset
+      || (Array.isArray(_internalTagsList) && _internalTagsList.length > 0);
+    const mappedTagIds = hasSourceTagMetadata ? resolveInternalTagIds(localAsset) : undefined;
     const createPayload = {
-      ...localAsset,
+      ...rest,
       asset_folder_id: remoteFolderId,
+      ...(mappedTagIds !== undefined ? { internal_tag_ids: mappedTagIds } : {}),
     } satisfies AssetUpload;
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';
@@ -713,6 +764,7 @@ export const upsertAssetStream = ({
     updateAsset: UpdateAssetTransport;
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
+    mapInternalTagIds?: MapInternalTagIdsTransport;
   };
   maps: { assets: AssetMap; assetFolders: AssetFolderMap };
   onIncrement?: () => void;

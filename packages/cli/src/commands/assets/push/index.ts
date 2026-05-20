@@ -18,9 +18,11 @@ import {
   makeCreateAssetFolderAPITransport,
   makeGetAssetAPITransport,
   makeGetAssetFolderAPITransport,
+  makeMapInternalTagIdsTransport,
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
+import { fetchAssetInternalTags } from '../actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpload } from '../types';
 import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
@@ -153,6 +155,19 @@ pushCmd
         ? makeCleanupAssetFSTransport()
         : () => Promise.resolve();
 
+      // Build a target-space tag name → id map so that source-space tag IDs in
+      // pulled sidecars are translated to the matching target-space IDs by name
+      // (WDX-332). Tag names that do not exist in target are dropped + warned.
+      const targetAssetInternalTags = await fetchAssetInternalTags(targetSpace);
+      const targetTagNameToId = new Map<string, number>(
+        targetAssetInternalTags.map(tag => [tag.name, tag.id]),
+      );
+      const unmappedTagNames = new Set<string>();
+      const mapInternalTagIdsTransport = makeMapInternalTagIdsTransport(
+        targetTagNameToId,
+        (name) => { unmappedTagNames.add(name); },
+      );
+
       summaries.push(...await upsertAssetsPipeline({
         assetBinaryPath,
         assetData,
@@ -165,9 +180,17 @@ pushCmd
           updateAsset: updateAssetTransport,
           appendAssetManifest: assetManifestTransport,
           cleanupAsset: cleanupAssetTransport,
+          mapInternalTagIds: mapInternalTagIdsTransport,
         },
         ui,
       }));
+
+      if (unmappedTagNames.size > 0) {
+        const names = [...unmappedTagNames].sort();
+        const message = `Dropped ${names.length} unknown internal asset tag${names.length === 1 ? '' : 's'} not present in target space: ${names.join(', ')}`;
+        ui.warn(message);
+        logger.warn(message, { unmappedTagNames: names });
+      }
 
       /**
        * Map Asset References in Stories

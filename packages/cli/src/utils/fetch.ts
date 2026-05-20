@@ -37,7 +37,7 @@ export interface FetchOptions {
 }
 
 export async function customFetch<T>(url: string, options: FetchOptions = {}): Promise<T & { perPage: number; total: number }> {
-  const { api } = getActiveConfig(); // live config includes CLI overrides (maxRetries, maxConcurrency, etc.)
+  const { api } = getActiveConfig(); // live config includes CLI overrides (maxRetries, rateLimit, etc.)
   const maxRetries = options.maxRetries ?? api.maxRetries;
   const baseDelay = options.baseDelay ?? 500; // 500ms base delay
   const requestContext: FetchErrorRequest = { url, method: options.method ?? 'GET' };

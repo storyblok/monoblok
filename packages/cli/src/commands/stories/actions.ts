@@ -201,8 +201,7 @@ const fetchChunkAllPages = async (
  * or by numeric id (resume against a same-space manifest).
  *
  * Slug and id batches are dispatched concurrently through the MAPI client's
- * existing throttle (default `maxConcurrency = 6`, adapts to the server's
- * `X-RateLimit-Policy` header, auto-retries 429).
+ * existing throttle (default 6 requests per second, auto-retries 429).
  */
 export const prefetchTargetStoriesByKeys = async (
   spaceId: string,

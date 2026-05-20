@@ -1,19 +1,14 @@
 <script>
-  import {
-    storyblokEditable,
-    StoryblokComponent,
-    renderRichText,
-  } from "@storyblok/svelte";
+  import { storyblokEditable, StoryblokComponent, StoryblokRichText } from '@storyblok/svelte';
+  import Heading from './richtext/Heading.svelte';
+  import Bold from './richtext/Bold.svelte';
 
-  let { blok } = $props();
-  let resolvedRichText = $derived(renderRichText(blok.richText));
+  let props = $props();
 </script>
 
-{#key blok}
-  <div use:storyblokEditable={blok} class="px-6">
-    {#each blok.body as bodyBlok}
-      <StoryblokComponent blok={bodyBlok} />
-    {/each}
-    <div class="prose">{@html resolvedRichText}</div>
-  </div>
-{/key}
+<div use:storyblokEditable={props.blok} class="px-6">
+  {#each props.blok.body as bodyBlok (bodyBlok._uid)}
+    <StoryblokComponent blok={bodyBlok} />
+  {/each}
+  <StoryblokRichText document={props.blok.richText} components={{ heading: Heading, bold: Bold }} />
+</div>

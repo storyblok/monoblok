@@ -9,4 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['./src/tests/**/*', './src/**/*.spec.ts'],
   },
+  resolve: process.env.VITEST
+    ? {
+        conditions: ['browser'],
+      }
+    : undefined,
 });

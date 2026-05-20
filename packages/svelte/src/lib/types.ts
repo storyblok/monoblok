@@ -1,8 +1,12 @@
-import type { SbSDKOptions } from '@storyblok/js';
+import type { SbBlokData, SbSDKOptions } from '@storyblok/js';
 import type { Component } from 'svelte';
 
+export type StoryblokComponentProps<T> = {
+  blok: T;
+} & Record<string, unknown>;
+
 export interface SbSvelteComponentsMap {
-  [name: string]: Component;
+  [name: string]: Component<StoryblokComponentProps<SbBlokData>>;
 }
 
 export interface SbSvelteSDKOptions extends SbSDKOptions {

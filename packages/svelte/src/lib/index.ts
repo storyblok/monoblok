@@ -10,7 +10,7 @@ export {
   useStoryblokBridge,
 } from '@storyblok/js';
 
-export type { BaseSbRichTextProps, PMMark, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, SbRichTextProps } from '@storyblok/richtext';
+export type { BaseSbRichTextProps, PMMark, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, SbRichTextProps, TextNode } from '@storyblok/richtext';
 export { buildStoryblokImage, isSelfClosing, processAttrs, renderRichText, resolveTag } from '@storyblok/richtext';
 export type SbRichTextInput = SbRichTextDoc | SbRichTextDoc[] | null | undefined;
   type AnyComponent = Component<any>;

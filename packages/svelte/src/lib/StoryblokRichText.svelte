@@ -1,18 +1,11 @@
 <script lang="ts" generics="T extends SbRichTextInput">
-  import {
-    buildSvelteAttrs,
-    isSelfClosing,
-    processAttrs,
-    resolveTag,
-    type SbRichTextDoc,
-    type SbRichTextInput,
-    type SbRichTextRenderers,
-  } from './index';
+  import { renderRichText, type SbRichTextDoc, type SbRichTextInput, type SbRichTextRenderers } from './index';
   import MarkRenderer from './richtext/MarkRenderer.svelte';
-  import RenderTag from './richtext/RenderTag.svelte';
   import StoryblokComponent from './StoryblokComponent.svelte';
   // eslint-disable-next-line import/no-self-import
   import StoryblokRichText from './StoryblokRichText.svelte';
+
+  /* eslint-disable svelte/no-at-html-tags */
 
   type Props = {
     document: T;
@@ -57,32 +50,22 @@
 {#each keyedNodes as { node, key } (key)}
   {#if node.type === 'text'}
     <MarkRenderer text={node.text} marks={node.marks ?? []} {components} />
-  {:else if node.type === 'blok'}
-    {@const body = Array.isArray(node.attrs?.body) ? node.attrs.body : []}
-
-    {#each body as blok (blok._uid)}
-      <StoryblokComponent {blok} />
-    {/each}
   {:else}
     {@const type = node.type as keyof typeof components}
-
     {@const NodeComponent = components?.[type]}
-
     {#if NodeComponent}
       <NodeComponent {...node}>
         {#if node.content}
           <StoryblokRichText document={node.content} {components} />
         {/if}
       </NodeComponent>
+    {:else if node.type === 'blok'}
+      {@const body = Array.isArray(node.attrs?.body) ? node.attrs.body : []}
+      {#each body as blok (blok._uid)}
+        <StoryblokComponent {blok} />
+      {/each}
     {:else}
-      {@const Tag = resolveTag(node)}
-      {@const attrs = buildSvelteAttrs(processAttrs(node.type, node.attrs))}
-      {@const selfClosing = Tag && isSelfClosing(Tag)}
-      <RenderTag tag={Tag} {attrs} {selfClosing}>
-        {#if node.content}
-          <StoryblokRichText document={node.content} {components} />
-        {/if}
-      </RenderTag>
+      {@html renderRichText(node)}
     {/if}
   {/if}
 {/each}

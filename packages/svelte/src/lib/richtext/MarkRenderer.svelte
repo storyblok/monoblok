@@ -11,16 +11,17 @@
   };
 
   const { text, marks = [], components = {} }: Props = $props();
+  const reversedMarks = $derived([...(marks ?? [])].reverse());
 </script>
 
-{#if marks.length === 0}
+{#if reversedMarks.length === 0}
   {text}
 {:else}
-  {@const [mark, ...rest] = marks}
+  {@const [mark, ...rest] = reversedMarks}
   {@const MarkComponent = components[mark.type]}
 
   {#if MarkComponent}
-    <MarkComponent {mark}>
+    <MarkComponent {...mark}>
       <MarkRenderer {text} marks={rest} {components} />
     </MarkComponent>
   {:else}

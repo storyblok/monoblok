@@ -5,7 +5,7 @@ import { linkFixtures } from './link';
 import { integrationFixtures } from './integration';
 
 export * from './helpers';
-export { integrationFixtures } from './integration';
+export { customRendererFixture, integrationFixtures } from './integration';
 export { linkFixtures } from './link';
 export { markFixtures } from './marks';
 export { allNodeFixtures, nodeFixtures } from './nodes';

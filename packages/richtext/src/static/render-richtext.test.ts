@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
-import { integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
+import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
 
 // ============================================================================
 // Tests: Input Handling
@@ -167,6 +167,18 @@ describe('renderRichText', () => {
   // ============================================================================
 
   describe('custom renderers', () => {
+    it(customRendererFixture.title, () => {
+      const options: SbRichTextOptions = {
+        renderers: {
+          heading: ({ content, attrs }) => `<p data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</p>`,
+          bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
+          link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="_blank">${children}</a>`,
+        },
+      };
+      const result = renderRichText(customRendererFixture.input, options);
+      expect(result).toBe(customRendererFixture.expected);
+    });
+
     it('overrides node rendering', () => {
       const options: SbRichTextOptions = {
         renderers: {

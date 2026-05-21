@@ -1,8 +1,8 @@
-import type { SbReactComponentMap, SbRichTextDoc } from '@storyblok/react';
+import type { SbReactComponentMap } from '@storyblok/react';
 import { StoryblokRichText } from '@storyblok/react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '@storyblok/richtext/test-utils';
+import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
 import CustomHeading from './richtext/CustomHeading';
 import CustomLink from './richtext/CustomLink';
 
@@ -117,26 +117,14 @@ describe('richtext', () => {
     });
   });
   describe('custom components', () => {
-    it('renders custom components from the components map', () => {
-      const document: SbRichTextDoc = {
-        type: 'doc',
-        content: [
-          {
-            type: 'heading',
-            attrs: { level: 2, textAlign: 'center' },
-            content: [{ type: 'text', text: 'Hello World', marks: [{ type: 'bold' }] }],
-          },
-          text('This is an internal story', [linkMark('/page', { linktype: 'story', anchor: 'intro' })]),
-        ],
-      };
-      const components: SbReactComponentMap = {
+    it(customRendererFixture.title, () => {
+      const options: SbReactComponentMap = {
         heading: CustomHeading,
         link: CustomLink,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
-      const { container } = render(<StoryblokRichText document={document} components={components} />);
-
-      expect(container.innerHTML).toBe(`<div><p data-type="custom-heading" data-level="2"><b data-type="custom-bold">Hello World</b></p><a data-type="custom-link" href="/page" target="_self">This is an internal story</a></div>`);
+      const { container } = render(<StoryblokRichText document={customRendererFixture.input} components={options} />);
+      expect(container.innerHTML).toBe(`<div>${customRendererFixture.expected}</div>`);
     });
   });
 });

@@ -110,8 +110,14 @@ export class Storyblok {
     }
 
     const headers: Headers = new Headers();
+    const isManagementApi = !!config.oauthToken;
+    const isBrowser = typeof window !== 'undefined';
+    const skipPreflightHeaders = !isManagementApi && isBrowser;
 
-    headers.set('Content-Type', 'application/json');
+    if (!skipPreflightHeaders) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     headers.set('Accept', 'application/json');
 
     if (config.headers) {
@@ -125,7 +131,7 @@ export class Storyblok {
       });
     }
 
-    if (!headers.has(STORYBLOK_AGENT)) {
+    if (!skipPreflightHeaders && !headers.has(STORYBLOK_AGENT)) {
       headers.set(STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT.defaultAgentName);
       headers.set(
         STORYBLOK_JS_CLIENT_AGENT.defaultAgentVersion,

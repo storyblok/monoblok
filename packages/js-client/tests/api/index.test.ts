@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import StoryblokClient from 'storyblok-js-client';
@@ -259,6 +259,97 @@ describe('storyblokClient (MSW)', () => {
 
         expect(manualClient.cacheVersion()).toBe(77777);
       });
+    });
+  });
+
+  describe('headers', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('omits Content-Type and SB-* headers for browser CDN requests', async () => {
+      vi.stubGlobal('window', {});
+      const captured: Headers[] = [];
+      server.use(
+        http.get(`${BASE_URL}/cdn/stories`, ({ request }) => {
+          captured.push(request.headers);
+          return HttpResponse.json(
+            { stories: [], cv: 12345678 },
+            { headers: { 'Total': '0', 'Per-Page': '25' } },
+          );
+        }),
+      );
+      const browserClient = new StoryblokClient({
+        accessToken: 'browser-cdn-test',
+      });
+      await browserClient.get('cdn/stories');
+      expect(captured).toHaveLength(1);
+      expect(captured[0].has('Content-Type')).toBe(false);
+      expect(captured[0].has('SB-Agent')).toBe(false);
+      expect(captured[0].has('SB-Agent-Version')).toBe(false);
+      expect(captured[0].get('Accept')).toBe('application/json');
+    });
+
+    it('includes Content-Type for server-side CDN requests', async () => {
+      const captured: Headers[] = [];
+      server.use(
+        http.get(`${BASE_URL}/cdn/stories`, ({ request }) => {
+          captured.push(request.headers);
+          return HttpResponse.json(
+            { stories: [], cv: 12345678 },
+            { headers: { 'Total': '0', 'Per-Page': '25' } },
+          );
+        }),
+      );
+      const serverClient = new StoryblokClient({
+        accessToken: 'server-cdn-test',
+      });
+      await serverClient.get('cdn/stories');
+      expect(captured).toHaveLength(1);
+      expect(captured[0].get('Content-Type')).toBe('application/json');
+      expect(captured[0].has('SB-Agent')).toBe(false);
+      expect(captured[0].has('SB-Agent-Version')).toBe(false);
+    });
+
+    it('includes Content-Type for Management API requests even in browser', async () => {
+      vi.stubGlobal('window', {});
+      const captured: Headers[] = [];
+      server.use(
+        http.get(`${BASE_URL}/cdn/stories`, ({ request }) => {
+          captured.push(request.headers);
+          return HttpResponse.json(
+            { stories: [], cv: 12345678 },
+            { headers: { 'Total': '0', 'Per-Page': '25' } },
+          );
+        }),
+      );
+      const mgmtClient = new StoryblokClient({
+        oauthToken: 'mgmt-token',
+        accessToken: 'mgmt-test',
+        endpoint: BASE_URL,
+      });
+      await mgmtClient.get('cdn/stories');
+      expect(captured).toHaveLength(1);
+      expect(captured[0].get('Content-Type')).toBe('application/json');
+    });
+
+    it('forwards custom headers from config.headers', async () => {
+      const captured: Headers[] = [];
+      server.use(
+        http.get(`${BASE_URL}/cdn/stories`, ({ request }) => {
+          captured.push(request.headers);
+          return HttpResponse.json(
+            { stories: [], cv: 12345678 },
+            { headers: { 'Total': '0', 'Per-Page': '25' } },
+          );
+        }),
+      );
+      const customClient = new StoryblokClient({
+        accessToken: 'custom-headers',
+        headers: { 'X-Custom': 'custom-value' },
+      });
+      await customClient.get('cdn/stories');
+      expect(captured[0].get('X-Custom')).toBe('custom-value');
     });
   });
 });

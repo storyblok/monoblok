@@ -12,7 +12,7 @@ import {
 import SbFetch from './sbFetch';
 import type Method from './constants';
 import type { StoryblokContentVersionKeys } from './constants';
-import { STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT, StoryblokContentVersion } from './constants';
+import { StoryblokContentVersion } from './constants';
 import { createRateLimitConfig, determineRateLimit, MANAGEMENT_API_DEFAULT_RATE_LIMIT, parseRateLimitHeaders, type RateLimitConfig } from './rateLimit';
 import { ThrottleQueueManager } from './throttleQueueManager';
 
@@ -111,7 +111,13 @@ export class Storyblok {
 
     const headers: Headers = new Headers();
 
-    headers.set('Content-Type', 'application/json');
+    // Skip Content-Type for GET browser CDN requests to avoid CORS preflight.
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS#simple_requests
+    const isBrowserCdn = !config.oauthToken && typeof window !== 'undefined';
+    if (!isBrowserCdn) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     headers.set('Accept', 'application/json');
 
     if (config.headers) {
@@ -123,14 +129,6 @@ export class Storyblok {
       entries.forEach(([key, value]: [string, string]) => {
         headers.set(key, value);
       });
-    }
-
-    if (!headers.has(STORYBLOK_AGENT)) {
-      headers.set(STORYBLOK_AGENT, STORYBLOK_JS_CLIENT_AGENT.defaultAgentName);
-      headers.set(
-        STORYBLOK_JS_CLIENT_AGENT.defaultAgentVersion,
-        STORYBLOK_JS_CLIENT_AGENT.packageVersion,
-      );
     }
 
     if (config.oauthToken) {

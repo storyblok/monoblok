@@ -1,5 +1,5 @@
-import type { BaseSbRichTextProps, PMMark, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextImageOptions, SbRichTextProps, TextNode } from '@storyblok/richtext';
-import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
+import type { BaseSbRichTextProps, RenderSpec, SbRichTextElement, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextProps, SbRichTextTextNode } from '@storyblok/richtext';
+import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
 import React, { type ComponentType, type ElementType, type ReactNode, useMemo } from 'react';
 
 /**
@@ -8,32 +8,36 @@ import React, { type ComponentType, type ElementType, type ReactNode, useMemo } 
  */
 export type SbReactRichTextProps<T extends SbRichTextElement> =
   BaseSbRichTextProps<T, { children?: ReactNode }, { children?: ReactNode }>;
+
+export type SbReactRichTextComponent<
+  T extends SbRichTextElement,
+> = ComponentType<SbReactRichTextProps<T>>;
 /**
  * Type-safe component map for React richtext renderer
  */
 export type SbReactComponentMap = {
-  [K in SbRichTextElement]?: ComponentType<SbReactRichTextProps<K>>;
+  [K in SbRichTextElement]?:
+  SbReactRichTextComponent<K>;
 };
 
-function resolveComponent<K extends SbRichTextElement>(
-  type: K,
-  components?: SbReactComponentMap,
-): ComponentType<SbReactRichTextProps<K>> | undefined {
-  return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
-}
 interface RendererOptions {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbReactComponentMap;
 }
 
 export interface StoryblokRichtextProps extends RendererOptions {
-  document: SbRichTextDoc | SbRichTextDoc[] | null | undefined;
+  document: SbRichTextNode | SbRichTextNode[] | null | undefined;
 }
 
 interface CreateRichTextHookOptions {
   isServerContext?: boolean;
 }
-
+function resolveComponent<K extends SbRichTextElement>(
+  type: K,
+  components?: SbReactComponentMap,
+): ComponentType<SbReactRichTextProps<K>> | undefined {
+  return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
+}
 export function createRichTextHook(StoryblokComponent: ElementType, _options?: CreateRichTextHookOptions) {
   return function useRichText({ document, optimizeImage, components }: StoryblokRichtextProps) {
     const render = useStoryblokRichText({
@@ -65,15 +69,8 @@ export function useStoryblokRichText({ optimizeImage = false, components }: Rend
 }
 
 export function createStoryblokRenderer(options: RendererOptions) {
-  return function render(document: SbRichTextDoc | SbRichTextDoc[] | null | undefined) {
-    if (!document) {
-      return null;
-    }
-    if (Array.isArray(document)) {
-      return renderChildren(document, options);
-    }
-
-    const nodes = document.type === 'doc' ? document.content : [document];
+  return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined) {
+    const nodes = normalizeNodes(document);
     return nodes?.length ? renderChildren(nodes, options) : null;
   };
 }
@@ -83,16 +80,13 @@ export function createStoryblokRenderer(options: RendererOptions) {
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: SbRichTextDoc[], options: RendererOptions): ReactNode {
+function renderChildren(nodes: SbRichTextNode[], options: RendererOptions): ReactNode {
   const groups = groupLinkNodes(nodes);
-
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
-      // Render link group
       return renderLinkGroup(group.nodes, group.linkMark, options, groupIndex);
     }
     else {
-      // Single non-linked node
       return renderNode(group.nodes[0], options, groupIndex);
     }
   });
@@ -102,13 +96,13 @@ function renderChildren(nodes: SbRichTextDoc[], options: RendererOptions): React
  * Renders consecutive text nodes under a single link tag.
  */
 function renderLinkGroup(
-  nodes: SbRichTextDoc[],
-  linkMark: PMMark,
+  nodes: SbRichTextNode[],
+  linkMark: SbRichTextMark,
   options: RendererOptions,
   key: React.Key,
 ): ReactNode {
   const inner = nodes.map((node, index) => {
-    const textNode = node as TextNode;
+    const textNode = node as SbRichTextTextNode;
     const innerMarks = getInnerMarks(node);
     return renderTextNodeWithMarks(textNode, innerMarks, options, index);
   });
@@ -132,10 +126,10 @@ function renderLinkGroup(
   return React.createElement(tag, { key, ...props }, inner);
 }
 
-function renderNode(node: SbRichTextDoc, options: RendererOptions, key: React.Key): ReactNode {
+function renderNode(node: SbRichTextNode, options: RendererOptions, key: React.Key): ReactNode {
   // Text node
   if (node.type === 'text') {
-    return renderTextNode(node as TextNode, options, key);
+    return renderTextNode(node as SbRichTextTextNode, options, key);
   }
 
   // Custom component override
@@ -193,7 +187,7 @@ function renderNode(node: SbRichTextDoc, options: RendererOptions, key: React.Ke
  * Renders an image node with optimization applied.
  */
 function renderOptimizedImage(
-  node: SbRichTextDoc,
+  node: SbRichTextNode,
   options: RendererOptions,
   key: React.Key,
 ): ReactNode {
@@ -219,7 +213,7 @@ function renderOptimizedImage(
  * Renders table with thead/tbody grouping based on cell types.
  */
 function renderTable(
-  node: SbRichTextDoc,
+  node: SbRichTextNode,
   options: RendererOptions,
   key: React.Key,
   tag: string,
@@ -274,13 +268,13 @@ function renderStaticStructure(
   });
 }
 
-function renderTextNode(node: TextNode, options: RendererOptions, key?: React.Key): ReactNode {
+function renderTextNode(node: SbRichTextTextNode, options: RendererOptions, key?: React.Key): ReactNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
 function renderTextNodeWithMarks(
-  node: TextNode,
-  marks: PMMark[] | undefined,
+  node: SbRichTextTextNode,
+  marks: SbRichTextMark[] | undefined,
   options: RendererOptions,
   key?: React.Key,
 ): ReactNode {
@@ -295,7 +289,7 @@ function renderTextNodeWithMarks(
   return <React.Fragment key={key}>{content}</React.Fragment>;
 }
 
-function wrapMark(children: ReactNode, mark: PMMark, options: RendererOptions): ReactNode {
+function wrapMark(children: ReactNode, mark: SbRichTextMark, options: RendererOptions): ReactNode {
   const Custom = resolveComponent(mark.type, options.components);
   if (Custom) {
     return <Custom {...mark}>{children}</Custom>;

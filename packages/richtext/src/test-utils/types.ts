@@ -1,7 +1,7 @@
-import type { SbRichTextDoc } from '../static/types';
+import type { SbRichTextNode } from '../static';
 
 export interface HtmlFixture {
   title: string;
-  input: SbRichTextDoc | SbRichTextDoc[];
+  input: SbRichTextNode | SbRichTextNode[];
   expected: string;
 };

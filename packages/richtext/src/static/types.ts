@@ -1,9 +1,7 @@
 import type { SbRichTextImageOptions } from '../types';
-import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.generated';
+import type { SbRichTextMark, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
 export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
-
-export type HtmlTag = keyof HTMLElementTagNameMap;
 
 interface ISbComponentType<T extends string> {
   _uid?: string;
@@ -27,14 +25,14 @@ export interface RenderSpec {
 }
 
 /** Canonical type for a Storyblok RichText JSON root */
-export type SbRichTextDoc = PMNode;
-export type TextNode = PMNode & { type: 'text' };
+export type SbRichTextDoc = SbRichTextNode & { type: 'doc' };
+export type SbRichTextTextNode = SbRichTextNode & { type: 'text' };
 
 type ResolveRichTextElement<T extends SbRichTextElement> =
-  T extends PMNode['type']
-    ? Extract<PMNode, { type: T }>
-    : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }>
+  T extends SbRichTextNode['type']
+    ? Extract<SbRichTextNode, { type: T }>
+    : T extends SbRichTextMark['type']
+      ? Extract<SbRichTextMark, { type: T }>
       : never;
 
 export type BaseSbRichTextProps<
@@ -42,20 +40,38 @@ export type BaseSbRichTextProps<
   ExtraNodeProps extends object = object,
   ExtraMarkProps extends object = object,
 > =
-  T extends PMNode['type']
+  T extends SbRichTextNode['type']
     ? ResolveRichTextElement<T> & ExtraNodeProps
-    : T extends PMMark['type']
+    : T extends SbRichTextMark['type']
       ? ResolveRichTextElement<T> & ExtraMarkProps
       : never;
 
 /** Base props for node/mark components */
 export type SbRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, object, { children: string }>;
+  BaseSbRichTextProps<T, { children: string }, { children: string }>;
 
-/** Generic component map for any renderer target */
-
+export type SbRichTextRendererMap<
+  TOutput,
+  TProps extends {
+    [K in SbRichTextElement]: unknown;
+  },
+> = {
+  [K in SbRichTextElement]?: (props: TProps[K]) => TOutput;
+};
+/**
+ * Static renderer function.
+ */
+export type SbRichTextRenderer<
+  T extends SbRichTextElement,
+  TOutput,
+> = (
+  props: SbRichTextProps<T>,
+) => TOutput;
+/**
+ * Component/render map for static renderers.
+ */
 export type SbRichTextRenderers<TOutput> = {
-  [K in SbRichTextElement]?: (props: SbRichTextProps<K>) => TOutput;
+  [K in SbRichTextElement]?: SbRichTextRenderer<K, TOutput>;
 };
 export interface SbRichTextOptions {
   renderers?: SbRichTextRenderers<string>;

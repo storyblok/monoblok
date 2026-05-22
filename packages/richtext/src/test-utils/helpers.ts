@@ -1,9 +1,9 @@
-import type { SbRichTextDoc } from '../static/types';
+import type { SbRichTextDoc, SbRichTextNode } from '../static';
 
 export const text = (
   content: string,
-  marks?: SbRichTextDoc['marks'],
-): SbRichTextDoc => ({
+  marks?: SbRichTextNode['marks'],
+): SbRichTextNode => ({
   type: 'text',
   text: content,
   ...(marks && { marks }),
@@ -17,7 +17,7 @@ export const linkMark = (
     anchor?: string;
     custom?: Record<string, unknown>;
   } = {},
-): NonNullable<SbRichTextDoc['marks']>[number] => ({
+): NonNullable<SbRichTextNode['marks']>[number] => ({
   type: 'link',
   attrs: {
     href,
@@ -32,7 +32,7 @@ export const linkMark = (
 export const tableCell = (
   content: string,
   attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
-): SbRichTextDoc => ({
+): SbRichTextNode => ({
   type: 'tableCell',
   content: [{ type: 'paragraph', content: [text(content)] }],
   attrs: {
@@ -43,22 +43,22 @@ export const tableCell = (
   },
 });
 
-export const tableHeader = (content: string): SbRichTextDoc => ({
+export const tableHeader = (content: string): SbRichTextNode => ({
   type: 'tableHeader',
   content: [{ type: 'paragraph', content: [text(content)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 
-export const tableRow = (cells: SbRichTextDoc[]): SbRichTextDoc => ({
+export const tableRow = (cells: SbRichTextNode[]): SbRichTextNode => ({
   type: 'tableRow',
   content: cells,
 });
 
-export const table = (rows: SbRichTextDoc[]): SbRichTextDoc => ({
+export const table = (rows: SbRichTextNode[]): SbRichTextNode => ({
   type: 'table',
   content: rows,
 });
-export const doc = (content: SbRichTextDoc | SbRichTextDoc[]): SbRichTextDoc => ({
+export const doc = (content: SbRichTextNode | SbRichTextNode[]): SbRichTextDoc => ({
   type: 'doc',
   content: Array.isArray(content) ? content : [content],
 });

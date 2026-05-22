@@ -8,7 +8,7 @@ import type {
   SbRichTextElement,
   SbRichTextImageOptions,
   SbRichTextProps,
-  TextNode,
+  SbRichTextTextNode,
 } from '@storyblok/richtext';
 import {
   buildStoryblokImage,
@@ -165,7 +165,7 @@ function renderLinkGroup(
   key: number,
 ): VNode {
   const inner = nodes.map((node, index) => {
-    const textNode = node as TextNode;
+    const textNode = node as SbRichTextTextNode;
     const innerMarks = getInnerMarks(node);
     return renderTextNodeWithMarks(textNode, innerMarks, options, index);
   });
@@ -189,7 +189,7 @@ function renderLinkGroup(
 function renderNode(node: SbRichTextDoc, options: StoryblokRichTextRendererOptions, key: number): VNode {
   // Text node
   if (node.type === 'text') {
-    return renderTextNode(node as TextNode, options, key);
+    return renderTextNode(node as SbRichTextTextNode, options, key);
   }
 
   // Custom component override
@@ -324,12 +324,12 @@ function renderStaticStructure(
   });
 }
 
-function renderTextNode(node: TextNode, options: StoryblokRichTextRendererOptions, key?: number): VNode {
+function renderTextNode(node: SbRichTextTextNode, options: StoryblokRichTextRendererOptions, key?: number): VNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
 function renderTextNodeWithMarks(
-  node: TextNode,
+  node: SbRichTextTextNode,
   marks: PMMark[] | undefined,
   options: StoryblokRichTextRendererOptions,
   _key?: number,

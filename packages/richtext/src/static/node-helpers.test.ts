@@ -9,7 +9,7 @@ import {
   type LinkMark,
   splitTableRows,
 } from './node-helpers';
-import type { PMMark } from './types.generated';
+import type { SbRichTextMark } from './types.generated';
 
 // ============================================================================
 // Test Helpers
@@ -19,7 +19,7 @@ function linkMark(href: string, options: { uuid?: string; target?: '_blank' | '_
   return { type: 'link' as const, attrs: { href, linktype: options.linktype ?? 'url', target: options.target ?? null, anchor: options.anchor ?? null, uuid: options.uuid ?? null, custom: options.custom ?? undefined } };
 }
 
-function textNode(text: string, marks: PMMark[] = []): SbRichTextDoc {
+function textNode(text: string, marks: SbRichTextMark[] = []): SbRichTextDoc {
   return { type: 'text', text, marks };
 }
 

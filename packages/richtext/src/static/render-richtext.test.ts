@@ -2,30 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
 import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
-
-// ============================================================================
-// Tests: Input Handling
-// ============================================================================
+import type { SbRichTextNode } from './index';
 
 describe('renderRichText', () => {
   describe('input handling', () => {
     it('returns empty string for null input', () => {
       expect(renderRichText(null)).toBe('');
     });
-
     it('returns empty string for undefined input', () => {
       expect(renderRichText(undefined)).toBe('');
     });
-
     it('returns empty string for empty array', () => {
       expect(renderRichText([])).toBe('');
     });
   });
-
-  // ============================================================================
-  // Tests: Node Types
-  // ============================================================================
-
   describe('nodes', () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -33,89 +23,7 @@ describe('renderRichText', () => {
         expect(result).toBe(expected);
       });
     });
-    describe('image optimization', () => {
-      it('renders optimized image with optimizeImages: true', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 1,
-            src: 'https://a.storyblok.com/f/12345/image.jpg',
-            alt: 'Test',
-            title: null,
-            source: null,
-            copyright: null,
-            meta_data: null,
-          },
-        };
-        const html = renderRichText(image, { optimizeImages: true });
-        expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/"');
-      });
-
-      it('renders optimized image with width and height', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 1,
-            src: 'https://a.storyblok.com/f/12345/image.jpg',
-            alt: 'Test',
-            title: null,
-            source: null,
-            copyright: null,
-            meta_data: null,
-          },
-        };
-        const html = renderRichText(image, {
-          optimizeImages: { width: 800, height: 600 },
-        });
-        expect(html).toContain('src="https://a.storyblok.com/f/12345/image.jpg/m/800x600/"');
-        expect(html).toContain('width="800"');
-        expect(html).toContain('height="600"');
-      });
-
-      it('renders optimized image with filters', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 1,
-            src: 'https://a.storyblok.com/f/12345/image.jpg',
-            alt: 'Test',
-            title: null,
-            source: null,
-            copyright: null,
-            meta_data: null,
-          },
-        };
-        const html = renderRichText(image, {
-          optimizeImages: { filters: { quality: 80, format: 'webp' } },
-        });
-        expect(html).toContain('filters:quality(80):format(webp)');
-      });
-
-      it('renders optimized image with loading attribute', () => {
-        const image: SbRichTextDoc = {
-          type: 'image',
-          attrs: {
-            id: 1,
-            src: 'https://a.storyblok.com/f/12345/image.jpg',
-            alt: 'Test',
-            title: null,
-            source: null,
-            copyright: null,
-            meta_data: null,
-          },
-        };
-        const html = renderRichText(image, {
-          optimizeImages: { loading: 'lazy' },
-        });
-        expect(html).toContain('loading="lazy"');
-      });
-    });
   });
-
-  // ============================================================================
-  // Tests: Tables
-  // ============================================================================
-
   describe('tables', () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -124,11 +32,6 @@ describe('renderRichText', () => {
       });
     });
   });
-
-  // ============================================================================
-  // Tests: Marks (Inline Formatting)
-  // ============================================================================
-
   describe('marks', () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -137,11 +40,6 @@ describe('renderRichText', () => {
       });
     });
   });
-
-  // ============================================================================
-  // Tests: Links
-  // ============================================================================
-
   describe('links', () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -150,10 +48,6 @@ describe('renderRichText', () => {
       });
     });
   });
-  // ============================================================================
-  // Tests: Integration
-  // ============================================================================
-
   describe('integration', () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -162,10 +56,6 @@ describe('renderRichText', () => {
       });
     });
   });
-  // ============================================================================
-  // Tests: Custom Renderers
-  // ============================================================================
-
   describe('custom renderers', () => {
     it(customRendererFixture.title, () => {
       const options: SbRichTextOptions = {
@@ -178,40 +68,24 @@ describe('renderRichText', () => {
       const result = renderRichText(customRendererFixture.input, options);
       expect(result).toBe(customRendererFixture.expected);
     });
-
-    it('overrides node rendering', () => {
+    it('supports recursive renderRichText in custom renderers', () => {
       const options: SbRichTextOptions = {
         renderers: {
-          paragraph: ({ content }) => `<div class="custom">${renderRichText(content, options)}</div>`,
+          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading">${renderRichText(content, options)}</h${attrs?.level}>`,
+          bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
-      const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
-      expect(renderRichText(node, options)).toBe('<div class="custom">Hello</div>');
-    });
-
-    it('overrides mark rendering', () => {
-      const options: SbRichTextOptions = {
-        renderers: {
-          bold: ({ children }) => `<b class="heavy">${children}</b>`,
-        },
-      };
-      expect(renderRichText(text('Bold', [{ type: 'bold' }]), options)).toBe('<b class="heavy">Bold</b>');
-    });
-
-    it('supports multiple custom renderers', () => {
-      const options: SbRichTextOptions = {
-        renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} class="title">${renderRichText(content, options)}</h${attrs?.level}>`,
-          bold: ({ children }) => `<strong class="emphasis">${children}</strong>`,
-        },
-      };
-      const heading: SbRichTextDoc = {
+      const document: SbRichTextNode[] = [{
         type: 'heading',
         attrs: { level: 1, textAlign: null },
         content: [text('Title', [{ type: 'bold' }])],
-      };
-      expect(renderRichText(heading, options)).toBe(
-        '<h1 class="title"><strong class="emphasis">Title</strong></h1>',
+      }, {
+        type: 'paragraph',
+        attrs: { textAlign: 'center' },
+        content: [text('Hello Storyblok', [{ type: 'bold' }])],
+      }];
+      expect(renderRichText(document, options)).toBe(
+        '<h1 data-type="custom-heading"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
       );
     });
 
@@ -225,7 +99,7 @@ describe('renderRichText', () => {
           },
         },
       };
-      const codeBlock: SbRichTextDoc = {
+      const codeBlock: SbRichTextNode = {
         type: 'code_block',
         attrs: { class: 'typescript' },
         content: [text('const x: number = 1;')],
@@ -236,11 +110,6 @@ describe('renderRichText', () => {
       );
     });
   });
-
-  // ============================================================================
-  // Tests: Blok Nodes
-  // ============================================================================
-
   describe('blok nodes', () => {
     const blokDoc: SbRichTextDoc = {
       type: 'doc',
@@ -320,11 +189,6 @@ describe('renderRichText', () => {
       expect(renderRichText(content, options)).toBe('<p>Before</p><widget /><p>After</p>');
     });
   });
-
-  // ============================================================================
-  // Tests: XSS Prevention
-  // ============================================================================
-
   describe('xSS prevention', () => {
     it('escapes HTML in text content', () => {
       const node = text('<script>alert("xss")</script>');

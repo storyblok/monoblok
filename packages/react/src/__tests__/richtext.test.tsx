@@ -1,86 +1,120 @@
-import type { SbReactComponentMap } from '@storyblok/react';
+import type { SbReactComponentMap, SbRichTextNode } from '@storyblok/react';
 import { StoryblokRichText } from '@storyblok/react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
+import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures, text } from '@storyblok/richtext/test-utils';
 import CustomHeading from './richtext/CustomHeading';
 import CustomLink from './richtext/CustomLink';
+import CustomCodeBlock from './richtext/CodeComponent';
 
-const getAttributes = (el: Element) => {
-  const attrs: Record<string, string> = {};
-  for (const attr of Array.from(el.attributes)) {
-    attrs[attr.name] = attr.value;
+interface AttributePositionRule {
+  key: string;
+  position: number;
+}
+/**
+ * Utility function to move an attribute in img tags to a consistent position for testing purposes.
+ * This is necessary because the order of attributes in HTML can be non-deterministic, which can cause snapshot tests to fail even if the rendered output is functionally correct.
+ */
+export function moveImgAttribute(
+  html: string,
+  attribute = 'src',
+  rules: AttributePositionRule[] = [],
+): string {
+  const div = document.createElement('div');
+
+  div.innerHTML = html.trim();
+
+  const images = div.querySelectorAll('img');
+
+  for (const [_, img] of images.entries()) {
+    const matchedRule = rules.find(rule =>
+      img.hasAttribute(rule.key),
+    );
+
+    if (!matchedRule) {
+      continue;
+    }
+
+    if (!img.hasAttribute(attribute)) {
+      continue;
+    }
+
+    const attrs = Array.from(img.attributes).map(attr => [
+      attr.name,
+      attr.value,
+    ] as const);
+
+    const target = attrs.find(([name]) => name === attribute);
+
+    if (!target) {
+      continue;
+    }
+
+    const filtered = attrs.filter(
+      ([name]) => name !== attribute,
+    );
+
+    const insertIndex = Math.min(
+      Math.max(matchedRule.position, 0),
+      filtered.length,
+    );
+
+    filtered.splice(insertIndex, 0, target);
+
+    const attrString = filtered
+      .map(([name, value]) => `${name}="${value}"`)
+      .join(' ');
+
+    const htmlString = `<img ${attrString}>`;
+
+    const temp = document.createElement('div');
+
+    temp.innerHTML = htmlString;
+
+    const replacement = temp.firstElementChild;
+
+    if (!replacement) {
+      continue;
+    }
+
+    img.replaceWith(replacement);
   }
-  return attrs;
-};
+  return div.innerHTML;
+}
 
-const compare = (a: Node, b: Node): boolean => {
-  // Text nodes
-  if (a.nodeType === Node.TEXT_NODE && b.nodeType === Node.TEXT_NODE) {
-    return a.textContent === b.textContent;
-  }
+function alignImageSrcAttribute(html: string): string {
+  return moveImgAttribute(html, 'src', [
+    {
+      key: 'id',
+      position: 1, // 2nd attribute
+    },
+    {
+      key: 'data-emoji',
+      position: 2, // 3rd attribute
+    },
+  ]);
+}
 
-  if (a instanceof Element && b instanceof Element) {
-    if (a.tagName !== b.tagName) {
-      return false;
-    }
-
-    const aAttrs = getAttributes(a);
-    const bAttrs = getAttributes(b);
-    const aKeys = Object.keys(aAttrs);
-    const bKeys = Object.keys(bAttrs);
-
-    if (aKeys.length !== bKeys.length) {
-      return false;
-    }
-
-    for (const key of aKeys) {
-      if (aAttrs[key] !== bAttrs[key]) {
-        return false;
-      }
-    }
-
-    const aChildren = Array.from(a.childNodes);
-    const bChildren = Array.from(b.childNodes);
-
-    if (aChildren.length !== bChildren.length) {
-      return false;
-    }
-
-    for (let i = 0; i < aChildren.length; i++) {
-      if (!compare(aChildren[i], bChildren[i])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  return false;
-};
-
-export const expectHtmlEqual = (actual: string, expected: string) => {
-  const parse = (html: string) => {
-    const div = document.createElement('div');
-    div.innerHTML = html.trim();
-    return div.firstElementChild!;
-  };
-
-  const a = parse(actual);
-  const e = parse(expected);
-
-  expect(compare(a, e)).toBe(true);
-};
-describe('richtext', () => {
-  // ============================================================================
-  // Tests: Node Types
-  // ============================================================================
-
+describe('react StoryblokRichText component', () => {
+  describe('input handling', () => {
+    it('returns empty string for null input', () => {
+      const { container } = render(<StoryblokRichText document={null} />);
+      expect(container.innerHTML).toBe(`<div></div>`);
+    });
+    it('returns empty string for undefined input', () => {
+      const { container } = render(<StoryblokRichText document={undefined} />);
+      expect(container.innerHTML).toBe(`<div></div>`);
+    });
+    it('returns empty string for empty array', () => {
+      const { container } = render(<StoryblokRichText document={[]} />);
+      expect(container.innerHTML).toBe(`<div></div>`);
+    });
+  });
   describe('nodes', () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expectHtmlEqual(container.innerHTML, `<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
       });
     });
   });
@@ -88,7 +122,7 @@ describe('richtext', () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expectHtmlEqual(container.innerHTML, `<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
       });
     });
   });
@@ -96,7 +130,7 @@ describe('richtext', () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expectHtmlEqual(container.innerHTML, `<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
       });
     });
   });
@@ -104,7 +138,7 @@ describe('richtext', () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expectHtmlEqual(container.innerHTML, `<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
       });
     });
   });
@@ -112,7 +146,7 @@ describe('richtext', () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expectHtmlEqual(container.innerHTML, `<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
       });
     });
   });
@@ -124,7 +158,41 @@ describe('richtext', () => {
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
       const { container } = render(<StoryblokRichText document={customRendererFixture.input} components={options} />);
-      expect(container.innerHTML).toBe(`<div>${customRendererFixture.expected}</div>`);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${customRendererFixture.expected}</div>`);
+    });
+    it('supports recursive StoryblokRichText in custom renderers', () => {
+      const options: SbReactComponentMap = {
+        heading: ({ content }) => <h1 data-type="custom-heading"><StoryblokRichText document={content} components={options} /></h1>,
+        bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
+      };
+      const document: SbRichTextNode[] = [{
+        type: 'heading',
+        attrs: { level: 1, textAlign: null },
+        content: [text('Title', [{ type: 'bold' }])],
+      }, {
+        type: 'paragraph',
+        attrs: { textAlign: 'center' },
+        content: [text('Hello Storyblok', [{ type: 'bold' }])],
+      }];
+      const { container } = render(<StoryblokRichText document={document} components={options} />);
+
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(
+        '<div><h1 data-type="custom-heading"><div><b data-type="custom-bold">Title</b></div></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p></div>',
+      );
+    });
+    it('allows custom code_block renderer to control attribute placement', () => {
+      const options: SbReactComponentMap = {
+        code_block: CustomCodeBlock,
+      };
+      const codeBlock: SbRichTextNode = {
+        type: 'code_block',
+        attrs: { class: 'typescript' },
+        content: [text('const x: number = 1;')],
+      };
+      const { container } = render(<StoryblokRichText document={codeBlock} components={options} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(
+        '<div><pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre></div>',
+      );
     });
   });
 });

@@ -3,10 +3,10 @@ import { optimizeImage } from '../images-optimization';
 import { escapeAttr, processAttrs } from './attribute';
 import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
-import type { RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, TextNode } from './types';
-import type { PMMark } from './types.generated';
-import { getStaticChildren, isSelfClosing, resolveTag } from './util';
-
+import type { RenderSpec, SbRichTextElement, SbRichTextOptions, SbRichTextTextNode } from './types';
+import type { SbRichTextMark } from './types.generated';
+import { getStaticChildren, isSelfClosing, normalizeNodes, resolveTag } from './util';
+import type { SbRichTextNode } from './index';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
@@ -24,35 +24,29 @@ import { getStaticChildren, isSelfClosing, resolveTag } from './util';
  * ```
  */
 export function renderRichText(
-  document: SbRichTextDoc | SbRichTextDoc[] | null | undefined,
+  document: SbRichTextNode | SbRichTextNode[] | null | undefined,
   options?: SbRichTextOptions,
 ): string {
-  if (!document) {
-    return '';
-  }
-
-  if (Array.isArray(document)) {
-    return renderChildren(document, options);
-  }
-
-  const nodes = document.type === 'doc' ? document.content : [document];
+  const nodes = normalizeNodes(document);
   return nodes?.length ? renderChildren(nodes, options) : '';
 }
 
 /** Renders a single node to HTML. */
-function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
+function renderNode(node: SbRichTextNode, options?: SbRichTextOptions): string {
   if (node.type === 'text') {
     return renderTextNode(node, node.marks, options);
   }
-
+  const content = node.content ? renderChildren(node.content, options) : '';
   // Custom renderer takes full control
-  const customRenderer = options?.renderers?.[node.type as keyof typeof options.renderers];
+  const customRenderer = options?.renderers?.[node.type];
   if (customRenderer) {
-    return (customRenderer as (props: typeof node) => string)(node);
+    return (customRenderer as (props: typeof node & { children: string }) => string)({ ...node, children: content });
   }
 
   if (node.type === 'blok') {
-    console.warn('Rendering of "blok" nodes is not supported in richTextRenderer.');
+    console.warn(
+      '"blok" nodes require a custom renderer in renderRichText.',
+    );
     return '';
   }
 
@@ -60,7 +54,7 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
 
   // No tag (e.g., nested doc): render children directly
   if (!tag) {
-    return node.content ? renderChildren(node.content, options) : '';
+    return content;
   }
 
   if (node.type === 'image' && options?.optimizeImages) {
@@ -77,8 +71,6 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
     return `<${tag}${htmlAttrs}>${renderTableRows(node.content, options)}</${tag}>`;
   }
 
-  const content = node.content ? renderChildren(node.content, options) : '';
-
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
     const inner = renderStaticStructure(node.type, staticChildren, node.attrs, content);
@@ -90,7 +82,7 @@ function renderNode(node: SbRichTextDoc, options?: SbRichTextOptions): string {
 
 /** Renders an image node with optimization applied. */
 function renderOptimizedImage(
-  node: SbRichTextDoc,
+  node: SbRichTextNode,
   options: SbRichTextOptions,
 ): string {
   const attrs = node.attrs as Record<string, unknown> | undefined;
@@ -120,7 +112,7 @@ function renderOptimizedImage(
  * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
  * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
  */
-function renderChildren(children: SbRichTextDoc[], options?: SbRichTextOptions): string {
+function renderChildren(children: SbRichTextNode[], options?: SbRichTextOptions): string {
   let result = '';
   let i = 0;
   const len = children.length;
@@ -149,8 +141,8 @@ function renderChildren(children: SbRichTextDoc[], options?: SbRichTextOptions):
 
 /** Renders a text node with its marks. */
 function renderTextNode(
-  node: TextNode,
-  marks: PMMark[] | undefined,
+  node: SbRichTextTextNode,
+  marks: SbRichTextMark[] | undefined,
   options?: SbRichTextOptions,
 ): string {
   let html = escapeHtml(node.text);
@@ -169,11 +161,11 @@ function renderTextNode(
 /** Wraps content with a single mark tag. */
 function wrapWithMark(
   content: string,
-  mark: PMMark,
+  mark: SbRichTextMark,
   options?: SbRichTextOptions,
 ): string {
   // Custom mark renderer
-  const customRenderer = options?.renderers?.[mark.type as keyof typeof options.renderers];
+  const customRenderer = options?.renderers?.[mark.type];
   if (customRenderer) {
     return (customRenderer as (props: typeof mark & { children: string }) => string)({
       ...mark,
@@ -194,21 +186,21 @@ function wrapWithMark(
 
 /** Renders consecutive text nodes (from start to end) under a single link tag. */
 function renderLinkGroup(
-  children: SbRichTextDoc[],
+  children: SbRichTextNode[],
   start: number,
   end: number,
-  linkMark: PMMark,
+  linkMark: SbRichTextMark,
   options?: SbRichTextOptions,
 ): string {
   let inner = '';
   for (let i = start; i < end; i++) {
-    const node = children[i] as TextNode;
+    const node = children[i] as SbRichTextTextNode;
     const innerMarks = node.marks?.filter(m => m.type !== 'link');
     inner += renderTextNode(node, innerMarks, options);
   }
 
   // Custom link renderer
-  const customRenderer = options?.renderers?.[linkMark.type as keyof typeof options.renderers];
+  const customRenderer = options?.renderers?.[linkMark.type];
   if (customRenderer) {
     return (customRenderer as (props: typeof linkMark & { children: string }) => string)({
       ...linkMark,
@@ -229,7 +221,7 @@ function renderLinkGroup(
 
 /** Renders table rows with thead/tbody grouping based on cell types. */
 function renderTableRows(
-  rows: SbRichTextDoc[] | undefined,
+  rows: SbRichTextNode[] | undefined,
   options?: SbRichTextOptions,
 ): string {
   if (!rows?.length) {

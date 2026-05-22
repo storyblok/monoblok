@@ -150,7 +150,8 @@ We added retro-compatibility when using `resolve_assets: 1` parameter under V2. 
   - (`https` Boolean, optional)
   - (`rateLimit` Integer, optional - Custom rate limit in requests per second. When set, this overrides all automatic rate limiting for all request types. See [Rate Limiting](#rate-limiting) section below for details.)
   - (`timeout` Integer, optional)
-  - (`maxRetries` Integer, optional, defaults to 5)
+  - (`maxRetries` Integer, optional, defaults to 10)
+  - (`retriesDelay` Integer, optional, defaults to 300 — delay in milliseconds between retries when rate-limited)
   - (`resolveNestedRelations` Boolean, optional - By default is true)
 - (`endpoint` String, optional)
 
@@ -222,6 +223,18 @@ Override automatic rate limiting by setting a custom `rateLimit`:
 const Storyblok = new StoryblokClient({
   accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
   rateLimit: 25, // Apply 25 req/s to ALL requests
+});
+```
+
+#### Retry Configuration
+
+When the client receives a `429 Too Many Requests` response, it automatically retries the request. You can configure the retry behavior:
+
+```javascript
+const Storyblok = new StoryblokClient({
+  accessToken: '<YOUR_SPACE_ACCESS_TOKEN>',
+  maxRetries: 10, // Maximum number of retries (default: 10)
+  retriesDelay: 300, // Delay in ms between retries (default: 300)
 });
 ```
 

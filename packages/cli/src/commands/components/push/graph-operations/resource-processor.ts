@@ -18,7 +18,7 @@ export async function processAllResources(
   graph: DependencyGraph,
   space: string,
 
-  maxConcurrency: number = getActiveConfig().api.rateLimit,
+  backpressure: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };
@@ -32,12 +32,12 @@ export async function processAllResources(
   for (const level of levels) {
     if (level.isCyclic) {
       // Handle circular dependencies with stub creation
-      const cyclicResults = await processCyclicLevel(level, graph, space, maxConcurrency);
+      const cyclicResults = await processCyclicLevel(level, graph, space, backpressure);
       mergeResults(results, cyclicResults);
     }
     else {
       // Handle regular level
-      const levelResults = await processLevel(level.nodes, graph, space, maxConcurrency);
+      const levelResults = await processLevel(level.nodes, graph, space, backpressure);
       mergeResults(results, levelResults);
     }
   }
@@ -63,7 +63,7 @@ async function processCyclicLevel(
   level: ProcessingLevel,
   graph: DependencyGraph,
   space: string,
-  maxConcurrency: number,
+  backpressure: number,
 ): Promise<PushResults> {
   // Clear current progress display and show circular dependency message
   progressDisplay.clearProgress();
@@ -73,7 +73,7 @@ async function processCyclicLevel(
   await createStubComponents(level.nodes, graph, space);
 
   // STEP 2: Process the cyclic level normally (references can now resolve)
-  return await processLevel(level.nodes, graph, space, maxConcurrency);
+  return await processLevel(level.nodes, graph, space, backpressure);
 }
 
 /**
@@ -144,7 +144,7 @@ async function processLevel(
   level: string[],
   graph: DependencyGraph,
   space: string,
-  maxConcurrency: number,
+  backpressure: number,
 ): Promise<PushResults> {
   // PASS 1: Resolve references for this level (now that dependencies from previous levels exist)
   for (const nodeId of level) {
@@ -153,15 +153,15 @@ async function processLevel(
   }
 
   // PASS 2: Process all nodes in this level with resolved references
-  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from({ length: maxConcurrency }, () => null);
+  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from({ length: backpressure }, () => null);
   const promises: Promise<NodeProcessingResult>[] = [];
 
   for (let i = 0; i < level.length; i++) {
     const nodeId = level[i];
 
     // Wait for an available slot
-    const slotIndex = i % maxConcurrency;
-    if (i >= maxConcurrency && semaphore[slotIndex]) {
+    const slotIndex = i % backpressure;
+    if (i >= backpressure && semaphore[slotIndex]) {
       await semaphore[slotIndex];
     }
 

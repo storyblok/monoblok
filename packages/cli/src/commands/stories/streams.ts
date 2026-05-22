@@ -7,7 +7,7 @@ import type { ExistingTargetStories, StoriesQueryParams, Story, StoryIndexEntry,
 import { normalizeFullSlug } from './constants';
 import { appendToFile, readDirectory, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
-import { createPipelineBackpressureLock } from '../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from './ref-mapper';
 import { getStoryFilename, isStoryPublishedWithoutChanges } from './utils';
 

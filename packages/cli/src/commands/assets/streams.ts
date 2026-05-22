@@ -12,7 +12,7 @@ import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolder
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
-import { createPipelineBackpressureLock } from '../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData } from './utils';
 
 let _pipelineSlot: Sema | null = null;

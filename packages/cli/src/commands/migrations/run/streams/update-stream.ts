@@ -5,7 +5,7 @@ import type { StoryContent } from '../../../stories/constants';
 import { updateStory } from '../../../stories/actions';
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
 import { getLogger } from '../../../../lib/logger/logger';
-import { createPipelineBackpressureLock } from '../../../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../../../utils/backpressure-lock';
 import { ERROR_CODES } from '../constants';
 import { toError } from '../../../../utils/error';
 

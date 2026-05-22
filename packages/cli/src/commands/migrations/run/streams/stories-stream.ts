@@ -4,7 +4,7 @@ import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams, Story } from '../../../stories/constants';
 import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../lib/logger/logger';
-import { createPipelineBackpressureLock } from '../../../../utils/concurrency';
+import { createPipelineBackpressureLock } from '../../../../utils/backpressure-lock';
 import { ERROR_CODES } from '../constants';
 
 /**

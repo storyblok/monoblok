@@ -1,6 +1,7 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
 import type { SbRichTextMark, SbRichTextNode } from './types.generated';
 import { SELF_CLOSING_TAGS } from '../utils';
+import { escapeAttr } from './attribute';
 /**
  * Resolves the HTML tag for a given Richtext node or mark.
  * @param node - The Richtext node or mark to resolve the tag for.
@@ -78,4 +79,18 @@ export function normalizeNodes(
   return input.type === 'doc'
     ? input.content || []
     : [input];
+}
+
+/** Converts attribute record to HTML string: ` key="value" key2="value2"` */
+export function attrsToHtmlString(attrs: Record<string, unknown>): string {
+  let result = '';
+
+  for (const key in attrs) {
+    const value = attrs[key];
+    if (value != null) {
+      result += ` ${key}="${escapeAttr(value)}"`;
+    }
+  }
+
+  return result;
 }

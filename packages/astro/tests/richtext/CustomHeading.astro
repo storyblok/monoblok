@@ -1,0 +1,10 @@
+---
+import type { SbAstroRichTextProps } from '../../src/index';
+
+type Props = SbAstroRichTextProps<'heading'>;
+
+const { attrs } = Astro.props;
+const Tag = `h${attrs?.level}`;
+---
+
+<Tag data-type="custom-heading"><slot /></Tag>

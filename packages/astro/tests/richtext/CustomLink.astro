@@ -8,4 +8,4 @@ const { attrs } = Astro.props;
 const href = attrs?.anchor ? `${attrs.href}#${attrs.anchor}` : (attrs?.href ?? '');
 ---
 
-<a data-type="custom-link" href={href} target={attrs?.target ?? '_self'}><slot /></a>
+<a data-type="custom-link" href={href} target="_blank"><slot /></a>

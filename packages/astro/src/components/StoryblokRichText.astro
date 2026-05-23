@@ -1,83 +1,14 @@
 ---
-import {
-  renderRichText,
-  type SbBlokData,
-  type SbRichTextDoc,
-  type SbRichTextRenderers,
-  resolveComponent,
-  processAttrs,
-  resolveTag,
-  styleToString,
-  type PMMark,
-} from '../';
-import StoryblokComponent from './StoryblokComponent.astro';
-import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+import { type SbRichTextNode, type SbAstroRendererOptions, normalizeNodes } from '../';
+import RenderChildren from './richtext/RenderChildren.astro';
 
-interface Props {
-  document: SbRichTextDoc | null | undefined | SbRichTextDoc[];
-  components?: SbRichTextRenderers<AstroComponentFactory>;
+interface Props extends SbAstroRendererOptions {
+  document: SbRichTextNode | null | undefined | SbRichTextNode[];
 }
 
 const { document, components } = Astro.props;
 
-const nodes = document
-  ? Array.isArray(document)
-    ? document
-    : document.type === 'doc'
-      ? (document.content ?? [])
-      : [document]
-  : [];
-
-function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
-  return (
-    typeof component === 'function' ||
-    (typeof component === 'object' && component !== null && 'isAstroComponentFactory' in component)
-  );
-}
-
-function buildAstroAttrs(attrs: Record<string, unknown>): Record<string, unknown> {
-  const styleObj = attrs?.style as Record<string, unknown> | undefined;
-  const finalAttrs: Record<string, unknown> = { ...attrs };
-
-  if (styleObj) {
-    finalAttrs.style = styleToString(styleObj);
-  }
-  return finalAttrs;
-}
+const nodes = normalizeNodes(document);
 ---
 
-{
-  nodes.map((node: SbRichTextDoc) => {
-    if (node.type === 'text') {
-      return (node.marks || []).reduce((children: unknown, mark: PMMark) => {
-        const MarkComponent = resolveComponent(mark.type, components);
-        if (isValidAstroComponent(MarkComponent)) {
-          return <MarkComponent {...mark}>{children}</MarkComponent>;
-        }
-        const Tag = resolveTag(mark);
-        if (!Tag) {
-          return children;
-        }
-        const attrs = processAttrs(mark.type, mark.attrs);
-
-        return <Tag {...buildAstroAttrs(attrs)}>{children}</Tag>;
-      }, node.text);
-    }
-    const NodeComponent = resolveComponent(node.type, components);
-
-    if (isValidAstroComponent(NodeComponent)) {
-      return (
-        <NodeComponent {...node}>
-          <Astro.self document={node.content} components={components} />
-        </NodeComponent>
-      );
-    }
-
-    // default blok handling
-    if (node.type === 'blok') {
-      const body = Array.isArray(node?.attrs?.body) ? node.attrs.body : [];
-      return body.map((blok: SbBlokData) => <StoryblokComponent blok={blok} />);
-    }
-    return <Fragment set:html={renderRichText(node)} />;
-  })
-}
+<RenderChildren nodes={nodes} options={{ components }} />

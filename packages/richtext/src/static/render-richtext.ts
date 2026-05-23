@@ -1,11 +1,11 @@
 import { escapeHtml } from '../utils';
 import { optimizeImage } from '../images-optimization';
-import { escapeAttr, processAttrs } from './attribute';
+import { processAttrs } from './attribute';
 import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
 import { styleToString } from './style';
 import type { RenderSpec, SbRichTextElement, SbRichTextOptions, SbRichTextTextNode } from './types';
 import type { SbRichTextMark } from './types.generated';
-import { getStaticChildren, isSelfClosing, normalizeNodes, resolveTag } from './util';
+import { attrsToHtmlString, getStaticChildren, isSelfClosing, normalizeNodes, resolveTag } from './util';
 import type { SbRichTextNode } from './index';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -300,18 +300,4 @@ export function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, un
   }
 
   return attrsToHtmlString(finalAttrs);
-}
-
-/** Converts attribute record to HTML string: ` key="value" key2="value2"` */
-function attrsToHtmlString(attrs: Record<string, unknown>): string {
-  let result = '';
-
-  for (const key in attrs) {
-    const value = attrs[key];
-    if (value != null) {
-      result += ` ${key}="${escapeAttr(value)}"`;
-    }
-  }
-
-  return result;
 }

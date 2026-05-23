@@ -1,0 +1,35 @@
+---
+import { attrsToHtmlString, buildAstroAttrs, isSelfClosing, type RenderSpec, type SbRichTextElement } from '../../';
+
+interface Props {
+  type: SbRichTextElement;
+  specs: readonly RenderSpec[];
+  parentAttrs?: Record<string, unknown>;
+}
+
+const { type, specs, parentAttrs } = Astro.props;
+---
+
+{
+  specs.map((spec) => {
+    const { tag, children, attrs: specAttrs } = spec;
+    const Tag = tag;
+    const mergedAttrs = { ...specAttrs, ...parentAttrs };
+    const processedAttrs = buildAstroAttrs(type, mergedAttrs);
+
+    if (isSelfClosing(Tag)) {
+      return <Fragment set:html={`<${tag}${attrsToHtmlString(processedAttrs)}>`} />;
+    }
+    return (
+      <Tag {...processedAttrs}>
+        {children ? (
+          <Astro.self type={type} specs={children} parentAttrs={parentAttrs}>
+            <slot />
+          </Astro.self>
+        ) : (
+          <slot />
+        )}
+      </Tag>
+    );
+  })
+}

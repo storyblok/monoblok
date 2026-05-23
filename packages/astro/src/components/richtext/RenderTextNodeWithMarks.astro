@@ -1,0 +1,34 @@
+---
+import {
+  type SbRichTextTextNode,
+  type SbRichTextMark,
+  type SbAstroRendererOptions,
+  isValidAstroComponent,
+} from '../../';
+import RenderElement from './RenderElement.astro';
+
+interface Props {
+  node: SbRichTextTextNode;
+  marks: SbRichTextMark[] | undefined;
+  options: SbAstroRendererOptions;
+}
+const { node, marks = [], options } = Astro.props;
+const reversedMarks = [...marks].reverse();
+const [mark, ...rest] = reversedMarks;
+const components = options.components;
+const MarkComponent = mark && components ? components[mark.type] : undefined;
+---
+
+{
+  reversedMarks.length === 0 ? (
+    node.text
+  ) : isValidAstroComponent(MarkComponent) ? (
+    <MarkComponent {...mark}>
+      <Astro.self node={node} marks={rest} options={options} />
+    </MarkComponent>
+  ) : (
+    <RenderElement node={mark}>
+      <Astro.self node={node} marks={rest} options={options} />
+    </RenderElement>
+  )
+}

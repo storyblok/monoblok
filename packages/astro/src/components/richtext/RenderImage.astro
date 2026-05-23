@@ -1,0 +1,24 @@
+---
+import { type SbRichTextNode, type SbAstroRendererOptions, buildStoryblokImage } from '../../';
+import RenderElement from './RenderElement.astro';
+
+type ImageNode = SbRichTextNode & { type: 'image' };
+interface Props {
+  node: ImageNode;
+  options: SbAstroRendererOptions;
+}
+const { node, options } = Astro.props;
+const optimizedNode: ImageNode =
+  options.optimizeImage && node?.attrs?.src
+    ? {
+        ...node,
+        attrs: {
+          ...node.attrs,
+          ...buildStoryblokImage(node.attrs.src as string, options.optimizeImage),
+        },
+        type: 'image',
+      }
+    : node;
+---
+
+<RenderElement node={optimizedNode} />

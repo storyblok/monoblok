@@ -42,10 +42,7 @@ export default defineConfig({
         { src: 'src/public.d.ts', dest: '.' },
         {
           src: [
-            'src/components/StoryblokComponent.astro',
-            'src/components/FallbackComponent.astro',
-            'src/components/StoryblokServerData.astro',
-            'src/components/StoryblokRichText.astro',
+            'src/components/*',
           ],
           dest: 'components',
         },

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
 import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
-import type { SbRichTextNode } from './index';
+import { splitTableRows } from './index';
 
 describe('renderRichText', () => {
   describe('input handling', () => {
@@ -57,7 +57,8 @@ describe('renderRichText', () => {
     });
   });
   describe('custom renderers', () => {
-    it(customRendererFixture.title, () => {
+    const node_and_mark = customRendererFixture.node_and_mark;
+    it(node_and_mark.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
           heading: ({ content, attrs }) => `<p data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</p>`,
@@ -65,31 +66,21 @@ describe('renderRichText', () => {
           link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="_blank">${children}</a>`,
         },
       };
-      const result = renderRichText(customRendererFixture.input, options);
-      expect(result).toBe(customRendererFixture.expected);
+      const result = renderRichText(node_and_mark.input, options);
+      expect(result).toBe(node_and_mark.expected);
     });
-    it('supports recursive renderRichText in custom renderers', () => {
+    const recursive = customRendererFixture.recursive;
+    it(recursive.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
           heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
-      const document: SbRichTextNode[] = [{
-        type: 'heading',
-        attrs: { level: 1, textAlign: null },
-        content: [text('Title', [{ type: 'bold' }])],
-      }, {
-        type: 'paragraph',
-        attrs: { textAlign: 'center' },
-        content: [text('Hello Storyblok', [{ type: 'bold' }])],
-      }];
-      expect(renderRichText(document, options)).toBe(
-        '<h1 data-type="custom-heading"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
-      );
+      expect(renderRichText(recursive.input, options)).toBe(recursive.expected);
     });
-
-    it('allows custom code_block renderer to control attribute placement', () => {
+    const code_block = customRendererFixture.code_block;
+    it(code_block.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
           code_block: ({ attrs, content }) => {
@@ -99,15 +90,22 @@ describe('renderRichText', () => {
           },
         },
       };
-      const codeBlock: SbRichTextNode = {
-        type: 'code_block',
-        attrs: { class: 'typescript' },
-        content: [text('const x: number = 1;')],
+      const html = renderRichText(code_block.input, options);
+      expect(html).toBe(code_block.expected);
+    });
+    const table = customRendererFixture.table;
+    it(table.title, () => {
+      const options: SbRichTextOptions = {
+        renderers: {
+          table: ({ content }) => {
+            const { headerRows, bodyRows } = splitTableRows(content);
+            return `<table class="custom-table"><thead>${renderRichText(headerRows, options)}</thead><tbody>${renderRichText(bodyRows, options)}</tbody></table>`;
+          },
+          bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
+        },
       };
-      const html = renderRichText(codeBlock, options);
-      expect(html).toBe(
-        '<pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre>',
-      );
+      const html = renderRichText(table.input, options);
+      expect(html).toBe(table.expected);
     });
   });
   describe('blok nodes', () => {

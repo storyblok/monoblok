@@ -32,9 +32,10 @@ export const linkMark = (
 export const tableCell = (
   content: string,
   attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
+  marks?: SbRichTextNode['marks'],
 ): SbRichTextNode => ({
   type: 'tableCell',
-  content: [{ type: 'paragraph', content: [text(content)] }],
+  content: [{ type: 'paragraph', content: [text(content, marks)] }],
   attrs: {
     colspan: attrs.colspan ?? 1,
     rowspan: attrs.rowspan ?? 1,
@@ -43,9 +44,9 @@ export const tableCell = (
   },
 });
 
-export const tableHeader = (content: string): SbRichTextNode => ({
+export const tableHeader = (content: string, marks?: SbRichTextNode['marks']): SbRichTextNode => ({
   type: 'tableHeader',
-  content: [{ type: 'paragraph', content: [text(content)] }],
+  content: [{ type: 'paragraph', content: [text(content, marks)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 

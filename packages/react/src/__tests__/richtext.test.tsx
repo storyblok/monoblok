@@ -1,11 +1,12 @@
-import type { SbReactComponentMap, SbRichTextNode } from '@storyblok/react';
+import type { SbReactComponentMap } from '@storyblok/react';
 import { StoryblokRichText } from '@storyblok/react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures, text } from '@storyblok/richtext/test-utils';
+import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
 import CustomHeading from './richtext/CustomHeading';
 import CustomLink from './richtext/CustomLink';
 import CustomCodeBlock from './richtext/CodeComponent';
+import CustomTable from './richtext/CustomTable';
 
 interface AttributePositionRule {
   key: string;
@@ -151,48 +152,43 @@ describe('react StoryblokRichText component', () => {
     });
   });
   describe('custom components', () => {
-    it(customRendererFixture.title, () => {
+    const node_and_mark = customRendererFixture.node_and_mark;
+    it(node_and_mark.title, () => {
       const options: SbReactComponentMap = {
         heading: CustomHeading,
         link: CustomLink,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
-      const { container } = render(<StoryblokRichText document={customRendererFixture.input} components={options} />);
-      expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${customRendererFixture.expected}</div>`);
+      const { container } = render(<StoryblokRichText wrapper={false} document={node_and_mark.input} components={options} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(node_and_mark.expected);
     });
-    it('supports recursive StoryblokRichText in custom renderers', () => {
+    const recursive = customRendererFixture.recursive;
+    it(recursive.title, () => {
       const options: SbReactComponentMap = {
-        heading: ({ content }) => <h1 data-type="custom-heading"><StoryblokRichText document={content} components={options} /></h1>,
+        heading: ({ content }) => <h1 data-type="custom-heading"><StoryblokRichText wrapper={false} document={content} components={options} /></h1>,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
-      const document: SbRichTextNode[] = [{
-        type: 'heading',
-        attrs: { level: 1, textAlign: null },
-        content: [text('Title', [{ type: 'bold' }])],
-      }, {
-        type: 'paragraph',
-        attrs: { textAlign: 'center' },
-        content: [text('Hello Storyblok', [{ type: 'bold' }])],
-      }];
-      const { container } = render(<StoryblokRichText document={document} components={options} />);
+      const { container } = render(<StoryblokRichText wrapper={false} document={recursive.input} components={options} />);
 
-      expect(alignImageSrcAttribute(container.innerHTML)).toBe(
-        '<div><h1 data-type="custom-heading"><div><b data-type="custom-bold">Title</b></div></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p></div>',
-      );
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(recursive.expected);
     });
-    it('allows custom code_block renderer to control attribute placement', () => {
+    const code_block = customRendererFixture.code_block;
+    it(code_block.title, () => {
       const options: SbReactComponentMap = {
         code_block: CustomCodeBlock,
       };
-      const codeBlock: SbRichTextNode = {
-        type: 'code_block',
-        attrs: { class: 'typescript' },
-        content: [text('const x: number = 1;')],
+      const { container } = render(<StoryblokRichText wrapper={false} document={code_block.input} components={options} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(code_block.expected);
+    });
+    const table = customRendererFixture.table;
+
+    it(table.title, () => {
+      const options: SbReactComponentMap = {
+        table: CustomTable,
+        bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
-      const { container } = render(<StoryblokRichText document={codeBlock} components={options} />);
-      expect(alignImageSrcAttribute(container.innerHTML)).toBe(
-        '<div><pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre></div>',
-      );
+      const { container } = render(<StoryblokRichText wrapper={false} document={table.input} components={options} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(table.expected);
     });
   });
 });

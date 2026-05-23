@@ -1,4 +1,4 @@
-import { linkMark, text } from './helpers';
+import { linkMark, table, tableCell, tableHeader, tableRow, text } from './helpers';
 import type { HtmlFixture } from './types';
 
 export const integrationFixtures: HtmlFixture[] = [
@@ -33,48 +33,83 @@ export const integrationFixtures: HtmlFixture[] = [
 ];
 
 const testLinkMark = linkMark('/richtext', { linktype: 'story', target: '_self', custom: { rel: 'noopener', title: 'Navigate to richtext page' } });
-export const customRendererFixture: HtmlFixture = {
-  title: 'renders custom node and mark overrides',
-  input: {
-    type: 'doc',
-    content: [
-      {
-        type: 'heading',
-        attrs: {
-          level: 2,
-          textAlign: null,
-        },
-        content: [
-          {
-            text: 'Custom Rich Text Test',
-            type: 'text',
+export const customRendererFixture: Record<string, HtmlFixture> = {
+  node_and_mark: {
+    title: 'renders custom node and mark overrides',
+    input: {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: {
+            level: 2,
+            textAlign: null,
           },
-        ],
-      },
-      {
-        type: 'paragraph',
-        attrs: {
-          textAlign: null,
-        },
-        content: [
-          text('This is a '),
-          text('bold text', [{ type: 'bold' }]),
-          text(' with a '),
-          text('blue color', [{
-            type: 'textStyle',
-            attrs: {
-              color: 'rgb(27, 74, 230)',
+          content: [
+            {
+              text: 'Custom Rich Text Test',
+              type: 'text',
             },
-          }]),
-          text(' and a link to '),
-          text('some ', [testLinkMark]),
-          text('Italic', [testLinkMark, { type: 'italic' }]),
-          text(' link', [testLinkMark]),
-          text('.'),
+          ],
+        },
+        {
+          type: 'paragraph',
+          attrs: {
+            textAlign: null,
+          },
+          content: [
+            text('This is a '),
+            text('bold text', [{ type: 'bold' }]),
+            text(' with a '),
+            text('blue color', [{
+              type: 'textStyle',
+              attrs: {
+                color: 'rgb(27, 74, 230)',
+              },
+            }]),
+            text(' and a link to '),
+            text('some ', [testLinkMark]),
+            text('Italic', [testLinkMark, { type: 'italic' }]),
+            text(' link', [testLinkMark]),
+            text('.'),
 
-        ],
-      },
-    ],
+          ],
+        },
+      ],
+    },
+    expected: '<p data-type="custom-heading" data-level="2">Custom Rich Text Test</p><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a data-type="custom-link" href="/richtext" target="_blank">some <em>Italic</em> link</a>.</p>',
   },
-  expected: '<p data-type="custom-heading" data-level="2">Custom Rich Text Test</p><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a data-type="custom-link" href="/richtext" target="_blank">some <em>Italic</em> link</a>.</p>',
+  recursive:
+  {
+    title: 'renders custom node overrides with recursive StoryblokRichText or renderRichtext in custom renderers',
+    input: [{
+      type: 'heading',
+      attrs: { level: 1, textAlign: null },
+      content: [text('Title', [{ type: 'bold' }])],
+    }, {
+      type: 'paragraph',
+      attrs: { textAlign: 'center' },
+      content: [text('Hello Storyblok', [{ type: 'bold' }])],
+    }],
+    expected: '<h1 data-type="custom-heading"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
+  },
+  code_block:
+  {
+    title: 'allows custom code_block renderer to control attribute placement',
+    input: {
+      type: 'code_block',
+      attrs: { class: 'typescript' },
+      content: [text('const x: number = 1;')],
+    },
+    expected: '<pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre>',
+  },
+  table:
+  {
+    title: 'allows custom table renderer',
+    input: table([
+      tableRow([tableHeader('Name'), tableHeader('Age'), tableHeader('Location')]),
+      tableRow([tableCell('John', { colspan: 2 }, [{ type: 'bold' }]), tableCell('25'), tableCell('New York')]),
+    ]),
+    expected: '<table class="custom-table"><thead><tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr></thead><tbody><tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr></tbody></table>',
+  },
 };

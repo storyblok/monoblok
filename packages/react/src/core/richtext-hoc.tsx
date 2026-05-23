@@ -7,7 +7,7 @@ import React, { type ComponentType, type ElementType, type ReactNode, useMemo } 
  * Similar to SbRichTextProps but uses ReactNode for children instead of string.
  */
 export type SbReactRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, { children?: ReactNode }, { children?: ReactNode }>;
+  BaseSbRichTextProps<T, { children?: ReactNode; components?: SbReactComponentMap }, { children?: ReactNode }>;
 
 export type SbReactRichTextComponent<
   T extends SbRichTextElement,
@@ -137,7 +137,7 @@ function renderNode(node: SbRichTextNode, options: RendererOptions, key: React.K
 
   if (Custom) {
     return (
-      <Custom key={key} {...node}>
+      <Custom key={key} {...node} components={options.components}>
         {node.content ? renderChildren(node.content, options) : null}
       </Custom>
     );

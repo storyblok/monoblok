@@ -77,7 +77,7 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
         },
       ],
     },
-    expected: '<h2 data-type="custom-heading" data-level="2">Custom Rich Text Test</h2><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a href="/richtext" target="_self" rel="noopener" title="Navigate to richtext page">some <em>Italic</em> link</a>.</p>',
+    expected: '<h2 data-type="custom-heading" data-level="2">Custom Rich Text Test</h2><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a data-type="custom-link" href="/richtext" target="_self" rel="noopener" title="Navigate to richtext page">some <em>Italic</em> link</a>.</p>',
   },
   recursive:
   {
@@ -91,7 +91,7 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
       attrs: { textAlign: 'center' },
       content: [text('Hello Storyblok', [{ type: 'bold' }])],
     }],
-    expected: '<h1 data-type="custom-heading"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
+    expected: '<h1 data-type="custom-heading" data-level="1"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
   },
   code_block:
   {
@@ -110,6 +110,6 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
       tableRow([tableHeader('Name'), tableHeader('Age'), tableHeader('Location')]),
       tableRow([tableCell('John', { colspan: 2 }, [{ type: 'bold' }]), tableCell('25'), tableCell('New York')]),
     ]),
-    expected: '<table class="custom-table"> <thead> <tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr> </thead> <tbody> <tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr> </tbody> </table>',
+    expected: '<table class="custom-table"><thead><tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr></thead><tbody><tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr></tbody></table>',
   },
 };

@@ -165,7 +165,7 @@ describe('react StoryblokRichText component', () => {
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
       const options: SbReactComponentMap = {
-        heading: ({ content }) => <h1 data-type="custom-heading"><StoryblokRichText wrapper={false} document={content} components={options} /></h1>,
+        heading: ({ content, attrs }) => <h1 data-type="custom-heading" data-level={attrs?.level}><StoryblokRichText wrapper={false} document={content} components={options} /></h1>,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
       const { container } = render(<StoryblokRichText wrapper={false} document={recursive.input} components={options} />);

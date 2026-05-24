@@ -1,4 +1,4 @@
-import type { SbRichTextDoc, SbRichTextNode } from '../static';
+import type { SbRichTextDoc, SbRichTextMark, SbRichTextNode } from '../static';
 
 export const text = (
   content: string,
@@ -12,19 +12,20 @@ export const text = (
 export const linkMark = (
   href: string,
   options: {
+    uuid?: string;
     target?: '_blank' | '_self';
     linktype?: 'url' | 'story' | 'email' | 'asset';
     anchor?: string;
     custom?: Record<string, unknown>;
   } = {},
-): NonNullable<SbRichTextNode['marks']>[number] => ({
+): NonNullable<SbRichTextMark & { type: 'link' }> => ({
   type: 'link',
   attrs: {
     href,
     linktype: options.linktype ?? 'url',
     target: options.target ?? null,
     anchor: options.anchor ?? null,
-    uuid: null,
+    uuid: options.uuid ?? null,
     custom: options.custom ?? undefined,
   },
 });

@@ -1,13 +1,10 @@
 <script lang="ts">
-  import type { SbRichTextProps } from '@storyblok/svelte';
-  import type { Snippet } from 'svelte';
+  import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
 
-  type Props = SbRichTextProps<'heading'> & {
-    children?: Snippet;
-  };
-  const props: Props = $props();
+  const props: SbSvelteRichTextProps<'heading'> = $props();
+  const tag = $derived(`h${props.attrs?.level ?? 1}`);
 </script>
 
-<p data-type="custom-heading" data-level={props.attrs?.level}>
+<svelte:element this={tag} data-type="custom-heading" data-level={props.attrs?.level}>
   {@render props.children?.()}
-</p>
+</svelte:element>

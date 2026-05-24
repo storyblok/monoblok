@@ -1,5 +1,6 @@
 ---
 import { type SbRichTextNode, type SbAstroRendererOptions, isValidAstroComponent, getStaticChildren } from '../../';
+import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
 import RenderElement from './RenderElement.astro';
 import RenderImage from './RenderImage.astro';
@@ -25,6 +26,11 @@ const Custom = components && node.type !== 'text' ? components[node.type] : unde
     </Custom>
   ) : node.type === 'image' ? (
     <RenderImage node={node} options={options} />
+  ) : node.type === 'blok' ? (
+    <Fragment>
+      {Array.isArray(node.attrs?.body) &&
+        node.attrs.body.map((blok, index) => <StoryblokComponent blok={blok} key={blok._uid || index} />)}
+    </Fragment>
   ) : node.type === 'table' ? (
     <RenderTable node={node} options={options} />
   ) : getStaticChildren(node) ? (

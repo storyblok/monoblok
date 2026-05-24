@@ -6,9 +6,9 @@ interface Props extends SbAstroRendererOptions {
   document: SbRichTextNode | null | undefined | SbRichTextNode[];
 }
 
-const { document, components } = Astro.props;
+const { document, components, optimizeImage } = Astro.props;
 
 const nodes = normalizeNodes(document);
 ---
 
-<RenderChildren nodes={nodes} options={{ components }} />
+<RenderChildren nodes={nodes} options={{ components, optimizeImage }} />

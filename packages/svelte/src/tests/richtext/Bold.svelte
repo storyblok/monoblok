@@ -1,11 +1,7 @@
 <script lang="ts">
-  import type { SbRichTextProps } from '@storyblok/svelte';
-  import type { Snippet } from 'svelte';
+  import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
 
-  type Props = SbRichTextProps<'bold'> & {
-    children?: Snippet;
-  };
-  const props: Props = $props();
+  const props: SbSvelteRichTextProps<'bold'> = $props();
 </script>
 
 <b data-type="custom-bold">

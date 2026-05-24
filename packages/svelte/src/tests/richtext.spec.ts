@@ -1,24 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import { integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '@storyblok/richtext/test-utils';
+import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
 import StoryblokRichText from '../lib/StoryblokRichText.svelte';
 import { flushSync, mount, unmount } from 'svelte';
-import type { SbRichTextDoc } from '../lib/index';
-import Heading from './richtext/Heading.svelte';
+import CustomTable from './richtext/CustomTable.svelte';
 import Bold from './richtext/Bold.svelte';
+import CustomCode from './richtext/CustomCode.svelte';
+import Heading from './richtext/Heading.svelte';
 import CustomLink from './richtext/CustomLink.svelte';
 
-function cleanHtml(html: string) {
+// Helper function to clean up the HTML output for easier comparison
+export function cleanHtml(html: string) {
   return html
     .replace(/<!--[^>]*-->/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
-describe('storyblokRichText.svelte', () => {
+describe('storyblok Richtext', () => {
+  describe('input handling', async () => {
+    it('returns empty string for null input', async () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: null },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe('');
+      unmount(component);
+    });
+    it('returns empty string for undefined input', async () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: undefined },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe('');
+      unmount(component);
+    });
+    it('returns empty string for empty array', async () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: [] },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe('');
+      unmount(component);
+    });
+  });
   describe('nodes', () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const target = document.createElement('div');
-
         const component = mount(StoryblokRichText, {
           target, // `document` exists because of jsdom
           props: { document: input },
@@ -34,7 +70,6 @@ describe('storyblokRichText.svelte', () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const target = document.createElement('div');
-
         const component = mount(StoryblokRichText, {
           target, // `document` exists because of jsdom
           props: { document: input },
@@ -61,7 +96,6 @@ describe('storyblokRichText.svelte', () => {
       });
     });
   });
-
   describe('links', () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
@@ -92,30 +126,53 @@ describe('storyblokRichText.svelte', () => {
       });
     });
   });
-  describe('custom components', () => {
-    it('renders custom components', () => {
+  describe('custom renderers', () => {
+    const node_and_mark = customRendererFixture.node_and_mark;
+    it(node_and_mark.title, () => {
       const target = document.createElement('div');
-      const doc: SbRichTextDoc = {
-        type: 'doc',
-        content: [
-          {
-            type: 'heading',
-            attrs: { level: 2, textAlign: 'center' },
-            content: [{ type: 'text', text: 'Hello World', marks: [{ type: 'bold' }] }],
-          },
-          text('This is an internal story', [linkMark('/page', { linktype: 'story', anchor: 'intro' })]),
-        ],
-      };
       const component = mount(StoryblokRichText, {
-        target,
-        props: {
-          document: doc,
-          components: { heading: Heading, bold: Bold, link: CustomLink },
-        },
+        target, // `document` exists because of jsdom
+        props: { document: node_and_mark.input, components: { heading: Heading, bold: Bold, link: CustomLink } },
       });
       flushSync();
       const result = cleanHtml(target.innerHTML);
-      expect(result).toBe(`<p data-type="custom-heading" data-level="2"><b data-type="custom-bold">Hello World</b></p><a data-type="custom-link" href="/page#intro" target="_self">This is an internal story</a>`);
+      expect(result).toBe(node_and_mark.expected);
+      unmount(component);
+    });
+    const recursive = customRendererFixture.recursive;
+    it(recursive.title, () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: recursive.input, components: { heading: Heading, bold: Bold } },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe(recursive.expected);
+      unmount(component);
+    });
+    const code_block = customRendererFixture.code_block;
+    it(code_block.title, () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: code_block.input, components: { code_block: CustomCode } },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe(code_block.expected);
+      unmount(component);
+    });
+    const table = customRendererFixture.table;
+    it(table.title, () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target, // `document` exists because of jsdom
+        props: { document: table.input, components: { table: CustomTable, bold: Bold } },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe(table.expected);
       unmount(component);
     });
   });

@@ -43,7 +43,7 @@ function genPMNode(schema: Schema): string {
     if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
       children = 'content?: SbRichTextNode[];';
     }
-    out += `  | { type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} }\n`;
+    out += `  | { type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string }\n`;
   }
 
   return `${out};`;
@@ -52,7 +52,7 @@ function genPMNode(schema: Schema): string {
 function genPMMark(schema: Schema): string {
   let out = 'export type SbRichTextMark =\n';
   for (const [name] of Object.entries(schema.marks)) {
-    out += `  | { type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; }\n`;
+    out += `  | { type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string }\n`;
   }
   return `${out};`;
 }

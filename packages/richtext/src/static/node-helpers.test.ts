@@ -1,27 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { SbRichTextDoc } from './types';
 import {
   areLinkMarksEqual,
   getInnerMarks,
   getTextNodeLinkMark,
   groupLinkNodes,
   isTableHeaderRow,
-  type LinkMark,
   splitTableRows,
 } from './node-helpers';
-import type { SbRichTextMark } from './types.generated';
-
-// ============================================================================
-// Test Helpers
-// ============================================================================
-
-function linkMark(href: string, options: { uuid?: string; target?: '_blank' | '_self'; linktype?: 'url' | 'story' | 'email' | 'asset'; anchor?: string; custom?: Record<string, unknown> } = {}): LinkMark {
-  return { type: 'link' as const, attrs: { href, linktype: options.linktype ?? 'url', target: options.target ?? null, anchor: options.anchor ?? null, uuid: options.uuid ?? null, custom: options.custom ?? undefined } };
-}
-
-function textNode(text: string, marks: SbRichTextMark[] = []): SbRichTextDoc {
-  return { type: 'text', text, marks };
-}
+import type { SbRichTextNode } from './types.generated';
+import { linkMark, text as textNode } from '../test-utils/helpers';
 
 // ============================================================================
 // getTextNodeLinkMark
@@ -29,7 +16,7 @@ function textNode(text: string, marks: SbRichTextMark[] = []): SbRichTextDoc {
 
 describe('getTextNodeLinkMark', () => {
   it('returns null for non-text nodes', () => {
-    const node: SbRichTextDoc = { type: 'paragraph', content: [] };
+    const node: SbRichTextNode = { type: 'paragraph', content: [] };
     expect(getTextNodeLinkMark(node)).toBeNull();
   });
 
@@ -156,7 +143,7 @@ describe('areLinkMarksEqual', () => {
 
 describe('getInnerMarks', () => {
   it('returns empty array for non-text nodes', () => {
-    const node: SbRichTextDoc = { type: 'paragraph', content: [] };
+    const node: SbRichTextNode = { type: 'paragraph', content: [] };
     expect(getInnerMarks(node)).toEqual([]);
   });
 
@@ -237,9 +224,9 @@ describe('groupLinkNodes', () => {
 
   it('handles non-text nodes', () => {
     const mark = linkMark('/test');
-    const textNodeA = textNode('before', [mark]);
-    const brNode: SbRichTextDoc = { type: 'hard_break' };
-    const textNodeB = textNode('after', [mark]);
+    const textNodeA: SbRichTextNode = textNode('before', [mark]);
+    const brNode: SbRichTextNode = { type: 'hard_break' };
+    const textNodeB: SbRichTextNode = textNode('after', [mark]);
     const result = groupLinkNodes([textNodeA, brNode, textNodeB]);
     expect(result).toEqual([
       { nodes: [textNodeA], linkMark: mark },
@@ -267,17 +254,17 @@ describe('groupLinkNodes', () => {
 
 describe('isTableHeaderRow', () => {
   it('returns false for row without content', () => {
-    const row: SbRichTextDoc = { type: 'tableRow' };
+    const row: SbRichTextNode = { type: 'tableRow' };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
   it('returns false for row with empty content', () => {
-    const row: SbRichTextDoc = { type: 'tableRow', content: [] };
+    const row: SbRichTextNode = { type: 'tableRow', content: [] };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
   it('returns false for row with tableCell', () => {
-    const row: SbRichTextDoc = {
+    const row: SbRichTextNode = {
       type: 'tableRow',
       content: [{ type: 'tableCell' }],
     };
@@ -285,7 +272,7 @@ describe('isTableHeaderRow', () => {
   });
 
   it('returns true for row with only tableHeader cells', () => {
-    const row: SbRichTextDoc = {
+    const row: SbRichTextNode = {
       type: 'tableRow',
       content: [
         { type: 'tableHeader' },
@@ -296,7 +283,7 @@ describe('isTableHeaderRow', () => {
   });
 
   it('returns false for mixed row', () => {
-    const row: SbRichTextDoc = {
+    const row: SbRichTextNode = {
       type: 'tableRow',
       content: [
         { type: 'tableHeader' },
@@ -321,7 +308,7 @@ describe('splitTableRows', () => {
   });
 
   it('returns all rows as body when no header rows', () => {
-    const rows: SbRichTextDoc[] = [
+    const rows: SbRichTextNode[] = [
       { type: 'tableRow', content: [{ type: 'tableCell' }] },
       { type: 'tableRow', content: [{ type: 'tableCell' }] },
     ];
@@ -329,7 +316,7 @@ describe('splitTableRows', () => {
   });
 
   it('returns all rows as header when all are header rows', () => {
-    const rows: SbRichTextDoc[] = [
+    const rows: SbRichTextNode[] = [
       { type: 'tableRow', content: [{ type: 'tableHeader' }] },
       { type: 'tableRow', content: [{ type: 'tableHeader' }] },
     ];
@@ -337,9 +324,9 @@ describe('splitTableRows', () => {
   });
 
   it('splits header and body rows correctly', () => {
-    const headerRow: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
-    const bodyRow1: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableCell' }] };
-    const bodyRow2: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableCell' }] };
+    const headerRow: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
+    const bodyRow1: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
+    const bodyRow2: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
     const rows = [headerRow, bodyRow1, bodyRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow],
@@ -348,9 +335,9 @@ describe('splitTableRows', () => {
   });
 
   it('only considers contiguous header rows at start', () => {
-    const headerRow1: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
-    const bodyRow: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableCell' }] };
-    const headerRow2: SbRichTextDoc = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
+    const headerRow1: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
+    const bodyRow: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
+    const headerRow2: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
     const rows = [headerRow1, bodyRow, headerRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow1],

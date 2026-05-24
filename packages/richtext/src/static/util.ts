@@ -61,25 +61,6 @@ export function getStaticChildren(node: SbRichTextNode) {
   const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
   return staticChildren;
 }
-/**
- * Normalizes a Storyblok Richtext input into an array of nodes.
- * Supports single nodes, doc nodes, arrays, and nullable values.
- */
-export function normalizeNodes(
-  input: SbRichTextNode | SbRichTextNode[] | null | undefined,
-): SbRichTextNode[] {
-  if (!input) {
-    return [];
-  }
-
-  if (Array.isArray(input)) {
-    return input;
-  }
-
-  return input.type === 'doc'
-    ? input.content || []
-    : [input];
-}
 
 /** Converts attribute record to HTML string: ` key="value" key2="value2"` */
 export function attrsToHtmlString(attrs: Record<string, unknown>): string {

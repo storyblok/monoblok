@@ -56,3 +56,14 @@ export function escapeHtml(unsafeText: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+export function createKeyGenerator() {
+  const counters = new Map<string, number>();
+
+  return (prefix: string) => {
+    const count = (counters.get(prefix) || 0) + 1;
+
+    counters.set(prefix, count);
+
+    return `${prefix}-${count}`;
+  };
+}

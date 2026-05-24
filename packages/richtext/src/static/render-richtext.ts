@@ -5,8 +5,9 @@ import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node
 import { styleToString } from './style';
 import type { RenderSpec, SbRichTextElement, SbRichTextOptions, SbRichTextTextNode } from './types';
 import type { SbRichTextMark } from './types.generated';
-import { attrsToHtmlString, getStaticChildren, isSelfClosing, normalizeNodes, resolveTag } from './util';
+import { attrsToHtmlString, getStaticChildren, isSelfClosing, resolveTag } from './util';
 import type { SbRichTextNode } from './index';
+import { normalizeNodes } from './normalize-nodes';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *

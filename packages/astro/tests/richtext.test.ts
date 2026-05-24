@@ -5,7 +5,6 @@ import StoryblokRichText from '../src/components/StoryblokRichText.astro';
 import Heading from './richtext/Heading.astro';
 import Bold from './richtext/Bold.astro';
 import CustomLink from './richtext/CustomLink.astro';
-import CustomHeading from './richtext/CustomHeading.astro';
 import CodeBlock from './richtext/CodeBlock.astro';
 import CustomTable from './richtext/CustomTable.astro';
 // Removes source file and location attributes that Astro adds for hydration
@@ -134,7 +133,7 @@ describe('storyblok Richtext', async () => {
         props: {
           document: recursive.input,
           components: {
-            heading: CustomHeading,
+            heading: Heading,
             bold: Bold,
           },
         },

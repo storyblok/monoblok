@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextOptions } from './types';
 import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
-import { splitTableRows } from './index';
+import { attrsToHtmlString, splitTableRows } from './index';
 
 describe('renderRichText', () => {
   describe('input handling', () => {
@@ -61,9 +61,9 @@ describe('renderRichText', () => {
     it(node_and_mark.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
-          heading: ({ content, attrs }) => `<p data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</p>`,
+          heading: ({ content, attrs }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
-          link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="_blank">${children}</a>`,
+          link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
         },
       };
       const result = renderRichText(node_and_mark.input, options);
@@ -73,7 +73,7 @@ describe('renderRichText', () => {
     it(recursive.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };

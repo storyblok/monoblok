@@ -64,8 +64,9 @@ export function getInnerMarks(node: SbRichTextNode): SbRichTextMark[] {
 export function groupLinkNodes(children: SbRichTextNode[]): Array<{
   nodes: SbRichTextNode[];
   linkMark: LinkMark | null;
+  _key: string;
 }> {
-  const groups: Array<{ nodes: SbRichTextNode[]; linkMark: LinkMark | null }> = [];
+  const groups: Array<{ nodes: SbRichTextNode[]; linkMark: LinkMark | null; _key: string }> = [];
   let i = 0;
   const len = children.length;
 
@@ -83,11 +84,11 @@ export function groupLinkNodes(children: SbRichTextNode[]): Array<{
         end++;
       }
 
-      groups.push({ nodes: groupNodes, linkMark });
+      groups.push({ nodes: groupNodes, linkMark, _key: `group-link-${i}` });
       i = end;
     }
     else {
-      groups.push({ nodes: [node], linkMark: null });
+      groups.push({ nodes: [node], linkMark: null, _key: `group-node-${i}` });
       i++;
     }
   }

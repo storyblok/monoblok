@@ -3,6 +3,7 @@
   import type { SbSvelteRendererOptions } from '../richtext-helpers';
   import RenderStaticStructure from './RenderStaticStructure.svelte';
   import RenderChildren from './RenderChildren.svelte';
+  import DynamicElement from './DynamicElement.svelte';
 
   type Props = {
     node: SbRichTextNode;
@@ -15,11 +16,11 @@
 </script>
 
 {#if staticChildren && node.type !== 'text' && OuterTag}
-  <svelte:element this={OuterTag}>
+  <DynamicElement tag={OuterTag}>
     <RenderStaticStructure type={node.type} specs={staticChildren} parentAttrs={node.attrs}>
       {#if node.content}
         <RenderChildren nodes={node.content} {options} />
       {/if}
     </RenderStaticStructure>
-  </svelte:element>
+  </DynamicElement>
 {/if}

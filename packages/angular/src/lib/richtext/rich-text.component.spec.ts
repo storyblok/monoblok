@@ -2,8 +2,8 @@ import { Component, input, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SbRichTextComponent } from './rich-text.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
-import type { SbRichTextDoc } from '@storyblok/richtext';
-import type { RichTextComponentProps } from '../types';
+import type { SbRichTextDoc, SbRichTextNode } from '@storyblok/richtext';
+import type { SbAngularRichTextProps } from '../types';
 import {
   text,
   linkMark,
@@ -21,11 +21,11 @@ import {
   standalone: true,
   imports: [SbRichTextComponent],
   template: `<div class="custom-node">
-    <sb-rich-text [sbDocument]="data()?.content" />
+    <sb-rich-text [sbDocument]="data().content" />
   </div>`,
 })
 class MockCustomParagraphComponent {
-  readonly data = input.required<RichTextComponentProps<'paragraph'>>();
+  readonly data = input.required<SbAngularRichTextProps<'paragraph'>>();
 }
 
 /**
@@ -37,7 +37,7 @@ class MockCustomParagraphComponent {
   template: `<span class="custom-link"><ng-content /></span>`,
 })
 class MockCustomMarkComponent {
-  readonly data = input.required<RichTextComponentProps<'link'>>();
+  readonly data = input.required<SbAngularRichTextProps<'link'>>();
 }
 
 /**
@@ -162,7 +162,7 @@ describe('SbRichTextComponent', () => {
   });
   describe('custom renderers', () => {
     it('overrides node rendering with custom component', async () => {
-      const node: SbRichTextDoc = { type: 'paragraph', content: [text('Hello')] };
+      const node: SbRichTextNode = { type: 'paragraph', content: [text('Hello')] };
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -196,7 +196,7 @@ describe('SbRichTextComponent', () => {
       }).compileComponents();
       fixture = TestBed.createComponent(SbRichTextComponent);
 
-      const node: SbRichTextDoc = {
+      const node: SbRichTextNode = {
         type: 'paragraph',
         content: [text('Bold Link', [{ type: 'bold' }, linkMark('https://example.com')])],
       };
@@ -223,7 +223,7 @@ describe('SbRichTextComponent', () => {
         `,
       })
       class MockCustomCodeBlockComponent {
-        readonly data = input.required<RichTextComponentProps<'code_block'>>();
+        readonly data = input.required<SbAngularRichTextProps<'code_block'>>();
         lang = () => (this.data()?.attrs?.['class'] as string) || '';
       }
 
@@ -239,7 +239,7 @@ describe('SbRichTextComponent', () => {
       }).compileComponents();
       fixture = TestBed.createComponent(SbRichTextComponent);
 
-      const codeBlock: SbRichTextDoc = {
+      const codeBlock: SbRichTextNode = {
         type: 'code_block',
         attrs: { class: 'js' },
         content: [text('const x: number = 1;')],

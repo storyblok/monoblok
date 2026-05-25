@@ -2,6 +2,7 @@
   import { buildSvelteAttrs } from '../richtext-helpers';
   import { isSelfClosing, resolveTag, type SbRichTextMark, type SbRichTextNode } from '@storyblok/richtext';
   import type { Snippet } from 'svelte';
+  import DynamicElement from './DynamicElement.svelte';
 
   type Props = {
     node: SbRichTextNode | SbRichTextMark;
@@ -16,11 +17,11 @@
 
 {#if Tag}
   {#if selfClosing}
-    <svelte:element this={Tag} {...processedAttrs} />
+    <DynamicElement tag={Tag} attrs={processedAttrs} selfClosing={true} />
   {:else}
-    <svelte:element this={Tag} {...processedAttrs}>
+    <DynamicElement tag={Tag} attrs={processedAttrs}>
       {@render children?.()}
-    </svelte:element>
+    </DynamicElement>
   {/if}
 {:else}
   {@render children?.()}

@@ -2,10 +2,10 @@ import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/
 import type { SbRichTextElement } from '@storyblok/richtext';
 
 import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
-import { RichTextComponentProps } from '../types';
+import { SbAngularRichTextProps } from '../types';
 
 export type RichTextAngularComponent<T extends SbRichTextElement> = Type<{
-  data: InputSignal<RichTextComponentProps<T>>;
+  data: InputSignal<SbAngularRichTextProps<T>>;
 }>;
 
 type RichtextComponentLoader<T extends SbRichTextElement> = () => Promise<

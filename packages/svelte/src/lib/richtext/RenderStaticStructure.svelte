@@ -4,6 +4,7 @@
   import type { Snippet } from 'svelte';
   // eslint-disable-next-line import/no-self-import
   import RenderStaticStructure from './RenderStaticStructure.svelte';
+  import DynamicElement from './DynamicElement.svelte';
 
   type Props = {
     type: SbRichTextElement;
@@ -22,9 +23,9 @@
   {@const processedAttrs = buildSvelteAttrs(type, mergedAttrs)}
 
   {#if isSelfClosing(Tag)}
-    <svelte:element this={Tag} {...processedAttrs} />
+    <DynamicElement tag={Tag} attrs={processedAttrs} selfClosing={true} />
   {:else}
-    <svelte:element this={Tag} {...processedAttrs}>
+    <DynamicElement tag={Tag} attrs={processedAttrs}>
       {#if children}
         <RenderStaticStructure {type} specs={children} {parentAttrs}>
           {@render rest.children?.()}
@@ -32,6 +33,6 @@
       {:else}
         {@render rest.children?.()}
       {/if}
-    </svelte:element>
+    </DynamicElement>
   {/if}
 {/each}

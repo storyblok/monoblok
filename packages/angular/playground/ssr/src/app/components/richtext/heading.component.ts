@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { type RichTextComponentProps, SbRichTextComponent } from '@storyblok/angular';
+import { type SbAngularRichTextProps, SbRichTextComponent } from '@storyblok/angular';
 
 @Component({
   selector: 'app-heading',
@@ -13,5 +13,5 @@ import { type RichTextComponentProps, SbRichTextComponent } from '@storyblok/ang
   imports: [SbRichTextComponent],
 })
 export class HeadingComponent {
-  readonly data = input.required<RichTextComponentProps<'heading'>>();
+  readonly data = input.required<SbAngularRichTextProps<'heading'>>();
 }

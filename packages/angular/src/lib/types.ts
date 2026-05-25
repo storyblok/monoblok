@@ -7,4 +7,4 @@ export interface SbBlokData extends ISbComponentType<string> {
   [index: string]: SbBlokKeyDataTypes;
 }
 
-export type RichTextComponentProps<T extends SbRichTextElement> = SbRichTextProps<T>;
+export type SbAngularRichTextProps<T extends SbRichTextElement> = SbRichTextProps<T>;

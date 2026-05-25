@@ -1,5 +1,6 @@
 ---
 import { attrsToHtmlString, buildAstroAttrs, isSelfClosing, type RenderSpec, type SbRichTextElement } from '../../';
+import DynamicElement from './DynamicElement.astro';
 
 interface Props {
   type: SbRichTextElement;
@@ -21,7 +22,7 @@ const { type, specs, parentAttrs } = Astro.props;
       return <Fragment set:html={`<${tag}${attrsToHtmlString(processedAttrs)}>`} />;
     }
     return (
-      <Tag {...processedAttrs}>
+      <DynamicElement tag={Tag} attrs={processedAttrs}>
         {children ? (
           <Astro.self type={type} specs={children} parentAttrs={parentAttrs}>
             <slot />
@@ -29,7 +30,7 @@ const { type, specs, parentAttrs } = Astro.props;
         ) : (
           <slot />
         )}
-      </Tag>
+      </DynamicElement>
     );
   })
 }

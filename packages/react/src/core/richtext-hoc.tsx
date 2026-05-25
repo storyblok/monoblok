@@ -43,7 +43,6 @@ export function createRichTextHook(StoryblokComponent: ElementType, _options?: C
     const render = useStoryblokRichText({
       optimizeImage,
       components: {
-        ...components,
         blok: ({ attrs }: SbRichTextProps<'blok'>) => (
           <>
             {Array.isArray(attrs?.body) && attrs?.body?.map((blok, index) => (
@@ -51,6 +50,7 @@ export function createRichTextHook(StoryblokComponent: ElementType, _options?: C
             ))}
           </>
         ),
+        ...components,
       },
     });
 
@@ -70,7 +70,7 @@ export function useStoryblokRichText({ optimizeImage = false, components }: Rend
 
 export function createStoryblokRenderer(options: RendererOptions) {
   return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined) {
-    const nodes = normalizeNodes(document);
+    const nodes = normalizeNodes(document, true);
     return nodes?.length ? renderChildren(nodes, options) : null;
   };
 }
@@ -84,10 +84,10 @@ function renderChildren(nodes: SbRichTextNode[], options: RendererOptions): Reac
   const groups = groupLinkNodes(nodes);
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
-      return renderLinkGroup(group.nodes, group.linkMark, options, groupIndex);
+      return renderLinkGroup(group.nodes, group.linkMark, options, group._key || groupIndex);
     }
     else {
-      return renderNode(group.nodes[0], options, groupIndex);
+      return renderNode(group.nodes[0], options, group._key || groupIndex);
     }
   });
 }
@@ -104,7 +104,7 @@ function renderLinkGroup(
   const inner = nodes.map((node, index) => {
     const textNode = node as SbRichTextTextNode;
     const innerMarks = getInnerMarks(node);
-    return renderTextNodeWithMarks(textNode, innerMarks, options, index);
+    return renderTextNodeWithMarks(textNode, innerMarks, options, node._key || index);
   });
 
   // Custom link component
@@ -226,7 +226,7 @@ function renderTable(
   if (headerRows.length > 0) {
     tableContent.push(
       <thead key="thead">
-        {headerRows.map((row, index) => renderNode(row, options, index))}
+        {headerRows.map((row, index) => renderNode(row, options, row._key || index))}
       </thead>,
     );
   }
@@ -234,7 +234,7 @@ function renderTable(
   if (bodyRows.length > 0) {
     tableContent.push(
       <tbody key="tbody">
-        {bodyRows.map((row, index) => renderNode(row, options, index))}
+        {bodyRows.map((row, index) => renderNode(row, options, row._key || index))}
       </tbody>,
     );
   }

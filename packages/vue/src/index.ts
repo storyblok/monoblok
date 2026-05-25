@@ -22,7 +22,6 @@ export { default as StoryblokComponent } from './components/StoryblokComponent.v
 
 export { default as StoryblokRichText } from './components/StoryblokRichText.vue';
 export * from './composables/useStoryblokRichText';
-export type { SbVueRichTextComponents, SbVueRichTextProps } from './composables/useStoryblokRichText';
 
 export * from './types';
 

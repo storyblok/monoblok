@@ -181,14 +181,14 @@ describe('groupLinkNodes', () => {
   it('groups single non-linked text node', () => {
     const node = textNode('hello');
     const result = groupLinkNodes([node]);
-    expect(result).toEqual([{ nodes: [node], linkMark: null }]);
+    expect(result).toEqual([{ _key: 'group-node-0', nodes: [node], linkMark: null }]);
   });
 
   it('groups single linked text node', () => {
     const mark = linkMark('/test');
     const node = textNode('hello', [mark]);
     const result = groupLinkNodes([node]);
-    expect(result).toEqual([{ nodes: [node], linkMark: mark }]);
+    expect(result).toEqual([{ _key: 'group-link-0', nodes: [node], linkMark: mark }]);
   });
 
   it('merges adjacent text nodes with same link', () => {
@@ -196,7 +196,7 @@ describe('groupLinkNodes', () => {
     const node1 = textNode('hello ', [mark]);
     const node2 = textNode('world', [mark]);
     const result = groupLinkNodes([node1, node2]);
-    expect(result).toEqual([{ nodes: [node1, node2], linkMark: mark }]);
+    expect(result).toEqual([{ _key: 'group-link-0', nodes: [node1, node2], linkMark: mark }]);
   });
 
   it('separates text nodes with different links', () => {
@@ -206,8 +206,8 @@ describe('groupLinkNodes', () => {
     const node2 = textNode('world', [mark2]);
     const result = groupLinkNodes([node1, node2]);
     expect(result).toEqual([
-      { nodes: [node1], linkMark: mark1 },
-      { nodes: [node2], linkMark: mark2 },
+      { _key: 'group-link-0', nodes: [node1], linkMark: mark1 },
+      { _key: 'group-link-1', nodes: [node2], linkMark: mark2 },
     ]);
   });
 
@@ -217,8 +217,8 @@ describe('groupLinkNodes', () => {
     const plainNode = textNode('plain');
     const result = groupLinkNodes([linkedNode, plainNode]);
     expect(result).toEqual([
-      { nodes: [linkedNode], linkMark: mark },
-      { nodes: [plainNode], linkMark: null },
+      { _key: 'group-link-0', nodes: [linkedNode], linkMark: mark },
+      { _key: 'group-node-1', nodes: [plainNode], linkMark: null },
     ]);
   });
 
@@ -229,9 +229,9 @@ describe('groupLinkNodes', () => {
     const textNodeB: SbRichTextNode = textNode('after', [mark]);
     const result = groupLinkNodes([textNodeA, brNode, textNodeB]);
     expect(result).toEqual([
-      { nodes: [textNodeA], linkMark: mark },
-      { nodes: [brNode], linkMark: null },
-      { nodes: [textNodeB], linkMark: mark },
+      { _key: 'group-link-0', nodes: [textNodeA], linkMark: mark },
+      { _key: 'group-node-1', nodes: [brNode], linkMark: null },
+      { _key: 'group-link-2', nodes: [textNodeB], linkMark: mark },
     ]);
   });
 
@@ -242,8 +242,8 @@ describe('groupLinkNodes', () => {
     const node2 = textNode('B', [mark2]);
     const result = groupLinkNodes([node1, node2]);
     expect(result).toEqual([
-      { nodes: [node1], linkMark: mark1 },
-      { nodes: [node2], linkMark: mark2 },
+      { _key: 'group-link-0', nodes: [node1], linkMark: mark1 },
+      { _key: 'group-link-1', nodes: [node2], linkMark: mark2 },
     ]);
   });
 });

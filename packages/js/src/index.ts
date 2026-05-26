@@ -1,5 +1,3 @@
-import type { StoryblokRichTextNode, StoryblokRichTextOptions } from '@storyblok/richtext';
-import { richTextResolver } from '@storyblok/richtext';
 import { loadBridge } from './bridge';
 import type {
   ISbEventPayload,
@@ -98,19 +96,6 @@ export const storyblokInit = (pluginOptions: SbSDKOptions = {}) => {
   return result;
 };
 
-/**
- * Render Rich Text
- * @param data - The rich text data to render
- * @param options - The options for the rich text
- * @returns The rendered rich text
- */
-export function renderRichText<T = string>(
-  data: StoryblokRichTextNode<T>,
-  options?: StoryblokRichTextOptions<T>,
-): T | undefined {
-  return richTextResolver(options).render(data);
-};
-
 export const loadStoryblokBridge = () => loadBridge(bridgeLatest);
 
 export { useStoryblokBridge as registerStoryblokBridge };
@@ -121,21 +106,16 @@ export { default as storyblokEditable } from './editable';
 // Reexport all types so users can have access to them
 export * from './types';
 
-// New Richtext Resolver
-export {
-  asTag,
-  BlockTypes,
-  ComponentBlok,
-  LinkTypes,
-  MarkTypes,
-  richTextResolver,
-  segmentStoryblokRichText,
-  type StoryblokRichTextDocumentNode,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  TextTypes,
+// Re-exporting same exports from @storyblok/richtext
+export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextOptions,
+  SbRichTextProps,
 } from '@storyblok/richtext';
 
 export { default as StoryblokClient } from 'storyblok-js-client';

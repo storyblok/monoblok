@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { Mark } from '@tiptap/core';
 import type {
-  StoryblokRichTextOptions,
+  SbRichTextDoc,
+  SbRichTextOptions,
 } from '@storyblok/js';
 import {
   apiPlugin,
@@ -51,24 +51,18 @@ window.loadStoryblokBridgeScript = () => {
   loadStoryblokBridge();
 };
 
-const CustomLink = Mark.create({
-  name: 'link',
-  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
-    return ['button', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
-  },
-});
-
 window.renderRichText = () => {
-  const options: StoryblokRichTextOptions = {
-    tiptapExtensions: {
-      link: CustomLink,
+  const options: SbRichTextOptions = {
+    renderers: {
+      blok: ({ attrs }) => `<span data-blok="${JSON.stringify(attrs?.body?.[0]).replace(/"/g, '&quot;')}" style="display: none"></span>`,
+      link: ({ children, attrs }) => `<button href="${attrs?.href}">${children}</button>`,
     },
   };
-  const html = renderRichText(richTextFixture as any, options);
+  const html = renderRichText(richTextFixture as SbRichTextDoc, options);
 
   const richTextContainer = document.getElementById(
     'rich-text-container',
-  ) as any;
+  ) as HTMLDivElement;
 
   richTextContainer.innerHTML = html;
 };

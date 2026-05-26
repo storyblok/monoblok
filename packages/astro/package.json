@@ -24,26 +24,22 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-astro.es.js",
-      "require": "./dist/storyblok-astro.umd.js"
+      "import": "./dist/index.js"
     },
     "./middleware.ts": {
       "types": "./dist/live-preview/middleware.d.ts",
-      "import": "./dist/live-preview/middleware.ts",
-      "require": "./dist/live-preview/middleware.ts"
+      "import": "./dist/live-preview/middleware.ts"
     },
     "./toolbarApp.ts": {
       "types": "./dist/dev-toolbar/toolbarApp.d.ts",
-      "import": "./dist/dev-toolbar/toolbarApp.ts",
-      "require": "./dist/dev-toolbar/toolbarApp.ts"
+      "import": "./dist/dev-toolbar/toolbarApp.ts"
     },
     "./client": "./dist/lib/client.ts",
     "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
     "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro",
-    "./StoryblokServerData.astro": "./dist/components/StoryblokServerData.astro"
+    "./StoryblokServerData.astro": "./dist/components/StoryblokServerData.astro",
+    "./StoryblokRichText.astro": "./dist/components/StoryblokRichText.astro"
   },
-  "main": "./dist/storyblok-astro.es.js",
-  "module": "./dist/storyblok-astro.js",
   "types": "./dist/index.d.ts",
   "files": [
     "*.d.ts",
@@ -72,6 +68,7 @@
   },
   "dependencies": {
     "@storyblok/js": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
     "camelcase": "^8.0.0",
     "morphdom": "^2.7.8"
   },

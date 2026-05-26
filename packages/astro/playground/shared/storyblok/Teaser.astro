@@ -1,28 +1,17 @@
 ---
 import { storyblokEditable } from '@storyblok/astro';
-import { segmentStoryblokRichText } from '@storyblok/astro';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
+import Heading from '../components/richtext/Heading.astro';
+import Bold from '../components/richtext/Bold.astro';
+import StoryblokRichText from '@storyblok/astro/StoryblokRichText.astro';
 
 const { blok } = Astro.props;
-
-const richTextSegments = segmentStoryblokRichText(blok.text);
 ---
 
 <div {...storyblokEditable(blok)}>
   <h2 class="heading">
     {blok.headline}
   </h2>
-
-  {
-    richTextSegments.map((segment, index) => {
-      if (segment.type === 'html') {
-        return <div set:html={segment.content} />;
-      }
-      if (segment.type === 'blok') {
-        return <StoryblokComponent blok={segment.blok} />;
-      }
-    })
-  }
+  <StoryblokRichText document={blok?.text} components={{ heading: Heading, bold: Bold }} />
 </div>
 <style>
   .heading {

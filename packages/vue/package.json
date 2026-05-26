@@ -46,7 +46,8 @@
     "vue": ">=3.4"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*"
+    "@storyblok/js": "workspace:*",
+    "@storyblok/richtext": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
@@ -54,6 +55,7 @@
     "@types/node": "^24.11.0",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.10",
     "cypress": "^14.3.3",
     "eslint": "^9.26.0",
     "eslint-plugin-vue": "^9.32.0",

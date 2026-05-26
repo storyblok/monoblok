@@ -14,7 +14,6 @@ import {
   supportedAttributesByTagName,
 } from './utils';
 import type { AnchorAttrs, ExtensionOptions, StyledAttrs, TextStyleAttrs } from './richtext-attrs';
-import { processAttrs } from '../static';
 
 export { Bold, Code, Italic, Strike, Subscript, Superscript, Underline };
 
@@ -70,10 +69,6 @@ export function buildLinkExtension(options?: ExtensionOptions<'link'>) {
           parseHTML: parser?.custom ?? parseCustomLinkAttributes,
         },
       };
-    },
-    renderHTML({ HTMLAttributes }) {
-      const attrs = processAttrs('link', HTMLAttributes);
-      return ['a', { ...attrs }, 0];
     },
   });
 }

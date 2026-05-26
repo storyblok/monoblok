@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
-import type { SbRichTextDoc, SbRichTextOptions } from './types';
-import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from '../test-utils';
-import { attrsToHtmlString, splitTableRows } from './index';
+import type { SbRichTextDoc, SbRichTextOptions } from './static';
+import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from './test-utils';
+import { attrsToHtmlString, splitTableRows } from './static';
 
 describe('renderRichText', () => {
   describe('input handling', () => {

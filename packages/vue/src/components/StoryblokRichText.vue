@@ -3,10 +3,8 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import {
   createRichTextHook,
-  type SbVueRichTextComponents,
+  type SbVueRichTextComponentMap,
 } from '../composables/useStoryblokRichText';
-
-import StoryblokComponent from './StoryblokComponent.vue';
 import type { SbRichTextDoc, SbRichTextImageOptions } from '../index.ts';
 
 export default defineComponent({
@@ -22,14 +20,14 @@ export default defineComponent({
       required: false,
     },
     components: {
-      type: Object as PropType<SbVueRichTextComponents>,
+      type: Object as PropType<SbVueRichTextComponentMap>,
       required: false,
     },
   },
 
   setup(props) {
     const useStoryblokRichText
-      = createRichTextHook(StoryblokComponent);
+      = createRichTextHook();
 
     const rendered
       = useStoryblokRichText(props);

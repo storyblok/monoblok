@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { htmlToStoryblokRichtext } from './html-parser';
-import { renderRichText } from './static';
+import { renderRichText } from './render-richtext';
 import { mapToAttribute } from './extensions/utils';
 import { doc } from './test-utils/helpers';
 import { linkFixtures, markFixtures, nodeFixtures, tableFixtures } from './test-utils';

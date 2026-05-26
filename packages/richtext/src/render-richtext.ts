@@ -1,13 +1,7 @@
-import { escapeHtml } from '../utils';
-import { optimizeImage } from '../images-optimization';
-import { processAttrs } from './attribute';
-import { areLinkMarksEqual, getTextNodeLinkMark, isTableHeaderRow } from './node-helpers';
-import { styleToString } from './style';
-import type { RenderSpec, SbRichTextElement, SbRichTextOptions, SbRichTextTextNode } from './types';
-import type { SbRichTextMark } from './types.generated';
-import { attrsToHtmlString, getStaticChildren, isSelfClosing, resolveTag } from './util';
-import type { SbRichTextNode } from './index';
-import { normalizeNodes } from './normalize-nodes';
+import { escapeHtml } from './utils';
+import { optimizeImage } from './images-optimization';
+import { areLinkMarksEqual, attrsToHtmlString, getStaticChildren, getTextNodeLinkMark, isSelfClosing, isTableHeaderRow, normalizeNodes, processAttrs, resolveTag, styleToString } from './static';
+import type { RenderSpec, SbRichTextElement, SbRichTextMark, SbRichTextNode, SbRichTextOptions, SbRichTextTextNode } from './static';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *

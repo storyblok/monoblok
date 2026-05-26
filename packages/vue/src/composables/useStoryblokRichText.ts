@@ -1,4 +1,4 @@
-import type { Component, MaybeRefOrGetter, VNode, VNodeChild } from 'vue';
+import type { Component, MaybeRefOrGetter, VNode } from 'vue';
 import { computed, createTextVNode, h, toValue } from 'vue';
 import type {
   BaseSbRichTextProps,
@@ -19,7 +19,7 @@ import {
   resolveTag,
   splitTableRows,
 } from '@storyblok/richtext';
-
+import BlokRenderer from '../components/BlokRenderer.ts';
 /**
  * Props type for Vue richtext node/mark components.
  * Content is passed via the default slot, not as a prop.
@@ -39,22 +39,18 @@ import {
  * </template>
  * ```
  */
+
 export type SbVueRichTextProps<
   T extends SbRichTextElement,
-> = BaseSbRichTextProps<T, { children?: VNodeChild; components?: SbVueRichTextComponentMap }, { children?: VNodeChild }>;
-/**
- * Type-safe component map for Vue richtext renderer.
- * Components receive node/mark props and content via the default slot.
- */
-
-export type RichTextRenderer<TProps> =
-  | Component<TProps>
-  | ((props: TProps) => VNodeChild);
-
+> = BaseSbRichTextProps<
+  T,
+  {
+    components?: SbVueRichTextComponentMap;
+  },
+  object
+>;
 export type SbVueRichTextComponentMap = {
-  [K in SbRichTextElement]?: RichTextRenderer<
-    SbVueRichTextProps<K>
-  >;
+  [K in SbRichTextElement]?: Component<SbVueRichTextProps<K>>;
 };
 function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
@@ -80,23 +76,14 @@ interface CreateRichTextHookOptions {
  * Creates a richtext hook factory with a custom StoryblokComponent.
  */
 export function createRichTextHook(
-  StoryblokComp: Component,
   _options?: CreateRichTextHookOptions,
 ) {
   return function useRichText({ document, optimizeImage, components }: StoryblokRichTextProps) {
     const render = useStoryblokRichText({
       optimizeImage,
       components: {
+        blok: BlokRenderer,
         ...components,
-        blok: ({ attrs }: SbVueRichTextProps<'blok'>) =>
-          Array.isArray(attrs?.body)
-            ? attrs.body.map((blok, index) =>
-                h(StoryblokComp, {
-                  blok,
-                  key: blok._uid || index,
-                }),
-              )
-            : null,
       },
     });
 
@@ -172,7 +159,9 @@ function renderLinkGroup(
   // Custom link component
   const Custom = resolveComponentOverride(linkMark.type, options.components);
   if (Custom) {
-    return h(Custom, { key, ...linkMark }, () => inner);
+    return h(Custom, { key, ...linkMark }, {
+      default: () => inner,
+    });
   }
 
   const tag = resolveTag(linkMark);
@@ -196,7 +185,11 @@ function renderNode(node: SbRichTextNode, options: StoryblokRichTextRendererOpti
 
   if (Custom) {
     const children = node.content ? renderChildren(node.content, options) : null;
-    return h(Custom, { key, ...node }, children ? () => children : undefined);
+    return h(Custom, { key, ...node }, children
+      ? {
+          default: () => children,
+        }
+      : undefined);
   }
 
   // Default element rendering
@@ -353,7 +346,9 @@ function wrapMark(children: VNode | string, mark: SbRichTextMark, options: Story
   const Custom = resolveComponentOverride(mark.type, options.components);
   if (Custom) {
     const childContent = typeof children === 'string' ? createTextVNode(children) : children;
-    return h(Custom, { ...mark }, () => childContent);
+    return h(Custom, { ...mark }, {
+      default: () => [childContent],
+    });
   }
 
   const tag = resolveTag(mark);

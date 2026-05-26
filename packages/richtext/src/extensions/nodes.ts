@@ -1,5 +1,5 @@
 import Emoji from '@tiptap/extension-emoji';
-import type { CodeBlockAttrs, ExtensionOptions, HeadingAttrs, ImageAttrs, ParagraphAttrs, TableCellAttrs, TableHeaderAttrs } from './richtext-attrs';
+import type { CodeBlockAttrs, ExtensionOptions } from './richtext-attrs';
 import { Node } from '@tiptap/core';
 import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
@@ -74,16 +74,6 @@ export function buildParagraphExtension(options?: ExtensionOptions<'paragraph'>)
         },
       };
     },
-    renderHTML({ HTMLAttributes }) {
-      const { textAlign } = HTMLAttributes as ParagraphAttrs;
-      const styles: string[] = [];
-      if (textAlign) {
-        styles.push(`text-align: ${textAlign};`);
-      }
-      return ['p', {
-        ...(styles.length > 0 ? { style: styles.join(';') } : {}),
-      }, 0];
-    },
   });
 }
 
@@ -102,16 +92,6 @@ export function buildHeadingExtension(options?: ExtensionOptions<'heading'>) {
         },
       };
     },
-    renderHTML({ HTMLAttributes }) {
-      const { level, textAlign } = HTMLAttributes as HeadingAttrs;
-      const styles: string[] = [];
-      if (textAlign) {
-        styles.push(`text-align: ${textAlign};`);
-      }
-      return [`h${level}`, {
-        ...(styles.length > 0 ? { style: styles.join(';') } : {}),
-      }, 0];
-    },
   });
 }
 
@@ -128,9 +108,6 @@ export function buildBulletListExtension() {
     name: 'bullet_list',
     addOptions() {
       return { ...this.parent!(), itemTypeName: 'list_item' };
-    },
-    renderHTML({ HTMLAttributes }) {
-      return ['ul', { ...HTMLAttributes }, 0];
     },
   });
 }
@@ -159,9 +136,6 @@ export function buildOrderedListExtension(options?: ExtensionOptions<'ordered_li
     addOptions() {
       return { ...this.parent!(), itemTypeName: 'list_item' };
     },
-    renderHTML({ HTMLAttributes }) {
-      return ['ol', { ...HTMLAttributes }, 0];
-    },
   });
 }
 
@@ -174,9 +148,6 @@ export function buildListItemExtension() {
         bulletListTypeName: 'bullet_list',
         orderedListTypeName: 'ordered_list',
       };
-    },
-    renderHTML({ HTMLAttributes }) {
-      return ['li', { ...HTMLAttributes }, 0];
     },
   });
 }
@@ -281,21 +252,6 @@ export function buildTableCellExtension(options?: ExtensionOptions<'tableCell'>)
         },
       };
     },
-    renderHTML({ HTMLAttributes }) {
-      const { colspan, rowspan, colwidth, backgroundColor } = HTMLAttributes as TableCellAttrs;
-      const styles: string[] = [];
-      if (colwidth) {
-        styles.push(`width: ${colwidth?.[0]}px;`);
-      }
-      if (backgroundColor) {
-        styles.push(`background-color: ${backgroundColor};`);
-      }
-      return ['td', {
-        colspan,
-        rowspan,
-        ...(styles.length > 0 ? { style: styles.join(';') } : {}),
-      }, 0];
-    },
   });
 }
 
@@ -312,18 +268,6 @@ export function buildTableHeaderExtension(options?: ExtensionOptions<'tableHeade
           parseHTML: parser?.colwidth ?? parseTableWidth,
         },
       };
-    },
-    renderHTML({ HTMLAttributes }) {
-      const { colspan, rowspan, colwidth } = HTMLAttributes as TableHeaderAttrs;
-      const styles: string[] = [];
-      if (colwidth) {
-        styles.push(`width: ${colwidth?.[0]}px;`);
-      }
-      return ['th', {
-        colspan,
-        rowspan,
-        ...(styles.length > 0 ? { style: styles.join(';') } : {}),
-      }, 0];
     },
   });
 }
@@ -364,17 +308,6 @@ export function buildImageExtension(
           parseHTML: parser?.meta_data,
         },
       };
-    },
-    renderHTML({ HTMLAttributes }) {
-      const { src, alt, title } = HTMLAttributes as ImageAttrs;
-      return [
-        'img',
-        {
-          src,
-          alt,
-          title,
-        },
-      ];
     },
   });
 }

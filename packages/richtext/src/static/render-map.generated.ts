@@ -91,6 +91,11 @@ export const NODE_RENDER_MAP = {
 export const MARK_RENDER_MAP = {
   link: {
     tag: 'a',
+    attrs: {
+      rel: 'noopener noreferrer nofollow',
+      linktype: 'url',
+      custom: {},
+    },
     content: true,
   },
   bold: {

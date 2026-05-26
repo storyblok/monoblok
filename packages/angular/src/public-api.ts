@@ -24,8 +24,8 @@ export { SbRichTextComponent } from './lib/richtext/rich-text.component';
 export { withStoryblokRichtextComponents } from './lib/richtext/richtext.feature';
 export type { SbAngularComponentMap } from './lib/richtext/richtext.feature';
 // Re-export richtext types for convenience
-export { type SbRichTextDoc } from '@storyblok/richtext/static';
-export { renderRichText } from '@storyblok/richtext/static';
+export { type SbRichTextDoc } from '@storyblok/richtext';
+export { renderRichText } from '@storyblok/richtext';
 
 export type { Story } from '@storyblok/api-client';
 export * from './lib/types';

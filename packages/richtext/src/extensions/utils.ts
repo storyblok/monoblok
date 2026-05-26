@@ -1,85 +1,5 @@
-import type { BlockAttributes } from '../types';
-import { LinkTypes } from '../types';
-import { cleanObject } from '../utils';
-
-/**
- * Processes block-level attributes, converting textAlign to inline style
- * and preserving class/id/existing style.
- */
-export function processBlockAttrs(attrs: BlockAttributes = {}): BlockAttributes {
-  const { textAlign, class: className, id: idName, style: existingStyle, ...rest } = attrs;
-  const styles: string[] = [];
-
-  if (existingStyle) {
-    styles.push(existingStyle.endsWith(';') ? existingStyle : `${existingStyle};`);
-  }
-
-  if (textAlign) {
-    styles.push(`text-align: ${textAlign};`);
-  }
-
-  return cleanObject({
-    ...rest,
-    class: className,
-    id: idName,
-    ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-  });
-}
-
-/**
- * Resolves a Storyblok link's attributes into a final href and remaining attrs.
- */
-export function resolveStoryblokLink(attrs: Record<string, any> = {}): { href: string; rest: Record<string, any> } {
-  const { linktype, href, anchor, uuid, custom, ...rest } = attrs;
-
-  let finalHref = href ?? '';
-  switch (linktype) {
-    case LinkTypes.ASSET:
-    case LinkTypes.URL:
-      break;
-    case LinkTypes.EMAIL:
-      if (finalHref && !finalHref.startsWith('mailto:')) {
-        finalHref = `mailto:${finalHref}`;
-      }
-      break;
-    case LinkTypes.STORY:
-      if (anchor) {
-        finalHref = `${finalHref}#${anchor}`;
-      }
-      break;
-    default:
-      break;
-  }
-
-  return { href: finalHref, rest: { ...rest, ...(custom || {}) } };
-}
-
-/**
- * Computes table cell attributes, converting colwidth/backgroundColor/textAlign to CSS styles.
- */
-export function computeTableCellAttrs(attrs: Record<string, any> = {}): BlockAttributes {
-  const { colspan, rowspan, colwidth, backgroundColor, textAlign, ...rest } = attrs;
-  const styles: string[] = [];
-
-  if (colwidth) {
-    styles.push(`width: ${colwidth}px;`);
-  }
-
-  if (backgroundColor) {
-    styles.push(`background-color: ${backgroundColor};`);
-  }
-
-  if (textAlign) {
-    styles.push(`text-align: ${textAlign};`);
-  }
-
-  return cleanObject({
-    ...rest,
-    ...(colspan > 1 ? { colspan } : {}),
-    ...(rowspan > 1 ? { rowspan } : {}),
-    ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-  });
-}
+import { stringToStyle } from '../static';
+import { kebabToCamel } from '../static/style';
 
 /**
  * List of supported HTML attributes by tag name, used by the Reporter mark.
@@ -106,4 +26,59 @@ export function getAllowedStylesForElement(element: HTMLElement, { allowedStyles
   }
 
   return allowedStyles.filter(x => classes.includes(x));
+}
+/**
+ * Creates a DOM attribute parser for use in rich text extensions.
+ *
+ * The returned function extracts a value from an element by:
+ * 1. Checking one or more HTML attributes (in order).
+ * 2. Also can map to CSS inline style property.
+ *
+ * The first non-empty value found is returned.
+ *
+ * Example:
+ * <div data-source="example" data-copyright="2024"></div>
+ * attributeParsers: {
+ *   source: mapToAttribute('data-source'),
+ *   copyright: mapToAttribute(['data-copyright', 'data-rights']),
+ * }
+ * Style Example:
+ * <div name="example" style="color: red; font-size: 16px;"></div>
+ * attributeParsers: {
+ *   name: mapToAttribute('name'),
+ *   color: mapToAttribute(undefined, 'color'),
+ *   fontSize: mapToAttribute(undefined, 'font-size'),
+ * }
+ *
+ * @param attributes - A single attribute name or list of attribute names to read from.
+ * @param styleProperty - Optional CSS property name to read from the element's inline style.
+ * @returns A function that receives an HTMLElement and returns the resolved value or null.
+ */
+export function mapToAttribute(attributes?: string[] | string, styleProperty?: string) {
+  return (el: HTMLElement): string | null => {
+    // 1. Check attributes first
+    if (attributes) {
+      const attrs = Array.isArray(attributes) ? attributes : [attributes];
+      for (const name of attrs) {
+        const value = el.getAttribute(name);
+        if (value) {
+          return value;
+        }
+      }
+    }
+
+    // 2. Check style
+    if (styleProperty) {
+      const style = el.getAttribute('style');
+      if (style) {
+        const styleObj = stringToStyle(style);
+        const value = styleObj[kebabToCamel(styleProperty)];
+        if (value) {
+          return value;
+        }
+      }
+    }
+
+    return null;
+  };
 }

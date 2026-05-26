@@ -1,6 +1,31 @@
-import type { StoryblokRichTextImageOptimizationOptions } from './types';
+import type { SbRichTextImageOptions } from './types';
 
-export function optimizeImage(src: string, options?: boolean | Partial<StoryblokRichTextImageOptimizationOptions>): { src: string; attrs: Record<string, any> } {
+/**
+ * Builds a Storyblok image object with optimized URL and attributes.
+ *
+ * This function:
+ * - Applies Storyblok image transformations (width, height, filters, etc.)
+ * - Generates optional srcset and sizes attributes
+ * - Returns the transformed image `src` and related HTML attributes
+ *
+ * If no options are provided, the original image URL is returned unchanged.
+ *
+ * @param src - The original Storyblok image URL.
+ * @param options - Optional configuration for image optimization.
+ * @returns An object containing:
+ *   - `src`: The transformed image URL
+ *   - `attrs`: HTML attributes such as width, height, srcset, sizes, loading, and class
+ *
+ * @example
+ * const image = buildStoryblokImage(src, {
+ *   width: 800,
+ *   height: 600,
+ *   filters: { blur: 5 },
+ * });
+ *
+ * <img {...image.attrs} src={image.src} />
+ */
+export function optimizeImage(src: string, options?: boolean | Partial<SbRichTextImageOptions>): { src: string; attrs: Record<string, unknown> } {
   if (!options) {
     return { src, attrs: {} };
   }

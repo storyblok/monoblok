@@ -1,7 +1,7 @@
 ---
-import type { SbRichTextProps } from '../../src/index';
+import type { SbAstroRichTextProps } from '../../src/index';
 
-type Props = SbRichTextProps<'heading'>;
+type Props = SbAstroRichTextProps<'heading'>;
 
 const { attrs } = Astro.props;
 const Tag = `h${attrs?.level}`;

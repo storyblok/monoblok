@@ -73,7 +73,7 @@ describe('renderRichText', () => {
     it(recursive.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }, options) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
@@ -83,7 +83,7 @@ describe('renderRichText', () => {
     it(code_block.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
-          code_block: ({ attrs, content }) => {
+          code_block: ({ attrs, content }, options) => {
             const lang = (attrs?.class as string) || '';
             // User decides: class on <pre>, data-lang on <code>
             return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, options)}</code></pre>`;
@@ -97,7 +97,7 @@ describe('renderRichText', () => {
     it(table.title, () => {
       const options: SbRichTextOptions = {
         renderers: {
-          table: ({ content }) => {
+          table: ({ content }, options) => {
             const { headerRows, bodyRows } = splitTableRows(content);
             return `<table class="custom-table"><thead>${renderRichText(headerRows, options)}</thead><tbody>${renderRichText(bodyRows, options)}</tbody></table>`;
           },

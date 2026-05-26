@@ -35,7 +35,7 @@ function renderNode(node: SbRichTextNode, options?: SbRichTextOptions): string {
   // Custom renderer takes full control
   const customRenderer = options?.renderers?.[node.type];
   if (customRenderer) {
-    return (customRenderer as (props: typeof node & { children: string }) => string)({ ...node, children: content });
+    return (customRenderer as (props: typeof node & { children: string }, options?: SbRichTextOptions) => string)({ ...node, children: content }, options);
   }
 
   if (node.type === 'blok') {
@@ -52,7 +52,7 @@ function renderNode(node: SbRichTextNode, options?: SbRichTextOptions): string {
     return content;
   }
 
-  if (node.type === 'image' && options?.optimizeImages) {
+  if (node.type === 'image' && options?.optimizeImage) {
     return renderOptimizedImage(node, options);
   }
 
@@ -88,7 +88,7 @@ function renderOptimizedImage(
   if (src) {
     const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(
       src,
-      options.optimizeImages,
+      options.optimizeImage,
     );
 
     finalAttrs = {

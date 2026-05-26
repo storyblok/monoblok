@@ -26,7 +26,6 @@ export {
   apiPlugin,
   loadStoryblokBridge,
   registerStoryblokBridge,
-  renderRichText,
   storyblokEditable,
   useStoryblokBridge,
 } from '@storyblok/js';

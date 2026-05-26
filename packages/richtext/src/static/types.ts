@@ -50,32 +50,15 @@ export type BaseSbRichTextProps<
 export type SbRichTextProps<T extends SbRichTextElement> =
   BaseSbRichTextProps<T, { children: string }, { children: string }>;
 
-export type SbRichTextRendererMap<
-  TOutput,
-  TProps extends {
-    [K in SbRichTextElement]: unknown;
-  },
-> = {
-  [K in SbRichTextElement]?: (props: TProps[K]) => TOutput;
-};
-/**
- * Static renderer function.
- */
-export type SbRichTextRenderer<
-  T extends SbRichTextElement,
-  TOutput,
-> = (
-  props: SbRichTextProps<T>,
-) => TOutput;
 /**
  * Component/render map for static renderers.
  */
-export type SbRichTextRenderers<TOutput> = {
-  [K in SbRichTextElement]?: SbRichTextRenderer<K, TOutput>;
+export type SbRichTextRendererMap = {
+  [K in SbRichTextElement]?: (props: SbRichTextProps<K>, options?: SbRichTextOptions) => string;
 };
 export interface SbRichTextOptions {
-  renderers?: SbRichTextRenderers<string>;
-  optimizeImages?: boolean | Partial<SbRichTextImageOptions>;
+  renderers?: SbRichTextRendererMap;
+  optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
 }
 
 export { SbRichTextImageOptions };

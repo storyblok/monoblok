@@ -16,8 +16,18 @@ export {
   storyblokEditable,
   storyblokInit,
 } from '@storyblok/js';
-export type { SbRichTextDoc, SbRichTextImageOptions, SbRichTextOptions, SbRichTextProps, SbRichTextRenderers } from '@storyblok/richtext';
 
+// Re-exporting same exports from @storyblok/richtext
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextOptions,
+  SbRichTextProps,
+} from '@storyblok/richtext';
+
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.
-export { attrsToHtmlString, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, type RenderSpec, resolveTag, type SbRichTextElement, type SbRichTextMark, type SbRichTextNode, type SbRichTextTextNode, styleToString } from '@storyblok/richtext';
+export { attrsToHtmlString, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, type RenderSpec, resolveTag, type SbRichTextElement, type SbRichTextTextNode, styleToString } from '@storyblok/richtext';

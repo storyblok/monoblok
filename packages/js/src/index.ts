@@ -106,7 +106,16 @@ export { default as storyblokEditable } from './editable';
 // Reexport all types so users can have access to them
 export * from './types';
 
-// New Richtext Resolver
-export { renderRichText, type SbRichTextDoc, type SbRichTextOptions } from '@storyblok/richtext';
+// Re-exporting same exports from @storyblok/richtext
+export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextOptions,
+  SbRichTextProps,
+} from '@storyblok/richtext';
 
 export { default as StoryblokClient } from 'storyblok-js-client';

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@storyblok/react": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
     "@tiptap/core": "^3.10.2",
     "@tiptap/extension-heading": "^3.10.2",
     "react": "^19.1.0",

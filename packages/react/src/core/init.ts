@@ -41,3 +41,4 @@ export const storyblokInit = (pluginOptions: SbReactSDKOptions = {}): (() => Sto
 
 export { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, setComponents };
 export { useStoryblokApi as getStoryblokApi };
+export { apiPlugin, storyblokEditable } from '@storyblok/js';

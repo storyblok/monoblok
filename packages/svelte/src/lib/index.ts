@@ -8,6 +8,15 @@ export {
   apiPlugin,
   useStoryblokBridge,
 } from '@storyblok/js';
-export type { SbRichTextDoc, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextOptions, SbRichTextProps, SbRichTextRenderers } from '@storyblok/richtext';
 
+// Re-exporting same exports from @storyblok/richtext
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextOptions,
+  SbRichTextProps,
+} from '@storyblok/richtext';

@@ -12,7 +12,7 @@ export type SbSvelteComponentMap = {
   [k in SbRichTextElement]?: AnyComponent;
 };
 export type SbSvelteRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, { children?: Snippet; components?: SbSvelteComponentMap }, { children?: Snippet }>;
+  BaseSbRichTextProps<T, SbSvelteRendererOptions & { children?: Snippet }, { children?: Snippet }>;
 
 export function buildSvelteAttrs(type: SbRichTextElement, attrs: Record<string, unknown>): Record<string, unknown> {
   const processedAttrs = processAttrs(type, attrs, {

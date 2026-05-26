@@ -1,6 +1,5 @@
-import type { SbBlokData, SbSDKOptions, StoryblokRichTextDocumentNode, StoryblokRichTextOptions } from '@storyblok/js';
+import type { SbSDKOptions } from '@storyblok/js';
 import type StoryblokComponent from './components/StoryblokComponent.vue';
-import type { VNode } from 'vue';
 
 declare module 'vue' {
   export interface GlobalComponents {
@@ -33,10 +32,6 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-  StoryblokRichTextDocumentNode,
-  StoryblokRichTextImageOptimizationOptions,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeTypes,
 } from '@storyblok/js';
 
 export interface SbVueSDKOptions extends SbSDKOptions {
@@ -48,13 +43,4 @@ export interface SbVueSDKOptions extends SbSDKOptions {
    * Provide a custom fallback component, e.g. "CustomFallback".
    */
   customFallbackComponent?: string;
-}
-
-export interface SbComponentProps {
-  blok: SbBlokData;
-}
-
-export interface StoryblokRichTextProps {
-  doc: StoryblokRichTextDocumentNode;
-  tiptapExtensions?: StoryblokRichTextOptions<VNode>['tiptapExtensions'];
 }

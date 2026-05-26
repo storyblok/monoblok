@@ -1,27 +1,38 @@
-<script setup lang="ts">
-import { ref, type VNode, watch } from 'vue';
-import type {
-  StoryblokRichTextNode,
-} from '@storyblok/js';
-import { useStoryblokRichText } from '../composables/useStoryblokRichText';
-import type { StoryblokRichTextProps } from '../types';
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import {
+  createRichTextHook,
+  type SbVueRichTextComponentMap,
+} from '../composables/useStoryblokRichText';
+import type { SbRichTextDoc, SbRichTextImageOptions } from '../index.ts';
 
-const props = defineProps<StoryblokRichTextProps>();
+export default defineComponent({
+  name: 'StoryblokRichText',
 
-const renderedDoc = ref();
-const root = () => renderedDoc.value;
+  props: {
+    document: {
+      type: Object as PropType<SbRichTextDoc | SbRichTextDoc[] | null | undefined>,
+      required: false,
+    },
+    optimizeImage: {
+      type: [Boolean, Object] as PropType<boolean | SbRichTextImageOptions>,
+      required: false,
+    },
+    components: {
+      type: Object as PropType<SbVueRichTextComponentMap>,
+      required: false,
+    },
+  },
 
-watch([() => props.doc, () => props.tiptapExtensions], ([doc, tiptapExtensions]) => {
-  const { render } = useStoryblokRichText({
-    tiptapExtensions: tiptapExtensions as Record<string, any>,
-  });
-  renderedDoc.value = render(doc as StoryblokRichTextNode<VNode | VNode[]>);
-}, {
-  immediate: true,
-  deep: true,
+  setup(props) {
+    const useStoryblokRichText
+      = createRichTextHook();
+
+    const rendered
+      = useStoryblokRichText(props);
+
+    return () => rendered.value;
+  },
 });
 </script>
-
-<template>
-  <root />
-</template>

@@ -22,27 +22,20 @@ export { default as StoryblokComponent } from './components/StoryblokComponent.v
 
 export { default as StoryblokRichText } from './components/StoryblokRichText.vue';
 export * from './composables/useStoryblokRichText';
+
 export * from './types';
 
 export {
   apiPlugin,
-  asTag,
-  BlockTypes,
-  ComponentBlok,
-  LinkTypes,
-  MarkTypes,
-  renderRichText,
-  richTextResolver,
   StoryblokClient,
-  type StoryblokRichTextDocumentNode,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';
-
+export {
+  renderRichText,
+  type RenderSpec,
+  type SbRichTextDoc,
+  type SbRichTextImageOptions,
+} from '@storyblok/richtext';
 const vEditableDirective: Directive<HTMLElement> = {
   beforeMount(el, binding) {
     if (binding.value) {

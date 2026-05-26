@@ -23,9 +23,14 @@ export type AssetMap = Map<number, { old: Asset | AssetMapped | AssetUpload; new
 export type AssetFolderMap = Map<number, number>;
 
 /**
- * Maps source-space asset internal tag ids to target-space ids.
+ * Maps target-space asset internal tag names to target-space ids.
  */
-export type AssetInternalTagsMap = ReadonlyMap<number, number>;
+export type AssetInternalTagsByName = ReadonlyMap<string, number>;
+
+export interface UnmappedAssetInternalTag {
+  sourceId: number;
+  name?: string;
+}
 
 /**
  * Maps local with remote story ids and UUIDs.

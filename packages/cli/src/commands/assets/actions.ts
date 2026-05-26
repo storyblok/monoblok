@@ -4,7 +4,7 @@ import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
 import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsMap, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
 
 export interface AssetInternalTag {
   id: number;
@@ -47,8 +47,8 @@ export const fetchAssets = async ({ spaceId, params }: {
 /**
  * Fetches every internal tag of type `asset` for the given space.
  *
- * Used by `assets push` to translate source-space `internal_tag_ids` carried in
- * pulled sidecars into the target space's tag IDs by matching on tag name.
+ * Used by `assets push` to translate source-space tag names carried in pulled
+ * sidecars into the target space's tag IDs.
  */
 export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInternalTag[]> => {
   try {
@@ -69,37 +69,11 @@ export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInte
 };
 
 /**
- * Builds the source→target `AssetInternalTagsMap` for `assets push`.
- *
- * Fetches tags from both spaces and joins them by name so source-space tag IDs
- * carried in pulled sidecars can be translated to target-space IDs. Also returns
- * `sourceNamesById` so the command layer can produce helpful warnings for tag
- * names absent from the target space.
- *
- * When source and target are the same space, returns an identity map and skips
- * the redundant second fetch.
+ * Fetches asset internal tags keyed by name for the given space.
  */
-export const scanAssetInternalTagsMap = async (
-  fromSpace: string,
-  targetSpace: string,
-): Promise<{ map: AssetInternalTagsMap; sourceNamesById: ReadonlyMap<number, string> }> => {
-  const sourceTags = await fetchAssetInternalTags(fromSpace);
-  const sourceNamesById = new Map(sourceTags.map(tag => [tag.id, tag.name]));
-
-  if (fromSpace === targetSpace) {
-    return { map: new Map(sourceTags.map(tag => [tag.id, tag.id])), sourceNamesById };
-  }
-
-  const targetTags = await fetchAssetInternalTags(targetSpace);
-  const targetByName = new Map(targetTags.map(tag => [tag.name, tag.id]));
-  const map = new Map<number, number>();
-  for (const tag of sourceTags) {
-    const targetId = targetByName.get(tag.name);
-    if (typeof targetId === 'number') {
-      map.set(tag.id, targetId);
-    }
-  }
-  return { map, sourceNamesById };
+export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<AssetInternalTagsByName> => {
+  const tags = await fetchAssetInternalTags(spaceId);
+  return new Map(tags.map(tag => [tag.name, tag.id]));
 };
 
 export const downloadFile = async (filename: string) => {

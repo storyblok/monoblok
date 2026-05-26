@@ -292,12 +292,13 @@ const preconditions = {
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Update asset metadata/folder/etc.
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params }) => {
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
         }
-        updateSpy(match);
+        const body = await request.json() as { asset?: Record<string, unknown> };
+        updateSpy(body.asset ?? {});
         return HttpResponse.json({});
       }),
     );
@@ -1405,7 +1406,7 @@ describe('assets push command', () => {
     }));
   });
 
-  it('should translate source-space internal_tag_ids to target-space tag IDs by name', async () => {
+  it('should translate source-space internal_tag_ids to target-space tag IDs by sidecar tag name', async () => {
     const targetSpace = '54321';
     const sourceTagId = 111;
     const targetTagId = 999;
@@ -1416,7 +1417,7 @@ describe('assets push command', () => {
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
     preconditions.hasAssetInternalTags(
-      [{ id: sourceTagId, name: 'shared-tag' }],
+      [{ id: sourceTagId, name: 'stale-source-name' }],
       { space: DEFAULT_SPACE },
     );
     preconditions.hasAssetInternalTags(
@@ -1434,6 +1435,43 @@ describe('assets push command', () => {
     );
     const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
     expect(createPayload).not.toHaveProperty('internal_tags_list');
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should translate source-space internal_tag_ids when updating an existing target asset', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 112;
+    const targetTagId = 998;
+    const localAsset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'shared-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    preconditions.hasAssetInternalTags(
+      [{ id: targetTagId, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    const updateSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { updateSpy, space: targetSpace });
+    preconditions.canFetchRemoteAssets([remoteAsset], { space: targetSpace });
+    preconditions.canLoadAssetsManifest([{
+      old_id: localAsset.id,
+      old_filename: localAsset.filename,
+      new_id: remoteAsset.id,
+      new_filename: remoteAsset.filename,
+    }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.updateAsset).toHaveBeenCalledWith(
+      remoteAsset.id,
+      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.anything(),
+    );
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      internal_tag_ids: [String(targetTagId)],
+    }));
     expect(process.exitCode).not.toBe(1);
   });
 
@@ -1461,10 +1499,6 @@ describe('assets push command', () => {
     });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([asset]);
-    preconditions.hasAssetInternalTags(
-      [{ id: sourceTagId, name: 'missing-tag' }],
-      { space: DEFAULT_SPACE },
-    );
     preconditions.hasAssetInternalTags([], { space: targetSpace });
     preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
 
@@ -1477,6 +1511,33 @@ describe('assets push command', () => {
     );
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: missing-tag'),
+    );
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should drop internal tag IDs without sidecar tag metadata with an ID warning', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 333;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasAssetInternalTags(
+      [{ id: 999, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: #333'),
     );
     expect(process.exitCode).not.toBe(1);
   });

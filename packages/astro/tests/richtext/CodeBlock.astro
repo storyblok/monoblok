@@ -1,0 +1,9 @@
+---
+import type { SbAstroRichTextProps } from '../../src/index';
+
+type Props = SbAstroRichTextProps<'code_block'>;
+
+const { attrs } = Astro.props;
+---
+
+<pre class={`language-${attrs?.class}`}><code data-lang={attrs?.class}><slot /></code></pre>

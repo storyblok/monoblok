@@ -1,0 +1,11 @@
+---
+import type { SbRichTextProps } from '@storyblok/astro';
+
+type Props = SbRichTextProps<'bold'>;
+
+const { attrs } = Astro.props;
+---
+
+<b data-type="custom-bold">
+  <slot />
+</b>

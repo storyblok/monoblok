@@ -1,0 +1,22 @@
+---
+import { type SbRichTextNode, type SbAstroRendererOptions, groupLinkNodes } from '../../';
+import RenderLinkGroup from './RenderLinkGroup.astro';
+import RenderNode from './RenderNode.astro';
+
+interface Props {
+  nodes: SbRichTextNode[];
+  options: SbAstroRendererOptions;
+}
+const { nodes, options } = Astro.props;
+const groups = groupLinkNodes(nodes);
+---
+
+{
+  groups.map((group) =>
+    group.linkMark ? (
+      <RenderLinkGroup nodes={group.nodes} linkMark={group.linkMark} options={options} />
+    ) : (
+      <RenderNode node={group.nodes[0]} options={options} />
+    ),
+  )
+}

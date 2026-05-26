@@ -1,0 +1,18 @@
+---
+import type { SbAstroRendererOptions, SbRichTextNode, SbRichTextTextNode } from '../../';
+import { getInnerMarks } from '../../';
+import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
+
+interface Props {
+  nodes: SbRichTextNode[];
+  options: SbAstroRendererOptions;
+}
+const { nodes, options } = Astro.props;
+---
+
+{
+  nodes.map((node) => {
+    const innermarks = getInnerMarks(node);
+    return <RenderTextNodeWithMarks node={node as SbRichTextTextNode} marks={innermarks} options={options} />;
+  })
+}

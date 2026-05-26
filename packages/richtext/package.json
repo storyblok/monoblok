@@ -33,9 +33,9 @@
       "import": "./dist/markdown-parser.mjs",
       "require": "./dist/markdown-parser.cjs"
     },
-    "./static": {
-      "import": "./dist/static.mjs",
-      "require": "./dist/static.cjs"
+    "./test-utils": {
+      "import": "./dist/test-utils.mjs",
+      "require": "./dist/test-utils.cjs"
     },
     "./package.json": "./package.json"
   },
@@ -50,8 +50,8 @@
       "html-parser": [
         "./dist/html-parser.d.cts"
       ],
-      "static": [
-        "./dist/static.d.cts"
+      "test-utils": [
+        "./dist/test-utils.d.cts"
       ]
     }
   },
@@ -86,7 +86,6 @@
     "@tiptap/extension-bold": "^3.22.3",
     "@tiptap/extension-code": "^3.22.3",
     "@tiptap/extension-code-block": "^3.22.3",
-    "@tiptap/extension-details": "^3.22.3",
     "@tiptap/extension-document": "^3.22.3",
     "@tiptap/extension-emoji": "^3.22.3",
     "@tiptap/extension-hard-break": "^3.22.3",
@@ -103,7 +102,6 @@
     "@tiptap/extension-superscript": "^3.22.3",
     "@tiptap/extension-table": "^3.22.3",
     "@tiptap/extension-text": "^3.22.3",
-    "@tiptap/extension-text-align": "^3.22.3",
     "@tiptap/extension-text-style": "^3.22.3",
     "@tiptap/extension-underline": "^3.22.3",
     "@tiptap/html": "^3.22.3",
@@ -111,8 +109,7 @@
     "@tiptap/suggestion": "^3.22.3",
     "emojibase": "^17.0.0",
     "happy-dom": "^20.8.8",
-    "markdown-it": "^14.1.0",
-    "storyblok-js-client": "workspace:*"
+    "markdown-it": "^14.1.0"
   },
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
@@ -125,7 +122,6 @@
     "@vitest/ui": "^3.1.3",
     "eslint": "^9.26.0",
     "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
     "lint-staged": "^15.5.2",
     "pathe": "^2.0.3",
@@ -135,8 +131,7 @@
     "tsdown": "^0.20.3",
     "tsx": "^4.20.3",
     "typescript": "5.8.3",
-    "vitest": "^3.1.3",
-    "vue": "^3.5.13"
+    "vitest": "^3.1.3"
   },
   "commitlint": {
     "extends": [

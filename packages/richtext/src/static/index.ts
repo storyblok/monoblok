@@ -7,8 +7,8 @@ export {
   isTableHeaderRow,
   splitTableRows,
 } from './node-helpers';
-export { renderRichText } from './render-richtext';
+export { normalizeNodes } from './normalize-nodes';
 export { stringToStyle, styleToString } from './style';
-export type { RenderSpec, SbRichTextComponents, SbRichTextDoc, SbRichTextElement, SbRichTextProps } from './types';
-export type { PMMark, PMNode } from './types.generated';
-export { getStaticChildren, isSelfClosing, resolveComponent, resolveTag } from './util';
+export type { BaseSbRichTextProps, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, SbRichTextProps, SbRichTextTextNode } from './types';
+export type { SbRichTextMark, SbRichTextNode } from './types.generated';
+export { attrsToHtmlString, getStaticChildren, isSelfClosing, resolveTag } from './util';

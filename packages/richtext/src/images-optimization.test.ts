@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { optimizeImage } from './images-optimization';
-import type { StoryblokRichTextImageOptimizationOptions } from './types';
+import type { SbRichTextImageOptions } from './types';
 
 describe('images-optimization', () => {
   it('should return the original src if no options are passed', async () => {
@@ -247,7 +247,7 @@ describe('images-optimization', () => {
       quality: 80,
       rotate: 90,
       format: 'webp',
-    } satisfies StoryblokRichTextImageOptimizationOptions['filters'];
+    } satisfies SbRichTextImageOptions['filters'];
     const { src: resultSrc } = optimizeImage(src, { filters });
     expect(resultSrc).toBe(`${src}/m/filters:blur(5):quality(80):brightness(0.5):fill(transparent):grayscale():rotate(90):format(webp)`);
   });
@@ -267,7 +267,7 @@ describe('images-optimization', () => {
 
   it('should add srcset attribute with width and height if provided as an array of arrays', async () => {
     const src = 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg';
-    const srcset = [[400, 300], [800, 600], [1200, 900]] satisfies StoryblokRichTextImageOptimizationOptions['srcset'];
+    const srcset = [[400, 300], [800, 600], [1200, 900]] satisfies SbRichTextImageOptions['srcset'];
     const { attrs } = optimizeImage(src, { srcset });
     expect(attrs).toEqual({ srcset: 'https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/400x300/ 400w, https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/800x600/ 800w, https://a.storyblok.com/f/279818/710x528/c53330ed26/tresjs-doge.jpg/m/1200x900/ 1200w' });
   });

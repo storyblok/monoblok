@@ -7,162 +7,158 @@ import LinkOriginal from '@tiptap/extension-link';
 import Strike from '@tiptap/extension-strike';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import { TextStyleKit } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
-import { attrsToStyle, cleanObject } from '../utils';
-import { getAllowedStylesForElement, resolveStoryblokLink, supportedAttributesByTagName } from './utils';
 
-// Unmodified mark extensions
-export { Bold, Code, Italic, Strike, Subscript, Superscript, TextStyleKit, Underline };
+import {
+  mapToAttribute,
+  supportedAttributesByTagName,
+} from './utils';
+import type { AnchorAttrs, ExtensionOptions, StyledAttrs, TextStyleAttrs } from './richtext-attrs';
 
-// Highlight
-export const StoryblokHighlight = Highlight.extend({
-  addAttributes() {
-    return {
-      color: {
-        default: null,
-      },
-    };
-  },
-});
+export { Bold, Code, Italic, Strike, Subscript, Superscript, Underline };
 
-// Link with Storyblok-specific attributes and renderHTML
-export const StoryblokLink = LinkOriginal.extend({
-  addAttributes() {
-    return {
-      href: {
-        parseHTML: (element: HTMLElement) => element.getAttribute('href'),
-      },
-      uuid: {
-        default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute('data-uuid') || null,
-      },
-      anchor: {
-        default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute('data-anchor') || null,
-      },
-      target: {
-        parseHTML: (element: HTMLElement) => element.getAttribute('target') || null,
-      },
-      linktype: {
-        default: 'url',
-        parseHTML: (element: HTMLElement) => element.getAttribute('data-linktype') || 'url',
-      },
-    };
-  },
-  renderHTML({ HTMLAttributes }) {
-    const { href, rest } = resolveStoryblokLink(HTMLAttributes);
-    return ['a', cleanObject({ ...(href ? { href } : {}), ...rest }), 0];
-  },
-});
-
-// Link with custom attributes support
-export const StoryblokLinkWithCustomAttributes = StoryblokLink.extend({
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      custom: {
-        default: null,
-        parseHTML: (element: HTMLElement) => {
-          const defaultLinkAttributes = supportedAttributesByTagName.a;
-          const customAttributeNames = element.getAttributeNames().filter(n => !defaultLinkAttributes.includes(n));
-          const customAttributes: Record<string, string | null> = {};
-          for (const attributeName of customAttributeNames) {
-            customAttributes[attributeName] = element.getAttribute(attributeName);
-          }
-          return Object.keys(customAttributes).length ? customAttributes : null;
+export function buildHighlightExtension(options?: ExtensionOptions<'highlight'>) {
+  const parser = options?.attributeParsers;
+  return Highlight.extend({
+    addAttributes() {
+      return {
+        color: {
+          default: null,
+          parseHTML: parser?.color ?? mapToAttribute(undefined, 'color'),
         },
-      },
-    };
-  },
-});
+      };
+    },
+  });
+}
+const parseCustomLinkAttributes = (element: HTMLElement) => {
+  const defaultLinkAttributes = supportedAttributesByTagName.a;
+  const customAttributeNames = element.getAttributeNames().filter(n => !defaultLinkAttributes.includes(n));
+  const customAttributes: Record<string, string | null> = {};
+  for (const attributeName of customAttributeNames) {
+    customAttributes[attributeName] = element.getAttribute(attributeName);
+  }
+  return Object.keys(customAttributes).length ? customAttributes : null;
+};
 
-// Anchor mark (renders as span with id)
-export const StoryblokAnchor = Mark.create({
-  name: 'anchor',
-  addAttributes() {
-    return {
-      id: { default: null },
-    };
-  },
-  parseHTML() {
-    return [{ tag: 'span[id]' }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    return ['span', { id: HTMLAttributes.id }, 0];
-  },
-});
-
-export interface StyledOptions {
-  allowedStyles?: string[];
+export function buildLinkExtension(options?: ExtensionOptions<'link'>) {
+  const parser = options?.attributeParsers;
+  return LinkOriginal.extend({
+    addAttributes() {
+      return {
+        href: {
+          parseHTML: parser?.href ?? mapToAttribute('href'),
+        },
+        uuid: {
+          default: null,
+          parseHTML: parser?.uuid ?? mapToAttribute('data-uuid'),
+        },
+        anchor: {
+          default: null,
+          parseHTML: parser?.anchor ?? mapToAttribute('data-anchor'),
+        },
+        target: {
+          default: null,
+          parseHTML: parser?.target ?? mapToAttribute('target'),
+        },
+        linktype: {
+          default: 'url',
+          parseHTML: parser?.linktype ?? mapToAttribute('data-linktype'),
+        },
+        custom: {
+          default: {},
+          parseHTML: parser?.custom ?? parseCustomLinkAttributes,
+        },
+      };
+    },
+  });
 }
 
-// Styled mark with whitelisted CSS classes
-export const StoryblokStyled = Mark.create<StyledOptions>({
-  name: 'styled',
-  addAttributes() {
-    return {
-      class: {
-        parseHTML: (element: HTMLElement) => {
-          const styles = getAllowedStylesForElement(element, { allowedStyles: this.options.allowedStyles || [] });
-          return styles.length ? styles.join(' ') : null;
-        },
-      },
-    };
-  },
-  parseHTML() {
-    return [
-      {
-        tag: 'span',
-        consuming: false,
-        getAttrs: (element: HTMLElement) => {
-          const styles = getAllowedStylesForElement(element, { allowedStyles: this.options.allowedStyles || [] });
-          return styles.length ? null : false;
-        },
-      },
-    ];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const { class: className, ...rest } = HTMLAttributes;
-    return ['span', cleanObject({ class: className, style: attrsToStyle(rest) || undefined }), 0];
-  },
-});
+export function buildAnchorExtension(options?: ExtensionOptions<'anchor'>) {
+  const parser = options?.attributeParsers;
+  return Mark.create({
+    name: 'anchor',
+    addAttributes() {
+      return {
+        id: { default: null, parseHTML: parser?.id ?? mapToAttribute(['id', 'data-id']) },
+      };
+    },
+    parseHTML: options?.parseHTML ?? (() => {
+      return [{ tag: 'span[id]' }];
+    }),
+    renderHTML({ HTMLAttributes }) {
+      const { id } = HTMLAttributes as AnchorAttrs;
+      return ['span', { id }, 0];
+    },
+  });
+}
 
-// TextStyle mark
-export const StoryblokTextStyle = Mark.create({
-  name: 'textStyle',
-  addAttributes() {
-    return {
-      class: { default: null },
-      id: { default: null },
-      color: { default: null },
-    };
-  },
-  parseHTML() {
-    return [{
-      tag: 'span',
-      consuming: false,
-      getAttrs: (element: HTMLElement) => {
+export function buildStyledExtension(options?: ExtensionOptions<'textStyle'>) {
+  const parser = options?.attributeParsers;
+  return Mark.create({
+    name: 'styled',
+    parseHTML: options?.parseHTML ?? (() => {
+      return [{ tag: 'span', consuming: false, getAttrs: (element: HTMLElement) => {
+        // Only match spans with inline style containing color
+        const className = element.getAttribute('class');
+        if (className) {
+          return null;
+        }
+        return false;
+      } }];
+    }),
+    addAttributes() {
+      return {
+        class: { default: null, parseHTML: parser?.class ?? mapToAttribute('class') },
+      };
+    },
+    renderHTML({ HTMLAttributes }) {
+      const { class: className } = HTMLAttributes as StyledAttrs;
+      return [
+        'span',
+        { class: className },
+        0,
+      ];
+    },
+  });
+}
+
+export function buildTextStyleExtension(options?: ExtensionOptions<'textStyle'>) {
+  const parser = options?.attributeParsers;
+  return Mark.create({
+    name: 'textStyle',
+    parseHTML: options?.parseHTML ?? (() => {
+      return [{ tag: 'span', consuming: false, getAttrs: (element: HTMLElement) => {
         // Only match spans with inline style containing color
         const style = element.getAttribute('style');
         if (style && /color/i.test(style)) {
           return null;
         }
         return false;
-      },
-    }];
-  },
-  renderHTML({ HTMLAttributes }) {
-    const { class: className, id: idName, ...styleAttrs } = HTMLAttributes;
-    return ['span', cleanObject({
-      class: className,
-      id: idName,
-      style: attrsToStyle(styleAttrs) || undefined,
-    }), 0];
-  },
-});
-
+      } }];
+    }),
+    addAttributes() {
+      return {
+        color: { default: null, parseHTML: parser?.color ?? mapToAttribute(undefined, 'color') },
+      };
+    },
+    renderHTML({ HTMLAttributes }) {
+      const { color } = HTMLAttributes as TextStyleAttrs;
+      const styles: string[] = [];
+      if (color) {
+        styles.push(`color: ${color};`);
+      }
+      return [
+        'span',
+        {
+          ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
+        },
+        0,
+      ];
+    },
+  });
+}
 // Reporter mark: parse-only diagnostic, no renderHTML needed
+// TODO: This is vary vague and not fully same we need to improve this, this is not esssential for the first version, we can iterate on this later
 export const Reporter = Mark.create({
   name: 'reporter',
   priority: 0,

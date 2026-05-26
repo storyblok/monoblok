@@ -1,116 +1,61 @@
-import type { Extension, Mark, Node } from '@tiptap/core';
-import type { StoryblokRichTextImageOptimizationOptions } from '../types';
-import {
-  ComponentBlok,
-  Details,
-  DetailsContent,
-  DetailsSummary,
-  Document,
-  StoryblokBlockquote,
-  StoryblokBulletList,
-  StoryblokCodeBlock,
-  StoryblokEmoji,
-  StoryblokHardBreak,
-  StoryblokHeading,
-  StoryblokHorizontalRule,
-  StoryblokImage,
-  StoryblokListItem,
-  StoryblokOrderedList,
-  StoryblokParagraph,
-  StoryblokTable,
-  StoryblokTableCell,
-  StoryblokTableHeader,
-  StoryblokTableRow,
-  StoryblokTextAlign,
-  Text,
-} from './nodes';
-import {
-  Bold,
-  Code,
-  Italic,
-  Reporter,
-  StoryblokAnchor,
-  StoryblokHighlight,
-  StoryblokLink,
-  StoryblokLinkWithCustomAttributes,
-  StoryblokStyled,
-  StoryblokTextStyle,
-  Strike,
-  Subscript,
-  Superscript,
-  Underline,
-} from './marks';
+import { buildBlockquoteExtension, buildBulletListExtension, buildCodeBlockExtension, buildComponentBlokExtension, buildEmojiExtension, buildHardBreakExtension, buildHeadingExtension, buildHorizontalRuleExtension, buildImageExtension, buildListItemExtension, buildOrderedListExtension, buildParagraphExtension, buildTableCellExtension, buildTableExtension, buildTableHeaderExtension, buildTableRowExtension, Document, Text } from './nodes';
+import type { ExtensionKey, ExtensionOptions } from './richtext-attrs';
+import { Bold, buildAnchorExtension, buildHighlightExtension, buildLinkExtension, buildStyledExtension, buildTextStyleExtension, Code, Italic, Reporter, Strike, Subscript, Superscript, Underline } from './marks';
 
 export interface StyleOption {
   name: string;
   value: string;
 }
 
-export interface HTMLParserOptions {
-  allowCustomAttributes?: boolean;
-  preserveWhitespace?: boolean | 'full';
-  tiptapExtensions?: Partial<typeof defaultExtensions & Record<string, Extension | Mark | Node>>;
-  styleOptions?: StyleOption[];
-}
-
-export interface StoryblokExtensionOptions {
-  optimizeImages?: boolean | Partial<StoryblokRichTextImageOptimizationOptions>;
-  allowCustomAttributes?: boolean;
-  styleOptions?: StyleOption[];
-}
-
-const defaultExtensions = {
-  document: Document,
-  text: Text,
-  paragraph: StoryblokParagraph,
-  blockquote: StoryblokBlockquote,
-  heading: StoryblokHeading,
-  bulletList: StoryblokBulletList,
-  orderedList: StoryblokOrderedList,
-  listItem: StoryblokListItem,
-  codeBlock: StoryblokCodeBlock,
-  hardBreak: StoryblokHardBreak,
-  horizontalRule: StoryblokHorizontalRule,
-  image: StoryblokImage,
-  emoji: StoryblokEmoji,
-  table: StoryblokTable,
-  tableRow: StoryblokTableRow,
-  tableCell: StoryblokTableCell,
-  tableHeader: StoryblokTableHeader,
-  blok: ComponentBlok,
-  details: Details,
-  detailsContent: DetailsContent,
-  detailsSummary: DetailsSummary,
-  bold: Bold,
-  italic: Italic,
-  strike: Strike,
-  underline: Underline,
-  code: Code,
-  superscript: Superscript,
-  subscript: Subscript,
-  highlight: StoryblokHighlight,
-  textStyle: StoryblokTextStyle,
-  link: StoryblokLink as typeof StoryblokLink,
-  anchor: StoryblokAnchor,
-  styled: StoryblokStyled,
-  reporter: Reporter,
-  textAlign: StoryblokTextAlign,
+export type StoryblokParserOptionsMap = {
+  [K in ExtensionKey]?: ExtensionOptions<K>;
 };
 
-export { defaultExtensions };
-
-export function getStoryblokExtensions(options: StoryblokExtensionOptions = {}) {
-  const Link = options.allowCustomAttributes ? StoryblokLinkWithCustomAttributes : StoryblokLink;
-
-  return {
-    ...defaultExtensions,
-    image: StoryblokImage.configure({ optimizeImages: options.optimizeImages || false }),
-    link: Link,
-    styled: StoryblokStyled.configure({ allowedStyles: options.styleOptions?.map(o => o.value) }),
-    reporter: Reporter.configure({ allowCustomAttributes: options.allowCustomAttributes }),
-  };
+export interface HTMLParserOptions {
+  parsers?: StoryblokParserOptionsMap;
+  allowCustomAttributes?: boolean;
+  styleOptions?: StyleOption[];
+  preserveWhitespace?: boolean;
 }
 
-export * from './marks';
-export * from './nodes';
-export { computeTableCellAttrs, processBlockAttrs, resolveStoryblokLink } from './utils';
+interface GetStoryblokTiptapExtensionsOptions extends HTMLParserOptions {
+  enableReporter?: boolean;
+}
+
+export function getStoryblokTiptapExtensions(options: GetStoryblokTiptapExtensionsOptions) {
+  const parsers = options?.parsers || {};
+  const enableReporter = options?.enableReporter || false;
+  return {
+    document: Document,
+    text: Text,
+    emoji: buildEmojiExtension(parsers?.emoji),
+    paragraph: buildParagraphExtension(parsers?.paragraph),
+    blockquote: buildBlockquoteExtension(),
+    heading: buildHeadingExtension(parsers?.heading),
+    bulletList: buildBulletListExtension(),
+    orderedList: buildOrderedListExtension(parsers?.ordered_list),
+    listItem: buildListItemExtension(),
+    codeBlock: buildCodeBlockExtension(parsers?.code_block),
+    hardBreak: buildHardBreakExtension(),
+    horizontalRule: buildHorizontalRuleExtension(),
+    image: buildImageExtension(parsers?.image),
+    table: buildTableExtension(),
+    tableRow: buildTableRowExtension(),
+    tableCell: buildTableCellExtension(parsers?.tableCell),
+    tableHeader: buildTableHeaderExtension(parsers?.tableHeader),
+    blok: buildComponentBlokExtension(parsers?.blok),
+    bold: Bold,
+    italic: Italic,
+    strike: Strike,
+    underline: Underline,
+    code: Code,
+    superscript: Superscript,
+    subscript: Subscript,
+    highlight: buildHighlightExtension(parsers?.highlight),
+    textStyle: buildTextStyleExtension(parsers?.textStyle),
+    link: buildLinkExtension(parsers?.link),
+    anchor: buildAnchorExtension(parsers?.anchor),
+    styled: buildStyledExtension(parsers?.styled),
+    ...(enableReporter && { reporter: Reporter }),
+  };
+}

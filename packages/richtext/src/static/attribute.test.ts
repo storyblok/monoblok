@@ -95,6 +95,30 @@ describe('processAttrs', () => {
         href: '/page#section',
       });
     });
+
+    it('skips colspan when value is 1 (HTML default)', () => {
+      expect(processAttrs('tableCell', { colspan: 1 })).toEqual({});
+    });
+
+    it('skips rowspan when value is 1 (HTML default)', () => {
+      expect(processAttrs('tableCell', { rowspan: 1 })).toEqual({});
+    });
+
+    it('skips order (start) when value is 1 (HTML default)', () => {
+      expect(processAttrs('ordered_list', { order: 1 })).toEqual({});
+    });
+
+    it('keeps colspan when value is not 1', () => {
+      expect(processAttrs('tableCell', { colspan: 2 })).toEqual({ colSpan: 2 });
+    });
+
+    it('keeps rowspan when value is not 1', () => {
+      expect(processAttrs('tableCell', { rowspan: 2 })).toEqual({ rowSpan: 2 });
+    });
+
+    it('keeps order (start) when value is not 1', () => {
+      expect(processAttrs('ordered_list', { order: 5 })).toEqual({ start: 5 });
+    });
   });
 
   // ============================================================================

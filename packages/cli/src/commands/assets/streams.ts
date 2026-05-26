@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { basename, extname, join } from 'pathe';
 import { Readable, Transform, Writable } from 'node:stream';
-import { Sema } from 'async-sema';
+import type { Sema } from 'async-sema';
 import { readdir, readFile, unlink } from 'node:fs/promises';
 import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
@@ -12,9 +12,16 @@ import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolder
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
+import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData } from './utils';
 
-const apiConcurrencyLock = new Sema(12);
+let _pipelineSlot: Sema | null = null;
+const getPipelineSlot = (): Sema => {
+  if (!_pipelineSlot) {
+    _pipelineSlot = createPipelineBackpressureLock();
+  }
+  return _pipelineSlot;
+};
 
 export const fetchAssetsStream = ({
   spaceId,
@@ -95,7 +102,7 @@ export const downloadAssetStream = ({
   return new Transform({
     objectMode: true,
     async transform(asset: Asset, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
+      await getPipelineSlot().acquire();
 
       const task = downloadAssetFile(asset, { assetToken, region })
         .then((fileBuffer) => {
@@ -110,7 +117,7 @@ export const downloadAssetStream = ({
         })
         .finally(() => {
           onIncrement?.();
-          apiConcurrencyLock.release();
+          getPipelineSlot().release();
           processing.delete(task);
         });
       processing.add(task);
@@ -151,7 +158,7 @@ export const writeAssetStream = ({
   return new Writable({
     objectMode: true,
     async write(payload: { asset: Asset; fileBuffer: ArrayBuffer }, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
+      await getPipelineSlot().acquire();
 
       const task = (async () => {
         try {
@@ -166,7 +173,7 @@ export const writeAssetStream = ({
       processing.add(task);
       task.finally(() => {
         onIncrement?.();
-        apiConcurrencyLock.release();
+        getPipelineSlot().release();
         processing.delete(task);
       });
 
@@ -235,7 +242,7 @@ export const writeAssetFolderStream = ({
   return new Writable({
     objectMode: true,
     async write(folder: AssetFolder, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
+      await getPipelineSlot().acquire();
 
       const task = (async () => {
         try {
@@ -250,7 +257,7 @@ export const writeAssetFolderStream = ({
       processing.add(task);
       task.finally(() => {
         onIncrement?.();
-        apiConcurrencyLock.release();
+        getPipelineSlot().release();
         processing.delete(task);
       });
 
@@ -717,7 +724,7 @@ export const upsertAssetStream = ({
   return new Writable({
     objectMode: true,
     async write({ asset: localAsset, context }: LocalAssetPayload, _encoding, callback) {
-      await apiConcurrencyLock.acquire();
+      await getPipelineSlot().acquire();
       const task = (async () => {
         try {
           const { remoteAsset } = await processAsset({
@@ -739,7 +746,7 @@ export const upsertAssetStream = ({
       processing.add(task);
       task.finally(() => {
         onIncrement?.();
-        apiConcurrencyLock.release();
+        getPipelineSlot().release();
         processing.delete(task);
       });
 

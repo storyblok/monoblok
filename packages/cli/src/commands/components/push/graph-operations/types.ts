@@ -80,7 +80,7 @@ export interface PushConfig {
   space: string;
   password: string;
   region: RegionCode;
-  maxConcurrency: number;
+  backpressure: number;
 }
 
 /** Graph building context with source and target data */

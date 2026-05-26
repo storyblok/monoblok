@@ -39,10 +39,12 @@ vi.mock('../src/session.ts', async (importOriginal) => {
 
 vi.mock('../src/lib/config/store', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/lib/config/store')>();
+  // Disable the rate limiter in tests so per-second throttling does not slow down fake-timer tests.
+  actual.setActiveConfig({ ...actual.getActiveConfig(), api: { ...actual.getActiveConfig().api, rateLimit: -1 } });
   return {
     ...actual,
     setActiveConfig: (config: import('../src/lib/config/types').ResolvedCliConfig) =>
-      actual.setActiveConfig({ ...config, api: { ...config.api, maxConcurrency: -1 } }),
+      actual.setActiveConfig({ ...config, api: { ...config.api, rateLimit: -1 } }),
   };
 });
 

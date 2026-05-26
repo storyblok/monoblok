@@ -80,19 +80,16 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
   );
 
   /**
-   * Wraps an SDK call with throttling and response adaptation.
-   * The throttle slot is held for the entire duration of the request.
+   * Wraps an SDK call with throttling.
    * When throwOnError is true, errors throw and data is guaranteed non-null.
    */
   function wrapRequest<TData, ThrowOnError extends boolean = false>(
     fn: () => Promise<unknown>,
     _throwOnError?: ThrowOnError,
   ): Promise<ApiResponse<TData, ThrowOnError>> {
-    return throttleManager.execute(async () => {
-      const result = await fn() as ApiResponse<TData, ThrowOnError>;
-      throttleManager.adaptToResponse((result as { response: Response }).response);
-      return result;
-    }) as Promise<ApiResponse<TData, ThrowOnError>>;
+    return throttleManager.execute(
+      () => fn() as Promise<ApiResponse<TData, ThrowOnError>>,
+    );
   }
 
   const deps: MapiResourceDeps = { client, spaceId, wrapRequest };

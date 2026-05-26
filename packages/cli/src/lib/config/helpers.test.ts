@@ -134,7 +134,7 @@ const mockConfig: ResolvedCliConfig = {
   region: 'us',
   api: {
     maxRetries: 5,
-    maxConcurrency: 6,
+    rateLimit: 6,
   },
   log: {
     console: {

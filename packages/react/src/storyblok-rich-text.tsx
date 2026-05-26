@@ -1,21 +1,33 @@
-import React, { forwardRef } from 'react';
-
-import { convertAttributesInElement } from './utils';
+import { forwardRef } from 'react';
 import { useStoryblokRichText } from './richtext';
-import type { StoryblokRichTextProps } from './types';
+import type { StoryblokRichtextProps } from './core/richtext-hoc';
+import type { ComponentPropsWithoutRef } from 'react';
 
-const StoryblokRichText = forwardRef<HTMLDivElement, StoryblokRichTextProps>(
-  ({ doc, tiptapExtensions }, ref) => {
-    const { render } = useStoryblokRichText({
-      tiptapExtensions,
-    });
+type DivProps = Omit<
+  ComponentPropsWithoutRef<'div'>,
+  'children'
+>;
 
-    const html = render(doc);
-    const formattedHtml = convertAttributesInElement(html as React.ReactElement);
+type WrappedProps = StoryblokRichtextProps &
+  DivProps & {
+    wrapper?: true;
+  };
 
+type UnwrappedProps = StoryblokRichtextProps & {
+  wrapper: false;
+};
+
+type Props = WrappedProps | UnwrappedProps;
+
+const StoryblokRichText = forwardRef<HTMLDivElement, Props>(
+  ({ document, optimizeImage, components, wrapper = true, ...rest }, ref) => {
+    const html = useStoryblokRichText({ document, optimizeImage, components });
+    if (!wrapper) {
+      return html;
+    }
     return (
-      <div ref={ref}>
-        {formattedHtml}
+      <div ref={ref} {...rest}>
+        {html}
       </div>
     );
   },

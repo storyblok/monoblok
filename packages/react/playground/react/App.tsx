@@ -1,7 +1,7 @@
-import React from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router';
 import Home from './pages/Home';
 import RichtextPage from './pages/RichtextPage';
+import CatchAllPage from './pages/CatchAllPage';
 
 function App() {
   return (
@@ -22,6 +22,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="react" element={<Home />} />
             <Route path="react/test-richtext" element={<RichtextPage />} />
+            <Route path="*" element={<CatchAllPage />} />
           </Routes>
         </div>
       </div>

@@ -91,63 +91,62 @@ describe('storyblok vue richtext rendering', () => {
     });
   });
   // describe('custom components', () => {
-  //   const node_and_mark = customRendererFixture.node_and_mark;
-  //   it(node_and_mark.title, () => {
-  //     const components: SbVueRichTextComponentMap = {
-  //       heading: CustomHeading,
-  //       link: CustomLink,
-  //       bold: ({ children }) => h('b', { 'data-type': 'custom-bold' }, children),
-  //     };
-  //     const wrapper = mount(StoryblokRichText, {
-  //       props: {
-  //         document: node_and_mark.input,
-  //         components,
-  //       },
-  //     });
-  //     expect((wrapper.html({ raw: true }))).toBe(node_and_mark.expected);
+  // const node_and_mark = customRendererFixture.node_and_mark;
+  // it(node_and_mark.title, () => {
+  //   const components: SbVueRichTextComponentMap = {
+  //     heading: ({ attrs }, children) => h('h2', { 'data-type': 'custom-heading', 'data-level': attrs?.level }, () => children),
+  //     bold: (_, children) => h('b', { 'data-type': 'custom-bold' }, () => children),
+  //   };
+  //   const wrapper = mount(StoryblokRichText, {
+  //     props: {
+  //       document: node_and_mark.input,
+  //       components,
+  //     },
   //   });
-  //   const recursive = customRendererFixture.recursive;
-  //   it(recursive.title, () => {
-  //     const components: SbVueRichTextComponentMap = {
-  //       heading: ({ content, attrs }) => h('h1', { 'data-type': 'custom-heading', 'data-level': attrs?.level }, [h(StoryblokRichText, { wrapper: false, document: content, components })]),
-  //       bold: ({ children }) => h('b', { 'data-type': 'custom-bold' }, children),
-  //     };
-  //     const wrapper = mount(StoryblokRichText, {
-  //       props: {
-  //         document: recursive.input,
-  //         components,
-  //       },
-  //     });
+  //   expect((wrapper.html({ raw: true }))).toBe(node_and_mark.expected);
+  // });
+  // const recursive = customRendererFixture.recursive;
+  // it(recursive.title, () => {
+  //   const components: SbVueRichTextComponentMap = {
+  //     heading: ({ content, attrs }) => h('h1', { 'data-type': 'custom-heading', 'data-level': attrs?.level }, [h(StoryblokRichText, { wrapper: false, document: content, components })]),
+  //     bold: ({ children }) => h('b', { 'data-type': 'custom-bold' }, children),
+  //   };
+  //   const wrapper = mount(StoryblokRichText, {
+  //     props: {
+  //       document: recursive.input,
+  //       components,
+  //     },
+  //   });
 
-  //     expect((wrapper.html({ raw: true }))).toBe(recursive.expected);
+  //   expect((wrapper.html({ raw: true }))).toBe(recursive.expected);
+  // });
+  // const code_block = customRendererFixture.code_block;
+  // it(code_block.title, () => {
+  //   const components: SbVueRichTextComponentMap = {
+  //     code_block: CustomCodeBlock,
+  //   };
+  //   const wrapper = mount(StoryblokRichText, {
+  //     props: {
+  //       document: code_block.input,
+  //       components,
+  //     },
   //   });
-  //   const code_block = customRendererFixture.code_block;
-  //   it(code_block.title, () => {
-  //     const components: SbVueRichTextComponentMap = {
-  //       code_block: CustomCodeBlock,
-  //     };
-  //     const wrapper = mount(StoryblokRichText, {
-  //       props: {
-  //         document: code_block.input,
-  //         components,
-  //       },
-  //     });
-  //     expect((wrapper.html({ raw: true }))).toBe(code_block.expected);
-  //   });
-  //   const table = customRendererFixture.table;
+  //   expect((wrapper.html({ raw: true }))).toBe(code_block.expected);
+  // });
+  // const table = customRendererFixture.table;
 
-  //   it(table.title, () => {
-  //     const components: SbVueRichTextComponentMap = {
-  //       table: CustomTable,
-  //       bold: ({ children }) => h('b', { 'data-type': 'custom-bold' }, children),
-  //     };
-  //     const wrapper = mount(StoryblokRichText, {
-  //       props: {
-  //         document: table.input,
-  //         components,
-  //       },
-  //     });
-  //     expect((wrapper.html({ raw: true }))).toBe(table.expected);
+  // it(table.title, () => {
+  //   const components: SbVueRichTextComponentMap = {
+  //     table: CustomTable,
+  //     bold: ({ children }) => h('b', { 'data-type': 'custom-bold' }, children),
+  //   };
+  //   const wrapper = mount(StoryblokRichText, {
+  //     props: {
+  //       document: table.input,
+  //       components,
+  //     },
   //   });
+  //   expect((wrapper.html({ raw: true }))).toBe(table.expected);
+  // });
   // });
 });

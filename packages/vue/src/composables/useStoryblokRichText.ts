@@ -15,11 +15,13 @@ import {
   getStaticChildren,
   groupLinkNodes,
   isSelfClosing,
+  normalizeNodes,
   processAttrs,
   resolveTag,
   splitTableRows,
 } from '@storyblok/richtext';
-import BlokRenderer from '../components/BlokRenderer.ts';
+import BlokRenderer from '../components/BlokRenderer';
+
 /**
  * Props type for Vue richtext node/mark components.
  * Content is passed via the default slot, not as a prop.
@@ -108,18 +110,8 @@ export function createStoryblokRenderer(options: StoryblokRichTextRendererOption
       return null;
     }
 
-    if (Array.isArray(document)) {
-      const children = renderChildren(document, options);
-      return children.length === 1 ? children[0] : children;
-    }
-
-    const nodes = document.type === 'doc' ? document.content : [document];
-    if (!nodes?.length) {
-      return null;
-    }
-
-    const children = renderChildren(nodes, options);
-    return children.length === 1 ? children[0] : children;
+    const nodes = normalizeNodes(document, true);
+    return nodes.length ? renderChildren(nodes, options) : null;
   };
 }
 
@@ -184,10 +176,9 @@ function renderNode(node: SbRichTextNode, options: StoryblokRichTextRendererOpti
   const Custom = resolveComponentOverride(node.type, options.components);
 
   if (Custom) {
-    const children = node.content ? renderChildren(node.content, options) : null;
-    return h(Custom, { key, ...node }, children
+    return h(Custom, { key, ...node }, node.content
       ? {
-          default: () => children,
+          default: () => renderChildren(node.content!, options),
         }
       : undefined);
   }

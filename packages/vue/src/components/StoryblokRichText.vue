@@ -5,14 +5,13 @@ import {
   createRichTextHook,
   type SbVueRichTextComponentMap,
 } from '../composables/useStoryblokRichText';
-import type { SbRichTextDoc, SbRichTextImageOptions } from '../index.ts';
+import type { SbRichTextImageOptions, SbRichTextNode } from '@storyblok/richtext';
 
 export default defineComponent({
   name: 'StoryblokRichText',
-
   props: {
     document: {
-      type: Object as PropType<SbRichTextDoc | SbRichTextDoc[] | null | undefined>,
+      type: Object as PropType<SbRichTextNode | SbRichTextNode[] | null | undefined>,
       required: false,
     },
     optimizeImage: {

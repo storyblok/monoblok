@@ -606,10 +606,6 @@ importers:
         version: 0.2.4(vite@5.4.21(@types/node@24.11.0)(less@4.6.4)(lightningcss@1.31.1)(sass@1.98.0)(terser@5.46.0))
 
   packages/js/playground/vanilla:
-    dependencies:
-      '@tiptap/core':
-        specifier: ^3.10.2
-        version: 3.20.0(@tiptap/pm@3.22.3)
     devDependencies:
       '@storyblok/js':
         specifier: workspace:*

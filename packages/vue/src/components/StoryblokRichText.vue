@@ -25,11 +25,8 @@ export default defineComponent({
   },
 
   setup(props) {
-    const useStoryblokRichText
-      = createRichTextHook();
-
-    const rendered
-      = useStoryblokRichText(props);
+    const useStoryblokRichText = createRichTextHook();
+    const rendered = useStoryblokRichText(props);
 
     return () => rendered.value;
   },

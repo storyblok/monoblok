@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SbVueRichTextProps } from '../../index.ts';
 
-const props = defineProps<SbVueRichTextProps<'heading'>>();
+const props = defineProps<SbVueRichTextProps['heading']>();
 </script>
 
 <template>

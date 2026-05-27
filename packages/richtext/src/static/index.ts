@@ -10,5 +10,5 @@ export {
 export { normalizeNodes } from './normalize-nodes';
 export { stringToStyle, styleToString } from './style';
 export type { BaseSbRichTextProps, RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextOptions, SbRichTextProps, SbRichTextTextNode } from './types';
-export type { SbRichTextMark, SbRichTextNode } from './types.generated';
+export type { SbRichTextElementByType, SbRichTextMark, SbRichTextNode } from './types.generated';
 export { attrsToHtmlString, getStaticChildren, isSelfClosing, resolveTag } from './util';

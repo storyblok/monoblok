@@ -13,16 +13,16 @@ const BlokRenderer = defineComponent({
       required: true,
     },
     attrs: {
-      type: Object as PropType<SbVueRichTextProps<'blok'>['attrs']>,
+      type: Object as PropType<SbVueRichTextProps['blok']['attrs']>,
       required: false,
     },
 
     content: {
-      type: Array as PropType<SbVueRichTextProps<'blok'>['content']>,
+      type: Array as PropType<SbVueRichTextProps['blok']['content']>,
       required: false,
     },
     marks: {
-      type: Array as PropType<SbVueRichTextProps<'blok'>['marks']>,
+      type: Array as PropType<SbVueRichTextProps['blok']['marks']>,
       required: false,
     },
     _key: {

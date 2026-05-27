@@ -32,29 +32,56 @@ function genAttributeTypes(schema: Schema) {
   return { nodeAttrs, markAttrs };
 }
 
+function nodeShape(schema: Schema, name: string): string {
+  const type = schema.nodes[name];
+  const hasText = name === 'text' ? 'text: string;' : '';
+  let children = '';
+  if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
+    children = 'content?: SbRichTextNode[];';
+  }
+  return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string }`;
+}
+
+function markShape(name: string): string {
+  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string }`;
+}
+
 /** Generate SbRichTextNode discriminated union type */
 function genPMNode(schema: Schema): string {
   let out = 'export type SbRichTextNode =\n';
-
-  for (const [name, type] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    const hasText = name === 'text' ? 'text: string;' : '';
-
-    let children = '';
-    if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
-      children = 'content?: SbRichTextNode[];';
-    }
-    out += `  | { type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string }\n`;
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    out += `  | ${nodeShape(schema, name)}\n`;
   }
-
   return `${out};`;
 }
 
 function genPMMark(schema: Schema): string {
   let out = 'export type SbRichTextMark =\n';
   for (const [name] of Object.entries(schema.marks)) {
-    out += `  | { type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string }\n`;
+    out += `  | ${markShape(name)}\n`;
   }
   return `${out};`;
+}
+
+/**
+ * Generate a flat lookup interface keyed by element name.
+ * This allows `SbRichTextElementByType[T]` indexed access to resolve to the
+ * concrete node/mark shape, which is supported by Vue's `<script setup>`
+ * `defineProps<T>()` type-only macro resolver (conditional/Extract are not).
+ */
+function genElementByType(schema: Schema): string {
+  let out = '/**\n * Flat lookup of element shapes keyed by `type`.\n';
+  out += ' * Prefer this over `Extract<SbRichTextNode, { type: T }>` in places\n';
+  out += ' * that need to be resolved by limited type resolvers (e.g. Vue SFC macros).\n */\n';
+  out += 'export interface SbRichTextElementByType {\n';
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    out += `  ${name}: ${nodeShape(schema, name)};\n`;
+  }
+  for (const [name] of Object.entries(schema.marks)) {
+    out += `  ${name}: ${markShape(name)};\n`;
+  }
+  out += '}\n';
+  return out;
 }
 
 export function generateTypes() {
@@ -82,5 +109,6 @@ export function generateTypes() {
   // --- SbRichTextNode/SbRichTextMark
   output += `${genPMNode(schema)}\n\n`;
   output += `${genPMMark(schema)}\n\n`;
+  output += `${genElementByType(schema)}\n`;
   return output;
 }

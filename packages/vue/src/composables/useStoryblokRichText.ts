@@ -1,9 +1,9 @@
 import type { Component, MaybeRefOrGetter, VNode } from 'vue';
 import { computed, createTextVNode, h, toValue } from 'vue';
 import type {
-  BaseSbRichTextProps,
   RenderSpec,
   SbRichTextElement,
+  SbRichTextElementByType,
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
@@ -23,15 +23,19 @@ import {
 import BlokRenderer from '../components/BlokRenderer';
 
 /**
- * Props type for Vue richtext node/mark components.
- * Content is passed via the default slot, not as a prop.
+ * Lookup of props passed to Vue richtext node/mark override components.
+ * Indexed by element name. Content is passed via the default slot, not as a prop.
+ *
+ * Shaped as a non-generic indexed interface (rather than `SbVueRichTextProps<T>`)
+ * so it is resolvable by Vue's `<script setup>` `defineProps<T>()` macro, whose
+ * limited type resolver cannot substitute generic parameters through type aliases.
  *
  * @example
  * ```vue
  * <script setup lang="ts">
  * import type { SbVueRichTextProps } from '@storyblok/vue';
  *
- * defineProps<SbVueRichTextProps<'heading'>>();
+ * defineProps<SbVueRichTextProps['heading']>();
  * </script>
  *
  * <template>
@@ -41,24 +45,16 @@ import BlokRenderer from '../components/BlokRenderer';
  * </template>
  * ```
  */
+export type SbVueRichTextProps = SbRichTextElementByType;
 
-export type SbVueRichTextProps<
-  T extends SbRichTextElement,
-> = BaseSbRichTextProps<
-  T,
-  {
-    components?: SbVueRichTextComponentMap;
-  },
-  object
->;
 export type SbVueRichTextComponentMap = {
-  [K in SbRichTextElement]?: Component<SbVueRichTextProps<K>>;
+  [K in SbRichTextElement]?: Component<SbVueRichTextProps[K]>;
 };
 function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
   components?: SbVueRichTextComponentMap,
-): Component<SbVueRichTextProps<K>> | undefined {
-  return components?.[type] as Component<SbVueRichTextProps<K>> | undefined;
+): Component<SbVueRichTextProps[K]> | undefined {
+  return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
 }
 
 export interface StoryblokRichTextRendererOptions {

@@ -714,6 +714,9 @@ importers:
       '@storyblok/schema':
         specifier: workspace:*
         version: link:../schema
+      async-sema:
+        specifier: ^3.1.1
+        version: 3.1.1
       ky:
         specifier: ^1.14.3
         version: 1.14.3
@@ -22525,6 +22528,7 @@ snapshots:
     dependencies:
       '@storyblok/region-helper': file:packages/region-helper
       '@storyblok/schema': file:packages/schema
+      async-sema: 3.1.1
       ky: 1.14.3
 
   '@storyblok/nuxt@file:packages/nuxt(nuxt@4.3.1(@parcel/watcher@2.5.6)(@types/node@25.6.0)(@vercel/functions@3.4.3)(@vue/compiler-sfc@3.5.30)(cac@6.7.14)(commander@13.1.0)(db0@0.3.4)(ioredis@5.10.0)(less@4.6.4)(lightningcss@1.32.0)(magicast@0.5.2)(meow@13.2.0)(optionator@0.9.4)(rolldown@1.0.0-rc.17)(rollup@4.59.0)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.3)(jiti@2.6.1)(less@4.6.4)(sass@1.98.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.8.2))(vue@3.5.30(typescript@5.9.3))':

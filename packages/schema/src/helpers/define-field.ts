@@ -1,18 +1,16 @@
 import type {
-  ComponentSchemaField as Field,
-} from '../generated/mapi-types';
-import type {
   AssetFieldValue,
-  BlokContent as BlokContentGenerated,
+  BlockContentBase as BlokContentGenerated,
+  ComponentSchemaField as Field,
   MultilinkFieldValue,
   PluginFieldValue,
   RichtextFieldValue,
   TableFieldValue,
-} from '../generated/types';
+} from '../generated/overlay/types.gen';
 import type { Block } from './define-block';
 import type { Prettify } from '../utils/prettify';
 
-export { Field };
+export type { Field };
 
 /** Loose variant of the generated `BlokContent` with `_uid` optional — used as the fallback for write operations when no block union is provided. */
 type BlokContentLoose = {

@@ -1,11 +1,12 @@
-import type { Datasource } from '../generated/types';
-import type { DatasourceCreate, DatasourceUpdate } from '../generated/mapi-types';
+import type { Datasource } from '../generated/capi/types.gen';
+import type { DatasourceCreate, DatasourceUpdate } from '../generated/mapi/types.gen';
 import type { Prettify } from '../utils/prettify';
 
 const DATASOURCE_DEFAULTS = {
   id: 1,
   created_at: '',
   updated_at: '',
+  dimensions: [],
 };
 
 export type { Datasource, DatasourceCreate, DatasourceUpdate };

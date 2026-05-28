@@ -1,4 +1,4 @@
-import type { Tag } from '../generated/types';
+import type { Tag } from '../generated/capi/types.gen';
 import type { Prettify } from '../utils/prettify';
 
 const TAG_DEFAULTS = {

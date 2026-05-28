@@ -1,9 +1,11 @@
-import type { DatasourceEntry as CapiDatasourceEntry } from '../generated/types';
-import type { DatasourceEntryCreate, DatasourceEntryUpdate, DatasourceEntry as MapiDatasourceEntryGenerated } from '../generated/mapi-types';
+import type { DatasourceEntry as CapiDatasourceEntry } from '../generated/capi/types.gen';
+import type { DatasourceEntryCreate, DatasourceEntryUpdate, MapiDatasourceEntry as MapiDatasourceEntryGenerated } from '../generated/mapi/types.gen';
 import type { Prettify } from '../utils/prettify';
 
 const DATASOURCE_ENTRY_DEFAULTS = {
   id: 1,
+  value: '',
+  dimension_value: null,
 };
 
 export type DatasourceEntry = CapiDatasourceEntry;
@@ -17,7 +19,7 @@ type DatasourceEntryInput = Prettify<
   & Partial<Pick<CapiDatasourceEntry, DatasourceEntryOptional>>
 >;
 
-type MapiDatasourceEntryInput = { name: string; datasource_id: number } & Partial<Omit<MapiDatasourceEntryGenerated, 'name' | 'datasource_id'>>;
+type MapiDatasourceEntryInput = { name: string } & Partial<Omit<MapiDatasourceEntryGenerated, 'name'>>;
 
 /**
  * Returns a full {@link DatasourceEntry} (CDN shape) with all fields populated.
@@ -41,6 +43,8 @@ export function defineDatasourceEntry(datasourceEntry: any) {
 export const defineMapiDatasourceEntry = (entry: MapiDatasourceEntryInput): MapiDatasourceEntry => ({
   ...DATASOURCE_ENTRY_DEFAULTS,
   ...entry,
+  value: entry.value ?? DATASOURCE_ENTRY_DEFAULTS.value,
+  dimension_value: entry.dimension_value ?? DATASOURCE_ENTRY_DEFAULTS.dimension_value,
 });
 
 /**

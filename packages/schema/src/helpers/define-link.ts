@@ -1,4 +1,4 @@
-import type { Link } from '../generated/types';
+import type { Link } from '../generated/capi/types.gen';
 import type { Prettify } from '../utils/prettify';
 
 const LINK_DEFAULTS = {
@@ -8,6 +8,7 @@ const LINK_DEFAULTS = {
   real_path: '',
   is_folder: false,
   published: false,
+  parent_id: 0,
   is_startpage: false,
   position: 0,
 };

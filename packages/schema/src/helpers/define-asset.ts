@@ -1,14 +1,31 @@
-import type { Asset, AssetCreate, AssetUpdate } from '../generated/mapi-types';
+import type { Asset, AssetCreate, AssetUpdate } from '../generated/mapi/types.gen';
 
 const MAPI_ASSET_DEFAULTS = {
   id: 1,
   filename: '',
   space_id: 1,
+  short_filename: '',
   created_at: '',
   updated_at: '',
-  short_filename: '',
-  content_type: '',
-  content_length: 0,
+  content_type: null,
+  content_length: null,
+  alt: null,
+  asset_folder_id: null,
+  copyright: null,
+  expire_at: null,
+  focus: null,
+  is_private: false,
+  title: null,
+  deleted_at: null,
+  publish_at: null,
+  permanently_deleted: null,
+  ext_id: null,
+  source: null,
+  locked: false,
+  meta_data: null,
+  file: null,
+  internal_tag_ids: [],
+  internal_tags_list: [],
 };
 
 export type MapiAsset = Asset;

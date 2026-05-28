@@ -27,7 +27,21 @@ The codegen package exposes three scripts:
 - `pnpm --filter @storyblok/openapi-codegen pull:update` clones upstream HEAD, populates the cache, and rewrites `spec.lock` with the new SHA and hash.
 - `pnpm --filter @storyblok/openapi-codegen verify` recomputes the cache content hash and compares it to `spec.lock`, failing fast on missing or stale caches. This is the basis for the nx `build` target that consumer `generate` targets depend on, so codegen cannot run against a stale or absent cache.
 
-The package also exports a shared `generate()` function (driving `@hey-api/openapi-ts` with the per-resource dedup pass) and a `copyWrappers()` function (stamping generic wrapper templates into consumer output). Consumer `generate` scripts become thin shims that call these.
+The package exports a single `generate(config)` entry point. A consumer lists the public type names it needs and (for the clients) the SDK surface it owns; the tool resolves names to specs, walks transitive dependencies, runs `@hey-api/openapi-ts` once per affected surface, applies the per-resource dedup pass when an SDK is emitted, and stamps the generic wrapper templates into the consumer output. Consumer `generate` scripts collapse to a one-line call. `include` is typed against a committed `KnownType` union so consumers get autocomplete without running `pull` themselves.
+
+### Aliases and naming
+
+Most upstream types are exposed only under their package-stable public name. The codegen tool's `aliases.ts` maps each upstream schema to the emitted public name and, where the upstream shape is a request envelope, narrows it to the entity body. Example: upstream `UpdateStoryRequest` becomes `StoryUpdate` (the body of the `story` property), and upstream `CreateAsset` becomes `AssetCreate`. Where the upstream name is already clean and matches the public surface, no alias is needed.
+
+Some entity names exist in both specs with materially different shapes (`Story`, `Asset`, `Datasource`, `DatasourceEntry`). A small explicit list resolves the collision by giving the MAPI variant a `Mapi` prefix or suffix (`MapiStory`, `MapiDatasourceEntry`), keeping the bare name for the CAPI variant. The list is auditable, and a missed duplicate fails loudly at generation time as a TypeScript redeclaration error rather than silently.
+
+`Component` and `Block` are the single deliberate dual exposure: the clients request `Component` (closer to the OpenAPI surface), and the higher-level packages (`@storyblok/schema`, `@storyblok/live-preview`) request `Block` (closer to the published API).
+
+For entity types that have both a slim PUT-response shape and a canonical GET-response shape upstream, the alias sources from the GET shape. Example: `Asset` is sourced from `ShowAsset`, not from the upstream `Asset` (which is the slim V2 PUT-response). This keeps the public entity type aligned with what consumers actually read.
+
+### Transitive resolution
+
+A consumer lists the types it wants by name. The tool resolves each name to a spec, walks the transitive dependency graph (including the wrapper templates' leaf imports), and writes the minimum slice that compiles. A CAPI-only `include: ['Story']` still emits a `mapi/types.gen.ts` because the `Block` wrapper depends on `Component`, but only the slice of MAPI that `Component` and `Field` transitively require. Each consumer's `src/generated/` is the minimum that compiles its public surface.
 
 ### `spec.lock`
 
@@ -39,11 +53,11 @@ Each consumer's `generate` target reads from the codegen package's cache via the
 
 ### Codegen version policy
 
-`@storyblok/openapi-codegen` is pinned at `0.0.1`. Updates here are chores, so consumers never get a dependency bump from spec refreshes, hash updates, or internal refactors. Bump the version only when the exported `generate` or `copyWrappers` API changes in a way that requires consumers to update their `scripts/generate.ts`.
+`@storyblok/openapi-codegen` is pinned at `0.0.1`. Updates here are chores, so consumers never get a dependency bump from spec refreshes, hash updates, or internal refactors. Bump the version only when the exported `generate` API changes in a way that requires consumers to update their `scripts/generate.ts`.
 
 ### Cache lifecycle
 
-`tools/openapi-codegen/.openapi-cache/` is git-ignored. Contributors without spec access build from the committed `src/generated/` output. Contributors with access run `pnpm --filter @storyblok/openapi-codegen pull:update` whenever specs change upstream, regenerate the consumers explicitly (`pnpm nx run-many -t generate --projects=@storyblok/api-client,@storyblok/management-api-client,@storyblok/schema`), and commit the resulting diffs in `spec.lock` and each consumer's `src/generated/`.
+`tools/openapi-codegen/.openapi-cache/` is git-ignored. Contributors without spec access build from the committed `src/generated/` output. Contributors with access run `pnpm --filter @storyblok/openapi-codegen pull:update` whenever specs change upstream, regenerate the consumers explicitly (`pnpm nx run-many -t generate --projects=@storyblok/api-client,@storyblok/management-api-client,@storyblok/schema`), and commit the resulting diffs in `spec.lock` and each consumer's `src/generated/`. `pull:update` also regenerates the committed `known-types.ts` catalog so the lock and the autocomplete-driving type union move together.
 
 ## Consequences
 

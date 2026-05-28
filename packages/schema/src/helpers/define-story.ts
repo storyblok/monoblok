@@ -1,14 +1,14 @@
 import type {
-  Story as CapiStoryGenerated,
+  CapiStory as CapiStoryGenerated,
   StoryAlternate,
+} from '../generated/capi/types.gen';
+import type {
+  MapiStory as MapiStoryGenerated,
+  StoryCreate as StoryCreateGenerated,
   StoryLocalizedPath,
   StoryTranslatedSlug,
-} from '../generated/types';
-import type {
-  Story as MapiStoryGenerated,
-  StoryCreate as StoryCreateGenerated,
   StoryUpdate as StoryUpdateGenerated,
-} from '../generated/mapi-types';
+} from '../generated/mapi/types.gen';
 import type { Block } from './define-block';
 import type { BlockContent, BlockContentInput } from './define-field';
 import type { Prettify } from '../utils/prettify';
@@ -48,14 +48,39 @@ const MAPI_STORY_DEFAULTS = {
   group_id: '',
   alternates: [],
   slug: '',
-  parent_id: 0,
+  parent_id: null,
+  parent: null,
   path: null,
+  is_folder: false,
   is_startpage: false,
   sort_by_date: null,
   tag_list: [],
   meta_data: null,
-  translated_slugs: null,
+  translated_slugs: [],
+  translated_stories: [],
+  localized_paths: [],
   position: 0,
+  deleted_at: null,
+  published: null,
+  default_root: null,
+  disble_fe_editor: false,
+  disable_fe_editor: false,
+  unpublished_changes: null,
+  imported_at: null,
+  preview_token: { token: '', timestamp: '' },
+  pinned: false,
+  breadcrumbs: [],
+  publish_at: null,
+  expire_at: null,
+  last_author: null,
+  last_author_id: null,
+  user_ids: [],
+  space_role_ids: [],
+  can_not_view: null,
+  is_scheduled: null,
+  scheduled_dates: null,
+  ideas: [],
+  favourite_for_user_ids: [],
 };
 
 export type { StoryAlternate, StoryLocalizedPath, StoryTranslatedSlug };

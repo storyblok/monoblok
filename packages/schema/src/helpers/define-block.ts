@@ -1,4 +1,5 @@
-import type { ComponentCreate, Component as ComponentGenerated, ComponentUpdate, ComponentSchemaField as Field } from '../generated/mapi-types';
+import type { ComponentCreate, Component as ComponentGenerated, ComponentUpdate } from '../generated/mapi/types.gen';
+import type { ComponentSchemaField as Field } from '../generated/overlay/types.gen';
 import type { Prettify } from '../utils/prettify';
 
 export type { ComponentCreate, ComponentUpdate };

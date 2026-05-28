@@ -1,10 +1,12 @@
-import type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate } from '../generated/mapi-types';
+import type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate } from '../generated/mapi/types.gen';
 
 export type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate };
 
 const BLOCK_FOLDER_DEFAULTS = {
   id: 1,
   uuid: '',
+  parent_id: null,
+  parent_uuid: null,
 };
 
 type BlockFolderInput = { name: string } & Partial<Omit<ComponentFolder, 'name'>>;
@@ -20,6 +22,8 @@ type BlockFolderInput = { name: string } & Partial<Omit<ComponentFolder, 'name'>
 export const defineBlockFolder = (blockFolder: BlockFolderInput): ComponentFolder => ({
   ...BLOCK_FOLDER_DEFAULTS,
   ...blockFolder,
+  parent_id: blockFolder.parent_id ?? BLOCK_FOLDER_DEFAULTS.parent_id,
+  parent_uuid: blockFolder.parent_uuid ?? BLOCK_FOLDER_DEFAULTS.parent_uuid,
 });
 
 /**

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getStaticChildren, type SbRichTextNode } from '@storyblok/richtext';
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
   import RenderImage from './RenderImage.svelte';
@@ -11,7 +11,7 @@
 
   type Props = {
     node: SbRichTextNode;
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { node, options }: Props = $props();

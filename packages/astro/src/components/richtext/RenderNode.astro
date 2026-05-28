@@ -1,5 +1,5 @@
 ---
-import { type SbRichTextNode, type SbAstroRendererOptions, isValidAstroComponent, getStaticChildren } from '../../';
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, isValidAstroComponent, getStaticChildren } from '../../';
 import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
 import RenderElement from './RenderElement.astro';
@@ -10,7 +10,7 @@ import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
 
 interface Props {
   node: SbRichTextNode;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const components = options.components;

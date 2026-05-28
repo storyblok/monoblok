@@ -56,12 +56,12 @@ function resolveComponentOverride<K extends SbRichTextElement>(
   return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
 }
 
-export interface SbRichTextRendererOptions {
+export interface SbVueRichTextRenderContext {
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
   components?: SbVueRichTextComponentMap;
 }
 
-export interface StoryblokRichTextProps extends SbRichTextRendererOptions {
+export interface StoryblokRichTextProps extends SbVueRichTextRenderContext {
   document: MaybeRefOrGetter<SbRichTextNode | SbRichTextNode[] | null | undefined>;
 }
 
@@ -89,17 +89,17 @@ export function createRichTextHook(
 }
 
 /**
- * Vue composable for renb rich text content.
+ * Vue composable for rendering rich text content.
  * Returns a render function that converts rich text JSON to VNodes.
  */
-export function useStoryblokRichText(options: SbRichTextRendererOptions = {}) {
+export function useStoryblokRichText(options: SbVueRichTextRenderContext = {}) {
   return createStoryblokRenderer(options);
 }
 
 /**
  * Creates a renderer function for Storyblok rich text.
  */
-export function createStoryblokRenderer(options: SbRichTextRendererOptions) {
+export function createStoryblokRenderer(options: SbVueRichTextRenderContext) {
   return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined): VNode | VNode[] | null {
     if (!document) {
       return null;
@@ -115,7 +115,7 @@ export function createStoryblokRenderer(options: SbRichTextRendererOptions) {
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: SbRichTextNode[], options: SbRichTextRendererOptions): VNode[] {
+function renderChildren(nodes: SbRichTextNode[], options: SbVueRichTextRenderContext): VNode[] {
   const groups = groupLinkNodes(nodes);
 
   return groups.map((group, groupIndex) => {
@@ -134,7 +134,7 @@ function renderChildren(nodes: SbRichTextNode[], options: SbRichTextRendererOpti
 function renderLinkGroup(
   nodes: SbRichTextNode[],
   linkMark: SbRichTextMark,
-  options: SbRichTextRendererOptions,
+  options: SbVueRichTextRenderContext,
   key: number | string,
 ): VNode {
   const inner = nodes.map((node, index) => {
@@ -161,7 +161,7 @@ function renderLinkGroup(
   return h(tag, { key, ...props }, inner);
 }
 
-function renderNode(node: SbRichTextNode, options: SbRichTextRendererOptions, key: number | string): VNode {
+function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, key: number | string): VNode {
   // Text node
   if (node.type === 'text') {
     return renderTextNode(node as SbRichTextTextNode, options, key);
@@ -225,7 +225,7 @@ function renderNode(node: SbRichTextNode, options: SbRichTextRendererOptions, ke
  */
 function renderOptimizedImage(
   node: SbRichTextNode,
-  options: SbRichTextRendererOptions,
+  options: SbVueRichTextRenderContext,
   key: number | string,
 ): VNode {
   const attrs = node.attrs as Record<string, unknown> | undefined;
@@ -252,7 +252,7 @@ function renderOptimizedImage(
  */
 function renderTable(
   node: SbRichTextNode,
-  options: SbRichTextRendererOptions,
+  options: SbVueRichTextRenderContext,
   key: number | string,
   tag: string,
   props: Record<string, unknown>,
@@ -302,14 +302,14 @@ function renderStaticStructure(
   });
 }
 
-function renderTextNode(node: SbRichTextTextNode, options: SbRichTextRendererOptions, key?: number | string): VNode {
+function renderTextNode(node: SbRichTextTextNode, options: SbVueRichTextRenderContext, key?: number | string): VNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
 function renderTextNodeWithMarks(
   node: SbRichTextTextNode,
   marks: SbRichTextMark[] | undefined,
-  options: SbRichTextRendererOptions,
+  options: SbVueRichTextRenderContext,
   _key?: number | string,
 ): VNode {
   let content: VNode | string = node.text;
@@ -328,7 +328,7 @@ function renderTextNodeWithMarks(
   return content;
 }
 
-function wrapMark(children: VNode | string, mark: SbRichTextMark, options: SbRichTextRendererOptions): VNode {
+function wrapMark(children: VNode | string, mark: SbRichTextMark, options: SbVueRichTextRenderContext): VNode {
   const Custom = resolveComponentOverride(mark.type, options.components);
   if (Custom) {
     const childContent = typeof children === 'string' ? createTextVNode(children) : children;

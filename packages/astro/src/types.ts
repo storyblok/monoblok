@@ -20,8 +20,6 @@ export type {
   SbBlokData,
   SbBlokKeyDataTypes,
   SbPluginFactory,
-  SbRichTextDoc,
-  SbRichTextOptions,
   SbSDKOptions,
   StoryblokBridgeConfigV2,
   StoryblokBridgeV2,

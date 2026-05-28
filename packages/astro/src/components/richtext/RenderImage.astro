@@ -1,11 +1,11 @@
 ---
-import { type SbRichTextNode, type SbAstroRendererOptions, buildStoryblokImage } from '../../';
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, buildStoryblokImage } from '../../';
 import RenderElement from './RenderElement.astro';
 
 type ImageNode = SbRichTextNode & { type: 'image' };
 interface Props {
   node: ImageNode;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const optimizedNode: ImageNode =

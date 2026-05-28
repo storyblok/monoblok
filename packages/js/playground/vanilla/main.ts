@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import type {
   SbRichTextDoc,
-  SbRichTextOptions,
+  SbRichTextRenderContext,
 } from '@storyblok/js';
 import {
   apiPlugin,
@@ -52,7 +52,7 @@ window.loadStoryblokBridgeScript = () => {
 };
 
 window.renderRichText = () => {
-  const options: SbRichTextOptions = {
+  const options: SbRichTextRenderContext = {
     renderers: {
       blok: ({ attrs }) => `<span data-blok="${JSON.stringify(attrs?.body?.[0]).replace(/"/g, '&quot;')}" style="display: none"></span>`,
       link: ({ children, attrs }) => `<button href="${attrs?.href}">${children}</button>`,

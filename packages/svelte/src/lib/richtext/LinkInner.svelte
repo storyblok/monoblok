@@ -1,12 +1,12 @@
 <script lang="ts">
   import { getInnerMarks, type SbRichTextNode, type SbRichTextTextNode } from '@storyblok/richtext';
 
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
 
   type Props = {
     nodes: SbRichTextNode[];
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { nodes, options }: Props = $props();

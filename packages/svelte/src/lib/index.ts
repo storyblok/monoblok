@@ -1,4 +1,4 @@
-export { type SbSvelteComponentMap, type SbSvelteRichTextProps } from './richtext-helpers';
+export { type SbSvelteComponentMap, type SbSvelteRichTextProps, type SbSvelteRichTextRenderContext } from './richtext-helpers';
 export * from './storyblok';
 export { default as StoryblokComponent } from './StoryblokComponent.svelte';
 export { default as StoryblokRichText } from './StoryblokRichText.svelte';
@@ -9,7 +9,6 @@ export {
   useStoryblokBridge,
 } from '@storyblok/js';
 
-// Re-exporting same exports from @storyblok/richtext
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
 
 export type {
@@ -17,6 +16,6 @@ export type {
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
-  SbRichTextOptions,
   SbRichTextProps,
+  SbRichTextRenderContext,
 } from '@storyblok/richtext';

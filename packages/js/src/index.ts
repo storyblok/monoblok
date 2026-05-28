@@ -114,8 +114,9 @@ export type {
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
-  SbRichTextOptions,
   SbRichTextProps,
+  SbRichTextRenderContext,
+  SbRichTextRendererMap,
 } from '@storyblok/richtext';
 
 export { default as StoryblokClient } from 'storyblok-js-client';

@@ -1,11 +1,11 @@
 ---
-import type { SbAstroRendererOptions, SbRichTextNode, SbRichTextTextNode } from '../../';
+import type { SbAstroRichTextRenderContext, SbRichTextNode, SbRichTextTextNode } from '../../';
 import { getInnerMarks } from '../../';
 import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
 
 interface Props {
   nodes: SbRichTextNode[];
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { nodes, options } = Astro.props;
 ---

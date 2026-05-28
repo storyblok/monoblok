@@ -48,15 +48,15 @@ export type BaseSbRichTextProps<
 
 /** Base props for node/mark components */
 export type SbRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, { children: string }, { children: string }>;
+  BaseSbRichTextProps<T, SbRichTextRenderContext & { children: string }, { children: string }>;
 
 /**
  * Component/render map for static renderers.
  */
 export type SbRichTextRendererMap = {
-  [K in SbRichTextElement]?: (props: SbRichTextProps<K>, options?: SbRichTextOptions) => string;
+  [K in SbRichTextElement]?: (props: SbRichTextProps<K>) => string;
 };
-export interface SbRichTextOptions {
+export interface SbRichTextRenderContext {
   renderers?: SbRichTextRendererMap;
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
 }

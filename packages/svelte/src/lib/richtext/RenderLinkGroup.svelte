@@ -1,14 +1,14 @@
 <script lang="ts">
   import { type SbRichTextMark, type SbRichTextNode } from '@storyblok/richtext';
 
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderElement from './RenderElement.svelte';
   import LinkInner from './LinkInner.svelte';
 
   type Props = {
     nodes: SbRichTextNode[];
     linkMark: SbRichTextMark;
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { nodes, linkMark, options }: Props = $props();

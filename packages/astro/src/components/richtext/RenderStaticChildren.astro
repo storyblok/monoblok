@@ -1,12 +1,12 @@
 ---
-import { type SbAstroRendererOptions, type SbRichTextNode, getStaticChildren, resolveTag } from '../../';
+import { type SbAstroRichTextRenderContext, type SbRichTextNode, getStaticChildren, resolveTag } from '../../';
 import DynamicElement from './DynamicElement.astro';
 import RenderChildren from './RenderChildren.astro';
 import RenderStaticStructure from './RenderStaticStructure.astro';
 
 interface Props {
   node: SbRichTextNode;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const staticChildren = getStaticChildren(node);

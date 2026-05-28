@@ -126,6 +126,6 @@ export type {
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
-  SbRichTextOptions,
   SbRichTextProps,
+  SbRichTextRenderContext,
 } from '@storyblok/richtext';

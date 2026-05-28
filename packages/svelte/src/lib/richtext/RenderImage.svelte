@@ -1,12 +1,12 @@
 <script lang="ts">
   import { buildStoryblokImage, type SbRichTextNode } from '@storyblok/richtext';
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderElement from './RenderElement.svelte';
 
   type ImageNode = SbRichTextNode & { type: 'image' };
   type Props = {
     node: ImageNode;
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { node, options }: Props = $props();

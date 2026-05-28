@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
-import type { SbRichTextDoc, SbRichTextOptions } from './static';
+import type { SbRichTextDoc, SbRichTextRenderContext } from './static';
 import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from './test-utils';
 import { attrsToHtmlString, splitTableRows } from './static';
 
@@ -59,9 +59,9 @@ describe('renderRichText', () => {
   describe('custom renderers', () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
-          heading: ({ content, attrs }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ content, attrs, renderers, optimizeImage }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, { renderers, optimizeImage })}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
           link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
         },
@@ -71,9 +71,9 @@ describe('renderRichText', () => {
     });
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
-          heading: ({ attrs, content }, options) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
@@ -81,12 +81,12 @@ describe('renderRichText', () => {
     });
     const code_block = customRendererFixture.code_block;
     it(code_block.title, () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
-          code_block: ({ attrs, content }, options) => {
+          code_block: ({ attrs, content, renderers, optimizeImage }) => {
             const lang = (attrs?.class as string) || '';
             // User decides: class on <pre>, data-lang on <code>
-            return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, options)}</code></pre>`;
+            return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, { renderers, optimizeImage })}</code></pre>`;
           },
         },
       };
@@ -95,11 +95,11 @@ describe('renderRichText', () => {
     });
     const table = customRendererFixture.table;
     it(table.title, () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
-          table: ({ content }, options) => {
+          table: ({ content, renderers, optimizeImage }) => {
             const { headerRows, bodyRows } = splitTableRows(content);
-            return `<table class="custom-table"><thead>${renderRichText(headerRows, options)}</thead><tbody>${renderRichText(bodyRows, options)}</tbody></table>`;
+            return `<table class="custom-table"><thead>${renderRichText(headerRows, { renderers, optimizeImage })}</thead><tbody>${renderRichText(bodyRows, { renderers, optimizeImage })}</tbody></table>`;
           },
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
@@ -137,7 +137,7 @@ describe('renderRichText', () => {
     });
 
     it('renders with custom blok renderer', () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
           blok: ({ attrs }) => {
             const body = Array.isArray(attrs?.body) ? attrs.body : [];
@@ -171,7 +171,7 @@ describe('renderRichText', () => {
     });
 
     it('works alongside other content', () => {
-      const options: SbRichTextOptions = {
+      const options: SbRichTextRenderContext = {
         renderers: {
           blok: () => '<widget />',
         },

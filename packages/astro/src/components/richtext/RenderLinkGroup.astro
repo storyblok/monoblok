@@ -1,12 +1,12 @@
 ---
-import { type SbRichTextNode, type SbAstroRendererOptions, type SbRichTextMark, isValidAstroComponent } from '../../';
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, type SbRichTextMark, isValidAstroComponent } from '../../';
 import LinkInner from './LinkInner.astro';
 import RenderElement from './RenderElement.astro';
 
 interface Props {
   nodes: SbRichTextNode[];
   linkMark: SbRichTextMark;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { nodes, linkMark, options } = Astro.props;
 const components = options.components;

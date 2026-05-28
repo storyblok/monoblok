@@ -2,13 +2,13 @@
   import { type SbRichTextMark, type SbRichTextTextNode } from '@storyblok/richtext';
   // eslint-disable-next-line import/no-self-import
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderElement from './RenderElement.svelte';
 
   type Props = {
     node: SbRichTextTextNode;
     marks: SbRichTextMark[] | undefined;
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { node, marks = [], options }: Props = $props();

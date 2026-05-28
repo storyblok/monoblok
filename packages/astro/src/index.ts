@@ -7,7 +7,7 @@ export type { IntegrationOptions } from './lib/storyblok-integration';
 export { handleStoryblokMessage } from './live-preview/handleStoryblokMessage';
 export * from './types';
 export { isEditorRequest } from './utils/isEditorRequest';
-export { buildAstroAttrs, isValidAstroComponent, type SbAstroComponentMap, type SbAstroRendererOptions, type SbAstroRichTextProps } from './utils/richtext-helpers';
+export { buildAstroAttrs, isValidAstroComponent, type SbAstroComponentMap, type SbAstroRichTextProps, type SbAstroRichTextRenderContext } from './utils/richtext-helpers';
 export { toCamelCase } from './utils/toCamelCase';
 export { storyblokIntegration as storyblok };
 export {
@@ -17,7 +17,6 @@ export {
   storyblokInit,
 } from '@storyblok/js';
 
-// Re-exporting same exports from @storyblok/richtext
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
 
 export type {
@@ -25,8 +24,8 @@ export type {
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
-  SbRichTextOptions,
   SbRichTextProps,
+  SbRichTextRenderContext,
 } from '@storyblok/richtext';
 
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.

@@ -2,7 +2,7 @@
 import {
   type SbRichTextTextNode,
   type SbRichTextMark,
-  type SbAstroRendererOptions,
+  type SbAstroRichTextRenderContext,
   isValidAstroComponent,
 } from '../../';
 import RenderElement from './RenderElement.astro';
@@ -10,7 +10,7 @@ import RenderElement from './RenderElement.astro';
 interface Props {
   node: SbRichTextTextNode;
   marks: SbRichTextMark[] | undefined;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { node, marks = [], options } = Astro.props;
 const reversedMarks = [...marks].reverse();

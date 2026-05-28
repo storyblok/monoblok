@@ -2,7 +2,7 @@ import { type BaseSbRichTextProps, processAttrs, type SbRichTextElement, type Sb
 import type { Component, Snippet } from 'svelte';
 
 export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
-export interface SbSvelteRendererOptions {
+export interface SbSvelteRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbSvelteComponentMap;
 }
@@ -12,7 +12,7 @@ export type SbSvelteComponentMap = {
   [k in SbRichTextElement]?: AnyComponent;
 };
 export type SbSvelteRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, SbSvelteRendererOptions & { children?: Snippet }, { children?: Snippet }>;
+  BaseSbRichTextProps<T, SbSvelteRichTextRenderContext & { children?: Snippet }, { children?: Snippet }>;
 
 export function buildSvelteAttrs(type: SbRichTextElement, attrs: Record<string, unknown>): Record<string, unknown> {
   const processedAttrs = processAttrs(type, attrs, {

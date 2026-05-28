@@ -5,13 +5,13 @@ export type SbAstroComponentMap = {
   [K in SbRichTextElement]?: AstroComponentFactory;
 };
 
-export interface SbAstroRendererOptions {
+export interface SbAstroRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbAstroComponentMap;
 }
 
 export type SbAstroRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, SbAstroRendererOptions>;
+  BaseSbRichTextProps<T, SbAstroRichTextRenderContext>;
 
 export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
   return (

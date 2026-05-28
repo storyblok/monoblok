@@ -1,9 +1,9 @@
 <script lang="ts">
   import { normalizeNodes, type SbRichTextNode } from '@storyblok/richtext';
   import RenderChildren from './richtext/RenderChildren.svelte';
-  import type { SbSvelteRendererOptions } from './richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from './richtext-helpers';
 
-  type Props = SbSvelteRendererOptions & {
+  type Props = SbSvelteRichTextRenderContext & {
     document: SbRichTextNode | null | undefined | SbRichTextNode[];
   } & Record<string, unknown>;
 

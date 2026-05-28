@@ -1,13 +1,13 @@
 <script lang="ts">
   import { getStaticChildren, resolveTag, type SbRichTextNode } from '@storyblok/richtext';
-  import type { SbSvelteRendererOptions } from '../richtext-helpers';
+  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderStaticStructure from './RenderStaticStructure.svelte';
   import RenderChildren from './RenderChildren.svelte';
   import DynamicElement from './DynamicElement.svelte';
 
   type Props = {
     node: SbRichTextNode;
-    options: SbSvelteRendererOptions;
+    options: SbSvelteRichTextRenderContext;
   };
 
   const { node, options }: Props = $props();

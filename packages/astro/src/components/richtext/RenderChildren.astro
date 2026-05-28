@@ -1,11 +1,11 @@
 ---
-import { type SbRichTextNode, type SbAstroRendererOptions, groupLinkNodes } from '../../';
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, groupLinkNodes } from '../../';
 import RenderLinkGroup from './RenderLinkGroup.astro';
 import RenderNode from './RenderNode.astro';
 
 interface Props {
   nodes: SbRichTextNode[];
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { nodes, options } = Astro.props;
 const groups = groupLinkNodes(nodes);

@@ -1,9 +1,6 @@
 <script lang="ts">
-  import type { SbRichTextProps } from '@storyblok/svelte';
-  import type { Snippet } from 'svelte';
-  type Props = SbRichTextProps<'heading'> & {
-    children?: Snippet;
-  };
+  import type { SbSvelteRichTextProps } from '@storyblok/svelte';
+  type Props = SbSvelteRichTextProps<'heading'>;
   const props: Props = $props();
 </script>
 

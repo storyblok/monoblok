@@ -1,10 +1,10 @@
 ---
-import { type SbRichTextNode, type SbAstroRendererOptions, splitTableRows } from '../../';
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, splitTableRows } from '../../';
 import RenderElement from './RenderElement.astro';
 import RenderNode from './RenderNode.astro';
 interface Props {
   node: SbRichTextNode;
-  options: SbAstroRendererOptions;
+  options: SbAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const { headerRows, bodyRows } = splitTableRows(node.content);

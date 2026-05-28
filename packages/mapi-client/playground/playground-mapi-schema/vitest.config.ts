@@ -4,10 +4,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    exclude: ['**/node_modules/**', '**/dist/**', './playground/**'],
+    include: [],
     typecheck: {
       enabled: true,
-      exclude: ['**/node_modules/**', '**/dist/**', './playground/**'],
+      include: ['./test/types/**/*.test-d.ts'],
     },
   },
 });

@@ -4,7 +4,7 @@
 
 ## Automated e2e tests
 
-`test/specs/mapi-round-trip.spec.e2e.ts` covers the full round-trip against a real Storyblok space:
+The `@storyblok/playground-mapi-schema` package (`packages/mapi-client/playground/playground-mapi-schema`) covers the full round-trip against a real Storyblok space in `test/specs/mapi-round-trip.spec.e2e.ts`:
 
 - Seeds components, datasources, internal tags, presets, and stories via the MAPI.
 - Validates runtime values, type narrowing, nested bloks (two- and three-level), unwhitelisted bloks, and update round-trips.
@@ -13,7 +13,7 @@
 Run manually:
 
 ```bash
-pnpm --filter @storyblok/management-api-client test:e2e
+pnpm --filter @storyblok/playground-mapi-schema test:e2e
 ```
 
 ### Prerequisites

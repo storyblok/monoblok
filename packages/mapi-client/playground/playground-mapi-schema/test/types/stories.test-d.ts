@@ -1,7 +1,6 @@
-import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock, defineField, defineStoryCreate, defineStoryUpdate } from '@storyblok/schema';
-import { createManagementApiClient } from '../index';
-import type { StoryMapi } from '../generated/stories/types.gen';
+import { createManagementApiClient, type Story as StoryMapi } from '@storyblok/management-api-client';
+import { describe, expectTypeOf, it } from 'vitest';
 
 const teaserComponent = defineBlock({
   name: 'teaser',
@@ -17,11 +16,9 @@ const teaserComponent = defineBlock({
 const heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
-  // is_nestable defaults to true — hero can appear both as a story and in bloks
   schema: [
     defineField('title', { type: 'text' }),
     defineField('count', { type: 'number' }),
-    // bloks field without a whitelist — resolves to nestable components (hero + teaser; page excluded)
     defineField('sections', { type: 'bloks' }),
   ],
   id: 0,
@@ -71,7 +68,6 @@ describe('createManagementApiClient without .withTypes()', () => {
   it('should infer ThrowOnError from config without .withTypes()', async () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true });
     const result = await client.stories.get(123);
-    // ThrowOnError=true means data is always defined (no optional chaining needed)
     expectTypeOf(result.data.story).toEqualTypeOf<StoryMapi | undefined>();
   });
 
@@ -91,7 +87,6 @@ describe('createManagementApiClient with .withTypes()', () => {
     if (result.data?.story) {
       const story = result.data.story;
       if (story.content.component === 'page') {
-        // Fields without `required: true` are optional and nullable
         expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(story.content.component).toEqualTypeOf<'page'>();
       }
@@ -104,7 +99,6 @@ describe('createManagementApiClient with .withTypes()', () => {
     if (result.data?.story) {
       const story = result.data.story;
       if (story.content.component === 'hero') {
-        // Fields without `required: true` are optional and nullable
         expectTypeOf(story.content.title).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(story.content.count).toEqualTypeOf<number | null | undefined>();
         expectTypeOf(story.content.component).toEqualTypeOf<'hero'>();
@@ -116,7 +110,6 @@ describe('createManagementApiClient with .withTypes()', () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
-      // Only root components (page, hero) appear as story content — teaser is nestable-only
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
     }
   });
@@ -142,11 +135,9 @@ describe('createManagementApiClient with .withTypes()', () => {
     if (result.data?.story) {
       const story = result.data.story;
       if (story.content.component === 'page') {
-        // Bloks fields without `required: true` are optional and nullable — guard before iterating
         if (story.content.teasers) {
           for (const teaser of story.content.teasers) {
             expectTypeOf(teaser.component).toEqualTypeOf<'teaser'>();
-            // Nested fields are also optional/nullable
             expectTypeOf(teaser.text).toEqualTypeOf<string | null | undefined>();
           }
         }
@@ -171,7 +162,6 @@ describe('createManagementApiClient with .withTypes()', () => {
     if (result.data?.story) {
       const story = result.data.story;
       if (story.content.component === 'hero' && story.content.sections) {
-        // sections has no component_whitelist — falls back to nestable components (hero + teaser; page is not nestable)
         type Sections = typeof story.content.sections;
         expectTypeOf<Sections[number]['component']>().toEqualTypeOf<'hero' | 'teaser'>();
       }
@@ -181,7 +171,6 @@ describe('createManagementApiClient with .withTypes()', () => {
   it('should infer ThrowOnError alongside .withTypes()', async () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true }).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
-    // ThrowOnError=true means data is always defined (no optional chaining needed)
     if (result.data.story) {
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
     }
@@ -223,10 +212,8 @@ describe('createManagementApiClient with .withTypes()', () => {
 
   it('should narrow create() body story.content to component union', async () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
-    // The body type should accept any component content from the schema
     type CreateBodyType = Parameters<typeof _client.stories.create>[0]['body'];
     type CreateStoryContent = NonNullable<CreateBodyType['story']['content']>;
-    // Only root components (page, hero) can be created as stories
     expectTypeOf<CreateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
   });
 
@@ -234,7 +221,6 @@ describe('createManagementApiClient with .withTypes()', () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     type UpdateBodyType = Parameters<typeof _client.stories.update>[1]['body'];
     type UpdateStoryContent = NonNullable<UpdateBodyType['story']['content']>;
-    // Only root components (page, hero) can be updated as stories
     expectTypeOf<UpdateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
   });
 });
@@ -246,7 +232,6 @@ describe('defineStoryCreate / defineStoryUpdate combined with mapi client', () =
       content: { headline: 'Hello' },
     });
 
-    // Direct defineStoryCreate (no withTypes) pairs with the untyped client
     const client = createManagementApiClient(CLIENT_CONFIG);
     await client.stories.create({ body: { story: createPayload } });
   });
@@ -295,17 +280,13 @@ describe('defineStoryCreate / defineStoryUpdate combined with mapi client', () =
 
     if (result.data?.story) {
       const story = result.data.story;
-      // The story returned from the API has a discriminated content union
       expectTypeOf(story.content.component).toEqualTypeOf<'page' | 'hero'>();
 
-      // Narrowing: use the story content as the basis for an update payload
       if (story.content.component === 'page') {
-        // We can use the existing content in defineStoryUpdate to patch a field
         const updatePayload = defineStoryUpdate(_pageComponent, {
           name: story.name,
           content: { headline: story.content.headline ?? 'Default' },
         });
-        // The update payload content has the narrowed component type
         expectTypeOf(updatePayload).toMatchTypeOf<{ name?: string | null }>();
       }
     }

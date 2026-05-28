@@ -1,9 +1,6 @@
-import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock, defineBlockCreate, defineBlockUpdate, defineField } from '@storyblok/schema';
-import { createManagementApiClient } from '../index';
-import type { Component as ComponentMapi } from '../generated/components/types.gen';
-
-// ─── Component definitions using defineX helpers ─────────────────────────────
+import { type Component as ComponentMapi, createManagementApiClient } from '@storyblok/management-api-client';
+import { describe, expectTypeOf, it } from 'vitest';
 
 const teaserComponent = defineBlock({
   name: 'teaser',
@@ -26,8 +23,6 @@ const _pageComponent = defineBlock({
 
 const CLIENT_CONFIG = { personalAccessToken: 'test-token', spaceId: 12345 };
 
-// ─── defineBlockCreate / defineBlockUpdate body compatibility ─────────────────
-
 describe('components.create body type compatibility', () => {
   it('should produce a defineBlockCreate result assignable to components.create body', () => {
     const createPayload = defineBlockCreate({
@@ -37,11 +32,9 @@ describe('components.create body type compatibility', () => {
       },
     });
 
-    // The create body expects `component?: ComponentCreate`
     type CreateBody = Parameters<ReturnType<typeof createManagementApiClient>['components']['create']>[0]['body'];
     type ComponentCreateInput = NonNullable<CreateBody['component']>;
 
-    // defineBlockCreate returns ComponentCreate — must be assignable
     expectTypeOf(createPayload).toExtend<ComponentCreateInput>();
   });
 
@@ -53,12 +46,9 @@ describe('components.create body type compatibility', () => {
     type UpdateBody = Parameters<ReturnType<typeof createManagementApiClient>['components']['update']>[1]['body'];
     type ComponentUpdateInput = NonNullable<UpdateBody['component']>;
 
-    // defineBlockUpdate returns ComponentUpdate — must be assignable
     expectTypeOf(updatePayload).toExtend<ComponentUpdateInput>();
   });
 });
-
-// ─── components.get response shape ─────────────────────────────────
 
 describe('components.get response shape', () => {
   it('should return a Component from components.get matching the wire shape', async () => {
@@ -66,12 +56,12 @@ describe('components.get response shape', () => {
     const result = await client.components.get(123);
 
     if (result.data?.component) {
-      expectTypeOf(result.data.component).toExtend<ComponentMapi>();
+      expectTypeOf(result.data.component.id).toEqualTypeOf<ComponentMapi['id']>();
+      expectTypeOf(result.data.component.name).toEqualTypeOf<ComponentMapi['name']>();
+      expectTypeOf(result.data.component).toHaveProperty('schema');
     }
   });
 });
-
-// ─── Negative type tests ─────────────────────────────────────────────────────
 
 describe('components.create body type rejection', () => {
   it('should reject a component create payload with wrong schema field type', () => {
@@ -86,8 +76,6 @@ describe('components.create body type rejection', () => {
   });
 });
 
-// ─── defineBlock output used in .withTypes() ─────────────────────────────────
-
 describe('defineBlock result used in .withTypes() interface', () => {
   interface StoryblokTypes {
     components: typeof _pageComponent | typeof teaserComponent;
@@ -98,7 +86,6 @@ describe('defineBlock result used in .withTypes() interface', () => {
     const result = await client.stories.get(123);
 
     if (result.data?.story) {
-      // Only root components (page) appear as story content — teaser is nestable-only
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page'>();
     }
   });

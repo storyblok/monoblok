@@ -1,12 +1,15 @@
-import * as datasourceEntriesApi from '../generated/datasource_entries/sdk.gen';
+import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  CreateData,
-  CreateResponses,
-  GetResponses,
-  ListData,
-  ListResponses,
-  UpdateData,
-} from '../generated/datasource_entries/types.gen';
+  CreateDatasourceEntryData,
+  CreateDatasourceEntryResponses,
+  DatasourceEntriesIndexResponse,
+  GetDatasourceEntryResponses,
+  ListDatasourceEntriesData,
+  PartialUpdateDatasourceEntryData,
+  PartialUpdateDatasourceEntryResponses,
+  ReplaceDatasourceEntryData,
+  ReplaceDatasourceEntryResponses,
+} from '../generated/mapi/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
@@ -15,43 +18,65 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListDatasourceEntriesData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DatasourceEntriesIndexResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        datasourceEntriesApi.list({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DatasourceEntriesIndexResponse, ThrowOnError>(() =>
+        mapi.listDatasourceEntries({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
 
-    get<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetDatasourceEntryResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        datasourceEntriesApi.get({
+      return wrapRequest<GetDatasourceEntryResponses[200], ThrowOnError>(() =>
+        mapi.getDatasourceEntry({
           client,
-          path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },
+          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
 
-    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateDatasourceEntryData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateDatasourceEntryResponses[201], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        datasourceEntriesApi.create({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateDatasourceEntryResponses[201], ThrowOnError>(() =>
+        mapi.createDatasourceEntry({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
 
+    /**
+     * PATCH /datasource_entries/{id}: partial update.
+     */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(
       datasourceEntryId: number,
-      options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<void, ThrowOnError>> {
+      options: { body: PartialUpdateDatasourceEntryData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<PartialUpdateDatasourceEntryResponses[204], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<void, ThrowOnError>(() =>
-        datasourceEntriesApi.update({
+      return wrapRequest<PartialUpdateDatasourceEntryResponses[204], ThrowOnError>(() =>
+        mapi.partialUpdateDatasourceEntry({
           client,
-          path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },
+          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
+          body,
+          signal,
+          ...(throwOnError === undefined ? {} : { throwOnError }),
+          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+        }), throwOnError);
+    },
+    /**
+     * PUT /datasource_entries/{id}: full replace.
+     */
+    replace<ThrowOnError extends boolean = DefaultThrowOnError>(
+      datasourceEntryId: number,
+      options: { body: ReplaceDatasourceEntryData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<ReplaceDatasourceEntryResponses[204], ThrowOnError>> {
+      const { body, signal, path, throwOnError, fetchOptions } = options;
+      const resolvedSpaceId = getSpaceId(path);
+      return wrapRequest<ReplaceDatasourceEntryResponses[204], ThrowOnError>(() =>
+        mapi.replaceDatasourceEntry({
+          client,
+          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           body,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
@@ -62,9 +87,9 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        datasourceEntriesApi.delete_({
+        mapi.deleteDatasourceEntry({
           client,
-          path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },
+          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),

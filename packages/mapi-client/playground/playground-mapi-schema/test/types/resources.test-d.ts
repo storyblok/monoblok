@@ -1,4 +1,3 @@
-import { describe, expectTypeOf, it } from 'vitest';
 import {
   defineAssetFolderCreate,
   defineAssetFolderUpdate,
@@ -16,11 +15,10 @@ import {
   defineSpaceUpdate,
   defineUserUpdate,
 } from '@storyblok/schema';
-import { createManagementApiClient } from '../index';
+import { createManagementApiClient } from '@storyblok/management-api-client';
+import { describe, expectTypeOf, it } from 'vitest';
 
 const CLIENT_CONFIG = { personalAccessToken: 'test-token', spaceId: 12345 };
-
-// ─── Datasources ────────────────────────────────────────────────────────────
 
 describe('datasources type tests', () => {
   it('should produce a defineDatasourceCreate result assignable to datasources.create body', () => {
@@ -68,8 +66,6 @@ describe('datasources type tests', () => {
   });
 });
 
-// ─── Datasource Entries ─────────────────────────────────────────────────────
-
 describe('datasource entries type tests', () => {
   it('should produce a defineDatasourceEntryCreate result assignable to datasourceEntries.create body', () => {
     const payload = defineDatasourceEntryCreate({ name: 'red', value: '#ff0000', datasource_id: 42 });
@@ -115,8 +111,6 @@ describe('datasource entries type tests', () => {
     }
   });
 });
-
-// ─── Asset Folders ──────────────────────────────────────────────────────────
 
 describe('asset folders type tests', () => {
   it('should produce a defineAssetFolderCreate result assignable to assetFolders.create body', () => {
@@ -164,8 +158,6 @@ describe('asset folders type tests', () => {
   });
 });
 
-// ─── Component Folders ──────────────────────────────────────────────────────
-
 describe('component folders type tests', () => {
   it('should produce a defineBlockFolderCreate result assignable to componentFolders.create body', () => {
     const payload = defineBlockFolderCreate({ name: 'Layout' });
@@ -212,8 +204,6 @@ describe('component folders type tests', () => {
   });
 });
 
-// ─── Internal Tags ──────────────────────────────────────────────────────────
-
 describe('internal tags type tests', () => {
   it('should produce a defineInternalTagCreate result assignable to internalTags.create body', () => {
     const payload = defineInternalTagCreate({ name: 'hero', object_type: 'asset' });
@@ -251,8 +241,6 @@ describe('internal tags type tests', () => {
     }
   });
 });
-
-// ─── Presets ────────────────────────────────────────────────────────────────
 
 describe('presets type tests', () => {
   it('should produce a definePresetCreate result assignable to presets.create body', () => {
@@ -300,8 +288,6 @@ describe('presets type tests', () => {
   });
 });
 
-// ─── Spaces ─────────────────────────────────────────────────────────────────
-
 describe('spaces type tests', () => {
   it('should produce a defineSpaceCreate result assignable to spaces.create body', () => {
     const payload = defineSpaceCreate({ name: 'My New Space' });
@@ -347,8 +333,6 @@ describe('spaces type tests', () => {
     }
   });
 });
-
-// ─── Users ──────────────────────────────────────────────────────────────────
 
 describe('users type tests', () => {
   it('should produce a defineUserUpdate result assignable to users.updateMe body', () => {

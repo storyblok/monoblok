@@ -1,0 +1,24 @@
+{
+  "name": "@storyblok/playground-mapi-schema",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Integration tests for @storyblok/management-api-client paired with @storyblok/schema",
+  "scripts": {
+    "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:e2e": "vitest run -c vitest.config.e2e.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/management-api-client": "workspace:*",
+    "@storyblok/schema": "workspace:*",
+    "@types/node": "^24.1.0",
+    "dotenv": "^17.3.1",
+    "eslint": "^9.39.2",
+    "typescript": "5.8.3",
+    "vitest": "^4.1.3"
+  }
+}

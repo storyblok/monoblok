@@ -1,9 +1,9 @@
-import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/shared/client';
-import type { Middleware } from './generated/shared/client/utils.gen';
-import { createClient, createConfig } from './generated/shared/client';
+import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/mapi/client';
+import type { Middleware } from './generated/mapi/client/utils.gen';
+import { createClient, createConfig } from './generated/mapi/client';
 import { getManagementBaseUrl } from '@storyblok/region-helper';
 import type { Region } from '@storyblok/region-helper';
-import type { Block as Component } from '@storyblok/schema';
+import type { Block as Component } from './generated/types/block';
 import { ClientError } from './error';
 import type { RateLimitConfig } from './utils/rate-limit';
 import { createThrottleManager } from './utils/rate-limit';

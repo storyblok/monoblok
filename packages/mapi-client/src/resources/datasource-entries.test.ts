@@ -9,7 +9,7 @@ import { createManagementApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/datasource_entries.yaml',
+  '../../../../tools/openapi-codegen/.openapi-cache/mapi/management-v1.openapi.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -21,6 +21,11 @@ afterAll(() => server.close());
 
 describe('datasourceEntries.list()', () => {
   it('should successfully retrieve datasource entries', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries', () => {
+        return HttpResponse.json({ datasource_entries: [] });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,

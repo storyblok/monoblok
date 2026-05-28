@@ -9,7 +9,7 @@ import { createManagementApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/stories.yaml',
+  '../../../../tools/openapi-codegen/.openapi-cache/mapi/management-v1.openapi.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);

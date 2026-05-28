@@ -1,7 +1,7 @@
-import { config } from 'dotenv';
 import { resolve } from 'node:path';
+import { config } from 'dotenv';
 
-config({ path: resolve(import.meta.dirname, '../../../.env.qa-engineer-manual') });
+config({ path: resolve(import.meta.dirname, '../../../../../.env.qa-engineer-manual') });
 
 if (!process.env.STORYBLOK_TOKEN || !process.env.STORYBLOK_SPACE_ID) {
   throw new Error(

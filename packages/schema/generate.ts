@@ -1,18 +1,15 @@
-import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandlebars, getZodClientTemplateContext, maybePretty } from 'openapi-zod-client';
 import type { TemplateContext } from 'openapi-zod-client';
 
-interface WorkspacePackage {
-  path: string;
-}
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const generatedDir = resolve(__dirname, 'src/generated');
 const templatePath = resolve(__dirname, 'templates/schemas-only.hbs');
+const repoRoot = resolve(__dirname, '..', '..');
+const SPEC_CACHE = resolve(repoRoot, '.openapi-cache');
 
 const generatorOptions: NonNullable<TemplateContext['options']> = {
   withAlias: false,
@@ -23,15 +20,13 @@ const generatorOptions: NonNullable<TemplateContext['options']> = {
   strictObjects: true,
 };
 
-function getOpenApiPackagePath() {
-  const output = execSync('pnpm --filter @storyblok/openapi list --json', { encoding: 'utf8' });
-  const packages = JSON.parse(output) as WorkspacePackage[];
-
-  if (packages.length === 0) {
-    throw new Error('Could not resolve @storyblok/openapi workspace package.');
+function getSpecCachePath() {
+  if (!existsSync(SPEC_CACHE)) {
+    throw new Error(
+      `OpenAPI cache not found at ${SPEC_CACHE}. Run \`pnpm fetch:specs\` from the repo root first.`,
+    );
   }
-
-  return packages[0].path;
+  return SPEC_CACHE;
 }
 
 type OpenApiSchema = Record<string, any>;
@@ -392,26 +387,26 @@ function renderRaw(context: Pick<TemplateContext, 'schemas' | 'types'>, emit: 's
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const openApiPackagePath = getOpenApiPackagePath();
+  const cache = getSpecCachePath();
   const specs = [
     // MAPI
-    { path: resolve(openApiPackagePath, 'dist/mapi/stories.yaml'), name: 'mapi-stories' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/components.yaml'), name: 'mapi-components' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/datasources.yaml'), name: 'mapi-datasources' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/assets.yaml'), name: 'mapi-assets' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/asset_folders.yaml'), name: 'mapi-asset-folders' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/component_folders.yaml'), name: 'mapi-component-folders' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/datasource_entries.yaml'), name: 'mapi-datasource-entries' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/internal_tags.yaml'), name: 'mapi-internal-tags' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/presets.yaml'), name: 'mapi-presets' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/spaces.yaml'), name: 'mapi-spaces' },
-    { path: resolve(openApiPackagePath, 'dist/mapi/users.yaml'), name: 'mapi-users' },
+    { path: resolve(cache, 'mapi/stories.yaml'), name: 'mapi-stories' },
+    { path: resolve(cache, 'mapi/components.yaml'), name: 'mapi-components' },
+    { path: resolve(cache, 'mapi/datasources.yaml'), name: 'mapi-datasources' },
+    { path: resolve(cache, 'mapi/assets.yaml'), name: 'mapi-assets' },
+    { path: resolve(cache, 'mapi/asset_folders.yaml'), name: 'mapi-asset-folders' },
+    { path: resolve(cache, 'mapi/component_folders.yaml'), name: 'mapi-component-folders' },
+    { path: resolve(cache, 'mapi/datasource_entries.yaml'), name: 'mapi-datasource-entries' },
+    { path: resolve(cache, 'mapi/internal_tags.yaml'), name: 'mapi-internal-tags' },
+    { path: resolve(cache, 'mapi/presets.yaml'), name: 'mapi-presets' },
+    { path: resolve(cache, 'mapi/spaces.yaml'), name: 'mapi-spaces' },
+    { path: resolve(cache, 'mapi/users.yaml'), name: 'mapi-users' },
     // CAPI
-    { path: resolve(openApiPackagePath, 'dist/capi/stories.yaml'), name: 'capi-stories' },
-    { path: resolve(openApiPackagePath, 'dist/capi/datasource_entries.yaml'), name: 'capi-datasource-entries' },
-    { path: resolve(openApiPackagePath, 'dist/capi/links.yaml'), name: 'capi-links' },
-    { path: resolve(openApiPackagePath, 'dist/capi/spaces.yaml'), name: 'capi-spaces' },
-    { path: resolve(openApiPackagePath, 'dist/capi/tags.yaml'), name: 'capi-tags' },
+    { path: resolve(cache, 'capi/stories.yaml'), name: 'capi-stories' },
+    { path: resolve(cache, 'capi/datasource_entries.yaml'), name: 'capi-datasource-entries' },
+    { path: resolve(cache, 'capi/links.yaml'), name: 'capi-links' },
+    { path: resolve(cache, 'capi/spaces.yaml'), name: 'capi-spaces' },
+    { path: resolve(cache, 'capi/tags.yaml'), name: 'capi-tags' },
   ];
 
   rmSync(generatedDir, { recursive: true, force: true });

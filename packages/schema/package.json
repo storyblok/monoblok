@@ -41,7 +41,6 @@
   "devDependencies": {
     "@apidevtools/swagger-parser": "^10.1.1",
     "@storyblok/eslint-config": "workspace:*",
-    "@storyblok/openapi": "workspace:*",
     "@types/node": "^24.5.2",
     "eslint": "^9.26.0",
     "openapi-zod-client": "^1.18.3",
@@ -53,18 +52,11 @@
   "nx": {
     "targets": {
       "generate": {
-        "dependsOn": [
-          {
-            "projects": [
-              "@storyblok/openapi"
-            ],
-            "target": "build"
-          }
-        ],
         "inputs": [
           "{projectRoot}/generate.ts",
           "{projectRoot}/templates/**",
-          "{projectRoot}/package.json"
+          "{projectRoot}/package.json",
+          "{workspaceRoot}/.openapi-cache/**"
         ],
         "outputs": [
           "{projectRoot}/src/generated"

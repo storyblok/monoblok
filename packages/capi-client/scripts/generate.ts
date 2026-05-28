@@ -1,17 +1,14 @@
 #!/usr/bin/env tsx
 
 import { createClient } from '@hey-api/openapi-ts';
-import { execSync } from 'node:child_process';
-import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'pathe';
 import { fileURLToPath } from 'node:url';
 import { glob } from 'glob';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-interface OpenApiPackage {
-  path: string;
-}
+const repoRoot = resolve(__dirname, '..', '..', '..');
+const SPEC_DIR = resolve(repoRoot, '.openapi-cache/capi');
 
 /**
  * After @hey-api/openapi-ts generates per-resource client/ and core/ directories
@@ -59,25 +56,25 @@ function deduplicateSharedCode(generatedDir: string, resourceNames: string[]) {
 }
 
 async function main() {
+  if (!existsSync(SPEC_DIR)) {
+    throw new Error(
+      `OpenAPI cache not found at ${SPEC_DIR}. Run \`pnpm fetch:specs\` from the repo root first.`,
+    );
+  }
+
   rmSync(resolve(__dirname, '../src/generated'), { recursive: true, force: true });
 
-  // Get OpenAPI package path
-  const openapiListOutput = execSync('pnpm --filter @storyblok/openapi list --json', { encoding: 'utf8' });
-  const openapiPackages: OpenApiPackage[] = JSON.parse(openapiListOutput);
-  const OPENAPI_PATH = openapiPackages[0].path;
-
-  // Find all yaml files in the capi dist folder
-  const yamlFiles = await glob('dist/capi/*.yaml', { cwd: OPENAPI_PATH });
+  const yamlFiles = await glob('*.yaml', { cwd: SPEC_DIR });
 
   if (yamlFiles.length === 0) {
-    console.log('No YAML files found in OpenAPI dist folder');
+    console.log(`No YAML files found in ${SPEC_DIR}`);
     return;
   }
 
   const resourceNames: string[] = [];
 
   for (const yamlFile of yamlFiles) {
-    const resourcePath = resolve(OPENAPI_PATH, yamlFile);
+    const resourcePath = resolve(SPEC_DIR, yamlFile);
     const resourceName = basename(yamlFile, '.yaml');
     resourceNames.push(resourceName);
 

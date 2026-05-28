@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock, defineField } from '@storyblok/schema';
 
-import { createApiClient, type Story as StoryCapi } from '@storyblok/api-client';
+import { createApiClient, type Story } from '@storyblok/api-client';
 
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({
@@ -50,19 +50,19 @@ interface StoryblokTypes {
 }
 
 describe('createApiClient without .withTypes()', () => {
-  it('should return StoryCapi from stories.get()', async () => {
+  it('should return Story from stories.get()', async () => {
     const client = createApiClient({ accessToken: 'test-token' });
     const result = await client.stories.get('home');
     if (result.data) {
-      expectTypeOf(result.data.story).toEqualTypeOf<StoryCapi>();
+      expectTypeOf(result.data.story).toEqualTypeOf<Story>();
     }
   });
 
-  it('should return StoryCapi array from stories.list()', async () => {
+  it('should return Story array from stories.list()', async () => {
     const client = createApiClient({ accessToken: 'test-token' });
     const result = await client.stories.list();
     if (result.data) {
-      expectTypeOf(result.data.stories).toEqualTypeOf<StoryCapi[]>();
+      expectTypeOf(result.data.stories).toEqualTypeOf<Story[]>();
     }
   });
 
@@ -70,13 +70,13 @@ describe('createApiClient without .withTypes()', () => {
     const client = createApiClient({ accessToken: 'test-token', throwOnError: true });
     const result = await client.stories.get('home');
     // ThrowOnError=true means data is always defined (no optional chaining needed)
-    expectTypeOf(result.data.story).toEqualTypeOf<StoryCapi>();
+    expectTypeOf(result.data.story).toEqualTypeOf<Story>();
   });
 
   it('should allow per-call throwOnError override to false', async () => {
     const client = createApiClient({ accessToken: 'test-token', throwOnError: true });
     const result = await client.stories.get('home', { throwOnError: false });
-    expectTypeOf(result.data).toMatchTypeOf<{ story: StoryCapi } | undefined>();
+    expectTypeOf(result.data).toMatchTypeOf<{ story: Story } | undefined>();
   });
 });
 

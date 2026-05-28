@@ -13,7 +13,7 @@ import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
 import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
-import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData } from './utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData, toAssetUpload } from './utils';
 
 let _pipelineSlot: Sema | null = null;
 const getPipelineSlot = (): Sema => {
@@ -468,10 +468,7 @@ export const readLocalAssetsStream = ({
           const shortFilename: string = sidecar.short_filename
             || (sidecar.filename ? basename(sidecar.filename) : undefined)
             || file;
-          const asset = {
-            ...sidecar,
-            short_filename: shortFilename,
-          } satisfies AssetUpload;
+          const asset = toAssetUpload(sidecar, shortFilename);
           const fileBuffer = await readFile(binaryFilePath) as unknown as ArrayBuffer;
           const sidecarPath = getSidecarFilename(binaryFilePath);
           yield {
@@ -695,6 +692,10 @@ const processAsset = async ({
   if (remoteAsset) {
     // Build only the writable metadata fields for the API update.
     // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
+    // `AssetUpdate` keeps `null` for the nullable fields (alt/title/copyright/
+    // source/is_private/focus); `publish_at`/`expire_at`/`meta_data` are
+    // non-nullable in the spec, so their `null` source values are dropped.
+    const nullToUndef = <T>(v: T | null | undefined): T | undefined => v ?? undefined;
     const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
       alt: 'alt' in localAsset ? localAsset.alt : remoteAsset.alt,
@@ -703,10 +704,10 @@ const processAsset = async ({
       source: 'source' in localAsset ? localAsset.source : remoteAsset.source,
       is_private: 'is_private' in localAsset ? localAsset.is_private : remoteAsset.is_private,
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
-      expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
-      publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
+      expire_at: nullToUndef('expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at),
+      publish_at: nullToUndef('publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at),
       internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
-      meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
+      meta_data: nullToUndef('meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data),
     };
 
     // Always perform the full replace flow (sign → S3 upload → finalize)
@@ -717,7 +718,9 @@ const processAsset = async ({
       fileBuffer,
     );
     // updateAsset returns void; the remote asset's readonly fields are unchanged.
-    newRemoteAsset = { ...remoteAsset, ...updatePayload };
+    // Cast: `Asset` declares `is_private: boolean` (required, no null) while the
+    // spread permits `null|undefined`; the runtime value is always a boolean.
+    newRemoteAsset = { ...remoteAsset, ...updatePayload } as Asset;
     status = 'updated';
   }
   else if (hasShortFilename(localAsset)) {
@@ -732,7 +735,7 @@ const processAsset = async ({
       : undefined;
     const createPayload = {
       ...rest,
-      asset_folder_id: remoteFolderId,
+      asset_folder_id: remoteFolderId ?? undefined,
       ...(mappedTagIds !== undefined ? { internal_tag_ids: mappedTagIds } : {}),
     } satisfies AssetUpload;
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);

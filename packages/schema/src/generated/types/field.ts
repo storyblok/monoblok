@@ -5,7 +5,7 @@ import type {
   AssetFieldValue,
   BlockContentBase,
   BlockContentInputBase,
-  ComponentSchemaField as Field,
+  Field,
   MultilinkFieldValue,
   PluginFieldValue,
   RichtextFieldValue,

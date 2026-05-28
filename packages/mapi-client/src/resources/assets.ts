@@ -25,6 +25,18 @@ import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 export type AssetListQuery = NonNullable<ListAssetsData['query']>;
 
 /**
+ * Return shape of `list()`.
+ *
+ * The list endpoint serializes rows with MAPI's `IndexAsset` serializer, which
+ * is NOT identical to the `ShowAsset` (= `Asset`) shape returned by `get()`:
+ * `IndexAsset` omits `file` and `permanently_deleted`. We deliberately surface
+ * list rows as `Asset` so consumers work against a single asset type. The lie:
+ * `file`/`permanently_deleted` are absent on list rows at runtime — consumers
+ * needing those must re-fetch via `get()`.
+ */
+export type ListAssetsResult = Omit<ListAssetsResponses[200], 'assets'> & { assets: Array<Asset> };
+
+/**
  * Fields for initiating an asset upload. Pass this to `upload()` or `create()`
  * alongside a file buffer.
  *
@@ -71,15 +83,19 @@ async function uploadToS3(
   }
 }
 
+const hasDefinedFields = (value: Record<string, unknown> | undefined): boolean =>
+  Object.values(value ?? {}).some(v => v !== undefined && v !== null);
+
 export function createAssetsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListAssetsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListAssetsResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListAssetsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListAssetsResult, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListAssetsResponses[200], ThrowOnError>(() =>
+      // `listAssets` returns `IndexAsset` rows; we present them as `Asset` (see `ListAssetsResult`).
+      return wrapRequest<ListAssetsResult, ThrowOnError>(() =>
         mapi.listAssets({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     /**
@@ -213,7 +229,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             ...kyOpts,
           }), true);
 
-        if (assetBody.asset && Object.keys(assetBody.asset).length > 0) {
+        if (hasDefinedFields(assetBody.asset)) {
           await wrapRequest<UpdateAssetResponses[204], true>(() =>
             mapi.updateAsset({ client, path: { space_id: resolvedSpaceId, id: assetId }, body: assetBody, signal, throwOnError: true, ...kyOpts }), true);
         }

@@ -224,7 +224,7 @@ describe('stories.get()', () => {
     );
     const client = createApiClient({ accessToken: 'test-token' });
 
-    await client.stories.get(123);
+    await client.stories.get('123');
 
     expect(new URL(capturedUrl!).searchParams.has('find_by')).toBe(false);
   });
@@ -573,7 +573,7 @@ describe('inlineRelations', () => {
       { uuid: 'author-2' },
     ]);
     expect(result.data?.rels).toHaveLength(1);
-    expect((result.data as { rel_uuids?: string[] } | undefined)?.rel_uuids).toEqual(['author-1']);
+    expect(result.data?.rel_uuids).toEqual(['author-1']);
   });
 
   it('should not share cache between generic get and stories.get', async () => {

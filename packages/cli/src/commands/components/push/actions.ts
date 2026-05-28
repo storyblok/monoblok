@@ -1,28 +1,29 @@
 import { FileSystemError, handleAPIError } from '../../../utils';
 import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import type { ComponentCreate, ComponentSchemaField, ComponentUpdate } from '../../../types';
+import type { ComponentCreate, ComponentUpdate, Field } from '../../../types';
 import type { ReadComponentsOptions } from './constants';
 import { resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { type ComponentsData, loadComponents } from '../loader';
+import { toRequestTagIds } from './tag-ids';
 
 export type { ComponentsData };
 
 /**
  * Extracts a clean schema record from a `Component` (which uses `Partial` with
  * possible `undefined` values and special `_uid`/`component` keys) into the
- * `Record<string, ComponentSchemaField>` shape expected by create/update.
+ * `Record<string, Field>` shape expected by create/update.
  */
-function isSchemaField(value: unknown): value is ComponentSchemaField {
+function isSchemaField(value: unknown): value is Field {
   return typeof value === 'object' && value !== null && 'type' in value;
 }
 
 function toWritableSchema(
-  schema: Component['schema'] | Record<string, ComponentSchemaField> | undefined,
-): Record<string, ComponentSchemaField> | undefined {
+  schema: Component['schema'] | Record<string, Field> | undefined,
+): Record<string, Field> | undefined {
   if (!schema) { return undefined; }
-  const result: Record<string, ComponentSchemaField> = {};
+  const result: Record<string, Field> = {};
   for (const [key, value] of Object.entries(schema)) {
     if (isSchemaField(value)) {
       result[key] = value;
@@ -84,7 +85,7 @@ export const upsertComponent = async (
   const { name, display_name, schema, is_root, is_nestable, component_group_uuid, color, icon, preview_field, internal_tag_ids } = component;
   const payload = {
     name,
-    display_name,
+    display_name: display_name ?? undefined,
     schema: toWritableSchema(schema),
     is_root,
     is_nestable,
@@ -92,7 +93,7 @@ export const upsertComponent = async (
     color: color ?? undefined,
     icon: icon ?? undefined,
     preview_field: preview_field ?? undefined,
-    internal_tag_ids,
+    internal_tag_ids: toRequestTagIds(internal_tag_ids),
   };
 
   if (existingId) {
@@ -172,7 +173,14 @@ export const pushComponentPreset = async (space: string, preset: Preset): Promis
         space_id: Number(space),
       },
       body: {
-        preset,
+        preset: {
+          ...preset,
+          preset: preset.preset ?? undefined,
+          image: preset.image ?? undefined,
+          color: preset.color ?? undefined,
+          icon: preset.icon ?? undefined,
+          description: preset.description ?? undefined,
+        },
       },
       throwOnError: true,
     });
@@ -193,7 +201,14 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
         space_id: Number(space),
       },
       body: {
-        preset,
+        preset: {
+          ...preset,
+          preset: preset.preset ?? undefined,
+          image: preset.image ?? undefined,
+          color: preset.color ?? undefined,
+          icon: preset.icon ?? undefined,
+          description: preset.description ?? undefined,
+        },
       },
       throwOnError: true,
     });

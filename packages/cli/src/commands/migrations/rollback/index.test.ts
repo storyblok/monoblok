@@ -101,7 +101,6 @@ describe('migrations rollback command', () => {
       {
         story: {
           content: mockBlokContent,
-          id: 1,
           name: 'Test Story',
         },
         force_update: '1',
@@ -113,7 +112,6 @@ describe('migrations rollback command', () => {
       {
         story: {
           content: mockBlokContent,
-          id: 2,
           name: 'Another Story',
         },
         force_update: '1',

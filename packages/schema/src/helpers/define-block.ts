@@ -1,8 +1,16 @@
-import type { ComponentCreate, Component as ComponentGenerated, ComponentUpdate } from '../generated/mapi/types.gen';
-import type { ComponentSchemaField as Field } from '../generated/overlay/types.gen';
+import type {
+  Block,
+  BlockSchema,
+  BlockSchemaInput,
+  ComponentCreate,
+  ComponentUpdate,
+  NestableBlocks,
+  RootBlocks,
+  SchemaArrayToRecord,
+} from '../generated/types/block';
 import type { Prettify } from '../utils/prettify';
 
-export type { ComponentCreate, ComponentUpdate };
+export type { Block, BlockSchema, BlockSchemaInput, ComponentCreate, ComponentUpdate, NestableBlocks, RootBlocks, SchemaArrayToRecord };
 
 const BLOCK_DEFAULTS = {
   id: 1,
@@ -12,44 +20,6 @@ const BLOCK_DEFAULTS = {
   is_nestable: true,
   component_group_uuid: null,
 };
-
-/** Input form: an ordered array of named fields. The array index becomes `pos`. */
-export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;
-
-/** Wire form: the MAPI object map keyed by field name. This is what `defineBlock` returns. */
-export type BlockSchema = Record<string, Field & { required?: boolean }>;
-
-/** Converts an array-form schema input into the wire-shape object map at the type level. */
-export type SchemaArrayToRecord<T extends BlockSchemaInput> = {
-  [F in T[number] as F['name']]: Omit<F, 'name'>;
-};
-
-/**
- * A Storyblok block.
- */
-export type Block<
-  TName extends string = string,
-  TBlockSchema extends BlockSchema = BlockSchema,
-  TIsRoot extends boolean = boolean,
-  TIsNestable extends boolean = boolean,
-  TComponentGroupUuid extends string | null = string | null,
-> = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
-    name: TName;
-    schema: TBlockSchema;
-    is_root?: TIsRoot;
-    is_nestable?: TIsNestable;
-    component_group_uuid?: TComponentGroupUuid;
-  }
->;
-
-/** Extract only root blocks from a schema union. */
-export type RootBlocks<T extends Block> =
-  T extends { is_root: true } ? T : never;
-
-/** Extract only nestable blocks from a schema union. */
-export type NestableBlocks<T extends Block> =
-  T extends { is_nestable: true } ? T : never;
 
 /** Fields that have safe defaults and may be omitted from block input. */
 type BlockOptional = keyof typeof BLOCK_DEFAULTS;
@@ -61,13 +31,13 @@ type BlockInput<
   TIsNestable extends boolean = true,
   TComponentGroupUuid extends string | null = null,
 > = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
+  Omit<Block, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
     name: TName;
     schema: TInputSchema;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
     component_group_uuid?: TComponentGroupUuid;
-  } & Partial<Pick<ComponentGenerated, Exclude<BlockOptional, 'is_root' | 'is_nestable' | 'component_group_uuid'>>>
+  } & Partial<Pick<Block, Exclude<BlockOptional, 'is_root' | 'is_nestable' | 'component_group_uuid'>>>
 >;
 
 type DefinedBlock<
@@ -77,7 +47,7 @@ type DefinedBlock<
   TIsNestable extends boolean,
   TComponentGroupUuid extends string | null,
 > = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
+  Omit<Block, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
     name: TName;
     schema: TBlockSchema;
     is_root: TIsRoot;

@@ -116,7 +116,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
 
     // Add dependencies on internal_tag_ids (direct component tag references)
     if (component.internal_tag_ids && component.internal_tag_ids.length > 0) {
-      component.internal_tag_ids.forEach((tagId) => {
+      component.internal_tag_ids.forEach((tagId: string) => {
         const tagNodeId = `tag:${tagId}`;
         addDependency(componentId, tagNodeId);
       });

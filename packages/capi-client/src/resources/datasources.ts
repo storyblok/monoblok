@@ -12,7 +12,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
 
   return {
     get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
-      id: DatasourcesGetData['path']['id'] | number,
+      id: DatasourcesGetData['path']['id'],
       options: { query?: DatasourcesGetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<DatasourcesGetResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
@@ -21,8 +21,8 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
         return throttleManager.execute(requestPath, requestQuery, () =>
           asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceById({
             client,
-            path: { id: String(id) },
-            query: requestQuery as never,
+            path: { id },
+            query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
             ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),

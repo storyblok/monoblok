@@ -1,5 +1,5 @@
 import type { Component } from '../components/constants';
-import type { ComponentSchemaField } from '../../types';
+import type { Field } from '../../types';
 import type { Story } from './constants';
 import type { AssetMap } from '../assets/types';
 import { normalizeAssetUrl } from '@storyblok/management-api-client';
@@ -12,7 +12,7 @@ export interface RefMaps {
 export type ComponentSchemas = Record<Component['name'], Component['schema']>;
 
 type RefMapper = <const T extends Record<string, unknown>>(data: T, options: {
-  schema: ComponentSchemaField | undefined;
+  schema: Field | undefined;
   schemas: ComponentSchemas;
   maps: RefMaps;
   fieldRefMappers: FieldRefMappers;
@@ -48,7 +48,7 @@ const traverseAndMapBySchema = (
 
     if (fieldRefMapper) {
       dataNew[fieldName] = fieldRefMapper(fieldValue as any, {
-        schema: fieldSchema,
+        schema: fieldSchema as Field | undefined,
         schemas,
         maps,
         fieldRefMappers,

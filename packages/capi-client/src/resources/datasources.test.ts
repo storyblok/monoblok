@@ -59,7 +59,7 @@ describe('datasources.get()', () => {
       accessToken: 'test-token',
     });
 
-    const result = await client.datasources.get(123);
+    const result = await client.datasources.get('123');
 
     expect(result.error).toBeUndefined();
     expect(typeof result.data?.datasource).toBe('object');
@@ -76,7 +76,7 @@ describe('datasources.get()', () => {
       accessToken: 'invalid-token',
     });
 
-    const resultPromise = client.datasources.get(123);
+    const resultPromise = client.datasources.get('123');
     await vi.runOnlyPendingTimersAsync();
     const result = await resultPromise;
 
@@ -104,7 +104,7 @@ describe('datasources.get()', () => {
     });
 
     await client.links.list({ query: { version: 'published' } });
-    const result = await client.datasources.get(123);
+    const result = await client.datasources.get('123');
 
     expect(result.error).toBeUndefined();
     expect(result.data?.cv).toBe(42);

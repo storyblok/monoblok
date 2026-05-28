@@ -7,15 +7,17 @@ export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpd
  * CLI extension of mapi-client's AssetUploadRequest.
  * Uses `AssetUploadRequest` (which combines `AssetUpdate` metadata fields with
  * `short_filename` for uploads) rather than the schema `AssetCreate` (which has
- * `filename`). Adds an optional `id` field used for manifest-based local↔remote
- * ID mapping. The `id` is stripped before the mapi-client create/upload call.
+ * `filename`). Adds the local asset's identity (`id` and the original `filename`)
+ * used for manifest-based local↔remote mapping; both are ignored by the
+ * mapi-client create/upload call (which derives the upload name from
+ * `short_filename`).
  * `internal_tags_list` is the server-managed (read-only) tag detail carried in
  * pulled sidecars; it is used to translate source-space tag names to
  * target-space IDs and is stripped before the create/upload call.
  */
-export type AssetUpload = AssetUploadRequest & { id?: number; internal_tags_list?: Asset['internal_tags_list'] };
+export type AssetUpload = AssetUploadRequest & { id?: number; filename?: string; internal_tags_list?: Asset['internal_tags_list'] };
 
-export type AssetMapped = Pick<Asset, 'id' | 'filename' | 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>;
+export type AssetMapped = Partial<Pick<Asset, 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>> & Pick<Asset, 'id' | 'filename'>;
 
 /**
  * Maps local with remote asset ids and filenames.

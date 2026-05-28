@@ -24,6 +24,7 @@ export type { ApiErrorBody } from './error';
 export type {
   AssetUpdateRequest,
   CreateAsset as SignedResponseObject,
+  SpaceDetail,
 } from './generated/mapi/types.gen';
 export type {
   Asset,
@@ -32,6 +33,7 @@ export type {
   AssetFolderCreate,
   AssetFolderUpdate,
   AssetUpdate,
+  Component as RawComponent,
   ComponentFolder,
   ComponentFolderCreate,
   ComponentFolderUpdate,
@@ -61,7 +63,7 @@ export type {
   ComponentUpdate,
   RootBlocks as RootComponents,
 } from './generated/types/block';
-export type { Field as ComponentSchemaField } from './generated/types/field';
+export type { Field } from './generated/types/field';
 
 export type {
   AssetFieldValue,
@@ -82,6 +84,7 @@ export type {
 
 // Resource-defined helpers
 export type { AssetCreate as AssetUploadRequest, AssetListQuery } from './resources/assets';
+export type { SpaceCreateQuery } from './resources/spaces';
 export type { StoryListQuery } from './resources/stories';
 // Utilities
 export { normalizeAssetUrl } from './utils/normalize-asset-url';

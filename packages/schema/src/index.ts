@@ -58,7 +58,7 @@ export type { Space, SpaceCreate, SpaceUpdate } from './helpers/define-space';
 
 // Story
 export { defineMapiStory, defineStory, defineStoryCreate, defineStoryUpdate } from './helpers/define-story';
-export type { MapiStory, Story, StoryAlternate, StoryComponent, StoryCreate, StoryLocalizedPath, StoryTranslatedSlug, StoryUpdate } from './helpers/define-story';
+export type { MapiStory, Story, StoryAlternate, StoryBlock, StoryCreate, StoryLocalizedPath, StoryTranslatedSlug, StoryUpdate } from './helpers/define-story';
 
 // Tag (CDN-only)
 export { defineTag } from './helpers/define-tag';

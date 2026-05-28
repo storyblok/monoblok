@@ -72,7 +72,6 @@ export class UpdateStream extends Writable {
       } = {
         story: {
           content,
-          id: storyId,
           name: storyName,
         },
         force_update: '1',

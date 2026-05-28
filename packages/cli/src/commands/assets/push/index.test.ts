@@ -255,8 +255,8 @@ const preconditions = {
     server.use(
       // Step 1: get signed response
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
-        const body = await request.json() as { filename?: string };
-        const requestedFilename = body?.filename;
+        const url = new URL(request.url);
+        const requestedFilename = url.searchParams.get('filename');
 
         const match = remoteAssets.find(a => basename(a.filename) === requestedFilename);
         if (!match) {
@@ -307,7 +307,7 @@ const preconditions = {
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Update asset metadata/folder/etc.
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
@@ -329,7 +329,7 @@ const preconditions = {
   },
   failsToUpdateRemoteAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
         { message: 'Update failed' },
         { status: 500 },
       )),
@@ -985,7 +985,9 @@ describe('assets push command', () => {
   });
 
   it('should handle errors when updating assets fails', async () => {
-    const localAsset = makeMockAsset();
+    // Carry metadata so the metadata-update PATCH (the call mocked to fail) is
+    // actually issued; with no metadata the client skips it (see hasDefinedFields).
+    const localAsset = makeMockAsset({ alt: 'Updated alt' });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);

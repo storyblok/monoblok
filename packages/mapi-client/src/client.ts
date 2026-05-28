@@ -7,6 +7,7 @@ import type { Block as Component } from './generated/types/block';
 import { ClientError } from './error';
 import type { RateLimitConfig } from './utils/rate-limit';
 import { createThrottleManager } from './utils/rate-limit';
+import { querySerializer } from './utils/query-serializer';
 import { createAssetFoldersResource } from './resources/asset-folders';
 import { createAssetsResource } from './resources/assets';
 import { createComponentFoldersResource } from './resources/component-folders';
@@ -180,6 +181,9 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
         ...(authHeader ? { Authorization: authHeader } : {}),
         ...headers,
       },
+      // Default serializer throws on nested objects; MAPI needs `filter_query`
+      // serialized as a nested hash (`filter_query[field][op]=value`).
+      querySerializer,
       throwOnError,
       kyOptions: {
         throwHttpErrors: true,

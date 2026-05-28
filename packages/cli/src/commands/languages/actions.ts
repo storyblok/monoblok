@@ -9,10 +9,10 @@ import { fetchSpace } from '../spaces';
 export const fetchLanguages = async (spaceId: string): Promise<SpaceInternationalization | undefined> => {
   try {
     const space = await fetchSpace(spaceId);
-    if (space?.default_lang_name !== undefined && space?.languages?.length) {
+    if (space?.default_lang_name && space?.languages?.length) {
       return {
-        default_lang_name: space?.default_lang_name,
-        languages: space?.languages,
+        default_lang_name: space.default_lang_name,
+        languages: space.languages,
       };
     }
   }

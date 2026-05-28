@@ -5,7 +5,7 @@ import type {
   ComponentCreate,
   Component as ComponentGenerated,
   ComponentUpdate,
-  ComponentSchemaField as Field,
+  Field,
 } from './_sources';
 
 export type { ComponentCreate, ComponentUpdate };

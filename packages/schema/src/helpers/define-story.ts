@@ -1,16 +1,9 @@
-import type {
-  CapiStory as CapiStoryGenerated,
-  StoryAlternate,
-} from '../generated/capi/types.gen';
-import type {
-  MapiStory as MapiStoryGenerated,
-  StoryCreate as StoryCreateGenerated,
-  StoryLocalizedPath,
-  StoryTranslatedSlug,
-  StoryUpdate as StoryUpdateGenerated,
-} from '../generated/mapi/types.gen';
+import type { StoryAlternate } from '../generated/capi/types.gen';
+import type { StoryLocalizedPath, StoryTranslatedSlug } from '../generated/mapi/types.gen';
+import type { MapiStory, StoryCreate, StoryUpdate } from '../generated/types/mapi-story';
+import type { Story, StoryBlock } from '../generated/types/story';
 import type { Block } from './define-block';
-import type { BlockContent, BlockContentInput } from './define-field';
+import type { BlockContentInput } from './define-field';
 import type { Prettify } from '../utils/prettify';
 
 const CAPI_STORY_DEFAULTS = {
@@ -83,37 +76,13 @@ const MAPI_STORY_DEFAULTS = {
   favourite_for_user_ids: [],
 };
 
+export type { MapiStory, Story, StoryBlock, StoryCreate, StoryUpdate };
 export type { StoryAlternate, StoryLocalizedPath, StoryTranslatedSlug };
-
-export type StoryComponent = Omit<Block, 'is_root'> & { is_root: true };
-
-// ---------------------------------------------------------------------------
-// CDN (CAPI) Story
-// ---------------------------------------------------------------------------
-
-type CapiStoryWithSchemaContent<
-  TBlock extends StoryComponent = StoryComponent,
-  TBlocks = false,
-> = Omit<CapiStoryGenerated, 'content'> & { content: BlockContent<TBlock, TBlocks> };
-
-/**
- * A Storyblok CDN (CAPI) story.
- */
-export type Story<
-  TBlockOrBlocks extends StoryComponent | Block = StoryComponent,
-  TBlocks = false,
-> = Prettify<
-  [TBlockOrBlocks] extends [StoryComponent]
-    ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks>
-    : TBlocks extends false
-      ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, StoryComponent>, TBlockOrBlocks>
-      : never
->;
 
 type CapiStoryOptional = keyof typeof CAPI_STORY_DEFAULTS;
 
 type CapiStoryInput<
-  TBlock extends StoryComponent = StoryComponent,
+  TBlock extends StoryBlock = StoryBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<Story<TBlock, TBlocks>, CapiStoryOptional | 'content'>
@@ -133,11 +102,11 @@ type CapiStoryInput<
  * });
  */
 export function defineStory<
-  TBlock extends StoryComponent,
+  TBlock extends StoryBlock,
   TBlocks extends Block,
 >(component: TBlock, story: CapiStoryInput<TBlock, TBlocks>): Story<TBlock, TBlocks>;
 
-export function defineStory(component: StoryComponent, story: any) {
+export function defineStory(component: StoryBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...CAPI_STORY_DEFAULTS,
@@ -150,55 +119,11 @@ export function defineStory(component: StoryComponent, story: any) {
 // MAPI Story helpers
 // ---------------------------------------------------------------------------
 
-type MapiStoryWithSchemaContent<
-  TStory extends MapiStoryGenerated | StoryCreateGenerated | StoryUpdateGenerated,
-  TBlock extends StoryComponent = StoryComponent,
-  TBlocks = false,
-> = StoryComponent extends TBlock
-  ? TStory
-  : Omit<TStory, 'content'> & {
-    content: TStory extends StoryCreateGenerated | StoryUpdateGenerated
-      ? BlockContentInput<TBlock, TBlocks>
-      : BlockContent<TBlock, TBlocks>;
-  };
-
-type MakeMapiStory<
-  TStory extends MapiStoryGenerated | StoryCreateGenerated | StoryUpdateGenerated,
-  TBlockOrBlocks extends StoryComponent | Block = StoryComponent,
-  TBlocks = false,
-> = Prettify<
-  [TBlockOrBlocks] extends [StoryComponent]
-    ? MapiStoryWithSchemaContent<TStory, TBlockOrBlocks, TBlocks>
-    : TBlocks extends false
-      ? MapiStoryWithSchemaContent<TStory, Extract<TBlockOrBlocks, StoryComponent>, TBlockOrBlocks>
-      : never
->;
-
-/**
- * A Storyblok MAPI story.
- */
-export type MapiStory<
-  TBlockOrBlocks extends StoryComponent | Block = StoryComponent,
-  TBlocks = false,
-> = MakeMapiStory<MapiStoryGenerated, TBlockOrBlocks, TBlocks>;
-
-/** Payload for creating a story via the MAPI. */
-export type StoryCreate<
-  TBlockOrBlocks extends StoryComponent | Block = StoryComponent,
-  TBlocks = false,
-> = MakeMapiStory<StoryCreateGenerated, TBlockOrBlocks, TBlocks>;
-
-/** Payload for updating a story via the MAPI. */
-export type StoryUpdate<
-  TBlockOrBlocks extends StoryComponent | Block = StoryComponent,
-  TBlocks = false,
-> = MakeMapiStory<StoryUpdateGenerated, TBlockOrBlocks, TBlocks>;
-
 type MapiStoryOptional = keyof typeof MAPI_STORY_DEFAULTS;
 
 type MakeMapiStoryInput<
   TStory extends MapiStory | StoryCreate | StoryUpdate,
-  TBlock extends StoryComponent = StoryComponent,
+  TBlock extends StoryBlock = StoryBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<TStory, MapiStoryOptional | 'content'>
@@ -209,17 +134,17 @@ type MakeMapiStoryInput<
 >;
 
 type MapiStoryInput<
-  TBlock extends StoryComponent = StoryComponent,
+  TBlock extends StoryBlock = StoryBlock,
   TBlocks extends Block = never,
 > = MakeMapiStoryInput<MapiStory, TBlock, TBlocks>;
 
 type StoryCreateInput<
-  TBlock extends StoryComponent = StoryComponent,
+  TBlock extends StoryBlock = StoryBlock,
   TBlocks extends Block = never,
 > = MakeMapiStoryInput<StoryCreate, TBlock, TBlocks>;
 
 type StoryUpdateInput<
-  TBlock extends StoryComponent = StoryComponent,
+  TBlock extends StoryBlock = StoryBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<MakeMapiStoryInput<StoryUpdate, TBlock, TBlocks>, 'content'>
@@ -238,11 +163,11 @@ type StoryUpdateInput<
  * });
  */
 export function defineMapiStory<
-  const TBlock extends StoryComponent,
+  const TBlock extends StoryBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: MapiStoryInput<TBlock, TBlocks>): MapiStory<TBlock, TBlocks>;
 
-export function defineMapiStory(component: StoryComponent, story: any) {
+export function defineMapiStory(component: StoryBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...MAPI_STORY_DEFAULTS,
@@ -261,11 +186,11 @@ export function defineMapiStory(component: StoryComponent, story: any) {
  * });
  */
 export function defineStoryCreate<
-  const TBlock extends StoryComponent,
+  const TBlock extends StoryBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: StoryCreateInput<TBlock, TBlocks>): StoryCreate<TBlock, TBlocks>;
 
-export function defineStoryCreate(component: StoryComponent, story: any) {
+export function defineStoryCreate(component: StoryBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...rest,
@@ -282,11 +207,11 @@ export function defineStoryCreate(component: StoryComponent, story: any) {
  * });
  */
 export function defineStoryUpdate<
-  const TBlock extends StoryComponent,
+  const TBlock extends StoryBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: StoryUpdateInput<TBlock, TBlocks>): StoryUpdate<TBlock, TBlocks>;
 
-export function defineStoryUpdate(component: StoryComponent, story: any) {
+export function defineStoryUpdate(component: StoryBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...rest,

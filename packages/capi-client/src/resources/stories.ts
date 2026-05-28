@@ -120,8 +120,21 @@ type ListResponse<
   stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>>;
 };
 
+interface StoryRelationData {
+  rels?: Story[];
+  rel_uuids?: string[];
+}
+
+interface StoryData extends StoryRelationData {
+  story: Story;
+}
+
+interface StoriesData extends StoryRelationData {
+  stories: Story[];
+}
+
 /** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
-type StoryIdentifier = GetData['path']['id'] | number;
+type StoryIdentifier = GetData['path']['id'];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -156,7 +169,7 @@ export function createStoriesResource<
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
           asApiResponse(getStoryById({
             client,
-            path: { id: String(identifier) },
+            path: { id: identifier },
             query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
@@ -167,7 +180,8 @@ export function createStoriesResource<
           return response;
         }
 
-        const resolved = await resolveRelationMap(response.data as unknown as { rels?: Story[]; rel_uuids?: string[] }, requestQuery, { client, throttleManager });
+        const storyData = response.data as unknown as StoryData;
+        const resolved = await resolveRelationMap(storyData, requestQuery, { client, throttleManager });
         if (!resolved) {
           return response;
         }
@@ -176,9 +190,7 @@ export function createStoriesResource<
           ...response,
           data: {
             ...response.data,
-            // `inlineStoryContent` mutates relation fields
-            // from UUID strings to full story objects. We cast to satisfy its parameter type.
-            story: inlineStoryContent(response.data.story as unknown as Story, resolved.relationPaths, resolved.relationMap),
+            story: inlineStoryContent(storyData.story, resolved.relationPaths, resolved.relationMap),
           },
         };
       }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
@@ -207,7 +219,8 @@ export function createStoriesResource<
           return response;
         }
 
-        const resolved = await resolveRelationMap(response.data as unknown as { rels?: Story[]; rel_uuids?: string[] }, requestQuery, { client, throttleManager });
+        const storiesData = response.data as unknown as StoriesData;
+        const resolved = await resolveRelationMap(storiesData, requestQuery, { client, throttleManager });
         if (!resolved) {
           return response;
         }
@@ -216,9 +229,7 @@ export function createStoriesResource<
           ...response,
           data: {
             ...response.data,
-            // `inlineStoriesContent` mutates relation fields
-            // from UUID strings to full story objects. We cast to satisfy its parameter type.
-            stories: inlineStoriesContent(response.data.stories as unknown as Story[], resolved.relationPaths, resolved.relationMap),
+            stories: inlineStoriesContent(storiesData.stories, resolved.relationPaths, resolved.relationMap),
           },
         };
       }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);

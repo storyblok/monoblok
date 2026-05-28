@@ -13,8 +13,6 @@ export type StoryblokParserOptionsMap = {
 
 export interface HTMLParserOptions {
   parsers?: StoryblokParserOptionsMap;
-  allowCustomAttributes?: boolean;
-  styleOptions?: StyleOption[];
   preserveWhitespace?: boolean;
 }
 

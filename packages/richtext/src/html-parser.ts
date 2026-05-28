@@ -7,7 +7,6 @@ import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensio
  *
  * This function:
  * - Parses the provided HTML using the configured Storyblok Tiptap extensions
- * - Applies custom attribute parsers and style options if provided
  * - Returns a Storyblok-compatible rich text document structure
  *
  * By default, whitespace is not preserved during parsing.
@@ -15,8 +14,6 @@ import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensio
  * @param html - The HTML string to convert.
  * @param options - Optional configuration for parsing behavior.
  * @param options.parsers - Custom parser configuration for node/mark types.
- * @param options.allowCustomAttributes - Whether to allow non-standard attributes.
- * @param options.styleOptions - List of style properties to parse from inline styles.
  * @param options.preserveWhitespace - Whether to preserve whitespace during parsing.
  *
  * @returns A Storyblok Rich Text JSON document.
@@ -42,8 +39,6 @@ export function htmlToStoryblokRichtext(
   const allExtensions = getStoryblokTiptapExtensions({
     parsers: options?.parsers,
     enableReporter: true,
-    allowCustomAttributes: options?.allowCustomAttributes,
-    styleOptions: options?.styleOptions || [],
   });
   return generateJSON(html, Object.values(allExtensions), {
     preserveWhitespace: options?.preserveWhitespace || false,

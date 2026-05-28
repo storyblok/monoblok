@@ -1,5 +1,5 @@
-import { list as listTagsApi } from '../generated/tags/sdk.gen';
-import type { ListData as TagsListData, ListResponses as TagsListResponses } from '../generated/tags/types.gen';
+import { listTags as listTagsApi } from '../generated/capi/sdk.gen';
+import type { ListTagsData as TagsListData, ListTagsResponses as TagsListResponses } from '../generated/capi/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
 export function createTagsResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {

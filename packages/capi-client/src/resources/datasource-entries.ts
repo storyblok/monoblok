@@ -1,8 +1,8 @@
-import { list as listDatasourceEntriesApi } from '../generated/datasource_entries/sdk.gen';
+import { listDatasourceEntries } from '../generated/capi/sdk.gen';
 import type {
-  ListData as DatasourceEntriesListData,
-  ListResponses as DatasourceEntriesListResponses,
-} from '../generated/datasource_entries/types.gen';
+  ListDatasourceEntriesData as DatasourceEntriesListData,
+  ListDatasourceEntriesResponses as DatasourceEntriesListResponses,
+} from '../generated/capi/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
 export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
@@ -16,7 +16,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
       const requestPath = '/v2/cdn/datasource_entries';
       return requestWithCache<DatasourceEntriesListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourceEntriesListResponses[200], ThrowOnError>(listDatasourceEntriesApi({
+          asApiResponse<DatasourceEntriesListResponses[200], ThrowOnError>(listDatasourceEntries({
             client,
             query: requestQuery,
             signal,

@@ -34,25 +34,21 @@
     "build": "tsdown",
     "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "test:e2e": "vitest run -c vitest.config.e2e.ts",
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@storyblok/region-helper": "workspace:*",
-    "@storyblok/schema": "workspace:*",
     "ky": "^1.14.3"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.92.3",
     "@msw/source": "^0.6.1",
     "@storyblok/eslint-config": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
     "@types/node": "^24.11.0",
-    "dotenv": "^17.3.1",
     "eslint": "^9.39.2",
-    "glob": "^13.0.6",
     "msw": "^2.12.9",
     "pathe": "^2.0.3",
     "tsdown": "^0.20.3",
@@ -65,7 +61,7 @@
         "inputs": [
           "{projectRoot}/scripts/generate.ts",
           "{projectRoot}/package.json",
-          "{workspaceRoot}/.openapi-cache/capi/**"
+          "{workspaceRoot}/tools/openapi-codegen/.openapi-cache/capi/**"
         ],
         "outputs": [
           "{projectRoot}/src/generated/**"

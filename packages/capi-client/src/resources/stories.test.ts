@@ -9,7 +9,7 @@ import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/capi/stories.yaml',
+  '../../../../tools/openapi-codegen/.openapi-cache/capi/cdn-v2.openapi.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);
@@ -49,6 +49,10 @@ const makeStory = (uuid: string, content: Record<string, unknown>) => {
 
 describe('stories.get()', () => {
   it('should successfully retrieve a single story', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () =>
+        HttpResponse.json({ story: makeStory('test-story', { component: 'page', _uid: 'uid-1' }) })),
+    );
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -569,7 +573,7 @@ describe('inlineRelations', () => {
       { uuid: 'author-2' },
     ]);
     expect(result.data?.rels).toHaveLength(1);
-    expect(result.data?.rel_uuids).toEqual(['author-1']);
+    expect((result.data as { rel_uuids?: string[] } | undefined)?.rel_uuids).toEqual(['author-1']);
   });
 
   it('should not share cache between generic get and stories.get', async () => {

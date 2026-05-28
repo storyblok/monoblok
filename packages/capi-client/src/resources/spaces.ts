@@ -1,5 +1,5 @@
-import { get as getSpaceApi } from '../generated/spaces/sdk.gen';
-import type { GetResponses as SpacesGetResponses } from '../generated/spaces/types.gen';
+import { getSpace as getSpaceApi } from '../generated/capi/sdk.gen';
+import type { GetSpaceResponses as SpacesGetResponses } from '../generated/capi/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
 export function createSpacesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {

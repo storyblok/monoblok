@@ -54,7 +54,6 @@ export type {
   UserUpdate,
 } from './generated/mapi/types-aliased.gen';
 
-export type { ComponentSchemaField } from './generated/overlay/types.gen';
 // Domain types — sourced from the codegen tool's aliased + wrapper outputs.
 export type {
   Block as Component,
@@ -62,6 +61,7 @@ export type {
   ComponentUpdate,
   RootBlocks as RootComponents,
 } from './generated/types/block';
+export type { Field as ComponentSchemaField } from './generated/types/field';
 
 export type {
   AssetFieldValue,

@@ -9,7 +9,7 @@ import { createApiClient } from '../index';
 
 const openapiSpecPath = join(
   fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/capi/links.yaml',
+  '../../../../tools/openapi-codegen/.openapi-cache/capi/cdn-v2.openapi.yaml',
 );
 const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
 const handlers = await fromOpenApi(openapiSpec);

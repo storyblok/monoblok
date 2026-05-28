@@ -1,5 +1,5 @@
-import { list as listLinks } from '../generated/links/sdk.gen';
-import type { ListData as LinksListData, ListResponses as LinksListResponses } from '../generated/links/types.gen';
+import { listLinks } from '../generated/capi/sdk.gen';
+import type { ListLinksData as LinksListData, ListLinksResponses as LinksListResponses } from '../generated/capi/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
 export function createLinksResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {

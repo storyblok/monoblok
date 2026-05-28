@@ -1,8 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock, defineField } from '@storyblok/schema';
 
-import { createApiClient } from '../index';
-import type { StoryCapi } from '../generated/stories';
+import { createApiClient, type Story as StoryCapi } from '@storyblok/api-client';
 
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({

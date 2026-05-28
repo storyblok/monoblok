@@ -41,7 +41,15 @@ For entity types that have both a slim PUT-response shape and a canonical GET-re
 
 ### Transitive resolution
 
-A consumer lists the types it wants by name. The tool resolves each name to a spec, walks the transitive dependency graph (including the wrapper templates' leaf imports), and writes the minimum slice that compiles. A CAPI-only `include: ['Story']` still emits a `mapi/types.gen.ts` because the `Block` wrapper depends on `Component`, but only the slice of MAPI that `Component` and `Field` transitively require. Each consumer's `src/generated/` is the minimum that compiles its public surface.
+A consumer lists the types it wants by name. The tool resolves each name to a spec, walks the transitive dependency graph (including the wrapper templates' leaf imports), and writes the minimum slice that compiles. A CAPI-only `include: ['Story']` still emits a `mapi/_internal.gen.ts` because the `Block` wrapper depends on `Component`, but only the slice of MAPI that `Component` and `Field` transitively require. Each consumer's `src/generated/` is the minimum that compiles its public surface.
+
+### Public aliases vs wrapper-template leaves
+
+Aliased types live in one of two files per spec. Types the consumer explicitly listed in `include` go to `<spec>/types-aliased.gen.ts` (or `<spec>/types.gen.ts` when no SDK is emitted on that spec). Types pulled in solely because a wrapper template uses them as a `sourceLeaves` entry go to `<spec>/_internal.gen.ts`. The leading underscore plus the `.gen` suffix signal that consumer code must not import from that file: it is reachable only through `_sources.ts`, which itself is imported only by the wrapper templates.
+
+This separation is what makes the wrapper templates the single public form for types that have a wrapper. The CAPI raw `Story` (`{ DraftStory | PublishedStory }` per spec) and the public wrapper `Story` (`Omit<RawStory, 'content'> & { content: BlockContent<TBlock> }`) are structurally different: the SDK returns the raw shape, the wrapper retypes `content` so `.withTypes()` narrowing works. Without this split, consumer code can import both names from sibling files, mix them in the same module, and assemble a return-type position that diverges from the public promise — exactly the bug that motivated the split. After the split, the raw is reachable only by spelling out the internal path, which is a clear convention break a reviewer will catch.
+
+When a name is both an explicit `include` AND a wrapper-template `sourceLeaves` entry (for example, `mapi-client` includes `Component`, which is also the leaf for the `Block` wrapper), the public emit wins: the type lives in `types-aliased.gen.ts`, and `_sources.ts` re-exports from there rather than duplicating into `_internal.gen.ts`.
 
 ### `spec.lock`
 

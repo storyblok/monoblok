@@ -39,7 +39,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            projects: "tag:npm:public,@storyblok/playground-mapi-schema"
+            projects: "tag:npm:public,@storyblok/playground-mapi-schema,@storyblok/playground-capi-schema"
           - os: windows-latest
             projects: storyblok
     runs-on: ${{ matrix.os }}

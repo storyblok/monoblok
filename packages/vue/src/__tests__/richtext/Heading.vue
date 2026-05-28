@@ -5,8 +5,8 @@ const props = defineProps<SbVueRichTextProps['heading']>();
 </script>
 
 <template>
-  <p data-type="custom-heading" :data-level="props.attrs.level">
+  <h2 data-type="custom-heading" :data-level="props?.attrs?.level">
     <slot>
     </slot>
-  </p>
+  </h2>
 </template>

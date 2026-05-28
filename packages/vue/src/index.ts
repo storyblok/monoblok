@@ -30,12 +30,7 @@ export {
   StoryblokClient,
   useStoryblokBridge,
 } from '@storyblok/js';
-export {
-  renderRichText,
-  type RenderSpec,
-  type SbRichTextDoc,
-  type SbRichTextImageOptions,
-} from '@storyblok/richtext';
+
 const vEditableDirective: Directive<HTMLElement> = {
   beforeMount(el, binding) {
     if (binding.value) {
@@ -122,3 +117,15 @@ export const StoryblokVue: Plugin = {
     app.provide('VueSDKOptions', pluginOptions);
   },
 };
+
+// Re-exporting same exports from @storyblok/richtext
+export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextOptions,
+  SbRichTextProps,
+} from '@storyblok/richtext';

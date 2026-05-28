@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, toRaw } from 'vue';
 import type { PropType } from 'vue';
 import {
   createRichTextHook,
@@ -26,7 +26,11 @@ export default defineComponent({
 
   setup(props) {
     const useStoryblokRichText = createRichTextHook();
-    const rendered = useStoryblokRichText(props);
+    const rendered = useStoryblokRichText({
+      optimizeImage: props.optimizeImage,
+      components: toRaw(props.components),
+      document: props.document,
+    });
 
     return () => rendered.value;
   },

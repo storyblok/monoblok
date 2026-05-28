@@ -46,7 +46,6 @@ import BlokRenderer from '../components/BlokRenderer';
  * ```
  */
 export type SbVueRichTextProps = SbRichTextElementByType;
-
 export type SbVueRichTextComponentMap = {
   [K in SbRichTextElement]?: Component<SbVueRichTextProps[K]>;
 };
@@ -57,12 +56,12 @@ function resolveComponentOverride<K extends SbRichTextElement>(
   return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
 }
 
-export interface StoryblokRichTextRendererOptions {
+export interface SbRichTextRendererOptions {
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
   components?: SbVueRichTextComponentMap;
 }
 
-export interface StoryblokRichTextProps extends StoryblokRichTextRendererOptions {
+export interface StoryblokRichTextProps extends SbRichTextRendererOptions {
   document: MaybeRefOrGetter<SbRichTextNode | SbRichTextNode[] | null | undefined>;
 }
 
@@ -90,17 +89,17 @@ export function createRichTextHook(
 }
 
 /**
- * Vue composable for rendering Storyblok rich text content.
+ * Vue composable for renb rich text content.
  * Returns a render function that converts rich text JSON to VNodes.
  */
-export function useStoryblokRichText(options: StoryblokRichTextRendererOptions = {}) {
+export function useStoryblokRichText(options: SbRichTextRendererOptions = {}) {
   return createStoryblokRenderer(options);
 }
 
 /**
  * Creates a renderer function for Storyblok rich text.
  */
-export function createStoryblokRenderer(options: StoryblokRichTextRendererOptions) {
+export function createStoryblokRenderer(options: SbRichTextRendererOptions) {
   return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined): VNode | VNode[] | null {
     if (!document) {
       return null;
@@ -116,15 +115,15 @@ export function createStoryblokRenderer(options: StoryblokRichTextRendererOption
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: SbRichTextNode[], options: StoryblokRichTextRendererOptions): VNode[] {
+function renderChildren(nodes: SbRichTextNode[], options: SbRichTextRendererOptions): VNode[] {
   const groups = groupLinkNodes(nodes);
 
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
-      return renderLinkGroup(group.nodes, group.linkMark, options, groupIndex);
+      return renderLinkGroup(group.nodes, group.linkMark, options, group._key || groupIndex);
     }
     else {
-      return renderNode(group.nodes[0], options, groupIndex);
+      return renderNode(group.nodes[0], options, group._key || groupIndex);
     }
   });
 }
@@ -135,8 +134,8 @@ function renderChildren(nodes: SbRichTextNode[], options: StoryblokRichTextRende
 function renderLinkGroup(
   nodes: SbRichTextNode[],
   linkMark: SbRichTextMark,
-  options: StoryblokRichTextRendererOptions,
-  key: number,
+  options: SbRichTextRendererOptions,
+  key: number | string,
 ): VNode {
   const inner = nodes.map((node, index) => {
     const textNode = node as SbRichTextTextNode;
@@ -162,7 +161,7 @@ function renderLinkGroup(
   return h(tag, { key, ...props }, inner);
 }
 
-function renderNode(node: SbRichTextNode, options: StoryblokRichTextRendererOptions, key: number): VNode {
+function renderNode(node: SbRichTextNode, options: SbRichTextRendererOptions, key: number | string): VNode {
   // Text node
   if (node.type === 'text') {
     return renderTextNode(node as SbRichTextTextNode, options, key);
@@ -226,8 +225,8 @@ function renderNode(node: SbRichTextNode, options: StoryblokRichTextRendererOpti
  */
 function renderOptimizedImage(
   node: SbRichTextNode,
-  options: StoryblokRichTextRendererOptions,
-  key: number,
+  options: SbRichTextRendererOptions,
+  key: number | string,
 ): VNode {
   const attrs = node.attrs as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
@@ -253,8 +252,8 @@ function renderOptimizedImage(
  */
 function renderTable(
   node: SbRichTextNode,
-  options: StoryblokRichTextRendererOptions,
-  key: number,
+  options: SbRichTextRendererOptions,
+  key: number | string,
   tag: string,
   props: Record<string, unknown>,
 ): VNode {
@@ -303,15 +302,15 @@ function renderStaticStructure(
   });
 }
 
-function renderTextNode(node: SbRichTextTextNode, options: StoryblokRichTextRendererOptions, key?: number): VNode {
+function renderTextNode(node: SbRichTextTextNode, options: SbRichTextRendererOptions, key?: number | string): VNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
 function renderTextNodeWithMarks(
   node: SbRichTextTextNode,
   marks: SbRichTextMark[] | undefined,
-  options: StoryblokRichTextRendererOptions,
-  _key?: number,
+  options: SbRichTextRendererOptions,
+  _key?: number | string,
 ): VNode {
   let content: VNode | string = node.text;
 
@@ -329,7 +328,7 @@ function renderTextNodeWithMarks(
   return content;
 }
 
-function wrapMark(children: VNode | string, mark: SbRichTextMark, options: StoryblokRichTextRendererOptions): VNode {
+function wrapMark(children: VNode | string, mark: SbRichTextMark, options: SbRichTextRendererOptions): VNode {
   const Custom = resolveComponentOverride(mark.type, options.components);
   if (Custom) {
     const childContent = typeof children === 'string' ? createTextVNode(children) : children;

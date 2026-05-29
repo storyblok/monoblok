@@ -45,7 +45,7 @@ import BlokRenderer from '../components/BlokRenderer';
  * </template>
  * ```
  */
-export type SbVueRichTextProps = SbRichTextElementByType;
+export type SbVueRichTextProps = SbRichTextElementByType<SbVueRichTextRenderContext>;
 export type SbVueRichTextComponentMap = {
   [K in SbRichTextElement]?: Component<SbVueRichTextProps[K]>;
 };
@@ -171,7 +171,7 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
   const Custom = resolveComponentOverride(node.type, options.components);
 
   if (Custom) {
-    return h(Custom, { key, ...node }, node.content
+    return h(Custom, { key, ...node, context: options }, node.content
       ? {
           default: () => renderChildren(node.content!, options),
         }

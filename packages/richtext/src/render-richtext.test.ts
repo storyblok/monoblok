@@ -61,7 +61,7 @@ describe('renderRichText', () => {
     it(node_and_mark.title, () => {
       const options: SbRichTextRenderContext = {
         renderers: {
-          heading: ({ content, attrs, renderers, optimizeImage }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, { renderers, optimizeImage })}</h${attrs?.level}>`,
+          heading: ({ content, attrs, context }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
           link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
         },
@@ -83,10 +83,10 @@ describe('renderRichText', () => {
     it(code_block.title, () => {
       const options: SbRichTextRenderContext = {
         renderers: {
-          code_block: ({ attrs, content, renderers, optimizeImage }) => {
+          code_block: ({ attrs, content, context }) => {
             const lang = (attrs?.class as string) || '';
             // User decides: class on <pre>, data-lang on <code>
-            return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, { renderers, optimizeImage })}</code></pre>`;
+            return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, context)}</code></pre>`;
           },
         },
       };
@@ -97,9 +97,9 @@ describe('renderRichText', () => {
     it(table.title, () => {
       const options: SbRichTextRenderContext = {
         renderers: {
-          table: ({ content, renderers, optimizeImage }) => {
+          table: ({ content, context }) => {
             const { headerRows, bodyRows } = splitTableRows(content);
-            return `<table class="custom-table"><thead>${renderRichText(headerRows, { renderers, optimizeImage })}</thead><tbody>${renderRichText(bodyRows, { renderers, optimizeImage })}</tbody></table>`;
+            return `<table class="custom-table"><thead>${renderRichText(headerRows, context)}</thead><tbody>${renderRichText(bodyRows, context)}</tbody></table>`;
           },
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },

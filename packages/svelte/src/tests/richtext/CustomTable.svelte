@@ -4,7 +4,7 @@
   import type { SbSvelteRichTextProps } from '$lib';
   import StoryblokRichText from '$lib/StoryblokRichText.svelte';
 
-  const { content, components }: SbSvelteRichTextProps<'table'> = $props();
+  const { content, context }: SbSvelteRichTextProps<'table'> = $props();
   const { headerRows, bodyRows } = $derived(splitTableRows(content));
 </script>
 
@@ -12,11 +12,11 @@
 
   {#if headerRows.length > 0}
     <thead>
-      {#each headerRows as row (row._key)}<StoryblokRichText document={row} {components} />{/each}
+      {#each headerRows as row (row._key)}<StoryblokRichText document={row} {...context} />{/each}
     </thead>
   {/if}{#if bodyRows.length > 0}
     <tbody>
-      {#each bodyRows as row (row._key)}<StoryblokRichText document={row} {components} />{/each}
+      {#each bodyRows as row (row._key)}<StoryblokRichText document={row} {...context} />{/each}
     </tbody>
   {/if}
 </table>

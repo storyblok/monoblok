@@ -1,4 +1,4 @@
-import { type BaseSbRichTextProps, processAttrs, type SbRichTextElement, type SbRichTextImageOptions, styleToString } from '@storyblok/richtext';
+import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, styleToString } from '@storyblok/richtext';
 import type { AstroComponentFactory } from 'astro/runtime/server/render/astro/index.js';
 
 export type SbAstroComponentMap = {
@@ -9,9 +9,10 @@ export interface SbAstroRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbAstroComponentMap;
 }
-
-export type SbAstroRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, SbAstroRichTextRenderContext>;
+export type SbAstroRichTextProps<
+  T extends SbRichTextElement,
+> =
+  SbRichTextElementByType<SbAstroRichTextRenderContext>[T];
 
 export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
   return (

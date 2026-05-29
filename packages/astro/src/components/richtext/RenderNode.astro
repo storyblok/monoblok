@@ -1,5 +1,10 @@
 ---
-import { type SbRichTextNode, type SbAstroRichTextRenderContext, isValidAstroComponent, getStaticChildren } from '../../';
+import {
+  type SbRichTextNode,
+  type SbAstroRichTextRenderContext,
+  isValidAstroComponent,
+  getStaticChildren,
+} from '../../';
 import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
 import RenderElement from './RenderElement.astro';
@@ -21,7 +26,7 @@ const Custom = components && node.type !== 'text' ? components[node.type] : unde
   node.type === 'text' ? (
     <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
   ) : isValidAstroComponent(Custom) ? (
-    <Custom {...node} {...options}>
+    <Custom {...node} context={options}>
       {node.content && <RenderChildren nodes={node.content} options={options} />}
     </Custom>
   ) : node.type === 'image' ? (

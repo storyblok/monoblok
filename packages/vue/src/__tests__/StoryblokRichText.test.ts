@@ -9,11 +9,6 @@ import CustomCodeBlock from './richtext/CustomCodeBlock.vue';
 import CustomTable from './richtext/CustomTable.vue';
 import { h } from 'vue';
 
-export const tableComponents: SbVueRichTextComponentMap = {
-  table: CustomTable,
-  bold: CustomBold,
-};
-
 describe('storyblok vue richtext rendering', () => {
   describe('input handling', () => {
     it('returns empty string for null input', () => {
@@ -156,6 +151,10 @@ describe('storyblok vue richtext rendering', () => {
     const table = customRendererFixture.table;
 
     it(table.title, () => {
+      const tableComponents: SbVueRichTextComponentMap = {
+        table: CustomTable,
+        bold: CustomBold,
+      };
       const wrapper = mount(StoryblokRichText, {
         props: {
           document: table.input,

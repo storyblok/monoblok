@@ -5,8 +5,8 @@ import type { SbAstroRichTextProps } from '../../src/index';
 
 type Props = SbAstroRichTextProps<'table'>;
 
-const { attrs, content, components } = Astro.props;
+const { content, context } = Astro.props;
 const { headerRows, bodyRows } = splitTableRows(content);
 ---
 
-<table class="custom-table"><thead><StoryblokRichText document={headerRows} components={components} /></thead><tbody><StoryblokRichText document={bodyRows} components={components} /></tbody></table>
+<table class="custom-table"><thead><StoryblokRichText document={headerRows} {...context} /></thead><tbody><StoryblokRichText document={bodyRows} {...context} /></tbody></table>

@@ -39,16 +39,16 @@ function nodeShape(schema: Schema, name: string): string {
   if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
     children = 'content?: SbRichTextNode[];';
   }
-  return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string }`;
+  return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string; context?: TContext; }`;
 }
 
 function markShape(name: string): string {
-  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string }`;
+  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string; }`;
 }
 
 /** Generate SbRichTextNode discriminated union type */
 function genPMNode(schema: Schema): string {
-  let out = 'export type SbRichTextNode =\n';
+  let out = 'export type SbRichTextNode<TContext = unknown> =\n';
   for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
     out += `  | ${nodeShape(schema, name)}\n`;
   }
@@ -73,7 +73,7 @@ function genElementByType(schema: Schema): string {
   let out = '/**\n * Flat lookup of element shapes keyed by `type`.\n';
   out += ' * Prefer this over `Extract<SbRichTextNode, { type: T }>` in places\n';
   out += ' * that need to be resolved by limited type resolvers (e.g. Vue SFC macros).\n */\n';
-  out += 'export interface SbRichTextElementByType {\n';
+  out += 'export interface SbRichTextElementByType<TContext = unknown> {\n';
   for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
     out += `  ${name}: ${nodeShape(schema, name)};\n`;
   }

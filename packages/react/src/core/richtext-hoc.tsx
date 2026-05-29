@@ -1,4 +1,4 @@
-import type { BaseSbRichTextProps, RenderSpec, SbRichTextElement, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
+import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
 import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
 import React, { type ComponentType, type ElementType, type ReactNode, useMemo } from 'react';
 
@@ -6,8 +6,13 @@ import React, { type ComponentType, type ElementType, type ReactNode, useMemo } 
  * Props type for React richtext node/mark components.
  * Similar to SbRichTextProps but uses ReactNode for children instead of string.
  */
-export type SbReactRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, SbReactRichTextRenderContext & { children?: ReactNode }, { children?: ReactNode }>;
+export type SbReactRichTextProps<
+  T extends SbRichTextElement,
+> =
+  SbRichTextElementByType<SbReactRichTextRenderContext>[T]
+  & {
+    children?: ReactNode;
+  };
 
 export type SbReactRichTextComponent<
   T extends SbRichTextElement,
@@ -137,7 +142,7 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
 
   if (Custom) {
     return (
-      <Custom key={key} {...node} {...options}>
+      <Custom key={key} {...node} context={options}>
         {node.content ? renderChildren(node.content, options) : null}
       </Custom>
     );

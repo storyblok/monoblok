@@ -1,4 +1,4 @@
-import { type BaseSbRichTextProps, processAttrs, type SbRichTextElement, type SbRichTextImageOptions, type SbRichTextNode, styleToString } from '@storyblok/richtext';
+import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, type SbRichTextNode, styleToString } from '@storyblok/richtext';
 import type { Component, Snippet } from 'svelte';
 
 export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
@@ -11,9 +11,14 @@ type AnyComponent = Component<any>;
 export type SbSvelteComponentMap = {
   [k in SbRichTextElement]?: AnyComponent;
 };
-export type SbSvelteRichTextProps<T extends SbRichTextElement> =
-  BaseSbRichTextProps<T, SbSvelteRichTextRenderContext & { children?: Snippet }, { children?: Snippet }>;
 
+export type SbSvelteRichTextProps<
+  T extends SbRichTextElement,
+> =
+  SbRichTextElementByType<SbSvelteRichTextRenderContext>[T]
+  & {
+    children?: Snippet;
+  };
 export function buildSvelteAttrs(type: SbRichTextElement, attrs: Record<string, unknown>): Record<string, unknown> {
   const processedAttrs = processAttrs(type, attrs, {
     colspan: 'colspan',

@@ -6,7 +6,7 @@ import type { RenderSpec, SbRichTextElement, SbRichTextMark, SbRichTextNode, SbR
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
  * @param document - RichText JSON document, array of nodes, or nullish value
- * @param options - Renderer configuration with custom node/mark renderers
+ * @param context - Renderer configuration with custom node/mark renderers
  * @returns Rendered HTML string
  *
  * @example
@@ -20,22 +20,22 @@ import type { RenderSpec, SbRichTextElement, SbRichTextMark, SbRichTextNode, SbR
  */
 export function renderRichText(
   document: SbRichTextNode | SbRichTextNode[] | null | undefined,
-  options?: SbRichTextRenderContext,
+  context?: SbRichTextRenderContext,
 ): string {
   const nodes = normalizeNodes(document);
-  return nodes?.length ? renderChildren(nodes, options) : '';
+  return nodes?.length ? renderChildren(nodes, context) : '';
 }
 
 /** Renders a single node to HTML. */
-function renderNode(node: SbRichTextNode, options?: SbRichTextRenderContext): string {
+function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): string {
   if (node.type === 'text') {
-    return renderTextNode(node, node.marks, options);
+    return renderTextNode(node, node.marks, context);
   }
-  const content = node.content ? renderChildren(node.content, options) : '';
+  const content = node.content ? renderChildren(node.content, context) : '';
   // Custom renderer takes full control
-  const customRenderer = options?.renderers?.[node.type];
+  const customRenderer = context?.renderers?.[node.type];
   if (customRenderer) {
-    return (customRenderer as (props: SbRichTextRenderContext & typeof node & { children: string }) => string)({ ...node, children: content, ...options });
+    return (customRenderer as (props: typeof node & { children: string; context?: SbRichTextRenderContext }) => string)({ ...node, children: content, context });
   }
 
   if (node.type === 'blok') {
@@ -52,8 +52,8 @@ function renderNode(node: SbRichTextNode, options?: SbRichTextRenderContext): st
     return content;
   }
 
-  if (node.type === 'image' && options?.optimizeImage) {
-    return renderOptimizedImage(node, options);
+  if (node.type === 'image' && context?.optimizeImage) {
+    return renderOptimizedImage(node, context);
   }
 
   const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
@@ -63,7 +63,7 @@ function renderNode(node: SbRichTextNode, options?: SbRichTextRenderContext): st
   }
 
   if (node.type === 'table') {
-    return `<${tag}${htmlAttrs}>${renderTableRows(node.content, options)}</${tag}>`;
+    return `<${tag}${htmlAttrs}>${renderTableRows(node.content, context)}</${tag}>`;
   }
 
   const staticChildren = getStaticChildren(node);
@@ -78,7 +78,7 @@ function renderNode(node: SbRichTextNode, options?: SbRichTextRenderContext): st
 /** Renders an image node with optimization applied. */
 function renderOptimizedImage(
   node: SbRichTextNode,
-  options: SbRichTextRenderContext,
+  context: SbRichTextRenderContext,
 ): string {
   const attrs = node.attrs as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
@@ -88,7 +88,7 @@ function renderOptimizedImage(
   if (src) {
     const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(
       src,
-      options.optimizeImage,
+      context.optimizeImage,
     );
 
     finalAttrs = {
@@ -107,7 +107,7 @@ function renderOptimizedImage(
  * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
  * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
  */
-function renderChildren(children: SbRichTextNode[], options?: SbRichTextRenderContext): string {
+function renderChildren(children: SbRichTextNode[], context?: SbRichTextRenderContext): string {
   let result = '';
   let i = 0;
   const len = children.length;
@@ -122,11 +122,11 @@ function renderChildren(children: SbRichTextNode[], options?: SbRichTextRenderCo
       while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
         end++;
       }
-      result += renderLinkGroup(children, i, end, linkMark, options);
+      result += renderLinkGroup(children, i, end, linkMark, context);
       i = end;
     }
     else {
-      result += renderNode(node, options);
+      result += renderNode(node, context);
       i++;
     }
   }
@@ -138,7 +138,7 @@ function renderChildren(children: SbRichTextNode[], options?: SbRichTextRenderCo
 function renderTextNode(
   node: SbRichTextTextNode,
   marks: SbRichTextMark[] | undefined,
-  options?: SbRichTextRenderContext,
+  context?: SbRichTextRenderContext,
 ): string {
   let html = escapeHtml(node.text);
 
@@ -147,7 +147,7 @@ function renderTextNode(
   }
 
   for (const mark of marks) {
-    html = wrapWithMark(html, mark, options);
+    html = wrapWithMark(html, mark, context);
   }
 
   return html;
@@ -157,10 +157,10 @@ function renderTextNode(
 function wrapWithMark(
   content: string,
   mark: SbRichTextMark,
-  options?: SbRichTextRenderContext,
+  context?: SbRichTextRenderContext,
 ): string {
   // Custom mark renderer
-  const customRenderer = options?.renderers?.[mark.type];
+  const customRenderer = context?.renderers?.[mark.type];
   if (customRenderer) {
     return (customRenderer as (props: typeof mark & { children: string }) => string)({
       ...mark,
@@ -185,17 +185,17 @@ function renderLinkGroup(
   start: number,
   end: number,
   linkMark: SbRichTextMark,
-  options?: SbRichTextRenderContext,
+  context?: SbRichTextRenderContext,
 ): string {
   let inner = '';
   for (let i = start; i < end; i++) {
     const node = children[i] as SbRichTextTextNode;
     const innerMarks = node.marks?.filter(m => m.type !== 'link');
-    inner += renderTextNode(node, innerMarks, options);
+    inner += renderTextNode(node, innerMarks, context);
   }
 
   // Custom link renderer
-  const customRenderer = options?.renderers?.[linkMark.type];
+  const customRenderer = context?.renderers?.[linkMark.type];
   if (customRenderer) {
     return (customRenderer as (props: typeof linkMark & { children: string }) => string)({
       ...linkMark,
@@ -217,7 +217,7 @@ function renderLinkGroup(
 /** Renders table rows with thead/tbody grouping based on cell types. */
 function renderTableRows(
   rows: SbRichTextNode[] | undefined,
-  options?: SbRichTextRenderContext,
+  context?: SbRichTextRenderContext,
 ): string {
   if (!rows?.length) {
     return '';
@@ -234,7 +234,7 @@ function renderTableRows(
   if (headerEnd > 0) {
     result += '<thead>';
     for (let i = 0; i < headerEnd; i++) {
-      result += renderNode(rows[i], options);
+      result += renderNode(rows[i], context);
     }
     result += '</thead>';
   }
@@ -242,7 +242,7 @@ function renderTableRows(
   if (headerEnd < rows.length) {
     result += '<tbody>';
     for (let i = headerEnd; i < rows.length; i++) {
-      result += renderNode(rows[i], options);
+      result += renderNode(rows[i], context);
     }
     result += '</tbody>';
   }

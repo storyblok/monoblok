@@ -23,7 +23,7 @@
 {#if node.type === 'text'}
   <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
 {:else if CustomComponent}
-  <CustomComponent {...node} {...options}>
+  <CustomComponent {...node} context={options}>
     {#if node.content}
       <RenderChildren nodes={node.content} {options} />
     {/if}

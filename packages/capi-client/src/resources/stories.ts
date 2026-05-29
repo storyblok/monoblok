@@ -140,7 +140,7 @@ interface StoriesData extends StoryRelationData {
   stories: Story[];
 }
 
-/** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
+/** The story identifier path param (full slug, numeric ID, or UUID), derived from the generated request type. */
 type StoryIdentifier = GetStoryByIdData['path']['id'];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

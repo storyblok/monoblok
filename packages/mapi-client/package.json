@@ -44,7 +44,6 @@
     "ky": "^1.14.3"
   },
   "devDependencies": {
-    "@msw/source": "^0.6.1",
     "@storyblok/eslint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@types/node": "^24.1.0",

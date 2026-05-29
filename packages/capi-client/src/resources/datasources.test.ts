@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../../../tools/openapi-codegen/.openapi-cache/capi/cdn-v2.openapi.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,11 @@ afterAll(() => server.close());
 
 describe('datasources.list()', () => {
   it('should successfully retrieve multiple datasources', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/datasources', () => {
+        return HttpResponse.json({ datasources: [{ id: 123, name: 'Example', slug: 'example' }] });
+      }),
+    );
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -55,6 +50,11 @@ describe('datasources.list()', () => {
 
 describe('datasources.get()', () => {
   it('should successfully retrieve a single datasource', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/datasources/*', () => {
+        return HttpResponse.json({ datasource: { id: 123, name: 'Example', slug: 'example' } });
+      }),
+    );
     const client = createApiClient({
       accessToken: 'test-token',
     });

@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../../../tools/openapi-codegen/.openapi-cache/mapi/management-v1.openapi.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,13 @@ afterAll(() => server.close());
 
 describe('users.me()', () => {
   it('should successfully retrieve the current user', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/users/me', () => {
+        return HttpResponse.json({
+          user: { id: 1, email: 'current@example.com' },
+        });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,

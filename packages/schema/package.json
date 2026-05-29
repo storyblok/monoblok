@@ -64,12 +64,12 @@
       },
       "build": {
         "dependsOn": [
-          "generate"
+          "^build"
         ]
       },
       "test": {
         "dependsOn": [
-          "generate"
+          "build"
         ]
       }
     }

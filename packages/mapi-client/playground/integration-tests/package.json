@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/playground-mapi-schema",
+  "name": "@storyblok/mapi-integration-tests",
   "type": "module",
   "version": "0.0.0",
   "private": true,

@@ -11,7 +11,7 @@ import type {
   ReplaceDatasourceEntryResponses,
 } from '../generated/mapi/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
-import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
+import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
@@ -22,7 +22,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<DatasourceEntriesIndexResponse, ThrowOnError>(() =>
-        mapi.listDatasourceEntries({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        mapi.listDatasourceEntries({ client, path: { space_id: resolvedSpaceId }, query, signal, ...buildCallOptions(client, throwOnError, fetchOptions) }), throwOnError);
     },
 
     get<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetDatasourceEntryResponses[200], ThrowOnError>> {
@@ -33,8 +33,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
           client,
           path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+          ...buildCallOptions(client, throwOnError, fetchOptions),
         }), throwOnError);
     },
 
@@ -42,7 +41,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<CreateDatasourceEntryResponses[201], ThrowOnError>(() =>
-        mapi.createDatasourceEntry({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        mapi.createDatasourceEntry({ client, path: { space_id: resolvedSpaceId }, body, signal, ...buildCallOptions(client, throwOnError, fetchOptions) }), throwOnError);
     },
 
     /**
@@ -60,8 +59,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
           path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           body,
           signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+          ...buildCallOptions(client, throwOnError, fetchOptions),
         }), throwOnError);
     },
     /**
@@ -79,8 +77,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
           path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           body,
           signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+          ...buildCallOptions(client, throwOnError, fetchOptions),
         }), throwOnError);
     },
     delete<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
@@ -91,8 +88,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
           client,
           path: { space_id: resolvedSpaceId, id: datasourceEntryId },
           signal,
-          ...(throwOnError === undefined ? {} : { throwOnError }),
-          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+          ...buildCallOptions(client, throwOnError, fetchOptions),
         }), throwOnError);
     },
   };

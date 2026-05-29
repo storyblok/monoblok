@@ -718,26 +718,28 @@ const processAsset = async ({
       fileBuffer,
     );
     // updateAsset returns void; the remote asset's readonly fields are unchanged.
-    // Cast: `Asset` declares `is_private: boolean` (required, no null) while the
-    // spread permits `null|undefined`; the runtime value is always a boolean.
-    newRemoteAsset = { ...remoteAsset, ...updatePayload } as Asset;
+    // `Asset.is_private` is a required boolean while `updatePayload.is_private`
+    // is nullable — coerce back to the remote value when unset.
+    newRemoteAsset = {
+      ...remoteAsset,
+      ...updatePayload,
+      is_private: updatePayload.is_private ?? remoteAsset.is_private,
+    };
     status = 'updated';
   }
   else if (hasShortFilename(localAsset)) {
-    // `internal_tags_list` is server-managed (read-only) and must not be sent.
-    // `internal_tag_ids` is rewritten through `maps.assetInternalTagsByName` so
-    // source-space IDs are translated to target-space IDs. When the
-    // source has no tag metadata, omit the field entirely so mapi-client skips
-    // the follow-up metadata PUT for tagless assets.
-    const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset;
+    // `internal_tags_list` is server-managed (read-only) and is dropped by
+    // `toAssetUpload`. `internal_tag_ids` is rewritten through
+    // `maps.assetInternalTagsByName` so source-space IDs are translated to
+    // target-space IDs before the create call.
     const mappedTagIds = 'internal_tag_ids' in localAsset
       ? resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;
-    const createPayload = {
-      ...rest,
+    const createPayload: AssetUpload = {
+      ...toAssetUpload(localAsset, localAsset.short_filename),
       asset_folder_id: remoteFolderId ?? undefined,
-      ...(mappedTagIds !== undefined ? { internal_tag_ids: mappedTagIds } : {}),
-    } satisfies AssetUpload;
+      internal_tag_ids: mappedTagIds,
+    };
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';
   }

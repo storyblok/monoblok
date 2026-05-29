@@ -10,14 +10,12 @@ await generate({
   outDir: resolve(packageRoot, 'src/generated'),
   sdk: 'mapi',
   include: [
-    // Wrapper templates (transitively pull block, field, story, mapi-story).
     'Component',
     'MapiStory',
     'StoryCreate',
     'StoryUpdate',
     'BlockContent',
     'BlockContentInput',
-    // Aliased MAPI entity shapes re-exported on the public surface.
     'Asset',
     'AssetCreate',
     'AssetUpdate',

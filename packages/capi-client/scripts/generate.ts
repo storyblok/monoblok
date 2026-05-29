@@ -10,10 +10,8 @@ await generate({
   outDir: resolve(packageRoot, 'src/generated'),
   sdk: 'capi',
   include: [
-    // Wrapper templates (transitively pull block, field, story).
     'Story',
     'BlockContent',
-    // Aliased CAPI entity shapes re-exported on the public surface.
     'Datasource',
     'DatasourceEntry',
     'Link',

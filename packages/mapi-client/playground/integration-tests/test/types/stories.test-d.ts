@@ -2,6 +2,7 @@ import { defineBlock, defineField, defineStoryCreate, defineStoryUpdate } from '
 import { createManagementApiClient, type Story as StoryMapi } from '@storyblok/management-api-client';
 import { describe, expectTypeOf, it } from 'vitest';
 
+// Nestable block — not a root story type
 const teaserComponent = defineBlock({
   name: 'teaser',
   schema: [
@@ -13,12 +14,14 @@ const teaserComponent = defineBlock({
   updated_at: '',
 });
 
+// Root content type that is also nestable (can appear as both a story and inside bloks)
 const heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
   schema: [
     defineField('title', { type: 'text' }),
     defineField('count', { type: 'number' }),
+    // bloks field without a whitelist — resolves to nestable components only
     defineField('sections', { type: 'bloks' }),
   ],
   id: 0,
@@ -26,6 +29,7 @@ const heroComponent = defineBlock({
   updated_at: '',
 });
 
+// Root content type, not nestable
 const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
@@ -68,6 +72,7 @@ describe('createManagementApiClient without .withTypes()', () => {
   it('should infer ThrowOnError from config without .withTypes()', async () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true });
     const result = await client.stories.get(123);
+    // ThrowOnError=true means data is always defined (no optional chaining needed)
     expectTypeOf(result.data.story).toEqualTypeOf<StoryMapi | undefined>();
   });
 
@@ -110,6 +115,7 @@ describe('createManagementApiClient with .withTypes()', () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
+      // Only root components (is_root: true) appear in story content
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
     }
   });
@@ -149,6 +155,7 @@ describe('createManagementApiClient with .withTypes()', () => {
         }
         if (story.content.blocks) {
           for (const blok of story.content.blocks) {
+            // blocks whitelists both hero and teaser → union of the two
             expectTypeOf(blok.component).toEqualTypeOf<'hero' | 'teaser'>();
           }
         }
@@ -162,6 +169,8 @@ describe('createManagementApiClient with .withTypes()', () => {
     if (result.data?.story) {
       const story = result.data.story;
       if (story.content.component === 'hero' && story.content.sections) {
+        // sections has no component_whitelist — falls back to nestable (is_nestable: true)
+        // components only; page has is_nestable: false, so it is excluded
         type Sections = typeof story.content.sections;
         expectTypeOf<Sections[number]['component']>().toEqualTypeOf<'hero' | 'teaser'>();
       }
@@ -172,6 +181,7 @@ describe('createManagementApiClient with .withTypes()', () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true }).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data.story) {
+      // ThrowOnError=true keeps data defined; only root components appear in content
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
     }
   });
@@ -214,6 +224,7 @@ describe('createManagementApiClient with .withTypes()', () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     type CreateBodyType = Parameters<typeof _client.stories.create>[0]['body'];
     type CreateStoryContent = NonNullable<CreateBodyType['story']['content']>;
+    // The write payload's content discriminant is narrowed to root component names too
     expectTypeOf<CreateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
   });
 
@@ -221,6 +232,7 @@ describe('createManagementApiClient with .withTypes()', () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     type UpdateBodyType = Parameters<typeof _client.stories.update>[1]['body'];
     type UpdateStoryContent = NonNullable<UpdateBodyType['story']['content']>;
+    // update() is the second positional arg (id, body); content discriminant is the root union
     expectTypeOf<UpdateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
   });
 });

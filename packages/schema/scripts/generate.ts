@@ -16,9 +16,8 @@ const PKG_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 await generate({
   outDir: resolve(PKG_ROOT, 'src/generated'),
   include: [
-    // Story + content (CAPI Story, MAPI write payloads)
     'Story',
-    'StoryBlock',
+    'RootBlock',
     'Block',
     'BlockContent',
     'BlockContentInput',
@@ -28,7 +27,6 @@ await generate({
     'StoryAlternate',
     'StoryTranslatedSlug',
     'StoryLocalizedPath',
-    // Field
     'Field',
     'FieldType',
     'FieldValue',
@@ -38,21 +36,17 @@ await generate({
     'PluginFieldValue',
     'RichtextFieldValue',
     'TableFieldValue',
-    // Component (Block) lifecycle
     'ComponentCreate',
     'ComponentUpdate',
-    // Asset
     'Asset',
     'AssetCreate',
     'AssetUpdate',
     'AssetFolder',
     'AssetFolderCreate',
     'AssetFolderUpdate',
-    // Component folder (MAPI-only)
     'ComponentFolder',
     'ComponentFolderCreate',
     'ComponentFolderUpdate',
-    // Datasource
     'Datasource',
     'DatasourceCreate',
     'DatasourceUpdate',
@@ -60,23 +54,17 @@ await generate({
     'DatasourceEntryCreate',
     'DatasourceEntryUpdate',
     'MapiDatasourceEntry',
-    // Internal tag (MAPI-only)
     'InternalTag',
     'InternalTagCreate',
     'InternalTagUpdate',
-    // Link (CAPI-only)
     'Link',
-    // Preset (MAPI-only)
     'Preset',
     'PresetCreate',
     'PresetUpdate',
-    // Space (MAPI-only)
     'Space',
     'SpaceCreate',
     'SpaceUpdate',
-    // Tag (CAPI-only)
     'Tag',
-    // User (MAPI-only)
     'User',
     'UserUpdate',
   ],

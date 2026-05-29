@@ -66,7 +66,8 @@ export const fetchMissingRelations = async ({
 
         // SDK return shape is the raw `DraftStory | PublishedStory` union; cast
         // to the wrapper `Story` (public type) so callers don't have to know
-        // about the spec-level discriminated form.
+        // about the spec-level discriminated form and get the benefits of the
+        // generic `Story` with schema support.
         return response.data.stories as unknown as Story[];
       }),
     ),

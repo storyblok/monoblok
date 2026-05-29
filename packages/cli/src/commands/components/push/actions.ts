@@ -6,7 +6,6 @@ import { resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { type ComponentsData, loadComponents } from '../loader';
-import { toRequestTagIds } from './tag-ids';
 
 export type { ComponentsData };
 
@@ -20,7 +19,7 @@ function isSchemaField(value: unknown): value is Field {
 }
 
 function toWritableSchema(
-  schema: Component['schema'] | Record<string, Field> | undefined,
+  schema: Record<string, unknown> | undefined,
 ): Record<string, Field> | undefined {
   if (!schema) { return undefined; }
   const result: Record<string, Field> = {};
@@ -30,6 +29,18 @@ function toWritableSchema(
     }
   }
   return result;
+}
+
+/**
+ * Converts component `internal_tag_ids` from the response shape (`string[]`) to
+ * the create/update request shape (`number[]`) — a known upstream inconsistency
+ * where the component serializer returns tag IDs as strings.
+ */
+function toRequestTagIds(
+  tagIds: ReadonlyArray<string | number> | undefined,
+): number[] | undefined {
+  if (!tagIds) { return undefined; }
+  return tagIds.map(id => Number(id));
 }
 
 // Component actions

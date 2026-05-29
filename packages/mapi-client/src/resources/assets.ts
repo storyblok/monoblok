@@ -1,6 +1,5 @@
 import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  ShowAsset as Asset,
   BulkDestroyAssetsData,
   BulkDestroyAssetsResponses,
   BulkRestoreAssetsData,
@@ -18,6 +17,7 @@ import type {
   UpdateAssetData,
   UpdateAssetResponses,
 } from '../generated/mapi/types.gen';
+import type { Asset } from '../generated/mapi/types-aliased.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { ClientError } from '../error';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
@@ -39,9 +39,6 @@ export type ListAssetsResult = Omit<ListAssetsResponses[200], 'assets'> & { asse
 /**
  * Fields for initiating an asset upload. Pass this to `upload()` or `create()`
  * alongside a file buffer.
- *
- * Uses `short_filename` (e.g. `"hero.png"`) to clearly distinguish it from
- * `Asset.filename`, which is the full CDN URL assigned by Storyblok after upload.
  */
 export type AssetUploadRequest = {
   /** The desired filename for the asset (e.g. `"hero.png"`). */

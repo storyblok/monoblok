@@ -1,5 +1,5 @@
 import { getStoryById, listStories } from '../generated/capi/sdk.gen';
-import type { GetStoryByIdData as GetData, GetStoryByIdResponses as GetResponses, ListStoriesData as ListData, ListStoriesResponses as ListResponses } from '../generated/capi/types.gen';
+import type { GetStoryByIdData, GetStoryByIdResponses, ListStoriesData, ListStoriesResponses } from '../generated/capi/types.gen';
 import type {
   AssetFieldValue,
   BlockContent as BlokContent,
@@ -10,7 +10,7 @@ import type {
 } from '../generated/types/field';
 import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
-import type { Block as Component, RootBlocks as RootComponents } from '../generated/types/block';
+import type { Block as Component, RootBlock as RootComponents } from '../generated/types/block';
 import type { Story } from '../generated/types/story';
 
 type InlinedStoryContentField =
@@ -109,17 +109,24 @@ type GetResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
-> = Omit<GetResponses[200], 'story'> & {
+> = Omit<GetStoryByIdResponses[200], 'story'> & {
   story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>;
 };
 type ListResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
-> = Omit<ListResponses[200], 'stories'> & {
+> = Omit<ListStoriesResponses[200], 'stories'> & {
   stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>>;
 };
 
+/**
+ * Internal relation-resolution shapes. The public response types expose the
+ * generic `Story`, but relation inlining needs to read the API's sidecar
+ * `rels`/`rel_uuids` fields off the raw payload. These three interfaces model
+ * that wire shape so the `response.data` narrowing below stays in one place
+ * instead of being scattered as inline casts.
+ */
 interface StoryRelationData {
   rels?: Story[];
   rel_uuids?: string[];
@@ -134,7 +141,7 @@ interface StoriesData extends StoryRelationData {
 }
 
 /** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
-type StoryIdentifier = GetData['path']['id'];
+type StoryIdentifier = GetStoryByIdData['path']['id'];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -157,10 +164,10 @@ export function createStoriesResource<
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
       identifier: StoryIdentifier,
-      options: { query?: Omit<NonNullable<GetData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+      options: { query?: Omit<NonNullable<GetStoryByIdData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<GetData['query']>;
+      const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData['query']>;
       const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !typedQuery.find_by
         ? { ...typedQuery, find_by: 'uuid' }
         : typedQuery;
@@ -180,6 +187,8 @@ export function createStoriesResource<
           return response;
         }
 
+        // Narrow to the internal relation shape to read the API's sidecar
+        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
         const storyData = response.data as unknown as StoryData;
         const resolved = await resolveRelationMap(storyData, requestQuery, { client, throttleManager });
         if (!resolved) {
@@ -200,10 +209,10 @@ export function createStoriesResource<
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
-      options: { query?: Omit<NonNullable<ListData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+      options: { query?: Omit<NonNullable<ListStoriesData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<ListData['query']>;
+      const typedQuery = (query ?? {}) as NonNullable<ListStoriesData['query']>;
       const requestPath = '/v2/cdn/stories';
       return requestWithCache('GET', requestPath, typedQuery, async (requestQuery: Record<string, unknown>) => {
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
@@ -219,6 +228,8 @@ export function createStoriesResource<
           return response;
         }
 
+        // Narrow to the internal relation shape to read the API's sidecar
+        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
         const storiesData = response.data as unknown as StoriesData;
         const resolved = await resolveRelationMap(storiesData, requestQuery, { client, throttleManager });
         if (!resolved) {

@@ -1,8 +1,8 @@
 import type { StoryAlternate } from '../generated/capi/types.gen';
 import type { StoryLocalizedPath, StoryTranslatedSlug } from '../generated/mapi/types.gen';
 import type { MapiStory, StoryCreate, StoryUpdate } from '../generated/types/mapi-story';
-import type { Story, StoryBlock } from '../generated/types/story';
-import type { Block } from './define-block';
+import type { Story } from '../generated/types/story';
+import type { Block, RootBlock } from './define-block';
 import type { BlockContentInput } from './define-field';
 import type { Prettify } from '../utils/prettify';
 
@@ -76,13 +76,13 @@ const MAPI_STORY_DEFAULTS = {
   favourite_for_user_ids: [],
 };
 
-export type { MapiStory, Story, StoryBlock, StoryCreate, StoryUpdate };
+export type { MapiStory, Story, StoryCreate, StoryUpdate };
 export type { StoryAlternate, StoryLocalizedPath, StoryTranslatedSlug };
 
 type CapiStoryOptional = keyof typeof CAPI_STORY_DEFAULTS;
 
 type CapiStoryInput<
-  TBlock extends StoryBlock = StoryBlock,
+  TBlock extends RootBlock = RootBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<Story<TBlock, TBlocks>, CapiStoryOptional | 'content'>
@@ -102,11 +102,11 @@ type CapiStoryInput<
  * });
  */
 export function defineStory<
-  TBlock extends StoryBlock,
+  TBlock extends RootBlock,
   TBlocks extends Block,
 >(component: TBlock, story: CapiStoryInput<TBlock, TBlocks>): Story<TBlock, TBlocks>;
 
-export function defineStory(component: StoryBlock, story: any) {
+export function defineStory(component: RootBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...CAPI_STORY_DEFAULTS,
@@ -123,7 +123,7 @@ type MapiStoryOptional = keyof typeof MAPI_STORY_DEFAULTS;
 
 type MakeMapiStoryInput<
   TStory extends MapiStory | StoryCreate | StoryUpdate,
-  TBlock extends StoryBlock = StoryBlock,
+  TBlock extends RootBlock = RootBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<TStory, MapiStoryOptional | 'content'>
@@ -134,17 +134,17 @@ type MakeMapiStoryInput<
 >;
 
 type MapiStoryInput<
-  TBlock extends StoryBlock = StoryBlock,
+  TBlock extends RootBlock = RootBlock,
   TBlocks extends Block = never,
 > = MakeMapiStoryInput<MapiStory, TBlock, TBlocks>;
 
 type StoryCreateInput<
-  TBlock extends StoryBlock = StoryBlock,
+  TBlock extends RootBlock = RootBlock,
   TBlocks extends Block = never,
 > = MakeMapiStoryInput<StoryCreate, TBlock, TBlocks>;
 
 type StoryUpdateInput<
-  TBlock extends StoryBlock = StoryBlock,
+  TBlock extends RootBlock = RootBlock,
   TBlocks extends Block = never,
 > = Prettify<
   Omit<MakeMapiStoryInput<StoryUpdate, TBlock, TBlocks>, 'content'>
@@ -163,11 +163,11 @@ type StoryUpdateInput<
  * });
  */
 export function defineMapiStory<
-  const TBlock extends StoryBlock,
+  const TBlock extends RootBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: MapiStoryInput<TBlock, TBlocks>): MapiStory<TBlock, TBlocks>;
 
-export function defineMapiStory(component: StoryBlock, story: any) {
+export function defineMapiStory(component: RootBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...MAPI_STORY_DEFAULTS,
@@ -186,11 +186,11 @@ export function defineMapiStory(component: StoryBlock, story: any) {
  * });
  */
 export function defineStoryCreate<
-  const TBlock extends StoryBlock,
+  const TBlock extends RootBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: StoryCreateInput<TBlock, TBlocks>): StoryCreate<TBlock, TBlocks>;
 
-export function defineStoryCreate(component: StoryBlock, story: any) {
+export function defineStoryCreate(component: RootBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...rest,
@@ -207,11 +207,11 @@ export function defineStoryCreate(component: StoryBlock, story: any) {
  * });
  */
 export function defineStoryUpdate<
-  const TBlock extends StoryBlock,
+  const TBlock extends RootBlock,
   const TBlocks extends Block = never,
 >(component: TBlock, story: StoryUpdateInput<TBlock, TBlocks>): StoryUpdate<TBlock, TBlocks>;
 
-export function defineStoryUpdate(component: StoryBlock, story: any) {
+export function defineStoryUpdate(component: RootBlock, story: any) {
   const { content, ...rest } = story;
   return {
     ...rest,

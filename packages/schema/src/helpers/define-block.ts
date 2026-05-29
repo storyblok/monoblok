@@ -4,13 +4,13 @@ import type {
   BlockSchemaInput,
   ComponentCreate,
   ComponentUpdate,
-  NestableBlocks,
-  RootBlocks,
+  NestableBlock,
+  RootBlock,
   SchemaArrayToRecord,
 } from '../generated/types/block';
 import type { Prettify } from '../utils/prettify';
 
-export type { Block, BlockSchema, BlockSchemaInput, ComponentCreate, ComponentUpdate, NestableBlocks, RootBlocks, SchemaArrayToRecord };
+export type { Block, BlockSchema, BlockSchemaInput, NestableBlock, RootBlock, SchemaArrayToRecord };
 
 const BLOCK_DEFAULTS = {
   id: 1,

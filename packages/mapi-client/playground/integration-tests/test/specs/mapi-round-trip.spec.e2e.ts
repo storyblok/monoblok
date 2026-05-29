@@ -9,7 +9,7 @@
  *  4. Zod schemas generated from the OpenAPI spec accept real API responses.
  *
  * Run manually (never in CI):
- *   pnpm --filter @storyblok/playground-mapi-schema test:e2e
+ *   pnpm --filter @storyblok/mapi-integration-tests test:e2e
  *
  * Requires .env.qa-engineer-manual at the repo root with:
  *   STORYBLOK_TOKEN=<personal-access-token>

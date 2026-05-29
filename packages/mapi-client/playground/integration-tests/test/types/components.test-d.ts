@@ -2,6 +2,7 @@ import { defineBlock, defineBlockCreate, defineBlockUpdate, defineField } from '
 import { type Component as ComponentMapi, createManagementApiClient } from '@storyblok/management-api-client';
 import { describe, expectTypeOf, it } from 'vitest';
 
+// Nestable block — not a root story type
 const teaserComponent = defineBlock({
   name: 'teaser',
   schema: [
@@ -10,6 +11,7 @@ const teaserComponent = defineBlock({
   ],
 });
 
+// Root content type, not nestable
 const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
@@ -56,6 +58,7 @@ describe('components.get response shape', () => {
     const result = await client.components.get(123);
 
     if (result.data?.component) {
+      // components.get() returns the wrapper Component (= Block), matching the wire shape
       expectTypeOf(result.data.component.id).toEqualTypeOf<ComponentMapi['id']>();
       expectTypeOf(result.data.component.name).toEqualTypeOf<ComponentMapi['name']>();
       expectTypeOf(result.data.component).toHaveProperty('schema');
@@ -86,6 +89,7 @@ describe('defineBlock result used in .withTypes() interface', () => {
     const result = await client.stories.get(123);
 
     if (result.data?.story) {
+      // Only page is a root component (is_root: true); teaser is nestable-only
       expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page'>();
     }
   });
@@ -99,6 +103,7 @@ describe('defineBlock result used in .withTypes() interface', () => {
       if (story.content.component === 'page') {
         if (story.content.teasers) {
           for (const teaser of story.content.teasers) {
+            // teasers whitelists only the teaser component
             expectTypeOf(teaser.component).toEqualTypeOf<'teaser'>();
           }
         }

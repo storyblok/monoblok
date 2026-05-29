@@ -4,13 +4,10 @@ import type { AssetUploadRequest } from '@storyblok/management-api-client';
 export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate };
 
 /**
- * CLI extension of mapi-client's AssetUploadRequest.
- * Uses `AssetUploadRequest` (which combines `AssetUpdate` metadata fields with
- * `short_filename` for uploads) rather than the schema `AssetCreate` (which has
- * `filename`). Adds the local asset's identity (`id` and the original `filename`)
- * used for manifest-based local↔remote mapping; both are ignored by the
- * mapi-client create/upload call (which derives the upload name from
- * `short_filename`).
+ * CLI upload payload. Extends mapi-client's `AssetUploadRequest` (which carries
+ * `short_filename` — the name the API uploads the file under) with the local
+ * asset's identity: `id` and `filename` are kept only for manifest-based
+ * local↔remote mapping and are ignored by the create/upload call.
  * `internal_tags_list` is the server-managed (read-only) tag detail carried in
  * pulled sidecars; it is used to translate source-space tag names to
  * target-space IDs and is stripped before the create/upload call.

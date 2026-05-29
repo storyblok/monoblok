@@ -47,8 +47,8 @@ const traverseAndMapBySchema = (
     const fieldRefMapper = typeof fieldType === 'string' ? fieldRefMappers[fieldType] : undefined;
 
     if (fieldRefMapper) {
-      dataNew[fieldName] = fieldRefMapper(fieldValue as any, {
-        schema: fieldSchema as Field | undefined,
+      dataNew[fieldName] = fieldRefMapper(fieldValue as Record<string, unknown>, {
+        schema: fieldSchema,
         schemas,
         maps,
         fieldRefMappers,

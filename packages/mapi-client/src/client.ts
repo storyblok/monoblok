@@ -293,7 +293,6 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     assetFolders: createAssetFoldersResource(deps),
     assets: createAssetsResource(deps),
     componentFolders: createComponentFoldersResource(deps),
-    components: createComponentsResource(deps),
     datasourceEntries: createDatasourceEntriesResource(deps),
     datasources: createDatasourcesResource(deps),
     delete: httpDelete,
@@ -324,6 +323,7 @@ export type ManagementApiClient<
   TComponents extends Component = Component,
   DefaultThrowOnError extends boolean = false,
 > = ReturnType<typeof buildResources<DefaultThrowOnError>> & {
+  components: ReturnType<typeof createComponentsResource<TComponents, DefaultThrowOnError>>;
   stories: ReturnType<typeof createStoriesResource<TComponents, DefaultThrowOnError>>;
   /**
    * Returns the same client instance cast to a version that narrows story content
@@ -351,6 +351,7 @@ export const createManagementApiClient = <
   const { deps, resources } = createManagementApiClientBase(config);
   const self: ManagementApiClient<Component, DefaultThrowOnError> = {
     ...resources,
+    components: createComponentsResource<Component, DefaultThrowOnError>(deps),
     stories: createStoriesResource<Component, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
       return self as unknown as ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;

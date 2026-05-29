@@ -10,6 +10,7 @@ export type {
   AssetListQuery,
   AssetUpdate,
   BlokContent,
+  Component,
   ComponentCreate,
   ComponentFolder,
   ComponentFolderCreate,
@@ -32,14 +33,6 @@ export type {
   StoryUpdate,
   User,
 } from '@storyblok/management-api-client';
-
-/**
- * `Component` mirrors the raw MAPI response shape (loose `schema`), which is what
- * the SDK actually returns from `client.components.list()`. The SDK's public
- * `Component` alias (= strict `Block`) is intended for user-authored schemas via
- * `defineBlock`, not for arbitrary server responses.
- */
-export type { RawComponent as Component } from '@storyblok/management-api-client';
 
 /**
  * Interface representing the default options for a CLI command.

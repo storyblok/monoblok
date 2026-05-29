@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
  * Vitest config for end-to-end tests that hit the real Storyblok Management API.
  *
  * These tests are NOT run in CI. Trigger them manually:
- *   pnpm --filter @storyblok/playground-mapi-schema test:e2e
+ *   pnpm --filter @storyblok/mapi-integration-tests test:e2e
  *
  * Prerequisites:
  *   - A .env.qa-engineer-manual file at the repo root with STORYBLOK_TOKEN and STORYBLOK_SPACE_ID.

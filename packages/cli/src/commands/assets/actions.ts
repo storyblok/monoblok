@@ -269,22 +269,10 @@ export const createAsset = async (
 ): Promise<Asset> => {
   try {
     const client = getMapiClient();
-    // Strip read-only fields that may come from local sidecar JSON.
-    const {
-      id: _id,
-      filename: _filename,
-      space_id: _spaceId,
-      created_at: _createdAt,
-      updated_at: _updatedAt,
-      file: _file,
-      deleted_at: _deletedAt,
-      content_length: _contentLength,
-      content_type: _contentType,
-      permanently_deleted: _permanentlyDeleted,
-      locked: _locked,
-      internal_tags_list: _internalTagsList,
-      ...assetBody
-    } = asset as AssetUpload & Partial<Asset>;
+    // `id`/`filename` are local-only identity fields (manifest mapping); drop
+    // them so only upload fields reach the API. Read-only `Asset` fields are
+    // already projected away upstream by `toAssetUpload`.
+    const { id: _id, filename: _filename, ...assetBody } = asset;
     return await client.assets.create({
       body: assetBody,
       file: fileBuffer,

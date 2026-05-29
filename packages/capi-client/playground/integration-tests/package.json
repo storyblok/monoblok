@@ -1,5 +1,5 @@
 {
-  "name": "@storyblok/playground-capi-schema",
+  "name": "@storyblok/capi-integration-tests",
   "type": "module",
   "version": "0.0.0",
   "private": true,

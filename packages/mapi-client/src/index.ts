@@ -33,7 +33,6 @@ export type {
   AssetFolderCreate,
   AssetFolderUpdate,
   AssetUpdate,
-  Component as RawComponent,
   ComponentFolder,
   ComponentFolderCreate,
   ComponentFolderUpdate,
@@ -61,7 +60,7 @@ export type {
   Block as Component,
   ComponentCreate,
   ComponentUpdate,
-  RootBlocks as RootComponents,
+  RootBlock as RootComponents,
 } from './generated/types/block';
 export type { Field } from './generated/types/field';
 

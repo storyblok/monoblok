@@ -1,9 +1,9 @@
 import { getDatasourceById, listDatasources } from '../generated/capi/sdk.gen';
 import type {
-  GetDatasourceByIdData as DatasourcesGetData,
-  GetDatasourceByIdResponses as DatasourcesGetResponses,
-  ListDatasourcesData as DatasourcesListData,
-  ListDatasourcesResponses as DatasourcesListResponses,
+  GetDatasourceByIdData,
+  GetDatasourceByIdResponses,
+  ListDatasourcesData,
+  ListDatasourcesResponses,
 } from '../generated/capi/types.gen';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
@@ -12,14 +12,14 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
 
   return {
     get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
-      id: DatasourcesGetData['path']['id'],
-      options: { query?: DatasourcesGetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourcesGetResponses[200], ThrowOnError>> => {
+      id: GetDatasourceByIdData['path']['id'],
+      options: { query?: GetDatasourceByIdData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<GetDatasourceByIdResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = `/v2/cdn/datasources/${id}`;
-      return requestWithCache<DatasourcesGetResponses[200], ThrowOnError>('GET', requestPath, query ?? {}, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<GetDatasourceByIdResponses[200], ThrowOnError>('GET', requestPath, query ?? {}, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceById({
+          asApiResponse<GetDatasourceByIdResponses[200], ThrowOnError>(getDatasourceById({
             client,
             path: { id },
             query: requestQuery,
@@ -31,13 +31,13 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
     },
 
     list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
-      options: { query?: DatasourcesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourcesListResponses[200], ThrowOnError>> => {
+      options: { query?: ListDatasourcesData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<ListDatasourcesResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/datasources';
-      return requestWithCache<DatasourcesListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<ListDatasourcesResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourcesListResponses[200], ThrowOnError>(listDatasources({
+          asApiResponse<ListDatasourcesResponses[200], ThrowOnError>(listDatasources({
             client,
             query: requestQuery,
             signal,

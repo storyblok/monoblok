@@ -11,12 +11,21 @@ import type {
   RichtextFieldValue,
   TableFieldValue,
 } from './_sources';
+import type { Prettify } from './_utils';
 import type { Block } from './block';
 
 export type { Field };
 export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
 
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
+/**
+ * Registry of all blocks in the space, used to resolve nested `bloks` fields.
+ * A `Block` union resolves nested content against the registry; `NoBlocks`
+ * (the default) leaves it loose (`BlockContentBase`).
+ */
+type NoBlocks = false;
+
+/** True when `T` is the un-narrowed base `Block` (i.e. no specific block was supplied). */
+type IsBaseBlock<T> = [Block] extends [T] ? true : false;
 
 type RequiredFieldKeys<T> = {
   [K in keyof T]: T[K] extends { required: true } ? K : never
@@ -30,9 +39,10 @@ type OptionalFieldKeys<T> = Exclude<keyof T, RequiredFieldKeys<T>>;
  * runtime shape (any block, `_editable` optional). With a schema-typed
  * `TBlock`, fields are narrowed per the block's schema.
  */
-export type BlockContent<TBlock extends Block = Block, TBlocks = false> =
-  [Block] extends [TBlock]
+export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks> =
+  IsBaseBlock<TBlock> extends true
     ? BlockContentBase
+    // distribute over each member of the `TBlock` union
     : TBlock extends any
       ? Prettify<
         { _uid: string; component: TBlock['name']; _editable?: string }
@@ -42,9 +52,10 @@ export type BlockContent<TBlock extends Block = Block, TBlocks = false> =
       : never;
 
 /** Input variant of {@link BlockContent} for write operations (creating/updating stories via the MAPI). `_uid` is optional. */
-export type BlockContentInput<TBlock extends Block = Block, TBlocks = false> =
-  [Block] extends [TBlock]
+export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks> =
+  IsBaseBlock<TBlock> extends true
     ? BlockContentInputBase
+    // distribute over each member of the `TBlock` union
     : TBlock extends any
       ? Prettify<
         { _uid?: string; component: TBlock['name']; _editable?: string }
@@ -55,7 +66,7 @@ export type BlockContentInput<TBlock extends Block = Block, TBlocks = false> =
 
 export type BlocksFieldValue<
   TBlock extends Block = Block,
-  TBlocks = false,
+  TBlocks = NoBlocks,
 > = BlockContent<TBlock, TBlocks>[];
 
 /** Union of all valid Storyblok field type discriminants (e.g., `text`, `bloks`). */
@@ -87,7 +98,9 @@ type IsNestable<T> =
       : true;
 
 type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: ReadonlyArray<infer TWhitelisted extends string> }
-  ? TBlocks extends { name: TWhitelisted } ? TBlocks : never
+  // keep only the registry blocks named in the whitelist
+  ? Extract<TBlocks, { name: TWhitelisted }>
+  // no whitelist: distribute over the registry, keeping nestable blocks
   : TBlocks extends any
     ? IsNestable<TBlocks> extends true ? TBlocks : never
     : never;
@@ -95,9 +108,11 @@ type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: Rea
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
-  TBlocks = false,
+  TBlocks = NoBlocks,
 > = Prettify<
   TField extends { type: 'bloks' }
+    // guard `never` first: `[never] extends [Block]` is structurally true, so an
+    // empty registry would otherwise be mistaken for a populated one
     ? [TBlocks] extends [never]
         ? BlockContentBase[]
         : [TBlocks] extends [Block]
@@ -109,9 +124,11 @@ export type FieldValue<
 /** Resolves a field definition to its input value type (write). */
 export type FieldValueInput<
   TField extends Field = Field,
-  TBlocks = false,
+  TBlocks = NoBlocks,
 > = Prettify<
   TField extends { type: 'bloks' }
+    // guard `never` first: `[never] extends [Block]` is structurally true, so an
+    // empty registry would otherwise be mistaken for a populated one
     ? [TBlocks] extends [never]
         ? BlockContentInputBase[]
         : [TBlocks] extends [Block]

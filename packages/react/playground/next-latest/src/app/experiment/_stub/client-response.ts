@@ -44,6 +44,7 @@ export const initialStory: Story = {
             _uid: 'quote-1',
             component: 'server-quote',
             quote: 'A server component rendered from inside a client one via the SDK registry.',
+            authorId: 'author-1',
           },
         ],
       },

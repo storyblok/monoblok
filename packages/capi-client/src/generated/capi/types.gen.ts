@@ -4,11 +4,6 @@ export type ClientOptions = {
     baseUrl: 'https://api.storyblok.com' | 'https://api-us.storyblok.com' | 'https://api-ca.storyblok.com' | 'https://api-au.storyblok.com' | 'https://app.storyblokchina.cn' | (string & {});
 };
 
-export type CdnSnapshotQuery = {
-    cv?: number;
-    version?: 'draft' | 'published';
-};
-
 export type Alternate = {
     /**
      * Translated slug (or parent slug if not installed).
@@ -501,6 +496,16 @@ export type ListDatasourcesData = {
     path?: never;
     query?: {
         /**
+         * Filter by publication status:
+         * - `draft` – Retrieves draft stories
+         * - `published` – Retrieves published stories
+         */
+        version?: 'draft' | 'published';
+        /**
+         * Access a particular cached version of a published story using its Unix timestamp.
+         */
+        cv?: number;
+        /**
          * Search string.
          */
         search?: string;
@@ -553,7 +558,18 @@ export type GetDatasourceByIdData = {
          */
         id: string;
     };
-    query?: CdnSnapshotQuery;
+    query?: {
+        /**
+         * Filter by publication status:
+         * - `draft` – Retrieves draft stories
+         * - `published` – Retrieves published stories
+         */
+        version?: 'draft' | 'published';
+        /**
+         * Access a particular cached version of a published story using its Unix timestamp.
+         */
+        cv?: number;
+    };
     url: '/v2/cdn/datasources/{id}';
 };
 
@@ -702,7 +718,14 @@ export type GetLinkByUuIdResponse = GetLinkByUuIdResponses[keyof GetLinkByUuIdRe
 export type GetSpaceData = {
     body?: never;
     path?: never;
-    query?: CdnSnapshotQuery;
+    query?: {
+        /**
+         * Filter by publication status:
+         * - `draft` – Retrieves draft stories
+         * - `published` – Retrieves published stories
+         */
+        version?: 'draft' | 'published';
+    };
     url: '/v2/cdn/spaces/me';
 };
 
@@ -842,11 +865,11 @@ export type GetStoryByIdResponses = {
         rels?: Array<Story>;
         links?: Array<LinkWithFullSlug | Link | Story>;
         /**
-         * Array of story UUIDs when relation resolution limit is exceeded
+         * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
          */
         rel_uuids?: Array<string>;
         /**
-         * An array of all UUIDs of linked stories
+         * Array of story UUIDs returned instead of `links` when link resolution exceeds the space resolve limit
          */
         link_uuids?: Array<string>;
     };
@@ -1075,6 +1098,10 @@ export type ListStoriesData = {
          */
         resolve_level?: 2;
         /**
+         * When set, returns only experiment variant stories
+         */
+        only_variants?: 'true';
+        /**
          * Non existing sort parameter
          */
         non_existing_sort_by?: string;
@@ -1135,11 +1162,11 @@ export type ListStoriesResponses = {
         rels?: Array<Story>;
         links?: Array<LinkWithFullSlug | Link | Story>;
         /**
-         * Array of story UUIDs when relation resolution limit is exceeded
+         * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
          */
         rel_uuids?: Array<string>;
         /**
-         * An array of all UUIDs of linked stories
+         * Array of story UUIDs returned instead of `links` when link resolution exceeds the space resolve limit
          */
         link_uuids?: Array<string>;
     };

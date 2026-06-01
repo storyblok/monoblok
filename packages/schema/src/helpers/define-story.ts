@@ -56,6 +56,7 @@ const MAPI_STORY_DEFAULTS = {
   deleted_at: null,
   published: null,
   default_root: null,
+  // Legacy upstream typo field; keep it alongside `disable_fe_editor`.
   disble_fe_editor: false,
   disable_fe_editor: false,
   unpublished_changes: null,

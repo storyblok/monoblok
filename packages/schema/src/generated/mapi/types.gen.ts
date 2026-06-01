@@ -253,6 +253,9 @@ export type AssetUpdate = {
     };
 };
 
+/**
+ * Folder for organizing assets within a space
+ */
 export type AssetFolder = {
     id: number;
     name: string;
@@ -277,6 +280,9 @@ export type AssetFolderUpdate = {
     parent_id?: number | null;
 };
 
+/**
+ * Logical grouping of components for organizational purposes
+ */
 export type ComponentFolder = {
     /**
      * Unique ID.
@@ -423,6 +429,9 @@ export type DatasourceEntryUpdate = {
     position?: number;
 };
 
+/**
+ * A single key-value entry within a datasource
+ */
 export type MapiDatasourceEntry = {
     /**
      * ID.
@@ -1068,6 +1077,7 @@ export type User = {
      * Organization details. Returns empty object {} when user has no organization.
      */
     org: {
+        id?: number;
         /**
          * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
          */
@@ -1168,6 +1178,9 @@ export type UserUpdate = {
     disclaimer_ids?: Array<number>;
 };
 
+/**
+ * Custom role definition controlling permissions within a space
+ */
 export type SpaceRole = {
     /**
      * The unique identifier of the space role.

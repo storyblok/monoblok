@@ -1057,42 +1057,6 @@ export type BulkResetPasswordRequest = {
     };
 };
 
-export type BulkWriteMetricsRequest = {
-    /**
-     * Array of pre-aggregated metric data rows
-     */
-    metrics: Array<{
-        /**
-         * ID of the experiment variant
-         */
-        variant_id: number;
-        /**
-         * Date for this metric data (ISO 8601)
-         */
-        date: string;
-        /**
-         * Name of the tracked event
-         */
-        event_name: string;
-        /**
-         * Total number of events
-         */
-        event_count: number;
-        /**
-         * Number of unique visitors
-         */
-        unique_visitors: number;
-        /**
-         * Sum of event values (for mean metrics)
-         */
-        value_sum?: number;
-        /**
-         * Sum of squared event values (for variance calculation)
-         */
-        value_sum_squares?: number;
-    }>;
-};
-
 export type ComponentBulkUpdateRequest = {
     /**
      * Array of component IDs to update
@@ -1100,9 +1064,9 @@ export type ComponentBulkUpdateRequest = {
     ids: Array<number>;
     component: {
         /**
-         * Component group ID
+         * Component group ID. Pass null to move components to the root.
          */
-        component_group_id: number;
+        component_group_id?: number | null;
     };
 };
 
@@ -1450,7 +1414,7 @@ export type CreateBackupRequest = {
     entities?: Array<string>;
 };
 
-export type CreateCollaboratorRequest = {
+export type CreateCollaboratorRequest = unknown & {
     /**
      * Email address or username of the user to add as collaborator
      */
@@ -1464,7 +1428,7 @@ export type CreateCollaboratorRequest = {
      */
     space_role_id?: number | null;
     /**
-     * Array of space role IDs to assign (for multi role)
+     * Array of space role IDs to assign. Required (non-empty) when role is 'multi'.
      */
     space_role_ids?: Array<number> | null;
     /**
@@ -1742,35 +1706,6 @@ export type CreateDiscussionRequest = {
                 [key: string]: unknown;
             }>;
         };
-    };
-};
-
-export type CreateExperimentMetricDefinitionRequest = {
-    experiment_metric_definition: {
-        /**
-         * Name of the metric definition
-         */
-        name: string;
-        /**
-         * Optional description of the metric
-         */
-        description?: string;
-        /**
-         * Event name that this metric tracks
-         */
-        event_name: string;
-        /**
-         * Type of metric calculation
-         */
-        metric_type: 'proportion' | 'mean';
-        /**
-         * Whether lower values are better
-         */
-        inverse?: boolean;
-        /**
-         * Unit of measurement for mean metrics
-         */
-        unit?: string;
     };
 };
 
@@ -2116,6 +2051,10 @@ export type CreateOrganizationRequest = {
          */
         ideation_room_enabled?: boolean;
         /**
+         * Enable A/B Testing for org spaces
+         */
+        ab_testing_enabled?: boolean;
+        /**
          * Enable confidentiality disclaimer
          */
         confidentiality_disclaimer_enabled?: boolean;
@@ -2151,6 +2090,26 @@ export type CreateOrganizationRequest = {
          * List of restricted regions
          */
         restricted_regions?: Array<string>;
+        /**
+         * Default shared-asset metadata fields that must be filled in when uploading. Allowed values: alt, title, copyright, source.
+         */
+        required_shared_asset_fields?: Array<string>;
+        /**
+         * Shared-asset metadata fields that are translatable. Allowed values: alt, title, copyright, source.
+         */
+        shared_asset_translatable_asset_fields?: Array<string>;
+        /**
+         * Custom metadata schema applied to shared assets across the organization
+         */
+        shared_asset_custom_meta_data_schema?: Array<{
+            key?: string;
+            display_name?: string;
+            regex?: string | null;
+            regex_message?: string | null;
+            required?: boolean;
+            translatable?: boolean;
+            filetypes?: Array<string>;
+        }>;
         billing_address?: BillingAddressRequest;
         custom_settings?: CustomSettingsRequest;
     };
@@ -3107,6 +3066,45 @@ export type MarkDiscussionCommentAsReadRequest = {
     };
 };
 
+export type OrgActivitiesIndexResponse = {
+    /**
+     * List of org activities with associated trackable and user info
+     */
+    activities: Array<{
+        activity: OrgActivity;
+        /**
+         * Info about the tracked resource
+         */
+        trackable: {
+            /**
+             * ID of the tracked resource (empty string if asset was deleted)
+             */
+            id: number | string;
+            /**
+             * Name or type of the tracked resource
+             */
+            name: string;
+            /**
+             * Asset folder ID (only present for Asset trackable type)
+             */
+            asset_folder_id?: number | null;
+        };
+        /**
+         * User who performed the activity, null if the user no longer exists
+         */
+        user: {
+            id: number;
+            avatar?: string | null;
+            userid?: string | null;
+            friendly_name?: string | null;
+            /**
+             * Whether the user is active in this org
+             */
+            active: boolean;
+        } | null;
+    }>;
+};
+
 export type OrgSpace = {
     /**
      * Space ID.
@@ -3193,6 +3191,9 @@ export type PartnerRequest = {
         show_finances?: boolean;
         show_crm?: boolean;
         address?: {
+            /**
+             * VAT/tax number. Optional for EU countries — when provided it must be a valid EU VAT number. Required for Switzerland and must match the CHE format (e.g. CHE123456789).
+             */
             tax_number?: string;
             city?: string;
             country?: string;
@@ -3541,6 +3542,54 @@ export type ScopedPersonalAccessTokensIndexResponse = {
     personal_access_tokens: Array<ScopedPersonalAccessToken>;
 };
 
+export type SharedAssetsTrafficStatisticsResponse = {
+    /**
+     * List of org-level shared assets with traffic statistics
+     */
+    assets: Array<{
+        /**
+         * Asset ID
+         */
+        id: number;
+        /**
+         * Alt text for the asset
+         */
+        alt?: string | null;
+        /**
+         * Asset folder ID
+         */
+        asset_folder_id?: number | null;
+        /**
+         * Content length in bytes
+         */
+        content_length?: number | null;
+        /**
+         * MIME type of the asset
+         */
+        content_type?: string | null;
+        /**
+         * Deletion timestamp
+         */
+        deleted_at?: string | null;
+        /**
+         * Asset filename/URL
+         */
+        filename: string;
+        /**
+         * Whether the asset is private
+         */
+        is_private: boolean;
+        /**
+         * Space ID the asset belongs to
+         */
+        space_id?: number | null;
+        /**
+         * Total bytes transferred for this asset
+         */
+        total_bytes: number;
+    }>;
+};
+
 export type SharedInternalTagRequest = {
     shared_internal_tag: {
         /**
@@ -3551,6 +3600,10 @@ export type SharedInternalTagRequest = {
          * The type of object this tag is associated with
          */
         object_type?: 'asset' | 'component' | 'idea';
+        /**
+         * The id of the root Shared Library asset_folder this tag is scoped to
+         */
+        asset_folder_id: number;
     };
 };
 
@@ -4400,35 +4453,6 @@ export type UpdateDiscussionRequest = {
     };
 };
 
-export type UpdateExperimentMetricDefinitionRequest = {
-    experiment_metric_definition: {
-        /**
-         * Name of the metric definition
-         */
-        name?: string;
-        /**
-         * Optional description of the metric
-         */
-        description?: string;
-        /**
-         * Event name that this metric tracks
-         */
-        event_name?: string;
-        /**
-         * Type of metric calculation
-         */
-        metric_type?: 'proportion' | 'mean';
-        /**
-         * Whether lower values are better
-         */
-        inverse?: boolean;
-        /**
-         * Unit of measurement for mean metrics
-         */
-        unit?: string;
-    };
-};
-
 export type UpdateExperimentRequest = {
     experiment: {
         /**
@@ -4662,6 +4686,10 @@ export type UpdateOrganizationRequest = {
          */
         ideation_room_enabled?: boolean;
         /**
+         * Enable A/B Testing for org spaces
+         */
+        ab_testing_enabled?: boolean;
+        /**
          * Enable confidentiality disclaimer
          */
         confidentiality_disclaimer_enabled?: boolean;
@@ -4699,6 +4727,26 @@ export type UpdateOrganizationRequest = {
          * List of restricted regions
          */
         restricted_regions?: Array<string>;
+        /**
+         * Default shared-asset metadata fields that must be filled in when uploading. Allowed values: alt, title, copyright, source.
+         */
+        required_shared_asset_fields?: Array<string>;
+        /**
+         * Shared-asset metadata fields that are translatable. Allowed values: alt, title, copyright, source.
+         */
+        shared_asset_translatable_asset_fields?: Array<string>;
+        /**
+         * Custom metadata schema applied to shared assets across the organization
+         */
+        shared_asset_custom_meta_data_schema?: Array<{
+            key?: string;
+            display_name?: string;
+            regex?: string | null;
+            regex_message?: string | null;
+            required?: boolean;
+            translatable?: boolean;
+            filetypes?: Array<string>;
+        }>;
     };
 };
 
@@ -5953,6 +6001,10 @@ export type Activity = {
      * ID of the space where the activity occurred
      */
     space_id: number;
+    /**
+     * ID of the tenant for shared (org-level) activities; null for space activities
+     */
+    tenant_id?: number | null;
     /**
      * Creation timestamp (format is ISO 8601 standard in UTC).
      */
@@ -8485,6 +8537,7 @@ export type Org = {
     ai_credits_used?: number;
     ideation_room_enabled: boolean;
     concept_room_enabled: boolean;
+    ab_testing_enabled?: boolean;
     ai_translation_enabled: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
@@ -8560,6 +8613,76 @@ export type Org = {
     } | null | {
         [key: string]: unknown;
     } | null | string | null | Array<string> | null | string | null | undefined;
+};
+
+export type OrgActivity = {
+    /**
+     * Unique snowflake ID of the activity
+     */
+    id: number;
+    /**
+     * Activity key (e.g. 'asset.created')
+     */
+    key?: string | null;
+    /**
+     * ID of the tracked resource
+     */
+    trackable_id?: number | null;
+    /**
+     * Type of the tracked resource
+     */
+    trackable_type?: string | null;
+    /**
+     * ID of the user who performed the action
+     */
+    owner_id?: number | null;
+    /**
+     * Type of the owner
+     */
+    owner_type?: string | null;
+    /**
+     * ID of the space where the activity originated
+     */
+    space_id?: number | null;
+    /**
+     * ID of the org tenant
+     */
+    tenant_id?: number | null;
+    /**
+     * ID of the recipient
+     */
+    recipient_id?: number | null;
+    /**
+     * Type of the recipient
+     */
+    recipient_type?: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at?: string | null;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at?: string | null;
+    /**
+     * Additional metadata for the activity
+     */
+    parameters: {
+        [key: string]: unknown;
+    };
+    /**
+     * Past-tense action derived from the activity key (e.g. 'created', 'updated')
+     */
+    action?: string | null;
+    /**
+     * The user who performed the activity
+     */
+    user?: {
+        id: number;
+        avatar: string | null;
+        friendly_name: string;
+        active: boolean;
+    } | null;
 };
 
 export type OrgApp = {
@@ -10786,6 +10909,7 @@ export type User = {
      * Organization details. Returns empty object {} when user has no organization.
      */
     org: {
+        id?: number;
         /**
          * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
          */
@@ -11667,6 +11791,7 @@ export type OrgWritable = {
     ai_credits_used?: number;
     ideation_room_enabled: boolean;
     concept_room_enabled: boolean;
+    ab_testing_enabled?: boolean;
     ai_translation_enabled: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
@@ -12170,6 +12295,7 @@ export type UserWritable = {
      * Organization details. Returns empty object {} when user has no organization.
      */
     org: {
+        id?: number;
         /**
          * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
          */
@@ -20852,368 +20978,6 @@ export type UpdateDiscussionResponses = {
 
 export type UpdateDiscussionResponse = UpdateDiscussionResponses[keyof UpdateDiscussionResponses];
 
-export type ListExperimentMetricDefinitionsData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-    };
-    query?: {
-        /**
-         * The paginated page number.
-         */
-        page?: number;
-        /**
-         * Number of items per page.
-         */
-        per_page?: number;
-    };
-    url: '/v1/spaces/{space_id}/experiment_metric_definitions';
-};
-
-export type ListExperimentMetricDefinitionsErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type ListExperimentMetricDefinitionsError = ListExperimentMetricDefinitionsErrors[keyof ListExperimentMetricDefinitionsErrors];
-
-export type ListExperimentMetricDefinitionsResponses = {
-    /**
-     * Metric definitions retrieved successfully.
-     */
-    200: {
-        experiment_metric_definitions: Array<ExperimentMetricDefinition>;
-    };
-};
-
-export type ListExperimentMetricDefinitionsResponse = ListExperimentMetricDefinitionsResponses[keyof ListExperimentMetricDefinitionsResponses];
-
-export type CreateExperimentMetricDefinitionData = {
-    body: CreateExperimentMetricDefinitionRequest;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/experiment_metric_definitions';
-};
-
-export type CreateExperimentMetricDefinitionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: {
-        [key: string]: Array<string>;
-    };
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CreateExperimentMetricDefinitionError = CreateExperimentMetricDefinitionErrors[keyof CreateExperimentMetricDefinitionErrors];
-
-export type CreateExperimentMetricDefinitionResponses = {
-    /**
-     * Metric definition created successfully
-     */
-    201: {
-        experiment_metric_definition: ExperimentMetricDefinition;
-    };
-};
-
-export type CreateExperimentMetricDefinitionResponse = CreateExperimentMetricDefinitionResponses[keyof CreateExperimentMetricDefinitionResponses];
-
-export type DeleteExperimentMetricDefinitionData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the metric definition
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/experiment_metric_definitions/{id}';
-};
-
-export type DeleteExperimentMetricDefinitionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: unknown;
-    /**
-     * Rate limit reached
-     */
-    429: unknown;
-};
-
-export type DeleteExperimentMetricDefinitionResponses = {
-    /**
-     * Metric definition deleted successfully
-     */
-    204: void;
-};
-
-export type DeleteExperimentMetricDefinitionResponse = DeleteExperimentMetricDefinitionResponses[keyof DeleteExperimentMetricDefinitionResponses];
-
-export type GetExperimentMetricDefinitionData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the metric definition
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/experiment_metric_definitions/{id}';
-};
-
-export type GetExperimentMetricDefinitionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Invalid token or no custom complexity.
-     */
-    404: Array<string>;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type GetExperimentMetricDefinitionError = GetExperimentMetricDefinitionErrors[keyof GetExperimentMetricDefinitionErrors];
-
-export type GetExperimentMetricDefinitionResponses = {
-    /**
-     * Metric definition retrieved successfully.
-     */
-    200: {
-        experiment_metric_definition: ExperimentMetricDefinition;
-    };
-};
-
-export type GetExperimentMetricDefinitionResponse = GetExperimentMetricDefinitionResponses[keyof GetExperimentMetricDefinitionResponses];
-
-export type UpdateExperimentMetricDefinitionData = {
-    body: UpdateExperimentMetricDefinitionRequest;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the metric definition
-         */
-        id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/experiment_metric_definitions/{id}';
-};
-
-export type UpdateExperimentMetricDefinitionErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type UpdateExperimentMetricDefinitionError = UpdateExperimentMetricDefinitionErrors[keyof UpdateExperimentMetricDefinitionErrors];
-
-export type UpdateExperimentMetricDefinitionResponses = {
-    /**
-     * Metric definition updated successfully.
-     */
-    200: {
-        experiment_metric_definition: ExperimentMetricDefinition;
-    };
-};
-
-export type UpdateExperimentMetricDefinitionResponse = UpdateExperimentMetricDefinitionResponses[keyof UpdateExperimentMetricDefinitionResponses];
-
-export type GetExperimentMetricsData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the experiment
-         */
-        experiment_id: number;
-    };
-    query?: {
-        /**
-         * Start date for the traffic period (defaults to 1 year ago).
-         */
-        start_date?: string;
-        /**
-         * Optional planned end date (ISO 8601). Must be in the future.
-         */
-        end_date?: string;
-    };
-    url: '/v1/spaces/{space_id}/experiments/{experiment_id}/metrics';
-};
-
-export type GetExperimentMetricsErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type GetExperimentMetricsError = GetExperimentMetricsErrors[keyof GetExperimentMetricsErrors];
-
-export type GetExperimentMetricsResponses = {
-    /**
-     * Analytics retrieved successfully.
-     */
-    200: {
-        experiment_metrics: {
-            summary?: {
-                [key: string]: unknown;
-            };
-            statistical_winner?: {
-                [key: string]: unknown;
-            } | null;
-            variants?: Array<{
-                [key: string]: unknown;
-            }>;
-            charts?: Array<{
-                [key: string]: unknown;
-            }>;
-        };
-    };
-};
-
-export type GetExperimentMetricsResponse = GetExperimentMetricsResponses[keyof GetExperimentMetricsResponses];
-
-export type CreateExperimentMetricsData = {
-    body: BulkWriteMetricsRequest;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the experiment
-         */
-        experiment_id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/experiments/{experiment_id}/metrics';
-};
-
-export type CreateExperimentMetricsErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: {
-        error?: string;
-    };
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CreateExperimentMetricsError = CreateExperimentMetricsErrors[keyof CreateExperimentMetricsErrors];
-
-export type CreateExperimentMetricsResponses = {
-    /**
-     * Metrics written successfully
-     */
-    201: unknown;
-};
-
-export type CompleteExperimentWithWinnerData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of the space
-         */
-        space_id: number;
-        /**
-         * Numeric ID of the experiment
-         */
-        id: number;
-    };
-    query: {
-        /**
-         * ID of the winning variant.
-         */
-        variant_id: number;
-    };
-    url: '/v1/spaces/{space_id}/experiments/{id}/complete_with_winner';
-};
-
-export type CompleteExperimentWithWinnerErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Unable to remove space - user is not a space admin.
-     */
-    422: {
-        error?: string;
-    };
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CompleteExperimentWithWinnerError = CompleteExperimentWithWinnerErrors[keyof CompleteExperimentWithWinnerErrors];
-
-export type CompleteExperimentWithWinnerResponses = {
-    /**
-     * Experiment completed with winner.
-     */
-    200: {
-        experiment: ExperimentDetail;
-    };
-};
-
-export type CompleteExperimentWithWinnerResponse = CompleteExperimentWithWinnerResponses[keyof CompleteExperimentWithWinnerResponses];
-
 export type GetExperimentResultsData = {
     body?: never;
     path: {
@@ -21280,6 +21044,10 @@ export type PushExperimentResultsErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -21325,6 +21093,10 @@ export type CreateExperimentStoryErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -21375,6 +21147,10 @@ export type DeleteExperimentStoryErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -21434,6 +21210,10 @@ export type CreateStoryMappingErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -21497,6 +21277,10 @@ export type DeleteStoryMappingErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -21789,6 +21573,10 @@ export type ActivateExperimentErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -21835,6 +21623,10 @@ export type PauseExperimentErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -21880,6 +21672,10 @@ export type CompleteExperimentErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -21932,6 +21728,10 @@ export type SelectExperimentWinnerErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -21955,6 +21755,61 @@ export type SelectExperimentWinnerResponses = {
 };
 
 export type SelectExperimentWinnerResponse = SelectExperimentWinnerResponses[keyof SelectExperimentWinnerResponses];
+
+export type CompleteExperimentWithWinnerData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the experiment
+         */
+        id: number;
+    };
+    query: {
+        /**
+         * ID of the winning variant.
+         */
+        variant_id: number;
+    };
+    url: '/v1/spaces/{space_id}/experiments/{id}/complete_with_winner';
+};
+
+export type CompleteExperimentWithWinnerErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        error?: string;
+    };
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type CompleteExperimentWithWinnerError = CompleteExperimentWithWinnerErrors[keyof CompleteExperimentWithWinnerErrors];
+
+export type CompleteExperimentWithWinnerResponses = {
+    /**
+     * Experiment completed with winner.
+     */
+    200: {
+        experiment: ExperimentDetail;
+    };
+};
+
+export type CompleteExperimentWithWinnerResponse = CompleteExperimentWithWinnerResponses[keyof CompleteExperimentWithWinnerResponses];
 
 export type ListFieldTypesData = {
     body?: never;
@@ -24606,6 +24461,121 @@ export type GetOAuthUserInfoResponses = {
 
 export type GetOAuthUserInfoResponse = GetOAuthUserInfoResponses[keyof GetOAuthUserInfoResponses];
 
+export type ListOrgActivitiesData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Filter activities created on or after this date (inclusive).
+         */
+        created_at_gte?: string;
+        /**
+         * Filter activities created on or before this date (inclusive).
+         */
+        created_at_lte?: string;
+        /**
+         * Comma-separated list of trackable types to filter by
+         */
+        types?: string;
+        /**
+         * Comma-separated list of trackable IDs to filter by
+         */
+        by_trackable_ids?: string;
+        /**
+         * Comma-separated list of owner user IDs to filter by
+         */
+        by_owner_ids?: string;
+        /**
+         * Partial match filter on the activity key
+         */
+        key_like?: string;
+        /**
+         * Filter activities initiated from a specific space
+         */
+        by_space_id?: number;
+    };
+    url: '/v1/orgs/me/activities';
+};
+
+export type ListOrgActivitiesErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListOrgActivitiesError = ListOrgActivitiesErrors[keyof ListOrgActivitiesErrors];
+
+export type ListOrgActivitiesResponses = {
+    /**
+     * Activities returned successfully
+     */
+    200: OrgActivitiesIndexResponse;
+};
+
+export type ListOrgActivitiesResponse = ListOrgActivitiesResponses[keyof ListOrgActivitiesResponses];
+
+export type GetOrgActivityData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the activity
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/orgs/me/activities/{id}';
+};
+
+export type GetOrgActivityErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type GetOrgActivityError = GetOrgActivityErrors[keyof GetOrgActivityErrors];
+
+export type GetOrgActivityResponses = {
+    /**
+     * Activity retrieved successfully
+     */
+    200: {
+        activity: OrgActivity;
+        /**
+         * User who performed the activity, null if the user no longer exists
+         */
+        user: {
+            id: number;
+            avatar?: string | null;
+            userid?: string | null;
+            friendly_name?: string | null;
+            /**
+             * Whether the user is active in this org
+             */
+            active: boolean;
+        } | null;
+    };
+};
+
+export type GetOrgActivityResponse = GetOrgActivityResponses[keyof GetOrgActivityResponses];
+
 export type ListOrgAppsData = {
     body?: never;
     path?: never;
@@ -25811,6 +25781,40 @@ export type GetAssetsTrafficStatisticsResponses = {
 };
 
 export type GetAssetsTrafficStatisticsResponse = GetAssetsTrafficStatisticsResponses[keyof GetAssetsTrafficStatisticsResponses];
+
+export type GetSharedAssetsTrafficStatisticsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Start date for the traffic period (defaults to 1 year ago).
+         */
+        start_date?: string;
+        /**
+         * Optional planned end date (ISO 8601). Must be in the future.
+         */
+        end_date?: string;
+    };
+    url: '/v1/orgs/me/statistics/shared_assets_traffic';
+};
+
+export type GetSharedAssetsTrafficStatisticsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type GetSharedAssetsTrafficStatisticsError = GetSharedAssetsTrafficStatisticsErrors[keyof GetSharedAssetsTrafficStatisticsErrors];
+
+export type GetSharedAssetsTrafficStatisticsResponses = {
+    /**
+     * Shared assets traffic statistics returned
+     */
+    200: SharedAssetsTrafficStatisticsResponse;
+};
+
+export type GetSharedAssetsTrafficStatisticsResponse = GetSharedAssetsTrafficStatisticsResponses[keyof GetSharedAssetsTrafficStatisticsResponses];
 
 export type BulkResetPasswordData = {
     body: BulkResetPasswordRequest;
@@ -29419,9 +29423,9 @@ export type UpdateSpaceSharedAssetErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Unable to remove space - user is not a space admin.
+     * Forbidden
      */
-    422: ErrorsObject;
+    403: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -29963,7 +29967,11 @@ export type ListSharedInternalTagsData = {
          */
         space_id: number;
     };
-    query?: {
+    query: {
+        /**
+         * Target asset folder ID.
+         */
+        asset_folder_id: number;
         /**
          * Search term
          */
@@ -30068,7 +30076,12 @@ export type DeleteSharedInternalTagData = {
          */
         id: number;
     };
-    query?: never;
+    query: {
+        /**
+         * Target asset folder ID.
+         */
+        asset_folder_id: number;
+    };
     url: '/v1/spaces/{space_id}/shared_internal_tags/{id}';
 };
 
@@ -30149,7 +30162,11 @@ export type UpdateSharedInternalTagResponse = UpdateSharedInternalTagResponses[k
 export type ListOrgSharedInternalTagsData = {
     body?: never;
     path?: never;
-    query?: {
+    query: {
+        /**
+         * Target asset folder ID.
+         */
+        asset_folder_id: number;
         /**
          * Search term
          */
@@ -30241,7 +30258,12 @@ export type DeleteOrgSharedInternalTagData = {
          */
         id: number;
     };
-    query?: never;
+    query: {
+        /**
+         * Target asset folder ID.
+         */
+        asset_folder_id: number;
+    };
     url: '/v1/orgs/me/shared_internal_tags/{id}';
 };
 

@@ -353,6 +353,9 @@ export type AssetUpdate = {
     };
 };
 
+/**
+ * Folder for organizing assets within a space
+ */
 export type AssetFolder = {
     id: number;
     name: string;
@@ -377,6 +380,9 @@ export type AssetFolderUpdate = {
     parent_id?: number | null;
 };
 
+/**
+ * Logical grouping of components for organizational purposes
+ */
 export type ComponentFolder = {
     /**
      * Unique ID.
@@ -413,6 +419,9 @@ export type ComponentFolderCreate = {
 
 export type ComponentFolderUpdate = ComponentFolderCreate;
 
+/**
+ * A named collection of key-value entries used for structured content options
+ */
 export type MapiDatasource = {
     /**
      * ID.
@@ -504,6 +513,9 @@ export type DatasourceUpdate = {
     }>;
 };
 
+/**
+ * A single key-value entry within a datasource
+ */
 export type MapiDatasourceEntry = {
     /**
      * ID.
@@ -1195,6 +1207,7 @@ export type User = {
      * Organization details. Returns empty object {} when user has no organization.
      */
     org: {
+        id?: number;
         /**
          * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
          */
@@ -1338,6 +1351,9 @@ export type StoryLocalizedPath = {
     translated_slug?: string;
 };
 
+/**
+ * A dimension for datasource entries, enabling localized or context-specific values
+ */
 export type Dimension = {
     /**
      * ID
@@ -1365,6 +1381,9 @@ export type Dimension = {
     updated_at?: string;
 };
 
+/**
+ * Custom role definition controlling permissions within a space
+ */
 export type SpaceRole = {
     /**
      * The unique identifier of the space role.

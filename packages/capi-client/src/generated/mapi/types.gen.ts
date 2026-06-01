@@ -175,6 +175,9 @@ export type Space = {
     } | string | null | Array<SpaceRole> | string | null | string | null | undefined;
 };
 
+/**
+ * Custom role definition controlling permissions within a space
+ */
 export type SpaceRole = {
     /**
      * The unique identifier of the space role.

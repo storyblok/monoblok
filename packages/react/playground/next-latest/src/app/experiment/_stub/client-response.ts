@@ -48,6 +48,7 @@ export const initialStory: Story = {
             _uid: 'quote-1',
             component: 'server-quote',
             quote: 'A server component passed as children into a client one.',
+            authorId: 'author-1',
           },
         ],
       },

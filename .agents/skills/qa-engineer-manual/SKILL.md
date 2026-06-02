@@ -31,6 +31,9 @@ You seed Storyblok QA spaces with predefined test scenarios. The space is always
 - Storyblok CLI built: `pnpm nx build storyblok`
 - `.env.qa-engineer-manual` file in repo root with `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID`
 
+> [!NOTE]
+> The seed resolves the CLI and the `.storyblok` staging directory from `git rev-parse --show-toplevel`, i.e. the repo of your current working directory. To exercise changes in a worktree, build the CLI in that worktree and run the seed from inside it; otherwise it falls back to the main checkout's `dist`.
+
 ```bash
 # .env.qa-engineer-manual
 STORYBLOK_TOKEN=your_personal_access_token

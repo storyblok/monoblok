@@ -12,9 +12,9 @@ import { transferAssets } from '../actions';
 const transferCmd = assetsCommand
   .command('transfer <asset-id...>')
   .option('-s, --space <space>', 'space ID')
-  .option('--folder-id <folderId>', 'destination asset folder ID in the global library')
+  .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
-  .description(`Transfer space assets into the organization's global asset library.`);
+  .description(`Transfer space assets into the organization's shared asset library.`);
 
 transferCmd
   .action(async (assetIds: string[], options, command) => {

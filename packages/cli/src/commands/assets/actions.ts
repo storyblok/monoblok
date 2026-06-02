@@ -285,14 +285,14 @@ export const createAsset = async (
 };
 
 /**
- * Transfers a space-local asset into the org's global (shared) library.
+ * Transfers a space-local asset into the org's shared library.
  *
  * UX wording is "transfer"; the backend endpoint is still `convert`
  * (`AssetsServices::ConvertToSharedAsset`). Drop this mapping when the backend
- * ships the `convert` -> `transfer` rename. One-way only (space to org).
+ * ships the `convert` -> `transfer` rename. One-way only (space to shared).
  *
  * A 403 comes from the backend authorization policy (`AssetPolicy#convert?`):
- * the target folder must exist in the global asset library and the space must
+ * the target folder must exist in the shared asset library and the space must
  * have write access to it. Surface that as a friendly hint instead of a raw
  * API error.
  */
@@ -316,7 +316,7 @@ export const transferAsset = async (
       'transfer_asset',
       error,
       status === 403
-        ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the global asset library and that this space has write access to it.`
+        ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the shared asset library and that this space has write access to it.`
         : undefined,
     );
   }

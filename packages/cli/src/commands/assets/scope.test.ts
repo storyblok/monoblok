@@ -7,8 +7,8 @@ describe('resolveScopeBaseDir', () => {
     expect(resolveScopeBaseDir(scope, undefined).replace(/\\/g, '/')).toContain('assets/12345');
   });
 
-  it('returns the org/<libraryId> subtree for a library scope', () => {
+  it('returns the shared/<libraryId> subtree for a library scope', () => {
     const scope: Scope = { kind: 'library', libraryId: 7 };
-    expect(resolveScopeBaseDir(scope, undefined).replace(/\\/g, '/')).toContain('assets/org/7');
+    expect(resolveScopeBaseDir(scope, undefined).replace(/\\/g, '/')).toContain('assets/shared/7');
   });
 });

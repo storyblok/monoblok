@@ -23,12 +23,12 @@ export interface Library {
 
 /**
  * Resolves the on-disk base dir for a scope:
- * `.storyblok/assets/<space_id>/` or `.storyblok/assets/org/<library_id>/`.
+ * `.storyblok/assets/<space_id>/` or `.storyblok/assets/shared/<library_id>/`.
  */
 export function resolveScopeBaseDir(scope: Scope, basePath: string | undefined): string {
   const segment = scope.kind === 'space'
     ? String(scope.spaceId)
-    : join('org', String(scope.libraryId));
+    : join('shared', String(scope.libraryId));
   return resolveCommandPath(directories.assets, segment, basePath);
 }
 

@@ -481,22 +481,22 @@ describe('assets pull command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  describe('global library targets', () => {
+  describe('shared library targets', () => {
     const writtenPaths = () => Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
 
-    it('pull --target=org writes each readable library into org/<id>/', async () => {
+    it('pull --target=shared writes each readable library into shared/<id>/', async () => {
       const libraryAsset = { id: 90, filename: 'https://a.storyblok.com/g/1/x.png', asset_folder_id: 7 };
       preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }]);
       preconditions.canFetchSharedAssetPages([libraryAsset]);
       preconditions.canDownloadAssets([libraryAsset]);
 
-      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'org']);
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'shared']);
 
-      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+      expect(writtenPaths().some(p => p.includes('assets/shared/7/x_90'))).toBe(true);
       expect(process.exitCode).toBe(0);
     });
 
-    it('pull --target=space makes no org calls', async () => {
+    it('pull --target=space makes no shared calls', async () => {
       const sharedSpy = vi.fn();
       preconditions.canFetchRemoteFolders([]);
       preconditions.canFetchRemoteAssetPages([[makeMockAsset()]]);
@@ -521,7 +521,7 @@ describe('assets pull command', () => {
       await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'all']);
 
       expect(assetFileExists(spaceAsset)).toBeTruthy();
-      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+      expect(writtenPaths().some(p => p.includes('assets/shared/7/x_90'))).toBe(true);
     });
 
     it('pull with-referenced pulls space assets and only referenced shared assets', async () => {
@@ -537,10 +537,10 @@ describe('assets pull command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
 
-      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+      expect(writtenPaths().some(p => p.includes('assets/shared/7/x_90'))).toBe(true);
     });
 
-    it('pull with-referenced with no local stories makes no org calls', async () => {
+    it('pull with-referenced with no local stories makes no shared calls', async () => {
       const sharedSpy = vi.fn();
       preconditions.canFetchRemoteFolders([]);
       preconditions.canFetchRemoteAssetPages([[makeMockAsset()]]);

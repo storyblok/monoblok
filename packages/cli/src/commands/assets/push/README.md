@@ -72,5 +72,26 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 | `--data <data>` | Inline asset data as JSON (supports Asset fields, `metadata` maps to `meta_data`) | - |
 | `--short-filename <short-filename>` | Override the asset filename (defaults to the source filename) | - |
 | `--folder <folderId>` | Destination asset folder ID | - |
+| `--target <target>` | Push destination: `space`, `org`, or `all` | `space` (single asset), `all` (bulk) |
+| `--library <libraryId>` | Destination library ID. Required for a single-asset `--target=org`, rejected with `--target=space` | - |
 | `--cleanup` | Delete local assets and metadata after a successful push | `false` |
 | `--update-stories` | Update file references in stories if necessary | `false` |
+
+## Global libraries
+
+A library is a top-level shared asset folder in the organization, with per-space read or write access. Push assets to a library with `--target=org`:
+
+```bash
+# Push a single local file into library 7.
+storyblok assets push --space YOUR_SPACE_ID --target org --library 7 ./path/to/image.png
+
+# Push every local subtree: the space and each writable library.
+storyblok assets push --space YOUR_SPACE_ID --target all
+
+# Push only the local library subtrees.
+storyblok assets push --space YOUR_SPACE_ID --target org
+```
+
+Library assets live under `.storyblok/assets/org/<library_id>/`, each subtree with its own `manifest.jsonl`. Bulk pushes read every `org/<library_id>/` subtree present on disk. Library-scoped tags (`internal_tag_ids`) are remapped to the library's shared tags, creating any that are missing, and `meta_data` round-trips unchanged.
+
+If the active space has only read access to a target library, the push fails fast, names the library, and writes no partial state. Libraries the space cannot access are skipped silently.

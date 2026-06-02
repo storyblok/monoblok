@@ -4,10 +4,14 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 
 ## Subcommands
 
-- [`pull`](./pull/README.md): Download assets from your Storyblok space.
-- [`push`](./push/README.md): Upload assets to your Storyblok space.
+- [`pull`](./pull/README.md): Download assets from your Storyblok space, and optionally from the organization's global libraries.
+- [`push`](./push/README.md): Upload assets to your Storyblok space, or to the organization's global libraries.
 
 > See each subcommand for detailed usage, options, and examples.
+
+## Global libraries
+
+Both `pull` and `push` support the organization's global asset libraries (top-level shared asset folders with per-space read or write access) via the `--target` flag. Library assets live under `.storyblok/assets/org/<library_id>/`, parallel to the space subtree at `.storyblok/assets/<space_id>/`. See the [`push`](./push/README.md#global-libraries) and [`pull`](./pull/README.md#global-libraries) docs for details.
 
 ## Common Workflows
 

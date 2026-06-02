@@ -6,11 +6,6 @@ import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
 import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
 
-export interface AssetInternalTag {
-  id: number;
-  name: string;
-}
-
 /**
  * Fetches a single page of assets from Storyblok Management API.
  */
@@ -45,12 +40,12 @@ export const fetchAssets = async ({ spaceId, params }: {
 };
 
 /**
- * Fetches every internal tag of type `asset` for the given space.
+ * Fetches the space's internal tags of type `asset` keyed by name.
  *
  * Used by `assets push` to translate source-space tag names carried in pulled
  * sidecars into the target space's tag IDs.
  */
-export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInternalTag[]> => {
+export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<AssetInternalTagsByName> => {
   try {
     const client = getMapiClient();
     const tags = await fetchAllPages(
@@ -61,19 +56,15 @@ export const fetchAssetInternalTags = async (spaceId: string): Promise<AssetInte
       }),
       data => data?.internal_tags ?? [],
     );
-    return tags.filter((tag): tag is AssetInternalTag => typeof tag?.id === 'number' && typeof tag?.name === 'string');
+    return new Map(
+      tags
+        .filter((tag): tag is { id: number; name: string } => typeof tag?.id === 'number' && typeof tag?.name === 'string')
+        .map(tag => [tag.name, tag.id]),
+    );
   }
   catch (maybeError) {
     handleAPIError('pull_asset_internal_tags', toError(maybeError));
   }
-};
-
-/**
- * Fetches asset internal tags keyed by name for the given space.
- */
-export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<AssetInternalTagsByName> => {
-  const tags = await fetchAssetInternalTags(spaceId);
-  return new Map(tags.map(tag => [tag.name, tag.id]));
 };
 
 export const downloadFile = async (filename: string) => {

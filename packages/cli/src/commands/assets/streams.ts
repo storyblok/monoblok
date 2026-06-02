@@ -604,10 +604,7 @@ const mapInternalTagIds = (
       mapped.push(String(targetId));
     }
     else {
-      onUnmappedTag?.({
-        sourceId,
-        ...(typeof sourceName === 'string' ? { name: sourceName } : {}),
-      });
+      onUnmappedTag?.({ sourceId, name: sourceName });
     }
   }
   return mapped;
@@ -687,9 +684,7 @@ const processAsset = async ({
     : undefined;
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
-  const sourceTags = 'internal_tags_list' in localAsset
-    ? localAsset.internal_tags_list
-    : undefined;
+  const sourceTags = localAsset.internal_tags_list;
   const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): string[] =>
     maps.assetInternalTagsByName
       ? mapInternalTagIds(sourceIds, sourceTags, maps.assetInternalTagsByName, onUnmappedTag)
@@ -731,9 +726,7 @@ const processAsset = async ({
     // source-space IDs are translated to target-space IDs. When the
     // source has no tag metadata, omit the field entirely so mapi-client skips
     // the follow-up metadata PUT for tagless assets.
-    const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset as AssetUpload & {
-      internal_tags_list?: ReadonlyArray<{ id: number; name: string }> | null;
-    };
+    const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset;
     const mappedTagIds = 'internal_tag_ids' in localAsset
       ? resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;

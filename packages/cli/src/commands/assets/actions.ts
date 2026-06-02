@@ -1,7 +1,7 @@
 import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
-import { toError } from '../../utils/error/error';
+import { getResponseStatus, toError } from '../../utils/error/error';
 import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
 import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
@@ -308,10 +308,11 @@ export const transferAsset = async (
     return data;
   }
   catch (maybeError) {
-    const status = (maybeError as { response?: { status?: number } })?.response?.status;
+    const error = toError(maybeError);
+    const status = getResponseStatus(maybeError);
     handleAPIError(
       'transfer_asset',
-      maybeError,
+      error,
       status === 403
         ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the global asset library and that this space has write access to it.`
         : undefined,

@@ -33,6 +33,10 @@ These sibling repos may not be available; ignore them if absent. Check `../story
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths). Prefer named imports.
 - **Linting:** Always lint and type-check affected packages after making changes. Default to `lint:fix` or `--fix` and fix remaining issues.
 
+## OpenAPI codegen
+
+`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Specs are git-ignored and pinned by SHA in `spec.lock`. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. CI must not run `generate`. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo. See `tools/openapi-codegen/README.md`.
+
 ## Architecture Decision Records
 
 When a significant architectural decision is made, add a concise new ADR in `adr/` following the existing numbering convention (`0001-`, `0002-`, …).

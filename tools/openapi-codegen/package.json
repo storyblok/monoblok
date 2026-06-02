@@ -1,0 +1,58 @@
+{
+  "name": "@storyblok/openapi-codegen",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Internal: owns the OpenAPI spec cache and the shared code generator used by consumer packages. Specs are git-ignored; the upstream commit SHA is pinned in spec.lock. Not published.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./templates/*": "./templates/*"
+  },
+  "main": "./dist/index.mjs",
+  "files": [
+    "spec.lock",
+    "src",
+    "templates"
+  ],
+  "scripts": {
+    "pull": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts",
+    "pull:update": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts --update",
+    "verify": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/verify.ts",
+    "build": "tsdown",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "{projectRoot}/spec.lock",
+          "{projectRoot}/src/**",
+          "{projectRoot}/scripts/**",
+          "{projectRoot}/specs/**",
+          "{projectRoot}/templates/**",
+          "{projectRoot}/.openapi-cache/**",
+          "{projectRoot}/tsdown.config.ts"
+        ],
+        "outputs": ["{projectRoot}/dist"],
+        "cache": true,
+        "dependsOn": []
+      }
+    }
+  },
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.92.3",
+    "pathe": "^2.0.3",
+    "typescript": "5.8.3"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@types/node": "^24.11.0",
+    "eslint": "^9.39.2",
+    "tsdown": "^0.20.3"
+  }
+}

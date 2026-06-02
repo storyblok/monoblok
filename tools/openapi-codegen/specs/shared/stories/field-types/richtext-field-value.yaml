@@ -1,0 +1,18 @@
+# See: https://www.storyblok.com/docs/api/management/components/possible-field-types
+# See: https://www.storyblok.com/docs/packages/storyblok-richtext
+type: object
+description: Richtext field type - structured rich text document (ProseMirror format)
+required:
+  - type
+properties:
+  type:
+    type: string
+    enum: [doc]
+    description: Root node type for richtext documents
+  content:
+    type: array
+    description: Array of richtext nodes (paragraphs, headings, lists, bloks, etc.)
+    items:
+      type: object
+      additionalProperties: true
+      description: Richtext node structure varies by type (paragraph, heading, bullet_list, ordered_list, blockquote, code_block, horizontal_rule, hard_break, image, blok, etc.)

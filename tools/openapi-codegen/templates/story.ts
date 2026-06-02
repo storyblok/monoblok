@@ -1,0 +1,22 @@
+import type { CapiStory as CapiStoryGenerated } from './_sources';
+import type { Block, RootBlock } from './block';
+import type { BlockContent } from './field';
+
+type Prettify<T> = { [K in keyof T]: T[K] } & {};
+
+type CapiStoryWithSchemaContent<
+  TBlock extends RootBlock = RootBlock,
+  TBlocks = false,
+> = Omit<CapiStoryGenerated, 'content'> & { content: BlockContent<TBlock, TBlocks> };
+
+/** A Storyblok CDN (CAPI) story. */
+export type Story<
+  TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TBlocks = false,
+> = Prettify<
+  [TBlockOrBlocks] extends [RootBlock]
+    ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks>
+    : TBlocks extends false
+      ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks>
+      : never
+>;

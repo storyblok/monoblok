@@ -1,0 +1,26 @@
+type: object
+description: Universal identity and display properties shared by every field type
+properties:
+  type:
+    type: string
+    description: Field type discriminant
+  id:
+    type: string
+    description: The ID of the field
+  display_name:
+    type: string
+    description: Human-readable display name
+  description:
+    type: string
+    description: Field description displayed in the editor
+  tooltip:
+    type: boolean
+    description: Whether to display the description as a tooltip
+  pos:
+    type: integer
+    description: Position of the field within the block
+  conditional_settings:
+    type: array
+    description: Conditions set on the field for conditional visibility
+    items:
+      type: object

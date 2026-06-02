@@ -13,6 +13,7 @@ import { createDatasourcesResource } from './resources/datasources';
 import { createInternalTagsResource } from './resources/internal-tags';
 import { createPresetsResource } from './resources/presets';
 import { createSharedAssetFoldersResource } from './resources/shared-asset-folders';
+import { createSharedAssetsResource } from './resources/shared-assets';
 import { createSpacesResource } from './resources/spaces';
 import { createStoriesResource } from './resources/stories';
 import { createUsersResource } from './resources/users';
@@ -181,6 +182,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     presets: createPresetsResource(deps),
     put: httpPut,
     sharedAssetFolders: createSharedAssetFoldersResource(deps),
+    sharedAssets: createSharedAssetsResource(deps),
     spaces: createSpacesResource(deps),
     stories: createStoriesResource(deps),
     users: createUsersResource({ client, wrapRequest }),
@@ -190,6 +192,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
 export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
 
 export type { AccessLevel, AssetFolderAccess, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderGetResponse, SharedAssetFolderListResponse, SharedAssetFolderUpdate } from './resources/shared-asset-folders';
+export type { SharedAssetCreate, SharedAssetListQuery, SharedAssetListResponse, SharedAssetUploadRequest } from './resources/shared-assets';
 export type {
   ApiResponse,
   Asset,

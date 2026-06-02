@@ -1,5 +1,6 @@
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
+import { Option } from 'commander';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';
@@ -43,7 +44,7 @@ const createSummary = (): PullSummary => ({
 const pullCmd = assetsCommand
   .command('pull')
   .option('-s, --space <space>', 'space ID')
-  .option('--target <target>', 'pull source: with-referenced | all | space | shared', 'with-referenced')
+  .addOption(new Option('--target <target>', 'pull source: with-referenced | all | space | shared').choices(['with-referenced', 'all', 'space', 'shared']).default('with-referenced'))
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('--asset-token <token>', 'Asset token for accessing private assets')

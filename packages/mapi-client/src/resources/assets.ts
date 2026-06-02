@@ -272,5 +272,30 @@ export function createAssetsResource(deps: MapiResourceDeps) {
       return wrapRequest<BulkRestoreResponses[200], ThrowOnError>(() =>
         assetsApi.bulkRestore({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
+    /**
+     * Converts a space-local asset into a shared (org-level) asset.
+     *
+     * Wraps `POST /v1/spaces/{space_id}/assets/{asset_id}/convert`, which takes
+     * the destination folder as the required `target_asset_folder_id` query
+     * param and no request body. One-way only (space to org).
+     *
+     * Not part of the generated SDK, so this issues a raw `client.post`.
+     */
+    convertToShared<ThrowOnError extends boolean = false>(
+      assetId: number | string,
+      options: { query: { target_asset_folder_id: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<Asset, ThrowOnError>> {
+      const { query, signal, path, throwOnError, fetchOptions } = options;
+      const resolvedSpaceId = getSpaceId(path);
+      return wrapRequest<Asset, ThrowOnError>(() =>
+        client.post({
+          url: '/v1/spaces/{space_id}/assets/{asset_id}/convert',
+          path: { space_id: resolvedSpaceId, asset_id: assetId },
+          query,
+          signal,
+          ...(throwOnError === undefined ? {} : { throwOnError }),
+          ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
+        }), throwOnError);
+    },
   };
 }

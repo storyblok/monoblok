@@ -75,6 +75,36 @@ describe('assets.list()', () => {
   });
 });
 
+describe('assets.convertToShared()', () => {
+  it('should post to the convert endpoint with target_asset_folder_id and return the converted asset', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id/convert', ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          id: 42,
+          filename: 'https://a.storyblok.com/g/99/500x500/shared.png',
+        });
+      }),
+    );
+    const client = createManagementApiClient({
+      personalAccessToken: 'test-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    const result = await client.assets.convertToShared(42, {
+      query: { target_asset_folder_id: 7 },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.filename).toContain('/g/99/');
+    expect(capturedUrl).toContain('/v1/spaces/123/assets/42/convert');
+    expect(capturedUrl).toContain('target_asset_folder_id=7');
+  });
+});
+
 describe('assets.get()', () => {
   it('should successfully retrieve a single asset', async () => {
     const client = createManagementApiClient({

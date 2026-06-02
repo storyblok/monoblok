@@ -22,6 +22,7 @@ import {
   makeGetAssetFolderAPITransport,
   makeGetSharedAssetAPITransport,
   makeGetSharedAssetFolderAPITransport,
+  makeSharedTagRemapper,
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
   makeUpdateSharedAssetAPITransport,
@@ -239,9 +240,17 @@ pushCmd
         /**
          * Upsert Assets
          */
+        // For library pushes, remap local tag IDs to the library's shared tags
+        // (creating missing ones) before uploading.
+        const baseCreateAsset = scope.kind === 'library' && !options.dryRun
+          ? (() => {
+              const remapTags = makeSharedTagRemapper({ spaceId: targetSpace, libraryId: scope.libraryId });
+              return async (asset: AssetUpload, fileBuffer: ArrayBuffer) => transports.createAsset(await remapTags(asset), fileBuffer);
+            })()
+          : transports.createAsset;
         const createAssetTransport = options.dryRun
           ? async (asset: AssetUpload) => asset as Asset
-          : transports.createAsset;
+          : baseCreateAsset;
         const updateAssetTransport = options.dryRun
           ? async () => {}
           : transports.updateAsset;

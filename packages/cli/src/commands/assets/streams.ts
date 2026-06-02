@@ -7,7 +7,7 @@ import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
-import { createAsset, createAssetFolder, createSharedAsset, createSharedAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, fetchSharedAssetFolders, fetchSharedAssets, getSharedAsset, getSharedAssetFolder, updateAsset, updateAssetFolder, updateSharedAsset, updateSharedAssetFolder } from './actions';
+import { createAsset, createAssetFolder, createSharedAsset, createSharedAssetFolder, createSharedInternalTag, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, fetchSharedAssetFolders, fetchSharedAssets, fetchSharedInternalTags, getSharedAsset, getSharedAssetFolder, updateAsset, updateAssetFolder, updateSharedAsset, updateSharedAssetFolder } from './actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetMap, AssetUpdate, AssetUpload, UnmappedAssetInternalTag } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -945,3 +945,58 @@ export const makeUpdateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: 
 
 export const makeGetSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): GetAssetFolderTransport =>
   folderId => getSharedAssetFolder(folderId, { spaceId });
+
+export type SharedTagRemapper = (asset: AssetUpload) => Promise<AssetUpload>;
+
+/**
+ * Builds a transform that rewrites a local asset's `internal_tag_ids` to the
+ * matching shared (library-scoped) tag IDs before a library push, creating any
+ * missing tags in the library (`asset_folder_id` = library root). Uses the
+ * asset's `internal_tags_list` (`[{ id, name }]`) to map local IDs to names.
+ * The library's tag list is fetched once and cached per push run.
+ */
+export const makeSharedTagRemapper = ({ spaceId, libraryId }: { spaceId: string; libraryId: number }): SharedTagRemapper => {
+  let libraryTags: { id: number; name: string }[] | undefined;
+  const ensureTags = async () => {
+    if (!libraryTags) {
+      libraryTags = await fetchSharedInternalTags({ spaceId, libraryId });
+    }
+    return libraryTags;
+  };
+
+  return async (asset) => {
+    const localAsset = asset as AssetUpload & { internal_tags_list?: { id: number; name: string }[] };
+    const localTagIds = localAsset.internal_tag_ids;
+    if (!localTagIds || localTagIds.length === 0) {
+      return asset;
+    }
+
+    const nameByLocalId = new Map((localAsset.internal_tags_list ?? []).map(tag => [String(tag.id), tag.name]));
+    const existing = await ensureTags();
+    const idByName = new Map(existing.map(tag => [tag.name, tag.id]));
+
+    const remapped: string[] = [];
+    for (const localId of localTagIds) {
+      const name = nameByLocalId.get(String(localId));
+      if (!name) {
+        continue;
+      }
+      let sharedId = idByName.get(name);
+      if (sharedId === undefined) {
+        const created = await createSharedInternalTag({ name, object_type: 'asset', asset_folder_id: libraryId }, { spaceId });
+        if (created?.id) {
+          sharedId = created.id;
+          idByName.set(name, sharedId);
+          libraryTags?.push({ id: created.id, name });
+        }
+      }
+      if (sharedId !== undefined) {
+        remapped.push(String(sharedId));
+      }
+    }
+
+    // Drop the local-only `internal_tags_list` and replace the tag IDs.
+    const { internal_tags_list: _omit, ...rest } = localAsset;
+    return { ...rest, internal_tag_ids: remapped };
+  };
+};

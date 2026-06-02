@@ -77,6 +77,8 @@ transferCmd
       return;
     }
 
+    // Per-ID errors are captured individually below, so unlike push/pull this
+    // command needs no outer fatalError try/catch wrapper.
     const lock = new Sema(12);
     const results = await Promise.all(ids.map(async (assetId): Promise<TransferResult> => {
       await lock.acquire();

@@ -307,13 +307,12 @@ export const transferAsset = async (
   }
   catch (maybeError) {
     const status = (maybeError as { response?: { status?: number } })?.response?.status;
-    if (status === 403) {
-      handleAPIError(
-        'transfer_asset',
-        toError(maybeError),
-        `Transferring assets to the global library is not available on your current plan.`,
-      );
-    }
-    handleAPIError('transfer_asset', toError(maybeError));
+    handleAPIError(
+      'transfer_asset',
+      toError(maybeError),
+      status === 403
+        ? `Transferring assets to the global library is not available on your current plan.`
+        : undefined,
+    );
   }
 };

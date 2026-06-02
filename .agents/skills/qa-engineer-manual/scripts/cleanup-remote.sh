@@ -7,9 +7,12 @@ set -euo pipefail
 #   bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --space <spaceId>
 #
 # Shared (org-level) asset libraries are global, so a full wipe is unsafe.
-# --shared cleans ONLY the QA-created shared resources in a library: those whose
-# name starts with the QA prefix (`${QA_SHARED_PREFIX}`). It never deletes the
-# library root or any unprefixed org content.
+# --shared cleans every shared resource that belongs to ONE library, scoped by
+# folder membership (not by name): all assets in the library's folder tree, all
+# internal tags scoped to the library, and all child folders. Transferred assets
+# keep their original names, so folder scoping catches them where a name prefix
+# would not. It never deletes the library root folder (org context only) or any
+# resource outside the given library.
 #
 #   bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 
@@ -81,54 +84,76 @@ delete_ids() {
 }
 
 # ---------------------------------------------------------------------------
-# Shared (org-level) library cleanup — prefix-scoped, never a full wipe
+# Shared (org-level) library cleanup — folder-scoped, never a full wipe
 # ---------------------------------------------------------------------------
 if [ "${shared_mode}" = true ]; then
   require_library_id
-  prefix="${QA_SHARED_PREFIX}"
 
-  # 1. Shared internal tags in the library (name prefix-matched).
+  folders_url="https://mapi.storyblok.com/v1/spaces/${space_id}/shared_asset_folders"
+  assets_url="https://mapi.storyblok.com/v1/spaces/${space_id}/shared_assets"
   tags_url="https://mapi.storyblok.com/v1/spaces/${space_id}/shared_internal_tags"
+
+  # Resolve every folder id in the library's tree (root first, then children).
+  # Assets are scoped per folder, so the tree drives which assets get deleted.
+  folders_resp=$(curl -s --retry 3 --retry-delay 1 "${folders_url}/" \
+    -H "Authorization: ${STORYBLOK_TOKEN}")
+  tree_ids=$(printf '%s' "${folders_resp}" | node -e '
+    const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+    const library = parseInt(process.argv[1]);
+    const all = data.shared_asset_folders || [];
+    const parentById = new Map(all.map(f => [f.id, f.parent_id == null ? null : f.parent_id]));
+    const inLibrary = (id) => {
+      const seen = new Set();
+      let cur = id;
+      while (cur != null && !seen.has(cur)) {
+        if (cur === library) return true;
+        seen.add(cur);
+        cur = parentById.get(cur);
+      }
+      return false;
+    };
+    const ids = all.filter(f => f.id !== library && inLibrary(f.id)).map(f => f.id);
+    // Root first so its assets are enumerated even if the folder list is empty.
+    process.stdout.write([library, ...ids].join("\n"));
+  ' "${library_id}")
+
+  # 1. Shared assets in every folder of the library tree (no name filter),
+  #    paginated per folder.
+  while IFS= read -r folder; do
+    [ -z "${folder}" ] && continue
+    while true; do
+      assets_resp=$(curl -s --retry 3 --retry-delay 1 \
+        "${assets_url}/?in_folder=${folder}&page=1&per_page=${per_page}" \
+        -H "Authorization: ${STORYBLOK_TOKEN}")
+      asset_ids=$(printf '%s' "${assets_resp}" | node -e '
+        const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+        process.stdout.write((data.assets || []).map(a => a.id).join("\n"));
+      ')
+      [ -z "${asset_ids}" ] && break
+      read -r bf bd <<< "$(delete_ids "${assets_url}" "${folder}/shared_assets" "" "${asset_ids}")"
+      found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
+      [ "${bd}" -eq 0 ] && break
+    done
+  done <<< "${tree_ids}"
+
+  # 2. Shared internal tags scoped to the library (no name filter).
   tags_resp=$(curl -s --retry 3 --retry-delay 1 "${tags_url}/?asset_folder_id=${library_id}" \
     -H "Authorization: ${STORYBLOK_TOKEN}")
   tag_ids=$(printf '%s' "${tags_resp}" | node -e '
     const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-    const prefix = process.argv[1];
-    const items = (data.internal_tags || []).filter(t => (t.name || "").startsWith(prefix));
-    process.stdout.write(items.map(t => t.id).join("\n"));
-  ' "${prefix}")
+    process.stdout.write((data.internal_tags || []).map(t => t.id).join("\n"));
+  ')
   read -r bf bd <<< "$(delete_ids "${tags_url}" "${library_id}/shared_internal_tags" "?asset_folder_id=${library_id}" "${tag_ids}")"
   found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
 
-  # 2. Shared assets in the library (filename prefix-matched), paginated.
-  assets_url="https://mapi.storyblok.com/v1/spaces/${space_id}/shared_assets"
-  while true; do
-    assets_resp=$(curl -s --retry 3 --retry-delay 1 \
-      "${assets_url}/?in_folder=${library_id}&page=1&per_page=${per_page}" \
-      -H "Authorization: ${STORYBLOK_TOKEN}")
-    asset_ids=$(printf '%s' "${assets_resp}" | node -e '
-      const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-      const prefix = process.argv[1];
-      const name = a => a.short_filename || (a.filename || "").split("/").pop() || "";
-      const items = (data.assets || []).filter(a => name(a).startsWith(prefix));
-      process.stdout.write(items.map(a => a.id).join("\n"));
-    ' "${prefix}")
-    [ -z "${asset_ids}" ] && break
-    read -r bf bd <<< "$(delete_ids "${assets_url}" "${library_id}/shared_assets" "" "${asset_ids}")"
-    found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
-    [ "${bd}" -eq 0 ] && break
-  done
-
-  # 3. Shared child folders under the library (name prefix-matched, never the
-  #    root). Loop so leaf folders are removed before their parents.
-  folders_url="https://mapi.storyblok.com/v1/spaces/${space_id}/shared_asset_folders"
+  # 3. Shared child folders in the library tree (never the root), deepest first
+  #    so leaf folders are removed before their parents.
   while true; do
     folders_resp=$(curl -s --retry 3 --retry-delay 1 "${folders_url}/" \
       -H "Authorization: ${STORYBLOK_TOKEN}")
     folder_ids=$(printf '%s' "${folders_resp}" | node -e '
       const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-      const prefix = process.argv[1];
-      const library = parseInt(process.argv[2]);
+      const library = parseInt(process.argv[1]);
       const all = data.shared_asset_folders || [];
       const parentById = new Map(all.map(f => [f.id, f.parent_id == null ? null : f.parent_id]));
       const inLibrary = (id) => {
@@ -142,13 +167,13 @@ if [ "${shared_mode}" = true ]; then
         return false;
       };
       const items = all.filter(f =>
-        f.id !== library && f.parent_id != null && (f.name || "").startsWith(prefix) && inLibrary(f.id),
+        f.id !== library && f.parent_id != null && inLibrary(f.id),
       );
       // Deepest first: a child has more ancestors than its parent.
       const depth = (id) => { let d = 0, cur = parentById.get(id), seen = new Set(); while (cur != null && !seen.has(cur)) { d++; seen.add(cur); cur = parentById.get(cur); } return d; };
       items.sort((a, b) => depth(b.id) - depth(a.id));
       process.stdout.write(items.map(f => f.id).join("\n"));
-    ' "${prefix}" "${library_id}")
+    ' "${library_id}")
     [ -z "${folder_ids}" ] && break
     read -r bf bd <<< "$(delete_ids "${folders_url}" "${library_id}/shared_asset_folders" "" "${folder_ids}")"
     found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
@@ -156,10 +181,10 @@ if [ "${shared_mode}" = true ]; then
   done
 
   if [ "${found_total}" -eq 0 ]; then
-    printf "clean (no %s* shared resources in library %s)\n" "${prefix}" "${library_id}"
+    printf "clean (no shared resources in library %s)\n" "${library_id}"
   else
-    printf "deleted %s of %s %s* shared resources in library %s\n" \
-      "${deleted_total}" "${found_total}" "${prefix}" "${library_id}"
+    printf "deleted %s of %s shared resources in library %s\n" \
+      "${deleted_total}" "${found_total}" "${library_id}"
   fi
   exit 0
 fi

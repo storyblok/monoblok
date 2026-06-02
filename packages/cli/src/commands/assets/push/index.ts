@@ -241,11 +241,20 @@ pushCmd
          * Upsert Assets
          */
         // For library pushes, remap local tag IDs to the library's shared tags
-        // (creating missing ones) before uploading.
+        // (creating missing ones) and default the asset folder to the library
+        // root before uploading. Shared-asset creation requires an
+        // `asset_folder_id` the space can write to, so a missing one (single
+        // asset without --folder, or a sidecar that omits it) would 403.
         const baseCreateAsset = scope.kind === 'library' && !options.dryRun
           ? (() => {
-              const remapTags = makeSharedTagRemapper({ spaceId: targetSpace, libraryId: scope.libraryId });
-              return async (asset: AssetUpload, fileBuffer: ArrayBuffer) => transports.createAsset(await remapTags(asset), fileBuffer);
+              const { libraryId } = scope;
+              const remapTags = makeSharedTagRemapper({ spaceId: targetSpace, libraryId });
+              return async (asset: AssetUpload, fileBuffer: ArrayBuffer) => {
+                const withFolder = asset.asset_folder_id == null
+                  ? { ...asset, asset_folder_id: libraryId }
+                  : asset;
+                return transports.createAsset(await remapTags(withFolder), fileBuffer);
+              };
             })()
           : transports.createAsset;
         const createAssetTransport = options.dryRun

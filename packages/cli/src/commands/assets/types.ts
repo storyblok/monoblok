@@ -1,6 +1,6 @@
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate } from '../../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate } from '../../types';
 
-export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate };
+export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate };
 
 /**
  * CLI extension of mapi-client's AssetCreate.

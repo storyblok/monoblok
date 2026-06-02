@@ -207,7 +207,9 @@ if [ "${skip_datasources}" = false ] && [ -d "${staging_dir}/datasources/${FAKE_
 fi
 
 if [ "${skip_assets}" = false ] && [ -d "${staging_dir}/assets/${FAKE_ID}" ]; then
-  node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}" > /dev/null 2>&1 &
+  # Seeding is space-scoped: never push to org shared libraries (bulk push
+  # otherwise defaults to --target=all and scans accessible libraries).
+  node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}" --target space > /dev/null 2>&1 &
   bg_pids+=($!)
   bg_labels+=("assets")
 fi

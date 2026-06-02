@@ -44,6 +44,7 @@ vi.spyOn(actions, 'createAsset');
 vi.spyOn(actions, 'updateAsset');
 vi.spyOn(actions, 'createAssetFolder');
 vi.spyOn(actions, 'updateAssetFolder');
+vi.spyOn(actions, 'createSharedAsset');
 vi.spyOn(storyActions, 'fetchStories');
 vi.spyOn(storyActions, 'updateStory');
 
@@ -393,6 +394,65 @@ const preconditions = {
     vol.fromJSON({
       [filePath]: content,
     });
+  },
+  hasLibraries(libraries: { id: number; name: string; accessLevel: 'read' | 'write' }[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_asset_folders`, () =>
+        HttpResponse.json({
+          shared_asset_folders: libraries.map(library => ({
+            id: library.id,
+            name: library.name,
+            parent_id: null,
+            uuid: `u${library.id}`,
+            asset_folder_access: [{ space_id: Number(space), access_level: library.accessLevel }],
+          })),
+        })),
+    );
+  },
+  canUpsertSharedAssets(assets: MockAsset[], {
+    space = DEFAULT_SPACE,
+    libraryId = 7,
+  }: { space?: string; libraryId?: number } = {}) {
+    const sourceName = (asset: MockAsset) => asset.short_filename ?? basename(asset.filename);
+    const remoteAssets = assets.map(asset => ({
+      ...asset,
+      id: getID(),
+      filename: `https://a.storyblok.com/g/1/${sourceName(asset)}`,
+      asset_folder_id: asset.asset_folder_id ?? libraryId,
+    }));
+    server.use(
+      // Step 1: sign (shared uses query params for filename).
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets`, ({ request }) => {
+        const filename = new URL(request.url).searchParams.get('filename');
+        const index = assets.findIndex(asset => sourceName(asset) === filename);
+        if (index === -1) {
+          return HttpResponse.json({ message: 'Error uploading shared asset' }, { status: 500 });
+        }
+        return HttpResponse.json({
+          post_url: 'https://s3.amazonaws.com/a.storyblok.com',
+          fields: { key: `g/1/${filename}` },
+          id: remoteAssets[index].id,
+        });
+      }),
+      // Step 2: upload to S3 (generic).
+      http.post('https://s3.amazonaws.com/a.storyblok.com', async ({ request }) => {
+        const form = await request.formData();
+        return HttpResponse.json({ key: form.get('key') });
+      }),
+      // Step 3: finish upload.
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId/finish_upload`, () =>
+        HttpResponse.json({ message: 'Upload finalized' })),
+      // Step 4: retrieve + metadata update target.
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId`, ({ params }) => {
+        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
+        }
+        return HttpResponse.json(match);
+      }),
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId`, () => HttpResponse.json({})),
+    );
+    return remoteAssets;
   },
 };
 
@@ -1591,5 +1651,76 @@ describe('assets push command', () => {
       expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: uncreatable-tag'),
     );
     expect(process.exitCode).not.toBe(1);
+  });
+
+  describe('global library targets', () => {
+    it('pushes a single asset to a library (--target org --library)', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'hero.png', filename: 'hero.png' })], { libraryId: 7 });
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org', '--library', '7']);
+
+      expect(actions.createSharedAsset).toHaveBeenCalled();
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('rejects a single-asset --target org without --library', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
+    it('rejects --library combined with --target space', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'space', '--library', '7']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
+    it('fails fast pushing to a read-only library', async () => {
+      preconditions.hasLibraries([{ id: 8, name: 'Locked', accessLevel: 'read' }]);
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org', '--library', '8']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+      expect(getLogFileContents(LOG_PREFIX)).toMatch(/Locked/);
+    });
+
+    it('bulk --target=all processes the space subtree and each writable library', async () => {
+      const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
+      const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canLoadAssets([spaceAsset]);
+      preconditions.canLoadAssets([libraryAsset], { space: join('org', '7') });
+      preconditions.canUpsertRemoteAssets([spaceAsset]);
+      preconditions.canUpsertSharedAssets([libraryAsset], { libraryId: 7 });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'all']);
+
+      const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+      expect(written.some(p => p.includes('assets/12345/manifest.jsonl'))).toBe(true);
+      expect(written.some(p => p.includes('assets/org/7/manifest.jsonl'))).toBe(true);
+    });
+
+    it('bulk --target=space ignores org subtrees', async () => {
+      const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
+      const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
+      preconditions.canLoadAssets([spaceAsset]);
+      preconditions.canLoadAssets([libraryAsset], { space: join('org', '7') });
+      preconditions.canUpsertRemoteAssets([spaceAsset]);
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'space']);
+
+      const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+      expect(written.some(p => p.includes('assets/org/7/manifest.jsonl'))).toBe(false);
+    });
   });
 });

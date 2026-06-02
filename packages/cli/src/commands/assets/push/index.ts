@@ -139,22 +139,25 @@ pushCmd
     let scopes: Scope[] = [];
     try {
       if (assetBinaryPath) {
-        scopes = target === 'shared'
-          ? [{ kind: 'library', libraryId: libraryId! }]
-          : [{ kind: 'space', spaceId: Number(fromSpace) }];
+        if (target === 'shared') {
+          // Single-asset library push: the target library is explicit, so
+          // validate write access up front before any upload.
+          await assertLibraryWritable(targetSpace, libraryId!);
+          scopes = [{ kind: 'library', libraryId: libraryId! }];
+        }
+        else {
+          scopes = [{ kind: 'space', spaceId: Number(fromSpace) }];
+        }
       }
       else {
         if (target === 'space' || target === 'all') {
           scopes.push({ kind: 'space', spaceId: Number(fromSpace) });
         }
         if (target === 'shared' || target === 'all') {
+          // `listWritableLibraries` already filters to writable libraries, so
+          // these scopes need no further access check.
           const libraries = await listWritableLibraries(targetSpace);
           scopes.push(...libraries.map(library => ({ kind: 'library', libraryId: library.id }) satisfies Scope));
-        }
-      }
-      for (const scope of scopes) {
-        if (scope.kind === 'library') {
-          await assertLibraryWritable(targetSpace, scope.libraryId);
         }
       }
     }

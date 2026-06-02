@@ -1,6 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { Option } from 'commander';
+import { Sema } from 'async-sema';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';
@@ -93,35 +94,28 @@ pullCmd
       const fetchAssetsProgress = ui.createProgressBar({ title: 'Fetching Assets...'.padEnd(24) });
       const saveProgress = ui.createProgressBar({ title: 'Saving Assets...'.padEnd(24) });
 
+      const folderHandlers = {
+        spaceId: space,
+        setTotalFolders: (total: number) => {
+          summary.folderResults.total += total;
+          folderProgress.setTotal(total);
+        },
+        onError: (error: Error) => {
+          summary.folderResults.failed += 1;
+          summary.folderResults.total = summary.folderResults.total || 1;
+          folderProgress.setTotal(summary.folderResults.total);
+          logOnlyError(error);
+        },
+      };
       const foldersStream = scope.kind === 'library'
         ? fetchSharedAssetFoldersStream({
-            spaceId: space,
+            ...folderHandlers,
             libraryId: scope.libraryId,
-            setTotalFolders: (total) => {
-              summary.folderResults.total += total;
-              folderProgress.setTotal(total);
-            },
             onSuccess: () => logger.info('Fetched library folders', { libraryId: scope.libraryId }),
-            onError: (error) => {
-              summary.folderResults.failed += 1;
-              summary.folderResults.total = summary.folderResults.total || 1;
-              folderProgress.setTotal(summary.folderResults.total);
-              logOnlyError(error);
-            },
           })
         : fetchAssetFoldersStream({
-            spaceId: space,
-            setTotalFolders: (total) => {
-              summary.folderResults.total += total;
-              folderProgress.setTotal(total);
-            },
+            ...folderHandlers,
             onSuccess: () => logger.info('Fetched asset folders'),
-            onError: (error) => {
-              summary.folderResults.failed += 1;
-              summary.folderResults.total = summary.folderResults.total || 1;
-              folderProgress.setTotal(summary.folderResults.total);
-              logOnlyError(error);
-            },
           });
 
       await pipeline(
@@ -148,54 +142,33 @@ pullCmd
       const pagesBase = summary.fetchAssetPages.total;
       const assetsBase = summary.fetchAssets.total;
       const saveBase = summary.save.total;
+      const assetLabel = scope.kind === 'library' ? 'library assets' : 'assets';
+      const assetHandlers = {
+        spaceId: space,
+        params,
+        setTotalAssets: (total: number) => {
+          summary.fetchAssets.total = assetsBase + total;
+          summary.save.total = saveBase + total;
+          fetchAssetsProgress.setTotal(total);
+          saveProgress.setTotal(total);
+        },
+        setTotalPages: (totalPages: number) => {
+          summary.fetchAssetPages.total = pagesBase + totalPages;
+          fetchAssetPagesProgress.setTotal(totalPages);
+        },
+        onIncrement: () => fetchAssetPagesProgress.increment(),
+        onPageSuccess: (page: number, totalPages: number) => {
+          logger.info(`Fetched ${assetLabel} page ${page} of ${totalPages}`);
+          summary.fetchAssetPages.succeeded += 1;
+        },
+        onPageError: (error: Error, page: number, totalPages: number) => {
+          summary.fetchAssetPages.failed += 1;
+          logOnlyError(error, { page, totalPages });
+        },
+      };
       const assetsStream = scope.kind === 'library'
-        ? fetchSharedAssetsStream({
-            spaceId: space,
-            libraryId: scope.libraryId,
-            params,
-            setTotalAssets: (total) => {
-              summary.fetchAssets.total = assetsBase + total;
-              summary.save.total = saveBase + total;
-              fetchAssetsProgress.setTotal(total);
-              saveProgress.setTotal(total);
-            },
-            setTotalPages: (totalPages) => {
-              summary.fetchAssetPages.total = pagesBase + totalPages;
-              fetchAssetPagesProgress.setTotal(totalPages);
-            },
-            onIncrement: () => fetchAssetPagesProgress.increment(),
-            onPageSuccess: (page, totalPages) => {
-              logger.info(`Fetched library assets page ${page} of ${totalPages}`);
-              summary.fetchAssetPages.succeeded += 1;
-            },
-            onPageError: (error, page, totalPages) => {
-              summary.fetchAssetPages.failed += 1;
-              logOnlyError(error, { page, totalPages });
-            },
-          })
-        : fetchAssetsStream({
-            spaceId: space,
-            params,
-            setTotalAssets: (total) => {
-              summary.fetchAssets.total = assetsBase + total;
-              summary.save.total = saveBase + total;
-              fetchAssetsProgress.setTotal(total);
-              saveProgress.setTotal(total);
-            },
-            setTotalPages: (totalPages) => {
-              summary.fetchAssetPages.total = pagesBase + totalPages;
-              fetchAssetPagesProgress.setTotal(totalPages);
-            },
-            onIncrement: () => fetchAssetPagesProgress.increment(),
-            onPageSuccess: (page, totalPages) => {
-              logger.info(`Fetched assets page ${page} of ${totalPages}`);
-              summary.fetchAssetPages.succeeded += 1;
-            },
-            onPageError: (error, page, totalPages) => {
-              summary.fetchAssetPages.failed += 1;
-              logOnlyError(error, { page, totalPages });
-            },
-          });
+        ? fetchSharedAssetsStream({ ...assetHandlers, libraryId: scope.libraryId })
+        : fetchAssetsStream(assetHandlers);
 
       await pipeline(
         assetsStream,
@@ -336,13 +309,19 @@ pullCmd
           }
 
           if (referenced.size > 0) {
-            const sharedAssets: Asset[] = [];
-            for (const id of referenced) {
-              const asset = await getSharedAsset(id, { spaceId: space });
-              if (asset?.id) {
-                sharedAssets.push(asset);
-              }
-            }
+            const lock = new Sema(12);
+            const resolved = await Promise.all(
+              [...referenced].map(async (id) => {
+                await lock.acquire();
+                try {
+                  return await getSharedAsset(id, { spaceId: space });
+                }
+                finally {
+                  lock.release();
+                }
+              }),
+            );
+            const sharedAssets = resolved.filter((asset): asset is Asset => Boolean(asset?.id));
 
             if (sharedAssets.length > 0) {
               const resolveRoot = await buildLibraryRootResolver(space);

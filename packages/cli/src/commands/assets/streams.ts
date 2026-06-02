@@ -26,6 +26,7 @@ const getPipelineSlot = (): Sema => {
 export const fetchAssetsStream = ({
   spaceId,
   params = {},
+  fetchPage = fetchAssets,
   setTotalAssets,
   setTotalPages,
   onIncrement,
@@ -34,6 +35,8 @@ export const fetchAssetsStream = ({
 }: {
   spaceId: string;
   params?: AssetListQuery;
+  /** Page fetcher; defaults to the space `fetchAssets`. Shared libraries inject a `fetchSharedAssets` binding. */
+  fetchPage?: typeof fetchAssets;
   setTotalAssets?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
   onIncrement?: () => void;
@@ -48,7 +51,7 @@ export const fetchAssetsStream = ({
 
     while (page <= totalPages) {
       try {
-        const result = await fetchAssets({
+        const result = await fetchPage({
           spaceId,
           params: {
             ...params,
@@ -86,17 +89,13 @@ export const fetchAssetsStream = ({
 
 /**
  * Like `fetchAssetsStream`, but reads from a shared library via the
- * `shared_assets` endpoints, filtered to `libraryId`.
+ * `shared_assets` endpoints, filtered to `libraryId`. Reuses the space
+ * pagination loop by injecting a `fetchSharedAssets` page fetcher.
  */
 export const fetchSharedAssetsStream = ({
   spaceId,
   libraryId,
-  params = {},
-  setTotalAssets,
-  setTotalPages,
-  onIncrement,
-  onPageSuccess,
-  onPageError,
+  ...rest
 }: {
   spaceId: string;
   libraryId: number;
@@ -106,47 +105,12 @@ export const fetchSharedAssetsStream = ({
   onIncrement?: () => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
-}) => {
-  const listGenerator = async function* sharedAssetListIterator() {
-    let perPage = 100;
-    let page = 1;
-    let totalPages = 1;
-    setTotalPages?.(totalPages);
-
-    while (page <= totalPages) {
-      try {
-        const result = await fetchSharedAssets({
-          spaceId,
-          libraryId,
-          params: { ...params, per_page: perPage, page },
-        });
-
-        const { headers, assets } = result;
-        const total = Number(headers.get('Total'));
-        perPage = Number(headers.get('Per-Page')) || perPage;
-        totalPages = Math.max(1, Math.ceil(total / perPage));
-        setTotalAssets?.(total);
-        setTotalPages?.(totalPages);
-        onPageSuccess?.(page, totalPages);
-
-        for (const asset of assets) {
-          yield asset;
-        }
-
-        page += 1;
-      }
-      catch (maybeError) {
-        onPageError?.(toError(maybeError), page, totalPages);
-        break;
-      }
-      finally {
-        onIncrement?.();
-      }
-    }
-  };
-
-  return Readable.from(listGenerator());
-};
+}) =>
+  fetchAssetsStream({
+    spaceId,
+    ...rest,
+    fetchPage: ({ params }) => fetchSharedAssets({ spaceId, libraryId, params }),
+  });
 
 export const downloadAssetStream = ({
   assetToken,

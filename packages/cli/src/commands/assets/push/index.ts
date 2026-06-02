@@ -122,6 +122,13 @@ pushCmd
 
     // Validate the target/library combination for single-asset pushes.
     if (assetBinaryPath) {
+      if (target === 'all') {
+        // A single asset has exactly one destination; `all` would silently
+        // fall back to space-only, so require an explicit target instead.
+        handleError(new CommandError('Pushing a single asset requires --target=space or --target=shared, not --target=all.'), verbose);
+        process.exitCode = 2;
+        return;
+      }
       if (target === 'shared' && !libraryId) {
         handleError(new CommandError('Pushing a single asset to a library requires --library YOUR_LIBRARY_ID.'), verbose);
         process.exitCode = 2;

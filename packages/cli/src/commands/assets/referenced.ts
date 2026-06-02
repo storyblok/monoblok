@@ -53,6 +53,11 @@ export async function readLocalStoryContents(directoryPath: string): Promise<{ c
  *
  * Classification of those IDs into space-local vs. shared is done by the
  * caller (id-based, never via URL prefix — see spec §3).
+ *
+ * Boundary: only nodes carrying `fieldtype: 'asset'` with a numeric `id` are
+ * collected (covers single- and multi-asset fields, including those nested in
+ * bloks). Rich-text-embedded assets — image nodes (`type: 'image'`,
+ * `attrs.id`) and asset links — do not use that shape and are NOT collected.
  */
 export function collectReferencedAssetIds(stories: { content?: unknown }[]): Set<number> {
   const ids = new Set<number>();

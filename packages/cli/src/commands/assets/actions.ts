@@ -474,6 +474,11 @@ export const updateSharedAssetFolder = async (id: number, folder: SharedAssetFol
   }
 };
 
+// `getSharedAssetFolder`/`getSharedAsset` intentionally do NOT use the
+// `throwOnError`/`handleAPIError` pattern of the surrounding actions: callers
+// (upsert get-transports, referenced-asset resolution) treat a missing
+// resource as a normal "not found" and rely on `undefined`. We therefore
+// inspect `response.ok` by hand and only fail on non-404 errors.
 export const getSharedAssetFolder = async (folderId: number, { spaceId }: { spaceId: string }) => {
   const { data, response } = await getMapiClient().sharedAssetFolders.get(folderId, {
     path: { space_id: Number(spaceId) },

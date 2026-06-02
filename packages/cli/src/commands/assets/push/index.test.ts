@@ -1712,6 +1712,16 @@ describe('assets push command', () => {
       expect(process.exitCode).toBe(2);
     });
 
+    it('rejects a single-asset --target all', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'all']);
+
+      expect(actions.createAsset).not.toHaveBeenCalled();
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
     it('rejects an invalid --target value', async () => {
       const push = assetsCommand.commands.find(command => command.name() === 'push')!;
       push.exitOverride();

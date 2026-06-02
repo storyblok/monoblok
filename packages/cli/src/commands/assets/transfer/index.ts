@@ -65,9 +65,8 @@ transferCmd
       return;
     }
 
-    const summary = { total: ids.length, succeeded: 0, failed: 0 };
-
     if (options.dryRun) {
+      const summary = { total: ids.length, succeeded: 0, failed: 0 };
       ui.info(`Transfer plan: ${ids.length} asset(s) to folder ${folderId}`);
       ui.list(ids.map(id => `${id} -> folder ${folderId}`));
       reporter.addSummary('transferResults', summary);
@@ -97,14 +96,8 @@ transferCmd
       }
     }));
 
-    for (const result of results) {
-      if (result.status === 'transferred') {
-        summary.succeeded += 1;
-      }
-      else {
-        summary.failed += 1;
-      }
-    }
+    const succeeded = results.filter(result => result.status === 'transferred').length;
+    const summary = { total: results.length, succeeded, failed: results.length - succeeded };
 
     ui.info(`Transfer results: ${summary.total} processed, ${summary.failed} failed`);
     ui.list(results.map(result => result.status === 'transferred'

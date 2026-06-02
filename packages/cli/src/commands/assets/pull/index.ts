@@ -365,7 +365,7 @@ pullCmd
       handleError(toError(maybeError));
     }
     finally {
-      logger.info('Pulling assets finished', { summary });
+      logger.info('Pulling assets finished', { summary: { ...summary } });
       ui.stopAllProgressBars();
       const failedAssets = Math.max(summary.fetchAssets.failed, summary.save.failed);
       const folderSummary = {

@@ -3,9 +3,10 @@ import { getMapiClient } from '../../api';
 import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { handleAPIError } from '../../utils/error/api-error';
 import { getResponseStatus, toError } from '../../utils/error/error';
+import { FetchError } from '../../utils/fetch';
 import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTagCreate } from './types';
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
@@ -362,4 +363,205 @@ export const transferAssets = async (
       lock.release();
     }
   }));
+};
+
+/**
+ * Fetches a page of shared (library) assets. `libraryId` is passed as the
+ * `in_folder` filter so only assets in that library are returned.
+ */
+export const fetchSharedAssets = async ({ spaceId, libraryId, params }: {
+  spaceId: string;
+  libraryId: number;
+  params?: AssetListQuery;
+}) => {
+  try {
+    const client = getMapiClient();
+    const { data, response } = await client.sharedAssets.list({
+      path: { space_id: Number(spaceId) },
+      query: { ...params, in_folder: libraryId, per_page: params?.per_page || 100, page: params?.page || 1 },
+      throwOnError: true,
+    });
+    const assets = (data?.assets || [])
+      .filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
+
+    return { assets, headers: response.headers };
+  }
+  catch (maybeError) {
+    handleAPIError('pull_shared_assets', toError(maybeError));
+  }
+};
+
+/**
+ * Fetches the shared asset folders belonging to a library: the library root
+ * and all of its descendants.
+ */
+export const fetchSharedAssetFolders = async ({ spaceId, libraryId }: {
+  spaceId: string;
+  libraryId: number;
+}) => {
+  try {
+    const client = getMapiClient();
+    const { data } = await client.sharedAssetFolders.list({
+      path: { space_id: Number(spaceId) },
+      throwOnError: true,
+    });
+    const all = data?.shared_asset_folders || [];
+    const keep = new Set<number>([libraryId]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const folder of all) {
+        if (folder.parent_id && keep.has(folder.parent_id) && !keep.has(folder.id)) {
+          keep.add(folder.id);
+          added = true;
+        }
+      }
+    }
+    return { asset_folders: all.filter(folder => keep.has(folder.id)) };
+  }
+  catch (maybeError) {
+    handleAPIError('pull_shared_asset_folders', toError(maybeError));
+  }
+};
+
+export const createSharedAssetFolder = async (folder: SharedAssetFolderCreate, {
+  spaceId,
+}: {
+  spaceId: string;
+}) => {
+  try {
+    const client = getMapiClient();
+    const { data } = await client.sharedAssetFolders.create({
+      path: { space_id: Number(spaceId) },
+      body: { shared_asset_folder: folder },
+      throwOnError: true,
+    });
+    if (!data?.shared_asset_folder) {
+      throw new Error('Failed to create shared asset folder');
+    }
+    return data.shared_asset_folder;
+  }
+  catch (maybeError) {
+    handleAPIError('push_shared_asset_folder', toError(maybeError));
+  }
+};
+
+export const updateSharedAssetFolder = async (id: number, folder: SharedAssetFolderUpdate, {
+  spaceId,
+}: {
+  spaceId: string;
+}) => {
+  try {
+    await getMapiClient().sharedAssetFolders.update(id, {
+      path: { space_id: Number(spaceId) },
+      body: { shared_asset_folder: folder },
+      throwOnError: true,
+    });
+    return folder;
+  }
+  catch (maybeError) {
+    handleAPIError('push_shared_asset_folder', toError(maybeError));
+  }
+};
+
+export const getSharedAssetFolder = async (folderId: number, { spaceId }: { spaceId: string }) => {
+  const { data, response } = await getMapiClient().sharedAssetFolders.get(folderId, {
+    path: { space_id: Number(spaceId) },
+  });
+  if (!response.ok && response.status !== 404) {
+    handleAPIError('pull_shared_asset_folder', new FetchError(response.statusText, response));
+  }
+  return data?.shared_asset_folder;
+};
+
+export const getSharedAsset = async (assetId: number, { spaceId }: { spaceId: string }) => {
+  const { data, response } = await getMapiClient().sharedAssets.get(assetId, {
+    path: { space_id: Number(spaceId) },
+  });
+  if (!response.ok && response.status !== 404) {
+    handleAPIError('pull_shared_asset', new FetchError(response.statusText, response));
+  }
+  return data;
+};
+
+export const createSharedAsset = async (
+  asset: AssetUpload,
+  fileBuffer: ArrayBuffer,
+  { spaceId }: { spaceId: string },
+): Promise<Asset> => {
+  try {
+    const client = getMapiClient();
+    // Strip `id` — it identifies the local/manifest asset for mapping and must
+    // not flow into the metadata update inside the create flow.
+    const { id: _id, ...assetBody } = asset;
+    return await client.sharedAssets.create({
+      body: assetBody,
+      file: fileBuffer,
+      path: { space_id: Number(spaceId) },
+    });
+  }
+  catch (maybeError) {
+    handleAPIError('push_shared_asset_create', toError(maybeError));
+  }
+};
+
+export const updateSharedAsset = async (
+  id: number,
+  asset: AssetUpdate & { short_filename?: string },
+  { spaceId, fileBuffer }: { spaceId: string; fileBuffer?: ArrayBuffer },
+): Promise<void> => {
+  try {
+    const client = getMapiClient();
+    const { short_filename, ...metadata } = asset;
+    if (fileBuffer !== undefined) {
+      if (!short_filename) {
+        throw new Error('short_filename is required when replacing an asset file');
+      }
+      await client.sharedAssets.update(id, {
+        path: { space_id: Number(spaceId) },
+        body: { asset: metadata, short_filename },
+        file: fileBuffer,
+      });
+    }
+    else {
+      await client.sharedAssets.update(id, {
+        path: { space_id: Number(spaceId) },
+        body: { asset: metadata },
+      });
+    }
+  }
+  catch (maybeError) {
+    handleAPIError('push_shared_asset_update', toError(maybeError));
+  }
+};
+
+export const fetchSharedInternalTags = async ({ spaceId, libraryId }: {
+  spaceId: string;
+  libraryId: number;
+}) => {
+  try {
+    const { data } = await getMapiClient().sharedInternalTags.list({
+      path: { space_id: Number(spaceId) },
+      query: { asset_folder_id: libraryId },
+      throwOnError: true,
+    });
+    return data?.internal_tags || [];
+  }
+  catch (maybeError) {
+    handleAPIError('pull_shared_internal_tags', toError(maybeError));
+  }
+};
+
+export const createSharedInternalTag = async (tag: SharedInternalTagCreate, { spaceId }: { spaceId: string }) => {
+  try {
+    const { data } = await getMapiClient().sharedInternalTags.create({
+      path: { space_id: Number(spaceId) },
+      body: { shared_internal_tag: tag },
+      throwOnError: true,
+    });
+    return data?.internal_tag;
+  }
+  catch (maybeError) {
+    handleAPIError('push_shared_internal_tag', toError(maybeError));
+  }
 };

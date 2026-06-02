@@ -63,6 +63,35 @@ export const listReadableLibraries = (spaceId: string): Promise<Library[]> => li
 export const listWritableLibraries = async (spaceId: string): Promise<Library[]> =>
   (await listLibraries(spaceId)).filter(library => library.accessLevel === 'write');
 
+/**
+ * Builds a resolver mapping any shared `asset_folder_id` to its top-level
+ * library root id (walking `parent_id` up). Fetches the space's shared folders
+ * once. Used to group referenced shared assets by library.
+ */
+export async function buildLibraryRootResolver(spaceId: string): Promise<(assetFolderId: number) => number> {
+  const { data } = await getMapiClient().sharedAssetFolders.list({
+    path: { space_id: Number(spaceId) },
+    throwOnError: true,
+  });
+  const parentById = new Map<number, number | null>();
+  for (const folder of data?.shared_asset_folders ?? []) {
+    parentById.set(folder.id, folder.parent_id ?? null);
+  }
+  return (assetFolderId: number): number => {
+    let current = assetFolderId;
+    const seen = new Set<number>();
+    while (!seen.has(current)) {
+      seen.add(current);
+      const parent = parentById.get(current);
+      if (parent === null || parent === undefined) {
+        return current;
+      }
+      current = parent;
+    }
+    return current;
+  };
+}
+
 /** Throws if the active space cannot write to the target library. */
 export async function assertLibraryWritable(spaceId: string, libraryId: number): Promise<Library> {
   const library = (await listLibraries(spaceId)).find(candidate => candidate.id === libraryId);

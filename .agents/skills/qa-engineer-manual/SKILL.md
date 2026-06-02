@@ -100,6 +100,18 @@ bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 
 Deletes all stories, components (except the default `page` component), assets, asset folders, and internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
 
+### Shared asset libraries
+
+Shared (org-level) asset libraries are global: they belong to the organization and can be shared across spaces, so a full wipe is destructive. To keep cleanup safe, name every QA-created shared asset, folder, and tag with the `QA_SHARED_PREFIX` (default `qa-`). `generate-asset.sh` already emits `qa-`-prefixed filenames by default.
+
+Clean up only the QA-created shared resources in a library (never the library root or any unprefixed org content):
+
+```bash
+bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
+```
+
+Inspect a library with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against libraries.
+
 ### Scenario structure
 
 A scenario is a directory with optional subdirectories for each resource type:
@@ -140,8 +152,8 @@ Paths are relative to this `SKILL.md`.
 | Script | Purpose |
 | --- | --- |
 | `./scripts/cleanup-local.sh` | Deletes local QA artifacts in `.storyblok/`. |
-| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. |
-| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. |
+| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. Add `--shared --library <id>` to instead delete only the QA-created shared resources in an org library (see "Shared asset libraries" below). |
+| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`. |
 | `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`. |
 | `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path. |
 

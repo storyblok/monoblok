@@ -16,24 +16,27 @@ afterAll(() => server.close());
 
 describe('transferAsset', () => {
   it('should convert an asset and return the shared asset', async () => {
+    // The backend convert flips ownership only: it sets space_id to null and
+    // keeps the original `/f/{space_id}/` filename (it does not rewrite the URL
+    // to a `/g/{org_id}/` prefix). space_id: null is the reliable shared marker.
     server.use(
       http.post('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId/convert', () =>
-        HttpResponse.json({ id: 42, filename: 'https://a.storyblok.com/g/99/500x500/shared.png' })),
+        HttpResponse.json({ id: 42, space_id: null, filename: 'https://a.storyblok.com/f/123/500x500/shared.png' })),
     );
 
     const asset = await transferAsset('123', 42, 7);
 
-    expect(asset.filename).toContain('/g/99/');
+    expect(asset.space_id).toBeNull();
   });
 
-  it('should surface a friendly plan-gated message on 403', async () => {
+  it('should surface a friendly authorization message on 403', async () => {
     server.use(
       http.post('https://mapi.storyblok.com/v1/spaces/:spaceId/assets/:assetId/convert', () =>
         HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
     );
 
     await expect(transferAsset('123', 42, 7)).rejects.toMatchObject({
-      message: expect.stringContaining('not available on your current plan'),
+      message: expect.stringContaining('write access'),
     });
     await expect(transferAsset('123', 42, 7)).rejects.toBeInstanceOf(APIError);
     const error = await transferAsset('123', 42, 7).catch(e => e);

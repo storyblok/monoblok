@@ -289,8 +289,10 @@ export const createAsset = async (
  * (`AssetsServices::ConvertToSharedAsset`). Drop this mapping when the backend
  * ships the `convert` -> `transfer` rename. One-way only (space to org).
  *
- * A 403 means the feature is not available on the current plan; surface a
- * friendly message instead of a raw API error.
+ * A 403 comes from the backend authorization policy (`AssetPolicy#convert?`):
+ * the target folder must exist in the global asset library and the space must
+ * have write access to it. Surface that as a friendly hint instead of a raw
+ * API error.
  */
 export const transferAsset = async (
   spaceId: string,
@@ -311,7 +313,7 @@ export const transferAsset = async (
       'transfer_asset',
       maybeError,
       status === 403
-        ? `Transferring assets to the global library is not available on your current plan.`
+        ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the global asset library and that this space has write access to it.`
         : undefined,
     );
   }

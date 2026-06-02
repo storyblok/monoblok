@@ -19,18 +19,21 @@ vi.spyOn(actions, 'transferAsset');
 const server = setupServer();
 
 const preconditions = {
-  canTransferAssets(orgId = '99', { space = DEFAULT_SPACE }: { space?: string } = {}) {
+  canTransferAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId/convert`, ({ params }) => {
+        // The backend convert flips ownership only: space_id becomes null and
+        // the original `/f/{space_id}/` filename is kept (no `/g/{org_id}/`
+        // rewrite). space_id: null is the reliable shared marker.
         const asset = makeMockAsset({
           id: Number(params.assetId),
-          filename: `https://a.storyblok.com/g/${orgId}/500x500/asset-${params.assetId}.png`,
+          filename: `https://a.storyblok.com/f/${space}/500x500/asset-${params.assetId}.png`,
         });
         return HttpResponse.json({ ...asset, space_id: null });
       }),
     );
   },
-  failsToTransferWithPlanError({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+  failsToTransferWithAuthError({ space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId/convert`, () =>
         HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
@@ -52,17 +55,17 @@ describe('assets transfer command', () => {
   afterAll(() => server.close());
 
   it('should transfer a local asset to the global library', async () => {
-    preconditions.canTransferAssets('99');
+    preconditions.canTransferAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAsset).toHaveBeenCalledWith(DEFAULT_SPACE, 42, 7);
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('/g/99/'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('transferred'));
     expect(process.exitCode).toBe(0);
   });
 
   it('should transfer multiple asset IDs and report one row per ID', async () => {
-    preconditions.canTransferAssets('99');
+    preconditions.canTransferAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '43', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
@@ -96,12 +99,12 @@ describe('assets transfer command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('should surface a friendly message and exit 1 on a plan-gated 403', async () => {
-    preconditions.failsToTransferWithPlanError();
+  it('should surface a friendly message and exit 1 on a 403', async () => {
+    preconditions.failsToTransferWithAuthError();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('not available on your current plan'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('write access'));
     expect(process.exitCode).toBe(1);
   });
 });

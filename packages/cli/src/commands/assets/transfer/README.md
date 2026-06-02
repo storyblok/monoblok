@@ -35,4 +35,4 @@ storyblok assets transfer 123456 789012 --folder-id 789 --space YOUR_SPACE_ID --
 
 - **Endpoint mapping:** The CLI exposes this operation as `transfer`, but it currently calls the backend `convert` endpoint (`POST /v1/spaces/{space_id}/assets/{id}/convert`), mapping `--folder-id` to the required `target_asset_folder_id` query parameter. This mapping will be removed once the backend ships the rename from `convert` to `transfer`.
 - **Plan required:** `--folder-id` is required and has no implicit default. Omitting it fails with an error.
-- **403 errors:** A 403 response means the global asset library is not available on the current plan. Contact Storyblok support to enable it for your organization.
+- **403 errors:** A 403 response comes from the backend authorization policy: the target folder must exist in the global asset library and the source space must have write access to it. Grant the space write access to the destination folder (or pick a folder it can write to), then retry.

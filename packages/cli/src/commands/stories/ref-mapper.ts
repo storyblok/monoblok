@@ -157,10 +157,19 @@ const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }
 /**
  * Asset field reference mapper.
  *
- * Normalizes asset filenames from S3 origin URLs to CDN URLs. The MAPI returns
- * asset filenames as S3 URLs (https://s3.amazonaws.com/a.storyblok.com/f/...)
- * but story content must reference the CDN URL (https://a.storyblok.com/f/...)
- * so that the Storyblok Image Service (/m/...) works correctly.
+ * Remaps an asset reference ONLY when its `id` is present in the per-space
+ * asset manifest (`maps.assets`). References absent from the manifest are
+ * passed through unchanged, preserving `id` and `filename` verbatim.
+ *
+ * Shared-asset references (`/g/{org_id}/…`) fall into this pass-through path:
+ * shared assets are never written into the per-space manifest (they live in a
+ * separate namespace, see assets pull/push), and their `id`s are globally
+ * unique, so they cannot collide with a space asset's `id`. A shared reference
+ * therefore keeps its `id`/`filename` across a cross-space push (WDX-411).
+ *
+ * For remapped (local) assets, normalizes the new filename from S3 origin URLs
+ * (https://s3.amazonaws.com/a.storyblok.com/f/...) to CDN URLs
+ * (https://a.storyblok.com/f/...) so the Storyblok Image Service (/m/...) works.
  */
 const assetFieldRefMapper: RefMapper = (data, { maps }) => {
   const mappedAsset = typeof data.id === 'number' ? maps.assets?.get(data.id) : undefined;

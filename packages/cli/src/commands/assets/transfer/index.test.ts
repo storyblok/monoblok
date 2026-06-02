@@ -14,7 +14,7 @@ vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
 vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
-vi.spyOn(actions, 'transferAsset');
+vi.spyOn(actions, 'transferAssets');
 
 const server = setupServer();
 
@@ -59,7 +59,7 @@ describe('assets transfer command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
-    expect(actions.transferAsset).toHaveBeenCalledWith(DEFAULT_SPACE, 42, 7);
+    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('transferred'));
     expect(process.exitCode).toBe(0);
   });
@@ -69,7 +69,7 @@ describe('assets transfer command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '43', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
-    expect(actions.transferAsset).toHaveBeenCalledTimes(2);
+    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42, 43], 7, expect.anything());
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('42'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('43'));
     expect(process.exitCode).toBe(0);
@@ -78,7 +78,7 @@ describe('assets transfer command', () => {
   it('should fail with a clear error when --folder-id is omitted', async () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE]);
 
-    expect(actions.transferAsset).not.toHaveBeenCalled();
+    expect(actions.transferAssets).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'), '');
     expect(process.exitCode).toBe(2);
   });
@@ -86,7 +86,7 @@ describe('assets transfer command', () => {
   it('should reject --folder-id 0 as invalid', async () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '0']);
 
-    expect(actions.transferAsset).not.toHaveBeenCalled();
+    expect(actions.transferAssets).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'), '');
     expect(process.exitCode).toBe(2);
   });
@@ -94,7 +94,7 @@ describe('assets transfer command', () => {
   it('should print the plan and make no API calls in dry-run mode', async () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7', '--dry-run']);
 
-    expect(actions.transferAsset).not.toHaveBeenCalled();
+    expect(actions.transferAssets).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN MODE ENABLED'));
     expect(process.exitCode).toBe(0);
   });

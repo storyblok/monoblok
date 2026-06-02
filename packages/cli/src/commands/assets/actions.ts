@@ -1,5 +1,6 @@
 import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
+import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { handleAPIError } from '../../utils/error/api-error';
 import { getResponseStatus, toError } from '../../utils/error/error';
 import { fetchAllPages } from '../../utils/pagination';
@@ -318,4 +319,47 @@ export const transferAsset = async (
         : undefined,
     );
   }
+};
+
+export interface TransferResult {
+  assetId: number;
+  status: 'transferred' | 'failed';
+  filename?: string;
+  reason?: string;
+}
+
+/**
+ * Transfers multiple assets into the global asset library, bounding in-flight
+ * requests with the shared pipeline backpressure lock (2× the configured rate
+ * limit), matching the throttle headroom used by the asset and story streams.
+ * Per-asset errors are captured as failed results rather than aborting the
+ * whole batch.
+ */
+export const transferAssets = async (
+  spaceId: string,
+  assetIds: number[],
+  folderId: number,
+  callbacks: {
+    onSuccess?: (result: { assetId: number; filename?: string }) => void;
+    onError?: (error: Error, assetId: number) => void;
+  } = {},
+): Promise<TransferResult[]> => {
+  const lock = createPipelineBackpressureLock();
+
+  return Promise.all(assetIds.map(async (assetId): Promise<TransferResult> => {
+    await lock.acquire();
+    try {
+      const asset = await transferAsset(spaceId, assetId, folderId);
+      callbacks.onSuccess?.({ assetId, filename: asset.filename });
+      return { assetId, status: 'transferred', filename: asset.filename };
+    }
+    catch (maybeError) {
+      const error = toError(maybeError);
+      callbacks.onError?.(error, assetId);
+      return { assetId, status: 'failed', reason: error.message };
+    }
+    finally {
+      lock.release();
+    }
+  }));
 };

@@ -1,4 +1,3 @@
-import { Sema } from 'async-sema';
 import { colorPalette, commands } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';
@@ -7,15 +6,8 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
-import { handleError, logOnlyError, toError } from '../../../utils/error/error';
-import { transferAsset } from '../actions';
-
-interface TransferResult {
-  assetId: number;
-  status: 'transferred' | 'failed';
-  filename?: string;
-  reason?: string;
-}
+import { handleError, logOnlyError } from '../../../utils/error/error';
+import { transferAssets } from '../actions';
 
 const transferCmd = assetsCommand
   .command('transfer <asset-id...>')
@@ -76,25 +68,12 @@ transferCmd
       return;
     }
 
-    // Per-ID errors are captured individually below, so unlike push/pull this
+    // Per-ID errors are captured individually, so unlike push/pull this
     // command needs no outer fatalError try/catch wrapper.
-    const lock = new Sema(12);
-    const results = await Promise.all(ids.map(async (assetId): Promise<TransferResult> => {
-      await lock.acquire();
-      try {
-        const asset = await transferAsset(space, assetId, folderId);
-        logger.info('Transferred asset', { assetId, filename: asset.filename });
-        return { assetId, status: 'transferred', filename: asset.filename };
-      }
-      catch (maybeError) {
-        const error = toError(maybeError);
-        logOnlyError(error, { assetId });
-        return { assetId, status: 'failed', reason: error.message };
-      }
-      finally {
-        lock.release();
-      }
-    }));
+    const results = await transferAssets(space, ids, folderId, {
+      onSuccess: ({ assetId, filename }) => logger.info('Transferred asset', { assetId, filename }),
+      onError: (error, assetId) => logOnlyError(error, { assetId }),
+    });
 
     const succeeded = results.filter(result => result.status === 'transferred').length;
     const summary = { total: results.length, succeeded, failed: results.length - succeeded };

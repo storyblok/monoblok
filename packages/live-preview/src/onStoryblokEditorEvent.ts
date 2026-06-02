@@ -3,9 +3,6 @@ import { loadStoryblokBridge } from './loadStoryblokBridge';
 import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
 
 /**
- * Base story type used internally.
- */
-/**
  * Internal listener registry for Storyblok `input` events.
  * Each listener receives the updated story data from the Visual Editor.
  */

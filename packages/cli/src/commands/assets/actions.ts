@@ -406,14 +406,24 @@ export const fetchSharedAssetFolders = async ({ spaceId, libraryId }: {
       throwOnError: true,
     });
     const all = data?.shared_asset_folders || [];
+    // Index children by parent once, then walk down from the library root.
+    const childrenByParent = new Map<number, typeof all>();
+    for (const folder of all) {
+      if (folder.parent_id == null) {
+        continue;
+      }
+      const siblings = childrenByParent.get(folder.parent_id) ?? [];
+      siblings.push(folder);
+      childrenByParent.set(folder.parent_id, siblings);
+    }
     const keep = new Set<number>([libraryId]);
-    let added = true;
-    while (added) {
-      added = false;
-      for (const folder of all) {
-        if (folder.parent_id && keep.has(folder.parent_id) && !keep.has(folder.id)) {
-          keep.add(folder.id);
-          added = true;
+    const queue = [libraryId];
+    while (queue.length > 0) {
+      const parentId = queue.shift()!;
+      for (const child of childrenByParent.get(parentId) ?? []) {
+        if (!keep.has(child.id)) {
+          keep.add(child.id);
+          queue.push(child.id);
         }
       }
     }

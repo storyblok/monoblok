@@ -112,6 +112,51 @@ const preconditions = {
       }),
     );
   },
+  hasReadableLibraries(libraries: { id: number; name: string }[], onListed?: () => void) {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders', () => {
+        onListed?.();
+        return HttpResponse.json({
+          shared_asset_folders: libraries.map(library => ({
+            id: library.id,
+            name: library.name,
+            parent_id: null,
+            uuid: `u${library.id}`,
+            asset_folder_access: [{ space_id: 12345, access_level: 'read' }],
+          })),
+        });
+      }),
+    );
+  },
+  canFetchSharedAssetPages(assets: MockAsset[], onListed?: () => void) {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_assets', () => {
+        onListed?.();
+        return HttpResponse.json(
+          { assets },
+          { headers: { 'Total': String(assets.length), 'Per-Page': '100' } },
+        );
+      }),
+    );
+  },
+  sharedAssetResolves(asset: MockAsset) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/12345/shared_assets/${asset.id}`, () =>
+        HttpResponse.json(asset)),
+    );
+  },
+  hasLocalStoriesReferencing(assetIds: number[]) {
+    vol.fromJSON({
+      '.storyblok/stories/12345/home_uuid.json': JSON.stringify({
+        id: 1,
+        uuid: 'uuid',
+        content: {
+          component: 'page',
+          body: assetIds.map(id => ({ component: 'hero', image: { fieldtype: 'asset', id } })),
+        },
+      }),
+    });
+  },
 };
 
 describe('assets pull command', () => {
@@ -434,5 +479,77 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssets":{"total":2,"succeeded":2,"failed":0}');
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
     expect(process.exitCode).toBe(0);
+  });
+
+  describe('global library targets', () => {
+    const writtenPaths = () => Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+
+    it('pull --target=org writes each readable library into org/<id>/', async () => {
+      const libraryAsset = { id: 90, filename: 'https://a.storyblok.com/g/1/x.png', asset_folder_id: 7 };
+      preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }]);
+      preconditions.canFetchSharedAssetPages([libraryAsset]);
+      preconditions.canDownloadAssets([libraryAsset]);
+
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'org']);
+
+      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('pull --target=space makes no org calls', async () => {
+      const sharedSpy = vi.fn();
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[makeMockAsset()]]);
+      preconditions.canDownloadAssets([makeMockAsset({ id: 1 })]);
+      preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }], sharedSpy);
+
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'space']);
+
+      expect(sharedSpy).not.toHaveBeenCalled();
+    });
+
+    it('pull --target=all writes both the space library and every readable library', async () => {
+      const spaceAsset = makeMockAsset();
+      const libraryAsset = { id: 90, filename: 'https://a.storyblok.com/g/1/x.png', asset_folder_id: 7 };
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[spaceAsset]]);
+      preconditions.canDownloadAssets([spaceAsset]);
+      preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }]);
+      preconditions.canFetchSharedAssetPages([libraryAsset]);
+      preconditions.canDownloadAssets([libraryAsset]);
+
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'all']);
+
+      expect(assetFileExists(spaceAsset)).toBeTruthy();
+      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+    });
+
+    it('pull with-referenced pulls space assets and only referenced shared assets', async () => {
+      const spaceAsset = makeMockAsset({ id: 42 });
+      const sharedAsset = { id: 90, filename: 'https://a.storyblok.com/g/1/x.png', asset_folder_id: 7 };
+      preconditions.hasLocalStoriesReferencing([42, 90]);
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[spaceAsset]]);
+      preconditions.canDownloadAssets([spaceAsset]);
+      preconditions.sharedAssetResolves(sharedAsset);
+      preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }]);
+      preconditions.canDownloadAssets([sharedAsset]);
+
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
+
+      expect(writtenPaths().some(p => p.includes('assets/org/7/x_90'))).toBe(true);
+    });
+
+    it('pull with-referenced with no local stories makes no org calls', async () => {
+      const sharedSpy = vi.fn();
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[makeMockAsset()]]);
+      preconditions.canDownloadAssets([makeMockAsset({ id: 1 })]);
+      preconditions.hasReadableLibraries([{ id: 7, name: 'Brand' }], sharedSpy);
+
+      await assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
+
+      expect(sharedSpy).not.toHaveBeenCalled();
+    });
   });
 });

@@ -7,7 +7,7 @@ import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
-import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
+import { createAsset, createAssetFolder, createSharedAsset, createSharedAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, fetchSharedAssetFolders, fetchSharedAssets, getSharedAsset, getSharedAssetFolder, updateAsset, updateAssetFolder, updateSharedAsset, updateSharedAssetFolder } from './actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetMap, AssetUpdate, AssetUpload, UnmappedAssetInternalTag } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -55,6 +55,70 @@ export const fetchAssetsStream = ({
             per_page: perPage,
             page,
           },
+        });
+
+        const { headers, assets } = result;
+        const total = Number(headers.get('Total'));
+        perPage = Number(headers.get('Per-Page')) || perPage;
+        totalPages = Math.max(1, Math.ceil(total / perPage));
+        setTotalAssets?.(total);
+        setTotalPages?.(totalPages);
+        onPageSuccess?.(page, totalPages);
+
+        for (const asset of assets) {
+          yield asset;
+        }
+
+        page += 1;
+      }
+      catch (maybeError) {
+        onPageError?.(toError(maybeError), page, totalPages);
+        break;
+      }
+      finally {
+        onIncrement?.();
+      }
+    }
+  };
+
+  return Readable.from(listGenerator());
+};
+
+/**
+ * Like `fetchAssetsStream`, but reads from a shared library via the
+ * `shared_assets` endpoints, filtered to `libraryId`.
+ */
+export const fetchSharedAssetsStream = ({
+  spaceId,
+  libraryId,
+  params = {},
+  setTotalAssets,
+  setTotalPages,
+  onIncrement,
+  onPageSuccess,
+  onPageError,
+}: {
+  spaceId: string;
+  libraryId: number;
+  params?: AssetListQuery;
+  setTotalAssets?: (total: number) => void;
+  setTotalPages?: (totalPages: number) => void;
+  onIncrement?: () => void;
+  onPageSuccess?: (page: number, total: number) => void;
+  onPageError?: (error: Error, page: number, total: number) => void;
+}) => {
+  const listGenerator = async function* sharedAssetListIterator() {
+    let perPage = 100;
+    let page = 1;
+    let totalPages = 1;
+    setTotalPages?.(totalPages);
+
+    while (page <= totalPages) {
+      try {
+        const result = await fetchSharedAssets({
+          spaceId,
+          libraryId,
+          params: { ...params, per_page: perPage, page },
         });
 
         const { headers, assets } = result;
@@ -202,6 +266,41 @@ export const fetchAssetFoldersStream = ({
       const { asset_folders } = result;
       const total = asset_folders.length;
       setTotalFolders?.(total);
+      onSuccess?.(asset_folders);
+
+      for (const folder of asset_folders) {
+        yield folder;
+      }
+    }
+    catch (maybeError) {
+      onError?.(toError(maybeError));
+    }
+  };
+
+  return Readable.from(listGenerator());
+};
+
+/**
+ * Like `fetchAssetFoldersStream`, but reads a library's shared folders (the
+ * library root and its descendants) via the `shared_asset_folders` endpoints.
+ */
+export const fetchSharedAssetFoldersStream = ({
+  spaceId,
+  libraryId,
+  setTotalFolders,
+  onSuccess,
+  onError,
+}: {
+  spaceId: string;
+  libraryId: number;
+  setTotalFolders?: (total: number) => void;
+  onSuccess?: (folders: AssetFolder[]) => void;
+  onError?: (error: Error) => void;
+}) => {
+  const listGenerator = async function* sharedFolderListIterator() {
+    try {
+      const { asset_folders } = await fetchSharedAssetFolders({ spaceId, libraryId });
+      setTotalFolders?.(asset_folders.length);
       onSuccess?.(asset_folders);
 
       for (const folder of asset_folders) {
@@ -814,3 +913,35 @@ export const upsertAssetStream = ({
     },
   });
 };
+
+/**
+ * Shared (library) transport factories. These mirror their space-scoped
+ * counterparts above but bind to the `shared_*` API actions, so the existing
+ * upsert/write streams can drive a library scope unchanged.
+ */
+export const makeCreateSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport =>
+  (asset, fileBuffer) => createSharedAsset(asset, fileBuffer, { spaceId });
+
+export const makeUpdateSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetTransport =>
+  (id, asset, fileBuffer) => updateSharedAsset(id, asset, { spaceId, fileBuffer });
+
+export const makeGetSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
+  async (assetId: number) => {
+    const data = await getSharedAsset(assetId, { spaceId });
+    if (data?.deleted_at) {
+      return undefined;
+    }
+    return data;
+  };
+
+export const makeCreateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetFolderTransport =>
+  folder => createSharedAssetFolder({
+    name: folder.name,
+    parent_id: folder.parent_id ?? undefined,
+  }, { spaceId });
+
+export const makeUpdateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetFolderTransport =>
+  (id, folder) => updateSharedAssetFolder(id, folder, { spaceId });
+
+export const makeGetSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): GetAssetFolderTransport =>
+  folderId => getSharedAssetFolder(folderId, { spaceId });

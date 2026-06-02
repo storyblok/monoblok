@@ -280,6 +280,7 @@ export function createAssetsResource(deps: MapiResourceDeps) {
      * param and no request body. One-way only (space to org).
      *
      * Not part of the generated SDK, so this issues a raw `client.post`.
+     * The response is assumed to match `Asset`.
      */
     convertToShared<ThrowOnError extends boolean = false>(
       assetId: number | string,

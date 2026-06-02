@@ -99,6 +99,7 @@ describe('assets.convertToShared()', () => {
     });
 
     expect(result.error).toBeUndefined();
+    expect(result.data).toBeDefined();
     expect(result.data?.filename).toContain('/g/99/');
     expect(capturedUrl).toContain('/v1/spaces/123/assets/42/convert');
     expect(capturedUrl).toContain('target_asset_folder_id=7');

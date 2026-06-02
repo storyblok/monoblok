@@ -55,8 +55,8 @@ export interface AssetUploadRequest {
 export type AssetCreate = AssetUpdate & AssetUploadRequest;
 
 /** Uploads the file to S3 using the signed fields from step 1. */
-async function uploadToS3(
-  signedResponse: SignResponseObjectResponses[200],
+export async function uploadToS3(
+  signedResponse: { post_url?: string; fields?: Record<string, unknown> },
   file: Blob | ArrayBuffer,
   filename: string,
 ): Promise<void> {

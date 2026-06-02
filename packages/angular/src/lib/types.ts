@@ -1,9 +1,11 @@
-import { ISbComponentType } from '@storyblok/live-preview';
 import { SbRichTextElement, SbRichTextProps } from '@storyblok/richtext/static';
 
 export type SbBlokKeyDataTypes = string | number | object | boolean | undefined;
 
-export interface SbBlokData extends ISbComponentType<string> {
+export interface SbBlokData {
+  _uid: string;
+  component: string;
+  _editable?: string;
   [index: string]: SbBlokKeyDataTypes;
 }
 

@@ -1,14 +1,12 @@
-interface Blok {
-  _editable?: string;
-}
+import type { BlockContent } from './generated/types/field';
 
 interface EditableOptions {
   id: string;
   uid: string;
 }
 
-export default function storyblokEditable(blok?: Blok) {
-  const editable = blok?._editable;
+export default function storyblokEditable(block?: Pick<BlockContent, '_editable'>) {
+  const editable = block?._editable;
   if (!editable) {
     return {};
   }

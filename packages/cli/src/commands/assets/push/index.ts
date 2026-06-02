@@ -146,12 +146,12 @@ pushCmd
           scopes = [{ kind: 'library', libraryId: libraryId! }];
         }
         else {
-          scopes = [{ kind: 'space', spaceId: Number(fromSpace) }];
+          scopes = [{ kind: 'space', spaceId: fromSpace }];
         }
       }
       else {
         if (target === 'space' || target === 'all') {
-          scopes.push({ kind: 'space', spaceId: Number(fromSpace) });
+          scopes.push({ kind: 'space', spaceId: fromSpace });
         }
         if (target === 'shared' || target === 'all') {
           // `listWritableLibraries` already filters to writable libraries, so

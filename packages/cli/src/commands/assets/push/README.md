@@ -94,4 +94,7 @@ storyblok assets push --space YOUR_SPACE_ID --target shared
 
 Library assets live under `.storyblok/assets/shared/<library_id>/`, each subtree with its own `manifest.jsonl`. Bulk pushes read every `shared/<library_id>/` subtree present on disk. Library-scoped tags (`internal_tag_ids`) are remapped to the library's shared tags, creating any that are missing, and `meta_data` round-trips unchanged.
 
+> [!NOTE]
+> Repeated pushes are idempotent only for assets that carry an identity. The CLI matches a local asset to its remote counterpart through the asset's `id` and the subtree's `manifest.jsonl`. Sidecars written by `assets pull` already include the remote `id`, so re-pushing them updates the existing library asset in place. A sidecar you author by hand without an `id`, and that has no manifest entry, has no identity, so each push creates a new copy in the library. To update an existing asset, include its `id` in the sidecar (or `--data`), or push from a subtree whose `manifest.jsonl` still maps it.
+
 If the active space has only read access to a target library, the push fails fast, names the library, and writes no partial state. Libraries the space cannot access are skipped silently.

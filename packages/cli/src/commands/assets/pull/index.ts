@@ -281,7 +281,7 @@ pullCmd
 
     try {
       if (target === 'space') {
-        await pullScopeFull({ kind: 'space', spaceId: Number(space) });
+        await pullScopeFull({ kind: 'space', spaceId: space });
       }
       else if (target === 'shared') {
         const libraries = await listReadableLibraries(space);
@@ -290,7 +290,7 @@ pullCmd
         }
       }
       else if (target === 'all') {
-        await pullScopeFull({ kind: 'space', spaceId: Number(space) });
+        await pullScopeFull({ kind: 'space', spaceId: space });
         const libraries = await listReadableLibraries(space);
         for (const library of libraries) {
           await pullScopeFull({ kind: 'library', libraryId: library.id });
@@ -299,7 +299,7 @@ pullCmd
       else {
         // with-referenced (default): pull the space, then resolve shared assets
         // referenced by already-pulled local stories.
-        const spaceAssetIds = await pullScopeFull({ kind: 'space', spaceId: Number(space) });
+        const spaceAssetIds = await pullScopeFull({ kind: 'space', spaceId: space });
 
         const stories = await readLocalStoryContents(resolveCommandPath(directories.stories, space, basePath));
         if (stories.length > 0) {

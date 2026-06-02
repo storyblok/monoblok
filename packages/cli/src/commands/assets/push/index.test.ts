@@ -550,6 +550,20 @@ describe('assets push command', () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it('pushes from a non-numeric source directory (e.g. seed staging "qa-seed")', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset();
+    // Local source subtree keyed by a non-numeric directory name, like the
+    // QA seed staging dir. The source identifier is a directory, not a space ID.
+    preconditions.canLoadAssets([asset], { space: 'qa-seed' });
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', 'qa-seed', '--space', targetSpace]);
+
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(process.exitCode).toBe(0);
+  });
+
   it('should correctly resolve parent IDs even when child folders precede parents', async () => {
     const targetSpace = '54321';
     const numPairs = 10;
@@ -1777,6 +1791,38 @@ describe('assets push command', () => {
 
       expect(rootFolderTouched).toBe(false);
       expect(childFolderCreated).toBe(true);
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('updates an existing child library folder with only whitelisted fields', async () => {
+      // A pull→push round-trip writes child sidecars carrying their id and the
+      // org-managed `asset_folder_access`/`regions`. The space may update such a
+      // folder, but only its name/parent — forwarding the access grant 403s.
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([], { libraryId: 7 });
+      let updatePayload: Record<string, unknown> | undefined;
+      server.use(
+        // Child folder 8 already exists server-side → the push takes the update path.
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', () =>
+          HttpResponse.json({ shared_asset_folder: { id: 8, name: 'Sub', parent_id: 7 } })),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', async ({ request }) => {
+          updatePayload = ((await request.json()) as { shared_asset_folder: Record<string, unknown> }).shared_asset_folder;
+          // The backend rejects org-managed fields from space context.
+          if ('asset_folder_access' in updatePayload) {
+            return HttpResponse.json({ message: 'Forbidden' }, { status: 403 });
+          }
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'folders', 'Brand_7.json')]: JSON.stringify({ id: 7, name: 'Brand', parent_id: null, uuid: 'u7', asset_folder_access: [{ space_id: 12345, access_level: 'write' }], regions: ['eu'] }),
+        [join(dir, 'folders', 'Sub_8.json')]: JSON.stringify({ id: 8, name: 'Sub', parent_id: 7, uuid: 'u8', asset_folder_access: [{ space_id: 12345, access_level: 'write' }], regions: [] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(updatePayload).toEqual({ name: 'Sub', parent_id: 7 });
       expect(process.exitCode).toBe(0);
     });
 

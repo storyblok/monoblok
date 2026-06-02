@@ -922,7 +922,13 @@ export const makeCreateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: 
   }, { spaceId });
 
 export const makeUpdateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetFolderTransport =>
-  (id, folder) => updateSharedAssetFolder(id, folder, { spaceId });
+  // Whitelist mutable fields only. Pulled sidecars carry org-managed fields
+  // (`asset_folder_access`, `regions`, `uuid`, `id`); forwarding them on a
+  // space-context update 403s. Mirror the create transport.
+  (id, folder) => updateSharedAssetFolder(id, {
+    name: folder.name,
+    parent_id: folder.parent_id ?? undefined,
+  }, { spaceId });
 
 export const makeGetSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): GetAssetFolderTransport =>
   folderId => getSharedAssetFolder(folderId, { spaceId });

@@ -1661,8 +1661,32 @@ describe('assets push command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '7']);
 
-      expect(actions.createSharedAsset).toHaveBeenCalled();
+      // Without --folder, the asset folder must default to the library root,
+      // otherwise shared-asset creation 403s.
+      expect(actions.createSharedAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ asset_folder_id: 7 }),
+        expect.anything(),
+        expect.anything(),
+      );
       expect(process.exitCode).toBe(0);
+    });
+
+    it('defaults a bulk shared-asset folder to the library root when the sidecar omits it', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png' }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(actions.createSharedAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ asset_folder_id: 7 }),
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
     it('rejects a single-asset --target shared without --library', async () => {

@@ -154,6 +154,9 @@ pushCmd
         ? makeCleanupAssetFSTransport()
         : () => Promise.resolve();
 
+      // Only build the target-space tag map for cross-space pushes; same-space
+      // pushes keep their IDs as-is. A failed fetch throws and aborts the push:
+      // fail fast rather than push unmappable IDs.
       const assetInternalTagsByName = fromSpace === targetSpace
         ? undefined
         : await fetchAssetInternalTagsByName(targetSpace);

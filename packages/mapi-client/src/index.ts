@@ -12,6 +12,7 @@ import { createDatasourceEntriesResource } from './resources/datasource-entries'
 import { createDatasourcesResource } from './resources/datasources';
 import { createInternalTagsResource } from './resources/internal-tags';
 import { createPresetsResource } from './resources/presets';
+import { createSharedAssetFoldersResource } from './resources/shared-asset-folders';
 import { createSpacesResource } from './resources/spaces';
 import { createStoriesResource } from './resources/stories';
 import { createUsersResource } from './resources/users';
@@ -179,6 +180,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     post: httpPost,
     presets: createPresetsResource(deps),
     put: httpPut,
+    sharedAssetFolders: createSharedAssetFoldersResource(deps),
     spaces: createSpacesResource(deps),
     stories: createStoriesResource(deps),
     users: createUsersResource({ client, wrapRequest }),
@@ -187,6 +189,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
 
 export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
 
+export type { AccessLevel, AssetFolderAccess, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderGetResponse, SharedAssetFolderListResponse, SharedAssetFolderUpdate } from './resources/shared-asset-folders';
 export type {
   ApiResponse,
   Asset,

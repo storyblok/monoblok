@@ -43,11 +43,11 @@ const createSummary = (): PullSummary => ({
 const pullCmd = assetsCommand
   .command('pull')
   .option('-s, --space <space>', 'space ID')
-  .option('--target <target>', 'pull source: with-referenced | all | space | org', 'with-referenced')
+  .option('--target <target>', 'pull source: with-referenced | all | space | shared', 'with-referenced')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('--asset-token <token>', 'Asset token for accessing private assets')
-  .description(`Download your space's assets, and optionally global library assets, as local files.`);
+  .description(`Download your space's assets, and optionally shared library assets, as local files.`);
 
 pullCmd
   .action(async (options, command) => {
@@ -309,7 +309,7 @@ pullCmd
       if (target === 'space') {
         await pullScopeFull({ kind: 'space', spaceId: Number(space) });
       }
-      else if (target === 'org') {
+      else if (target === 'shared') {
         const libraries = await listReadableLibraries(space);
         for (const library of libraries) {
           await pullScopeFull({ kind: 'library', libraryId: library.id });

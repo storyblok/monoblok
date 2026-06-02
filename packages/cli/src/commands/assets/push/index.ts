@@ -78,12 +78,12 @@ const pushCmd = assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .option('--target <target>', 'push destination: space | org | all', 'space')
-  .option('--library <libraryId>', 'destination library ID (required for single-asset --target=org)')
+  .option('--target <target>', 'push destination: space | shared | all', 'space')
+  .option('--library <libraryId>', 'destination library ID (required for single-asset --target=shared)')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
-  .description(`Push local assets to a Storyblok space or global library.`);
+  .description(`Push local assets to a Storyblok space or shared library.`);
 
 pushCmd
   .action(async (assetInput, options, command) => {
@@ -121,7 +121,7 @@ pushCmd
 
     // Validate the target/library combination for single-asset pushes.
     if (assetBinaryPath) {
-      if (target === 'org' && !libraryId) {
+      if (target === 'shared' && !libraryId) {
         handleError(new CommandError('Pushing a single asset to a library requires --library YOUR_LIBRARY_ID.'), verbose);
         process.exitCode = 2;
         return;
@@ -138,7 +138,7 @@ pushCmd
     let scopes: Scope[] = [];
     try {
       if (assetBinaryPath) {
-        scopes = target === 'org'
+        scopes = target === 'shared'
           ? [{ kind: 'library', libraryId: libraryId! }]
           : [{ kind: 'space', spaceId: Number(fromSpace) }];
       }
@@ -146,7 +146,7 @@ pushCmd
         if (target === 'space' || target === 'all') {
           scopes.push({ kind: 'space', spaceId: Number(fromSpace) });
         }
-        if (target === 'org' || target === 'all') {
+        if (target === 'shared' || target === 'all') {
           const libraries = await listWritableLibraries(targetSpace);
           scopes.push(...libraries.map(library => ({ kind: 'library', libraryId: library.id }) satisfies Scope));
         }

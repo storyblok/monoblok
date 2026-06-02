@@ -1653,22 +1653,22 @@ describe('assets push command', () => {
     expect(process.exitCode).not.toBe(1);
   });
 
-  describe('global library targets', () => {
-    it('pushes a single asset to a library (--target org --library)', async () => {
+  describe('shared library targets', () => {
+    it('pushes a single asset to a library (--target shared --library)', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'hero.png', filename: 'hero.png' })], { libraryId: 7 });
       preconditions.canLoadLocalFile('./hero.png', 'binary-content');
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org', '--library', '7']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '7']);
 
       expect(actions.createSharedAsset).toHaveBeenCalled();
       expect(process.exitCode).toBe(0);
     });
 
-    it('rejects a single-asset --target org without --library', async () => {
+    it('rejects a single-asset --target shared without --library', async () => {
       preconditions.canLoadLocalFile('./hero.png', 'binary-content');
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
       expect(actions.createSharedAsset).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(2);
@@ -1687,7 +1687,7 @@ describe('assets push command', () => {
       preconditions.hasLibraries([{ id: 8, name: 'Locked', accessLevel: 'read' }]);
       preconditions.canLoadLocalFile('./hero.png', 'binary-content');
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'org', '--library', '8']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '8']);
 
       expect(actions.createSharedAsset).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(2);
@@ -1699,7 +1699,7 @@ describe('assets push command', () => {
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canLoadAssets([spaceAsset]);
-      preconditions.canLoadAssets([libraryAsset], { space: join('org', '7') });
+      preconditions.canLoadAssets([libraryAsset], { space: join('shared', '7') });
       preconditions.canUpsertRemoteAssets([spaceAsset]);
       preconditions.canUpsertSharedAssets([libraryAsset], { libraryId: 7 });
 
@@ -1707,7 +1707,7 @@ describe('assets push command', () => {
 
       const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
       expect(written.some(p => p.includes('assets/12345/manifest.jsonl'))).toBe(true);
-      expect(written.some(p => p.includes('assets/org/7/manifest.jsonl'))).toBe(true);
+      expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(true);
     });
 
     it('round-trips meta_data for a shared asset', async () => {
@@ -1718,13 +1718,13 @@ describe('assets push command', () => {
         capturedPut = await request.json() as typeof capturedPut;
         return HttpResponse.json({});
       }));
-      const dir = resolveCommandPath(directories.assets, join('org', '7'));
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
       vol.fromJSON({
         [join(dir, 'x_2.png')]: 'binary',
         [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', meta_data: { credit: 'ACME' } }),
       });
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'org']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
       expect(capturedPut?.asset?.meta_data).toEqual({ credit: 'ACME' });
     });
@@ -1741,28 +1741,28 @@ describe('assets push command', () => {
           return HttpResponse.json({});
         }),
       );
-      const dir = resolveCommandPath(directories.assets, join('org', '7'));
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
       vol.fromJSON({
         [join(dir, 'x_2.png')]: 'binary',
         [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', internal_tag_ids: ['300'], internal_tags_list: [{ id: 300, name: 'hero' }] }),
       });
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'org']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
       expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
     });
 
-    it('bulk --target=space ignores org subtrees', async () => {
+    it('bulk --target=space ignores shared subtrees', async () => {
       const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
       preconditions.canLoadAssets([spaceAsset]);
-      preconditions.canLoadAssets([libraryAsset], { space: join('org', '7') });
+      preconditions.canLoadAssets([libraryAsset], { space: join('shared', '7') });
       preconditions.canUpsertRemoteAssets([spaceAsset]);
 
       await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'space']);
 
       const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
-      expect(written.some(p => p.includes('assets/org/7/manifest.jsonl'))).toBe(false);
+      expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(false);
     });
   });
 });

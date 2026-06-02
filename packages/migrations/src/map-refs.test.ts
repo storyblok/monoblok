@@ -65,6 +65,21 @@ describe('mapRefs', () => {
     expect(asRecord(asRecord(mappedStory.content).hero_image).id).toBe(20);
   });
 
+  it('should pass a shared-asset reference through unchanged when its id is absent from the asset map', () => {
+    const story = makeStory({
+      hero_image: {
+        fieldtype: 'asset',
+        id: 999111, // globally-unique shared asset id, not in the map
+        filename: 'https://a.storyblok.com/g/1/500x500/shared.png',
+      },
+    });
+    const maps = { assets: new Map<unknown, string | number>([[10, 20]]) }; // only a local id
+    const { mappedStory } = mapRefs(story as never, { schemas, maps });
+    const heroImage = asRecord(asRecord(mappedStory.content).hero_image);
+    expect(heroImage.id).toBe(999111);
+    expect(heroImage.filename).toBe('https://a.storyblok.com/g/1/500x500/shared.png');
+  });
+
   it('should traverse nested bloks recursively', () => {
     const story = makeStory({
       body: [

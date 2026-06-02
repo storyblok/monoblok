@@ -80,6 +80,14 @@ describe('assets transfer command', () => {
     expect(process.exitCode).toBe(2);
   });
 
+  it('should reject --folder-id 0 as invalid', async () => {
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '0']);
+
+    expect(actions.transferAsset).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'), '');
+    expect(process.exitCode).toBe(2);
+  });
+
   it('should print the plan and make no API calls in dry-run mode', async () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7', '--dry-run']);
 

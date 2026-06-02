@@ -52,7 +52,7 @@ transferCmd
     }
 
     const folderId = Number(options.folderId);
-    if (!options.folderId || Number.isNaN(folderId)) {
+    if (!options.folderId || !Number.isFinite(folderId) || folderId <= 0) {
       handleError(new CommandError(`Please provide a destination folder with --folder-id YOUR_FOLDER_ID.`), verbose);
       process.exitCode = 2;
       return;

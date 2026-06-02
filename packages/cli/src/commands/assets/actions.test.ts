@@ -36,5 +36,7 @@ describe('transferAsset', () => {
       message: expect.stringContaining('not available on your current plan'),
     });
     await expect(transferAsset('123', 42, 7)).rejects.toBeInstanceOf(APIError);
+    const error = await transferAsset('123', 42, 7).catch(e => e);
+    expect(error.code).toBe(403);
   });
 });

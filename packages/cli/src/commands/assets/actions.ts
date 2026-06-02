@@ -309,7 +309,7 @@ export const transferAsset = async (
     const status = (maybeError as { response?: { status?: number } })?.response?.status;
     handleAPIError(
       'transfer_asset',
-      toError(maybeError),
+      maybeError,
       status === 403
         ? `Transferring assets to the global library is not available on your current plan.`
         : undefined,

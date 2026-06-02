@@ -25,7 +25,10 @@ add_worktree() {
   if git show-ref --verify --quiet "refs/heads/$name" 2>/dev/null; then
     git worktree add "$worktree_path" "$name"
   else
-    git worktree add "$worktree_path" -b "$name"
+    # Branch new worktrees from the latest origin/main so each starts clean,
+    # regardless of what's currently checked out in the main repo.
+    git fetch origin main
+    git worktree add "$worktree_path" -b "$name" origin/main
   fi
 
   cd "$worktree_path" || exit 1

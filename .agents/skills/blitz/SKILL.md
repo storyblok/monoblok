@@ -42,6 +42,8 @@ Create worktrees **only when multiple issues are confirmed for implementation**:
 - Single issue: work in the current tree (no worktree needed)
 - Multiple issues: create a worktree per issue for parallel work
 
+Each new worktree branch starts from the latest `origin/main`: the script fetches `origin/main` and bases new branches on it, so worktrees never inherit unrelated work from whatever is currently checked out.
+
 Use the bundled script:
 ```bash
 bash .claude/skills/blitz/scripts/monotree.sh add <branch-name>

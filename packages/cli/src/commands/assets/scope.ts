@@ -11,7 +11,9 @@ import type { SharedAssetFolder } from './types';
  * own asset library, or one of the org's shared libraries.
  */
 export type Scope =
-  | { kind: 'space'; spaceId: number }
+  // `spaceId` is the local source/destination directory segment (e.g. a space
+  // ID or a staging dir name like `qa-seed`), not necessarily a numeric ID.
+  | { kind: 'space'; spaceId: string }
   | { kind: 'library'; libraryId: number };
 
 export interface Library {

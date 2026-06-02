@@ -13,6 +13,13 @@ set -euo pipefail
 #   # To also copy the template PNG alongside:
 #   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
 #     --filename "hero.png" --copy-png scenarios/my-scenario/assets/hero.png > scenarios/my-scenario/assets/hero.json
+#
+# For shared (org library) assets, keep the default `qa-` filename prefix so
+# cleanup-remote.sh --shared can find them, and point --folder-id at the
+# library (or a child folder):
+#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+#     --filename "qa-hero.png" --folder-id <libraryId> \
+#     --copy-png .storyblok/assets/shared/<libraryId>/qa-hero.png > .storyblok/assets/shared/<libraryId>/qa-hero.json
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 template_png="${SCRIPT_DIR}/../templates/asset-template.png"

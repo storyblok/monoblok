@@ -551,5 +551,14 @@ describe('assets pull command', () => {
 
       expect(sharedSpy).not.toHaveBeenCalled();
     });
+
+    it('rejects an invalid --target value', async () => {
+      const pull = assetsCommand.commands.find(command => command.name() === 'pull')!;
+      pull.exitOverride();
+
+      await expect(
+        assetsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--target', 'bogus']),
+      ).rejects.toThrow(/Allowed choices/i);
+    });
   });
 });

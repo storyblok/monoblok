@@ -1,4 +1,5 @@
 import { basename, join } from 'pathe';
+import { Option } from 'commander';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
 import { getUI } from '../../../utils/ui';
@@ -78,7 +79,7 @@ const pushCmd = assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .option('--target <target>', 'push destination: space | shared | all', 'space')
+  .addOption(new Option('--target <target>', 'push destination: space | shared | all').choices(['space', 'shared', 'all']).default('space'))
   .option('--library <libraryId>', 'destination library ID (required for single-asset --target=shared)')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)

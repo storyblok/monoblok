@@ -1698,6 +1698,15 @@ describe('assets push command', () => {
       expect(process.exitCode).toBe(2);
     });
 
+    it('rejects an invalid --target value', async () => {
+      const push = assetsCommand.commands.find(command => command.name() === 'push')!;
+      push.exitOverride();
+
+      await expect(
+        assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'bogus']),
+      ).rejects.toThrow(/Allowed choices/i);
+    });
+
     it('rejects --library combined with --target space', async () => {
       preconditions.canLoadLocalFile('./hero.png', 'binary-content');
 

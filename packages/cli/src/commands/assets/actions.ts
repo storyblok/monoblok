@@ -281,3 +281,39 @@ export const createAsset = async (
     handleAPIError('push_asset_create', toError(maybeError));
   }
 };
+
+/**
+ * Transfers a space-local asset into the org's global (shared) library.
+ *
+ * UX wording is "transfer"; the backend endpoint is still `convert`
+ * (`AssetsServices::ConvertToSharedAsset`). Drop this mapping when the backend
+ * ships the `convert` -> `transfer` rename. One-way only (space to org).
+ *
+ * A 403 means the feature is not available on the current plan; surface a
+ * friendly message instead of a raw API error.
+ */
+export const transferAsset = async (
+  spaceId: string,
+  assetId: number,
+  folderId: number,
+): Promise<Asset> => {
+  try {
+    const { data } = await getMapiClient().assets.convertToShared(assetId, {
+      path: { space_id: Number(spaceId) },
+      query: { target_asset_folder_id: folderId },
+      throwOnError: true,
+    });
+    return data;
+  }
+  catch (maybeError) {
+    const status = (maybeError as { response?: { status?: number } })?.response?.status;
+    if (status === 403) {
+      handleAPIError(
+        'transfer_asset',
+        toError(maybeError),
+        `Transferring assets to the global library is not available on your current plan.`,
+      );
+    }
+    handleAPIError('transfer_asset', toError(maybeError));
+  }
+};

@@ -33,6 +33,7 @@ export const upsertAssetFoldersPipeline = async ({
   maps,
   transports,
   ui,
+  skipRootFolders,
 }: {
   directoryPath: string;
   logger: Logger;
@@ -45,6 +46,7 @@ export const upsertAssetFoldersPipeline = async ({
     cleanupAssetFolder?: CleanupAssetFolderTransport;
   };
   ui: UI;
+  skipRootFolders?: boolean;
 }): Promise<Summaries> => {
   const folderProgress = ui.createProgressBar({ title: 'Folders...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
@@ -52,9 +54,14 @@ export const upsertAssetFoldersPipeline = async ({
   await pipeline(
     readLocalAssetFoldersStream({
       directoryPath,
+      skipRootFolders,
       setTotalFolders: (total) => {
         summary.total = total;
         folderProgress.setTotal(total);
+      },
+      onFolderSkip: () => {
+        summary.total -= 1;
+        folderProgress.setTotal(summary.total);
       },
       onFolderError: (error) => {
         summary.failed += 1;

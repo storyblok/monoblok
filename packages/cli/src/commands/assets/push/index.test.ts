@@ -1734,6 +1734,43 @@ describe('assets push command', () => {
       expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(true);
     });
 
+    it('skips the library root folder on bulk push, still pushes child folders', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([], { libraryId: 7 });
+      let rootFolderTouched = false;
+      let childFolderCreated = false;
+      server.use(
+        // The root (library) folder exists server-side; updating it from a
+        // space 403s. The child folder does not exist yet (create path).
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/7', () => {
+          rootFolderTouched = true;
+          return HttpResponse.json({ shared_asset_folder: { id: 7, name: 'Brand', parent_id: null } });
+        }),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/7', () => {
+          rootFolderTouched = true;
+          return HttpResponse.json({ message: 'Cannot update shared root asset folder in space context' }, { status: 403 });
+        }),
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', () =>
+          HttpResponse.json({ message: 'not found' }, { status: 404 })),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders', async ({ request }) => {
+          childFolderCreated = true;
+          const body = await request.json() as { shared_asset_folder: { name: string; parent_id?: number } };
+          return HttpResponse.json({ shared_asset_folder: { id: 80, name: body.shared_asset_folder.name, parent_id: body.shared_asset_folder.parent_id } });
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'folders', 'Brand_7.json')]: JSON.stringify({ id: 7, name: 'Brand', parent_id: null, uuid: 'u7' }),
+        [join(dir, 'folders', 'Sub_8.json')]: JSON.stringify({ id: 8, name: 'Sub', parent_id: 7, uuid: 'u8' }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(rootFolderTouched).toBe(false);
+      expect(childFolderCreated).toBe(true);
+      expect(process.exitCode).toBe(0);
+    });
+
     it('round-trips meta_data for a shared asset', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });

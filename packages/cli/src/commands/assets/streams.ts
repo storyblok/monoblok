@@ -372,6 +372,14 @@ export interface ReadLocalAssetFolderOptions {
   directoryPath: string;
   setTotalFolders?: (total: number) => void;
   onFolderError?: (error: Error) => void;
+  /**
+   * Skip root folders (`parent_id == null`). Shared libraries are themselves
+   * root shared folders that only exist in org context, so pushing one from a
+   * space 403s. Their children still resolve: a child's `parent_id` is the
+   * library's real id, which the upsert resolves without the root being pushed.
+   */
+  skipRootFolders?: boolean;
+  onFolderSkip?: () => void;
 }
 
 export interface LocalAssetFolderPayload {
@@ -385,6 +393,8 @@ export const readLocalAssetFoldersStream = ({
   directoryPath,
   setTotalFolders,
   onFolderError,
+  skipRootFolders,
+  onFolderSkip,
 }: ReadLocalAssetFolderOptions) => {
   const iterator = async function* readFolders() {
     try {
@@ -401,6 +411,13 @@ export const readLocalAssetFoldersStream = ({
             const content = await readFile(filePath, 'utf8');
             const folder = JSON.parse(content) as AssetFolder;
             jsonFiles.delete(file);
+            // Skip root folders when requested, but still mark them processed so
+            // their children resolve their parent and are not postponed forever.
+            if (skipRootFolders && !folder.parent_id) {
+              processed.add(folder.id);
+              onFolderSkip?.();
+              continue;
+            }
             // We must ensure the parent folder was already processed before
             // we can pass it to the next step in the pipeline. Otherwise,
             // mapping from local to remote parent ID does not work correctly.

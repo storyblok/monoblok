@@ -234,6 +234,10 @@ pushCmd
               cleanupAssetFolder: cleanupAssetFolderTransport,
             },
             ui,
+            // A library's root folder is a shared root folder that cannot be
+            // pushed from a space (org context only); skip it so the bulk push
+            // does not 403 on it while still pushing its child folders.
+            skipRootFolders: scope.kind === 'library',
           }));
         }
 

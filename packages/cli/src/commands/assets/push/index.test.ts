@@ -1710,6 +1710,48 @@ describe('assets push command', () => {
       expect(written.some(p => p.includes('assets/org/7/manifest.jsonl'))).toBe(true);
     });
 
+    it('round-trips meta_data for a shared asset', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { meta_data?: unknown; internal_tag_ids?: string[] } } | undefined;
+      server.use(http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+        capturedPut = await request.json() as typeof capturedPut;
+        return HttpResponse.json({});
+      }));
+      const dir = resolveCommandPath(directories.assets, join('org', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', meta_data: { credit: 'ACME' } }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'org']);
+
+      expect(capturedPut?.asset?.meta_data).toEqual({ credit: 'ACME' });
+    });
+
+    it('creates missing library tags and remaps internal_tag_ids on push', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tags: [] })),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } })),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+          capturedPut = await request.json() as typeof capturedPut;
+          return HttpResponse.json({});
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('org', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', internal_tag_ids: ['300'], internal_tags_list: [{ id: 300, name: 'hero' }] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'org']);
+
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
+    });
+
     it('bulk --target=space ignores org subtrees', async () => {
       const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });

@@ -1,5 +1,5 @@
-import type { Component, MaybeRefOrGetter, VNode } from 'vue';
-import { computed, createTextVNode, h, toValue } from 'vue';
+import type { Component, VNode } from 'vue';
+import { createTextVNode, h } from 'vue';
 import type {
   RenderSpec,
   SbRichTextElement,
@@ -20,35 +20,13 @@ import {
   resolveTag,
   splitTableRows,
 } from '@storyblok/richtext';
-import BlokRenderer from '../components/BlokRenderer';
 
-/**
- * Lookup of props passed to Vue richtext node/mark override components.
- * Indexed by element name. Content is passed via the default slot, not as a prop.
- *
- * Shaped as a non-generic indexed interface (rather than `SbVueRichTextProps<T>`)
- * so it is resolvable by Vue's `<script setup>` `defineProps<T>()` macro, whose
- * limited type resolver cannot substitute generic parameters through type aliases.
- *
- * @example
- * ```vue
- * <script setup lang="ts">
- * import type { SbVueRichTextProps } from '@storyblok/vue';
- *
- * defineProps<SbVueRichTextProps['heading']>();
- * </script>
- *
- * <template>
- *   <h1 class="custom-heading">
- *     <slot />
- *   </h1>
- * </template>
- * ```
- */
 export type SbVueRichTextProps = SbRichTextElementByType<SbVueRichTextRenderContext>;
+
 export type SbVueRichTextComponentMap = {
   [K in SbRichTextElement]?: Component<SbVueRichTextProps[K]>;
 };
+
 function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
   components?: SbVueRichTextComponentMap,
@@ -61,45 +39,20 @@ export interface SbVueRichTextRenderContext {
   components?: SbVueRichTextComponentMap;
 }
 
-export interface StoryblokRichTextProps extends SbVueRichTextRenderContext {
-  document: MaybeRefOrGetter<SbRichTextNode | SbRichTextNode[] | null | undefined>;
-}
-
-interface CreateRichTextHookOptions {
-  isServerContext?: boolean;
-}
-
 /**
- * Creates a richtext hook factory with a custom StoryblokComponent.
+ * Creates a Vue-compatible render function for Storyblok Rich Text documents.
+ *
+ * This is a factory that binds render-time configuration (such as image
+ * optimization and component overrides) and returns a reusable renderer
+ * function.
+ *
+ * The returned function is designed to be used directly inside Vue render
+ * functions or setup return functions, and will convert a normalized
+ * Storyblok rich text document into Vue VNodes.
+ *
+ * If the input is null or empty, it returns null.
  */
-export function createRichTextHook(
-  _options?: CreateRichTextHookOptions,
-) {
-  return function useRichText({ document, optimizeImage, components }: StoryblokRichTextProps) {
-    const render = useStoryblokRichText({
-      optimizeImage,
-      components: {
-        blok: BlokRenderer,
-        ...components,
-      },
-    });
-
-    return computed(() => render(toValue(document)));
-  };
-}
-
-/**
- * Vue composable for rendering rich text content.
- * Returns a render function that converts rich text JSON to VNodes.
- */
-export function useStoryblokRichText(options: SbVueRichTextRenderContext = {}) {
-  return createStoryblokRenderer(options);
-}
-
-/**
- * Creates a renderer function for Storyblok rich text.
- */
-export function createStoryblokRenderer(options: SbVueRichTextRenderContext) {
+export function createRichTextRenderer(options: SbVueRichTextRenderContext) {
   return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined): VNode | VNode[] | null {
     if (!document) {
       return null;
@@ -142,8 +95,6 @@ function renderLinkGroup(
     const innerMarks = getInnerMarks(node);
     return renderTextNodeWithMarks(textNode, innerMarks, options, index);
   });
-
-  // Custom link component
   const Custom = resolveComponentOverride(linkMark.type, options.components);
   if (Custom) {
     return h(Custom, { key, ...linkMark }, {
@@ -153,21 +104,17 @@ function renderLinkGroup(
 
   const tag = resolveTag(linkMark);
   if (!tag) {
-    // No tag resolved - this shouldn't happen for links, but return first child or empty
     return inner.length > 0 ? inner[0] : createTextVNode('');
   }
 
-  const props = buildVueProps(linkMark.type, linkMark.attrs);
-  return h(tag, { key, ...props }, inner);
+  return h(tag, { key, ...processAttrs(linkMark.type, linkMark.attrs) }, inner);
 }
 
 function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, key: number | string): VNode {
-  // Text node
   if (node.type === 'text') {
     return renderTextNode(node as SbRichTextTextNode, options, key);
   }
 
-  // Custom component override
   const Custom = resolveComponentOverride(node.type, options.components);
 
   if (Custom) {
@@ -177,38 +124,28 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
         }
       : undefined);
   }
-
-  // Default element rendering
   const tag = resolveTag(node);
 
-  // No tag (e.g., nested doc): render children directly
+  // Some nodes (e.g. nested docs) don't render an element themselves.
+  // Render their children directly instead.
   if (!tag) {
     const children = node.content ? renderChildren(node.content, options) : [];
-    // Return single child or wrap in div
     if (children.length === 0) {
       return createTextVNode('');
     }
     return children.length === 1 ? children[0] : h('div', { key }, children);
   }
-
-  // Image optimization
   if (node.type === 'image' && options.optimizeImage) {
     return renderOptimizedImage(node, options, key);
   }
 
-  const props = buildVueProps(node.type, node.attrs);
-
-  // Self-closing tags
+  const props = processAttrs(node.type, node.attrs);
   if (isSelfClosing(tag)) {
     return h(tag, { key, ...props });
   }
-
-  // Table special handling with thead/tbody
   if (node.type === 'table') {
     return renderTable(node, options, key, tag, props);
   }
-
-  // Static children (e.g., code_block -> pre > code)
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
     const content = node.content ? renderChildren(node.content, options) : [];
@@ -232,13 +169,12 @@ function renderOptimizedImage(
   const src = attrs?.src as string | undefined;
 
   if (!src) {
-    // Return empty text node for missing src
     return createTextVNode('');
   }
 
   const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, options.optimizeImage);
 
-  const finalProps = buildVueProps('image', {
+  const finalProps = processAttrs('image', {
     ...attrs,
     src: optimizedSrc,
     ...extraAttrs,
@@ -288,7 +224,7 @@ function renderStaticStructure(
   return specs.map((spec, index) => {
     const { tag, children, attrs: specAttrs } = spec;
     const mergedAttrs = { ...specAttrs, ...parentAttrs };
-    const props = buildVueProps(type, mergedAttrs);
+    const props = processAttrs(type, mergedAttrs);
 
     if (isSelfClosing(tag)) {
       return h(tag, { key: index, ...props });
@@ -320,7 +256,6 @@ function renderTextNodeWithMarks(
     }
   }
 
-  // If content is still a string, create a text VNode
   if (typeof content === 'string') {
     return createTextVNode(content);
   }
@@ -341,20 +276,5 @@ function wrapMark(children: VNode | string, mark: SbRichTextMark, options: SbVue
   if (!tag) {
     return typeof children === 'string' ? createTextVNode(children) : children;
   }
-
-  const props = buildVueProps(mark.type, mark.attrs);
-  return h(tag, props, typeof children === 'string' ? children : [children]);
-}
-
-/**
- * Builds Vue props from node/mark type and attrs.
- * Handles class attribute (Vue uses 'class' not 'className').
- */
-function buildVueProps(
-  type: SbRichTextElement,
-  attrs: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  // Vue uses 'class' directly, unlike React which needs 'className'
-  const processed = processAttrs(type, attrs);
-  return processed;
+  return h(tag, processAttrs(mark.type, mark.attrs), typeof children === 'string' ? children : [children]);
 }

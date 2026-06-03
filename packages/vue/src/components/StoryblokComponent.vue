@@ -8,7 +8,6 @@ const props = defineProps<{ blok: SbBlokData }>();
 const slots: Slots = useSlots();
 
 const blokRef = ref();
-
 defineExpose({
   value: blokRef,
 });
@@ -39,11 +38,7 @@ if (!componentFound && VueSDKOptions) {
 </script>
 
 <template>
-  <component
-    :is="componentName"
-    ref="blokRef"
-    v-bind="{ ...$props, ...$attrs }"
-  >
+  <component :is="componentName" ref="blokRef" v-bind="{ ...$props, ...$attrs }">
     <template v-for="name in Object.keys(slots)" #[name]="slotProps">
       <slot :name="name" v-bind="slotProps"></slot>
     </template>

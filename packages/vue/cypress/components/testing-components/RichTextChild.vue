@@ -6,6 +6,5 @@ const story = await useStoryblok('vue/test-richtext', { version: 'draft' });
 
 <template>
   <h2>RichText</h2>
-  <!-- <pre>{{ story.content.richText }}</pre> -->
   <StoryblokRichText v-if="story.content" :document="story.content.richText" />
 </template>

@@ -21,7 +21,8 @@ import StoryblokRichText from './components/StoryblokRichText.vue';
 export { default as StoryblokComponent } from './components/StoryblokComponent.vue';
 
 export { default as StoryblokRichText } from './components/StoryblokRichText.vue';
-export * from './composables/useStoryblokRichText';
+export { useStoryblokRichText } from './composables/use-storyblok-rich-text.ts';
+export type { SbVueRichTextComponentMap, SbVueRichTextProps, SbVueRichTextRenderContext } from './rich-text-renderer.ts';
 
 export * from './types';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import StoryblokRichText from '../components/StoryblokRichText.vue';
-import type { SbVueRichTextComponentMap } from '../composables/useStoryblokRichText.ts';
+import type { SbVueRichTextComponentMap } from '../composables/use-storyblok-rich-text.ts';
 import { mount } from '@vue/test-utils';
 import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
 import CustomBold from './richtext/CustomBold.vue';

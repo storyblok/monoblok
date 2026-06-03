@@ -4,12 +4,7 @@ import {
   useStoryblok,
 } from '@storyblok/vue';
 
-const story = await useStoryblok(
-  'richtext',
-  {
-    version: 'draft',
-  },
-);
+const story = await useStoryblok('vue/test-richtext', { version: 'draft' });
 
 setTimeout(() => {
   story?.value?.content.richText.content.push({

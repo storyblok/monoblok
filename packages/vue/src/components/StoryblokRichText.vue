@@ -1,11 +1,9 @@
 <script lang="ts">
-import { defineComponent, toRaw } from 'vue';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import {
-  createRichTextHook,
-  type SbVueRichTextComponentMap,
-} from '../composables/useStoryblokRichText';
 import type { SbRichTextImageOptions, SbRichTextNode } from '@storyblok/richtext';
+import BlokRenderer from './BlokRenderer.ts';
+import { createRichTextRenderer, type SbVueRichTextComponentMap } from '../rich-text-renderer';
 
 export default defineComponent({
   name: 'StoryblokRichText',
@@ -25,14 +23,14 @@ export default defineComponent({
   },
 
   setup(props) {
-    const useStoryblokRichText = createRichTextHook();
-    const rendered = useStoryblokRichText({
+    const render = createRichTextRenderer({
       optimizeImage: props.optimizeImage,
-      components: toRaw(props.components),
-      document: props.document,
+      components: {
+        blok: BlokRenderer,
+        ...props.components,
+      },
     });
-
-    return () => rendered.value;
+    return () => render(props.document);
   },
 });
 </script>

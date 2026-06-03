@@ -2,7 +2,8 @@ import { defineComponent, h } from 'vue';
 import type { PropType } from 'vue';
 
 import StoryblokComponent from './StoryblokComponent.vue';
-import type { SbVueRichTextComponentMap, SbVueRichTextProps } from '../composables/useStoryblokRichText';
+import type { SbRichTextMark, SbRichTextNode } from '@storyblok/richtext';
+import type { SbVueRichTextProps, SbVueRichTextRenderContext } from '@/rich-text-renderer.ts';
 
 const BlokRenderer = defineComponent({
   name: 'StoryblokBlokRenderer',
@@ -16,26 +17,23 @@ const BlokRenderer = defineComponent({
       type: Object as PropType<SbVueRichTextProps['blok']['attrs']>,
       required: false,
     },
-
     content: {
-      type: Array as PropType<SbVueRichTextProps['blok']['content']>,
+      type: Array as PropType<SbRichTextNode[]>,
       required: false,
     },
     marks: {
-      type: Array as PropType<SbVueRichTextProps['blok']['marks']>,
+      type: Array as PropType<SbRichTextMark[]>,
       required: false,
     },
     _key: {
       type: String,
       required: false,
     },
-
-    components: {
-      type: Object as PropType<SbVueRichTextComponentMap>,
+    context: {
+      type: Object as PropType<SbVueRichTextRenderContext>,
       required: false,
     },
   },
-
   setup(props) {
     return () =>
       Array.isArray(props.attrs?.body)

@@ -1,4 +1,4 @@
-import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
+import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
 import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
 import React, { type ComponentType, type ReactNode } from 'react';
 
@@ -28,7 +28,7 @@ export interface SbReactRichTextRenderContext {
 }
 export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
-  document?: SbRichTextNode | SbRichTextNode[] | null | undefined;
+  document?: SbRichTextInput;
 }
 
 function resolveComponent<K extends SbRichTextElement>(
@@ -39,7 +39,7 @@ function resolveComponent<K extends SbRichTextElement>(
 }
 
 export function createRichTextRenderer(options: SbReactRichTextRenderContext) {
-  return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined) {
+  return function render(document: SbRichTextInput): ReactNode | null {
     const nodes = normalizeNodes(document, true);
     return nodes?.length ? renderChildren(nodes, options) : null;
   };

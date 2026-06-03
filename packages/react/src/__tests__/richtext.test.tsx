@@ -1,5 +1,5 @@
 import type { SbReactComponentMap } from '@storyblok/react';
-import { StoryblokRichText } from '@storyblok/react';
+import { StoryblokRichText, useStoryblokRichText } from '@storyblok/react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
@@ -116,6 +116,16 @@ describe('react StoryblokRichText component', () => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
         expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
+      });
+    });
+  });
+  // Testing the useStoryblokRichText hook separately to ensure it works
+  // This is using the same api that the StoryblokRichText component uses internally, so it's somewhat redundant, but it allows us to test the hook in isolation
+  describe('nodes rendering using useStoryblokRichText', () => {
+    nodeFixtures.forEach(({ title, input, expected }) => {
+      it(title, () => {
+        const { container } = render(useStoryblokRichText()(input));
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
   });

@@ -1,15 +1,14 @@
 import { createRichTextRenderer } from './core/richtext';
-import type { StoryblokRichTextProps } from './core/richtext';
-import { DefaultBlok } from './storyblok-rich-text';
+import type { SbReactRichTextRenderContext } from './core/richtext';
+import StoryblokComponent from './core/storyblok-component';
+import { createDefaultBlok } from './core/create-default-blok';
 
-export const useStoryblokRichText = (props: StoryblokRichTextProps) => {
-  const render = createRichTextRenderer({
+export const useStoryblokRichText = (props: SbReactRichTextRenderContext = {}) => {
+  return createRichTextRenderer({
     optimizeImage: props.optimizeImage,
     components: {
-      blok: DefaultBlok,
+      blok: createDefaultBlok(StoryblokComponent),
       ...props.components,
     },
   });
-
-  return render(props.document);
 };

@@ -14,7 +14,7 @@
     "schema:init": "storyblok schema init --out-dir src/schema",
     "schema:push": "storyblok schema push src/schema/schema.ts --delete",
     "schema:rollback": "storyblok schema rollback",
-    "seed": "pnpm seed:cleanup && pnpm seed:datasources && pnpm seed:assets && pnpm schema:push --delete --no-migrations && storyblok components pull && mv ./.storyblok/components/290020686946333 ./.storyblok/components/seed && pnpm seed:stories",
+    "seed": "pnpm seed:cleanup && pnpm seed:datasources && pnpm seed:assets && pnpm schema:push --delete --no-migrations && mv ./.storyblok/components/290020686946333 ./.storyblok/components/seed && pnpm seed:stories",
     "seed:datasources": "storyblok datasources push --from seed",
     "seed:assets": "storyblok assets push --from seed",
     "seed:stories": "storyblok stories push --from seed --publish",

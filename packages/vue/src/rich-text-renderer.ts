@@ -5,6 +5,7 @@ import type {
   SbRichTextElement,
   SbRichTextElementByType,
   SbRichTextImageOptions,
+  SbRichTextInput,
   SbRichTextMark,
   SbRichTextNode,
   SbRichTextTextNode,
@@ -53,7 +54,7 @@ export interface SbVueRichTextRenderContext {
  * If the input is null or empty, it returns null.
  */
 export function createRichTextRenderer(options: SbVueRichTextRenderContext) {
-  return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined): VNode | VNode[] | null {
+  return function render(document: SbRichTextInput): VNode | VNode[] | null {
     if (!document) {
       return null;
     }

@@ -1,51 +1,46 @@
-import type { MaybeRefOrGetter } from 'vue';
-import { computed, toValue } from 'vue';
-import type { SbRichTextNode } from '@storyblok/richtext';
 import BlokRenderer from '../components/BlokRenderer';
 import { createRichTextRenderer, type SbVueRichTextRenderContext } from '../rich-text-renderer';
 
-export interface StoryblokRichTextProps extends SbVueRichTextRenderContext {
-  document: MaybeRefOrGetter<
-    SbRichTextNode | SbRichTextNode[] | null | undefined
-  >;
-}
-
 /**
- * Vue composable for rendering Storyblok Rich Text.
+ * Creates a Storyblok Rich Text renderer.
  *
- * Binds rendering configuration (image optimization, custom components)
- * and returns a computed VNode tree based on the provided document.
+ * The returned render function can be used to transform Storyblok Rich Text
+ * documents into Vue VNodes using the provided configuration.
  *
- * The returned VNode automatically updates when the document or options change.
+ * Useful for configuring image optimization and custom node resolvers once
+ * and reusing the renderer across multiple rich text documents.
  *
  * @example
  * ```ts
- * const richText = useStoryblokRichText({
- *   document: story.content.richtext,
+ * const render = useStoryblokRichText({
  *   optimizeImage: true,
  *   components: {
  *     heading: CustomHeading,
  *   },
  * });
+ *
+ * const content = computed(() => render(story.content.richtext));
  * ```
  *
  * @example
  * ```vue
+ * <script setup>
+ * const render = useStoryblokRichText();
+ * </script>
+ *
  * <template>
- *   <component :is="richText" />
+ *   <component :is="render(blok.articleContent)" />
  * </template>
  * ```
  */
 export function useStoryblokRichText(
-  props: StoryblokRichTextProps,
+  props: SbVueRichTextRenderContext,
 ) {
-  const render = createRichTextRenderer({
+  return createRichTextRenderer({
     optimizeImage: props.optimizeImage,
     components: {
       blok: BlokRenderer,
       ...props.components,
     },
   });
-
-  return computed(() => render(toValue(props.document)));
 }

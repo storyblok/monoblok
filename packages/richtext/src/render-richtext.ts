@@ -1,7 +1,7 @@
 import { escapeHtml } from './utils';
 import { optimizeImage } from './images-optimization';
 import { areLinkMarksEqual, attrsToHtmlString, getStaticChildren, getTextNodeLinkMark, isSelfClosing, isTableHeaderRow, normalizeNodes, processAttrs, resolveTag, styleToString } from './static';
-import type { RenderSpec, SbRichTextElement, SbRichTextMark, SbRichTextNode, SbRichTextRenderContext, SbRichTextTextNode } from './static';
+import type { RenderSpec, SbRichTextElement, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextRenderContext, SbRichTextTextNode } from './static';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
@@ -19,12 +19,14 @@ import type { RenderSpec, SbRichTextElement, SbRichTextMark, SbRichTextNode, SbR
  * ```
  */
 export function renderRichText(
-  document: SbRichTextNode | SbRichTextNode[] | null | undefined,
+  document: SbRichTextInput,
   context?: SbRichTextRenderContext,
 ): string {
   const nodes = normalizeNodes(document);
   return nodes?.length ? renderChildren(nodes, context) : '';
 }
+type NodeRenderer = (props: SbRichTextNode & { children: string; context?: SbRichTextRenderContext }) => string;
+type MarkRenderer = (props: SbRichTextMark & { children: string }) => string;
 
 /** Renders a single node to HTML. */
 function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): string {
@@ -33,9 +35,9 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
   }
   const content = node.content ? renderChildren(node.content, context) : '';
   // Custom renderer takes full control
-  const customRenderer = context?.renderers?.[node.type];
+  const customRenderer = context?.renderers?.[node.type] as NodeRenderer | undefined;
   if (customRenderer) {
-    return (customRenderer as (props: typeof node & { children: string; context?: SbRichTextRenderContext }) => string)({ ...node, children: content, context });
+    return customRenderer({ ...node, children: content, context });
   }
 
   if (node.type === 'blok') {
@@ -160,9 +162,9 @@ function wrapWithMark(
   context?: SbRichTextRenderContext,
 ): string {
   // Custom mark renderer
-  const customRenderer = context?.renderers?.[mark.type];
+  const customRenderer = context?.renderers?.[mark.type] as MarkRenderer | undefined;
   if (customRenderer) {
-    return (customRenderer as (props: typeof mark & { children: string }) => string)({
+    return customRenderer({
       ...mark,
       children: content,
     });
@@ -195,9 +197,9 @@ function renderLinkGroup(
   }
 
   // Custom link renderer
-  const customRenderer = context?.renderers?.[linkMark.type];
+  const customRenderer = context?.renderers?.[linkMark.type] as MarkRenderer | undefined;
   if (customRenderer) {
-    return (customRenderer as (props: typeof linkMark & { children: string }) => string)({
+    return customRenderer({
       ...linkMark,
       children: inner,
     });

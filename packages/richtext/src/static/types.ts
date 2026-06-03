@@ -27,6 +27,7 @@ export interface RenderSpec {
 /** Canonical type for a Storyblok RichText JSON root */
 export type SbRichTextDoc = SbRichTextNode & { type: 'doc' };
 export type SbRichTextTextNode = SbRichTextNode & { type: 'text' };
+export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
 
 export type SbRichTextProps<
   T extends SbRichTextElement,

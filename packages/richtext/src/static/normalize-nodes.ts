@@ -1,4 +1,5 @@
 import { createKeyGenerator } from '../utils';
+import type { SbRichTextInput } from './types';
 import type { SbRichTextNode } from './types.generated';
 
 /**
@@ -6,7 +7,7 @@ import type { SbRichTextNode } from './types.generated';
  * Supports single nodes, doc nodes, arrays, and nullable values.
  */
 export function normalizeNodes(
-  input: SbRichTextNode | SbRichTextNode[] | null | undefined,
+  input: SbRichTextInput,
   includeKeys = false,
 ): SbRichTextNode[] {
   if (!input) {
@@ -15,11 +16,8 @@ export function normalizeNodes(
   if (Array.isArray(input)) {
     return input;
   }
-  const nodes = Array.isArray(input)
-    ? input
-    : input.type === 'doc'
-      ? input.content || []
-      : [input];
+  const nodes = input.type === 'doc' ? input.content || [] : [input];
+
   if (!includeKeys) {
     return nodes;
   }

@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { createRichTextRenderer, type SbReactRichTextProps, type StoryblokRichTextProps } from './core/richtext';
-import StoryblokComponent from './core/storyblok-component';
+import { createRichTextRenderer, type SbReactRichTextProps, type StoryblokRichTextProps } from '../core/richtext';
+import StoryblokServerComponent from './server-component';
 
 /**
  * Default blok renderer.
@@ -12,7 +12,7 @@ export function DefaultBlok({ attrs }: SbReactRichTextProps<'blok'>) {
   }
 
   return attrs.body.map((blok, index) => (
-    <StoryblokComponent
+    <StoryblokServerComponent
       blok={blok}
       key={blok._uid || index}
     />
@@ -25,7 +25,7 @@ type UnwrappedProps = StoryblokRichTextProps & { wrapper: false };
 
 export type SbRichTextProps = WrappedProps | UnwrappedProps;
 
-export function StoryblokRichText({
+export function StoryblokServerRichText({
   document,
   optimizeImage,
   components,

@@ -1,4 +1,5 @@
-export { type SbReactComponentMap, type SbReactRichTextProps, type SbReactRichTextRenderContext } from './richtext-hoc';
+export { type SbReactComponentMap, type SbReactRichTextProps, type SbReactRichTextRenderContext, type StoryblokRichTextProps } from './rich-text-renderer';
+export { createRichTextRenderer } from './rich-text-renderer';
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
 
 export type {

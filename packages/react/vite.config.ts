@@ -42,6 +42,7 @@ export default defineConfig({
         'next/cache',
         'next/server',
         '@storyblok/js',
+        '@storyblok/richtext',
         /^next\//,
       ],
       output: {

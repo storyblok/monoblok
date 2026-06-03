@@ -69,9 +69,6 @@ export * from './core';
 // Export the main function
 export { useStoryblokRichText };
 
-/** @deprecated Use useStoryblokRichText instead */
-export const useStoryblokRichTextResolver = useStoryblokRichText;
-
 export * from './core/richtext';
-export { default as StoryblokRichText } from './storyblok-rich-text';
+export { StoryblokRichText } from './storyblok-rich-text';
 export * from './utils';

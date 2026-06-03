@@ -1,6 +1,6 @@
 import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
 import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
-import React, { type ComponentType, type ElementType, type ReactNode, useMemo } from 'react';
+import React, { type ComponentType, type ReactNode } from 'react';
 
 /**
  * Props type for React richtext node/mark components.
@@ -17,63 +17,28 @@ export type SbReactRichTextProps<
 export type SbReactRichTextComponent<
   T extends SbRichTextElement,
 > = ComponentType<SbReactRichTextProps<T>>;
-/**
- * Type-safe component map for React richtext renderer
- */
+
 export type SbReactComponentMap = {
-  [K in SbRichTextElement]?:
-  SbReactRichTextComponent<K>;
+  [K in SbRichTextElement]?: SbReactRichTextComponent<K>;
 };
 
 export interface SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbReactComponentMap;
 }
-
-export interface StoryblokRichtextProps extends SbReactRichTextRenderContext {
-  document: SbRichTextNode | SbRichTextNode[] | null | undefined;
+export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
+  optimizeImage?: boolean | SbRichTextImageOptions;
+  document?: SbRichTextNode | SbRichTextNode[] | null | undefined;
 }
 
-interface CreateRichTextHookOptions {
-  isServerContext?: boolean;
-}
 function resolveComponent<K extends SbRichTextElement>(
   type: K,
   components?: SbReactComponentMap,
 ): ComponentType<SbReactRichTextProps<K>> | undefined {
   return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
 }
-export function createRichTextHook(StoryblokComponent: ElementType, _options?: CreateRichTextHookOptions) {
-  return function useRichText({ document, optimizeImage, components }: StoryblokRichtextProps) {
-    const render = useStoryblokRichText({
-      optimizeImage,
-      components: {
-        blok: ({ attrs }: SbReactRichTextProps<'blok'>) => (
-          <>
-            {Array.isArray(attrs?.body) && attrs?.body?.map((blok, index) => (
-              <StoryblokComponent blok={blok} key={blok._uid || index} />
-            ))}
-          </>
-        ),
-        ...components,
-      },
-    });
 
-    return render(document);
-  };
-}
-export function useStoryblokRichText({ optimizeImage = false, components }: SbReactRichTextRenderContext) {
-  const render = useMemo(() => {
-    return createStoryblokRenderer({
-      optimizeImage,
-      components,
-    });
-  }, [optimizeImage, components]);
-
-  return render;
-}
-
-export function createStoryblokRenderer(options: SbReactRichTextRenderContext) {
+export function createRichTextRenderer(options: SbReactRichTextRenderContext) {
   return function render(document: SbRichTextNode | SbRichTextNode[] | null | undefined) {
     const nodes = normalizeNodes(document, true);
     return nodes?.length ? renderChildren(nodes, options) : null;
@@ -111,8 +76,6 @@ function renderLinkGroup(
     const innerMarks = getInnerMarks(node);
     return renderTextNodeWithMarks(textNode, innerMarks, options, node._key || index);
   });
-
-  // Custom link component
   const Custom = resolveComponent(linkMark.type, options.components);
   if (Custom) {
     return (
@@ -127,17 +90,13 @@ function renderLinkGroup(
     return <React.Fragment key={key}>{inner}</React.Fragment>;
   }
 
-  const props = buildReactProps(linkMark.type, linkMark.attrs);
-  return React.createElement(tag, { key, ...props }, inner);
+  return React.createElement(tag, { key, ...processAttrs(linkMark.type, linkMark.attrs) }, inner);
 }
 
 function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext, key: React.Key): ReactNode {
-  // Text node
   if (node.type === 'text') {
     return renderTextNode(node as SbRichTextTextNode, options, key);
   }
-
-  // Custom component override
   const Custom = resolveComponent(node.type, options.components);
 
   if (Custom) {
@@ -147,33 +106,23 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
       </Custom>
     );
   }
-
-  // Default element rendering
   const tag = resolveTag(node);
-
-  // No tag (e.g., nested doc): render children directly
   if (!tag) {
     return node.content ? renderChildren(node.content, options) : null;
   }
-
-  // Image optimization
   if (node.type === 'image' && options.optimizeImage) {
     return renderOptimizedImage(node, options, key);
   }
 
-  const props = buildReactProps(node.type, node.attrs);
-
-  // Self-closing tags
+  const props = processAttrs(node.type, node.attrs);
   if (isSelfClosing(tag)) {
     return React.createElement(tag, { key, ...props });
   }
 
-  // Table special handling with thead/tbody
   if (node.type === 'table') {
     return renderTable(node, options, key, tag, props);
   }
 
-  // Static children (e.g., code_block -> pre > code)
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
     const content = node.content ? renderChildren(node.content, options) : null;
@@ -205,7 +154,7 @@ function renderOptimizedImage(
 
   const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, options.optimizeImage);
 
-  const finalProps = buildReactProps('image', {
+  const finalProps = processAttrs('image', {
     ...attrs,
     src: optimizedSrc,
     ...extraAttrs,
@@ -259,7 +208,7 @@ function renderStaticStructure(
   return specs.map((spec, index) => {
     const { tag, children, attrs: specAttrs } = spec;
     const mergedAttrs = { ...specAttrs, ...parentAttrs };
-    const props = buildReactProps(type, mergedAttrs);
+    const props = processAttrs(type, mergedAttrs);
 
     if (isSelfClosing(tag)) {
       return React.createElement(tag, { key: index, ...props });
@@ -305,28 +254,6 @@ function wrapMark(children: ReactNode, mark: SbRichTextMark, options: SbReactRic
     return children;
   }
 
-  const props = buildReactProps(mark.type, mark.attrs);
+  const props = processAttrs(mark.type, mark.attrs);
   return React.createElement(tag, props, children);
-}
-
-/**
- * Builds React props from node/mark type and attrs.
- * Handles className conversion and style object transformation.
- */
-function buildReactProps(
-  type: SbRichTextElement,
-  attrs: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-  const processed = processAttrs(type, attrs, {
-    class: 'className',
-  });
-
-  // Convert style object to React CSSProperties format
-  // The style from processAttrs is already an object with camelCase keys
-  if (processed.style && typeof processed.style === 'object') {
-    // Style is already in the correct format from processAttrs
-    return processed as Record<string, unknown>;
-  }
-
-  return processed;
 }

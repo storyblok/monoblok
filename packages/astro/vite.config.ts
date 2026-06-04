@@ -12,7 +12,7 @@ export default defineConfig({
       fileName: () => 'index.js',
     },
     rollupOptions: {
-      external: ['astro', '@astrijs/check', 'typescript'],
+      external: ['astro'],
     },
   },
   plugins: [

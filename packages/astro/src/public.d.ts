@@ -30,6 +30,21 @@ declare module '@storyblok/astro/StoryblokServerData.astro' {
   /** Renders a dynamic Storyblok component */
   export default StoryblokServerData;
 }
+declare module '@storyblok/astro/StoryblokRichText.astro' {
+  import type { SbAstroComponentMap, SbRichTextImageOptions, SbRichTextInput } from '@storyblok/astro';
+
+  function StoryblokRichText(
+    _props: Record<string, unknown> & {
+      /** The Storyblok rich text document for this component (required) */
+      document: SbRichTextInput;
+      optimizeImage?: boolean | SbRichTextImageOptions;
+      components?: SbAstroComponentMap;
+    }
+  ): any;
+
+  /** Renders a dynamic Storyblok component */
+  export default StoryblokRichText;
+}
 declare module '@storyblok/astro/client' {
   import type { StoryblokClient } from '@storyblok/astro';
 

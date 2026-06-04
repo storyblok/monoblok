@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { type SbRichTextMark, type SbRichTextNode } from '@storyblok/richtext';
+  import { type SbRichTextMark, type SbRichTextTextNode } from '@storyblok/richtext';
 
   import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
-  import RenderElement from './RenderElement.svelte';
-  import LinkInner from './LinkInner.svelte';
+  import ElementTag from './ElementTag.svelte';
+  import RenderLinkInner from './RenderLinkInner.svelte';
 
   type Props = {
-    nodes: SbRichTextNode[];
-    linkMark: SbRichTextMark;
+    nodes: SbRichTextTextNode[];
+    linkMark: SbRichTextMark & { type: 'link' };
     options: SbSvelteRichTextRenderContext;
   };
 
@@ -17,10 +17,10 @@
 
 {#if CustomComponent}
   <CustomComponent {...linkMark}>
-    <LinkInner {nodes} {options} />
+    <RenderLinkInner {nodes} {options} />
   </CustomComponent>
 {:else}
-  <RenderElement node={linkMark}>
-    <LinkInner {nodes} {options} />
-  </RenderElement>
+  <ElementTag node={linkMark}>
+    <RenderLinkInner {nodes} {options} />
+  </ElementTag>
 {/if}

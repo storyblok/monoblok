@@ -1,9 +1,0 @@
----
-interface Props {
-  tag: string;
-  attrs?: Record<string, unknown>;
-}
-const { tag: Tag, attrs } = Astro.props;
----
-
-<Tag {...attrs}><slot /></Tag>

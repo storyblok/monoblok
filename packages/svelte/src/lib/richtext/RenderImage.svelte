@@ -1,7 +1,7 @@
 <script lang="ts">
   import { buildStoryblokImage, type SbRichTextNode } from '@storyblok/richtext';
   import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
-  import RenderElement from './RenderElement.svelte';
+  import ElementTag from './ElementTag.svelte';
 
   type ImageNode = SbRichTextNode & { type: 'image' };
   type Props = {
@@ -24,4 +24,4 @@
   );
 </script>
 
-<RenderElement node={optimizedNode} />
+<ElementTag node={optimizedNode} />

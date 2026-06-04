@@ -29,4 +29,4 @@ export type {
 } from '@storyblok/richtext';
 
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.
-export { attrsToHtmlString, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, type RenderSpec, resolveTag, type SbRichTextElement, type SbRichTextTextNode, styleToString } from '@storyblok/richtext';
+export { attrsToHtmlString, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, type RenderSpec, resolveTag, type SbRichTextElement, type SbRichTextInput, type SbRichTextTextNode, styleToString } from '@storyblok/richtext';

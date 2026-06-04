@@ -7,7 +7,7 @@ import {
 } from '../../';
 import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
-import RenderElement from './RenderElement.astro';
+import ElementTag from './ElementTag.astro';
 import RenderImage from './RenderImage.astro';
 import RenderStaticChildren from './RenderStaticChildren.astro';
 import RenderTable from './RenderTable.astro';
@@ -41,8 +41,6 @@ const Custom = components && node.type !== 'text' ? components[node.type] : unde
   ) : getStaticChildren(node) ? (
     <RenderStaticChildren node={node} options={options} />
   ) : (
-    <RenderElement node={node}>
-      {node.content && <RenderChildren nodes={node.content} options={options} />}
-    </RenderElement>
+    <ElementTag node={node}>{node.content && <RenderChildren nodes={node.content} options={options} />}</ElementTag>
   )
 }

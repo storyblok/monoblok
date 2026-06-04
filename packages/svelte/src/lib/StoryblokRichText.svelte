@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { normalizeNodes, type SbRichTextNode } from '@storyblok/richtext';
+  import { normalizeNodes, type SbRichTextInput } from '@storyblok/richtext';
   import RenderChildren from './richtext/RenderChildren.svelte';
   import type { SbSvelteRichTextRenderContext } from './richtext-helpers';
 
   type Props = SbSvelteRichTextRenderContext & {
-    document: SbRichTextNode | null | undefined | SbRichTextNode[];
+    document: SbRichTextInput;
   } & Record<string, unknown>;
 
   const { document, components = {}, optimizeImage }: Props = $props();

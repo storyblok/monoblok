@@ -5,11 +5,11 @@ import {
   type SbAstroRichTextRenderContext,
   isValidAstroComponent,
 } from '../../';
-import RenderElement from './RenderElement.astro';
+import ElementTag from './ElementTag.astro';
 
 interface Props {
   node: SbRichTextTextNode;
-  marks: SbRichTextMark[] | undefined;
+  marks?: SbRichTextMark[];
   options: SbAstroRichTextRenderContext;
 }
 const { node, marks = [], options } = Astro.props;
@@ -27,8 +27,8 @@ const MarkComponent = mark && components ? components[mark.type] : undefined;
       <Astro.self node={node} marks={rest} options={options} />
     </MarkComponent>
   ) : (
-    <RenderElement node={mark}>
+    <ElementTag node={mark}>
       <Astro.self node={node} marks={rest} options={options} />
-    </RenderElement>
+    </ElementTag>
   )
 }

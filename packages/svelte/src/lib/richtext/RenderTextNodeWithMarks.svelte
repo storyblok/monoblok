@@ -3,11 +3,11 @@
   // eslint-disable-next-line import/no-self-import
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
-  import RenderElement from './RenderElement.svelte';
+  import ElementTag from './ElementTag.svelte';
 
   type Props = {
     node: SbRichTextTextNode;
-    marks: SbRichTextMark[] | undefined;
+    marks?: SbRichTextMark[];
     options: SbSvelteRichTextRenderContext;
   };
 
@@ -28,7 +28,7 @@
     <RenderTextNodeWithMarks {node} marks={rest} {options} />
   </MarkComponent>
 {:else}
-  <RenderElement node={mark}>
+  <ElementTag node={mark}>
     <RenderTextNodeWithMarks {node} marks={rest} {options} />
-  </RenderElement>
+  </ElementTag>
 {/if}

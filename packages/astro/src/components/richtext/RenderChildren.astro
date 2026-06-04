@@ -14,7 +14,11 @@ const groups = groupLinkNodes(nodes);
 {
   groups.map((group) =>
     group.linkMark ? (
-      <RenderLinkGroup nodes={group.nodes} linkMark={group.linkMark} options={options} />
+      <RenderLinkGroup
+        nodes={group.nodes.filter((node) => node.type === 'text')}
+        linkMark={group.linkMark}
+        options={options}
+      />
     ) : (
       <RenderNode node={group.nodes[0]} options={options} />
     ),

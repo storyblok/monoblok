@@ -6,7 +6,7 @@
   import RenderImage from './RenderImage.svelte';
   import RenderTable from './RenderTable.svelte';
   import RenderStaticChildren from './RenderStaticChildren.svelte';
-  import RenderElement from './RenderElement.svelte';
+  import ElementTag from './ElementTag.svelte';
   import StoryblokComponent from '../StoryblokComponent.svelte';
 
   type Props = {
@@ -41,9 +41,9 @@
 {:else if getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
 {:else}
-  <RenderElement {node}>
+  <ElementTag {node}>
     {#if node.content}
       <RenderChildren nodes={node.content} {options} />
     {/if}
-  </RenderElement>
+  </ElementTag>
 {/if}

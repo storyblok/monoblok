@@ -1,9 +1,9 @@
 ---
-import { type SbRichTextNode, type SbAstroRichTextRenderContext, normalizeNodes } from '../';
+import { type SbRichTextInput, type SbAstroRichTextRenderContext, normalizeNodes } from '../';
 import RenderChildren from './richtext/RenderChildren.astro';
 
 interface Props extends SbAstroRichTextRenderContext {
-  document: SbRichTextNode | null | undefined | SbRichTextNode[];
+  document: SbRichTextInput;
 }
 
 const { document, components, optimizeImage } = Astro.props;

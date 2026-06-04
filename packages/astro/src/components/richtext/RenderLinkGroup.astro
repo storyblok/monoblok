@@ -1,11 +1,16 @@
 ---
-import { type SbRichTextNode, type SbAstroRichTextRenderContext, type SbRichTextMark, isValidAstroComponent } from '../../';
-import LinkInner from './LinkInner.astro';
-import RenderElement from './RenderElement.astro';
+import {
+  type SbRichTextTextNode,
+  type SbAstroRichTextRenderContext,
+  type SbRichTextMark,
+  isValidAstroComponent,
+} from '../../';
+import RenderLinkInner from './RenderLinkInner.astro';
+import ElementTag from './ElementTag.astro';
 
 interface Props {
-  nodes: SbRichTextNode[];
-  linkMark: SbRichTextMark;
+  nodes: SbRichTextTextNode[];
+  linkMark: SbRichTextMark & { type: 'link' };
   options: SbAstroRichTextRenderContext;
 }
 const { nodes, linkMark, options } = Astro.props;
@@ -16,11 +21,11 @@ const Custom = components ? components[linkMark.type] : undefined;
 {
   isValidAstroComponent(Custom) ? (
     <Custom {...linkMark}>
-      <LinkInner nodes={nodes} options={options} />
+      <RenderLinkInner nodes={nodes} options={options} />
     </Custom>
   ) : (
-    <RenderElement node={linkMark}>
-      <LinkInner nodes={nodes} options={options} />
-    </RenderElement>
+    <ElementTag node={linkMark}>
+      <RenderLinkInner nodes={nodes} options={options} />
+    </ElementTag>
   )
 }

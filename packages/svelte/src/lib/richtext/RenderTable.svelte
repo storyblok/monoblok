@@ -1,11 +1,11 @@
 <script lang="ts">
   import { type SbRichTextNode, splitTableRows } from '@storyblok/richtext';
   import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
-  import RenderElement from './RenderElement.svelte';
+  import ElementTag from './ElementTag.svelte';
   import RenderNode from './RenderNode.svelte';
 
   type Props = {
-    node: SbRichTextNode;
+    node: SbRichTextNode & { type: 'table' };
     options: SbSvelteRichTextRenderContext;
   };
 
@@ -13,7 +13,7 @@
   const { headerRows, bodyRows } = $derived(splitTableRows(node.content));
 </script>
 
-<RenderElement {node}
+<ElementTag {node}
   >{#if headerRows.length > 0}<thead>
       {#each headerRows as row (row._key)}
         <RenderNode node={row} {options} />
@@ -22,5 +22,5 @@
       {#each bodyRows as row (row._key)}
         <RenderNode node={row} {options} />
       {/each}
-    </tbody>{/if}</RenderElement
+    </tbody>{/if}</ElementTag
 >

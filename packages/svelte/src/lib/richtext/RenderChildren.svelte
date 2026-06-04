@@ -16,7 +16,7 @@
 
 {#each groups as group (group._key)}
   {#if group.linkMark}
-    <RenderLinkGroup nodes={group.nodes} linkMark={group.linkMark} {options} />
+    <RenderLinkGroup nodes={group.nodes.filter(node => node.type === 'text')} linkMark={group.linkMark} {options} />
   {:else}
     <RenderNode node={group.nodes[0]} {options} />
   {/if}

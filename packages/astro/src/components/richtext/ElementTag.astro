@@ -1,0 +1,32 @@
+---
+import {
+  attrsToHtmlString,
+  buildAstroAttrs,
+  resolveTag,
+  isSelfClosing,
+  type SbRichTextMark,
+  type SbRichTextNode,
+} from '../../';
+interface Props {
+  node: Exclude<SbRichTextNode, { type: 'text' }> | SbRichTextMark;
+}
+const { node } = Astro.props;
+
+const Tag = resolveTag(node);
+const processedAttrs = buildAstroAttrs(node.type, node?.attrs ?? {});
+const selfClosing = Tag && isSelfClosing(Tag);
+---
+
+{
+  Tag ? (
+    selfClosing ? (
+      <Fragment set:html={`<${Tag}${attrsToHtmlString(processedAttrs)}>`} />
+    ) : (
+      <Tag {...processedAttrs}>
+        <slot />
+      </Tag>
+    )
+  ) : (
+    <slot />
+  )
+}

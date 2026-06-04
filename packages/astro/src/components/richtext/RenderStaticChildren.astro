@@ -1,11 +1,10 @@
 ---
 import { type SbAstroRichTextRenderContext, type SbRichTextNode, getStaticChildren, resolveTag } from '../../';
-import DynamicElement from './DynamicElement.astro';
 import RenderChildren from './RenderChildren.astro';
 import RenderStaticStructure from './RenderStaticStructure.astro';
 
 interface Props {
-  node: SbRichTextNode;
+  node: Exclude<SbRichTextNode, { type: 'text' }>;
   options: SbAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
@@ -14,11 +13,11 @@ const OuterTag = resolveTag(node);
 ---
 
 {
-  staticChildren && node.type !== 'text' && OuterTag ? (
-    <DynamicElement tag={OuterTag}>
+  staticChildren && OuterTag ? (
+    <OuterTag>
       <RenderStaticStructure type={node.type} specs={staticChildren} parentAttrs={node.attrs}>
         {node.content && <RenderChildren nodes={node.content} options={options} />}
       </RenderStaticStructure>
-    </DynamicElement>
+    </OuterTag>
   ) : null
 }

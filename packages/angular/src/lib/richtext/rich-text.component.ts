@@ -28,6 +28,7 @@ import type {
   SbRichTextMark,
   RenderSpec,
   SbRichTextElement,
+  SbRichTextInput,
 } from '@storyblok/richtext';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
@@ -42,7 +43,7 @@ import { StoryblokRichtextResolver } from './richtext.feature';
 })
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document or array of documents */
-  sbDocument = input.required<SbRichTextNode | SbRichTextNode[] | null | undefined>();
+  sbDocument = input.required<SbRichTextInput>();
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -86,7 +87,7 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Render entry
   // --------------------------------------------------
-  private render(sbDocument: SbRichTextNode | SbRichTextNode[] | null | undefined): void {
+  private render(sbDocument: SbRichTextInput): void {
     const version = ++this.renderVersion;
     const nodes = normalizeNodes(sbDocument, true);
     this.clearContent();

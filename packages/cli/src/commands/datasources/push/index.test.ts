@@ -157,6 +157,55 @@ describe('push datasources', () => {
     });
   });
 
+  describe('--filter option', () => {
+    const datasources: SpaceDatasource[] = [
+      { ...mockDatasource, id: 1, name: 'colors-dark', slug: 'colors-dark' },
+      { ...mockDatasource, id: 2, name: 'colors-light', slug: 'colors-light' },
+      { ...mockDatasource, id: 3, name: 'internal-tags', slug: 'internal-tags' },
+    ];
+
+    beforeEach(() => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'test', slug: 'test', created_at: '', updated_at: '' });
+      vi.mocked(fetchDatasources).mockResolvedValue([]);
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify(datasources),
+      });
+    });
+
+    it('should match datasources by glob pattern', async () => {
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345', '--filter', 'colors-*']);
+
+      expect(upsertDatasource).toHaveBeenCalledTimes(2);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-dark' }), undefined);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-light' }), undefined);
+    });
+
+    it('should support negation patterns', async () => {
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345', '--filter', '!internal-*']);
+
+      expect(upsertDatasource).toHaveBeenCalledTimes(2);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-dark' }), undefined);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-light' }), undefined);
+    });
+
+    it('should fall back to substring matching when the filter contains no glob characters', async () => {
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345', '--filter', 'olor']);
+
+      expect(upsertDatasource).toHaveBeenCalledTimes(2);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-dark' }), undefined);
+      expect(upsertDatasource).toHaveBeenCalledWith('12345', expect.objectContaining({ name: 'colors-light' }), undefined);
+    });
+
+    it('should error when no datasources match the pattern', async () => {
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345', '--filter', 'nonexistent-*']);
+
+      expect(upsertDatasource).not.toHaveBeenCalled();
+      expect(konsola.error).toHaveBeenCalledWith('No datasources found matching pattern "nonexistent-*".', null, {
+        header: true,
+      });
+    });
+  });
+
   describe('entry sync', () => {
     const localDatasource: SpaceDatasource = {
       id: 1,

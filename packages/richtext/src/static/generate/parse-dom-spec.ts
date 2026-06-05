@@ -72,7 +72,11 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
       parsedChildren.push(parseArraySpec(child));
     }
   }
-
+  if (parsedChildren.length > 1) {
+    console.warn(
+      `\x1B[1;33m[Storyblok RichText]\x1B[0m Invalid DOM spec: <${tag}> has multiple sibling elements (${parsedChildren.map(child => `<${child.tag}>`).join(', ')}). This may lead to unexpected rendering.`,
+    );
+  }
   const filteredAttrs = attrs ? filterNullAttrs(attrs) : undefined;
 
   const result: RenderSpec = {

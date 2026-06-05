@@ -17,6 +17,8 @@ function convertStyleStringToObject(styleString: string) {
 }
 
 /**
+ * @deprecated This utility is no longer needed and will be removed in a future release.
+ *
  * Recursively converts HTML attributes in a React element tree to their JSX property names.
  *
  * @param {React.ReactElement} element The React element to process.

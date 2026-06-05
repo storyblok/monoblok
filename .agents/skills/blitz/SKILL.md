@@ -46,9 +46,9 @@ Each new worktree branch starts from the latest `origin/main`: the script fetche
 
 Use the bundled script:
 ```bash
-bash .claude/skills/blitz/scripts/monotree.sh add <branch-name>
-bash .claude/skills/blitz/scripts/monotree.sh remove <branch-name>
-bash .claude/skills/blitz/scripts/monotree.sh list
+bash .agents/skills/blitz/scripts/monotree.sh add <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh remove <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh list
 ```
 
 **IMPORTANT:** Create worktrees **sequentially**, one at a time. The script runs `git worktree add`, `pnpm install`, and `pnpm nx build` which are not safe to run in parallel (git index locks, pnpm store contention, Nx cache races). Wait for each to complete before starting the next.

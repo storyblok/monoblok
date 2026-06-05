@@ -1,10 +1,13 @@
 import type { SbBlokData, SbSDKOptions, StoryblokRichTextDocumentNode, StoryblokRichTextOptions } from '@storyblok/js';
 import type StoryblokComponent from './components/StoryblokComponent.vue';
-import type { VNode } from 'vue';
+import type { Directive, VNode } from 'vue';
 
 declare module 'vue' {
   export interface GlobalComponents {
     StoryblokComponent: typeof StoryblokComponent;
+  }
+  export interface GlobalDirectives {
+    vEditable: Directive<HTMLElement>;
   }
 }
 

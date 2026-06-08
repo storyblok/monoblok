@@ -1,4 +1,4 @@
-import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, type SbRichTextNode, styleToString } from '@storyblok/richtext';
+import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, styleToString } from '@storyblok/richtext';
 import type { Component, Snippet } from 'svelte';
 
 export interface SbSvelteRichTextRenderContext {

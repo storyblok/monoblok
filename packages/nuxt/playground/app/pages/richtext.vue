@@ -9,7 +9,6 @@ const { story } = await useAsyncStoryblok('vue/test-richtext', {
   bridge: {},
 });
 
-
 const components: SbVueRichTextComponentMap = {
   link: ({ attrs }, { slots }) => {
     if (attrs?.linktype === 'story') {

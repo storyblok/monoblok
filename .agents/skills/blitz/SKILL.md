@@ -42,11 +42,13 @@ Create worktrees **only when multiple issues are confirmed for implementation**:
 - Single issue: work in the current tree (no worktree needed)
 - Multiple issues: create a worktree per issue for parallel work
 
+Each new worktree branch starts from the latest `origin/main`: the script fetches `origin/main` and bases new branches on it, so worktrees never inherit unrelated work from whatever is currently checked out.
+
 Use the bundled script:
 ```bash
-bash .claude/skills/blitz/scripts/monotree.sh add <branch-name>
-bash .claude/skills/blitz/scripts/monotree.sh remove <branch-name>
-bash .claude/skills/blitz/scripts/monotree.sh list
+bash .agents/skills/blitz/scripts/monotree.sh add <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh remove <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh list
 ```
 
 **IMPORTANT:** Create worktrees **sequentially**, one at a time. The script runs `git worktree add`, `pnpm install`, and `pnpm nx build` which are not safe to run in parallel (git index locks, pnpm store contention, Nx cache races). Wait for each to complete before starting the next.

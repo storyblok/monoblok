@@ -39,7 +39,7 @@ This will upload a single datasource and its entries from:
 |--------|-------------|---------|
 | `-s, --space <space>` | (Required) The ID of the space to push datasources to | - |
 | `-f, --from <from>` | Source space ID to read datasources from | Target space ID |
-| `--fi, --filter <filter>` | Filter to apply to datasources by their name (e.g., "color" will match datasources containing "color") | - |
+| `--fi, --filter <filter>` | Glob pattern to filter datasources by their name (e.g., "color*" will match all datasources starting with "color"). Filters without glob characters match as substrings (e.g., "color" will match datasources containing "color") | - |
 | `--sf, --separate-files` | Read from separate files instead of consolidated files | `false` |
 | `--su, --suffix <suffix>` | Suffix to add to the files names | - |
 | `-p, --path <path>` | Custom path to read the files from | `.storyblok/datasources` |
@@ -72,7 +72,7 @@ Reads from:
 
 3. Push datasources with filter:
 ```bash
-storyblok datasources push --space 12345 --filter "color"
+storyblok datasources push --space 12345 --filter "color*"
 ```
 Reads from:
 ```
@@ -218,7 +218,7 @@ storyblok datasources push --space 67890 --from 12345
 ### Update specific datasources
 ```bash
 # Push only color-related datasources
-storyblok datasources push --space 12345 --filter "color"
+storyblok datasources push --space 12345 --filter "color*"
 ```
 
 ### Work with separate files

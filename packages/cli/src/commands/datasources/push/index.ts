@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { minimatch } from 'minimatch';
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
 import { datasourcesCommand } from '../command';
@@ -78,7 +79,10 @@ pushCmd
         }
       }
       else if (filter) {
-        spaceState.local.datasources = spaceState.local.datasources.filter(datasource => datasource.name.includes(filter));
+        // Fall back to substring matching when the filter contains no glob special characters (backward compatibility)
+        const isGlobPattern = /[*?[\]{}!]/.test(filter);
+        spaceState.local.datasources = spaceState.local.datasources.filter(datasource =>
+          isGlobPattern ? minimatch(datasource.name, filter) : datasource.name.includes(filter));
         if (!spaceState.local.datasources.length) {
           handleError(new CommandError(`No datasources found matching pattern "${filter}".`), verbose);
           return;

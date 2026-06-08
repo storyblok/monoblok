@@ -52,7 +52,7 @@ export async function readLocalStoryContents(directoryPath: string): Promise<{ c
  * be pulled alongside the space's own assets.
  *
  * Classification of those IDs into space-local vs. shared is done by the
- * caller (id-based, never via URL prefix — see spec §3).
+ * caller (id-based, never via URL prefix).
  *
  * Boundary: only nodes carrying `fieldtype: 'asset'` with a numeric `id` are
  * collected (covers single- and multi-asset fields, including those nested in

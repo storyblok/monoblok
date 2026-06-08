@@ -553,8 +553,7 @@ describe('assets push command', () => {
   it('pushes from a non-numeric source directory (e.g. seed staging "qa-seed")', async () => {
     const targetSpace = '54321';
     const asset = makeMockAsset();
-    // Local source subtree keyed by a non-numeric directory name, like the
-    // QA seed staging dir. The source identifier is a directory, not a space ID.
+    // Local source subtree keyed by a non-numeric directory name. The source identifier is a directory, not a space ID.
     preconditions.canLoadAssets([asset], { space: 'qa-seed' });
     preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
 

@@ -8,7 +8,7 @@
 2. **Small diffs** - One logical change per commit
 3. **Plan first** - For non-trivial changes, write a plan before coding
 4. **Verify always** - Run lint/typecheck/tests before considering work done
-5. **No new deps** - Avoid adding dependencies unless strictly necessary
+5. **Deps: prefer none, don't hand-roll** - Write a few-line helper yourself. But don't reimplement error-prone functionality (parsing, crypto, dates, globbing). Use dependencies already in the lockfile; else add a small well-established dep or flag the tradeoff. Never hand-roll silently.
 6. **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
 
 ## Monorepo setup

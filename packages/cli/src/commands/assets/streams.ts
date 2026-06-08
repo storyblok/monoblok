@@ -88,9 +88,9 @@ export const fetchAssetsStream = ({
 };
 
 /**
- * Like `fetchAssetsStream`, but reads from a shared library via the
- * `shared_assets` endpoints, filtered to `libraryId`. Reuses the space
- * pagination loop by injecting a `fetchSharedAssets` page fetcher.
+ * Streams assets from a shared library via the `shared_assets` endpoints,
+ * filtered to `libraryId`. Reuses the space pagination loop by injecting a
+ * `fetchSharedAssets` page fetcher.
  */
 export const fetchSharedAssetsStream = ({
   spaceId,
@@ -245,8 +245,8 @@ export const fetchAssetFoldersStream = ({
 };
 
 /**
- * Like `fetchAssetFoldersStream`, but reads a library's shared folders (the
- * library root and its descendants) via the `shared_asset_folders` endpoints.
+ * Streams a library's shared folders (the library root and its descendants)
+ * via the `shared_asset_folders` endpoints.
  */
 export const fetchSharedAssetFoldersStream = ({
   spaceId,

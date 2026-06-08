@@ -21,9 +21,9 @@ import {
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
 } from '../streams';
-import { fetchAssetInternalTagsByName } from '../actions';
+import { createAssetInternalTag, fetchAssetInternalTagsByName } from '../actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpload, UnmappedAssetInternalTag } from '../types';
-import { isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
+import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets, isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
 import type { Story } from '../../stories/constants';
@@ -157,9 +157,35 @@ pushCmd
       // Only build the target-space tag map for cross-space pushes; same-space
       // pushes keep their IDs as-is. A failed fetch throws and aborts the push:
       // fail fast rather than push unmappable IDs.
-      const assetInternalTagsByName = fromSpace === targetSpace
+      let assetInternalTagsByName = fromSpace === targetSpace
         ? undefined
         : await fetchAssetInternalTagsByName(targetSpace);
+
+      // Pre-create source tag names missing from the target space so pushed
+      // assets keep their tags instead of having the references dropped. Skipped
+      // on dry runs (no writes); creation is best-effort, a failed create leaves
+      // the name unmapped and the reference is dropped with the warning below.
+      if (assetInternalTagsByName && !options.dryRun) {
+        const sourceTagNames = assetBinaryPath
+          ? internalTagNamesFromAssets(assetData ? [assetData] : [])
+          : await collectAssetInternalTagNames(assetsDirectoryPath);
+        const createdTagLabels: string[] = [];
+        assetInternalTagsByName = await ensureAssetInternalTags({
+          sourceTagNames,
+          targetTagsByName: assetInternalTagsByName,
+          createTag: name => createAssetInternalTag(targetSpace, name),
+          onTagCreated: name => createdTagLabels.push(name),
+          onTagCreateError: (name, error) =>
+            logger.warn(`Failed to create internal asset tag "${name}"`, { error: error.message }),
+        });
+        if (createdTagLabels.length > 0) {
+          const labels = [...createdTagLabels].sort((a, b) => a.localeCompare(b));
+          const message = `Created ${labels.length} internal asset tag${labels.length === 1 ? '' : 's'} in target space: ${labels.join(', ')}`;
+          ui.info(message);
+          logger.info(message, { createdTags: labels });
+        }
+      }
+
       const unmappedTagLabels = new Set<string>();
       const onUnmappedTag = ({ sourceId, name }: UnmappedAssetInternalTag) => {
         unmappedTagLabels.add(name ?? `#${sourceId}`);

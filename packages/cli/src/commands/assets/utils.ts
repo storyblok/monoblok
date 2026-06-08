@@ -1,5 +1,6 @@
 import { basename, dirname, extname, join } from 'pathe';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
 import { toError } from '../../utils/error/error';
 import type { ManifestEntry } from '../../utils/filesystem';
 import { loadManifest, sanitizeFilename } from '../../utils/filesystem';
@@ -120,4 +121,74 @@ export const getFolderFilename = (folder: Pick<AssetFolder, 'name' | 'uuid'>) =>
   const sanitizedName = sanitizeFilename(folder.name || '');
   const baseName = sanitizedName || folder.uuid;
   return `${baseName}_${folder.uuid}.json`;
+};
+
+/**
+ * Extracts the unique internal tag names carried in the `internal_tags_list`
+ * of the given source assets, preserving first-seen order.
+ */
+export const internalTagNamesFromAssets = (
+  assets: ReadonlyArray<Pick<Asset, 'internal_tags_list'>>,
+): string[] => {
+  const names = new Set<string>();
+  for (const asset of assets) {
+    for (const tag of asset.internal_tags_list ?? []) {
+      if (typeof tag?.name === 'string' && tag.name.length > 0) {
+        names.add(tag.name);
+      }
+    }
+  }
+  return [...names];
+};
+
+/**
+ * Reads every asset sidecar in a pulled assets directory and returns the unique
+ * internal tag names they reference. Used by `assets push` to pre-create missing
+ * tags in the target space before mapping `internal_tag_ids`.
+ */
+export const collectAssetInternalTagNames = async (directoryPath: string): Promise<string[]> => {
+  const files = await readdir(directoryPath);
+  const binaryFiles = files.filter(file => SUPPORTED_ASSET_EXTENSIONS.has(extname(file).toLowerCase()));
+  const sidecars = await Promise.all(
+    binaryFiles.map(file => loadSidecarAssetData(join(directoryPath, file))),
+  );
+  return internalTagNamesFromAssets(sidecars);
+};
+
+/**
+ * Ensures the source assets' internal tag names exist in the target space.
+ *
+ * Names already present in `targetTagsByName` are left untouched; missing names
+ * are created via `createTag` and merged into the returned map. Creation is
+ * best-effort: a failure leaves the name unmapped (the caller drops the
+ * reference with its existing warning) and is surfaced via `onTagCreateError`.
+ */
+export const ensureAssetInternalTags = async ({
+  sourceTagNames,
+  targetTagsByName,
+  createTag,
+  onTagCreated,
+  onTagCreateError,
+}: {
+  sourceTagNames: Iterable<string>;
+  targetTagsByName: ReadonlyMap<string, number>;
+  createTag: (name: string) => Promise<{ id: number; name: string } | undefined>;
+  onTagCreated?: (name: string) => void;
+  onTagCreateError?: (name: string, error: Error) => void;
+}): Promise<ReadonlyMap<string, number>> => {
+  const tagsByName = new Map(targetTagsByName);
+  const missing = [...new Set(sourceTagNames)].filter(name => !tagsByName.has(name));
+  for (const name of missing) {
+    try {
+      const created = await createTag(name);
+      if (created) {
+        tagsByName.set(created.name, created.id);
+        onTagCreated?.(created.name);
+      }
+    }
+    catch (maybeError) {
+      onTagCreateError?.(name, toError(maybeError));
+    }
+  }
+  return tagsByName;
 };

@@ -67,6 +67,35 @@ export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<Ass
   }
 };
 
+/**
+ * Creates an internal tag of type `asset` in the target space.
+ *
+ * Used by `assets push` to pre-create source-space tag names that do not yet
+ * exist in the target space, so pushed assets keep their tags instead of having
+ * the unknown references dropped.
+ */
+export const createAssetInternalTag = async (
+  spaceId: string,
+  name: string,
+): Promise<{ id: number; name: string }> => {
+  try {
+    const client = getMapiClient();
+    const { data } = await client.internalTags.create({
+      path: { space_id: Number(spaceId) },
+      body: { name, object_type: 'asset' },
+      throwOnError: true,
+    });
+    const tag = data?.internal_tag;
+    if (typeof tag?.id !== 'number' || typeof tag?.name !== 'string') {
+      throw new TypeError('Created internal tag is missing an id or name');
+    }
+    return { id: tag.id, name: tag.name };
+  }
+  catch (maybeError) {
+    handleAPIError('push_asset_internal_tag', toError(maybeError), `Failed to create internal asset tag "${name}"`);
+  }
+};
+
 export const downloadFile = async (filename: string) => {
   const response = await fetch(filename);
   if (!response.ok) {

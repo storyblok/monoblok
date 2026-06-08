@@ -7,7 +7,7 @@ export type { IntegrationOptions } from './lib/storyblok-integration';
 export { handleStoryblokMessage } from './live-preview/handleStoryblokMessage';
 export * from './types';
 export { isEditorRequest } from './utils/isEditorRequest';
-export { buildAstroAttrs, isValidAstroComponent, type SbAstroComponentMap, type SbAstroRichTextProps, type SbAstroRichTextRenderContext } from './utils/richtext-helpers';
+export { buildAstroAttrs, isValidAstroComponent, type SbAstroRichTextComponentMap, type SbAstroRichTextProps, type SbAstroRichTextRenderContext } from './utils/richtext-helpers';
 export { toCamelCase } from './utils/toCamelCase';
 export { storyblokIntegration as storyblok };
 export {

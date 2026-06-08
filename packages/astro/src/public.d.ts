@@ -31,14 +31,14 @@ declare module '@storyblok/astro/StoryblokServerData.astro' {
   export default StoryblokServerData;
 }
 declare module '@storyblok/astro/StoryblokRichText.astro' {
-  import type { SbAstroComponentMap, SbRichTextImageOptions, SbRichTextInput } from '@storyblok/astro';
+  import type { SbAstroRichTextComponentMap, SbRichTextImageOptions, SbRichTextInput } from '@storyblok/astro';
 
   function StoryblokRichText(
     _props: Record<string, unknown> & {
       /** The Storyblok rich text document for this component (required) */
       document: SbRichTextInput;
       optimizeImage?: boolean | SbRichTextImageOptions;
-      components?: SbAstroComponentMap;
+      components?: SbAstroRichTextComponentMap;
     }
   ): any;
 

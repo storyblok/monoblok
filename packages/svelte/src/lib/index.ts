@@ -1,4 +1,4 @@
-export { type SbSvelteComponentMap, type SbSvelteRichTextProps, type SbSvelteRichTextRenderContext } from './richtext-helpers';
+export { type SbSvelteRichTextComponentMap, type SbSvelteRichTextProps, type SbSvelteRichTextRenderContext } from './richtext-helpers';
 export * from './storyblok';
 export { default as StoryblokComponent } from './StoryblokComponent.svelte';
 export { default as StoryblokRichText } from './StoryblokRichText.svelte';

@@ -1,13 +1,13 @@
 import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, styleToString } from '@storyblok/richtext';
 import type { AstroComponentFactory } from 'astro/runtime/server/render/astro/index.js';
 
-export type SbAstroComponentMap = {
+export type SbAstroRichTextComponentMap = {
   [K in SbRichTextElement]?: AstroComponentFactory;
 };
 
 export interface SbAstroRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SbAstroComponentMap;
+  components?: SbAstroRichTextComponentMap;
 }
 export type SbAstroRichTextProps<
   T extends SbRichTextElement,

@@ -18,13 +18,13 @@ export type SbReactRichTextComponent<
   T extends SbRichTextElement,
 > = ComponentType<SbReactRichTextProps<T>>;
 
-export type SbReactComponentMap = {
+export type SbReactRichTextComponentMap = {
   [K in SbRichTextElement]?: SbReactRichTextComponent<K>;
 };
 
 export interface SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SbReactComponentMap;
+  components?: SbReactRichTextComponentMap;
 }
 export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
@@ -33,7 +33,7 @@ export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
 
 function resolveComponent<K extends SbRichTextElement>(
   type: K,
-  components?: SbReactComponentMap,
+  components?: SbReactRichTextComponentMap,
 ): ComponentType<SbReactRichTextProps<K>> | undefined {
   return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
 }

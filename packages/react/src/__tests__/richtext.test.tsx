@@ -1,4 +1,4 @@
-import type { SbReactComponentMap } from '@storyblok/react';
+import type { SbReactRichTextComponentMap } from '@storyblok/react';
 import { StoryblokRichText, useStoryblokRichText } from '@storyblok/react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
@@ -164,7 +164,7 @@ describe('react StoryblokRichText component', () => {
   describe('custom components', () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
-      const options: SbReactComponentMap = {
+      const options: SbReactRichTextComponentMap = {
         heading: CustomHeading,
         link: CustomLink,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
@@ -174,7 +174,7 @@ describe('react StoryblokRichText component', () => {
     });
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
-      const options: SbReactComponentMap = {
+      const options: SbReactRichTextComponentMap = {
         heading: ({ content, attrs }) => <h1 data-type="custom-heading" data-level={attrs?.level}><StoryblokRichText wrapper={false} document={content} components={options} /></h1>,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
@@ -184,7 +184,7 @@ describe('react StoryblokRichText component', () => {
     });
     const code_block = customRendererFixture.code_block;
     it(code_block.title, () => {
-      const options: SbReactComponentMap = {
+      const options: SbReactRichTextComponentMap = {
         code_block: CustomCodeBlock,
       };
       const { container } = render(<StoryblokRichText wrapper={false} document={code_block.input} components={options} />);
@@ -193,7 +193,7 @@ describe('react StoryblokRichText component', () => {
     const table = customRendererFixture.table;
 
     it(table.title, () => {
-      const options: SbReactComponentMap = {
+      const options: SbReactRichTextComponentMap = {
         table: CustomTable,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };

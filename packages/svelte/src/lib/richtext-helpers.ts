@@ -1,14 +1,13 @@
 import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, type SbRichTextNode, styleToString } from '@storyblok/richtext';
 import type { Component, Snippet } from 'svelte';
 
-export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
 export interface SbSvelteRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SbSvelteComponentMap;
+  components?: SbSvelteRichTextComponentMap;
 }
 
 type AnyComponent = Component<any>;
-export type SbSvelteComponentMap = {
+export type SbSvelteRichTextComponentMap = {
   [k in SbRichTextElement]?: AnyComponent;
 };
 

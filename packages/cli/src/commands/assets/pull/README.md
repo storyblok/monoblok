@@ -47,28 +47,6 @@ storyblok assets pull --space YOUR_SPACE_ID --asset-token YOUR_ASSET_TOKEN
 | `-q, --query <query>` | Filter assets using Storyblok filter query syntax (e.g., `--query="search=my-file.jpg&with_tags=tag1,tag2"`) | - |
 | `--asset-token <token>` | Asset token for downloading private assets (learn more about [private assets](https://www.storyblok.com/docs/concepts/assets#private-assets)) | - |
 
-## Shared libraries
-
-A library is a top-level shared asset folder in the organization. The `--target` flag controls which assets the command pulls:
-
-- `with-referenced` (default): pull all space assets, then pull only the shared-library assets that the space's already-pulled local stories reference. With no local stories, only space assets are pulled and no library calls are made.
-- `all`: pull all space assets and every readable library.
-- `shared`: pull every readable library, but not the space's own assets.
-- `space`: pull only the space's own assets, with no library calls.
-
-Library assets are saved under `.storyblok/assets/shared/<library_id>/`, mirroring the space layout (binary, sidecar JSON, and `folders/`). Each subtree keeps its own `manifest.jsonl`.
-
-```bash
-# Pull space assets plus the library assets referenced by local stories.
-storyblok assets pull --space YOUR_SPACE_ID
-
-# Pull the space and every readable library.
-storyblok assets pull --space YOUR_SPACE_ID --target all
-
-# Pull only the readable libraries.
-storyblok assets pull --space YOUR_SPACE_ID --target shared
-```
-
 ## Notes
 
 - The command creates directories as needed.

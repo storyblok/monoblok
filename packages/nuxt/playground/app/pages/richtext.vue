@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components';
-import { Mark } from '@tiptap/core';
+import type { SbVueRichTextComponentMap } from '#imports';
 
 const { story } = await useAsyncStoryblok('vue/test-richtext', {
   api: {
@@ -9,25 +9,26 @@ const { story } = await useAsyncStoryblok('vue/test-richtext', {
   bridge: {},
 });
 
-const CustomLink = Mark.create({
-  name: 'link',
-  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string> }) {
-    if (HTMLAttributes.linktype === 'story') {
-      return [asTag(NuxtLink), { to: HTMLAttributes.href }, 0];
-    }
-    return ['a', { href: HTMLAttributes.href, target: HTMLAttributes.target }, 0];
-  },
-});
 
-const tiptapExtensions = {
-  link: CustomLink,
+const components: SbVueRichTextComponentMap = {
+  link: ({ attrs }, { slots }) => {
+    if (attrs?.linktype === 'story') {
+      return h(NuxtLink, {
+        to: attrs.href ?? '#',
+      }, {
+        default: () => slots.default?.(),
+      });
+    }
+
+    return h('a', {
+      href: attrs?.href,
+      target: attrs?.target,
+      rel: attrs?.target === '_blank' ? 'noopener noreferrer' : undefined,
+    }, slots.default?.());
+  },
 };
 </script>
 
 <template>
-  <StoryblokRichText
-    v-if="story?.content.richText"
-    :doc="story.content.richText"
-    :tiptap-extensions="tiptapExtensions"
-  />
+  <StoryblokRichText :document="story.content.richText" :components="components" />
 </template>

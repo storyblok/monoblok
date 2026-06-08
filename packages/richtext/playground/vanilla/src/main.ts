@@ -1,7 +1,7 @@
-import { richTextResolver } from '@storyblok/richtext';
+import { renderRichText } from '@storyblok/richtext';
 import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
 import { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
-import type { StoryblokRichTextOptions } from '@storyblok/richtext';
+import type { SbRichTextRenderContext } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
 import testHTML from '/test.html?url&raw';
 
@@ -17,15 +17,9 @@ const richtextFromMarkdown = markdownToStoryblokRichtext(test, /*  {
   },
 } */);
 
-// eslint-disable-next-line no-console
-console.log({ richtextFromMarkdown });
-
 const richtextFromHTML = htmlToStoryblokRichtext(testHTML);
 
-// eslint-disable-next-line no-console
-console.log({ richtextFromHTML });
-
-const options: StoryblokRichTextOptions<string> = {
+const options: SbRichTextRenderContext = {
   // resolvers: {
   //   [BlockTypes.HEADING]: (node: StoryblokRichTextNode<string>, ctx) => {
   //     return ctx.originalResolvers.get(BlockTypes.HEADING)?.(node, ctx) || '';
@@ -43,40 +37,54 @@ const options: StoryblokRichTextOptions<string> = {
   // },
 };
 
-const htmlFromRichtextMarkdown = richTextResolver(options).render(richtextFromMarkdown);
-const htmlFromRichtextHtml = richTextResolver(options).render(richtextFromHTML);
+const htmlFromRichtextMarkdown = renderRichText(richtextFromMarkdown, options);
+const htmlFromRichtextHtml = renderRichText(richtextFromHTML, options);
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div class="this-div-is-on-purpose">
-  ${htmlFromRichtextMarkdown}
-  <br>
-  <br>
-  <hr />
-  <hr />
-  <hr />
-  <hr />
-  <br>
-  <br>
-  ${htmlFromRichtextHtml}
-  <br>
-  <br>
-  <hr />
-  <hr />
-  <hr />
-  <hr />
-  <hr />
-  <br>
-  <br>
-  <pre>${JSON.stringify(richtextFromMarkdown, null, 2)}</pre>
-  <br>
-  <br>
-  <hr />
-  <hr />
-  <hr />
-  <hr />
-  <hr />
-  <br>
-  <br>
-  <pre>${JSON.stringify(richtextFromHTML, null, 2)}</pre>
+  <style>
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .panel {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .panel h2 {
+      margin-top: 0;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+
+  <div class="comparison-grid">
+    <div class="panel">
+      <h2>HTML from Markdown</h2>
+      ${htmlFromRichtextMarkdown}
+    </div>
+
+    <div class="panel">
+      <h2>HTML from HTML</h2>
+      ${htmlFromRichtextHtml}
+    </div>
+
+    <div class="panel">
+      <h2>Richtext from Markdown</h2>
+      <pre>${JSON.stringify(richtextFromMarkdown, null, 2)}</pre>
+    </div>
+
+    <div class="panel">
+      <h2>Richtext from HTML</h2>
+      <pre>${JSON.stringify(richtextFromHTML, null, 2)}</pre>
+    </div>
   </div>
 `;

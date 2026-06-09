@@ -8,12 +8,11 @@ import type {
   RichtextFieldValue,
   TableFieldValue,
 } from './_sources';
+import type { Prettify } from './_utils';
 import type { Block } from './block';
 
 export type { Field };
 export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
-
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 /**
  * Registry of all blocks in the space, used to resolve nested `bloks` fields.

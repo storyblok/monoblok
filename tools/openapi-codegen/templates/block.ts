@@ -4,13 +4,9 @@ import type {
   ComponentUpdate,
   Field,
 } from './_sources';
+import type { Override } from './_utils';
 
 export type { ComponentCreate, ComponentUpdate };
-
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
-
-/** Replaces the keys of `T` that also appear in `U` with the definitions from `U`. */
-type Override<T, U> = Prettify<Omit<T, keyof U> & U>;
 
 /** Input form: an ordered array of named fields. The array index becomes `pos`. */
 export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;

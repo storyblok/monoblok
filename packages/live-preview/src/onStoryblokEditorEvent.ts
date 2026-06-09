@@ -1,10 +1,9 @@
 import type { BridgeParams } from '@storyblok/preview-bridge';
+import type { Prettify } from './generated/types/_utils';
 import type { Story } from './generated/types/story';
 
 import { loadStoryblokBridge } from './loadStoryblokBridge';
 import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
-
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 /**
  * The story payload delivered by the Visual Editor `input` event.

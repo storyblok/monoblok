@@ -2,13 +2,9 @@
 // Source template lives in tools/openapi-codegen/templates/.
 
 import type { CapiStory as CapiStoryGenerated } from './_sources';
+import type { Override, Prettify } from './_utils';
 import type { Block, RootBlock } from './block';
 import type { BlockContent } from './field';
-
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
-
-/** Replaces the keys of `T` that also appear in `U` with the definitions from `U`. */
-type Override<T, U> = Prettify<Omit<T, keyof U> & U>;
 
 /**
  * Registry of all blocks, threaded through to resolve nested `bloks` fields.

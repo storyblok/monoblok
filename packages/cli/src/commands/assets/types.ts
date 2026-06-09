@@ -7,8 +7,11 @@ export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpd
  * Adds an optional `id` field used for manifest-based local↔remote ID mapping.
  * The `id` identifies the local/source asset and is stripped before the
  * mapi-client create/upload call so it does not leak into the metadata update.
+ * `internal_tags_list` is the server-managed (read-only) tag detail carried in
+ * pulled sidecars; it is used to translate source-space tag names to
+ * target-space IDs and is stripped before the create/upload call.
  */
-export type AssetUpload = AssetCreate & { id?: number };
+export type AssetUpload = AssetCreate & { id?: number; internal_tags_list?: Asset['internal_tags_list'] };
 
 export type AssetMapped = Pick<Asset, 'id' | 'filename' | 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>;
 
@@ -21,6 +24,16 @@ export type AssetMap = Map<number, { old: Asset | AssetMapped | AssetUpload; new
  * Maps local with remote asset folder ids.
  */
 export type AssetFolderMap = Map<number, number>;
+
+/**
+ * Maps target-space asset internal tag names to target-space ids.
+ */
+export type AssetInternalTagsByName = ReadonlyMap<string, number>;
+
+export interface UnmappedAssetInternalTag {
+  sourceId: number;
+  name?: string;
+}
 
 /**
  * Maps local with remote story ids and UUIDs.

@@ -21,7 +21,7 @@ import type {
   UpdateAssetTransport,
 } from './streams';
 import { readLocalAssetFoldersStream, readLocalAssetsStream, readSingleAssetStream, upsertAssetFolderStream, upsertAssetStream } from './streams';
-import type { AssetFolderMap, AssetMap, AssetUpload } from './types';
+import type { AssetFolderMap, AssetInternalTagsByName, AssetMap, AssetUpload, UnmappedAssetInternalTag } from './types';
 
 const PROGRESS_BAR_PADDING = 23;
 
@@ -88,12 +88,13 @@ export const upsertAssetsPipeline = async ({
   maps,
   transports,
   ui,
+  onUnmappedTag,
 }: {
   assetBinaryPath?: string;
   assetData?: AssetUpload;
   directoryPath: string;
   logger: Logger;
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
   transports: {
     getAsset: GetAssetTransport;
     createAsset: CreateAssetTransport;
@@ -102,6 +103,7 @@ export const upsertAssetsPipeline = async ({
     cleanupAsset: CleanupAssetTransport;
   };
   ui: UI;
+  onUnmappedTag?: (tag: UnmappedAssetInternalTag) => void;
 }): Promise<Summaries> => {
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
@@ -141,6 +143,7 @@ export const upsertAssetsPipeline = async ({
   steps.push(upsertAssetStream({
     transports,
     maps,
+    onUnmappedTag,
     onIncrement: () => assetProgress.increment(),
     onAssetSuccess: (localAssetResult, remoteAsset) => {
       if ('id' in localAssetResult && localAssetResult.id) {

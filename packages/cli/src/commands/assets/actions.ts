@@ -2,8 +2,9 @@ import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { toError } from '../../utils/error/error';
+import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, AssetUpload } from './types';
+import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
@@ -35,6 +36,63 @@ export const fetchAssets = async ({ spaceId, params }: {
   }
   catch (maybeError) {
     handleAPIError('pull_assets', toError(maybeError));
+  }
+};
+
+/**
+ * Fetches the space's internal tags of type `asset` keyed by name.
+ *
+ * Used by `assets push` to translate source-space tag names carried in pulled
+ * sidecars into the target space's tag IDs.
+ */
+export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<AssetInternalTagsByName> => {
+  try {
+    const client = getMapiClient();
+    const tags = await fetchAllPages(
+      (page: number) => client.internalTags.list({
+        path: { space_id: Number(spaceId) },
+        query: { page, by_object_type: 'asset' },
+        throwOnError: true,
+      }),
+      data => data?.internal_tags ?? [],
+    );
+    return new Map(
+      tags
+        .filter((tag): tag is { id: number; name: string } => typeof tag?.id === 'number' && typeof tag?.name === 'string')
+        .map(tag => [tag.name, tag.id]),
+    );
+  }
+  catch (maybeError) {
+    handleAPIError('pull_asset_internal_tags', toError(maybeError));
+  }
+};
+
+/**
+ * Creates an internal tag of type `asset` in the target space.
+ *
+ * Used by `assets push` to pre-create source-space tag names that do not yet
+ * exist in the target space, so pushed assets keep their tags instead of having
+ * the unknown references dropped.
+ */
+export const createAssetInternalTag = async (
+  spaceId: string,
+  name: string,
+): Promise<{ id: number; name: string }> => {
+  try {
+    const client = getMapiClient();
+    const { data } = await client.internalTags.create({
+      path: { space_id: Number(spaceId) },
+      body: { name, object_type: 'asset' },
+      throwOnError: true,
+    });
+    const tag = data?.internal_tag;
+    if (typeof tag?.id !== 'number' || typeof tag?.name !== 'string') {
+      throw new TypeError('Created internal tag is missing an id or name');
+    }
+    return { id: tag.id, name: tag.name };
+  }
+  catch (maybeError) {
+    handleAPIError('push_asset_internal_tag', toError(maybeError), `Failed to create internal asset tag "${name}"`);
   }
 };
 

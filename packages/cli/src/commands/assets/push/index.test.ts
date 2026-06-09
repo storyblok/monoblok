@@ -59,6 +59,10 @@ const server = setupServer(
     { message: 'Not Found' },
     { status: 404 },
   )),
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/internal_tags', () => HttpResponse.json(
+    { internal_tags: [] },
+    { headers: { 'Total': '0', 'Per-Page': '100' } },
+  )),
 );
 
 const preconditions = {
@@ -202,6 +206,28 @@ const preconditions = {
       )),
     );
   },
+  hasAssetInternalTags(tags: Array<{ id: number; name: string }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, () => HttpResponse.json(
+        { internal_tags: tags },
+        { headers: { 'Total': String(tags.length), 'Per-Page': '100' } },
+      )),
+    );
+  },
+  canCreateAssetInternalTags({ space = DEFAULT_SPACE, idByName = {} }: { space?: string; idByName?: Record<string, number> } = {}) {
+    const spy = vi.fn();
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, async ({ request }) => {
+        const body = await request.json() as { name: string; object_type?: string };
+        spy(body);
+        return HttpResponse.json(
+          { internal_tag: { id: idByName[body.name] ?? getID(), name: body.name, object_type: body.object_type } },
+          { status: 201 },
+        );
+      }),
+    );
+    return spy;
+  },
   canFetchRemoteAssets(assets: MockAsset[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
     for (const asset of assets) {
       server.use(
@@ -280,12 +306,13 @@ const preconditions = {
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Update asset metadata/folder/etc.
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params }) => {
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
         }
-        updateSpy(match);
+        const body = await request.json() as { asset?: Record<string, unknown> };
+        updateSpy(body.asset ?? {});
         return HttpResponse.json({});
       }),
     );
@@ -1391,5 +1418,178 @@ describe('assets push command', () => {
     expect(storyActions.fetchStories).toHaveBeenCalledWith(DEFAULT_SPACE, expect.objectContaining({
       reference_search: localAsset.filename,
     }));
+  });
+
+  it('should translate source-space internal_tag_ids to target-space tag IDs by sidecar tag name', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 111;
+    const targetTagId = 999;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'shared-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasAssetInternalTags(
+      [{ id: sourceTagId, name: 'stale-source-name' }],
+      { space: DEFAULT_SPACE },
+    );
+    preconditions.hasAssetInternalTags(
+      [{ id: targetTagId, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    expect(createPayload).not.toHaveProperty('internal_tags_list');
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should translate source-space internal_tag_ids when updating an existing target asset', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 112;
+    const targetTagId = 998;
+    const localAsset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'shared-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([localAsset]);
+    preconditions.hasAssetInternalTags(
+      [{ id: targetTagId, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    const updateSpy = vi.fn();
+    const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset], { updateSpy, space: targetSpace });
+    preconditions.canFetchRemoteAssets([remoteAsset], { space: targetSpace });
+    preconditions.canLoadAssetsManifest([{
+      old_id: localAsset.id,
+      old_filename: localAsset.filename,
+      new_id: remoteAsset.id,
+      new_filename: remoteAsset.filename,
+    }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.updateAsset).toHaveBeenCalledWith(
+      remoteAsset.id,
+      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.anything(),
+    );
+    expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      internal_tag_ids: [String(targetTagId)],
+    }));
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should omit internal_tag_ids from the create payload when the source has no tag metadata', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset();
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    expect(createPayload).not.toHaveProperty('internal_tag_ids');
+    expect(createPayload).not.toHaveProperty('internal_tags_list');
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should create internal tags missing from the target space and map to the new tag ID', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 222;
+    const createdTagId = 7777;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'missing-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasAssetInternalTags([], { space: targetSpace });
+    const createTagSpy = preconditions.canCreateAssetInternalTags({
+      space: targetSpace,
+      idByName: { 'missing-tag': createdTagId },
+    });
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(createTagSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }),
+    );
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [String(createdTagId)] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Created 1 internal asset tag in target space: missing-tag'),
+    );
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should drop internal tag IDs without sidecar tag metadata with an ID warning', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 333;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasAssetInternalTags(
+      [{ id: 999, name: 'shared-tag' }],
+      { space: targetSpace },
+    );
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: #333'),
+    );
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('should drop the tag reference and not fail the push when creating a missing tag fails', async () => {
+    const targetSpace = '54321';
+    const sourceTagId = 444;
+    const asset = makeMockAsset({
+      internal_tag_ids: [String(sourceTagId)],
+      internal_tags_list: [{ id: sourceTagId, name: 'uncreatable-tag' }],
+    });
+    preconditions.canLoadFolders([]);
+    preconditions.canLoadAssets([asset]);
+    preconditions.hasAssetInternalTags([], { space: targetSpace });
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${targetSpace}/internal_tags`, () =>
+        HttpResponse.json({ error: 'nope' }, { status: 500 })),
+    );
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ internal_tag_ids: [] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: uncreatable-tag'),
+    );
+    expect(process.exitCode).not.toBe(1);
   });
 });

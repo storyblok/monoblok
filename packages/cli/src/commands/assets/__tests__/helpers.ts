@@ -21,6 +21,7 @@ export interface MockAsset {
   expire_at?: string;
   publish_at?: string;
   internal_tag_ids?: string[];
+  internal_tags_list?: Array<{ id: number; name: string }>;
   meta_data?: Record<string, unknown>;
 }
 

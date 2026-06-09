@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'pathe';
+import { parse as parseYaml } from 'yaml';
 import { ALIASES, type SpecSource } from '../src/aliases.ts';
 import { TEMPLATES } from '../src/templates.ts';
 import { CACHE_DIR, TOOL_ROOT } from './lock.ts';
@@ -28,34 +29,43 @@ const SPEC_PATHS: Record<SpecSource, string> = {
   overlay: OVERLAY_PATH,
 };
 
+interface OpenApiDoc {
+  components: { schemas: Record<string, unknown> | undefined };
+  paths: Record<string, unknown>;
+  webhooks: Record<string, unknown>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 /**
- * Extracts top-level schema names from `components.schemas` in an OpenAPI
- * YAML. Relies on the upstream specs using 2-space indentation.
+ * Parses an OpenAPI YAML and narrows it to the slice this script reads. Anything
+ * malformed or missing collapses to empty records, so callers can index freely.
+ */
+function loadSpec(yamlPath: string): OpenApiDoc {
+  const root = asRecord(parseYaml(readFileSync(yamlPath, 'utf8'))) ?? {};
+  const components = asRecord(root.components);
+  return {
+    components: { schemas: asRecord(components?.schemas) },
+    paths: asRecord(root.paths) ?? {},
+    webhooks: asRecord(root.webhooks) ?? {},
+  };
+}
+
+/**
+ * Extracts top-level schema names from `components.schemas` in an OpenAPI spec.
  */
 export function listSchemaNames(yamlPath: string): string[] {
-  const lines = readFileSync(yamlPath, 'utf8').split('\n');
-  const schemasIndex = lines.findIndex(line => /^ {2}schemas:\s*$/.test(line));
-  if (schemasIndex === -1) {
-    throw new Error(`Could not locate \`  schemas:\` block in ${yamlPath}`);
+  const { schemas } = loadSpec(yamlPath).components;
+  if (!schemas) {
+    throw new Error(`Could not locate \`components.schemas\` block in ${yamlPath}`);
   }
-
-  const names: string[] = [];
-  for (let i = schemasIndex + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line === '' || /^\s*#/.test(line)) {
-      continue;
-    }
-    // Any top-level key or next `components` sibling ends `schemas`.
-    if (/^\S/.test(line) || /^ {2}\S/.test(line)) {
-      break;
-    }
-    const match = /^ {4}([A-Z_]\w*):\s*$/i.exec(line);
-    if (match) {
-      names.push(match[1]);
-    }
-  }
-
-  return names.sort();
+  return Object.keys(schemas).sort();
 }
 
 function toPascalCase(input: string): string {
@@ -68,10 +78,18 @@ function toPascalCase(input: string): string {
  * may target these in addition to `components.schemas` entries.
  */
 export function listOperationDataNames(yamlPath: string): string[] {
-  const text = readFileSync(yamlPath, 'utf8');
+  const { paths, webhooks } = loadSpec(yamlPath);
+
   const names = new Set<string>();
-  for (const match of text.matchAll(/^\s+operationId:\s*([A-Za-z_]\w*)\s*$/gm)) {
-    names.add(`${toPascalCase(match[1])}Data`);
+  for (const pathItem of [...Object.values(paths), ...Object.values(webhooks)]) {
+    if (!isRecord(pathItem)) {
+      continue;
+    }
+    for (const operation of Object.values(pathItem)) {
+      if (isRecord(operation) && typeof operation.operationId === 'string') {
+        names.add(`${toPascalCase(operation.operationId)}Data`);
+      }
+    }
   }
   return [...names].sort();
 }

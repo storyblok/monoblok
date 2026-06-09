@@ -48,7 +48,8 @@
   "dependencies": {
     "@hey-api/openapi-ts": "^0.92.3",
     "pathe": "^2.0.3",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@storyblok/eslint-config": "workspace:*",

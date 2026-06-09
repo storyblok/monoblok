@@ -60,10 +60,14 @@
         "inputs": [
           "{projectRoot}/scripts/generate.ts",
           "{projectRoot}/package.json",
-          "{workspaceRoot}/tools/openapi-codegen/.openapi-cache/mapi/**"
+          "openapiCodegen"
         ],
         "outputs": [
           "{projectRoot}/src/generated/**"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
         ]
       },
       "build": {

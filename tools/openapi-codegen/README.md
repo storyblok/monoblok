@@ -24,6 +24,12 @@ pnpm nx run-many -t generate --projects=@storyblok/api-client,@storyblok/managem
 git add tools/openapi-codegen/spec.lock packages/*/src/generated
 ```
 
+To regenerate a single consumer, run its `generate` target directly:
+
+```sh
+pnpm nx run @storyblok/live-preview:generate
+```
+
 ## Why specs are not committed
 
 The bundled OpenAPI specs are git-ignored (`.openapi-cache/` is local-only). The upstream repo is private, and checking specs into this repo would expose them. External contributors can still build the repo without spec access because each consumer commits its own `src/generated/` output.

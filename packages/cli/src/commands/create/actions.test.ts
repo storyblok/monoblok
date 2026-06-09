@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
 import type { RegionCode } from '../../constants';
 import { appDomains } from '../../constants';
@@ -332,22 +332,14 @@ describe('create actions', () => {
     });
   });
 
-  describe('generateSpaceUrl', () => {
-    const regionDomains = (Object.keys(appDomains) as RegionCode[]).map(region => ({
-      region,
-      expectedDomain: appDomains[region],
-    }));
-
-    it.each(regionDomains)(
-      'should generate correct URL for $region region',
-      ({ region, expectedDomain }) => {
-        const spaceId = 12345;
-
-        expect(generateSpaceUrl(spaceId, region)).toBe(
-          `https://${expectedDomain}/#/me/spaces/${spaceId}/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create`,
-        );
-      },
-    );
+  it('should contain the correct region domains', () => {
+    expect(appDomains).toEqual({
+      eu: 'app.storyblok.com',
+      us: 'app.storyblok.com',
+      cn: 'app.storyblokchina.cn/fe/editor_v2',
+      ca: 'app.storyblok.com',
+      ap: 'app.storyblok.com',
+    });
   });
 
   describe('openSpaceInBrowser', () => {

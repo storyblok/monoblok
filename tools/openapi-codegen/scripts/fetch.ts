@@ -82,13 +82,21 @@ function populateCache(clonePath: string): void {
 
 function main(): void {
   const update = process.argv.slice(2).includes('--update');
-  ensureGhAuth();
 
   const lock = readLock();
   if (!update && !lock) {
     console.error('No spec.lock found. Run `pnpm --filter @storyblok/openapi-codegen pull:update` to bootstrap.');
     process.exit(1);
   }
+
+  // A pinned fetch is a no-op when the cache on disk already matches the lock
+  // hash, so skip the gh auth check and network clone entirely.
+  if (!update && existsSync(CACHE_DIR) && hashCache() === lock!.hash) {
+    console.warn(`Cache already matches spec.lock; nothing to fetch (${CACHE_DIR}).`);
+    return;
+  }
+
+  ensureGhAuth();
 
   const { clonePath, sha } = update
     ? cloneHead()

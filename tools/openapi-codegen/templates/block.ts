@@ -9,6 +9,9 @@ export type { ComponentCreate, ComponentUpdate };
 
 type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
+/** Replaces the keys of `T` that also appear in `U` with the definitions from `U`. */
+type Override<T, U> = Prettify<Omit<T, keyof U> & U>;
+
 /** Input form: an ordered array of named fields. The array index becomes `pos`. */
 export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;
 
@@ -27,22 +30,20 @@ export type Block<
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
   TComponentGroupUuid extends string | null = string | null,
-> = Prettify<
-  Omit<ComponentGenerated, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
-    name: TName;
-    schema: TBlockSchema;
-    is_root?: TIsRoot;
-    is_nestable?: TIsNestable;
-    component_group_uuid?: TComponentGroupUuid;
-  }
->;
+> = Override<ComponentGenerated, {
+  name: TName;
+  schema: TBlockSchema;
+  is_root?: TIsRoot;
+  is_nestable?: TIsNestable;
+  component_group_uuid?: TComponentGroupUuid;
+}>;
 
 /**
  * A root {@link Block} (`is_root: true`). Given a union of blocks, narrows to
  * its root members; with no argument it is the generic root-block type.
  */
 export type RootBlock<T extends Block = Block & { is_root: true }> =
-  T extends { is_root: true } ? T : never;
+  Extract<T, { is_root: true }>;
 
 /**
  * A nestable {@link Block} (`is_nestable: true`). Given a union of blocks,
@@ -50,4 +51,4 @@ export type RootBlock<T extends Block = Block & { is_root: true }> =
  * nestable-block type.
  */
 export type NestableBlock<T extends Block = Block & { is_nestable: true }> =
-  T extends { is_nestable: true } ? T : never;
+  Extract<T, { is_nestable: true }>;

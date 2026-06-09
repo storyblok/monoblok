@@ -189,13 +189,10 @@ function collectTypeRefs(node: ts.Node, visit: (name: string) => void): void {
 function extractProperty(typeNode: ts.TypeNode, propName: string): ts.TypeNode | undefined {
   if (ts.isTypeLiteralNode(typeNode)) {
     for (const member of typeNode.members) {
-      if (
-        ts.isPropertySignature(member)
-        && member.name
-        && ts.isIdentifier(member.name)
-        && member.name.text === propName
-        && member.type
-      ) {
+      if (!ts.isPropertySignature(member) || !member.name || !ts.isIdentifier(member.name)) {
+        continue;
+      }
+      if (member.name.text === propName && member.type) {
         return member.type;
       }
     }

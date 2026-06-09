@@ -23,19 +23,17 @@ import { dirname, resolve } from 'pathe';
 function findSourceToolRoot(): string {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
   let dir = moduleDir;
-  for (;;) {
-    if (existsSync(resolve(dir, 'pnpm-workspace.yaml'))) {
-      return resolve(dir, 'tools/openapi-codegen');
-    }
+  while (!existsSync(resolve(dir, 'pnpm-workspace.yaml'))) {
     const parent = dirname(dir);
     if (parent === dir) {
-      break;
+      // Reached the filesystem root without finding a workspace. Fallback for
+      // running the package in isolation: assume this module lives under the
+      // package's `src/` or bundled `dist/`.
+      return resolve(moduleDir, '..');
     }
     dir = parent;
   }
-  // Fallback for running the package in isolation (no workspace root found):
-  // assume this module lives under the package's `src/` or bundled `dist/`.
-  return resolve(moduleDir, '..');
+  return resolve(dir, 'tools/openapi-codegen');
 }
 
 export const TOOL_ROOT = findSourceToolRoot();

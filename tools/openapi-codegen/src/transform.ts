@@ -175,6 +175,12 @@ function collectTypeRefs(node: ts.Node, visit: (name: string) => void): void {
     if (ts.isTypeReferenceNode(n) && ts.isIdentifier(n.typeName)) {
       visit(n.typeName.text);
     }
+    // Heritage (`extends Base`) is an ExpressionWithTypeArguments, not a
+    // TypeReferenceNode, so the base name would otherwise dangle when only the
+    // derived type is kept. declToTypeNode lifts these into an intersection.
+    else if (ts.isExpressionWithTypeArguments(n) && ts.isIdentifier(n.expression)) {
+      visit(n.expression.text);
+    }
     ts.forEachChild(n, walk);
   }
   ts.forEachChild(node, walk);

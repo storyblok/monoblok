@@ -24,6 +24,7 @@
     "build": "tsdown",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "nx": {
@@ -53,6 +54,7 @@
     "@storyblok/eslint-config": "workspace:*",
     "@types/node": "^24.11.0",
     "eslint": "^9.39.2",
-    "tsdown": "^0.20.3"
+    "tsdown": "^0.20.3",
+    "vitest": "^4.0.18"
   }
 }

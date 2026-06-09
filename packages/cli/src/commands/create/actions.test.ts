@@ -343,20 +343,23 @@ describe('create actions', () => {
   });
 
   describe('openSpaceInBrowser', () => {
-    const regionDomains = (Object.keys(appDomains) as RegionCode[]).map(region => ({
-      region,
-      expectedDomain: appDomains[region],
-    }));
+    const testCases = [
+      { region: 'eu', spaceId: 12345 },
+      { region: 'us', spaceId: 67890 },
+      { region: 'cn', spaceId: 11111 },
+      { region: 'ca', spaceId: 22222 },
+      { region: 'ap', spaceId: 33333 },
+    ] satisfies Array<{ region: RegionCode; spaceId: number }>;
 
-    it.each(regionDomains)(
-      'should open the correct URL for $region region',
-      async ({ region, expectedDomain }) => {
+    it.each(testCases)(
+      'should open the correct URL for %s region',
+      async ({ region, spaceId }) => {
         mockedOpen.mockResolvedValue({} as any);
 
-        await expect(openSpaceInBrowser(98765, region)).resolves.toBeUndefined();
+        await expect(openSpaceInBrowser(spaceId, region)).resolves.toBeUndefined();
 
         expect(mockedOpen).toHaveBeenCalledWith(
-          `https://${expectedDomain}/#/me/spaces/98765/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create`,
+          `https://${appDomains[region]}/#/me/spaces/${spaceId}/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create`,
         );
       },
     );

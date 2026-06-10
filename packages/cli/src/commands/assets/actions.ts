@@ -84,7 +84,7 @@ export const createAssetInternalTag = async (
     const client = getMapiClient();
     const { data } = await client.internalTags.create({
       path: { space_id: Number(spaceId) },
-      body: { name, object_type: 'asset' },
+      body: { internal_tag: { name, object_type: 'asset' } },
       throwOnError: true,
     });
     const tag = data?.internal_tag;

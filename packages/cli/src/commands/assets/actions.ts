@@ -59,8 +59,8 @@ export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<Ass
     );
     return new Map(
       tags
-        .filter((tag): tag is { id: number; name: string } => typeof tag?.id === 'number' && typeof tag?.name === 'string')
-        .map(tag => [tag.name, tag.id]),
+        .filter(tag => typeof tag?.id === 'number' && typeof tag?.name === 'string')
+        .map(tag => [tag.name, tag.id] as const),
     );
   }
   catch (maybeError) {

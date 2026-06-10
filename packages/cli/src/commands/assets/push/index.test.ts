@@ -1446,7 +1446,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
       expect.anything(),
     );
@@ -1483,11 +1483,11 @@ describe('assets push command', () => {
 
     expect(actions.updateAsset).toHaveBeenCalledWith(
       remoteAsset.id,
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
     );
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      internal_tag_ids: [String(targetTagId)],
+      internal_tag_ids: [targetTagId],
     }));
     expect(process.exitCode).not.toBe(1);
   });
@@ -1527,10 +1527,10 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(createTagSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag: { name: 'missing-tag', object_type: 'asset' } }),
+      expect.objectContaining({ internal_tag: expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }) }),
     );
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(createdTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [createdTagId] }),
       expect.anything(),
       expect.anything(),
     );

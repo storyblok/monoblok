@@ -468,7 +468,12 @@ export const readLocalAssetsStream = ({
           const shortFilename: string = sidecar.short_filename
             || (sidecar.filename ? basename(sidecar.filename) : undefined)
             || file;
-          const asset = toAssetUpload(sidecar, shortFilename);
+          const asset: AssetUpload = {
+            ...toAssetUpload(sidecar, shortFilename),
+            // Carry the read-only tag detail for source→target tag-name
+            // translation in `processAsset`; it is stripped before the API call.
+            ...(sidecar.internal_tags_list ? { internal_tags_list: sidecar.internal_tags_list } : {}),
+          };
           const fileBuffer = await readFile(binaryFilePath) as unknown as ArrayBuffer;
           const sidecarPath = getSidecarFilename(binaryFilePath);
           yield {
@@ -580,7 +585,7 @@ const mapInternalTagIds = (
   sourceTags: ReadonlyArray<{ id?: number; name?: string }> | null | undefined,
   assetInternalTagsByName: AssetInternalTagsByName,
   onUnmappedTag?: (tag: UnmappedAssetInternalTag) => void,
-): string[] => {
+): number[] => {
   if (!sourceIds || sourceIds.length === 0) {
     return [];
   }
@@ -590,7 +595,7 @@ const mapInternalTagIds = (
       sourceNamesById.set(tag.id, tag.name);
     }
   }
-  const mapped: string[] = [];
+  const mapped: number[] = [];
   for (const raw of sourceIds) {
     const sourceId = Number(raw);
     const sourceName = sourceNamesById.get(sourceId);
@@ -598,7 +603,7 @@ const mapInternalTagIds = (
       ? assetInternalTagsByName.get(sourceName)
       : undefined;
     if (typeof targetId === 'number') {
-      mapped.push(String(targetId));
+      mapped.push(targetId);
     }
     else {
       onUnmappedTag?.({ sourceId, name: sourceName });
@@ -682,10 +687,10 @@ const processAsset = async ({
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   const sourceTags = localAsset.internal_tags_list;
-  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): string[] =>
+  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): number[] =>
     maps.assetInternalTagsByName
       ? mapInternalTagIds(sourceIds, sourceTags, maps.assetInternalTagsByName, onUnmappedTag)
-      : (sourceIds ?? []).map(id => String(id));
+      : (sourceIds ?? []).map(id => Number(id));
 
   let newRemoteAsset: Asset;
   let status: 'created' | 'updated';
@@ -706,7 +711,7 @@ const processAsset = async ({
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
       expire_at: nullToUndef('expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at),
       publish_at: nullToUndef('publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at),
-      internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
+      internal_tag_ids: localAsset.internal_tag_ids ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
       meta_data: nullToUndef('meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data),
     };
 
@@ -732,13 +737,17 @@ const processAsset = async ({
     // `toAssetUpload`. `internal_tag_ids` is rewritten through
     // `maps.assetInternalTagsByName` so source-space IDs are translated to
     // target-space IDs before the create call.
-    const mappedTagIds = 'internal_tag_ids' in localAsset
+    const mappedTagIds = localAsset.internal_tag_ids
       ? resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;
+    // Drop the source (untranslated) `internal_tag_ids` carried by
+    // `toAssetUpload` and re-add the target-space ids only when the source had
+    // tag metadata, so tagless assets omit the field entirely.
+    const { internal_tag_ids: _sourceTagIds, ...uploadBase } = toAssetUpload(localAsset, localAsset.short_filename);
     const createPayload: AssetUpload = {
-      ...toAssetUpload(localAsset, localAsset.short_filename),
+      ...uploadBase,
       asset_folder_id: remoteFolderId ?? undefined,
-      internal_tag_ids: mappedTagIds,
+      ...(mappedTagIds !== undefined ? { internal_tag_ids: mappedTagIds } : {}),
     };
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';

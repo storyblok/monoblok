@@ -40,6 +40,10 @@ import { assertLibraryWritable, listWritableLibraries, resolveScopeBaseDir, type
 
 type Summaries = [string, Report['summary'][string]][];
 
+/** Push destination: the space, the org's shared libraries, or both. */
+const PUSH_TARGETS = ['space', 'shared', 'all'] as const;
+type PushTarget = typeof PUSH_TARGETS[number];
+
 interface ScopeTransports {
   getAsset: ReturnType<typeof makeGetAssetAPITransport>;
   createAsset: ReturnType<typeof makeCreateAssetAPITransport>;
@@ -79,7 +83,7 @@ const pushCmd = assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .addOption(new Option('--target <target>', 'push destination: space | shared | all').choices(['space', 'shared', 'all']).default('space'))
+  .addOption(new Option('--target <target>', 'push destination: space | shared | all').choices(PUSH_TARGETS).default('space'))
   .option('--library <libraryId>', 'destination library ID (required for single-asset --target=shared)')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
@@ -114,7 +118,7 @@ pushCmd
       return;
     }
 
-    const target = (options.target as string) ?? 'space';
+    const target = (options.target as PushTarget) ?? 'space';
     const libraryId = options.library ? Number(options.library) : undefined;
     const assetBinaryPath = typeof assetInput === 'string' && assetInput.trim().length > 0
       ? assetInput

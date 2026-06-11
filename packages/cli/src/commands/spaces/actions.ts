@@ -29,10 +29,13 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
  */
 export const createSpace = async (space: SpaceCreate): Promise<Space | undefined> => {
   try {
+    const { in_org, assign_partner, ...spaceData } = space;
     const client = getMapiClient();
     const { data } = await client.spaces.create({
       body: {
-        space,
+        space: spaceData,
+        ...(in_org && { in_org }),
+        ...(assign_partner && { assign_partner }),
       },
     });
 

@@ -69,10 +69,10 @@ export const managementApiRegions: Record<RegionCode, string> = {
 
 export const appDomains: Record<RegionCode, string> = {
   eu: 'app.storyblok.com',
-  us: 'app-us.storyblok.com',
-  cn: 'app.storyblokchina.cn',
-  ca: 'app-ca.storyblok.com',
-  ap: 'app-ap.storyblok.com',
+  us: 'app.storyblok.com',
+  cn: 'app.storyblokchina.cn/fe/editor_v2',
+  ca: 'app.storyblok.com',
+  ap: 'app.storyblok.com',
 } as const;
 
 export const regionNames: Record<RegionCode, string> = {

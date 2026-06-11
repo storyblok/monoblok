@@ -3,8 +3,10 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
 import * as filesystem from '../../utils/filesystem';
+import type { RegionCode } from '../../constants';
+import { appDomains } from '../../constants';
 
 vi.mock('node:child_process');
 vi.mock('node:fs/promises', () => ({
@@ -330,41 +332,37 @@ describe('create actions', () => {
     });
   });
 
-  describe('generateSpaceUrl', () => {
-    it('should generate correct URL for EU region', () => {
-      const url = generateSpaceUrl(12345, 'eu');
-      expect(url).toBe('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
-    });
-
-    it('should generate correct URL for US region', () => {
-      const url = generateSpaceUrl(67890, 'us');
-      expect(url).toBe('https://app-us.storyblok.com/#/me/spaces/67890/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
-    });
-
-    it('should generate correct URL for China region', () => {
-      const url = generateSpaceUrl(11111, 'cn');
-      expect(url).toBe('https://app.storyblokchina.cn/#/me/spaces/11111/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
-    });
-
-    it('should generate correct URL for Canada region', () => {
-      const url = generateSpaceUrl(22222, 'ca');
-      expect(url).toBe('https://app-ca.storyblok.com/#/me/spaces/22222/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
-    });
-
-    it('should generate correct URL for Asia Pacific region', () => {
-      const url = generateSpaceUrl(33333, 'ap');
-      expect(url).toBe('https://app-ap.storyblok.com/#/me/spaces/33333/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
+  it('should contain the correct region domains', () => {
+    expect(appDomains).toEqual({
+      eu: 'app.storyblok.com',
+      us: 'app.storyblok.com',
+      cn: 'app.storyblokchina.cn/fe/editor_v2',
+      ca: 'app.storyblok.com',
+      ap: 'app.storyblok.com',
     });
   });
 
   describe('openSpaceInBrowser', () => {
-    it('should open space URL in browser successfully', async () => {
-      mockedOpen.mockResolvedValue({} as any);
+    const testCases = [
+      { region: 'eu', spaceId: 12345 },
+      { region: 'us', spaceId: 67890 },
+      { region: 'cn', spaceId: 11111 },
+      { region: 'ca', spaceId: 22222 },
+      { region: 'ap', spaceId: 33333 },
+    ] satisfies Array<{ region: RegionCode; spaceId: number }>;
 
-      await expect(openSpaceInBrowser(12345, 'eu')).resolves.toBeUndefined();
+    it.each(testCases)(
+      'should open the correct URL for %s region',
+      async ({ region, spaceId }) => {
+        mockedOpen.mockResolvedValue({} as any);
 
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblok.com/#/me/spaces/12345/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
-    });
+        await expect(openSpaceInBrowser(spaceId, region)).resolves.toBeUndefined();
+
+        expect(mockedOpen).toHaveBeenCalledWith(
+          `https://${appDomains[region]}/#/me/spaces/${spaceId}/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create`,
+        );
+      },
+    );
 
     it('should handle errors when opening browser fails', async () => {
       const openError = new Error('Failed to open browser');
@@ -373,14 +371,6 @@ describe('create actions', () => {
       await expect(openSpaceInBrowser(12345, 'us')).rejects.toThrow(
         'Failed to open space in browser: Failed to open browser',
       );
-    });
-
-    it('should open correct URL for different regions', async () => {
-      mockedOpen.mockResolvedValue({} as any);
-
-      await openSpaceInBrowser(98765, 'cn');
-
-      expect(mockedOpen).toHaveBeenCalledWith('https://app.storyblokchina.cn/#/me/spaces/98765/dashboard?utm_source=storyblok-cli&utm_medium=cli&utm_campaign=create');
     });
   });
 });

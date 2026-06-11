@@ -37,6 +37,9 @@ function resolveComponent<K extends SbRichTextElement>(
 ): ComponentType<SbReactRichTextProps<K>> | undefined {
   return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
 }
+const extendAttrMap = {
+  class: 'className',
+};
 
 export function createRichTextRenderer(options: SbReactRichTextRenderContext) {
   return function render(document: SbRichTextInput): ReactNode | null {
@@ -90,7 +93,7 @@ function renderLinkGroup(
     return <React.Fragment key={key}>{inner}</React.Fragment>;
   }
 
-  return React.createElement(tag, { key, ...processAttrs(linkMark.type, linkMark.attrs) }, inner);
+  return React.createElement(tag, { key, ...processAttrs(linkMark.type, linkMark.attrs, extendAttrMap) }, inner);
 }
 
 function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext, key: React.Key): ReactNode {
@@ -114,7 +117,7 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
     return renderOptimizedImage(node, options, key);
   }
 
-  const props = processAttrs(node.type, node.attrs);
+  const props = processAttrs(node.type, node.attrs, extendAttrMap);
   if (isSelfClosing(tag)) {
     return React.createElement(tag, { key, ...props });
   }
@@ -158,7 +161,7 @@ function renderOptimizedImage(
     ...attrs,
     src: optimizedSrc,
     ...extraAttrs,
-  });
+  }, extendAttrMap);
 
   return <img key={key} {...finalProps} />;
 }
@@ -208,7 +211,7 @@ function renderStaticStructure(
   return specs.map((spec, index) => {
     const { tag, children, attrs: specAttrs } = spec;
     const mergedAttrs = { ...specAttrs, ...parentAttrs };
-    const props = processAttrs(type, mergedAttrs);
+    const props = processAttrs(type, mergedAttrs, extendAttrMap);
 
     if (isSelfClosing(tag)) {
       return React.createElement(tag, { key: index, ...props });
@@ -254,6 +257,6 @@ function wrapMark(children: ReactNode, mark: SbRichTextMark, options: SbReactRic
     return children;
   }
 
-  const props = processAttrs(mark.type, mark.attrs);
+  const props = processAttrs(mark.type, mark.attrs, extendAttrMap);
   return React.createElement(tag, props, children);
 }

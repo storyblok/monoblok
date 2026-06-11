@@ -218,10 +218,11 @@ const preconditions = {
     const spy = vi.fn();
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, async ({ request }) => {
-        const body = await request.json() as { name: string; object_type?: string };
+        const body = await request.json() as { internal_tag: { name: string; object_type?: string } };
         spy(body);
+        const tag = body.internal_tag;
         return HttpResponse.json(
-          { internal_tag: { id: idByName[body.name] ?? getID(), name: body.name, object_type: body.object_type } },
+          { internal_tag: { id: idByName[tag.name] ?? getID(), name: tag.name, object_type: tag.object_type } },
           { status: 201 },
         );
       }),
@@ -1524,7 +1525,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(createTagSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }),
+      expect.objectContaining({ internal_tag: { name: 'missing-tag', object_type: 'asset' } }),
     );
     expect(actions.createAsset).toHaveBeenCalledWith(
       expect.objectContaining({ internal_tag_ids: [String(createdTagId)] }),

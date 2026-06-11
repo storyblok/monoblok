@@ -35,11 +35,10 @@ describe('transferAsset', () => {
         HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
     );
 
-    await expect(transferAsset('123', 42, 7)).rejects.toMatchObject({
-      message: expect.stringContaining('write access'),
-    });
-    await expect(transferAsset('123', 42, 7)).rejects.toBeInstanceOf(APIError);
     const error = await transferAsset('123', 42, 7).catch(e => e);
+
+    expect(error).toBeInstanceOf(APIError);
+    expect(error.message).toContain('write access');
     expect(error.code).toBe(403);
   });
 });

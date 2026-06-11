@@ -53,6 +53,7 @@ export const DATASOURCE_DEFAULTS: Record<string, unknown> = {
 
 export const COMPONENT_DEFAULTS: Record<string, unknown> = {
   display_name: '',
+  description: '',
   color: '',
   icon: '',
   preview_field: '',

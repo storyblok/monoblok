@@ -28,6 +28,13 @@ import { getSharedAsset } from '../actions';
 import { buildLibraryRootResolver, listReadableLibraries, resolveScopeBaseDir, type Scope } from '../scope';
 import { collectReferencedAssetIds, readLocalStoryContents } from '../referenced';
 
+/**
+ * Pull source: assets referenced by local stories (default), everything, the
+ * space only, or the org's shared libraries only.
+ */
+const PULL_TARGETS = ['with-referenced', 'all', 'space', 'shared'] as const;
+type PullTarget = typeof PULL_TARGETS[number];
+
 interface PullSummary {
   folderResults: { total: number; succeeded: number; failed: number };
   fetchAssetPages: { total: number; succeeded: number; failed: number };
@@ -45,7 +52,7 @@ const createSummary = (): PullSummary => ({
 const pullCmd = assetsCommand
   .command('pull')
   .option('-s, --space <space>', 'space ID')
-  .addOption(new Option('--target <target>', 'pull source: with-referenced | all | space | shared').choices(['with-referenced', 'all', 'space', 'shared']).default('with-referenced'))
+  .addOption(new Option('--target <target>', 'pull source: with-referenced | all | space | shared').choices(PULL_TARGETS).default('with-referenced'))
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('--asset-token <token>', 'Asset token for accessing private assets')
@@ -79,7 +86,7 @@ pullCmd
     }
 
     const { region } = state;
-    const target = (options.target as string) ?? 'with-referenced';
+    const target = (options.target as PullTarget) ?? 'with-referenced';
     const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : {};
     const summary = createSummary();
     let fatalError = false;

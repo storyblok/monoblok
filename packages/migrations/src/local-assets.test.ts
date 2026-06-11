@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'pathe';
 import { getLocalAssets, updateLocalAsset } from './local-assets';
 
 const FIXTURES_DIR = new URL(
@@ -21,9 +23,7 @@ describe('getLocalAssets', () => {
   });
 
   it('should return empty array for empty directory', async () => {
-    const emptyDir = new URL('__test__/fixtures/empty-assets-dir', import.meta.url)
-      .pathname;
-    await mkdir(emptyDir, { recursive: true });
+    const emptyDir = await mkdtemp(join(tmpdir(), 'sb-assets-empty-'));
     const assets = await getLocalAssets(emptyDir);
     expect(assets).toEqual([]);
     await rm(emptyDir, { recursive: true });
@@ -39,11 +39,10 @@ describe('getLocalAssets', () => {
 });
 
 describe('updateLocalAsset', () => {
-  const TEST_DIR = new URL('__test__/fixtures/test-write-assets', import.meta.url)
-    .pathname;
+  let TEST_DIR: string;
 
   beforeEach(async () => {
-    await mkdir(TEST_DIR, { recursive: true });
+    TEST_DIR = await mkdtemp(join(tmpdir(), 'sb-assets-write-'));
   });
 
   afterEach(async () => {

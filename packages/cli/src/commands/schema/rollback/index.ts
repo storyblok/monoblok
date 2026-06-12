@@ -11,6 +11,7 @@ import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
 import { fetchRemoteSchema } from '../actions';
 import { saveChangeset } from '../changeset';
+import { displayPath } from '../utils';
 import type { SchemaRollbackOptions } from './constants';
 import { buildRollbackOps, executeRollback, formatRollbackOutput, listChangesets, loadChangeset } from './actions';
 
@@ -156,7 +157,7 @@ schemaCommand
           ...(Object.keys(op.payload).length > 0 && { after: op.payload }),
         })),
       });
-      logger.info('Rollback changeset saved', { path: rollbackChangesetPath });
+      logger.info('Rollback changeset saved', { path: displayPath(rollbackChangesetPath, basePath) });
     }
     catch (maybeError) {
       summary.failed += 1;

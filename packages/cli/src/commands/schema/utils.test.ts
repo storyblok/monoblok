@@ -1,19 +1,37 @@
+import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 
-import { applyDefaults, fileTimestamp, formatValue, stripKeys } from './utils';
+import { applyDefaults, displayPath, fileTimestamp, formatValue, stripKeys } from './utils';
 
 describe('fileTimestamp', () => {
-  it('should replace colons with hyphens', () => {
-    expect(fileTimestamp('2024-01-15T10:30:00')).toBe('2024-01-15T10-30-00');
+  it('should convert an ISO timestamp to compact YYYYMMDDHHmmss form', () => {
+    expect(fileTimestamp('2024-01-15T10:30:00')).toBe('20240115103000');
   });
 
-  it('should replace dots with hyphens', () => {
-    expect(fileTimestamp('2024-01-15T10:30:00.000Z')).toBe('2024-01-15T10-30-00-000Z');
+  it('should drop milliseconds and timezone suffix', () => {
+    expect(fileTimestamp('2024-01-15T10:30:00.123Z')).toBe('20240115103000');
   });
 
   it('should produce a filesystem-safe string', () => {
     const result = fileTimestamp('2024-01-15T10:30:00.000Z');
-    expect(result).not.toMatch(/[:.]/);
+    expect(result).toMatch(/^\d{14}$/);
+  });
+});
+
+describe('displayPath', () => {
+  it('should return a path relative to CWD by default', () => {
+    const filePath = join(process.cwd(), '.storyblok/migrations/12345/hero.20260430114254.js');
+    expect(displayPath(filePath)).toBe('.storyblok/migrations/12345/hero.20260430114254.js');
+  });
+
+  it('should return a path relative to CWD when the user path is relative', () => {
+    const filePath = join(process.cwd(), 'custom/migrations/12345/hero.js');
+    expect(displayPath(filePath, 'custom')).toBe('custom/migrations/12345/hero.js');
+  });
+
+  it('should keep the absolute path when the user passed an absolute path', () => {
+    const filePath = join(process.cwd(), 'storage/migrations/12345/hero.js');
+    expect(displayPath(filePath, process.cwd())).toBe(filePath);
   });
 });
 

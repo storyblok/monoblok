@@ -158,9 +158,9 @@ describe('writeMigrationFile', () => {
       timestamp,
     });
 
-    expect(path).toContain('migrations/12345/hero.2026-04-10T12-00-00-000Z.js');
+    expect(path).toContain('migrations/12345/hero.20260410120000.js');
     const files = vol.toJSON();
-    expect(Object.keys(files).some(f => f.includes('hero.2026-04-10T12-00-00-000Z.js'))).toBe(true);
+    expect(Object.keys(files).some(f => f.includes('hero.20260410120000.js'))).toBe(true);
   });
 
   it('should use custom base path when provided', async () => {
@@ -175,6 +175,6 @@ describe('writeMigrationFile', () => {
       basePath: 'custom/path',
     });
 
-    expect(path).toContain('custom/path/migrations/12345/hero.2026-04-10T12-00-00-000Z.js');
+    expect(path).toContain('custom/path/migrations/12345/hero.20260410120000.js');
   });
 });

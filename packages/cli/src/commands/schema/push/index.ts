@@ -9,6 +9,7 @@ import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
+import { displayPath } from '../utils';
 import type { SchemaPushOptions } from './constants';
 import type { SchemaData } from '../types';
 import { loadSchema } from './load-schema';
@@ -159,7 +160,9 @@ schemaCommand
                   timestamp: migrationTimestamp,
                   basePath: resolvedBase,
                 });
-                ui.log(`  Generated: ${path}`);
+                const migrationPath = displayPath(path, basePath);
+                logger.info('Migration generated', { component: comp.componentName, path: migrationPath });
+                ui.log(`  Generated: ${migrationPath}`);
               }
 
               ui.br();
@@ -198,7 +201,7 @@ schemaCommand
         remote: { components: rawComponents, componentFolders: rawComponentFolders, datasources: rawDatasources },
         changes: buildChangesetEntries(diffResult, resolved, remote, { delete: options.delete }),
       });
-      logger.info('Changeset saved', { path: changesetPath });
+      logger.info('Changeset saved', { path: displayPath(changesetPath, basePath) });
 
       // 9. Execute push (skipped when nothing to push)
       const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0 && (!options.delete || diffResult.stale === 0);

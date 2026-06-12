@@ -1,0 +1,47 @@
+openapi: 3.1.1
+info:
+  title: Storyblok overlay schemas
+  version: 1.0.0
+  description: >-
+    Supplementary schemas not (yet) modeled in storyblok/openapi-wdx.
+    Restored from the deprecated @storyblok/openapi package so wrapper
+    templates have a deterministic source for BlockContent, field-value
+    shapes, and the discriminated ComponentSchemaField union. Migrate
+    entries upstream when the contract is owned there.
+paths: {}
+components:
+  schemas:
+    BlockContent:
+      $ref: ./shared/stories/block-content.yaml
+    BlockContentInput:
+      $ref: ./shared/stories/block-content-input.yaml
+    AssetFieldValue:
+      $ref: ./shared/stories/field-types/asset-field-value.yaml
+    MultilinkFieldValue:
+      $ref: ./shared/stories/field-types/multilink-field-value.yaml
+    PluginFieldValue:
+      $ref: ./shared/stories/field-types/plugin-field-value.yaml
+    RichtextFieldValue:
+      $ref: ./shared/stories/field-types/richtext-field-value.yaml
+    TableFieldValue:
+      $ref: ./shared/stories/field-types/table-field-value.yaml
+    ComponentSchemaField:
+      description: A component schema field. Discriminated by the literal `type` enum on each variant.
+      oneOf:
+        - $ref: ./mapi/components/field-types/text-field.yaml
+        - $ref: ./mapi/components/field-types/textarea-field.yaml
+        - $ref: ./mapi/components/field-types/richtext-field.yaml
+        - $ref: ./mapi/components/field-types/markdown-field.yaml
+        - $ref: ./mapi/components/field-types/number-field.yaml
+        - $ref: ./mapi/components/field-types/datetime-field.yaml
+        - $ref: ./mapi/components/field-types/boolean-field.yaml
+        - $ref: ./mapi/components/field-types/option-field.yaml
+        - $ref: ./mapi/components/field-types/options-field.yaml
+        - $ref: ./mapi/components/field-types/asset-field.yaml
+        - $ref: ./mapi/components/field-types/multiasset-field.yaml
+        - $ref: ./mapi/components/field-types/multilink-field.yaml
+        - $ref: ./mapi/components/field-types/bloks-field.yaml
+        - $ref: ./mapi/components/field-types/table-field.yaml
+        - $ref: ./mapi/components/field-types/section-field.yaml
+        - $ref: ./mapi/components/field-types/tab-field.yaml
+        - $ref: ./mapi/components/field-types/custom-field.yaml

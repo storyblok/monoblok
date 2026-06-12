@@ -1,0 +1,135 @@
+import type {
+  AssetFieldValue,
+  BlockContentBase,
+  BlockContentInputBase,
+  Field,
+  MultilinkFieldValue,
+  PluginFieldValue,
+  RichtextFieldValue,
+  TableFieldValue,
+} from './_sources';
+import type { Prettify } from './_utils';
+import type { Block } from './block';
+
+export type { Field };
+export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
+
+/**
+ * Registry of all blocks in the space, used to resolve nested `bloks` fields.
+ * A `Block` union resolves nested content against the registry; `NoBlocks`
+ * (the default) leaves it loose (`BlockContentBase`).
+ */
+type NoBlocks = false;
+
+/** True when `T` is the un-narrowed base `Block` (i.e. no specific block was supplied). */
+type IsBaseBlock<T> = [Block] extends [T] ? true : false;
+
+type RequiredFieldKeys<T> = {
+  [K in keyof T]: T[K] extends { required: true } ? K : never
+}[keyof T];
+
+type OptionalFieldKeys<T> = Exclude<keyof T, RequiredFieldKeys<T>>;
+
+/**
+ * Content object for a single block instance as returned by the Storyblok
+ * Content Delivery API. Without a `TBlock` argument, this is the loose
+ * runtime shape (any block, `_editable` optional). With a schema-typed
+ * `TBlock`, fields are narrowed per the block's schema.
+ */
+export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks> =
+  IsBaseBlock<TBlock> extends true
+    ? BlockContentBase
+    // distribute over each member of the `TBlock` union
+    : TBlock extends any
+      ? Prettify<
+        { _uid: string; component: TBlock['name']; _editable?: string }
+        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> }
+        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+      >
+      : never;
+
+/** Input variant of {@link BlockContent} for write operations (creating/updating stories via the MAPI). `_uid` is optional. */
+export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks> =
+  IsBaseBlock<TBlock> extends true
+    ? BlockContentInputBase
+    // distribute over each member of the `TBlock` union
+    : TBlock extends any
+      ? Prettify<
+        { _uid?: string; component: TBlock['name']; _editable?: string }
+        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> }
+        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+      >
+      : never;
+
+export type BlocksFieldValue<
+  TBlock extends Block = Block,
+  TBlocks = NoBlocks,
+> = BlockContent<TBlock, TBlocks>[];
+
+/** Union of all valid Storyblok field type discriminants (e.g., `text`, `bloks`). */
+export type FieldType = Field['type'];
+
+interface FieldTypeValueMap {
+  text: string;
+  textarea: string;
+  richtext: RichtextFieldValue;
+  markdown: string;
+  number: number;
+  datetime: string;
+  boolean: boolean;
+  option: string;
+  options: string[];
+  asset: AssetFieldValue;
+  multiasset: AssetFieldValue[];
+  multilink: MultilinkFieldValue;
+  bloks: BlockContentBase[];
+  table: TableFieldValue;
+  section: never;
+  tab: never;
+  custom: PluginFieldValue;
+}
+
+type IsNestable<T> =
+  T extends { is_nestable: false } ? false
+    : T extends { is_nestable: true } ? true
+      : true;
+
+type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: ReadonlyArray<infer TWhitelisted extends string> }
+  // keep only the registry blocks named in the whitelist
+  ? Extract<TBlocks, { name: TWhitelisted }>
+  // no whitelist: distribute over the registry, keeping nestable blocks
+  : TBlocks extends any
+    ? IsNestable<TBlocks> extends true ? TBlocks : never
+    : never;
+
+/** Resolves a field definition to its runtime content value type (read). */
+export type FieldValue<
+  TField extends Field = Field,
+  TBlocks = NoBlocks,
+> = Prettify<
+  TField extends { type: 'bloks' }
+    // guard `never` first: `[never] extends [Block]` is structurally true, so an
+    // empty registry would otherwise be mistaken for a populated one
+    ? [TBlocks] extends [never]
+        ? BlockContentBase[]
+        : [TBlocks] extends [Block]
+            ? BlockContent<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            : BlockContentBase[]
+    : FieldTypeValueMap[TField['type']]
+>;
+
+/** Resolves a field definition to its input value type (write). */
+export type FieldValueInput<
+  TField extends Field = Field,
+  TBlocks = NoBlocks,
+> = Prettify<
+  TField extends { type: 'bloks' }
+    // guard `never` first: `[never] extends [Block]` is structurally true, so an
+    // empty registry would otherwise be mistaken for a populated one
+    ? [TBlocks] extends [never]
+        ? BlockContentInputBase[]
+        : [TBlocks] extends [Block]
+            ? BlockContentInput<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            : BlockContentInputBase[]
+    : FieldTypeValueMap[TField['type']]
+>;

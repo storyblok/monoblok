@@ -2,6 +2,14 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultProject": "main",
   "parallel": 5,
+  "namedInputs": {
+    "openapiCodegen": [
+      "{workspaceRoot}/tools/openapi-codegen/spec.lock",
+      "{workspaceRoot}/tools/openapi-codegen/src/**",
+      "{workspaceRoot}/tools/openapi-codegen/specs/**",
+      "{workspaceRoot}/tools/openapi-codegen/templates/**"
+    ]
+  },
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],

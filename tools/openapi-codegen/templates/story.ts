@@ -1,0 +1,29 @@
+import type { CapiStory as CapiStoryGenerated } from './_sources';
+import type { Override, Prettify } from './_utils';
+import type { Block, RootBlock } from './block';
+import type { BlockContent } from './field';
+
+/**
+ * Registry of all blocks, threaded through to resolve nested `bloks` fields.
+ * `NoBlocks` (the default) leaves nested content loose (`BlockContentBase`).
+ */
+type NoBlocks = false;
+
+type CapiStoryWithSchemaContent<
+  TBlock extends RootBlock = RootBlock,
+  TBlocks = NoBlocks,
+> = Override<CapiStoryGenerated, { content: BlockContent<TBlock, TBlocks> }>;
+
+/** A Storyblok CDN (CAPI) story. */
+export type Story<
+  TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TBlocks = NoBlocks,
+> = Prettify<
+  // caller passed root block(s) directly → use them as the content type
+  [TBlockOrBlocks] extends [RootBlock]
+    ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks>
+    // caller passed the full block union → derive root blocks, thread the union as the registry
+    : TBlocks extends NoBlocks
+      ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks>
+      : never
+>;

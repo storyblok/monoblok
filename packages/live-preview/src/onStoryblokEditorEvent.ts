@@ -1,14 +1,34 @@
 import type { BridgeParams } from '@storyblok/preview-bridge';
-import type { ISbComponentType, ISbStoryData } from 'storyblok-js-client';
+import type { Prettify } from './generated/types/_utils';
+import type { Story } from './generated/types/story';
 
 import { loadStoryblokBridge } from './loadStoryblokBridge';
 import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
 
 /**
+ * The story payload delivered by the Visual Editor `input` event.
+ *
+ * The Preview Bridge streams a story whose full runtime shape is not
+ * guaranteed to match the CDN API. Only `id`, `uuid`, and `content` are
+ * relied upon here — their types are sourced from the supplied {@link Story}
+ * generic — while every other field is left as `unknown` rather than
+ * over-promising a fully typed CDN story.
+ *
+ * @typeParam TStory - The schema-aware {@link Story} to source field types from.
+ */
+export type LivePreviewStory<TStory extends Story = Story> = Prettify<
+  Pick<TStory, 'id'>
+  & Partial<Pick<TStory, 'uuid' | 'content'>>
+  & {
+    [key: string]: unknown;
+  }
+>;
+
+/**
  * Internal listener registry for Storyblok `input` events.
  * Each listener receives the updated story data from the Visual Editor.
  */
-const inputListeners = new Set<(story: ISbStoryData) => void>();
+const inputListeners = new Set<(story: LivePreviewStory) => void>();
 
 /**
  * Tracks whether the Storyblok Preview Bridge event listeners
@@ -48,7 +68,7 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
 
       if (event.action === 'input' && event.story) {
         for (const listener of inputListeners) {
-          listener(event.story as ISbStoryData);
+          listener(event.story as LivePreviewStory);
         }
         return;
       }
@@ -76,7 +96,7 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
  * Multiple listeners can be registered simultaneously. Each call returns
  * a cleanup function that removes the registered listener.
  *
- * @typeParam T - The Storyblok component schema type.
+ * @typeParam TStory - The schema-aware {@link Story} type to type the payload against.
  *
  * @param callback
  * Callback executed when the Visual Editor sends an `input` event.
@@ -98,16 +118,14 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
  * cleanup()
  * ```
  */
-export async function onStoryblokEditorEvent<
-  T extends ISbComponentType<string> = ISbComponentType<string>,
->(
-  callback: (story: ISbStoryData<T>) => void,
+export async function onStoryblokEditorEvent<TStory extends Story = Story>(
+  callback: (story: LivePreviewStory<TStory>) => void,
   bridgeOptions?: BridgeParams,
 ): Promise<() => void> {
   await initializeBridge(bridgeOptions);
 
-  const listener = (story: ISbStoryData) => {
-    callback(story as ISbStoryData<T>);
+  const listener = (story: LivePreviewStory<TStory>) => {
+    callback(story);
   };
 
   inputListeners.add(listener);

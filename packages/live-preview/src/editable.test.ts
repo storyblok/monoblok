@@ -4,12 +4,12 @@ import storyblokEditable from './editable';
 
 describe('storyblokEditable', () => {
   it('returns attributes for valid _editable string', () => {
-    const blok = {
+    const block = {
       _editable:
                 '<!--#storyblok#{"name":"page","space":"147897","uid":"abc-123","id":"999"}-->',
     };
 
-    const result = storyblokEditable(blok);
+    const result = storyblokEditable(block);
 
     expect(result).toEqual({
       'data-blok-c': JSON.stringify({
@@ -22,7 +22,7 @@ describe('storyblokEditable', () => {
     });
   });
 
-  it('returns empty object when blok is undefined', () => {
+  it('returns empty object when block is undefined', () => {
     expect(storyblokEditable(undefined)).toEqual({});
   });
 
@@ -31,18 +31,18 @@ describe('storyblokEditable', () => {
   });
 
   it('returns empty object for invalid JSON', () => {
-    const blok = {
+    const block = {
       _editable: '<!--#storyblok#INVALID_JSON-->',
     };
 
-    expect(storyblokEditable(blok)).toEqual({});
+    expect(storyblokEditable(block)).toEqual({});
   });
 
   it('returns empty object if wrapper is incorrect', () => {
-    const blok = {
+    const block = {
       _editable: '{"id":"1","uid":"abc"}',
     };
 
-    expect(storyblokEditable(blok)).toEqual({});
+    expect(storyblokEditable(block)).toEqual({});
   });
 });

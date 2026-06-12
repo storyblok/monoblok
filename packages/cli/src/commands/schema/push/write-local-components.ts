@@ -6,6 +6,7 @@ import type { UI } from '../../../utils/ui';
 import { directories } from '../../../constants';
 import { fileExists, resolveCommandPath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { DiffResult, SchemaData } from '../types';
+import { displayPath } from '../utils';
 
 const DEFAULT_GROUPS_FILENAME = 'groups.json';
 const CONSOLIDATED_COMPONENTS_FILENAME = 'components.json';
@@ -34,7 +35,7 @@ export async function writeLocalComponents({
   const consolidatedPath = join(componentsDir, CONSOLIDATED_COMPONENTS_FILENAME);
   if (await fileExists(consolidatedPath)) {
     ui.warn(
-      `A consolidated ${CONSOLIDATED_COMPONENTS_FILENAME} exists at ${componentsDir}. `
+      `A consolidated ${CONSOLIDATED_COMPONENTS_FILENAME} exists at ${displayPath(componentsDir, basePath)}. `
       + `Per-component files will still be written, but the consolidated file may shadow them when stories push validates schemas. `
       + `Delete it or run \`storyblok components pull --separate-files\` to regenerate.`,
     );
@@ -52,7 +53,7 @@ export async function writeLocalComponents({
   else if (await fileExists(groupsPath)) {
     try {
       await unlink(groupsPath);
-      logger.info('Removed stale local groups file', { path: groupsPath });
+      logger.info('Removed stale local groups file', { path: displayPath(groupsPath, basePath) });
     }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -69,7 +70,7 @@ export async function writeLocalComponents({
       const filePath = join(componentsDir, `${sanitizeFilename(stale.name)}.json`);
       try {
         await unlink(filePath);
-        logger.info('Removed stale local component file', { path: filePath });
+        logger.info('Removed stale local component file', { path: displayPath(filePath, basePath) });
       }
       catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {

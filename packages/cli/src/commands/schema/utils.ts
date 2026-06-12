@@ -1,3 +1,5 @@
+import { isAbsolute, relative } from 'pathe';
+
 /** Fields to strip from Component before serialization (read-only / API-assigned). */
 export const COMPONENT_STRIP_KEYS = new Set([
   'id',
@@ -113,9 +115,17 @@ export function formatValue(value: unknown, depth: number): string {
   return String(value);
 }
 
-/** Converts an ISO timestamp to a filesystem-safe string (replaces `:` and `.` with `-`). */
+/** Converts an ISO timestamp to a compact filesystem-safe form: `YYYYMMDDHHmmss` (e.g. `20260430114254`). */
 export function fileTimestamp(iso: string): string {
-  return iso.replace(/[:.]/g, '-');
+  return iso.replace(/\D/g, '').slice(0, 14);
+}
+
+/**
+ * Formats a file path for display: relative to CWD, unless the user explicitly
+ * passed an absolute `--path` (then the absolute path is kept as-is).
+ */
+export function displayPath(filePath: string, userPath?: string): string {
+  return userPath && isAbsolute(userPath) ? filePath : relative(process.cwd(), filePath);
 }
 
 /** Strips keys from an object, removing undefined and null values from optional fields. */

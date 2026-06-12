@@ -8,6 +8,7 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { schemaCommand } from '../command';
+import { displayPath } from '../utils';
 import type { SchemaInitOptions } from './constants';
 import { fetchRemoteSchema } from '../actions';
 import { writeSchemaFiles } from './actions';
@@ -47,10 +48,11 @@ schemaCommand
     }
 
     const targetPath = resolve(options.outDir);
+    const targetDisplayPath = displayPath(targetPath, options.outDir);
 
     if (!(await isTargetEmpty(targetPath))) {
       handleError(
-        new CommandError(`Target directory ${targetPath} is not empty. \`schema init\` is a one-time bootstrap and refuses to overwrite existing files. Use \`schema push\` for ongoing changes, or remove the directory to re-bootstrap.`),
+        new CommandError(`Target directory ${targetDisplayPath} is not empty. \`schema init\` is a one-time bootstrap and refuses to overwrite existing files. Use \`schema push\` for ongoing changes, or remove the directory to re-bootstrap.`),
         verbose,
       );
       return;
@@ -74,14 +76,14 @@ schemaCommand
       fetchSpinner.succeed(`Found: ${rawComponents.length} components, ${rawComponentFolders.length} component folders, ${rawDatasources.length} datasources`);
 
       // 2. Generate and write files
-      const writeSpinner = ui.createSpinner(`Generating TypeScript files to ${targetPath}...`);
+      const writeSpinner = ui.createSpinner(`Generating TypeScript files to ${targetDisplayPath}...`);
       const writtenFiles = await writeSchemaFiles(targetPath, rawComponents, rawComponentFolders, rawDatasources);
 
       summary.total = writtenFiles.length;
       summary.succeeded = writtenFiles.length;
 
       writeSpinner.succeed(`Generated ${writtenFiles.length} files`);
-      ui.list(writtenFiles);
+      ui.list(writtenFiles.map(file => displayPath(file, options.outDir)));
       ui.warn('`schema init` is a one-time bootstrap step for adopting an existing space. Review generated files before continuing.');
       ui.info('After bootstrapping, keep your local schema as the source of truth and use `schema push` for ongoing changes.');
       ui.info('Make sure `@storyblok/schema` is installed in the project that imports these files (e.g. `pnpm add @storyblok/schema`).');

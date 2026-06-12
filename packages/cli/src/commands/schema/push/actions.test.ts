@@ -11,6 +11,7 @@ describe('toComponentCreate', () => {
       id: 99,
       name: 'page',
       display_name: 'Page',
+      description: 'A test block',
       created_at: '2024-01-01',
       updated_at: '2024-01-01',
       is_root: true,
@@ -28,6 +29,7 @@ describe('toComponentCreate', () => {
     expect(result).toEqual({
       name: 'page',
       display_name: 'Page',
+      description: 'A test block',
       color: '',
       icon: '',
       preview_field: '',
@@ -51,7 +53,7 @@ describe('toComponentCreate', () => {
       created_at: '',
       updated_at: '',
       schema: {},
-      // display_name, color, icon, preview_field intentionally absent
+      // display_name, description, color, icon, preview_field intentionally absent
     } as unknown as Component;
 
     const result = toComponentCreate(component);
@@ -59,6 +61,7 @@ describe('toComponentCreate', () => {
     expect(result).toMatchObject({
       name: 'hero',
       display_name: '',
+      description: '',
       color: '',
       icon: '',
       preview_field: '',

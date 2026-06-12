@@ -9,6 +9,11 @@ properties:
       - string
       - "null"
     description: Name that will be used in the editor interface
+  description:
+    type:
+      - string
+      - "null"
+    description: Description shown in the editor interface
   schema:
     type: object
     description: Component schema definition containing fields and their configurations

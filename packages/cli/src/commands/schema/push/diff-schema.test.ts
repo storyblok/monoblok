@@ -123,6 +123,40 @@ describe('diffSchema', () => {
     expect(result.diffs[0].action).toBe('update');
   });
 
+  it('should not show diff when remote has an empty description and local does not set it', () => {
+    const localComp = makeComponent('test', { title: { type: 'text', pos: 0 } });
+    const remoteComp = { ...makeComponent('test', { title: { type: 'text', pos: 0 } }), description: '' };
+
+    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['test', remoteComp]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.unchanged).toBe(1);
+    expect(result.updates).toBe(0);
+  });
+
+  it('should show diff when local removes a remote description', () => {
+    const localComp = makeComponent('test', { title: { type: 'text', pos: 0 } });
+    const remoteComp = { ...makeComponent('test', { title: { type: 'text', pos: 0 } }), description: 'A test block' };
+
+    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['test', remoteComp]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].action).toBe('update');
+  });
+
   it('should treat datasource without dimensions as unchanged when remote has empty dimensions', () => {
     const local: SchemaData = {
       components: [],

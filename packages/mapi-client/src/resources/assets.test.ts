@@ -75,6 +75,41 @@ describe('assets.list()', () => {
   });
 });
 
+describe('assets.convertToShared()', () => {
+  it('should post to the convert endpoint with target_asset_folder_id and return the converted asset', async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id/convert', ({ request }) => {
+        capturedUrl = request.url;
+        // The backend convert flips ownership only: space_id becomes null and
+        // the original `/f/{space_id}/` filename is kept (no `/g/{org_id}/`
+        // rewrite). space_id: null is the reliable shared marker.
+        return HttpResponse.json({
+          id: 42,
+          space_id: null,
+          filename: 'https://a.storyblok.com/f/123/500x500/shared.png',
+        });
+      }),
+    );
+    const client = createManagementApiClient({
+      personalAccessToken: 'test-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    const result = await client.assets.convertToShared(42, {
+      query: { target_asset_folder_id: 7 },
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toBeDefined();
+    expect(result.data?.space_id).toBeNull();
+    expect(capturedUrl).toContain('/v1/spaces/123/assets/42/convert');
+    expect(capturedUrl).toContain('target_asset_folder_id=7');
+  });
+});
+
 describe('assets.get()', () => {
   it('should successfully retrieve a single asset', async () => {
     const client = createManagementApiClient({

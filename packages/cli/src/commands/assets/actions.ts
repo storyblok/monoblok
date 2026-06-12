@@ -1,7 +1,8 @@
 import Storyblok from 'storyblok-js-client';
 import { getMapiClient } from '../../api';
+import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
 import { handleAPIError } from '../../utils/error/api-error';
-import { toError } from '../../utils/error/error';
+import { getResponseStatus, toError } from '../../utils/error/error';
 import { fetchAllPages } from '../../utils/pagination';
 import type { RegionCode } from '../../constants';
 import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload } from './types';
@@ -280,4 +281,85 @@ export const createAsset = async (
   catch (maybeError) {
     handleAPIError('push_asset_create', toError(maybeError));
   }
+};
+
+/**
+ * Transfers a space-local asset into the org's global (shared) library.
+ *
+ * UX wording is "transfer"; the backend endpoint is still `convert`
+ * (`AssetsServices::ConvertToSharedAsset`). Drop this mapping when the backend
+ * ships the `convert` -> `transfer` rename. One-way only (space to org).
+ *
+ * A 403 comes from the backend authorization policy (`AssetPolicy#convert?`):
+ * the target folder must exist in the global asset library and the space must
+ * have write access to it. Surface that as a friendly hint instead of a raw
+ * API error.
+ */
+export const transferAsset = async (
+  spaceId: string,
+  assetId: number,
+  folderId: number,
+): Promise<Asset> => {
+  try {
+    const { data } = await getMapiClient().assets.convertToShared(assetId, {
+      path: { space_id: Number(spaceId) },
+      query: { target_asset_folder_id: folderId },
+      throwOnError: true,
+    });
+    return data;
+  }
+  catch (maybeError) {
+    const error = toError(maybeError);
+    const status = getResponseStatus(maybeError);
+    handleAPIError(
+      'transfer_asset',
+      error,
+      status === 403
+        ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the global asset library and that this space has write access to it.`
+        : undefined,
+    );
+  }
+};
+
+export interface TransferResult {
+  assetId: number;
+  status: 'transferred' | 'failed';
+  filename?: string;
+  reason?: string;
+}
+
+/**
+ * Transfers multiple assets into the global asset library, bounding in-flight
+ * requests with the shared pipeline backpressure lock (2× the configured rate
+ * limit), matching the throttle headroom used by the asset and story streams.
+ * Per-asset errors are captured as failed results rather than aborting the
+ * whole batch.
+ */
+export const transferAssets = async (
+  spaceId: string,
+  assetIds: number[],
+  folderId: number,
+  callbacks: {
+    onSuccess?: (result: { assetId: number; filename?: string }) => void;
+    onError?: (error: Error, assetId: number) => void;
+  } = {},
+): Promise<TransferResult[]> => {
+  const lock = createPipelineBackpressureLock();
+
+  return Promise.all(assetIds.map(async (assetId): Promise<TransferResult> => {
+    await lock.acquire();
+    try {
+      const asset = await transferAsset(spaceId, assetId, folderId);
+      callbacks.onSuccess?.({ assetId, filename: asset.filename });
+      return { assetId, status: 'transferred', filename: asset.filename };
+    }
+    catch (maybeError) {
+      const error = toError(maybeError);
+      callbacks.onError?.(error, assetId);
+      return { assetId, status: 'failed', reason: error.message };
+    }
+    finally {
+      lock.release();
+    }
+  }));
 };

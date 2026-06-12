@@ -34,6 +34,18 @@ export function toError(maybeError: unknown) {
   }
 }
 
+export function getResponseStatus(maybeError: unknown): number | undefined {
+  const error = toError(maybeError);
+  if (!('response' in error)) {
+    return undefined;
+  }
+  const { response } = error;
+  if (!response || typeof response !== 'object' || !('status' in response)) {
+    return undefined;
+  }
+  return typeof response.status === 'number' ? response.status : undefined;
+}
+
 function handleVerboseError(error: unknown): void {
   if (error instanceof CommandError || error instanceof APIError || error instanceof FileSystemError) {
     const errorDetails = 'getInfo' in error ? error.getInfo() : {};

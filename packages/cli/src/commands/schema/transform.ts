@@ -28,6 +28,7 @@ function buildComponentPayload(input: unknown) {
     // removing a field from the local schema actually clears it on the API.
     // (Root-level fields are additive on MAPI update — omitting preserves the old value.)
     display_name: typeof input.display_name === 'string' ? input.display_name : '',
+    description: typeof input.description === 'string' ? input.description : '',
     color: typeof input.color === 'string' ? input.color : '',
     icon: typeof input.icon === 'string' ? input.icon : '',
     preview_field: typeof input.preview_field === 'string' ? input.preview_field : '',

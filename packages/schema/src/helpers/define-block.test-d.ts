@@ -42,6 +42,13 @@ describe('defineBlock', () => {
     const pageBlock = defineBlock({ name: 'page', component_group_uuid: 'shared-group', schema: [] });
     expectTypeOf(pageBlock.component_group_uuid).toEqualTypeOf<'shared-group'>();
   });
+
+  it('should accept a string or null description', () => {
+    const testBlock = defineBlock({ name: 'test', description: 'A test block', schema: [] });
+    const nullDescriptionBlock = defineBlock({ name: 'test', description: null, schema: [] });
+    expectTypeOf(testBlock.description).toEqualTypeOf<string | null | undefined>();
+    expectTypeOf(nullDescriptionBlock.description).toEqualTypeOf<string | null | undefined>();
+  });
 });
 
 const schema = [

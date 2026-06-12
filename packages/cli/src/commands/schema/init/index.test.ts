@@ -257,6 +257,16 @@ describe('schema init command', () => {
     expect(content).not.toContain('api-field-id');
   });
 
+  it('should list generated files as paths relative to the current working directory', async () => {
+    const comp = makeMockComponent({ name: 'hero' });
+    preconditions.hasRemoteSchema({ components: [comp] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/components/hero.ts');
+    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/schema.ts');
+  });
+
   it('should refuse when the target directory is not empty', async () => {
     vol.fromJSON({
       '.storyblok/schema/components/existing.ts': '// existing',

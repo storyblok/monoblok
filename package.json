@@ -37,5 +37,13 @@
   },
   "dependencies": {
     "cypress": "^14.3.3"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/owner/repo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
   }
 }

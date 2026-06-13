@@ -43,7 +43,7 @@
     "./StoryblokServerData.astro": "./dist/components/StoryblokServerData.astro"
   },
   "main": "./dist/storyblok-astro.es.js",
-  "module": "./dist/storyblok-astro.js",
+  "module": "./dist/storyblok-astro.es.js",
   "types": "./dist/index.d.ts",
   "files": [
     "*.d.ts",

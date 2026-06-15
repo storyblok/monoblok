@@ -52,7 +52,7 @@ export function createSharedAssetsResource(deps: MapiResourceDeps) {
     list<ThrowOnError extends boolean = false>(options: { query?: SharedAssetListQuery; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<SharedAssetListResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedAssetListResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_assets', path: { space_id: getSpaceId(path) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        client.get({ url: '/v1/spaces/{space_id}/shared_assets', path: { space_id: getSpaceId(path) }, query: query && { ...query }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     get<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<Asset, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;

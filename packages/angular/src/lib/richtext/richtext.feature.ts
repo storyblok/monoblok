@@ -1,44 +1,66 @@
 import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/core';
-import type { SbRichTextElement } from '@storyblok/richtext';
+import type { SbRichTextElement, SbRichTextElementByType } from '@storyblok/richtext';
 
 import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
-import { SbAngularRichTextProps } from '../types';
 
-export type RichTextAngularComponent<T extends SbRichTextElement> = Type<{
+/**
+ * Props type for Angular richtext node/mark components.
+ * Does not include `children` since Angular uses `<ng-content>` for content projection.
+ *
+ * For nodes (heading, paragraph, etc.), use `<sb-rich-text [sbDocument]="data().content" />`
+ * to render nested content.
+ *
+ * For marks (link, bold, etc.), use `<ng-content />` since content is projected automatically.
+ */
+export type SbAngularRichTextProps<T extends SbRichTextElement> = SbRichTextElementByType[T];
+
+/**
+ * Angular component type for custom richtext nodes/marks.
+ */
+export type SbAngularRichTextComponent<T extends SbRichTextElement> = Type<{
   data: InputSignal<SbAngularRichTextProps<T>>;
 }>;
 
-type RichtextComponentLoader<T extends SbRichTextElement> = () => Promise<
-  RichTextAngularComponent<T>
->;
 /**
- * Map of Storyblok segment types to Angular components.
+ * Lazy loader function for richtext components.
+ */
+type SbAngularRichTextComponentLoader<T extends SbRichTextElement> = () => Promise<
+  SbAngularRichTextComponent<T>
+>;
+
+/**
+ * Strongly-typed component map for Storyblok rich text elements.
  * Supports both eager (direct) and lazy (dynamic import) loading.
  *
  * @example
  * ```typescript
  * // Eager loading (bundled immediately)
- * const components: SbAngularComponentMap = {
+ * const components: SbAngularRichTextComponentMap = {
  *   link: CustomLinkComponent,
  *   image: OptimizedImageComponent,
  * };
  *
  * // Lazy loading (loaded on-demand) - recommended
- * const components: SbAngularComponentMap = {
+ * const components: SbAngularRichTextComponentMap = {
  *   link: () => import('./custom-link').then(m => m.CustomLinkComponent),
  *   image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
  * };
  * ```
  */
-export type SbAngularComponentMap = {
-  [K in SbRichTextElement]?: RichtextComponentLoader<K>;
+export type SbAngularRichTextComponentMap = {
+  [K in SbRichTextElement]?: SbAngularRichTextComponent<K> | SbAngularRichTextComponentLoader<K>;
 };
+
+/**
+ * @deprecated Use `SbAngularRichTextComponentMap` instead. This alias exists for backwards compatibility.
+ */
+export type SbAngularComponentMap = SbAngularRichTextComponentMap;
 
 /**
  * Injection token for richtext component overrides.
  * Defaults to an empty map if not provided.
  */
-export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SbAngularComponentMap>(
+export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SbAngularRichTextComponentMap>(
   'STORYBLOK_RICHTEXT_COMPONENTS',
   { factory: () => ({}) },
 );
@@ -86,7 +108,7 @@ export class StoryblokRichtextResolver extends BaseComponentResolver<SbRichTextE
  * ```
  */
 export function withStoryblokRichtextComponents(
-  components: SbAngularComponentMap,
+  components: SbAngularRichTextComponentMap,
 ): StoryblokFeature {
   return {
     ɵkind: 'richtext',

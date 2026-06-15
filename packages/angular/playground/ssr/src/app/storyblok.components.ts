@@ -1,4 +1,4 @@
-import { type StoryblokComponentsMap } from '@storyblok/angular';
+import { SbAngularRichTextComponentMap, type StoryblokComponentsMap } from '@storyblok/angular';
 
 /**
  * Registry of Storyblok components with lazy loading.
@@ -18,4 +18,11 @@ export const storyblokComponents: StoryblokComponentsMap = {
       (m) => m.ArticleOverviewComponent,
     ),
   article: () => import('./components/article/article.component').then((m) => m.ArticleComponent),
+};
+
+export const storyblokRichtextComponents: SbAngularRichTextComponentMap = {
+  image: () => import('./components/richtext/image.component').then((m) => m.ImageComponent),
+  link: () => import('./components/richtext/link.component').then((m) => m.LinkComponent),
+  heading: () => import('./components/richtext/heading.component').then((m) => m.HeadingComponent),
+  table: () => import('./components/richtext/table.component').then((m) => m.TableComponent),
 };

@@ -9,7 +9,7 @@ import {
   withStoryblokRichtextComponents,
   type StoryblokClientConfig,
 } from '@storyblok/angular';
-import { storyblokComponents } from './storyblok.components';
+import { storyblokComponents, storyblokRichtextComponents } from './storyblok.components';
 
 const sbConfig: StoryblokClientConfig = {
   accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
@@ -27,11 +27,7 @@ export const appConfig: ApplicationConfig = {
       withLivePreview({
         resolveRelations: ['feature_posts.posts'],
       }),
-      withStoryblokRichtextComponents({
-        link: () => import('./components/richtext/link.component').then((m) => m.LinkComponent),
-        heading: () =>
-          import('./components/richtext/heading.component').then((m) => m.HeadingComponent),
-      }),
+      withStoryblokRichtextComponents(storyblokRichtextComponents),
     ),
   ],
 };

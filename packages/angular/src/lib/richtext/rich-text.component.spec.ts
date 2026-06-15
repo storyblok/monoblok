@@ -355,4 +355,94 @@ describe('SbRichTextComponent', () => {
       expect(html).toContain('href="javascript:alert(&quot;xss&quot;)"');
     });
   });
+
+  // ============================================================================
+  // Tests: Image Optimization
+  // ============================================================================
+
+  describe('image optimization', () => {
+    // Use type assertion to allow partial image attrs for testing
+    const imageNode = {
+      type: 'image',
+      attrs: {
+        src: 'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg',
+        alt: 'Test image',
+      },
+    } as SbRichTextNode;
+
+    it('renders image without optimization when sbOptimizeImage is false', async () => {
+      fixture.componentRef.setInput('sbDocument', imageNode);
+      fixture.componentRef.setInput('sbOptimizeImage', false);
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img');
+      expect(img).toBeTruthy();
+      expect(img.getAttribute('src')).toBe(
+        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg',
+      );
+    });
+
+    it('renders optimized image when sbOptimizeImage is true', async () => {
+      fixture.componentRef.setInput('sbDocument', imageNode);
+      fixture.componentRef.setInput('sbOptimizeImage', true);
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img');
+      expect(img).toBeTruthy();
+      // When true, buildStoryblokImage adds /m/ to the URL
+      expect(img.getAttribute('src')).toBe(
+        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/',
+      );
+    });
+
+    it('applies custom optimization options', async () => {
+      fixture.componentRef.setInput('sbDocument', imageNode);
+      fixture.componentRef.setInput('sbOptimizeImage', {
+        width: 400,
+        height: 300,
+        loading: 'lazy',
+      });
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img');
+      expect(img).toBeTruthy();
+      expect(img.getAttribute('src')).toBe(
+        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/400x300/',
+      );
+      expect(img.getAttribute('width')).toBe('400');
+      expect(img.getAttribute('height')).toBe('300');
+      expect(img.getAttribute('loading')).toBe('lazy');
+    });
+
+    it('handles image without src gracefully', async () => {
+      const noSrcImage = {
+        type: 'image',
+        attrs: { alt: 'No source' },
+      } as SbRichTextNode;
+      fixture.componentRef.setInput('sbDocument', noSrcImage);
+      fixture.componentRef.setInput('sbOptimizeImage', true);
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img');
+      expect(img).toBeFalsy();
+    });
+
+    it('renders nested images with optimization', async () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [text('Before image')] },
+          imageNode,
+          { type: 'paragraph', content: [text('After image')] },
+        ],
+      };
+      fixture.componentRef.setInput('sbDocument', doc);
+      fixture.componentRef.setInput('sbOptimizeImage', { width: 200 });
+      fixture.detectChanges();
+
+      const img = fixture.nativeElement.querySelector('img');
+      expect(img).toBeTruthy();
+      expect(img.getAttribute('src')).toContain('/m/200x0/');
+    });
+  });
 });

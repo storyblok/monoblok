@@ -22,10 +22,24 @@ export { SbBlokDirective } from './lib/blok/sb-blok.directive';
 // Rich Text (with custom component overrides)
 export { SbRichTextComponent } from './lib/richtext/rich-text.component';
 export { withStoryblokRichtextComponents } from './lib/richtext/richtext.feature';
-export type { SbAngularComponentMap } from './lib/richtext/richtext.feature';
-// Re-export richtext types for convenience
-export { type SbRichTextDoc } from '@storyblok/richtext';
-export { renderRichText } from '@storyblok/richtext';
+export type {
+  SbAngularComponentMap,
+  SbAngularRichTextComponentMap,
+  SbAngularRichTextComponent,
+  SbAngularRichTextProps,
+} from './lib/richtext/richtext.feature';
 
 export type { Story } from '@storyblok/api-client';
 export * from './lib/types';
+
+// Re-exporting same exports from @storyblok/richtext
+export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextProps,
+  SbRichTextRenderContext,
+} from '@storyblok/richtext';

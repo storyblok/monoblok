@@ -14,6 +14,7 @@ import {
   untracked,
 } from '@angular/core';
 import {
+  buildStoryblokImage,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,
@@ -29,6 +30,7 @@ import type {
   RenderSpec,
   SbRichTextElement,
   SbRichTextInput,
+  SbRichTextImageOptions,
 } from '@storyblok/richtext';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
@@ -44,6 +46,21 @@ import { StoryblokRichtextResolver } from './richtext.feature';
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document or array of documents */
   sbDocument = input.required<SbRichTextInput>();
+
+  /**
+   * Enable image optimization for Storyblok images.
+   * When `true`, applies default optimization. Pass an options object for fine-grained control.
+   *
+   * @example
+   * ```html
+   * <!-- Enable default optimization -->
+   * <sb-rich-text [sbDocument]="doc" [sbOptimizeImage]="true" />
+   *
+   * <!-- Custom optimization options -->
+   * <sb-rich-text [sbDocument]="doc" [sbOptimizeImage]="{ width: 800, loading: 'lazy' }" />
+   * ```
+   */
+  sbOptimizeImage = input<boolean | Partial<SbRichTextImageOptions>>(false);
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -64,10 +81,11 @@ export class SbRichTextComponent implements OnDestroy {
   private readonly componentRefs: any[] = [];
 
   constructor() {
-    // Use effect to reactively render when doc changes
+    // Use effect to reactively render when doc or optimizeImage changes
     // The effect runs synchronously during change detection, making it SSR-compatible
     effect(() => {
       const sbDocument = this.sbDocument();
+      const _optimizeImage = this.sbOptimizeImage(); // Track for reactivity
       // Use untracked to avoid re-triggering the effect when calling render
       untracked(() => this.render(sbDocument));
     });
@@ -241,6 +259,12 @@ export class SbRichTextComponent implements OnDestroy {
       return;
     }
 
+    // Handle image optimization
+    if (node.type === 'image' && this.sbOptimizeImage()) {
+      this.renderOptimizedImage(node, parent);
+      return;
+    }
+
     const el = this.renderer.createElement(tag);
     const attrs = processAttrs(node.type, node.attrs);
 
@@ -264,6 +288,30 @@ export class SbRichTextComponent implements OnDestroy {
       }
     }
 
+    this.renderer.appendChild(parent, el);
+  }
+
+  /**
+   * Renders an image node with Storyblok image optimization applied.
+   */
+  private renderOptimizedImage(node: SbRichTextNode, parent: HTMLElement): void {
+    const attrs = node.attrs as Record<string, unknown> | undefined;
+    const src = attrs?.['src'] as string | undefined;
+
+    if (!src) {
+      return;
+    }
+
+    const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, this.sbOptimizeImage());
+
+    const finalAttrs = processAttrs('image', {
+      ...attrs,
+      src: optimizedSrc,
+      ...extraAttrs,
+    });
+
+    const el = this.renderer.createElement('img');
+    this.applyAttributes(el, finalAttrs);
     this.renderer.appendChild(parent, el);
   }
 

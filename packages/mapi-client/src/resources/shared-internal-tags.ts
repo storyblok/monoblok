@@ -51,7 +51,7 @@ export function createSharedInternalTagsResource(deps: MapiResourceDeps) {
     list<ThrowOnError extends boolean = false>(options: { query: SharedInternalTagListQuery; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedInternalTagListResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedInternalTagListResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_internal_tags', path: { space_id: getSpaceId(path) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        client.get({ url: '/v1/spaces/{space_id}/shared_internal_tags', path: { space_id: getSpaceId(path) }, query: { ...query }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     create<ThrowOnError extends boolean = false>(options: { body: { shared_internal_tag: SharedInternalTagCreate }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedInternalTagMutateResponse, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;

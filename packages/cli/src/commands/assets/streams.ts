@@ -754,7 +754,7 @@ const processAsset = async ({
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName; resolveSharedTagIds?: SharedTagResolver };
   onUnmappedTag?: (tag: UnmappedAssetInternalTag) => void;
 }): Promise<{ status: 'created' | 'updated'; remoteAsset: Asset }> => {
   const remoteFolderId = localAsset.asset_folder_id
@@ -765,16 +765,26 @@ const processAsset = async ({
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   const sourceTags = localAsset.internal_tags_list;
-  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): string[] =>
-    maps.assetInternalTagsByName
+  // Library pushes resolve to the library's shared tags (creating missing ones);
+  // cross-space pushes map through the target space's tags by name; same-space
+  // pushes keep their IDs. Async because shared resolution may create tags.
+  const resolveInternalTagIds = async (sourceIds: ReadonlyArray<number | string> | undefined): Promise<string[]> => {
+    if (maps.resolveSharedTagIds) {
+      return maps.resolveSharedTagIds(sourceIds, sourceTags);
+    }
+    return maps.assetInternalTagsByName
       ? mapInternalTagIds(sourceIds, sourceTags, maps.assetInternalTagsByName, onUnmappedTag)
       : (sourceIds ?? []).map(id => String(id));
+  };
 
   let newRemoteAsset: Asset;
   let status: 'created' | 'updated';
   if (remoteAsset) {
     // Build only the writable metadata fields for the API update.
     // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
+    const updateTagIds = 'internal_tag_ids' in localAsset
+      ? await resolveInternalTagIds(localAsset.internal_tag_ids)
+      : remoteAsset.internal_tag_ids;
     const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
       alt: 'alt' in localAsset ? localAsset.alt : remoteAsset.alt,
@@ -785,7 +795,7 @@ const processAsset = async ({
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
       expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
       publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
-      internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
+      internal_tag_ids: updateTagIds,
       meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
     };
 
@@ -808,7 +818,7 @@ const processAsset = async ({
     // the follow-up metadata PUT for tagless assets.
     const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset;
     const mappedTagIds = 'internal_tag_ids' in localAsset
-      ? resolveInternalTagIds(localAsset.internal_tag_ids)
+      ? await resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;
     const createPayload = {
       ...rest,
@@ -849,7 +859,7 @@ export const upsertAssetStream = ({
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName; resolveSharedTagIds?: SharedTagResolver };
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
@@ -933,16 +943,21 @@ export const makeUpdateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: 
 export const makeGetSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): GetAssetFolderTransport =>
   folderId => getSharedAssetFolder(folderId, { spaceId });
 
-export type SharedTagRemapper = (asset: AssetUpload) => Promise<AssetUpload>;
+export type SharedTagResolver = (
+  sourceIds: ReadonlyArray<number | string> | undefined,
+  sourceTags: ReadonlyArray<{ id?: number; name?: string }> | null | undefined,
+) => Promise<string[]>;
 
 /**
- * Builds a transform that rewrites a local asset's `internal_tag_ids` to the
- * matching shared (library-scoped) tag IDs before a library push, creating any
+ * Builds a resolver that maps a local asset's `internal_tag_ids` to the
+ * matching shared (library-scoped) tag IDs for a library push, creating any
  * missing tags in the library (`asset_folder_id` = library root). Uses the
- * asset's `internal_tags_list` (`[{ id, name }]`) to map local IDs to names.
- * The library's tag list is fetched once and cached per push run.
+ * asset's `internal_tags_list` (`[{ id, name }]`) to map local IDs to names;
+ * IDs whose name is unknown are dropped. The library's tag list is fetched once
+ * and cached per push run. Mirrors `mapInternalTagIds` for the space scope so
+ * the shared create and update paths remap identically.
  */
-export const makeSharedTagRemapper = ({ spaceId, libraryId }: { spaceId: string; libraryId: number }): SharedTagRemapper => {
+export const makeSharedTagResolver = ({ spaceId, libraryId }: { spaceId: string; libraryId: number }): SharedTagResolver => {
   let libraryTags: { id: number; name: string }[] | undefined;
   const ensureTags = async () => {
     if (!libraryTags) {
@@ -951,20 +966,23 @@ export const makeSharedTagRemapper = ({ spaceId, libraryId }: { spaceId: string;
     return libraryTags;
   };
 
-  return async (asset) => {
-    const localAsset = asset as AssetUpload & { internal_tags_list?: { id: number; name: string }[] };
-    const localTagIds = localAsset.internal_tag_ids;
-    if (!localTagIds || localTagIds.length === 0) {
-      return asset;
+  return async (sourceIds, sourceTags) => {
+    if (!sourceIds || sourceIds.length === 0) {
+      return [];
     }
 
-    const nameByLocalId = new Map((localAsset.internal_tags_list ?? []).map(tag => [String(tag.id), tag.name]));
+    const nameByLocalId = new Map<number, string>();
+    for (const tag of sourceTags ?? []) {
+      if (typeof tag?.id === 'number' && typeof tag.name === 'string') {
+        nameByLocalId.set(tag.id, tag.name);
+      }
+    }
     const existing = await ensureTags();
     const idByName = new Map(existing.map(tag => [tag.name, tag.id]));
 
     const remapped: string[] = [];
-    for (const localId of localTagIds) {
-      const name = nameByLocalId.get(String(localId));
+    for (const raw of sourceIds) {
+      const name = nameByLocalId.get(Number(raw));
       if (!name) {
         continue;
       }
@@ -974,7 +992,7 @@ export const makeSharedTagRemapper = ({ spaceId, libraryId }: { spaceId: string;
         if (created?.id) {
           sharedId = created.id;
           idByName.set(name, sharedId);
-          libraryTags?.push({ id: created.id, name });
+          existing.push({ id: created.id, name });
         }
       }
       if (sharedId !== undefined) {
@@ -982,8 +1000,6 @@ export const makeSharedTagRemapper = ({ spaceId, libraryId }: { spaceId: string;
       }
     }
 
-    // Drop the local-only `internal_tags_list` and replace the tag IDs.
-    const { internal_tags_list: _omit, ...rest } = localAsset;
-    return { ...rest, internal_tag_ids: remapped };
+    return remapped;
   };
 };

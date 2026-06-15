@@ -23,7 +23,7 @@ import {
   makeGetAssetFolderAPITransport,
   makeGetSharedAssetAPITransport,
   makeGetSharedAssetFolderAPITransport,
-  makeSharedTagRemapper,
+  makeSharedTagResolver,
   makeUpdateAssetAPITransport,
   makeUpdateAssetFolderAPITransport,
   makeUpdateSharedAssetAPITransport,
@@ -260,19 +260,24 @@ pushCmd
          * Upsert Assets
          */
         // For library pushes, remap local tag IDs to the library's shared tags
-        // (creating missing ones) and default the asset folder to the library
-        // root before uploading. Shared-asset creation requires an
-        // `asset_folder_id` the space can write to, so a missing one (single
-        // asset without --folder, or a sidecar that omits it) would 403.
+        // (creating missing ones) via the upsert stream's `resolveSharedTagIds`,
+        // which covers both the create and update paths. One resolver instance
+        // is shared so its fetched library-tag list is cached across the push.
+        const resolveSharedTagIds = scope.kind === 'library' && !options.dryRun
+          ? makeSharedTagResolver({ spaceId: targetSpace, libraryId: scope.libraryId })
+          : undefined;
+        // Default a missing asset folder to the library root before uploading:
+        // shared-asset creation requires an `asset_folder_id` the space can write
+        // to, so a missing one (single asset without --folder, or a sidecar that
+        // omits it) would 403.
         const baseCreateAsset = scope.kind === 'library' && !options.dryRun
           ? (() => {
               const { libraryId } = scope;
-              const remapTags = makeSharedTagRemapper({ spaceId: targetSpace, libraryId });
               return async (asset: AssetUpload, fileBuffer: ArrayBuffer) => {
                 const withFolder = asset.asset_folder_id == null
                   ? { ...asset, asset_folder_id: libraryId }
                   : asset;
-                return transports.createAsset(await remapTags(withFolder), fileBuffer);
+                return transports.createAsset(withFolder, fileBuffer);
               };
             })()
           : transports.createAsset;
@@ -332,7 +337,7 @@ pushCmd
           assetData,
           directoryPath: assetsDirectoryPath,
           logger,
-          maps: { ...maps, assetInternalTagsByName },
+          maps: { ...maps, assetInternalTagsByName, resolveSharedTagIds },
           transports: {
             getAsset: transports.getAsset,
             createAsset: createAssetTransport,

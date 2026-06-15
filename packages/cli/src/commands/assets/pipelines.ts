@@ -17,6 +17,7 @@ import type {
   CreateAssetTransport,
   GetAssetFolderTransport,
   GetAssetTransport,
+  SharedTagResolver,
   UpdateAssetFolderTransport,
   UpdateAssetTransport,
 } from './streams';
@@ -101,7 +102,7 @@ export const upsertAssetsPipeline = async ({
   assetData?: AssetUpload;
   directoryPath: string;
   logger: Logger;
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName; resolveSharedTagIds?: SharedTagResolver };
   transports: {
     getAsset: GetAssetTransport;
     createAsset: CreateAssetTransport;

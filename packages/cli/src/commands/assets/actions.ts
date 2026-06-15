@@ -330,7 +330,7 @@ export interface TransferResult {
 }
 
 /**
- * Transfers multiple assets into the global asset library, bounding in-flight
+ * Transfers multiple assets into the shared asset library, bounding in-flight
  * requests with the shared pipeline backpressure lock (2× the configured rate
  * limit), matching the throttle headroom used by the asset and story streams.
  * Per-asset errors are captured as failed results rather than aborting the

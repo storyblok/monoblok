@@ -1,8 +1,7 @@
-import type { Component, ComponentFolder, Datasource } from '../../../types';
+import type { Component, Datasource } from '../../../types';
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
-  FOLDER_INIT_STRIP_KEYS,
   formatValue,
   INDENT,
   stripKeys,
@@ -37,11 +36,6 @@ export function componentVarName(name: string): string {
   return `${toCamelCase(name)}Block`;
 }
 
-/** Returns the variable name for a folder. e.g. `'Content Blocks'` -> `'contentBlocksFolder'` */
-export function folderVarName(name: string): string {
-  return `${toCamelCase(name)}Folder`;
-}
-
 /** Returns the variable name for a datasource. e.g. `'Categories'` -> `'categoriesDatasource'` */
 export function datasourceVarName(name: string): string {
   return `${toCamelCase(name)}Datasource`;
@@ -52,14 +46,22 @@ export function componentFileName(name: string): string {
   return toKebabCase(name);
 }
 
-/** Returns the file name (without extension) for a folder. e.g. `'Content Blocks'` -> `'content-blocks'` */
-export function folderFileName(name: string): string {
-  return toKebabCase(name);
-}
-
 /** Returns the file name (without extension) for a datasource, using slug if available. */
 export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug?: string }): string {
   return toKebabCase(datasource.slug || datasource.name);
+}
+
+/**
+ * Reverse of the push-time DSL→wire field mapping: renames the wire reference
+ * keys back to their DSL form (`component_whitelist`→`allow`,
+ * `datasource_slug`→`datasource`). The `source` selector is left untouched.
+ */
+function toDslField(field: Record<string, unknown>): Record<string, unknown> {
+  const { component_whitelist, datasource_slug, ...rest } = field;
+  const out: Record<string, unknown> = { ...rest };
+  if (component_whitelist !== undefined) { out.allow = component_whitelist; }
+  if (datasource_slug !== undefined) { out.datasource = datasource_slug; }
+  return out;
 }
 
 /**
@@ -67,7 +69,7 @@ export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug
  * Position is implicit in the array index, so `pos` is stripped from the config.
  */
 function generateFieldCode(fieldName: string, fieldData: Record<string, unknown>, depth: number): string {
-  const clean = stripKeys(fieldData, FIELD_STRIP_KEYS);
+  const clean = toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS));
   return `defineField('${fieldName.replace(/'/g, '\\\'')}', ${formatValue(clean, depth + 1)})`;
 }
 
@@ -84,46 +86,33 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [stri
 
 /**
  * Generates a full TypeScript file for a component with `defineBlock()`.
- * Strips API-assigned fields. Schema fields are sorted by `pos`.
- * When `componentFolders` is provided and `component_group_uuid` matches a folder,
- * the generated code imports the folder and uses `folderVar.uuid` instead of a raw UUID string.
+ *
+ * Strips API-assigned fields; schema fields become an ordered `fields:` array of
+ * `defineField()` calls (sorted by `pos`). The component's group is normally
+ * encoded by the directory the file is written to, so `component_group_uuid` is
+ * dropped — unless `keepGroupUuid` is set (a raw, unresolved group uuid kept as
+ * an escape hatch).
  */
-export function generateComponentFile(component: Component, componentFolders?: ComponentFolder[]): string {
+export function generateComponentFile(component: Component, options?: { keepGroupUuid?: boolean }): string {
   const lines: string[] = [];
 
-  // Resolve folder reference: if component_group_uuid matches a folder, emit a variable reference
-  let matchedFolder: ComponentFolder | undefined;
-  if (component.component_group_uuid && componentFolders) {
-    matchedFolder = componentFolders.find(f => f.uuid === component.component_group_uuid);
-  }
-
-  // Import statement
   lines.push('import {');
   lines.push('  defineBlock,');
   lines.push('  defineField,');
   lines.push('} from \'@storyblok/schema\';');
-
-  if (matchedFolder) {
-    lines.push('');
-    const fVarName = folderVarName(matchedFolder.name);
-    const fFileName = folderFileName(matchedFolder.name);
-    lines.push(`import { ${fVarName} } from './folders/${fFileName}';`);
-  }
-
   lines.push('');
 
   const varName = componentVarName(component.name);
   lines.push(`export const ${varName} = defineBlock({`);
 
-  // Build ordered properties (excluding schema)
   const clean = stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS);
 
-  // Remove component_group_uuid from clean if it will be emitted as a folder reference
-  if (matchedFolder) {
+  // The group is encoded by the directory layout; only keep a raw uuid escape hatch.
+  if (!options?.keepGroupUuid) {
     delete clean.component_group_uuid;
   }
 
-  // Enforce property order: name, display_name, is_root, is_nestable, then rest, schema last
+  // Enforce property order: name, display_name, is_root, is_nestable, then rest, fields last
   const orderedKeys: string[] = [];
   if (clean.name !== undefined) { orderedKeys.push('name'); }
   if (clean.display_name !== undefined) { orderedKeys.push('display_name'); }
@@ -137,23 +126,17 @@ export function generateComponentFile(component: Component, componentFolders?: C
     }
   }
 
-  // Emit component_group_uuid as folder reference (before other sorted keys)
-  if (matchedFolder) {
-    const fVarName = folderVarName(matchedFolder.name);
-    lines.push(`${INDENT}component_group_uuid: ${fVarName}.uuid,`);
-  }
-
   for (const key of orderedKeys) {
     lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1)},`);
   }
 
-  // Schema fields — emitted as an ordered array of `defineField('name', {...})` calls.
+  // Schema fields — emitted as an ordered `fields:` array of `defineField('name', {...})` calls.
   if (clean.schema && typeof clean.schema === 'object') {
     const schema = clean.schema as Record<string, Record<string, unknown>>;
     const sortedFields = sortSchemaByPos(schema);
 
     if (sortedFields.length > 0) {
-      lines.push(`${INDENT}schema: [`);
+      lines.push(`${INDENT}fields: [`);
       for (const [fieldName, fieldData] of sortedFields) {
         const fieldCode = generateFieldCode(fieldName, fieldData, 2);
         lines.push(`${INDENT}${INDENT}${fieldCode},`);
@@ -161,40 +144,7 @@ export function generateComponentFile(component: Component, componentFolders?: C
       lines.push(`${INDENT}],`);
     }
     else {
-      lines.push(`${INDENT}schema: [],`);
-    }
-  }
-
-  lines.push('});');
-  lines.push('');
-
-  return lines.join('\n');
-}
-
-/**
- * Generates a full TypeScript file for a component folder with `defineBlockFolder()`.
- * Strips API-assigned fields (id) but preserves uuid for stable identity.
- */
-export function generateFolderFile(folder: ComponentFolder): string {
-  const lines: string[] = [];
-
-  lines.push('import { defineBlockFolder } from \'@storyblok/schema\';');
-  lines.push('');
-
-  const varName = folderVarName(folder.name);
-  lines.push(`export const ${varName} = defineBlockFolder({`);
-
-  const clean = stripKeys(folder as unknown as Record<string, unknown>, FOLDER_INIT_STRIP_KEYS);
-
-  // Enforce property order: name first, then rest
-  if (clean.name !== undefined) {
-    lines.push(`${INDENT}name: ${formatValue(clean.name, 1)},`);
-  }
-
-  const handled = new Set(['name']);
-  for (const [key, value] of Object.entries(clean).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!handled.has(key)) {
-      lines.push(`${INDENT}${key}: ${formatValue(value, 1)},`);
+      lines.push(`${INDENT}fields: [],`);
     }
   }
 
@@ -241,13 +191,14 @@ export function generateDatasourceFile(datasource: Datasource): string {
 }
 
 /**
- * Generates a `schema.ts` file that combines the schema object, types, and Story alias.
- * This is the single entry point for a code-driven schema directory.
+ * Generates a `schema.ts` file that combines the schema object, types, and Story
+ * alias. Blocks are imported from their group subdirectory (encoded by
+ * `groupPathByComponentName`); the schema object exports `{ blocks, datasources }`.
  */
 export function generateSchemaFile(
   components: Component[],
-  componentFolders: ComponentFolder[],
   datasources: Datasource[],
+  groupPathByComponentName: Map<string, string[]> = new Map(),
 ): string {
   const lines: string[] = [];
 
@@ -256,18 +207,15 @@ export function generateSchemaFile(
   lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
-  // Import components
+  // Import components from their group subdirectory
   for (const component of components) {
     const varName = componentVarName(component.name);
     const fileName = componentFileName(component.name);
-    lines.push(`import { ${varName} } from './components/${fileName}';`);
-  }
-
-  // Import component folders
-  for (const folder of componentFolders) {
-    const varName = folderVarName(folder.name);
-    const fileName = folderFileName(folder.name);
-    lines.push(`import { ${varName} } from './components/folders/${fileName}';`);
+    // Group names map to directory segments verbatim so the layout round-trips
+    // losslessly through `schema push` (which reads the segment as the group name).
+    const segments = groupPathByComponentName.get(component.name) ?? [];
+    const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
+    lines.push(`import { ${varName} } from './components/${subPath}${fileName}';`);
   }
 
   // Import datasources
@@ -286,15 +234,6 @@ export function generateSchemaFile(
     lines.push('  blocks: {');
     for (const component of components) {
       const varName = componentVarName(component.name);
-      lines.push(`    ${varName},`);
-    }
-    lines.push('  },');
-  }
-
-  if (componentFolders.length > 0) {
-    lines.push('  blockFolders: {');
-    for (const folder of componentFolders) {
-      const varName = folderVarName(folder.name);
       lines.push(`    ${varName},`);
     }
     lines.push('  },');

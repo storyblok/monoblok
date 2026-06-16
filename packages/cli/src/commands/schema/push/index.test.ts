@@ -84,8 +84,13 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
 const server = setupServer();
 
 const preconditions = {
-  hasLocalSchema(schema: SchemaData) {
-    vi.mocked(loadSchema).mockResolvedValue(schema);
+  hasLocalSchema(schema: Partial<SchemaData> & Pick<SchemaData, 'components' | 'componentFolders' | 'datasources'>) {
+    vi.mocked(loadSchema).mockResolvedValue({
+      folderPathByComponentName: new Map(),
+      presetsByComponentName: new Map(),
+      entriesByDatasourceName: new Map(),
+      ...schema,
+    });
   },
   hasRemoteComponents(components: MockComponent[]) {
     server.use(
@@ -348,25 +353,44 @@ describe('schema push command', () => {
     expect(changeset.changes.some((c: { action: string }) => c.action === 'delete')).toBe(true);
   });
 
-  it('should create all entity types', async () => {
+  it('should create all entity types, deriving a component group from the directory layout', async () => {
     const comp = makeMockComponent({ name: 'hero' });
-    const folder = makeMockFolder({ name: 'Layout' });
+    const folder = makeMockFolder({ name: 'layout' });
     const ds = makeMockDatasource({ name: 'Colors', slug: 'colors' });
 
+    // The block lives under components/layout/ — its group is derived from that path.
     preconditions.hasLocalSchema({
       components: [comp] as any,
-      componentFolders: [folder] as any,
+      componentFolders: [{ id: 0, name: 'layout', uuid: '', parent_id: null, parent_uuid: null }],
       datasources: [ds] as any,
+      folderPathByComponentName: new Map([['hero', ['layout']]]),
     });
     preconditions.hasEmptyRemote();
     preconditions.canCreateComponents([comp]);
-    preconditions.canCreateFolders([folder]);
+    const createdFolders = preconditions.canCreateFolders([folder]);
+
+    let createdGroupBody: { name: string } | undefined;
+    let heroGroupUuid: string | undefined;
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups`, async ({ request }) => {
+        createdGroupBody = (await request.json() as { component_group: { name: string } }).component_group;
+        return HttpResponse.json({ component_group: createdFolders[0] });
+      }),
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, async ({ request }) => {
+        const body = await request.json() as { component: { name: string; component_group_uuid?: string } };
+        heroGroupUuid = body.component.component_group_uuid;
+        return HttpResponse.json({ component: { ...comp, id: getID() } });
+      }),
+    );
     preconditions.canCreateDatasources([ds]);
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
     expect(files.some(f => f.includes('schema/changesets/'))).toBe(true);
+    // The group was created from the directory and the block was assigned to it.
+    expect(createdGroupBody?.name).toBe('layout');
+    expect(heroGroupUuid).toBe(createdFolders[0].uuid);
   });
 
   it('should handle API errors gracefully', async () => {

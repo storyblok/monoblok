@@ -86,8 +86,8 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.componentFolders.size} component folders, ${remote.datasources.size} datasources`);
 
-      // 3. Resolve local folder UUIDs to remote UUIDs
-      const { resolved, pendingFolderAssignments } = resolveFolderReferences(local, remote);
+      // 3. Resolve directory-derived component groups against the remote space
+      const { resolved, foldersToCreate, folderResolution } = resolveFolderReferences(local, remote);
 
       // 4. Diff
       const diffResult = diffSchema(resolved, remote);
@@ -212,7 +212,7 @@ schemaCommand
         const pushSpinner = ui.createSpinner('Pushing schema...');
         let result: Awaited<ReturnType<typeof executePush>>;
         try {
-          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, foldersToCreate, folderResolution });
         }
         catch (error) {
           pushSpinner.failed('Failed to push schema');

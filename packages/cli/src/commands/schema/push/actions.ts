@@ -1,11 +1,12 @@
 import chalk from 'chalk';
 
 import type { Component, ComponentFolder, Datasource } from '../../../types';
+import type { FolderNode, ResolvedFolder } from '../folders';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
-import { getLogger } from '../../../lib/logger/logger';
 import { handleAPIError } from '../../../utils';
-import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+import { groupUuidForBlock, pathKey } from '../folders';
+import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** Formats diff results for CLI display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
@@ -77,7 +78,11 @@ export async function executePush(
   local: SchemaData,
   remote: RemoteSchemaData,
   diffResult: DiffResult,
-  options: { delete: boolean; pendingFolderAssignments?: Map<string, string[]> },
+  options: {
+    delete: boolean;
+    foldersToCreate?: FolderNode[];
+    folderResolution?: Map<string, ResolvedFolder>;
+  },
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
@@ -85,75 +90,42 @@ export async function executePush(
   let updated = 0;
   let deleted = 0;
 
-  // Map of folder name → remote UUID, populated as folders are created
-  const createdFolderUuids = new Map<string, string>();
+  const folderResolution = options.folderResolution ?? new Map<string, ResolvedFolder>();
 
-  // 1. Upsert component folders first (components may reference them)
-  const folderDiffs = diffResult.diffs.filter(d => d.type === 'componentFolder');
-  const folderResults = await Promise.allSettled(
-    folderDiffs.map(async (diff) => {
-      const localFolder = local.componentFolders.find(f => f.name === diff.name);
-      if (diff.action === 'create' && localFolder) {
-        const response = await client.componentFolders.create({
-          path: { space_id: spaceIdNum },
-          body: { component_group: toComponentFolderCreate(localFolder) },
-          throwOnError: true,
-        });
-        return { action: 'created' as const, uuid: response.data?.component_group?.uuid };
+  // 1. Create missing component groups parent-first (a child needs its parent's id).
+  for (const node of options.foldersToCreate ?? []) {
+    const parentId = node.parentPath.length > 0
+      ? folderResolution.get(pathKey(node.parentPath))?.id
+      : undefined;
+    // A child whose parent failed to create cannot be placed — skip it.
+    if (node.parentPath.length > 0 && parentId == null) { continue; }
+
+    try {
+      const response = await client.componentFolders.create({
+        path: { space_id: spaceIdNum },
+        body: { component_group: { name: node.name, ...(parentId != null && { parent_id: parentId }) } },
+        throwOnError: true,
+      });
+      const group = response.data?.component_group;
+      if (group?.id != null && group?.uuid != null) {
+        folderResolution.set(pathKey(node.path), { id: group.id, uuid: group.uuid });
       }
-      if (diff.action === 'update' && localFolder) {
-        const existing = remote.componentFolders.get(diff.name);
-        if (existing?.id) {
-          await client.componentFolders.update(existing.id, {
-            path: { space_id: spaceIdNum },
-            body: { component_group: toComponentFolderCreate(localFolder) },
-            throwOnError: true,
-          });
-          return { action: 'updated' as const };
-        }
-      }
-    }),
-  );
-  for (let i = 0; i < folderResults.length; i++) {
-    const result = folderResults[i];
-    const diff = folderDiffs[i];
-    if (result.status === 'fulfilled') {
-      if (result.value?.action === 'created') {
-        if (result.value.uuid) { createdFolderUuids.set(diff.name, result.value.uuid); }
-        created++;
-      }
-      else if (result.value?.action === 'updated') {
-        updated++;
-      }
+      created++;
     }
-    else {
-      const eventId = diff.action === 'create' ? 'push_component_group' : 'update_component_group';
-      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component folder ${diff.name}`);
+    catch (reason) {
+      handleAPIError('push_component_group', reason, `Failed to create component folder ${node.name}`);
     }
   }
 
-  // 2. Resolve pending folder assignments (folders that were just created)
-  const skippedComponents = new Set<string>();
-  if (options.pendingFolderAssignments) {
-    const logger = getLogger();
-    for (const [folderName, componentNames] of options.pendingFolderAssignments) {
-      const remoteUuid = createdFolderUuids.get(folderName);
-      if (!remoteUuid) {
-        logger.warn(`Could not resolve folder '${folderName}' — skipping components: ${componentNames.join(', ')}`);
-        for (const name of componentNames) { skippedComponents.add(name); }
-        continue;
-      }
-      for (const compName of componentNames) {
-        const comp = local.components.find(c => c.name === compName);
-        if (comp) {
-          comp.component_group_uuid = remoteUuid;
-        }
-      }
-    }
+  // 2. Back-fill component_group_uuid for blocks whose group now exists.
+  for (const comp of local.components) {
+    if (comp.component_group_uuid != null) { continue; }
+    const uuid = groupUuidForBlock(local.folderPathByComponentName.get(comp.name), folderResolution);
+    if (uuid) { comp.component_group_uuid = uuid; }
   }
 
   // 3. Upsert components
-  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component' && !skippedComponents.has(d.name));
+  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component');
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {
       const localComp = local.components.find(c => c.name === diff.name);

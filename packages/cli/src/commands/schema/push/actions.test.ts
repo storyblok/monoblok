@@ -277,7 +277,12 @@ describe('buildChangesetEntries', () => {
   const remoteComp = { id: 2, name: 'hero', schema: {} } as unknown as Component;
   const staleComp = { id: 3, name: 'footer', schema: {} } as unknown as Component;
 
-  const baseLocal: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+  const emptyMaps = {
+    folderPathByComponentName: new Map<string, string[]>(),
+    presetsByComponentName: new Map(),
+    entriesByDatasourceName: new Map(),
+  };
+  const baseLocal: SchemaData = { components: [localComp], componentFolders: [], datasources: [], ...emptyMaps };
   const baseRemote: RemoteSchemaData = {
     components: new Map([['hero', remoteComp], ['footer', staleComp]]),
     componentFolders: new Map(),
@@ -293,6 +298,7 @@ describe('buildChangesetEntries', () => {
       components: [localComp, { id: 4, name: 'new-comp', schema: {} } as unknown as Component],
       componentFolders: [],
       datasources: [],
+      ...emptyMaps,
     };
 
     const changes = buildChangesetEntries(diffResult, local, baseRemote, { delete: false });

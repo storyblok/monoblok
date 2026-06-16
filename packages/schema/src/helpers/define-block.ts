@@ -14,7 +14,6 @@ const BLOCK_DEFAULTS = {
   updated_at: '',
   is_root: false,
   is_nestable: true,
-  component_group_uuid: null,
 };
 
 /** Fields that have safe defaults and may be omitted from block input. */
@@ -25,15 +24,13 @@ type BlockInput<
   TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
-  TComponentGroupUuid extends string | null = null,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | BlockOptional> & {
     name: TName;
     fields: TFields;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
-    component_group_uuid?: TComponentGroupUuid;
-  } & Partial<Pick<Block, Exclude<BlockOptional, 'is_root' | 'is_nestable' | 'component_group_uuid'>>>
+  } & Partial<Pick<Block, Exclude<BlockOptional, 'is_root' | 'is_nestable'>>>
 >;
 
 type DefinedBlock<
@@ -41,14 +38,12 @@ type DefinedBlock<
   TFields extends BlockFields,
   TIsRoot extends boolean,
   TIsNestable extends boolean,
-  TComponentGroupUuid extends string | null,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable'> & {
     name: TName;
     fields: TFields;
     is_root: TIsRoot;
     is_nestable: TIsNestable;
-    component_group_uuid: TComponentGroupUuid;
   }
 >;
 
@@ -73,10 +68,9 @@ export function defineBlock<
   const TFields extends BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
-  TComponentGroupUuid extends string | null = null,
 >(
-  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TComponentGroupUuid>,
-): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TComponentGroupUuid>;
+  block: BlockInput<TName, TFields, TIsRoot, TIsNestable>,
+): DefinedBlock<TName, TFields, TIsRoot, TIsNestable>;
 
 export function defineBlock(block: any) {
   const inputFields = Array.isArray(block?.fields) ? block.fields : [];

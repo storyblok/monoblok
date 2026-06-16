@@ -22,9 +22,9 @@ async function writeFileWithDirs(filePath: string, content: string): Promise<voi
 /**
  * Writes all generated schema files to the target directory. Component groups
  * are encoded by the directory layout: a block in group `Layout` is written to
- * `components/Layout/<name>.ts`; nested groups nest directories. A block whose
- * `component_group_uuid` doesn't resolve to a known group is written at the
- * components root with the raw uuid kept as an escape hatch.
+ * `components/Layout/<name>.ts`; nested groups nest directories. Blocks whose
+ * group doesn't resolve to a known directory are written at the components root
+ * (ungrouped).
  */
 export async function writeSchemaFiles(
   targetPath: string,
@@ -41,12 +41,9 @@ export async function writeSchemaFiles(
     const segments = comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [];
     if (segments.length > 0) { groupPathByComponentName.set(comp.name, segments); }
 
-    // Keep the raw uuid only when it doesn't resolve to a known group directory.
-    const keepGroupUuid = comp.component_group_uuid != null && segments.length === 0;
-
     const fileName = componentFileName(comp.name);
     const filePath = join(targetPath, 'components', ...segments, `${fileName}.ts`);
-    await writeFileWithDirs(filePath, generateComponentFile(comp, { keepGroupUuid }));
+    await writeFileWithDirs(filePath, generateComponentFile(comp));
     writtenFiles.push(filePath);
   }
 

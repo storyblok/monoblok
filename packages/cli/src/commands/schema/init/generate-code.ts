@@ -88,12 +88,10 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [stri
  * Generates a full TypeScript file for a component with `defineBlock()`.
  *
  * Strips API-assigned fields; schema fields become an ordered `fields:` array of
- * `defineField()` calls (sorted by `pos`). The component's group is normally
- * encoded by the directory the file is written to, so `component_group_uuid` is
- * dropped — unless `keepGroupUuid` is set (a raw, unresolved group uuid kept as
- * an escape hatch).
+ * `defineField()` calls (sorted by `pos`). The component's group is encoded by
+ * the directory the file is written to, so `component_group_uuid` is dropped.
  */
-export function generateComponentFile(component: Component, options?: { keepGroupUuid?: boolean }): string {
+export function generateComponentFile(component: Component): string {
   const lines: string[] = [];
 
   lines.push('import {');
@@ -107,10 +105,8 @@ export function generateComponentFile(component: Component, options?: { keepGrou
 
   const clean = stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS);
 
-  // The group is encoded by the directory layout; only keep a raw uuid escape hatch.
-  if (!options?.keepGroupUuid) {
-    delete clean.component_group_uuid;
-  }
+  // The group is encoded by the directory layout, never emitted on the block.
+  delete clean.component_group_uuid;
 
   // Enforce property order: name, display_name, is_root, is_nestable, then rest, fields last
   const orderedKeys: string[] = [];

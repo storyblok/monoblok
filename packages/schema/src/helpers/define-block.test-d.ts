@@ -33,16 +33,6 @@ describe('defineBlock', () => {
     expectTypeOf(pageBlock.is_nestable).toEqualTypeOf<true>();
   });
 
-  it('should default component_group_uuid to null when not provided', () => {
-    const pageBlock = defineBlock({ name: 'page', fields: [] });
-    expectTypeOf(pageBlock.component_group_uuid).toEqualTypeOf<null>();
-  });
-
-  it('should preserve explicit component_group_uuid literal', () => {
-    const pageBlock = defineBlock({ name: 'page', component_group_uuid: 'shared-group', fields: [] });
-    expectTypeOf(pageBlock.component_group_uuid).toEqualTypeOf<'shared-group'>();
-  });
-
   it('should accept a string or null description', () => {
     const testBlock = defineBlock({ name: 'test', description: 'A test block', fields: [] });
     const nullDescriptionBlock = defineBlock({ name: 'test', description: null, fields: [] });

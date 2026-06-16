@@ -13,19 +13,21 @@ import type { Override } from './_utils';
  */
 export type BlockFields = ReadonlyArray<Field & { name: string; pos?: number; required?: boolean }>;
 
-/** A Storyblok block (content-shape definition). Carries `fields` (DSL), not the wire `schema` record. */
+/**
+ * A Storyblok block (content-shape definition). Carries `fields` (DSL), not the
+ * wire `schema` record. A block's component group is encoded by the schema
+ * directory layout, so it carries no group field.
+ */
 export type Block<
   TName extends string = string,
   TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
-  TComponentGroupUuid extends string | null = string | null,
-> = Override<Omit<ComponentGenerated, 'schema'>, {
+> = Override<Omit<ComponentGenerated, 'schema' | 'component_group_uuid'>, {
   name: TName;
   fields: TFields;
   is_root?: TIsRoot;
   is_nestable?: TIsNestable;
-  component_group_uuid?: TComponentGroupUuid;
 }>;
 
 /**

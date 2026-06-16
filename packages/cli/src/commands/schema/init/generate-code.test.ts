@@ -76,21 +76,6 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('component_group_uuid');
   });
 
-  it('should keep a raw component_group_uuid when keepGroupUuid is set (escape hatch)', () => {
-    const component = {
-      id: 1,
-      name: 'hero',
-      created_at: '',
-      updated_at: '',
-      component_group_uuid: 'unknown-uuid',
-      schema: {},
-    };
-
-    const result = generateComponentFile(component as any, { keepGroupUuid: true });
-
-    expect(result).toContain('component_group_uuid: \'unknown-uuid\'');
-  });
-
   it('should strip API-only fields but preserve user-settable fields', () => {
     const component = {
       id: 1,

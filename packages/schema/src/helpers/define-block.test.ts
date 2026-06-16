@@ -18,22 +18,11 @@ describe('defineBlock', () => {
       updated_at: '',
       is_root: false,
       is_nestable: true,
-      component_group_uuid: null,
       name: 'page',
       fields: [
         { type: 'text', name: 'headline', pos: 0 },
       ],
     });
-  });
-
-  it('should preserve an explicit component group uuid', () => {
-    const result = defineBlock({
-      name: 'page',
-      component_group_uuid: 'shared-group',
-      fields: [],
-    });
-
-    expect(result.component_group_uuid).toBe('shared-group');
   });
 
   it('should throw when two fields share the same name', () => {

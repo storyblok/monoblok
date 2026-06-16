@@ -16,8 +16,8 @@ export interface FolderResolution {
  * For every block with a group path, sets `component_group_uuid` when its
  * deepest folder already exists remotely; folders that don't exist yet are
  * returned in `foldersToCreate` (shallow-first) and their blocks are back-filled
- * after creation during push. An explicit `component_group_uuid` on a block is
- * an escape hatch and always wins over the directory layout.
+ * after creation during push. The directory layout is the sole source of a
+ * block's group.
  */
 export function resolveFolderReferences(
   local: SchemaData,
@@ -30,9 +30,6 @@ export function resolveFolderReferences(
   );
 
   const resolvedComponents = local.components.map((comp) => {
-    // Explicit component_group_uuid wins — pass through untouched.
-    if (comp.component_group_uuid != null) { return comp; }
-
     const path = local.folderPathByComponentName.get(comp.name);
     const uuid = groupUuidForBlock(path, folderResolution);
     return uuid ? { ...comp, component_group_uuid: uuid } : comp;

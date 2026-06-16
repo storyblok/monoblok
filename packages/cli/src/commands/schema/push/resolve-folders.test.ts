@@ -82,18 +82,6 @@ describe('resolveFolderReferences', () => {
     expect(folderResolution.get(pathKey(['layout', 'buttons']))).toEqual({ id: 2, uuid: 'buttons-uuid' });
   });
 
-  it('passes an explicit component_group_uuid through untouched (escape hatch wins)', () => {
-    const local = makeLocal({
-      components: [makeComponent('hero', 'raw-api-uuid')],
-      folderPathByComponentName: new Map([['hero', ['layout']]]),
-    });
-    const remote = makeRemote([makeFolder({ name: 'layout', id: 7, uuid: 'remote-layout' })]);
-
-    const { resolved } = resolveFolderReferences(local, remote);
-
-    expect(resolved.components[0].component_group_uuid).toBe('raw-api-uuid');
-  });
-
   it('leaves ungrouped blocks without a group', () => {
     const local = makeLocal({ components: [makeComponent('page')] });
 

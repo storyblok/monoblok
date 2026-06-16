@@ -43,5 +43,7 @@ export type { MapiStory, Story } from './helpers/define-story';
 export type { Schema } from './helpers/schema-type';
 
 // Validators (Zod-powered, non-throwing)
-export { createStoryValidator, validateSchema, validateStory } from './validators';
-export type { ValidationIssue, ValidationResult, ValidationSeverity } from './validators';
+export { createStoryValidator } from './validators/create-story-validator';
+export type { ValidationIssue, ValidationResult, ValidationSeverity } from './validators/types';
+export { validateSchema } from './validators/validate-schema';
+export { validateStory } from './validators/validate-story';

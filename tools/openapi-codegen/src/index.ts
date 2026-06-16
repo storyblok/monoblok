@@ -28,9 +28,7 @@ export interface GenerateConfig {
   sdk?: 'mapi' | 'capi' | false;
   /**
    * Additionally emit Zod v4 schemas for the given spec's components into
-   * `<outDir>/<spec>/zod.gen.ts`. Internal: consumer code and public types must
-   * not import it — only runtime validators use these schemas, so the `Zod
-   * never in public types` rule is preserved.
+   * `<outDir>/<spec>/zod.gen.ts`, for use by runtime validators.
    */
   zod?: { spec: SpecSource };
   /** Log emitted files and type names. */
@@ -113,10 +111,7 @@ export async function generate(config: GenerateConfig): Promise<void> {
 
 /**
  * Emit Zod v4 schemas for every component in `spec` into `<outDir>/<spec>/zod.gen.ts`.
- * Runs a dedicated `@hey-api/openapi-ts` pass with the `zod` plugin
- * (`compatibilityVersion: 4`). Names follow upstream OpenAPI conventions; the
- * alias/slice transform is intentionally NOT applied — these schemas are
- * internal and consumed only by the package's runtime validators.
+ * Runs a dedicated `@hey-api/openapi-ts` pass with the `zod` plugin.
  */
 async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean): Promise<void> {
   const tempDir = mkdtempSync(resolve(tmpdir(), 'openapi-codegen-zod-'));

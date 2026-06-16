@@ -6,8 +6,8 @@ import type { Datasource } from './define-datasource';
  *
  * Accepts the `typeof` a schema object whose `blocks` property is a record of
  * `defineBlock()` results, and optionally a `datasources` record, and produces
- * a type with unions of those types. Block folders are no longer schema
- * entities — they are represented by the schema project's directory structure.
+ * a type with unions of those types. A schema describes content shapes only;
+ * component groups are a UI concern and not part of it.
  *
  * @example
  * ```ts

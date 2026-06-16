@@ -9,14 +9,14 @@ import type { Override } from './_utils';
 
 /**
  * Ordered array of named fields — the content-shape DSL form `defineBlock`
- * accepts and returns. The array index becomes each field's `pos`.
+ * accepts and returns. A field's position in the array sets the order it appears
+ * in the editor (mapped to the wire `pos` on push).
  */
 export type BlockFields = ReadonlyArray<Field & { name: string; pos?: number; required?: boolean }>;
 
 /**
- * A Storyblok block (content-shape definition). Carries `fields` (DSL), not the
- * wire `schema` record. A block's component group is encoded by the schema
- * directory layout, so it carries no group field.
+ * A Storyblok block: a named, ordered set of content fields. Uses the
+ * content-shape DSL `fields` array rather than the MAPI wire `schema` record.
  */
 export type Block<
   TName extends string = string,

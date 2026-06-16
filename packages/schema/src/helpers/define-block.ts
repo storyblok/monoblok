@@ -51,8 +51,8 @@ type DefinedBlock<
  * Returns a {@link Block} content-shape definition. The user-facing input is an
  * ordered array of `defineField` calls under `fields`; the array index becomes
  * each field's `pos`. A thin, strongly-typed helper — it does not map to the
- * MAPI wire shape (the CLI owns that). Throws only on duplicate field names (a
- * programming error).
+ * MAPI wire shape (the CLI owns the DSL→wire mapping). Throws only on duplicate
+ * field names (a programming error).
  *
  * @example
  * const pageBlock = defineBlock({

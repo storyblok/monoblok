@@ -15,10 +15,9 @@ const PKG_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 
 await generate({
   outDir: resolve(PKG_ROOT, 'src/generated'),
-  // `@storyblok/schema` now defines only content shapes, so the surface is the
-  // block/field/datasource definitions plus the story/content types derived
-  // from them. Payload builders and wire-only entities live in the typed
-  // clients, not here.
+  // `@storyblok/schema` exposes content shapes only: the block/field/datasource
+  // definitions plus the story/content types derived from them. Payload builders
+  // and wire-only entities live in the typed clients, not here.
   include: [
     'Story',
     'RootBlock',
@@ -42,8 +41,7 @@ await generate({
     'TableFieldValue',
     'Datasource',
   ],
-  // Emit internal Zod v4 schemas for the overlay content-value shapes
-  // (asset, richtext, link, table, plugin, block-content). These power the
-  // runtime validators; they are never imported by public types.
+  // Emit internal Zod v4 schemas for the overlay content-value shapes. These
+  // power the runtime validators.
   zod: { spec: 'overlay' },
 });

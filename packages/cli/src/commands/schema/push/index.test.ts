@@ -81,7 +81,14 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
   };
 }
 
-const server = setupServer();
+// Default handlers for the preset/entry reads done by fetchRemoteSchema; tests
+// that exercise reconciliation override these via server.use.
+const server = setupServer(
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/presets`, () =>
+    HttpResponse.json({ presets: [] })),
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasource_entries`, () =>
+    HttpResponse.json({ datasource_entries: [] })),
+);
 
 const preconditions = {
   hasLocalSchema(schema: Partial<SchemaData> & Pick<SchemaData, 'components' | 'componentFolders' | 'datasources'>) {
@@ -391,6 +398,45 @@ describe('schema push command', () => {
     // The group was created from the directory and the block was assigned to it.
     expect(createdGroupBody?.name).toBe('layout');
     expect(heroGroupUuid).toBe(createdFolders[0].uuid);
+  });
+
+  it('should reconcile inline presets and datasource entries on push', async () => {
+    const comp = makeMockComponent({ name: 'hero' });
+    const ds = makeMockDatasource({ name: 'Colors', slug: 'colors' });
+    const createdComp = { ...comp, id: 4242 };
+
+    preconditions.hasLocalSchema({
+      components: [comp] as any,
+      componentFolders: [],
+      datasources: [ds] as any,
+      presetsByComponentName: new Map([['hero', [{ name: 'Default', preset: { headline: 'Hi' } }]]]) as any,
+      entriesByDatasourceName: new Map([['Colors', [{ name: 'Red', value: 'red' }]]]) as any,
+    });
+    preconditions.hasEmptyRemote();
+    preconditions.canCreateDatasources([ds]);
+
+    let presetBody: { name: string; component_id: number } | undefined;
+    let entryBody: { name: string; value: string; datasource_id: number } | undefined;
+    const createdDs = { ...ds, id: 7777 };
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () =>
+        HttpResponse.json({ component: createdComp })),
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources`, () =>
+        HttpResponse.json({ datasource: createdDs })),
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/presets`, async ({ request }) => {
+        presetBody = (await request.json() as { preset: typeof presetBody }).preset;
+        return HttpResponse.json({ preset: { id: 1, ...presetBody } }, { status: 201 });
+      }),
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasource_entries`, async ({ request }) => {
+        entryBody = (await request.json() as { datasource_entry: typeof entryBody }).datasource_entry;
+        return HttpResponse.json({ datasource_entry: { id: 1, ...entryBody } }, { status: 201 });
+      }),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
+
+    expect(presetBody).toMatchObject({ name: 'Default', component_id: 4242 });
+    expect(entryBody).toMatchObject({ name: 'Red', value: 'red', datasource_id: 7777 });
   });
 
   it('should handle API errors gracefully', async () => {

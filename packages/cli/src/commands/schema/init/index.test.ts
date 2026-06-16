@@ -64,7 +64,13 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
   };
 }
 
-const server = setupServer();
+// fetchRemoteSchema also reads presets and datasource entries; default to empty.
+const server = setupServer(
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/presets`, () =>
+    HttpResponse.json({ presets: [] })),
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasource_entries`, () =>
+    HttpResponse.json({ datasource_entries: [] })),
+);
 
 const preconditions = {
   hasRemoteComponents(components: MockComponent[]) {

@@ -1,12 +1,103 @@
 import chalk from 'chalk';
 
-import type { Component, ComponentFolder, Datasource } from '../../../types';
+import type { Component, ComponentFolder, Datasource, DatasourceEntry, Preset } from '../../../types';
 import type { FolderNode, ResolvedFolder } from '../folders';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
+import { getLogger } from '../../../lib/logger/logger';
 import { handleAPIError } from '../../../utils';
 import { groupUuidForBlock, pathKey } from '../folders';
+import { planEntries, planPresets } from '../reconcile';
 import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+
+type MapiClient = ReturnType<typeof getMapiClient>;
+
+/**
+ * Reconciles each component's inline `presets` against the remote presets owned
+ * by that component (matched by name): creates new, updates changed, deletes
+ * orphaned. The inline list is authoritative.
+ */
+async function reconcilePresets(
+  client: MapiClient,
+  spaceId: number,
+  local: SchemaData,
+  remote: RemoteSchemaData,
+  componentIdByName: Map<string, number>,
+  remotePresets: Preset[],
+): Promise<void> {
+  const logger = getLogger();
+
+  for (const [componentName, presets] of local.presetsByComponentName) {
+    const componentId = componentIdByName.get(componentName) ?? remote.components.get(componentName)?.id;
+    if (componentId == null) {
+      logger.warn(`Cannot reconcile presets for '${componentName}': component id unknown`);
+      continue;
+    }
+
+    const ownedRemote = remotePresets.filter(p => p.component_id === componentId);
+    const plan = planPresets(presets, ownedRemote);
+
+    await Promise.all([
+      ...plan.toCreate.map(p => client.presets.create({
+        path: { space_id: spaceId },
+        body: { preset: { name: p.name, component_id: componentId, ...(p.preset != null && { preset: p.preset }) } },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('push_component_preset', reason, `Failed to create preset ${p.name}`))),
+      ...plan.toUpdate.map(p => client.presets.update(p.id, {
+        path: { space_id: spaceId },
+        body: { preset: { name: p.name, component_id: componentId, ...(p.preset != null && { preset: p.preset }) } },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('update_component_preset', reason, `Failed to update preset ${p.name}`))),
+      ...plan.toDelete.map(id => client.presets.delete(id, {
+        path: { space_id: spaceId },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('delete_component_preset', reason, `Failed to delete preset ${id}`))),
+    ]);
+  }
+}
+
+/**
+ * Reconciles each datasource's inline `entries` against its remote entries
+ * (matched by name + dimension value): creates new, updates changed, deletes
+ * orphaned. The inline list is authoritative.
+ */
+async function reconcileEntries(
+  client: MapiClient,
+  spaceId: number,
+  local: SchemaData,
+  datasourceIdByName: Map<string, number>,
+  remote: RemoteSchemaData,
+  entriesByDatasourceId: Map<number, DatasourceEntry[]>,
+): Promise<void> {
+  const logger = getLogger();
+
+  for (const [datasourceName, entries] of local.entriesByDatasourceName) {
+    const datasourceId = datasourceIdByName.get(datasourceName) ?? remote.datasources.get(datasourceName)?.id;
+    if (datasourceId == null) {
+      logger.warn(`Cannot reconcile entries for '${datasourceName}': datasource id unknown`);
+      continue;
+    }
+
+    const plan = planEntries(entries, entriesByDatasourceId.get(datasourceId) ?? []);
+
+    await Promise.all([
+      ...plan.toCreate.map(e => client.datasourceEntries.create({
+        path: { space_id: spaceId },
+        body: { datasource_entry: { name: e.name, value: e.value ?? '', datasource_id: datasourceId, ...(e.dimension_value != null && { dimension_value: e.dimension_value }) } },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('push_datasource_entry', reason, `Failed to create entry ${e.name}`))),
+      ...plan.toUpdate.map(e => client.datasourceEntries.update(e.id, {
+        path: { space_id: spaceId },
+        body: { datasource_entry: { name: e.name, value: e.value } },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('update_datasource_entry', reason, `Failed to update entry ${e.name}`))),
+      ...plan.toDelete.map(id => client.datasourceEntries.delete(id, {
+        path: { space_id: spaceId },
+        throwOnError: true,
+      }).catch(reason => handleAPIError('delete_datasource_entry', reason, `Failed to delete entry ${id}`))),
+    ]);
+  }
+}
 
 /** Formats diff results for CLI display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
@@ -82,6 +173,8 @@ export async function executePush(
     delete: boolean;
     foldersToCreate?: FolderNode[];
     folderResolution?: Map<string, ResolvedFolder>;
+    remotePresets?: Preset[];
+    entriesByDatasourceId?: Map<number, DatasourceEntry[]>;
   },
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const client = getMapiClient();
@@ -124,18 +217,19 @@ export async function executePush(
     if (uuid) { comp.component_group_uuid = uuid; }
   }
 
-  // 3. Upsert components
+  // 3. Upsert components (capturing each component's id for preset reconciliation)
+  const componentIdByName = new Map<string, number>();
   const componentDiffs = diffResult.diffs.filter(d => d.type === 'component');
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {
       const localComp = local.components.find(c => c.name === diff.name);
       if (diff.action === 'create' && localComp) {
-        await client.components.create({
+        const response = await client.components.create({
           path: { space_id: spaceIdNum },
           body: { component: toComponentCreate(localComp) },
           throwOnError: true,
         });
-        return 'created' as const;
+        return { action: 'created' as const, id: response.data?.component?.id };
       }
       if (diff.action === 'update' && localComp) {
         const existing = remote.components.get(diff.name);
@@ -145,7 +239,7 @@ export async function executePush(
             body: { component: toComponentUpdate(localComp) },
             throwOnError: true,
           });
-          return 'updated' as const;
+          return { action: 'updated' as const, id: existing.id };
         }
       }
     }),
@@ -154,8 +248,9 @@ export async function executePush(
     const result = componentResults[i];
     const diff = componentDiffs[i];
     if (result.status === 'fulfilled') {
-      if (result.value === 'created') { created++; }
-      else if (result.value === 'updated') { updated++; }
+      if (result.value?.action === 'created') { created++; }
+      else if (result.value?.action === 'updated') { updated++; }
+      if (result.value?.id != null) { componentIdByName.set(diff.name, result.value.id); }
     }
     else {
       const eventId = diff.action === 'create' ? 'push_component' : 'update_component';
@@ -163,18 +258,19 @@ export async function executePush(
     }
   }
 
-  // 4. Upsert datasources
+  // 4. Upsert datasources (capturing each datasource's id for entry reconciliation)
+  const datasourceIdByName = new Map<string, number>();
   const datasourceDiffs = diffResult.diffs.filter(d => d.type === 'datasource');
   const datasourceResults = await Promise.allSettled(
     datasourceDiffs.map(async (diff) => {
       const localDs = local.datasources.find(d => d.name === diff.name);
       if (diff.action === 'create' && localDs) {
-        await client.datasources.create({
+        const response = await client.datasources.create({
           path: { space_id: spaceIdNum },
           body: { datasource: toDatasourceCreate(localDs) },
           throwOnError: true,
         });
-        return 'created' as const;
+        return { action: 'created' as const, id: response.data?.datasource?.id };
       }
       if (diff.action === 'update' && localDs) {
         const existing = remote.datasources.get(diff.name);
@@ -184,7 +280,7 @@ export async function executePush(
             body: { datasource: toDatasourceUpdate(localDs, existing) },
             throwOnError: true,
           });
-          return 'updated' as const;
+          return { action: 'updated' as const, id: existing.id };
         }
       }
     }),
@@ -193,14 +289,19 @@ export async function executePush(
     const result = datasourceResults[i];
     const diff = datasourceDiffs[i];
     if (result.status === 'fulfilled') {
-      if (result.value === 'created') { created++; }
-      else if (result.value === 'updated') { updated++; }
+      if (result.value?.action === 'created') { created++; }
+      else if (result.value?.action === 'updated') { updated++; }
+      if (result.value?.id != null) { datasourceIdByName.set(diff.name, result.value.id); }
     }
     else {
       const eventId = diff.action === 'create' ? 'push_datasource' : 'update_datasource';
       handleAPIError(eventId, result.reason, `Failed to ${diff.action} datasource ${diff.name}`);
     }
   }
+
+  // 4b. Reconcile inline presets (per component) and datasource entries (per datasource).
+  await reconcilePresets(client, spaceIdNum, local, remote, componentIdByName, options.remotePresets ?? []);
+  await reconcileEntries(client, spaceIdNum, local, datasourceIdByName, remote, options.entriesByDatasourceId ?? new Map());
 
   // 5. Delete stale entities if --delete flag is set
   if (options.delete) {

@@ -51,7 +51,13 @@ function makeChangeset(changes: ChangesetData['changes'], overrides: Partial<Cha
 
 const CHANGESET_PATH = `.storyblok/schema/changesets/2026-04-10T12-00-00-000Z.json`;
 
-const server = setupServer();
+// fetchRemoteSchema also reads presets and datasource entries; default to empty.
+const server = setupServer(
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/presets`, () =>
+    HttpResponse.json({ presets: [] })),
+  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasource_entries`, () =>
+    HttpResponse.json({ datasource_entries: [] })),
+);
 
 const preconditions = {
   hasChangeset(changeset: ChangesetData) {

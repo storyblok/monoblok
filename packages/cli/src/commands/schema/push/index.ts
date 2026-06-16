@@ -83,7 +83,7 @@ schemaCommand
         handleError(toError(maybeError), verbose);
         return;
       }
-      const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
+      const { remote, rawComponents, rawComponentFolders, rawDatasources, rawPresets, entriesByDatasourceId } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.componentFolders.size} component folders, ${remote.datasources.size} datasources`);
 
       // 3. Resolve directory-derived component groups against the remote space
@@ -203,8 +203,12 @@ schemaCommand
       });
       logger.info('Changeset saved', { path: displayPath(changesetPath, basePath) });
 
-      // 9. Execute push (skipped when nothing to push)
-      const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0 && (!options.delete || diffResult.stale === 0);
+      // 9. Execute push (skipped when nothing to push). Inline presets/entries
+      // aren't part of the entity diff, so their presence forces a push pass
+      // (reconciliation no-ops when they already match remote).
+      const hasInlineChildren = resolved.presetsByComponentName.size > 0 || resolved.entriesByDatasourceName.size > 0;
+      const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0
+        && (!options.delete || diffResult.stale === 0) && !hasInlineChildren;
       if (nothingToPush) {
         ui.ok('Everything up to date — nothing to push.');
       }
@@ -212,7 +216,7 @@ schemaCommand
         const pushSpinner = ui.createSpinner('Pushing schema...');
         let result: Awaited<ReturnType<typeof executePush>>;
         try {
-          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, foldersToCreate, folderResolution });
+          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, foldersToCreate, folderResolution, remotePresets: rawPresets, entriesByDatasourceId });
         }
         catch (error) {
           pushSpinner.failed('Failed to push schema');

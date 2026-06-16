@@ -6,7 +6,7 @@ describe('defineBlock', () => {
   it('should return a type safe block', () => {
     const input = {
       name: 'page',
-      schema: [
+      fields: [
         defineField('headline', { type: 'text' }),
       ],
     };
@@ -20,9 +20,9 @@ describe('defineBlock', () => {
       is_nestable: true,
       component_group_uuid: null,
       name: 'page',
-      schema: {
-        headline: { type: 'text', pos: 0 },
-      },
+      fields: [
+        { type: 'text', name: 'headline', pos: 0 },
+      ],
     });
   });
 
@@ -30,7 +30,7 @@ describe('defineBlock', () => {
     const result = defineBlock({
       name: 'page',
       component_group_uuid: 'shared-group',
-      schema: [],
+      fields: [],
     });
 
     expect(result.component_group_uuid).toBe('shared-group');
@@ -40,7 +40,7 @@ describe('defineBlock', () => {
     expect(() =>
       defineBlock({
         name: 'page',
-        schema: [
+        fields: [
           defineField('headline', { type: 'text' }),
           defineField('headline', { type: 'textarea' }),
         ],

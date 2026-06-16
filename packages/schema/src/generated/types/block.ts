@@ -2,36 +2,27 @@
 // Source template lives in tools/openapi-codegen/templates/.
 
 import type {
-  ComponentCreate,
   Component as ComponentGenerated,
-  ComponentUpdate,
   Field,
 } from './_sources';
 import type { Override } from './_utils';
 
-export type { ComponentCreate, ComponentUpdate };
+/**
+ * Ordered array of named fields — the content-shape DSL form `defineBlock`
+ * accepts and returns. The array index becomes each field's `pos`.
+ */
+export type BlockFields = ReadonlyArray<Field & { name: string; pos?: number; required?: boolean }>;
 
-/** Input form: an ordered array of named fields. The array index becomes `pos`. */
-export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;
-
-/** Wire form: the MAPI object map keyed by field name. This is what `defineBlock` returns. */
-export type BlockSchema = Record<string, Field & { required?: boolean }>;
-
-/** Converts an array-form schema input into the wire-shape object map at the type level. */
-export type SchemaArrayToRecord<T extends BlockSchemaInput> = {
-  [F in T[number] as F['name']]: Omit<F, 'name'>;
-};
-
-/** A Storyblok block. */
+/** A Storyblok block (content-shape definition). Carries `fields` (DSL), not the wire `schema` record. */
 export type Block<
   TName extends string = string,
-  TBlockSchema extends BlockSchema = BlockSchema,
+  TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
   TComponentGroupUuid extends string | null = string | null,
-> = Override<ComponentGenerated, {
+> = Override<Omit<ComponentGenerated, 'schema'>, {
   name: TName;
-  schema: TBlockSchema;
+  fields: TFields;
   is_root?: TIsRoot;
   is_nestable?: TIsNestable;
   component_group_uuid?: TComponentGroupUuid;

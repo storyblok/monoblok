@@ -1,16 +1,12 @@
 import type {
   Block,
-  BlockSchema,
-  BlockSchemaInput,
-  ComponentCreate,
-  ComponentUpdate,
+  BlockFields,
   NestableBlock,
   RootBlock,
-  SchemaArrayToRecord,
 } from '../generated/types/block';
 import type { Prettify } from '../utils/prettify';
 
-export type { Block, BlockSchema, BlockSchemaInput, NestableBlock, RootBlock, SchemaArrayToRecord };
+export type { Block, BlockFields, NestableBlock, RootBlock };
 
 const BLOCK_DEFAULTS = {
   id: 1,
@@ -26,14 +22,14 @@ type BlockOptional = keyof typeof BLOCK_DEFAULTS;
 
 type BlockInput<
   TName extends string = string,
-  TInputSchema extends BlockSchemaInput = BlockSchemaInput,
+  TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
   TComponentGroupUuid extends string | null = null,
 > = Prettify<
-  Omit<Block, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'component_group_uuid' | BlockOptional> & {
     name: TName;
-    schema: TInputSchema;
+    fields: TFields;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
     component_group_uuid?: TComponentGroupUuid;
@@ -42,14 +38,14 @@ type BlockInput<
 
 type DefinedBlock<
   TName extends string,
-  TBlockSchema,
+  TFields extends BlockFields,
   TIsRoot extends boolean,
   TIsNestable extends boolean,
   TComponentGroupUuid extends string | null,
 > = Prettify<
-  Omit<Block, 'name' | 'schema' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'component_group_uuid'> & {
     name: TName;
-    schema: TBlockSchema;
+    fields: TFields;
     is_root: TIsRoot;
     is_nestable: TIsNestable;
     component_group_uuid: TComponentGroupUuid;
@@ -57,61 +53,43 @@ type DefinedBlock<
 >;
 
 /**
- * Returns a {@link Block} with object-shape `schema` (matches the MAPI wire
- * shape). The user-facing input is an ordered array of `defineField` calls;
- * the array index becomes the field's `pos` in the returned map. Throws if
- * two fields share the same `name`.
+ * Returns a {@link Block} content-shape definition. The user-facing input is an
+ * ordered array of `defineField` calls under `fields`; the array index becomes
+ * each field's `pos`. A thin, strongly-typed helper — it does not map to the
+ * MAPI wire shape (the CLI owns that). Throws only on duplicate field names (a
+ * programming error).
  *
  * @example
  * const pageBlock = defineBlock({
  *   name: 'page',
  *   is_root: true,
- *   schema: [
+ *   fields: [
  *     defineField('headline', { type: 'text', required: true }),
  *   ],
  * });
  */
 export function defineBlock<
   TName extends string,
-  const TInputSchema extends BlockSchemaInput,
+  const TFields extends BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
   TComponentGroupUuid extends string | null = null,
 >(
-  block: BlockInput<TName, TInputSchema, TIsRoot, TIsNestable, TComponentGroupUuid>,
-): DefinedBlock<TName, SchemaArrayToRecord<TInputSchema>, TIsRoot, TIsNestable, TComponentGroupUuid>;
+  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TComponentGroupUuid>,
+): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TComponentGroupUuid>;
 
 export function defineBlock(block: any) {
-  const inputSchema = Array.isArray(block?.schema) ? block.schema : [];
+  const inputFields = Array.isArray(block?.fields) ? block.fields : [];
   const seen = new Set<string>();
-  const schemaRecord: Record<string, unknown> = {};
-  inputSchema.forEach((field: any, index: number) => {
+  const fields = inputFields.map((field: any, index: number) => {
     const name = field?.name;
-    if (typeof name !== 'string') {
-      return;
+    if (typeof name === 'string') {
+      if (seen.has(name)) {
+        throw new Error(`defineBlock: duplicate field name "${name}" in block "${block?.name ?? ''}"`);
+      }
+      seen.add(name);
     }
-    if (seen.has(name)) {
-      throw new Error(`defineBlock: duplicate field name "${name}" in block "${block?.name ?? ''}"`);
-    }
-    seen.add(name);
-    const { name: _name, ...rest } = field;
-    schemaRecord[name] = { ...rest, pos: index };
+    return { ...field, pos: index };
   });
-  return { ...BLOCK_DEFAULTS, ...block, schema: schemaRecord };
+  return { ...BLOCK_DEFAULTS, ...block, fields };
 }
-
-/**
- * Defines a block creation payload for the MAPI.
- *
- * @example
- * const payload = defineBlockCreate({ name: 'page', schema: { ... } });
- */
-export const defineBlockCreate = (block: ComponentCreate): ComponentCreate => block;
-
-/**
- * Defines a block update payload for the MAPI.
- *
- * @example
- * const payload = defineBlockUpdate({ display_name: 'Page' });
- */
-export const defineBlockUpdate = (block: ComponentUpdate): ComponentUpdate => block;

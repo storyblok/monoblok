@@ -7,7 +7,7 @@ describe('defineMapiStory', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: [
+    fields: [
       defineField('headline', { type: 'text' }),
     ],
   });
@@ -33,7 +33,7 @@ describe('defineStoryCreate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: [
+    fields: [
       defineField('headline', { type: 'text' }),
     ],
   });
@@ -55,7 +55,7 @@ describe('defineStoryUpdate', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: [
+    fields: [
       defineField('headline', { type: 'text' }),
     ],
   });

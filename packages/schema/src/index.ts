@@ -1,72 +1,47 @@
 /**
  * Public API surface for `@storyblok/schema`.
  *
- * CDN (CAPI) helpers use the bare name (e.g. `defineStory`).
- * MAPI-specific helpers use the `Mapi` prefix where a CDN helper with the same name exists
- * (e.g. `defineMapiStory`, `defineMapiAsset`, `defineMapiDatasourceEntry`).
- * MAPI-only helpers (no CDN counterpart) keep the bare name (e.g. `defineBlockFolder`).
+ * The package defines the shape of user-generated content: blocks, fields, and
+ * datasources, plus the story/content types derived from them. Payload builders
+ * and wire-only entities live in the typed clients, not here.
  *
  * Every export is listed explicitly — no wildcard (`*`) re-exports.
  */
 
-// Shared / story helpers
+// Story helpers + derived content types
 export { createStoryHelpers } from './helpers/create-story-helpers';
-
-// Asset
-export { defineAssetCreate, defineAssetUpdate, defineMapiAsset } from './helpers/define-asset';
-export type { AssetCreate, AssetUpdate, MapiAsset } from './helpers/define-asset';
-
-// Asset folder (MAPI-only)
-export { defineAssetFolder, defineAssetFolderCreate, defineAssetFolderUpdate } from './helpers/define-asset-folder';
-export type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from './helpers/define-asset-folder';
-
 // Block
-export { defineBlock, defineBlockCreate, defineBlockUpdate } from './helpers/define-block';
-export type { Block, BlockSchema, NestableBlock, RootBlock } from './helpers/define-block';
+export { defineBlock } from './helpers/define-block';
 
-// Block folder (MAPI-only)
-export { defineBlockFolder, defineBlockFolderCreate, defineBlockFolderUpdate } from './helpers/define-block-folder';
-export type { ComponentFolder, ComponentFolderCreate, ComponentFolderUpdate } from './helpers/define-block-folder';
-
+export type { Block, BlockFields, NestableBlock, RootBlock } from './helpers/define-block';
 // Datasource
-export { defineDatasource, defineDatasourceCreate, defineDatasourceUpdate } from './helpers/define-datasource';
-export type { Datasource, DatasourceCreate, DatasourceUpdate } from './helpers/define-datasource';
+export { defineDatasource } from './helpers/define-datasource';
 
-// Datasource entry
-export { defineDatasourceEntry, defineDatasourceEntryCreate, defineDatasourceEntryUpdate, defineMapiDatasourceEntry } from './helpers/define-datasource-entry';
-export type { DatasourceEntry, DatasourceEntryCreate, DatasourceEntryUpdate, MapiDatasourceEntry } from './helpers/define-datasource-entry';
-
+export type { Datasource, DatasourceEntryInput } from './helpers/define-datasource';
 // Field
 export { defineField } from './helpers/define-field';
-export type { AssetFieldValue, BlockContent, BlockContentInput, BlocksFieldValue, Field, FieldType, FieldValue, FieldValueInput, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue } from './helpers/define-field';
 
-// Internal tag (MAPI-only)
-export { defineInternalTag, defineInternalTagCreate, defineInternalTagUpdate } from './helpers/define-internal-tag';
-export type { InternalTag, InternalTagCreate, InternalTagUpdate } from './helpers/define-internal-tag';
+export type {
+  AssetFieldValue,
+  BlockContent,
+  BlockContentInput,
+  BlocksFieldValue,
+  DefinedField,
+  Field,
+  FieldInput,
+  FieldType,
+  FieldValue,
+  FieldValueInput,
+  MultilinkFieldValue,
+  PluginFieldValue,
+  RichtextFieldValue,
+  TableFieldValue,
+} from './helpers/define-field';
+export type { MapiStory, Story } from './helpers/define-story';
 
-// Link (CDN-only)
-export { defineLink } from './helpers/define-link';
-export type { Link } from './helpers/define-link';
-
-// Preset (MAPI-only)
-export { definePreset, definePresetCreate, definePresetUpdate } from './helpers/define-preset';
-export type { Preset, PresetCreate, PresetUpdate } from './helpers/define-preset';
-
-// Space (MAPI — no CDN Space endpoint)
-export { defineSpace, defineSpaceCreate, defineSpaceUpdate } from './helpers/define-space';
-export type { Space, SpaceCreate, SpaceUpdate } from './helpers/define-space';
-
-// Story
-export { defineMapiStory, defineStory, defineStoryCreate, defineStoryUpdate } from './helpers/define-story';
-export type { MapiStory, Story, StoryAlternate, StoryCreate, StoryLocalizedPath, StoryTranslatedSlug, StoryUpdate } from './helpers/define-story';
-
-// Tag (CDN-only)
-export { defineTag } from './helpers/define-tag';
-export type { Tag } from './helpers/define-tag';
-
-// User (MAPI-only)
-export { defineUser, defineUserUpdate } from './helpers/define-user';
-export type { User, UserUpdate } from './helpers/define-user';
-
-// Schema type helpers
+// Schema type helper
 export type { Schema } from './helpers/schema-type';
+
+// Validators (Zod-powered, non-throwing)
+export { createStoryValidator, validateSchema, validateStory } from './validators';
+export type { ValidationIssue, ValidationResult, ValidationSeverity } from './validators';

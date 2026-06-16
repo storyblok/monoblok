@@ -8,7 +8,7 @@ describe('defineStory type inference', () => {
     const block = defineBlock({
       name: 'page',
       is_root: true,
-      schema: [
+      fields: [
         defineField('headline', { type: 'text', required: true }),
         defineField('count', { type: 'number' }),
       ],
@@ -33,7 +33,7 @@ describe('defineStory type inference', () => {
     const block = defineBlock({
       name: 'page',
       is_root: true,
-      schema: [
+      fields: [
         defineField('headline', { type: 'text' }),
       ],
     });
@@ -50,7 +50,7 @@ const _pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
   ],
 });
@@ -58,7 +58,7 @@ const _pageBlock = defineBlock({
 const _heroBlock = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
     defineField('blocks', { type: 'bloks', required: true }),
   ],
@@ -67,7 +67,7 @@ const _heroBlock = defineBlock({
 const _teaserBlock = defineBlock({
   name: 'teaser',
   // nestable by default (is_root: false, is_nestable: true)
-  schema: [
+  fields: [
     defineField('text', { type: 'text' }),
   ],
 });

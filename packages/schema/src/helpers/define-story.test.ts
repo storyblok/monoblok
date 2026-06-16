@@ -7,7 +7,7 @@ describe('defineStory', () => {
   const block = defineBlock({
     name: 'page',
     is_root: true,
-    schema: [
+    fields: [
       defineField('headline', { type: 'text' }),
     ],
   });

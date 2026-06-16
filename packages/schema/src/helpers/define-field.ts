@@ -1,167 +1,92 @@
 import type {
   AssetFieldValue,
+  BlockContent,
+  BlockContentInput,
+  BlocksFieldValue,
   Field,
+  FieldType,
+  FieldValue,
+  FieldValueInput,
   MultilinkFieldValue,
   PluginFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 } from '../generated/types/field';
-import type { Block } from './define-block';
 import type { Prettify } from '../utils/prettify';
 
-export type { Field };
-
-/** Loose variant of the generated `BlokContent` with `_uid` optional — used as the fallback for write operations when no block union is provided. */
-type BlokContentLoose = {
-  _uid?: string;
-  component: string;
-  _editable?: string | undefined;
-} & {
-  [key: string]:
-    | string
-    | number
-    | boolean
-    | Array<string | AssetFieldValue | BlokContentLoose>
-    | AssetFieldValue
-    | MultilinkFieldValue
-    | TableFieldValue
-    | RichtextFieldValue
-    | PluginFieldValue
-    | undefined;
+export type {
+  AssetFieldValue,
+  BlockContent,
+  BlockContentInput,
+  BlocksFieldValue,
+  Field,
+  FieldType,
+  FieldValue,
+  FieldValueInput,
+  MultilinkFieldValue,
+  PluginFieldValue,
+  RichtextFieldValue,
+  TableFieldValue,
 };
 
-/** Keys in a schema record that have `required: true`. */
-type RequiredFieldKeys<T> = {
-  [K in keyof T]: T[K] extends { required: true } ? K : never
-}[keyof T];
+/** A block reference for `allow`: a defined block object or its name. */
+type AllowRef = string | { name: string };
+/** A datasource reference for `datasource`: a defined datasource object or its slug. */
+type DatasourceRef = string | { slug: string };
 
-/** Keys in a schema record that do NOT have `required: true`. */
-type OptionalFieldKeys<T> = Exclude<keyof T, RequiredFieldKeys<T>>;
+type NameOf<T> = T extends string ? T : T extends { name: infer N extends string } ? N : never;
+type SlugOf<T> = T extends string ? T : T extends { slug: infer S extends string } ? S : never;
+
+/** Normalizes an `allow` input (ref, name, or array thereof) to a tuple of block-name strings. */
+type NormalizeAllow<T> = T extends readonly any[]
+  ? { [I in keyof T]: NameOf<T[I]> }
+  : readonly [NameOf<T>];
 
 /**
- * Builds the content object for a single block instance as returned by the
- * Storyblok Content Delivery API. Includes `_uid` (always present in API
- * responses) and respects required/optional field semantics.
+ * Field config accepted by {@link defineField}: the content-shape field plus the
+ * DSL reference keys. `allow` replaces the wire `component_whitelist`; `datasource`
+ * holds the datasource ref/slug (the wire `source` selector still passes through).
+ */
+export type FieldInput = Field & {
+  allow?: AllowRef | readonly AllowRef[];
+  datasource?: DatasourceRef;
+  required?: boolean;
+};
+
+/** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
+export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<
+  Omit<TField, 'allow' | 'datasource' | 'name'>
+  & { name: TName }
+  & (TField extends { allow: infer A } ? { allow: NormalizeAllow<A> } : unknown)
+  & (TField extends { datasource: infer D } ? { datasource: SlugOf<D> } : unknown)
+>;
+
+/**
+ * Returns a {@link Field} stamped with the given `name`, normalizing reference
+ * keys to strings so everything downstream sees plain names/slugs. A thin,
+ * strongly-typed identity helper — it does not validate or throw.
  *
- * For write operations (creating/updating stories), use {@link BlockContentInput}
- * instead, which omits `_uid` since Storyblok generates it automatically.
- */
-export type BlockContent<TBlock extends Block = Block, TBlocks = false> = TBlock extends any
-  ? { _uid: string; component: TBlock['name'] }
-  & {
-    [K in RequiredFieldKeys<TBlock['schema']>]: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks>
-  }
-  & {
-    [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> | null
-  }
-  : never;
-
-/**
- * Input variant of {@link BlockContent} for write operations (creating/updating
- * stories via the MAPI). `_uid` is optional — Storyblok generates it
- * automatically when omitted. Nested bloks fields also use this input variant
- * so that deeply nested blocks do not require `_uid` either.
- */
-export type BlockContentInput<TBlock extends Block = Block, TBlocks = false> = TBlock extends any
-  ? { _uid?: string; component: TBlock['name'] }
-  & {
-    [K in RequiredFieldKeys<TBlock['schema']>]: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks>
-  }
-  & {
-    [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> | null
-  }
-  : never;
-
-export type BlocksFieldValue<
-  TBlock extends Block = Block,
-  TBlocks = false,
-> = BlockContent<TBlock, TBlocks>[];
-
-export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
-
-/** Union of all valid Storyblok field type discriminants (e.g., `text`, `bloks`). */
-export type FieldType = Field['type'];
-
-/** Maps each field type discriminant to its runtime content value type. */
-interface FieldTypeValueMap {
-  text: string;
-  textarea: string;
-  richtext: RichtextFieldValue;
-  markdown: string;
-  number: number;
-  datetime: string;
-  boolean: boolean;
-  option: string;
-  options: string[];
-  asset: AssetFieldValue;
-  multiasset: AssetFieldValue[];
-  multilink: MultilinkFieldValue;
-  bloks: BlockContent[];
-  table: TableFieldValue;
-  section: never;
-  tab: never;
-  custom: PluginFieldValue;
-}
-
-/**
- * Checks whether a block is nestable, defaulting to `true` when
- * `is_nestable` is absent or undefined.
- */
-type IsNestable<T> =
-  T extends { is_nestable: false } ? false
-    : T extends { is_nestable: true } ? true
-      : true; // default: nestable when is_nestable is not specified
-
-type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: ReadonlyArray<infer TWhitelisted extends string> }
-  // With whitelist: filter by block name (distributive over TBlocks)
-  ? TBlocks extends { name: TWhitelisted } ? TBlocks : never
-  // No whitelist: filter by nestability (distributive over TBlocks)
-  : TBlocks extends any
-    ? IsNestable<TBlocks> extends true ? TBlocks : never
-    : never;
-
-/** Resolves a field definition to its runtime content value type (read). */
-export type FieldValue<
-  TField extends Field = Field,
-  TBlocks = false,
-> = Prettify<
-  TField extends { type: 'bloks' }
-    // Bloks field — guard against `never` first (it satisfies `[never] extends [X]`
-    // for all X, which would incorrectly enter the typed path with empty results).
-    ? [TBlocks] extends [never]
-        ? BlockContent[]
-        : [TBlocks] extends [Block]
-            ? BlockContent<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
-            : BlockContent[]
-    // No bloks field
-    : FieldTypeValueMap[TField['type']]
->;
-
-/** Resolves a field definition to its input value type (write). Nested bloks use {@link BlockContentInput}. */
-export type FieldValueInput<
-  TField extends Field = Field,
-  TBlocks = false,
-> = Prettify<
-  TField extends { type: 'bloks' }
-    ? [TBlocks] extends [never]
-        ? BlokContentLoose[]
-        : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
-            : BlokContentLoose[]
-    : FieldTypeValueMap[TField['type']]
->;
-
-/**
- * Returns a {@link Field} stamped with the given `name`. Use inside a
- * {@link defineBlock} `schema` array — `pos` is inferred from array index.
+ * Use inside a {@link defineBlock} `fields` array — `pos` is injected from the
+ * array index by `defineBlock`.
  *
  * @example
  * defineField('headline', { type: 'text', max_length: 100, required: true });
+ * defineField('body', { type: 'bloks', allow: [heroBlock, 'teaser'] });
+ * defineField('theme', { type: 'option', source: 'internal', datasource: colors });
  */
-export const defineField = <
+export function defineField<
   const TName extends string,
-  const TField extends Field,
->(
-  name: TName,
-  field: TField,
-): Omit<TField, 'name'> & { name: TName } => ({ ...field, name });
+  const TField extends FieldInput,
+>(name: TName, field: TField): DefinedField<TName, TField>;
+export function defineField(name: string, field: Record<string, unknown>): Record<string, unknown> {
+  const { allow, datasource, ...rest } = field;
+  const normalized: Record<string, unknown> = { ...rest, name };
+  if (allow !== undefined) {
+    const refs = Array.isArray(allow) ? allow : [allow];
+    normalized.allow = refs.map(ref => (typeof ref === 'string' ? ref : (ref as { name: string })?.name));
+  }
+  if (datasource !== undefined) {
+    normalized.datasource = typeof datasource === 'string' ? datasource : (datasource as { slug: string })?.slug;
+  }
+  return normalized;
+}

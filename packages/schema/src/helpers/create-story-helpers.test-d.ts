@@ -8,7 +8,7 @@ const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
     defineField('count', { type: 'number' }),
   ],
@@ -16,7 +16,7 @@ const pageBlock = defineBlock({
 
 const _teaserBlock = defineBlock({
   name: 'teaser',
-  schema: [
+  fields: [
     defineField('text', { type: 'text' }),
   ],
 });
@@ -24,7 +24,7 @@ const _teaserBlock = defineBlock({
 const heroBlock = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
     defineField('blocks', { type: 'bloks', required: true }),
   ],

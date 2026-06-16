@@ -13,6 +13,7 @@ export const COMPONENT_STRIP_KEYS = new Set([
   'image', // Read-only preview image URL
   'preview_tmpl', // Read-only preview template
   'metadata', // Not in current API types, stripped defensively
+  'component_group_uuid', // UI grouping owned by editors; push keeps blocks flat and leaves remote groups untouched
 ]);
 
 /** Fields to strip from Datasource before serialization. */
@@ -46,7 +47,8 @@ export const FOLDER_STRIP_KEYS = new Set(['id', 'uuid', 'parent_id', 'parent_uui
  *
  * Excluded intentionally:
  * - `is_root` / `is_nestable`: users set these explicitly; boolean, not nullable
- * - `component_group_uuid`: resetting would silently move component out of its folder
+ * - `component_group_uuid`: stripped before diffing (see COMPONENT_STRIP_KEYS) —
+ *   groups are a UI concern, so push neither sets nor clears them
  */
 /**
  * Default values for optional datasource fields.

@@ -88,8 +88,8 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [stri
  * Generates a full TypeScript file for a component with `defineBlock()`.
  *
  * Strips API-assigned fields; schema fields become an ordered `fields:` array of
- * `defineField()` calls (sorted by `pos`). The component's group is encoded by
- * the directory the file is written to, so `component_group_uuid` is dropped.
+ * `defineField()` calls (sorted by `pos`). `component_group_uuid` is dropped —
+ * groups are a UI concern and aren't part of a content-shape definition.
  */
 export function generateComponentFile(component: Component): string {
   const lines: string[] = [];
@@ -207,8 +207,8 @@ export function generateSchemaFile(
   for (const component of components) {
     const varName = componentVarName(component.name);
     const fileName = componentFileName(component.name);
-    // Group names map to directory segments verbatim so the layout round-trips
-    // losslessly through `schema push` (which reads the segment as the group name).
+    // Blocks are imported from their (slugified) group subdirectory — local
+    // organization that mirrors the remote groups; `schema push` ignores it.
     const segments = groupPathByComponentName.get(component.name) ?? [];
     const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
     lines.push(`import { ${varName} } from './components/${subPath}${fileName}';`);

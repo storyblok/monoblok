@@ -11,15 +11,10 @@ function makeDatasource(name: string, slug: string) {
   return { id: 1, name, slug, created_at: '', updated_at: '' } as any;
 }
 
-function makeFolder(name: string) {
-  return { id: 1, name, uuid: 'test-uuid' } as any;
-}
-
 describe('diffSchema', () => {
   it('should detect new entities as create', () => {
     const local: SchemaData = {
       components: [makeComponent('page', { title: { type: 'text', pos: 0 } })],
-      componentFolders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -39,7 +34,6 @@ describe('diffSchema', () => {
     const comp = makeComponent('page', { title: { type: 'text', pos: 0 } });
     const local: SchemaData = {
       components: [comp],
-      componentFolders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -58,7 +52,7 @@ describe('diffSchema', () => {
     const localComp = makeComponent('page', { title: { type: 'text', pos: 0, max_length: 70 } });
     const remoteComp = makeComponent('page', { title: { type: 'text', pos: 0, max_length: 60 } });
 
-    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [localComp], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['page', { ...remoteComp, id: 99 }]]),
       componentFolders: new Map(),
@@ -73,7 +67,7 @@ describe('diffSchema', () => {
   });
 
   it('should detect stale remote entities', () => {
-    const local: SchemaData = { components: [], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['footer', makeComponent('footer', {})]]),
       componentFolders: new Map(),
@@ -92,7 +86,7 @@ describe('diffSchema', () => {
     // Remote has internal_tag_ids: [] auto-populated by Storyblok, local doesn't set it
     const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), internal_tag_ids: [] };
 
-    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [localComp], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['page', remoteComp]]),
       componentFolders: new Map(),
@@ -110,7 +104,7 @@ describe('diffSchema', () => {
     const localComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), internal_tag_ids: [10] };
     const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), internal_tag_ids: [] };
 
-    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [localComp], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['page', remoteComp]]),
       componentFolders: new Map(),
@@ -127,7 +121,7 @@ describe('diffSchema', () => {
     const localComp = makeComponent('test', { title: { type: 'text', pos: 0 } });
     const remoteComp = { ...makeComponent('test', { title: { type: 'text', pos: 0 } }), description: '' };
 
-    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [localComp], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['test', remoteComp]]),
       componentFolders: new Map(),
@@ -144,7 +138,7 @@ describe('diffSchema', () => {
     const localComp = makeComponent('test', { title: { type: 'text', pos: 0 } });
     const remoteComp = { ...makeComponent('test', { title: { type: 'text', pos: 0 } }), description: 'A test block' };
 
-    const local: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+    const local: SchemaData = { components: [localComp], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([['test', remoteComp]]),
       componentFolders: new Map(),
@@ -160,7 +154,6 @@ describe('diffSchema', () => {
   it('should treat datasource without dimensions as unchanged when remote has empty dimensions', () => {
     const local: SchemaData = {
       components: [],
-      componentFolders: [],
       datasources: [makeDatasource('Colors', 'colors')],
     };
     const remote: RemoteSchemaData = {
@@ -176,10 +169,9 @@ describe('diffSchema', () => {
     expect(result.diffs[0].action).toBe('unchanged');
   });
 
-  it('should handle all entity types together', () => {
+  it('should handle all entity types together (component groups are not diffed)', () => {
     const local: SchemaData = {
       components: [makeComponent('page', {})],
-      componentFolders: [makeFolder('Layout')],
       datasources: [makeDatasource('Colors', 'colors')],
     };
     const remote: RemoteSchemaData = {
@@ -190,7 +182,7 @@ describe('diffSchema', () => {
 
     const result = diffSchema(local, remote);
 
-    expect(result.creates).toBe(3);
-    expect(result.diffs).toHaveLength(3);
+    expect(result.creates).toBe(2);
+    expect(result.diffs).toHaveLength(2);
   });
 });

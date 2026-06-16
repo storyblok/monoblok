@@ -1,4 +1,4 @@
-import type { Component, Datasource, DatasourceEntry, Field, Preset } from '../../types';
+import type { Component, Datasource, Field } from '../../types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -26,21 +26,13 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
   return { name: typeof name === 'string' ? name : '', value: value as Field };
 }
 
-/** A block mapped to wire, with its inline `presets` lifted off for reconciliation. */
-export interface BlockWire {
-  component: Component;
-  /** Inline `presets` lifted off the block; reconciled per component after upsert. */
-  presets: Preset[];
-}
-
 /**
  * Maps a content-shape DSL block (the result of `defineBlock`) to a MAPI wire
  * `Component`. The ordered `fields` array becomes a `schema` record keyed by
- * field name (each field keeps its `pos`). Inline `presets` are lifted off and
- * returned separately for reconciliation; everything else passes through.
+ * field name (each field keeps its `pos`); everything else passes through.
  */
-export function mapBlockToWire(block: Record<string, unknown>): BlockWire {
-  const { fields, presets, ...rest } = block;
+export function mapBlockToWire(block: Record<string, unknown>): Component {
+  const { fields, ...rest } = block;
 
   const schema: Record<string, Field> = {};
   if (Array.isArray(fields)) {
@@ -51,28 +43,13 @@ export function mapBlockToWire(block: Record<string, unknown>): BlockWire {
     }
   }
 
-  return {
-    component: { ...rest, schema } as unknown as Component,
-    presets: Array.isArray(presets) ? (presets as Preset[]) : [],
-  };
-}
-
-/** A datasource mapped to wire, with its inline `entries` lifted off for reconciliation. */
-export interface DatasourceWire {
-  datasource: Datasource;
-  /** Inline `entries` lifted off the datasource; reconciled per datasource after upsert. */
-  entries: DatasourceEntry[];
+  return { ...rest, schema } as unknown as Component;
 }
 
 /**
  * Maps a content-shape DSL datasource (the result of `defineDatasource`) to its
- * wire form, lifting off inline `entries` for separate reconciliation.
+ * wire form. The DSL and wire shapes are identical, so this is a passthrough.
  */
-export function mapDatasourceToWire(datasource: Record<string, unknown>): DatasourceWire {
-  const { entries, ...rest } = datasource;
-
-  return {
-    datasource: rest as unknown as Datasource,
-    entries: Array.isArray(entries) ? (entries as DatasourceEntry[]) : [],
-  };
+export function mapDatasourceToWire(datasource: Record<string, unknown>): Datasource {
+  return datasource as unknown as Datasource;
 }

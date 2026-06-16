@@ -22,7 +22,7 @@ describe('mapFieldToWire', () => {
 
 describe('mapBlockToWire', () => {
   it('turns the ordered fields array into a schema record and keeps block-level props', () => {
-    const { component } = mapBlockToWire({
+    const component = mapBlockToWire({
       name: 'page',
       is_root: true,
       is_nestable: false,
@@ -43,38 +43,15 @@ describe('mapBlockToWire', () => {
     });
   });
 
-  it('lifts inline presets off the block', () => {
-    const { component, presets } = mapBlockToWire({
-      name: 'hero',
-      fields: [{ name: 'headline', type: 'text', pos: 0 }],
-      presets: [{ name: 'Default', preset: { headline: 'Hi' } }],
-    });
-
-    expect('presets' in component).toBe(false);
-    expect(presets).toEqual([{ name: 'Default', preset: { headline: 'Hi' } }]);
-  });
-
   it('produces an empty schema for a block with no fields', () => {
-    const { component } = mapBlockToWire({ name: 'spacer', fields: [] });
+    const component = mapBlockToWire({ name: 'spacer', fields: [] });
     expect(component.schema).toEqual({});
   });
 });
 
 describe('mapDatasourceToWire', () => {
-  it('lifts inline entries off the datasource', () => {
-    const { datasource, entries } = mapDatasourceToWire({
-      name: 'Colors',
-      slug: 'colors',
-      entries: [{ name: 'Red', value: 'red' }],
-    });
-
-    expect('entries' in datasource).toBe(false);
+  it('passes the datasource definition through unchanged', () => {
+    const datasource = mapDatasourceToWire({ name: 'Colors', slug: 'colors' });
     expect(datasource).toEqual({ name: 'Colors', slug: 'colors' });
-    expect(entries).toEqual([{ name: 'Red', value: 'red' }]);
-  });
-
-  it('defaults to an empty entries list', () => {
-    const { entries } = mapDatasourceToWire({ name: 'Colors', slug: 'colors' });
-    expect(entries).toEqual([]);
   });
 });

@@ -1,17 +1,14 @@
-import type { Component, ComponentFolder, Datasource, DatasourceEntry, Preset } from '../../types';
+import type { Component, ComponentFolder, Datasource } from '../../types';
 
-/** Local schema loaded from the user's TypeScript entry file. */
+/**
+ * Local schema loaded from the user's TypeScript entry file. The schema package
+ * is content-shape only: blocks and datasource definitions. Component groups are
+ * a UI concern owned by editors, so pushed blocks are flat (the `components/`
+ * directory layout is local organization only and never pushed as groups).
+ */
 export interface SchemaData {
   components: Component[];
-  /** Component groups derived from the directory layout (name-only; parent encoded by the hierarchy). */
-  componentFolders: ComponentFolder[];
   datasources: Datasource[];
-  /** Block name → its group path segments (from the `components/` directory layout). */
-  folderPathByComponentName: Map<string, string[]>;
-  /** Block name → its inline `presets`, lifted off for reconciliation. */
-  presetsByComponentName: Map<string, Preset[]>;
-  /** Datasource name → its inline `entries`, lifted off for reconciliation. */
-  entriesByDatasourceName: Map<string, DatasourceEntry[]>;
 }
 
 /** Remote state fetched from the Storyblok space. */
@@ -24,7 +21,7 @@ export interface RemoteSchemaData {
 export type DiffAction = 'create' | 'update' | 'unchanged' | 'stale';
 
 export interface EntityDiff {
-  type: 'component' | 'componentFolder' | 'datasource';
+  type: 'component' | 'datasource';
   name: string;
   action: DiffAction;
   diff: string | null;

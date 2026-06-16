@@ -17,7 +17,7 @@ export type { Block, BlockFields, NestableBlock, RootBlock } from './helpers/def
 // Datasource
 export { defineDatasource } from './helpers/define-datasource';
 
-export type { Datasource, DatasourceEntryInput } from './helpers/define-datasource';
+export type { Datasource } from './helpers/define-datasource';
 // Field
 export { defineField } from './helpers/define-field';
 

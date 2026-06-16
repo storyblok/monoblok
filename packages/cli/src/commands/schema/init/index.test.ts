@@ -64,13 +64,7 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
   };
 }
 
-// fetchRemoteSchema also reads presets and datasource entries; default to empty.
-const server = setupServer(
-  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/presets`, () =>
-    HttpResponse.json({ presets: [] })),
-  http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasource_entries`, () =>
-    HttpResponse.json({ datasource_entries: [] })),
-);
+const server = setupServer();
 
 const preconditions = {
   hasRemoteComponents(components: MockComponent[]) {
@@ -141,28 +135,28 @@ describe('schema init command', () => {
     expect(content).toContain('defineField(');
   });
 
-  it('should encode component groups as directories (no folder files)', async () => {
-    const folder = makeMockFolder({ name: 'Layout', uuid: 'layout-uuid' });
+  it('should mirror component groups as slugified directories (no folder files)', async () => {
+    const folder = makeMockFolder({ name: 'My Layout', uuid: 'layout-uuid' });
     const comp = makeMockComponent({ name: 'hero', component_group_uuid: 'layout-uuid' } as any);
     preconditions.hasRemoteSchema({ components: [comp], folders: [folder] });
 
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    // The block is placed inside its group directory; no defineBlockFolder file is written.
-    const componentFile = files.find(f => f.includes('/components/Layout/hero.ts'));
+    // The block is placed inside its slugified group directory; no folder file is written.
+    const componentFile = files.find(f => f.includes('/components/my-layout/hero.ts'));
     expect(componentFile).toBeDefined();
     expect(files.some(f => f.includes('/components/folders/'))).toBe(false);
 
     const content = vol.readFileSync(componentFile!, 'utf-8') as string;
     expect(content).toContain('defineBlock(');
     expect(content).not.toContain('defineBlockFolder');
-    // The group is encoded by the directory, so component_group_uuid is dropped.
+    // Groups aren't part of a content-shape definition, so the field is dropped.
     expect(content).not.toContain('component_group_uuid');
 
-    // schema.ts imports the grouped block from its subdirectory.
+    // schema.ts imports the block from its slugified subdirectory.
     const schemaFile = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
-    expect(schemaFile).toContain('./components/Layout/hero');
+    expect(schemaFile).toContain('./components/my-layout/hero');
   });
 
   it('should generate datasource files', async () => {

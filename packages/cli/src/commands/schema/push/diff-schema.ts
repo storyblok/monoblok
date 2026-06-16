@@ -2,9 +2,9 @@ import { createTwoFilesPatch } from 'diff';
 
 import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from '../utils';
-import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../serialize';
+import { serializeComponent, serializeDatasource } from '../serialize';
 
-type EntityType = 'component' | 'componentFolder' | 'datasource';
+type EntityType = 'component' | 'datasource';
 
 function diffEntity(
   type: EntityType,
@@ -53,20 +53,8 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     }
   }
 
-  // Diff component folders
-  const processedFolderNames = new Set<string>();
-  for (const folder of local.componentFolders) {
-    processedFolderNames.add(folder.name);
-    const remoteFolder = remote.componentFolders.get(folder.name);
-    const localSerialized = serializeComponentFolder(folder);
-    const remoteSerialized = remoteFolder ? serializeComponentFolder(remoteFolder) : null;
-    diffs.push(diffEntity('componentFolder', folder.name, localSerialized, remoteSerialized));
-  }
-  for (const [name] of remote.componentFolders) {
-    if (!processedFolderNames.has(name)) {
-      diffs.push(diffEntity('componentFolder', name, null, 'stale'));
-    }
-  }
+  // Component groups are a UI concern owned by editors and are intentionally not
+  // diffed: pushed blocks are flat, and existing remote groups are left as-is.
 
   // Diff datasources
   const processedDatasourceNames = new Set<string>();

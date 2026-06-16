@@ -53,7 +53,6 @@ describe('classifyExports', () => {
     expect(result.components[0].name).toBe('page');
     expect(result.components[0].schema).toEqual({ title: { type: 'text', pos: 0 } });
     expect(result.components[1].name).toBe('hero');
-    expect(result.componentFolders).toHaveLength(0);
     expect(result.datasources).toHaveLength(1);
     expect(result.datasources[0].name).toBe('Colors');
   });
@@ -81,7 +80,6 @@ describe('classifyExports', () => {
     const result = classifyExports({ helper: () => {}, constant: 42 });
 
     expect(result.components).toHaveLength(0);
-    expect(result.componentFolders).toHaveLength(0);
     expect(result.datasources).toHaveLength(0);
   });
 

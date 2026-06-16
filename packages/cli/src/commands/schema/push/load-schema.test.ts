@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyExports, isComponent, isComponentFolder, isDatasource } from './load-schema';
+import { classifyExports, isComponent, isDatasource } from './load-schema';
 
 describe('isComponent', () => {
-  it('should return true for objects with name and schema', () => {
-    expect(isComponent({ name: 'page', schema: { title: { type: 'text' } } })).toBe(true);
+  it('should return true for objects with name and a fields array', () => {
+    expect(isComponent({ name: 'page', fields: [{ name: 'title', type: 'text' }] })).toBe(true);
   });
 
-  it('should return false for objects without schema', () => {
+  it('should return false for objects without fields', () => {
     expect(isComponent({ name: 'folder' })).toBe(false);
   });
 
@@ -17,8 +17,8 @@ describe('isComponent', () => {
     expect(isComponent(undefined)).toBe(false);
   });
 
-  it('should return false for objects with schema but no name', () => {
-    expect(isComponent({ schema: {} })).toBe(false);
+  it('should return false for objects with fields but no name', () => {
+    expect(isComponent({ fields: [] })).toBe(false);
   });
 });
 
@@ -31,35 +31,16 @@ describe('isDatasource', () => {
     expect(isDatasource({ name: 'Colors' })).toBe(false);
   });
 
-  it('should return false for components (has schema)', () => {
-    expect(isDatasource({ name: 'page', slug: 'page', schema: {} })).toBe(false);
-  });
-});
-
-describe('isComponentFolder', () => {
-  it('should return true for folder-shaped objects with uuid', () => {
-    expect(isComponentFolder({ name: 'Layout', uuid: 'abc-123' })).toBe(true);
-  });
-
-  it('should return true for folder-shaped objects with parent_id', () => {
-    expect(isComponentFolder({ name: 'Layout', parent_id: 5 })).toBe(true);
-  });
-
-  it('should return false for components', () => {
-    expect(isComponentFolder({ name: 'page', schema: {} })).toBe(false);
-  });
-
-  it('should return false for datasources', () => {
-    expect(isComponentFolder({ name: 'Colors', slug: 'colors' })).toBe(false);
+  it('should return false for components (has a fields array)', () => {
+    expect(isDatasource({ name: 'page', slug: 'page', fields: [] })).toBe(false);
   });
 });
 
 describe('classifyExports', () => {
-  it('should classify a mixed module into components, folders, and datasources', () => {
+  it('should classify a mixed module and map blocks to the wire schema shape', () => {
     const moduleExports = {
-      pageComponent: { name: 'page', id: 1, created_at: '', updated_at: '', schema: { title: { type: 'text' } } },
-      heroComponent: { name: 'hero', id: 1, created_at: '', updated_at: '', schema: { headline: { type: 'text' } } },
-      layoutFolder: { name: 'Layout', id: 1, uuid: 'Layout' },
+      pageBlock: { name: 'page', id: 1, created_at: '', updated_at: '', fields: [{ name: 'title', type: 'text', pos: 0 }] },
+      heroBlock: { name: 'hero', id: 1, created_at: '', updated_at: '', fields: [{ name: 'headline', type: 'text', pos: 0 }] },
       colorsDatasource: { name: 'Colors', slug: 'colors', id: 1, created_at: '', updated_at: '' },
       headlineField: { type: 'text', max_length: 120 },
       someHelper: () => {},
@@ -70,11 +51,30 @@ describe('classifyExports', () => {
 
     expect(result.components).toHaveLength(2);
     expect(result.components[0].name).toBe('page');
+    expect(result.components[0].schema).toEqual({ title: { type: 'text', pos: 0 } });
     expect(result.components[1].name).toBe('hero');
-    expect(result.componentFolders).toHaveLength(1);
-    expect(result.componentFolders[0].name).toBe('Layout');
+    expect(result.componentFolders).toHaveLength(0);
     expect(result.datasources).toHaveLength(1);
     expect(result.datasources[0].name).toBe('Colors');
+  });
+
+  it('should map DSL reference keys (allow, datasource) to their wire equivalents', () => {
+    const moduleExports = {
+      pageBlock: {
+        name: 'page',
+        fields: [
+          { name: 'body', type: 'bloks', pos: 0, allow: ['hero', 'teaser'] },
+          { name: 'theme', type: 'option', pos: 1, source: 'internal', datasource: 'colors' },
+        ],
+      },
+    };
+
+    const { components } = classifyExports(moduleExports);
+
+    expect(components[0].schema).toEqual({
+      body: { type: 'bloks', pos: 0, component_whitelist: ['hero', 'teaser'] },
+      theme: { type: 'option', pos: 1, source: 'internal', datasource_slug: 'colors' },
+    });
   });
 
   it('should return empty arrays when no matching exports', () => {
@@ -85,15 +85,12 @@ describe('classifyExports', () => {
     expect(result.datasources).toHaveLength(0);
   });
 
-  it('should unwrap a schema object with blocks, blockFolders, and datasources', () => {
+  it('should unwrap a schema object with blocks and datasources', () => {
     const moduleExports = {
       schema: {
         blocks: {
-          pageBlock: { name: 'page', id: 1, created_at: '', updated_at: '', schema: { title: { type: 'text' } } },
-          heroBlock: { name: 'hero', id: 1, created_at: '', updated_at: '', schema: {} },
-        },
-        blockFolders: {
-          layoutFolder: { name: 'Layout', id: 1, uuid: 'Layout' },
+          pageBlock: { name: 'page', id: 1, created_at: '', updated_at: '', fields: [{ name: 'title', type: 'text', pos: 0 }] },
+          heroBlock: { name: 'hero', id: 1, created_at: '', updated_at: '', fields: [] },
         },
         datasources: {
           colorsDatasource: { name: 'Colors', slug: 'colors', id: 1, created_at: '', updated_at: '' },
@@ -106,8 +103,6 @@ describe('classifyExports', () => {
     expect(result.components).toHaveLength(2);
     expect(result.components[0].name).toBe('page');
     expect(result.components[1].name).toBe('hero');
-    expect(result.componentFolders).toHaveLength(1);
-    expect(result.componentFolders[0].name).toBe('Layout');
     expect(result.datasources).toHaveLength(1);
     expect(result.datasources[0].name).toBe('Colors');
   });
@@ -116,8 +111,8 @@ describe('classifyExports', () => {
     const moduleExports = {
       schema: {
         blocks: {
-          pageBlock: { name: 'page', id: 1, created_at: '', updated_at: '', schema: { title: { type: 'text' } } },
-          heroBlock: { name: 'hero', id: 1, created_at: '', updated_at: '', schema: {} },
+          pageBlock: { name: 'page', id: 1, created_at: '', updated_at: '', fields: [{ name: 'title', type: 'text', pos: 0 }] },
+          heroBlock: { name: 'hero', id: 1, created_at: '', updated_at: '', fields: [] },
         },
       },
     };
@@ -127,7 +122,6 @@ describe('classifyExports', () => {
     expect(result.components).toHaveLength(2);
     expect(result.components[0].name).toBe('page');
     expect(result.components[1].name).toBe('hero');
-    expect(result.componentFolders).toHaveLength(0);
     expect(result.datasources).toHaveLength(0);
   });
 });

@@ -1,62 +1,53 @@
-import type { Component, ComponentFolder, Datasource } from '../../../types';
 import type { SchemaData } from '../types';
+import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Returns true if the value looks like a defineBlock() result. */
-export function isComponent(value: unknown): value is Component {
+/** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
+export function isComponent(value: unknown): value is Record<string, unknown> {
   return isObject(value)
     && typeof value.name === 'string'
-    && 'schema' in value
-    && isObject(value.schema);
+    && Array.isArray(value.fields);
 }
 
-/** Returns true if the value looks like a defineDatasource() result. */
-export function isDatasource(value: unknown): value is Datasource {
+/** Returns true if the value looks like a `defineDatasource()` result. */
+export function isDatasource(value: unknown): value is Record<string, unknown> {
   return isObject(value)
     && typeof value.name === 'string'
     && typeof value.slug === 'string'
-    && !('schema' in value);
-}
-
-/** Returns true if the value looks like a defineBlockFolder() result. */
-export function isComponentFolder(value: unknown): value is ComponentFolder {
-  return isObject(value)
-    && typeof value.name === 'string'
-    && !('schema' in value)
-    && !('slug' in value)
-    && ('uuid' in value || 'parent_id' in value);
+    && !Array.isArray(value.fields);
 }
 
 /** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...} }`). */
 export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
   return isObject(value)
-    && ('blocks' in value || 'blockFolders' in value || 'datasources' in value);
+    && ('blocks' in value || 'datasources' in value);
 }
 
-/** Classifies a module's exports into components, component folders, and datasources. */
+/**
+ * Classifies a module's exports into wire components and datasources, mapping
+ * the content-shape DSL (`fields`/`allow`/`datasource`/inline `presets`/`entries`)
+ * to the MAPI wire shape. Inline presets and entries are lifted off for separate
+ * reconciliation.
+ */
 export function classifyExports(moduleExports: Record<string, unknown>): SchemaData {
-  const components: Component[] = [];
-  const componentFolders: ComponentFolder[] = [];
-  const datasources: Datasource[] = [];
+  const components: SchemaData['components'] = [];
+  const datasources: SchemaData['datasources'] = [];
 
   function collect(value: unknown) {
     if (isComponent(value)) {
-      components.push(value);
+      components.push(mapBlockToWire(value).component);
     }
     else if (isDatasource(value)) {
-      datasources.push(value);
-    }
-    else if (isComponentFolder(value)) {
-      componentFolders.push(value);
+      datasources.push(mapDatasourceToWire(value).datasource);
     }
   }
 
   for (const value of Object.values(moduleExports)) {
     if (isSchemaObject(value)) {
-      // Unwrap schema object: collect from each sub-record
+      // Unwrap schema object: collect from each sub-record (blocks, datasources)
       for (const group of Object.values(value)) {
         if (isObject(group)) {
           for (const entity of Object.values(group)) {
@@ -70,7 +61,7 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
     }
   }
 
-  return { components, componentFolders, datasources };
+  return { components, componentFolders: [], datasources };
 }
 
 /**

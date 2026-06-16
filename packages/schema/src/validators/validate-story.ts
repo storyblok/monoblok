@@ -105,8 +105,14 @@ function validateFieldValue(
         pushTypeIssue(value, 'string[]', path, entity, issues);
       }
       break;
+    case 'section':
+    case 'tab':
+      // Layout-only field types carry no content value.
+      break;
     default:
-      // section/tab carry no value; unknown types are left to validateSchema.
+      // Exhaustiveness guard: when a new `FieldType` is added, this fails to
+      // compile until the field type is handled (or explicitly skipped) above.
+      field.type satisfies never;
       break;
   }
 }

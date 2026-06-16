@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defineBlock } from '../helpers/define-block';
 import { defineDatasource } from '../helpers/define-datasource';
 import { defineField } from '../helpers/define-field';
+import type { SchemaBlockLike } from './shapes';
 import { validateSchema } from './validate-schema';
 
 const colors = defineDatasource({ name: 'Colors', slug: 'colors' });
@@ -33,7 +34,7 @@ describe('validateSchema', () => {
 
   it('flags duplicate field names within a block', () => {
     // Build the block shape directly to bypass defineBlock's runtime guard.
-    const block = { name: 'dup', fields: [{ name: 'a', type: 'text' }, { name: 'a', type: 'textarea' }] };
+    const block: SchemaBlockLike = { name: 'dup', fields: [{ name: 'a', type: 'text' }, { name: 'a', type: 'textarea' }] };
     const result = validateSchema({ blocks: [block] });
     expect(codesFor(result)).toContain('duplicate_field_name');
   });
@@ -45,14 +46,14 @@ describe('validateSchema', () => {
   });
 
   it('flags an allow reference to an unknown block', () => {
-    const block = { name: 'page', fields: [{ name: 'body', type: 'bloks', allow: ['ghost'] }] };
+    const block = defineBlock({ name: 'page', fields: [defineField('body', { type: 'bloks', allow: ['ghost'] })] });
     const result = validateSchema({ blocks: [block] });
     expect(result.ok).toBe(false);
     expect(codesFor(result)).toContain('unresolved_allow');
   });
 
   it('flags a datasource reference to an unknown datasource', () => {
-    const block = { name: 'page', fields: [{ name: 'theme', type: 'option', datasource: 'missing' }] };
+    const block = defineBlock({ name: 'page', fields: [defineField('theme', { type: 'option', datasource: 'missing' })] });
     const result = validateSchema({ blocks: [block] });
     expect(codesFor(result)).toContain('unresolved_datasource');
   });

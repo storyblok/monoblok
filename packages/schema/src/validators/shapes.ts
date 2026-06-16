@@ -1,3 +1,5 @@
+import type { FieldType } from '../generated/types/field';
+
 /**
  * Loose structural views of the content-shape definitions, used internally by
  * the validators. A real `Block` / `Datasource` (from the `define*` helpers) is
@@ -8,7 +10,7 @@
 /** A single field within a block's `fields` array. */
 export interface SchemaFieldLike {
   name: string;
-  type: string;
+  type: FieldType;
   required?: boolean;
   /** Normalized block-name references for `bloks` fields. */
   allow?: readonly string[];

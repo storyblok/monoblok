@@ -1,13 +1,11 @@
 import { defineBlock, defineField } from '@storyblok/schema';
 
 import { richtextField } from '../fields';
-import { contentFolder } from './folders/content';
 
 export const articleBlock = defineBlock({
   name: 'article',
   is_nestable: true,
-  component_group_uuid: contentFolder.uuid,
-  schema: [
+  fields: [
     defineField('content_tab', {
       type: 'tab',
       keys: ['title', 'author', 'publish_date', 'body'],

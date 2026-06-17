@@ -5,7 +5,7 @@ import { headlineField, richtextField } from '../fields';
 export const faqItemBlock = defineBlock({
   name: 'faq_item',
   is_nestable: true,
-  schema: [
+  fields: [
     defineField('question', {
       type: 'text',
       max_length: 200,
@@ -19,7 +19,7 @@ export const faqItemBlock = defineBlock({
 export const faqBlock = defineBlock({
   name: 'faq',
   is_nestable: true,
-  schema: [
+  fields: [
     defineField('settings_section', {
       type: 'section',
       keys: ['headline', 'categories'],
@@ -34,7 +34,7 @@ export const faqBlock = defineBlock({
     defineField('categories', {
       type: 'options',
       source: 'internal',
-      datasource_slug: 'faq_categories',
+      datasource: 'faq_categories',
     }),
     defineField('items_section', {
       type: 'section',
@@ -48,7 +48,7 @@ export const faqBlock = defineBlock({
     }),
     defineField('items', {
       type: 'bloks',
-      component_whitelist: [faqItemBlock.name],
+      allow: [faqItemBlock.name],
       minimum: 1,
     }),
   ],

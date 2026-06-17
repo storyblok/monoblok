@@ -5,7 +5,7 @@ import { headlineField } from '../fields';
 export const statItemBlock = defineBlock({
   name: 'stat_item',
   is_nestable: true,
-  schema: [
+  fields: [
     defineField('label', { type: 'text', max_length: 60, required: true }),
     defineField('value', {
       type: 'number',
@@ -23,7 +23,7 @@ export const statItemBlock = defineBlock({
 export const statsBlock = defineBlock({
   name: 'stats',
   is_nestable: true,
-  schema: [
+  fields: [
     headlineField,
     defineField('description', {
       type: 'textarea',
@@ -32,7 +32,7 @@ export const statsBlock = defineBlock({
     }),
     defineField('items', {
       type: 'bloks',
-      component_whitelist: [statItemBlock.name],
+      allow: [statItemBlock.name],
       minimum: 1,
       maximum: 6,
     }),

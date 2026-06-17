@@ -5,7 +5,7 @@ import { headlineField } from '../fields';
 export const comparisonTableBlock = defineBlock({
   name: 'comparison_table',
   is_nestable: true,
-  schema: [
+  fields: [
     headlineField,
     defineField('description', { type: 'textarea', max_length: 300 }),
     defineField('table', { type: 'table' }),

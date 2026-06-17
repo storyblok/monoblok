@@ -5,7 +5,7 @@ import { eyebrowField, headlineField, markdownField } from '../fields';
 export const introBlock = defineBlock({
   name: 'intro',
   is_nestable: true,
-  schema: [
+  fields: [
     eyebrowField,
     { ...headlineField, required: true },
     markdownField,

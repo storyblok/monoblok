@@ -14,12 +14,12 @@ export const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('seo_title', { type: 'text', max_length: 70 }),
     defineField('seo_description', { type: 'textarea', max_length: 160 }),
     defineField('blocks', {
       type: 'bloks',
-      component_whitelist: [
+      allow: [
         heroBlock.name,
         introBlock.name,
         mediaBlock.name,

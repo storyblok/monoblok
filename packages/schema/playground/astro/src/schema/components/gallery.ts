@@ -5,7 +5,7 @@ import { headlineField } from '../fields';
 export const galleryBlock = defineBlock({
   name: 'gallery',
   is_nestable: true,
-  schema: [
+  fields: [
     headlineField,
     defineField('images', {
       type: 'multiasset',

@@ -6,11 +6,11 @@ import { teaserBlock } from './teaser';
 export const teaserListBlock = defineBlock({
   name: 'teaser_list',
   is_nestable: true,
-  schema: [
+  fields: [
     headlineField,
     defineField('items', {
       type: 'bloks',
-      component_whitelist: [teaserBlock.name],
+      allow: [teaserBlock.name],
       minimum: 1,
     }),
   ],

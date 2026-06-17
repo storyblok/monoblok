@@ -26,7 +26,7 @@ async function getStoryBySlug(slug: string) {
       console.log(story.content);
       console.log(story.content.seo_description);
 
-      // body bloks are typed to page's component_whitelist: hero | feature_card | kitchen_sink
+      // body bloks are typed to page's allow list: hero | feature_card | kitchen_sink
       for (const block of story.content.body ?? []) {
         if (block.component === 'hero') {
           // <HeroBanner headline={block.headline} ctaLabel={block.cta_label} ctaLink={block.cta_link} />
@@ -47,7 +47,7 @@ async function getStoryBySlug(slug: string) {
 
     case 'article':
       // <ArticleTemplate title={story.content.title} author={story.content.author} />
-      console.log(story.content.);
+      console.log(story.content.title);
       console.log(story.content.author);
       console.log(story.content.published_at);
       break;

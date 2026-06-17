@@ -12,8 +12,6 @@ import { statItemBlock, statsBlock } from './components/stats';
 import { teaserListBlock } from './components/teaser-list';
 import { teaserBlock } from './components/teaser';
 import { pageBlock } from './components/page';
-import { contentFolder } from './components/folders/content';
-import { layoutFolder } from './components/folders/layout';
 import { bannerThemesDatasource, faqCategoriesDatasource } from './datasources';
 
 export const schema = {
@@ -32,10 +30,6 @@ export const schema = {
     statsBlock,
     statItemBlock,
     comparisonTableBlock,
-  },
-  blockFolders: {
-    layoutFolder,
-    contentFolder,
   },
   datasources: {
     bannerThemesDatasource,

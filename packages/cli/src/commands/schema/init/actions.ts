@@ -22,9 +22,9 @@ async function writeFileWithDirs(filePath: string, content: string): Promise<voi
 /**
  * Writes all generated schema files to the target directory. A block's remote
  * component group is mirrored as a (slugified) directory: a block in group
- * `My Layout` is written to `components/my-layout/<name>.ts`; nested groups nest
+ * `My Layout` is written to `blocks/my-layout/<name>.ts`; nested groups nest
  * directories. This layout is local organization only — `schema push` does not
- * read it back as groups. Ungrouped blocks are written at the components root.
+ * read it back as groups. Ungrouped blocks are written at the blocks root.
  */
 export async function writeSchemaFiles(
   targetPath: string,
@@ -42,7 +42,7 @@ export async function writeSchemaFiles(
     if (segments.length > 0) { groupPathByComponentName.set(comp.name, segments); }
 
     const fileName = componentFileName(comp.name);
-    const filePath = join(targetPath, 'components', ...segments, `${fileName}.ts`);
+    const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
     await writeFileWithDirs(filePath, generateComponentFile(comp));
     writtenFiles.push(filePath);
   }

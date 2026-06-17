@@ -3,7 +3,7 @@ import type { Component, ComponentFolder, Datasource } from '../../types';
 /**
  * Local schema loaded from the user's TypeScript entry file. The schema package
  * is content-shape only: blocks and datasource definitions. Component groups are
- * a UI concern owned by editors, so pushed blocks are flat (the `components/`
+ * a UI concern owned by editors, so pushed blocks are flat (the `blocks/`
  * directory layout is local organization only and never pushed as groups).
  */
 export interface SchemaData {

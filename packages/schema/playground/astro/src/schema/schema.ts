@@ -1,17 +1,17 @@
 import type { Schema as InferSchema, Story as InferStory, MapiStory as InferStoryMapi } from '@storyblok/schema';
 
-import { articleBlock } from './components/article';
-import { bannerBlock } from './components/banner';
-import { comparisonTableBlock } from './components/comparison-table';
-import { faqBlock, faqItemBlock } from './components/faq';
-import { galleryBlock } from './components/gallery';
-import { heroBlock } from './components/hero';
-import { introBlock } from './components/intro';
-import { mediaBlock } from './components/media';
-import { statItemBlock, statsBlock } from './components/stats';
-import { teaserListBlock } from './components/teaser-list';
-import { teaserBlock } from './components/teaser';
-import { pageBlock } from './components/page';
+import { articleBlock } from './blocks/article';
+import { bannerBlock } from './blocks/banner';
+import { comparisonTableBlock } from './blocks/comparison-table';
+import { faqBlock, faqItemBlock } from './blocks/faq';
+import { galleryBlock } from './blocks/gallery';
+import { heroBlock } from './blocks/hero';
+import { introBlock } from './blocks/intro';
+import { mediaBlock } from './blocks/media';
+import { statItemBlock, statsBlock } from './blocks/stats';
+import { teaserListBlock } from './blocks/teaser-list';
+import { teaserBlock } from './blocks/teaser';
+import { pageBlock } from './blocks/page';
 import { bannerThemesDatasource, faqCategoriesDatasource } from './datasources';
 
 export const schema = {

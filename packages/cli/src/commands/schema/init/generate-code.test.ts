@@ -122,10 +122,10 @@ describe('generateSchemaFile', () => {
     const result = generateSchemaFile(components, datasources, groupPaths);
 
     expect(result).toContain('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
-    expect(result).toContain('import { pageBlock } from \'./components/page\';');
+    expect(result).toContain('import { pageBlock } from \'./blocks/page\';');
     // Grouped block imported from its group subdirectory (segment verbatim)
-    expect(result).toContain('import { heroBlock } from \'./components/Layout/hero\';');
-    expect(result).toContain('import { teaserListBlock } from \'./components/teaser-list\';');
+    expect(result).toContain('import { heroBlock } from \'./blocks/Layout/hero\';');
+    expect(result).toContain('import { teaserListBlock } from \'./blocks/teaser-list\';');
     expect(result).toContain('import { categoriesDatasource } from \'./datasources/categories\';');
 
     expect(result).toContain('export const schema = {');

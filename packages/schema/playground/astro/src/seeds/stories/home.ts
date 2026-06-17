@@ -1,11 +1,11 @@
 import { createStoryHelpers } from '@storyblok/schema';
 import type { Asset } from '@storyblok/management-api-client';
-import { pageBlock } from '../../schema/components/page';
-import { heroBlock } from '../../schema/components/hero';
-import { introBlock } from '../../schema/components/intro';
-import { mediaBlock } from '../../schema/components/media';
-import { teaserBlock } from '../../schema/components/teaser';
-import { teaserListBlock } from '../../schema/components/teaser-list';
+import { pageBlock } from '../../schema/blocks/page';
+import { heroBlock } from '../../schema/blocks/hero';
+import { introBlock } from '../../schema/blocks/intro';
+import { mediaBlock } from '../../schema/blocks/media';
+import { teaserBlock } from '../../schema/blocks/teaser';
+import { teaserListBlock } from '../../schema/blocks/teaser-list';
 import type { Schema } from '../../schema/schema';
 
 const { defineStoryCreate } = createStoryHelpers().withTypes<Schema>();

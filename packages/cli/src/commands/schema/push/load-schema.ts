@@ -103,11 +103,10 @@ async function walkSourceFiles(
  * Loads a TypeScript schema entry file and returns classified exports.
  *
  * Blocks and datasources are sourced from the entry file. When a sibling
- * `components/` or `blocks/` directory exists, it is also walked file-by-file so
- * blocks organized into subdirectories are discovered even if the entry file
- * doesn't re-export them. The directory layout is local organization only and
- * does not affect the pushed (flat) component groups. Uses jiti for TypeScript
- * support.
+ * `blocks/` directory exists, it is also walked file-by-file so blocks organized
+ * into subdirectories are discovered even if the entry file doesn't re-export
+ * them. The directory layout is local organization only and does not affect the
+ * pushed (flat) component groups. Uses jiti for TypeScript support.
  */
 export async function loadSchema(entryPath: string): Promise<SchemaData> {
   const { createJiti } = await import('jiti');
@@ -121,17 +120,16 @@ export async function loadSchema(entryPath: string): Promise<SchemaData> {
   const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
   const data = classifyExports(entryMod);
 
-  // Discover blocks laid out in a sibling components directory.
-  let componentsDir: string | undefined;
-  for (const candidate of [join(entryDir, 'components'), join(entryDir, 'blocks')]) {
-    try {
-      if ((await fs.stat(candidate)).isDirectory()) { componentsDir = candidate; break; }
-    }
-    catch { /* not present */ }
+  // Discover blocks laid out in a sibling blocks directory.
+  const blocksDir = join(entryDir, 'blocks');
+  let hasBlocksDir = false;
+  try {
+    hasBlocksDir = (await fs.stat(blocksDir)).isDirectory();
   }
+  catch { /* not present */ }
 
-  if (componentsDir) {
-    const files = await walkSourceFiles(componentsDir, fs, join);
+  if (hasBlocksDir) {
+    const files = await walkSourceFiles(blocksDir, fs, join);
     for (const file of files) {
       const mod = await jiti.import(file) as Record<string, unknown>;
       for (const value of Object.values(mod)) {

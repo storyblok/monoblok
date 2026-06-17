@@ -203,7 +203,7 @@ export function generateSchemaFile(
   lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
-  // Import components from their group subdirectory
+  // Import blocks from their group subdirectory
   for (const component of components) {
     const varName = componentVarName(component.name);
     const fileName = componentFileName(component.name);
@@ -211,7 +211,7 @@ export function generateSchemaFile(
     // organization that mirrors the remote groups; `schema push` ignores it.
     const segments = groupPathByComponentName.get(component.name) ?? [];
     const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
-    lines.push(`import { ${varName} } from './components/${subPath}${fileName}';`);
+    lines.push(`import { ${varName} } from './blocks/${subPath}${fileName}';`);
   }
 
   // Import datasources

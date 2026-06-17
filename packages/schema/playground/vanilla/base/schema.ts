@@ -5,13 +5,13 @@ import { heroBlock } from './blocks/hero';
 import { featureCardBlock } from './blocks/feature-card';
 import { kitchenSinkBlock } from './blocks/kitchen-sink';
 import { emptyBlock } from './blocks/empty-block';
-import { colorsDatasource, iconsDatasource } from './datasources';
+import { blogTagsDatasource, colorsDatasource, iconsDatasource } from './datasources';
 
 export const contentTypes = { pageBlock, articleBlock };
 
 export const schema = {
   blocks: { ...contentTypes, heroBlock, featureCardBlock, kitchenSinkBlock, emptyBlock },
-  datasources: { iconsDatasource, colorsDatasource },
+  datasources: { iconsDatasource, colorsDatasource, blogTagsDatasource },
 };
 
 export type Schema = InferSchema<typeof schema>;

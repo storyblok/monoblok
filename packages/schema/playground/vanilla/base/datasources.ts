@@ -13,3 +13,8 @@ export const colorsDatasource = defineDatasource({
     { name: 'Dark Mode', entry_value: 'dark' },
   ],
 });
+
+export const blogTagsDatasource = defineDatasource({
+  name: 'Blog Tags',
+  slug: 'blog-tags',
+});

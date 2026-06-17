@@ -21,13 +21,7 @@ import { createManagementApiClient } from '@storyblok/management-api-client';
 import {
   createStoryHelpers,
   defineBlock,
-  defineBlockCreate,
-  defineBlockFolderCreate,
-  defineDatasourceCreate,
-  defineDatasourceEntryCreate,
   defineField,
-  defineInternalTagCreate,
-  definePresetCreate,
 } from '@storyblok/schema';
 
 const token = process.env.STORYBLOK_TOKEN!;
@@ -43,7 +37,7 @@ const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
-  schema: [
+  fields: [
     defineField('title', { type: 'text', required: true }),
     defineField('image', { type: 'asset' }),
   ],
@@ -51,21 +45,21 @@ const teaserComponent = defineBlock({
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
-    defineField('items', { type: 'bloks', component_whitelist: [teaserComponent.name], required: true }),
+    defineField('items', { type: 'bloks', allow: [teaserComponent.name], required: true }),
   ],
 });
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
     defineField('rating', { type: 'number' }),
     defineField('is_featured', { type: 'boolean' }),
     defineField('description', { type: 'richtext' }),
-    defineField('body', { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], required: true }),
-    defineField('category', { type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG }),
+    defineField('body', { type: 'bloks', allow: [teaserComponent.name, sectionComponent.name], required: true }),
+    defineField('category', { type: 'option', source: 'internal', datasource: DATASOURCE_SLUG }),
     defineField('any_blocks', { type: 'bloks', required: true }),
   ],
 });
@@ -155,53 +149,50 @@ describe('schema + mapi-client MAPI round-trip', () => {
 
     // 1. Datasource + entries first — the page component schema references the datasource slug,
     //    and the MAPI validates that the datasource exists at component creation time.
-    const datasourcePayload = defineDatasourceCreate({
+    // Create payloads are plain MAPI wire objects validated by the typed client.
+    const dsRes = await client.datasources.create({ body: { datasource: {
       name: DATASOURCE_NAME,
       slug: DATASOURCE_SLUG,
-    });
-    const dsRes = await client.datasources.create({ body: { datasource: datasourcePayload } });
+    } } });
     datasourceId = dsRes.data!.datasource!.id!;
 
     for (const entry of [
-      defineDatasourceEntryCreate({ name: 'Technology', value: 'tech', datasource_id: datasourceId }),
-      defineDatasourceEntryCreate({ name: 'Design', value: 'design', datasource_id: datasourceId }),
-      defineDatasourceEntryCreate({ name: 'Business', value: 'business', datasource_id: datasourceId }),
+      { name: 'Technology', value: 'tech', datasource_id: datasourceId },
+      { name: 'Design', value: 'design', datasource_id: datasourceId },
+      { name: 'Business', value: 'business', datasource_id: datasourceId },
     ]) {
       await client.datasourceEntries.create({ body: { datasource_entry: entry } });
     }
 
     // 2. Component folder
-    const folderPayload = defineBlockFolderCreate({ name: `${PREFIX}folder` });
-    const folderRes = await client.componentFolders.create({ body: { component_group: folderPayload } });
+    const folderRes = await client.componentFolders.create({ body: { component_group: { name: `${PREFIX}folder` } } });
     componentFolderId = folderRes.data!.component_group!.id!;
     const folderUuid = folderRes.data!.component_group!.uuid;
 
     // 3. Teaser component (innermost — whitelisted by section)
-    const teaserPayload = defineBlockCreate({
+    const teaserRes = await client.components.create({ body: { component: {
       name: teaserComponent.name,
       schema: {
         title: { type: 'text', required: true, pos: 0 },
         image: { type: 'asset', pos: 1 },
       },
       component_group_uuid: folderUuid,
-    });
-    const teaserRes = await client.components.create({ body: { component: teaserPayload } });
+    } } });
     teaserComponentId = teaserRes.data!.component!.id!;
 
     // 4. Section component (level 2 — whitelists teaser, whitelisted by page)
-    const sectionPayload = defineBlockCreate({
+    const sectionRes = await client.components.create({ body: { component: {
       name: sectionComponent.name,
       schema: {
         title: { type: 'text', pos: 0 },
         items: { type: 'bloks', component_whitelist: [teaserComponent.name], pos: 1 },
       },
       component_group_uuid: folderUuid,
-    });
-    const sectionRes = await client.components.create({ body: { component: sectionPayload } });
+    } } });
     sectionComponentId = sectionRes.data!.component!.id!;
 
     // 5. Page component (level 1 — whitelists both teaser and section in body)
-    const pagePayload = defineBlockCreate({
+    const pageRes = await client.components.create({ body: { component: {
       name: pageComponent.name,
       schema: {
         headline: { type: 'text', required: true, pos: 0 },
@@ -214,23 +205,20 @@ describe('schema + mapi-client MAPI round-trip', () => {
       },
       component_group_uuid: folderUuid,
       is_root: true,
-    });
-    const pageRes = await client.components.create({ body: { component: pagePayload } });
+    } } });
     pageComponentId = pageRes.data!.component!.id!;
 
     // 5. Internal tag
-    const tagPayload = defineInternalTagCreate({ name: `${PREFIX}tag`, object_type: 'component' });
-    const tagRes = await client.internalTags.create({ body: { internal_tag: tagPayload } });
+    const tagRes = await client.internalTags.create({ body: { internal_tag: { name: `${PREFIX}tag`, object_type: 'component' } } });
     internalTagId = tagRes.data!.internal_tag!.id!;
 
     // 6. Preset for page component
-    const presetPayload = definePresetCreate({
+    const presetRes = await client.presets.create({ body: { preset: {
       name: `${PREFIX}default_page`,
       component_id: pageComponentId,
       preset: { headline: 'Default Headline', rating: 0, is_featured: false },
       description: `Default preset for ${pageComponent.name}`,
-    });
-    const presetRes = await client.presets.create({ body: { preset: presetPayload } });
+    } } });
     presetId = presetRes.data!.preset!.id!;
 
     // 8. Story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)

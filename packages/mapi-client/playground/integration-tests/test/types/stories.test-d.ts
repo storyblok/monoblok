@@ -1,11 +1,11 @@
-import { defineBlock, defineField, defineStoryCreate, defineStoryUpdate } from '@storyblok/schema';
+import { defineBlock, defineField } from '@storyblok/schema';
 import { createManagementApiClient, type Story as StoryMapi } from '@storyblok/management-api-client';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // Nestable block — not a root story type
 const teaserComponent = defineBlock({
   name: 'teaser',
-  schema: [
+  fields: [
     defineField('text', { type: 'text' }),
     defineField('image', { type: 'asset' }),
   ],
@@ -18,7 +18,7 @@ const teaserComponent = defineBlock({
 const heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
     defineField('count', { type: 'number' }),
     // bloks field without a whitelist — resolves to nestable components only
@@ -34,12 +34,12 @@ const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text' }),
     defineField('body', { type: 'richtext' }),
-    defineField('teasers', { type: 'bloks', component_whitelist: [teaserComponent.name] }),
-    defineField('hero', { type: 'bloks', component_whitelist: [heroComponent.name] }),
-    defineField('blocks', { type: 'bloks', component_whitelist: [heroComponent.name, teaserComponent.name] }),
+    defineField('teasers', { type: 'bloks', allow: [teaserComponent.name] }),
+    defineField('hero', { type: 'bloks', allow: [heroComponent.name] }),
+    defineField('blocks', { type: 'bloks', allow: [heroComponent.name, teaserComponent.name] }),
   ],
   id: 0,
   created_at: '',
@@ -237,36 +237,7 @@ describe('createManagementApiClient with .withTypes()', () => {
   });
 });
 
-describe('defineStoryCreate / defineStoryUpdate combined with mapi client', () => {
-  it('should produce a defineStoryCreate result accepted by untyped stories.create', async () => {
-    const createPayload = defineStoryCreate(_pageComponent, {
-      name: 'My Page',
-      content: { headline: 'Hello' },
-    });
-
-    const client = createManagementApiClient(CLIENT_CONFIG);
-    await client.stories.create({ body: { story: createPayload } });
-  });
-
-  it('should produce a defineStoryUpdate result accepted by untyped stories.update', async () => {
-    const updatePayload = defineStoryUpdate(_pageComponent, {
-      content: { headline: 'Updated' },
-    });
-
-    const client = createManagementApiClient(CLIENT_CONFIG);
-    await client.stories.update(1, { body: { story: updatePayload } });
-  });
-
-  it('should produce a defineStoryCreate result for hero component accepted by untyped stories.create', async () => {
-    const createPayload = defineStoryCreate(heroComponent, {
-      name: 'My Hero',
-      content: { title: 'Welcome', count: 42, sections: [] },
-    });
-
-    const client = createManagementApiClient(CLIENT_CONFIG);
-    await client.stories.create({ body: { story: createPayload } });
-  });
-
+describe('withTypes() write-body narrowing', () => {
   it('should reject nestable-only component name in create body content', () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     client.stories.create({
@@ -295,11 +266,7 @@ describe('defineStoryCreate / defineStoryUpdate combined with mapi client', () =
       expectTypeOf(story.content.component).toEqualTypeOf<'page' | 'hero'>();
 
       if (story.content.component === 'page') {
-        const updatePayload = defineStoryUpdate(_pageComponent, {
-          name: story.name,
-          content: { headline: story.content.headline ?? 'Default' },
-        });
-        expectTypeOf(updatePayload).toMatchTypeOf<{ name?: string | null }>();
+        expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
       }
     }
   });

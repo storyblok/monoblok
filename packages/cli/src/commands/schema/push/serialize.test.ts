@@ -96,6 +96,28 @@ describe('serializeComponent', () => {
     expect(result).toContain('type: \'bloks\',');
   });
 
+  it('should strip component_group_uuid by default', () => {
+    const component = {
+      name: 'hero',
+      component_group_uuid: 'group-uuid',
+      schema: {},
+    };
+
+    expect(serializeComponent(component)).not.toContain('component_group_uuid');
+  });
+
+  it('should keep component_group_uuid when includeGroupUuid is set (group escape hatch)', () => {
+    const component = {
+      name: 'hero',
+      component_group_uuid: 'group-uuid',
+      schema: {},
+    };
+
+    const result = serializeComponent(component, { includeGroupUuid: true });
+
+    expect(result).toContain('component_group_uuid: \'group-uuid\',');
+  });
+
   it('should use stable property ordering', () => {
     const component1 = {
       id: 1,

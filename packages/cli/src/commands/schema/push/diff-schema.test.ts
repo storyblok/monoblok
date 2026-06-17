@@ -169,6 +169,42 @@ describe('diffSchema', () => {
     expect(result.diffs[0].action).toBe('unchanged');
   });
 
+  it('should not diff component_group_uuid when local does not opt into the escape hatch', () => {
+    const localComp = makeComponent('page', { title: { type: 'text', pos: 0 } });
+    // Remote block belongs to a UI-managed group; local leaves it unset.
+    const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'group-uuid' };
+
+    const local: SchemaData = { components: [localComp], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['page', remoteComp]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.unchanged).toBe(1);
+    expect(result.updates).toBe(0);
+  });
+
+  it('should diff component_group_uuid when local sets it (group escape hatch)', () => {
+    const localComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'new-group' };
+    const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'old-group' };
+
+    const local: SchemaData = { components: [localComp], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['page', remoteComp]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].action).toBe('update');
+    expect(result.diffs[0].diff).toContain('component_group_uuid');
+  });
+
   it('should handle all entity types together (component groups are not diffed)', () => {
     const local: SchemaData = {
       components: [makeComponent('page', {})],

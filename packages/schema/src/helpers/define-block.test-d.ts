@@ -39,6 +39,11 @@ describe('defineBlock', () => {
     expectTypeOf(testBlock.description).toEqualTypeOf<string | null | undefined>();
     expectTypeOf(nullDescriptionBlock.description).toEqualTypeOf<string | null | undefined>();
   });
+
+  it('should accept the component_group_uuid escape hatch', () => {
+    const testBlock = defineBlock({ name: 'test', component_group_uuid: 'group-uuid', fields: [] });
+    expectTypeOf(testBlock.component_group_uuid).toEqualTypeOf<string | null | undefined>();
+  });
 });
 
 const fields = [

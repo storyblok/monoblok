@@ -27,9 +27,19 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): Recor
 /**
  * Serializes a component to a normalized `defineBlock()` code string.
  * Strips API-assigned fields. Uses stable property ordering.
+ *
+ * `component_group_uuid` is stripped by default (groups are a UI concern), but
+ * kept when `includeGroupUuid` is set — used by diffing when a block opts into
+ * the group escape hatch, so a changed group is detected and pushed.
  */
-export function serializeComponent(component: Record<string, unknown>): string {
-  const clean = stripKeys(component, COMPONENT_STRIP_KEYS);
+export function serializeComponent(
+  component: Record<string, unknown>,
+  options: { includeGroupUuid?: boolean } = {},
+): string {
+  const stripSet = options.includeGroupUuid
+    ? new Set([...COMPONENT_STRIP_KEYS].filter(key => key !== 'component_group_uuid'))
+    : COMPONENT_STRIP_KEYS;
+  const clean = stripKeys(component, stripSet);
 
   if (clean.schema && typeof clean.schema === 'object') {
     clean.schema = sortSchemaByPos(clean.schema as Record<string, Record<string, unknown>>);

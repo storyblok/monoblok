@@ -43,8 +43,14 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
   for (const comp of local.components) {
     processedComponentNames.add(comp.name);
     const remoteComp = remote.components.get(comp.name);
-    const localSerialized = serializeComponent(applyDefaults(comp, COMPONENT_DEFAULTS));
-    const remoteSerialized = remoteComp ? serializeComponent(applyDefaults(remoteComp, COMPONENT_DEFAULTS)) : null;
+    // Only diff the group UUID when the local block opts into the escape hatch;
+    // otherwise it stays stripped on both sides so remote UI groups are left
+    // untouched and no false diff is produced.
+    const includeGroupUuid = typeof comp.component_group_uuid === 'string';
+    const localSerialized = serializeComponent(applyDefaults(comp, COMPONENT_DEFAULTS), { includeGroupUuid });
+    const remoteSerialized = remoteComp
+      ? serializeComponent(applyDefaults(remoteComp, COMPONENT_DEFAULTS), { includeGroupUuid })
+      : null;
     diffs.push(diffEntity('component', comp.name, localSerialized, remoteSerialized));
   }
   for (const [name] of remote.components) {
@@ -53,8 +59,10 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     }
   }
 
-  // Component groups are a UI concern owned by editors and are intentionally not
-  // diffed: pushed blocks are flat, and existing remote groups are left as-is.
+  // Component groups are normally maintained in code via the directory layout,
+  // so a block's group is not diffed by default and existing remote groups are
+  // left as-is. A block may opt into the escape hatch by setting
+  // `component_group_uuid` explicitly, in which case it is diffed above.
 
   // Diff datasources
   const processedDatasourceNames = new Set<string>();

@@ -82,8 +82,10 @@ export async function executePush(
   let updated = 0;
   let deleted = 0;
 
-  // 1. Upsert components (blocks are pushed flat — component groups are a UI
-  //    concern and are neither set nor cleared here).
+  // 1. Upsert components. Component groups are maintained in code via the
+  //    directory layout, so they are neither set nor cleared here — unless a
+  //    block opts into the escape hatch by setting `component_group_uuid`, which
+  //    `transform` then forwards to the Management API.
   const componentDiffs = diffResult.diffs.filter(d => d.type === 'component');
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {

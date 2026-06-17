@@ -25,6 +25,18 @@ export type Block<
   fields: TFields;
   is_root?: TIsRoot;
   is_nestable?: TIsNestable;
+  /**
+   * Escape hatch for pinning this block to a Storyblok UI-managed component
+   * group by UUID. Component groups are normally maintained in code via the
+   * schema directory layout; set this only if you intentionally manage groups
+   * in the Storyblok UI, and fill in the group UUID yourself. When set,
+   * `schema push` diffs it and sends it to the Management API; when omitted,
+   * the block's remote group is left untouched.
+   *
+   * @deprecated Prefer maintaining component groups in code through the
+   * directory layout.
+   */
+  component_group_uuid?: string | null;
 }>;
 
 /**

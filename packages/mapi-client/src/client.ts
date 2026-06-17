@@ -3,7 +3,7 @@ import type { Middleware } from './generated/mapi/client/utils.gen';
 import { createClient, createConfig } from './generated/mapi/client';
 import { getManagementBaseUrl } from '@storyblok/region-helper';
 import type { Region } from '@storyblok/region-helper';
-import type { Block as Component } from './generated/types/block';
+import type { Block } from './generated/types/block';
 import { ClientError } from './error';
 import type { RateLimitConfig } from './utils/rate-limit';
 import { createThrottleManager } from './utils/rate-limit';
@@ -310,23 +310,24 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   };
 }
 
-type StoryblokTypesConfig = { components: Component } | { blocks: Component };
+type StoryblokTypesConfig = { components: Block } | { blocks: Block };
 
 type ResolveComponents<T extends StoryblokTypesConfig> =
-  T extends { components: infer C extends Component } ? C
-    : T extends { blocks: infer B extends Component } ? B
+  T extends { components: infer C extends Block } ? C
+    : T extends { blocks: infer B extends Block } ? B
       : never;
 
 /**
- * The return type of `createManagementApiClient`, parameterised by `TComponents` so that
+ * The return type of `createManagementApiClient`, parameterised by `TBlocks` so that
  * `.stories` methods can narrow story content types without touching the runtime object.
+ * Component *definitions* (`.components`) are wire-shaped and not narrowed by `TBlocks`.
  */
 export type ManagementApiClient<
-  TComponents extends Component = Component,
+  TBlocks extends Block = Block,
   DefaultThrowOnError extends boolean = false,
 > = ReturnType<typeof buildResources<DefaultThrowOnError>> & {
-  components: ReturnType<typeof createComponentsResource<TComponents, DefaultThrowOnError>>;
-  stories: ReturnType<typeof createStoriesResource<TComponents, DefaultThrowOnError>>;
+  components: ReturnType<typeof createComponentsResource<DefaultThrowOnError>>;
+  stories: ReturnType<typeof createStoriesResource<TBlocks, DefaultThrowOnError>>;
   /**
    * Returns the same client instance cast to a version that narrows story content
    * to the provided component types. No runtime cost — type parameter is erased.
@@ -349,12 +350,12 @@ export const createManagementApiClient = <
   DefaultThrowOnError extends boolean = false,
 >(
   config: ManagementApiClientConfig<DefaultThrowOnError>,
-): ManagementApiClient<Component, DefaultThrowOnError> => {
+): ManagementApiClient<Block, DefaultThrowOnError> => {
   const { deps, resources } = createManagementApiClientBase(config);
-  const self: ManagementApiClient<Component, DefaultThrowOnError> = {
+  const self: ManagementApiClient<Block, DefaultThrowOnError> = {
     ...resources,
-    components: createComponentsResource<Component, DefaultThrowOnError>(deps),
-    stories: createStoriesResource<Component, DefaultThrowOnError>(deps),
+    components: createComponentsResource<DefaultThrowOnError>(deps),
+    stories: createStoriesResource<Block, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
       return self as unknown as ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;
     },

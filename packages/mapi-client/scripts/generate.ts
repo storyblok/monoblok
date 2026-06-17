@@ -11,6 +11,8 @@ await generate({
   sdk: 'mapi',
   include: [
     'Component',
+    'ComponentCreate',
+    'ComponentUpdate',
     'MapiStory',
     'StoryCreate',
     'StoryUpdate',

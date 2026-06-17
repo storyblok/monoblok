@@ -35,6 +35,10 @@ describe('generateComponentFile', () => {
     expect(result).toContain('fields: [');
     expect(result).toContain('defineField(\'title\', {');
     expect(result).toContain('defineField(\'body\', {');
+    // The field config body and its closing brace align with `defineField` (4-space
+    // call indent → 6-space body, 4-space closing brace).
+    expect(result).toContain('    defineField(\'title\', {\n      max_length: 70,');
+    expect(result).toContain('\n    }),');
     expect(result).not.toMatch(/^\s+pos: \d/m);
     expect(result).not.toContain('id:');
     expect(result).not.toContain('created_at');

@@ -70,7 +70,7 @@ function toDslField(field: Record<string, unknown>): Record<string, unknown> {
  */
 function generateFieldCode(fieldName: string, fieldData: Record<string, unknown>, depth: number): string {
   const clean = toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS));
-  return `defineField('${fieldName.replace(/'/g, '\\\'')}', ${formatValue(clean, depth + 1)})`;
+  return `defineField('${fieldName.replace(/'/g, '\\\'')}', ${formatValue(clean, depth)})`;
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */

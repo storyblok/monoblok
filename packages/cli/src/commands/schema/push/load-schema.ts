@@ -72,75 +72,21 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
   return data;
 }
 
-/** Recursively collects `.ts`/`.js` files under a directory (skips declaration files). */
-async function walkSourceFiles(
-  dir: string,
-  fs: typeof import('node:fs/promises'),
-  join: (...parts: string[]) => string,
-): Promise<string[]> {
-  const out: string[] = [];
-  let names: string[];
-  try {
-    names = await fs.readdir(dir);
-  }
-  catch {
-    return out;
-  }
-  for (const name of names) {
-    const full = join(dir, name);
-    const stat = await fs.stat(full);
-    if (stat.isDirectory()) {
-      out.push(...await walkSourceFiles(full, fs, join));
-    }
-    else if (/\.(?:ts|js|mts|mjs)$/.test(name) && !/\.d\.ts$/.test(name)) {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
 /**
  * Loads a TypeScript schema entry file and returns classified exports.
  *
- * Blocks and datasources are sourced from the entry file. When a sibling
- * `blocks/` directory exists, it is also walked file-by-file so blocks organized
- * into subdirectories are discovered even if the entry file doesn't re-export
- * them. The directory layout is local organization only and does not affect the
- * pushed (flat) component groups. Uses jiti for TypeScript support.
+ * Blocks and datasources are sourced solely from the entry file's exports
+ * (directly or via an exported `schema` object). A block must be registered in
+ * the entry file to be pushed; leaving a block file on disk without exporting it
+ * has no effect. Uses jiti for TypeScript support.
  */
 export async function loadSchema(entryPath: string): Promise<SchemaData> {
   const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, { interopDefault: true });
-  const { resolve, dirname, join } = await import('pathe');
-  const fs = await import('node:fs/promises');
+  const { resolve } = await import('pathe');
 
   const entryAbs = resolve(entryPath);
-  const entryDir = dirname(entryAbs);
-
   const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
-  const data = classifyExports(entryMod);
 
-  // Discover blocks laid out in a sibling blocks directory.
-  const blocksDir = join(entryDir, 'blocks');
-  let hasBlocksDir = false;
-  try {
-    hasBlocksDir = (await fs.stat(blocksDir)).isDirectory();
-  }
-  catch { /* not present */ }
-
-  if (hasBlocksDir) {
-    const files = await walkSourceFiles(blocksDir, fs, join);
-    for (const file of files) {
-      const mod = await jiti.import(file) as Record<string, unknown>;
-      for (const value of Object.values(mod)) {
-        if (!isComponent(value)) { continue; }
-        const name = value.name as string;
-        if (!data.components.some(c => c.name === name)) {
-          data.components.push(mapBlockToWire(value));
-        }
-      }
-    }
-  }
-
-  return data;
+  return classifyExports(entryMod);
 }

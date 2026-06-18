@@ -8,7 +8,15 @@ import { computed, type ComputedRef, type MaybeRefOrGetter, type Ref, toValue, w
  * Extends Nuxt's AsyncDataOptions with Storyblok-specific configuration.
  */
 export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
-  /** Storyblok API parameters for fetching stories */
+  /**
+   * Storyblok API parameters for fetching stories.
+   *
+   * Accepts a plain object, a ref, a computed, or a getter. The current value
+   * is read (via `toValue`) on every fetch, so reactive params stay in sync.
+   * Note that changing a reactive value does not auto-refetch on its own —
+   * trigger a re-fetch by calling `refresh()` or by passing a `watch` option
+   * (e.g. `watch: [version]`), which Nuxt's `useAsyncData` re-runs on.
+   */
   api: MaybeRefOrGetter<ISbStoriesParams>;
   /** Storyblok Bridge configuration for live preview */
   bridge: StoryblokBridgeConfigV2;
@@ -90,6 +98,20 @@ const stableStringify = (obj: Record<string, any>): string => {
  * </template>
  * ```
  *
+ * @example
+ * Reactive params: pass a getter/computed and refetch when it changes.
+ * ```vue
+ * <script setup>
+ * const version = ref('draft')
+ * const { story, refresh } = await useAsyncStoryblok('home', {
+ *   api: () => ({ version: version.value }),
+ *   bridge: {},
+ *   // re-fetch automatically when `version` changes
+ *   watch: [version],
+ * })
+ * // ...or trigger manually: version.value = 'published'; await refresh()
+ * </script>
+ * ```
  */
 export async function useAsyncStoryblok(
   url: string,

@@ -16,9 +16,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'pathe';
-import { CACHE_DIR, LOCK_PATH } from '../src/paths.ts';
+import { CACHE_DIR, LOCK_PATH } from './paths.ts';
 
-export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from '../src/paths.ts';
+export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from './paths.ts';
 export const UPSTREAM_REPO = 'storyblok/openapi-wdx';
 
 export interface SpecLock {

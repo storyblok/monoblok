@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'pathe';
 import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from './aliases.ts';
 import type { KnownType } from './known-types.ts';
+import { hashCache, readLock } from './lock.ts';
 import { SPEC_PATHS, TEMPLATES_DIR } from './paths.ts';
 import { templateFor, TEMPLATES, type WrapperFile } from './templates.ts';
 import { type KeepEntry, transformGeneratedFile } from './transform.ts';
@@ -40,6 +41,25 @@ export async function generate(config: GenerateConfig): Promise<void> {
   if (cacheMissing) {
     throw new Error(
       `OpenAPI cache missing. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
+    );
+  }
+  // Guard against a stale cache silently producing output that diverges from
+  // the pinned spec. `existsSync` alone can't catch a cache left over from a
+  // different SHA, so verify the content hash against spec.lock here — this
+  // covers every caller (nx, `pnpm … generate`, direct `tsx`), not just nx.
+  const lock = readLock();
+  if (!lock) {
+    throw new Error(
+      `spec.lock not found. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
+    );
+  }
+  const cacheHash = hashCache();
+  if (cacheHash !== lock.hash) {
+    throw new Error(
+      `OpenAPI cache is out of sync with spec.lock.\n`
+      + `  expected (spec.lock): ${lock.hash}\n`
+      + `  computed:             ${cacheHash}\n`
+      + `Run \`pnpm --filter @storyblok/openapi-codegen pull\` to resync the cache.`,
     );
   }
   const { wrappers, publicPerSpec, leafPerSpec, leafLocation } = resolveInclude(config.include);

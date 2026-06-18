@@ -458,15 +458,24 @@ importers:
 
   packages/experiments:
     devDependencies:
+      '@storyblok/api-client':
+        specifier: workspace:*
+        version: link:../capi-client
       '@storyblok/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@storyblok/management-api-client':
+        specifier: workspace:*
+        version: link:../mapi-client
       '@storyblok/openapi-codegen':
         specifier: workspace:*
         version: link:../../tools/openapi-codegen
       '@types/node':
         specifier: ^24.11.0
         version: 24.11.0
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
       eslint:
         specifier: ^9.39.2
         version: 9.39.3(jiti@2.6.1)

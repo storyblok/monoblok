@@ -53,9 +53,10 @@
     "dev": "tsdown --watch",
     "generate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "test": "vitest run",
+    "test:e2e": "vitest run -c vitest.config.e2e.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "test:types": "tsc --noEmit --skipLibCheck",
     "prepublishOnly": "pnpm run build"
   },
   "nx": {
@@ -76,9 +77,12 @@
     }
   },
   "devDependencies": {
+    "@storyblok/api-client": "workspace:*",
     "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/management-api-client": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@types/node": "^24.11.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9.39.2",
     "msw": "^2.12.9",
     "tsdown": "^0.20.3",

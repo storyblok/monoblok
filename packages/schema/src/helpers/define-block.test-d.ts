@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, type NestableBlocks, type RootBlocks } from './define-block';
+import { defineBlock, type NestableBlock, type RootBlock } from './define-block';
 import { defineField } from './define-field';
 
 describe('defineBlock', () => {
@@ -61,30 +61,30 @@ const _teaserBlock = defineBlock({ name: 'teaser', schema }); // not root, nesta
 
 type Schema = typeof _pageBlock | typeof _heroBlock | typeof _teaserBlock;
 
-describe('RootBlocks', () => {
+describe('RootBlock', () => {
   it('should include only blocks with is_root: true', () => {
-    type Roots = RootBlocks<Schema>;
+    type Roots = RootBlock<Schema>;
     // page and hero have is_root: true
     expectTypeOf<Roots['name']>().toEqualTypeOf<'page' | 'hero'>();
   });
 
   it('should exclude blocks without is_root: true', () => {
-    type Roots = RootBlocks<Schema>;
+    type Roots = RootBlock<Schema>;
     // teaser defaults to is_root: false — must not appear
     type HasTeaser = 'teaser' extends Roots['name'] ? true : false;
     expectTypeOf<HasTeaser>().toEqualTypeOf<false>();
   });
 });
 
-describe('NestableBlocks', () => {
+describe('NestableBlock', () => {
   it('should include only blocks with is_nestable: true', () => {
-    type Nestable = NestableBlocks<Schema>;
+    type Nestable = NestableBlock<Schema>;
     // hero and teaser are nestable; page has is_nestable: false
     expectTypeOf<Nestable['name']>().toEqualTypeOf<'hero' | 'teaser'>();
   });
 
   it('should exclude blocks with is_nestable: false', () => {
-    type Nestable = NestableBlocks<Schema>;
+    type Nestable = NestableBlock<Schema>;
     type HasPage = 'page' extends Nestable['name'] ? true : false;
     expectTypeOf<HasPage>().toEqualTypeOf<false>();
   });

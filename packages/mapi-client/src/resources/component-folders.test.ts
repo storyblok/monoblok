@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/component_folders.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,11 @@ afterAll(() => server.close());
 
 describe('componentFolders.list()', () => {
   it('should successfully retrieve multiple component folders', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/component_groups', () => {
+        return HttpResponse.json({ component_groups: [{ id: 1, name: 'Folder', uuid: 'uuid-1' }] });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,
@@ -77,6 +72,11 @@ describe('componentFolders.list()', () => {
 
 describe('componentFolders.get()', () => {
   it('should successfully retrieve a single component folder', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/component_groups/:component_group_id', () => {
+        return HttpResponse.json({ component_group: { id: 456, name: 'Folder', uuid: 'uuid-1' } });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,

@@ -208,7 +208,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates.REACT.location,
-      });
+      }, {});
     });
 
     it('should warn and show interactive selection for invalid template', async () => {
@@ -408,7 +408,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates.REACT.location,
-      });
+      }, {});
 
       // Verify .env file creation
       expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
@@ -566,7 +566,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates[templateKey as keyof typeof templates].location,
-      });
+      }, {});
     });
   });
 
@@ -763,7 +763,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-        });
+        }, {});
       });
 
       it('should show organization choice for users with org in EU region', async () => {
@@ -801,7 +801,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-          org: mockUser.org,
+        }, {
           in_org: true,
         });
       });
@@ -840,6 +840,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
+        }, {
           assign_partner: true,
         });
       });
@@ -880,7 +881,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-        });
+        }, {});
       });
     });
 
@@ -914,7 +915,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-          org: mockUser.org,
+        }, {
           in_org: true,
         });
       });

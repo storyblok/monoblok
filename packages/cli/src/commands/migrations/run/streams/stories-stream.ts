@@ -2,39 +2,46 @@ import { pipeline, Readable, Transform } from 'node:stream';
 import type { Sema } from 'async-sema';
 import { fetchStories, fetchStory } from '../../../stories/actions';
 import type { StoriesQueryParams, Story } from '../../../stories/constants';
+import { parseFilterQuery } from '../../../stories/filter-query';
 import { handleAPIError, toError } from '../../../../utils/error';
 import { getLogger } from '../../../../lib/logger/logger';
 import { createPipelineBackpressureLock } from '../../../../utils/backpressure-lock';
 import { ERROR_CODES } from '../constants';
 
 /**
+ * CLI-level migration filter params. Includes the ad-hoc inputs `componentName`
+ * and `query` (a `filter_query` string), which are transformed into the API
+ * query shape ({@link StoriesQueryParams}) before any request is made.
+ */
+export type MigrationStoriesParams = StoriesQueryParams & {
+  componentName?: string;
+  query?: string;
+};
+
+/**
  * Iterator that fetches stories
  */
 export async function* storiesIterator(
   spaceId: string,
-  params?: StoriesQueryParams,
+  params?: MigrationStoriesParams,
   onTotal?: (total: number) => void,
 ) {
   try {
     let perPage = 500;
 
-    // Apply the same parameter transformations as fetchAllStoriesByComponent
-    const transformedParams: StoriesQueryParams = {
-      ...params,
-    };
+    // Strip the CLI-only inputs and map them onto the API query shape.
+    const { componentName, query, ...rest } = params ?? {};
+    const transformedParams: StoriesQueryParams = { ...rest };
 
-    // Handle component filter - convert componentName to contain_component
-    if (params?.componentName && typeof params.componentName === 'string') {
-      transformedParams.contain_component = params.componentName;
-      delete transformedParams.componentName;
+    // Component filter -> `contain_component`.
+    if (componentName) {
+      transformedParams.contain_component = componentName;
     }
 
-    // Handle query string if provided - add filter_query prefix
-    if (params?.query && typeof params.query === 'string') {
-      transformedParams.filter_query = params.query.startsWith('filter_query')
-        ? params.query
-        : `filter_query${params.query}`;
-      delete transformedParams.query;
+    // Legacy `filter_query` string -> structured object (the wire format MAPI
+    // requires; a raw string is rejected as a non-nested filter).
+    if (query) {
+      transformedParams.filter_query = parseFilterQuery(query);
     }
 
     // Fetch first page to get total pages
@@ -135,7 +142,7 @@ export const createStoriesStream = async ({
   onProgress,
 }: {
   spaceId: string;
-  params: StoriesQueryParams;
+  params: MigrationStoriesParams;
   onTotal: (total: number) => void;
   onProgress: () => void;
 }): Promise<Readable> => {

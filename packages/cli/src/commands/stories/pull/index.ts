@@ -8,6 +8,7 @@ import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { fetchStoriesStream, fetchStoryStream, makeWriteStoryFSTransport, writeStoryStream } from '../streams';
+import { parseFilterQuery } from '../filter-query';
 import { requireAuthentication } from '../../../utils/auth';
 import { handleError, toError } from '../../../utils/error/error';
 import { CommandError } from '../../../utils/error/command-error';
@@ -58,7 +59,7 @@ pullCmd
         fetchStoriesStream({
           spaceId: space,
           params: {
-            filter_query: options.query,
+            filter_query: options.query ? parseFilterQuery(options.query) : undefined,
             starts_with: options.startsWith,
           },
           setTotalPages: (totalPages) => {

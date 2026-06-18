@@ -24,25 +24,27 @@ export type {
 export { ClientError } from './error';
 export type { ApiErrorBody } from './error';
 
-// Generated types
-export type { Middleware } from './generated/shared/client/utils.gen';
+// Generated client utilities
+export type { Middleware } from './generated/capi/client/utils.gen';
 
-// Resource types
-export type { StoryWithInlinedRelations } from './resources/stories';
-
-// Cache types
-export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
-
-// Domain types from @storyblok/schema
 export type {
-  Block as Component,
   Datasource,
   DatasourceEntry,
   Link,
-  Space,
-  Story,
   StoryAlternate,
+  Tag,
+} from './generated/capi/types-aliased.gen';
+
+export type {
+  Space,
   StoryLocalizedPath,
   StoryTranslatedSlug,
-  Tag,
-} from '@storyblok/schema';
+} from './generated/mapi/types.gen';
+
+// Domain types
+export type { Block as Component } from './generated/types/block';
+export type { Story } from './generated/types/story';
+// Resource types
+export type { StoryWithInlinedRelations } from './resources/stories';
+// Cache types
+export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';

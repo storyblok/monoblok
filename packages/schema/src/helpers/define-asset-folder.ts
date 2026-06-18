@@ -1,7 +1,9 @@
-import type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from '../generated/mapi-types';
+import type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from '../generated/mapi/types.gen';
 
 const ASSET_FOLDER_DEFAULTS = {
   id: 1,
+  parent_id: null,
+  parent_uuid: null,
 };
 
 export type { AssetFolder, AssetFolderCreate, AssetFolderUpdate };
@@ -24,6 +26,8 @@ export const defineAssetFolder = (assetFolder: AssetFolderInput): AssetFolder =>
   return {
     ...ASSET_FOLDER_DEFAULTS,
     ...assetFolder,
+    parent_id: assetFolder.parent_id ?? ASSET_FOLDER_DEFAULTS.parent_id,
+    parent_uuid: assetFolder.parent_uuid ?? ASSET_FOLDER_DEFAULTS.parent_uuid,
     uuid,
   };
 };

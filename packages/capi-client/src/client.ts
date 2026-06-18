@@ -1,4 +1,4 @@
-import { createClient, createConfig } from './generated/shared/client';
+import { createClient, createConfig } from './generated/capi/client';
 import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
 import { createMemoryCacheProvider, createStrategy } from './utils/cache';
 import { ClientError } from './error';
@@ -7,9 +7,9 @@ import { createThrottleManager } from './utils/rate-limit';
 import { applyCvToQuery, extractCv } from './utils/cv';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
-import type { Block as Component } from '@storyblok/schema';
+import type { Block as Component } from './generated/types/block';
 import type { RetryOptions } from 'ky';
-import type { Client, RequestOptions } from './generated/shared/client';
+import type { Client, RequestOptions } from './generated/capi/client';
 import { createStoriesResource } from './resources/stories';
 import { createLinksResource } from './resources/links';
 import { createTagsResource } from './resources/tags';

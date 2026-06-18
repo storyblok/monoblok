@@ -1,9 +1,13 @@
-import type { Preset, PresetCreate, PresetUpdate } from '../generated/mapi-types';
+import type { Preset, PresetCreate, PresetUpdate } from '../generated/mapi/types.gen';
 
 export type { Preset, PresetCreate, PresetUpdate };
 
 const PRESET_DEFAULTS = {
   id: 1,
+  space_id: 1,
+  preset: null,
+  created_at: '',
+  updated_at: '',
 };
 
 type PresetInput = { name: string; component_id: number } & Partial<Omit<Preset, 'name' | 'component_id'>>;
@@ -16,7 +20,11 @@ type PresetInput = { name: string; component_id: number } & Partial<Omit<Preset,
  * import { definePreset } from '@storyblok/schema';
  * const preset = definePreset({ name: 'Hero Dark', component_id: 42 });
  */
-export const definePreset = (preset: PresetInput): Preset => ({ ...PRESET_DEFAULTS, ...preset });
+export const definePreset = (preset: PresetInput): Preset => ({
+  ...PRESET_DEFAULTS,
+  ...preset,
+  preset: preset.preset ?? PRESET_DEFAULTS.preset,
+});
 
 /**
  * Defines a preset creation payload for the MAPI.

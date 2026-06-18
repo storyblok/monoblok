@@ -8,11 +8,11 @@ describe('defineMapiAsset', () => {
     expect(result.id).toBe(1);
     expect(result.filename).toBe('hero.png');
     expect(result.space_id).toBe(1);
+    expect(result.short_filename).toBe('');
     expect(result.created_at).toBe('');
     expect(result.updated_at).toBe('');
-    expect(result.short_filename).toBe('');
-    expect(result.content_type).toBe('');
-    expect(result.content_length).toBe(0);
+    expect(result.content_type).toBeNull();
+    expect(result.content_length).toBeNull();
   });
 
   it('should allow overriding defaults', () => {

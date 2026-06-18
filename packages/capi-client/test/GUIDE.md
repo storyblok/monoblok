@@ -4,7 +4,7 @@
 
 ## Automated e2e tests
 
-`test/specs/capi-round-trip.spec.e2e.ts` covers the full round-trip against a real Storyblok space:
+The `@storyblok/capi-integration-tests` package (`packages/capi-client/playground/integration-tests`) covers the full round-trip against a real Storyblok space in `test/specs/capi-round-trip.spec.e2e.ts`:
 
 - Seeds components and a story via the MAPI, publishes the story, then reads it back through the CAPI using the space's preview token.
 - Validates type narrowing, nested bloks (two- and three-level), and unwhitelisted bloks through `stories.get` and `stories.list`.
@@ -13,7 +13,7 @@
 Run manually:
 
 ```bash
-pnpm --filter @storyblok/api-client test:e2e
+pnpm --filter @storyblok/capi-integration-tests test:e2e
 ```
 
 ### Prerequisites

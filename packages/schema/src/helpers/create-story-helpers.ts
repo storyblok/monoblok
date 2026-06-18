@@ -1,11 +1,11 @@
-import type { Block } from './define-block';
+import type { Block, RootBlock } from './define-block';
 import {
   defineMapiStory as defineMapiStoryImpl,
   defineStoryCreate as defineStoryCreateImpl,
   defineStory as defineStoryImpl,
   defineStoryUpdate as defineStoryUpdateImpl,
 } from './define-story';
-import type { MapiStory, Story, StoryComponent, StoryCreate, StoryUpdate } from './define-story';
+import type { MapiStory, Story, StoryCreate, StoryUpdate } from './define-story';
 
 type StoryblokTypesConfig = { components: Block } | { blocks: Block };
 
@@ -15,25 +15,25 @@ type ResolveComponents<T extends StoryblokTypesConfig> =
       : never;
 
 type DefineStoryTyped<TBlocks extends Block> =
-  <const TBlock extends StoryComponent>(
+  <const TBlock extends RootBlock>(
     component: TBlock,
     story: Parameters<typeof defineStoryImpl<TBlock, TBlocks>>[1],
   ) => Story<TBlock, TBlocks>;
 
 type DefineMapiStoryTyped<TBlocks extends Block> =
-  <const TBlock extends StoryComponent>(
+  <const TBlock extends RootBlock>(
     component: TBlock,
     story: Parameters<typeof defineMapiStoryImpl<TBlock, TBlocks>>[1],
   ) => MapiStory<TBlock, TBlocks>;
 
 type DefineStoryCreateTyped<TBlocks extends Block> =
-  <const TBlock extends StoryComponent>(
+  <const TBlock extends RootBlock>(
     component: TBlock,
     story: Parameters<typeof defineStoryCreateImpl<TBlock, TBlocks>>[1],
   ) => StoryCreate<TBlock, TBlocks>;
 
 type DefineStoryUpdateTyped<TBlocks extends Block> =
-  <const TBlock extends StoryComponent>(
+  <const TBlock extends RootBlock>(
     component: TBlock,
     story: Parameters<typeof defineStoryUpdateImpl<TBlock, TBlocks>>[1],
   ) => StoryUpdate<TBlock, TBlocks>;

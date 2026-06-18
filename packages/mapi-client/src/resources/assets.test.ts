@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/assets.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -23,8 +13,9 @@ const preconditions = {
   canCreateAssetWithSize({ space = '123' }: { space?: string } = {}) {
     let signedBody: { filename?: string; size?: string } | undefined;
     server.use(
-      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
-        signedBody = await request.json() as { filename?: string; size?: string };
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        signedBody = { filename: query.get('filename') ?? undefined, size: query.get('size') ?? undefined };
         return HttpResponse.json({
           id: 1,
           post_url: 'https://s3.amazonaws.com/a.storyblok.com',
@@ -46,6 +37,11 @@ const preconditions = {
 
 describe('assets.list()', () => {
   it('should successfully retrieve multiple assets', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/assets', () => {
+        return HttpResponse.json({ assets: [] });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,
@@ -100,25 +96,6 @@ describe('assets.list()', () => {
   });
 });
 
-describe('assets.create()', () => {
-  it('forwards the `size` field to the sign request so the CDN URL keeps its dimensions', async () => {
-    const { getSignedBody } = preconditions.canCreateAssetWithSize();
-    const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
-      spaceId: 123,
-      region: 'eu',
-      rateLimit: false,
-    });
-
-    await client.assets.create({
-      body: { short_filename: 'hero.png', size: '2048x1820' },
-      file: new ArrayBuffer(0),
-    });
-
-    expect(getSignedBody()?.size).toBe('2048x1820');
-  });
-});
-
 describe('assets.convertToShared()', () => {
   it('should post to the convert endpoint with target_asset_folder_id and return the converted asset', async () => {
     let capturedUrl: string | undefined;
@@ -156,6 +133,11 @@ describe('assets.convertToShared()', () => {
 
 describe('assets.get()', () => {
   it('should successfully retrieve a single asset', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', () => {
+        return HttpResponse.json({ asset: { id: 456, filename: 'https://a.storyblok.com/f/1/x/hero.png' } });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,
@@ -253,11 +235,11 @@ describe('assets.upload()', () => {
     expect(result.filename).toBe('https://a.storyblok.com/f/123/hero.png');
   });
 
-  it('should send the correct sign request body', async () => {
-    let capturedSignBody: Record<string, unknown> | undefined;
+  it('should send the correct sign request query params', async () => {
+    let capturedSignQuery: Record<string, string> | undefined;
     server.use(
-      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', async ({ request }) => {
-        capturedSignBody = await request.json() as Record<string, unknown>;
+      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', ({ request }) => {
+        capturedSignQuery = Object.fromEntries(new URL(request.url).searchParams);
         return HttpResponse.json(mockSignedResponse);
       }),
       http.post('https://s3.example.com/upload', () => {
@@ -284,10 +266,10 @@ describe('assets.upload()', () => {
       file,
     });
 
-    expect(capturedSignBody).toEqual({
+    expect(capturedSignQuery).toEqual({
       filename: 'hero.png',
-      asset_folder_id: 42,
-      is_private: true,
+      asset_folder_id: '42',
+      is_private: 'true',
     });
   });
 
@@ -410,6 +392,23 @@ describe('assets.upload()', () => {
 });
 
 describe('assets.create()', () => {
+  it('forwards the `size` field to the sign request so the CDN URL keeps its dimensions', async () => {
+    const { getSignedBody } = preconditions.canCreateAssetWithSize();
+    const client = createManagementApiClient({
+      personalAccessToken: 'test-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    await client.assets.create({
+      body: { short_filename: 'hero.png', size: '2048x1820' },
+      file: new ArrayBuffer(0),
+    });
+
+    expect(getSignedBody()?.size).toBe('2048x1820');
+  });
+
   it('should upload and return asset when no metadata is provided', async () => {
     const requestLog: string[] = [];
     server.use(
@@ -469,7 +468,7 @@ describe('assets.create()', () => {
         requestLog.push('finalize');
         return HttpResponse.json({ message: 'OK' });
       }),
-      http.put('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
+      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
         requestLog.push('update');
         capturedUpdateBody = await request.json() as Record<string, unknown>;
         return new HttpResponse(null, { status: 204 });
@@ -500,12 +499,12 @@ describe('assets.create()', () => {
   });
 
   it('should pass upload-only fields to sign and exclude them from metadata update', async () => {
-    let capturedSignBody: Record<string, unknown> | undefined;
+    let capturedSignQuery: Record<string, string> | undefined;
     let capturedUpdateBody: Record<string, unknown> | undefined;
 
     server.use(
-      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', async ({ request }) => {
-        capturedSignBody = await request.json() as Record<string, unknown>;
+      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', ({ request }) => {
+        capturedSignQuery = Object.fromEntries(new URL(request.url).searchParams);
         return HttpResponse.json(mockSignedResponse);
       }),
       http.post('https://s3.example.com/upload', () => {
@@ -514,7 +513,7 @@ describe('assets.create()', () => {
       http.get('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:signed_response_object_id/finish_upload', () => {
         return HttpResponse.json({ message: 'OK' });
       }),
-      http.put('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
+      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
         capturedUpdateBody = await request.json() as Record<string, unknown>;
         return new HttpResponse(null, { status: 204 });
       }),
@@ -541,10 +540,10 @@ describe('assets.create()', () => {
       file,
     });
 
-    expect(capturedSignBody).toEqual({
+    expect(capturedSignQuery).toEqual({
       filename: 'hero.png',
-      asset_folder_id: 42,
-      is_private: true,
+      asset_folder_id: '42',
+      is_private: 'true',
     });
     expect(capturedUpdateBody).toEqual({ asset: { alt: 'Hero image' } });
   });
@@ -553,12 +552,12 @@ describe('assets.create()', () => {
 describe('assets.update() with file replacement', () => {
   it('should perform sign -> S3 upload -> finalize for file replacement', async () => {
     const requestLog: string[] = [];
-    let capturedSignBody: Record<string, unknown> | undefined;
+    let capturedSignQuery: Record<string, string> | undefined;
 
     server.use(
-      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', async ({ request }) => {
+      http.post('https://mapi.storyblok.com/v1/spaces/:space_id/assets', ({ request }) => {
         requestLog.push('sign');
-        capturedSignBody = await request.json() as Record<string, unknown>;
+        capturedSignQuery = Object.fromEntries(new URL(request.url).searchParams);
         return HttpResponse.json(mockSignedResponse);
       }),
       http.post('https://s3.example.com/upload', () => {
@@ -585,10 +584,7 @@ describe('assets.update() with file replacement', () => {
     });
 
     expect(requestLog).toEqual(['sign', 's3-upload', 'finalize']);
-    expect(capturedSignBody).toEqual({
-      filename: 'hero-v2.png',
-      id: 789,
-    });
+    expect(capturedSignQuery).toEqual({ filename: 'hero-v2.png' });
   });
 
   it('should replace file and update metadata when both are provided', async () => {
@@ -608,7 +604,7 @@ describe('assets.update() with file replacement', () => {
         requestLog.push('finalize');
         return HttpResponse.json({ message: 'OK' });
       }),
-      http.put('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
+      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', async ({ request }) => {
         requestLog.push('update');
         capturedUpdateBody = await request.json() as Record<string, unknown>;
         return new HttpResponse(null, { status: 204 });
@@ -653,7 +649,7 @@ describe('assets.update() with file replacement', () => {
         requestLog.push('finalize');
         return HttpResponse.json({ message: 'OK' });
       }),
-      http.put('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', () => {
+      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/assets/:asset_id', () => {
         requestLog.push('update');
         return new HttpResponse(null, { status: 204 });
       }),

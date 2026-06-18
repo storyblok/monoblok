@@ -18,6 +18,3 @@ syncInjectedDepsAfterScripts:
 onlyBuiltDependencies:
   - cypress
   - esbuild
-
-patchedDependencies:
-  openapi-zod-client@1.18.3: patches/openapi-zod-client@1.18.3.patch

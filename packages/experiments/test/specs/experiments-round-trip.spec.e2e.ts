@@ -69,7 +69,7 @@ interface CreateStoryMappingResponse {
 }
 
 interface ExperimentsListResponse {
-  experiments: { id: number; name: string }[];
+  experiments: { id: number; name: string; status: string }[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -96,9 +96,15 @@ async function cleanup(): Promise<void> {
   // Experiments first: a linked story cannot be removed while its experiment exists.
   const listRes = await mapi.get<ExperimentsListResponse>(experimentsPath, { throwOnError: false });
   for (const experiment of listRes.data?.experiments ?? []) {
-    if (experiment.name?.startsWith(EXPERIMENT_PREFIX) && experiment.id) {
-      await mapi.delete(`${experimentsPath}/${experiment.id}`, { throwOnError: false });
+    if (!experiment.name?.startsWith(EXPERIMENT_PREFIX) || !experiment.id) {
+      continue;
     }
+    // Only draft or completed experiments can be deleted, so a running or
+    // paused one must be completed first.
+    if (experiment.status === 'running' || experiment.status === 'paused') {
+      await mapi.put(`${experimentsPath}/${experiment.id}/complete`, { throwOnError: false });
+    }
+    await mapi.delete(`${experimentsPath}/${experiment.id}`, { throwOnError: false });
   }
 
   // Stories: catches the original and the auto-duplicated variant copy.
@@ -191,7 +197,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
 
     // 8. Read the public experiments payload with the user's own client.
     const capi = createApiClient({ accessToken: previewToken });
-    const cdnRes = await capi.get('cdn/experiments');
+    const cdnRes = await capi.get('/v2/cdn/experiments');
     experiments = readExperimentsPayload(cdnRes.data).experiments;
     experiment = experiments.find(candidate => candidate.name === EXPERIMENT_NAME)!;
   });
@@ -318,7 +324,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const capi = createApiClient({ accessToken: previewToken });
-      const storyRes = await capi.get(`cdn/stories/${resolved.slug}`);
+      const storyRes = await capi.get(`/v2/cdn/stories/${resolved.slug}`);
 
       expect(readStorySlug(storyRes.data)).toBe(resolved.slug);
     });

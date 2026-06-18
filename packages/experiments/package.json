@@ -1,0 +1,88 @@
+{
+  "name": "@storyblok/experiments",
+  "type": "module",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Runtime A/B testing utilities for the Storyblok experiments API",
+  "author": "Storyblok",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/experiments#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storyblok/monoblok.git",
+    "directory": "packages/experiments"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "keywords": [
+    "storyblok",
+    "experiments",
+    "ab-testing"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./adapters": {
+      "import": "./dist/adapters.mjs",
+      "require": "./dist/adapters.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "adapters": [
+        "./dist/adapters.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "generate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      }
+    }
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
+    "@types/node": "^24.11.0",
+    "eslint": "^9.39.2",
+    "msw": "^2.12.9",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

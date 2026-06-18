@@ -9,7 +9,10 @@ describe('@storyblok/svelte', () => {
   describe('Rendering Components', () => {
     it('The teaser blok is correctly rendered', () => {
       cy.visit('https://localhost:5173/');
-      cy.get('[data-blok-uid="141210018-97a0e33f-1e0b-4561-8193-4839a9f85cae"]').should('exist');
+      // Match the stable numeric blok `id` prefix rather than the full
+      // `data-blok-uid`: the trailing `_uid` is regenerated whenever the blok
+      // is edited in the space, which silently breaks an exact-match selector.
+      cy.get('[data-blok-uid^="141210018-"]').should('contain', 'First Teaser');
     });
   });
 });

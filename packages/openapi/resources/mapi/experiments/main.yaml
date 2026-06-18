@@ -1,0 +1,883 @@
+openapi: 3.1.1
+info:
+  title: Storyblok Experiments API
+  version: 1.0.0
+  description: API for managing Storyblok A/B testing experiments
+servers:
+  $ref: ../shared/servers.yaml
+security:
+  $ref: ../shared/security.yaml
+paths:
+  /v1/spaces/{space_id}/experiments:
+    get:
+      operationId: list
+      summary: Retrieve Multiple Experiments
+      description: Returns an array of experiment objects for the space.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - name: by_status
+          in: query
+          required: false
+          description: Filter experiments by status
+          schema:
+            type: string
+            enum:
+              - draft
+              - running
+              - paused
+              - completed
+        - name: by_story_id
+          in: query
+          required: false
+          description: Filter experiments that include the given original story id
+          schema:
+            type: integer
+        - name: by_variant_story_id
+          in: query
+          required: false
+          description: Filter experiments that include the given variant story id
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          description: Number of experiments per page
+          schema:
+            type: integer
+            default: 25
+      responses:
+        '200':
+          description: List of experiments
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiments
+                properties:
+                  experiments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExperimentDetail'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+    post:
+      operationId: create
+      summary: Create an Experiment
+      description: Creates a new experiment with its variants.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - experiment
+              properties:
+                experiment:
+                  $ref: '#/components/schemas/ExperimentCreate'
+      responses:
+        '201':
+          description: Experiment created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment
+                properties:
+                  experiment:
+                    $ref: '#/components/schemas/ExperimentDetail'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}:
+    get:
+      operationId: get
+      summary: Retrieve a Single Experiment
+      description: Returns a single experiment object by its numeric id.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      responses:
+        '200':
+          description: Experiment details
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment
+                properties:
+                  experiment:
+                    $ref: '#/components/schemas/ExperimentDetail'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+    put:
+      operationId: update
+      summary: Update an Experiment
+      description: Updates an experiment and its variants. The experiment name cannot be changed after creation.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - experiment
+              properties:
+                experiment:
+                  $ref: '#/components/schemas/ExperimentUpdate'
+      responses:
+        '200':
+          description: Experiment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment
+                properties:
+                  experiment:
+                    $ref: '#/components/schemas/ExperimentDetail'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - validation errors
+    delete:
+      operationId: delete
+      summary: Delete an Experiment
+      description: Deletes an experiment. Only draft or completed experiments can be deleted.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      responses:
+        '204':
+          description: Experiment deleted
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '403':
+          description: Forbidden - only draft or completed experiments can be deleted
+        '404':
+          description: Experiment not found
+  /v1/spaces/{space_id}/experiments/{experiment_id}/activate:
+    put:
+      operationId: activate
+      summary: Activate an Experiment
+      description: Activates (starts or resumes) an experiment, moving it to the running status.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - name: end_date
+          in: query
+          required: false
+          description: Optional scheduled end date for the experiment (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          $ref: '#/components/responses/ExperimentResponse'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - invalid status transition
+  /v1/spaces/{space_id}/experiments/{experiment_id}/pause:
+    put:
+      operationId: pause
+      summary: Pause an Experiment
+      description: Pauses a running experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExperimentResponse'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - invalid status transition
+  /v1/spaces/{space_id}/experiments/{experiment_id}/complete:
+    put:
+      operationId: complete
+      summary: Complete an Experiment
+      description: Completes an experiment without selecting a winner.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExperimentResponse'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - invalid status transition
+  /v1/spaces/{space_id}/experiments/{experiment_id}/complete_with_winner:
+    patch:
+      operationId: completeWithWinner
+      summary: Complete an Experiment with a Winner
+      description: Selects a winning variant and completes the experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - $ref: '#/components/parameters/variant_id_query'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExperimentResponse'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}/select_winner:
+    patch:
+      operationId: selectWinner
+      summary: Select a Winning Variant
+      description: Selects a winning variant without completing the experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - $ref: '#/components/parameters/variant_id_query'
+      responses:
+        '200':
+          $ref: '#/components/responses/ExperimentResponse'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}/stories:
+    post:
+      operationId: createExperimentStory
+      summary: Link a Story to an Experiment
+      description: Adds an original story to the experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - experiment_story
+              properties:
+                experiment_story:
+                  type: object
+                  required:
+                    - story_id
+                  properties:
+                    story_id:
+                      type: integer
+                      description: ID of the story to link
+      responses:
+        '201':
+          description: Story linked
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment
+                properties:
+                  experiment:
+                    $ref: '#/components/schemas/ExperimentDetail'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}/stories/{story_id}:
+    delete:
+      operationId: deleteExperimentStory
+      summary: Unlink a Story from an Experiment
+      description: Removes an original story from the experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - $ref: ../shared/parameters.yaml#/story_id
+      responses:
+        '204':
+          description: Story unlinked
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment or story not found
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}/variants/{variant_id}/story_mappings:
+    post:
+      operationId: createStoryMapping
+      summary: Create a Variant Story Mapping
+      description: Maps an original story to a variant, optionally duplicating it into a new variant story.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - $ref: '#/components/parameters/variant_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - story_mapping
+              properties:
+                story_mapping:
+                  type: object
+                  required:
+                    - original_story_id
+                  properties:
+                    original_story_id:
+                      type: integer
+                      description: ID of the original story to map
+                    variant_story_id:
+                      type:
+                        - integer
+                        - "null"
+                      description: ID of an existing story to link as the variant. Omit to duplicate the original.
+      responses:
+        '201':
+          description: Story mapping created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - story_mapping
+                properties:
+                  story_mapping:
+                    $ref: '#/components/schemas/StoryMapping'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment or variant not found
+        '422':
+          description: Unprocessable entity - validation errors
+  /v1/spaces/{space_id}/experiments/{experiment_id}/variants/{variant_id}/story_mappings/{original_story_id}:
+    delete:
+      operationId: deleteStoryMapping
+      summary: Delete a Variant Story Mapping
+      description: Removes the mapping between an original story and a variant.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+        - $ref: '#/components/parameters/variant_id'
+        - name: original_story_id
+          in: path
+          required: true
+          description: ID of the original story whose mapping should be removed
+          schema:
+            oneOf:
+              - type: integer
+              - type: string
+      responses:
+        '204':
+          description: Story mapping deleted
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Mapping not found
+  /v1/spaces/{space_id}/experiments/{experiment_id}/results:
+    get:
+      operationId: getResults
+      summary: Retrieve Experiment Results
+      description: Returns the pre-computed result charts for an experiment. Responds with 204 when no results have been pushed yet.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      responses:
+        '200':
+          description: Experiment results
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment_result
+                properties:
+                  experiment_result:
+                    $ref: '#/components/schemas/ExperimentResult'
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+    post:
+      operationId: pushResults
+      summary: Push Experiment Results
+      description: Stores up to 20 pre-computed result charts for an experiment.
+      parameters:
+        - $ref: ../shared/parameters.yaml#/space_id
+        - $ref: '#/components/parameters/experiment_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - charts
+              properties:
+                charts:
+                  type: array
+                  maxItems: 20
+                  description: Pre-computed chart snapshots (max 20)
+                  items:
+                    $ref: '#/components/schemas/Chart'
+      responses:
+        '200':
+          description: Experiment results stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - experiment_result
+                properties:
+                  experiment_result:
+                    $ref: '#/components/schemas/ExperimentResult'
+        '400':
+          $ref: ../../shared/responses.yaml#/BadRequest
+        '401':
+          $ref: ../../shared/responses.yaml#/Unauthorized
+        '404':
+          description: Experiment not found
+        '422':
+          description: Unprocessable entity - validation errors
+components:
+  securitySchemes:
+    $ref: ../shared/security-schemes.yaml#/securitySchemes
+  parameters:
+    experiment_id:
+      name: experiment_id
+      in: path
+      required: true
+      description: The numeric ID of the experiment
+      schema:
+        oneOf:
+          - type: integer
+          - type: string
+    variant_id:
+      name: variant_id
+      in: path
+      required: true
+      description: The numeric ID of the experiment variant
+      schema:
+        oneOf:
+          - type: integer
+          - type: string
+    variant_id_query:
+      name: variant_id
+      in: query
+      required: true
+      description: The numeric ID of the winning variant
+      schema:
+        type: integer
+  responses:
+    ExperimentResponse:
+      description: Experiment details
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - experiment
+            properties:
+              experiment:
+                $ref: '#/components/schemas/ExperimentDetail'
+  schemas:
+    Experiment:
+      type: object
+      description: An A/B testing experiment
+      required:
+        - id
+        - name
+        - display_name
+        - status
+        - created_at
+        - updated_at
+        - story_ids
+      properties:
+        id:
+          type: integer
+          description: Numeric ID of the experiment
+        name:
+          type: string
+          maxLength: 100
+          description: Internal name (lowercase letters, numbers, underscores)
+        display_name:
+          type: string
+          maxLength: 255
+          description: Human-readable display name
+        description:
+          type:
+            - string
+            - "null"
+          description: Optional description of the experiment
+        status:
+          type: string
+          description: Current status of the experiment
+          enum:
+            - draft
+            - running
+            - paused
+            - completed
+        started_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: Timestamp when the experiment was first activated
+        ended_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: Timestamp when the experiment was completed
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        story_ids:
+          type: array
+          description: IDs of original stories assigned to this experiment
+          items:
+            type: integer
+        winning_variant_id:
+          type:
+            - integer
+            - "null"
+          description: ID of the winning variant (set when completed with a winner)
+    StoryMapping:
+      type: object
+      description: Mapping between an original story and its variant copy
+      properties:
+        experiment_variant_id:
+          type: integer
+          description: ID of the variant this mapping belongs to
+        original_story_id:
+          type: integer
+          description: ID of the original story
+        variant_story_id:
+          type:
+            - integer
+            - "null"
+          description: ID of the variant story copy
+        original_slug:
+          type:
+            - string
+            - "null"
+          description: Full slug of the original story
+        variant_slug:
+          type:
+            - string
+            - "null"
+          description: Full slug of the variant story copy
+        variant_story:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+          description: The variant story object, when expanded
+    ExperimentVariant:
+      type: object
+      description: A variant within an experiment
+      required:
+        - id
+        - name
+        - display_name
+        - public_id
+        - weight
+        - is_control
+        - story_mappings
+      properties:
+        id:
+          type: integer
+          description: Numeric ID of the variant
+        name:
+          type: string
+          maxLength: 100
+          description: Internal name (lowercase, numbers, underscores)
+        display_name:
+          type: string
+          maxLength: 255
+          description: Human-readable display name
+        public_id:
+          type: string
+          maxLength: 20
+          description: Public identifier used for stable bucketing
+        weight:
+          type: integer
+          description: Traffic weight percentage (0-100)
+        is_control:
+          type: boolean
+          description: Whether this is the control variant
+        story_mappings:
+          type: array
+          description: Story-level variant mappings
+          items:
+            $ref: '#/components/schemas/StoryMapping'
+    ExperimentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Experiment'
+        - type: object
+          required:
+            - experiment_variants
+          properties:
+            experiment_variants:
+              type: array
+              description: Variants belonging to this experiment
+              items:
+                $ref: '#/components/schemas/ExperimentVariant'
+            experiment_assigned_metrics:
+              type: array
+              description: Metrics assigned to this experiment
+              items:
+                type: object
+                additionalProperties: true
+    ExperimentCreate:
+      type: object
+      description: Input for creating an experiment
+      required:
+        - name
+        - display_name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Internal name (lowercase letters, numbers, underscores only)
+        display_name:
+          type: string
+          maxLength: 255
+          description: Human-readable display name
+        description:
+          type: string
+          description: Optional description of the experiment
+        story_ids:
+          type: array
+          description: IDs of stories to assign to this experiment
+          items:
+            type: integer
+        experiment_variants_attributes:
+          type: array
+          description: Variants to create with the experiment
+          items:
+            type: object
+            required:
+              - name
+              - display_name
+            properties:
+              name:
+                type: string
+                maxLength: 100
+              display_name:
+                type: string
+                maxLength: 255
+              weight:
+                type: integer
+                minimum: 0
+                maximum: 100
+              is_control:
+                type: boolean
+    ExperimentUpdate:
+      type: object
+      description: Input for updating an experiment
+      properties:
+        display_name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        story_ids:
+          type: array
+          items:
+            type: integer
+        experiment_variants_attributes:
+          type: array
+          description: Variants to add, update, or remove
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: ID of an existing variant (required for update or delete)
+              name:
+                type: string
+                maxLength: 100
+              display_name:
+                type: string
+                maxLength: 255
+              weight:
+                type: integer
+                minimum: 0
+                maximum: 100
+              is_control:
+                type: boolean
+              _destroy:
+                type: boolean
+                description: Set to true to remove this variant
+    BarChart:
+      type: object
+      description: Bar chart with variant comparison data
+      required:
+        - kind
+        - labels
+        - series
+      properties:
+        kind:
+          type: string
+          enum:
+            - bar
+        title:
+          type:
+            - string
+            - "null"
+        xLabel:
+          type:
+            - string
+            - "null"
+        yLabel:
+          type:
+            - string
+            - "null"
+        labels:
+          type: array
+          items:
+            type: string
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChartSeries'
+    LineChart:
+      type: object
+      description: Line chart for time-series data
+      required:
+        - kind
+        - labels
+        - series
+      properties:
+        kind:
+          type: string
+          enum:
+            - line
+        title:
+          type:
+            - string
+            - "null"
+        xLabel:
+          type:
+            - string
+            - "null"
+        yLabel:
+          type:
+            - string
+            - "null"
+        labels:
+          type: array
+          items:
+            type: string
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChartSeries'
+    TextChart:
+      type: object
+      description: Text-only block for insights or summary copy
+      required:
+        - kind
+        - body
+      properties:
+        kind:
+          type: string
+          enum:
+            - text
+        title:
+          type:
+            - string
+            - "null"
+        body:
+          type: string
+          description: Insight text content
+    ChartSeries:
+      type: object
+      required:
+        - label
+        - data
+      properties:
+        label:
+          type: string
+          description: Series label
+        data:
+          type: array
+          description: Numeric data points aligned with labels
+          items:
+            type: number
+    Chart:
+      description: A result chart. The kind field determines the chart type.
+      oneOf:
+        - $ref: '#/components/schemas/BarChart'
+        - $ref: '#/components/schemas/LineChart'
+        - $ref: '#/components/schemas/TextChart'
+    ExperimentResult:
+      type: object
+      description: Pre-computed result charts for an experiment
+      required:
+        - id
+        - experiment_id
+        - charts
+        - pushed_at
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+        experiment_id:
+          type: integer
+        charts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chart'
+        pushed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

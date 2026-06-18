@@ -10,6 +10,7 @@ import { createComponentFoldersResource } from './resources/component-folders';
 import { createComponentsResource } from './resources/components';
 import { createDatasourceEntriesResource } from './resources/datasource-entries';
 import { createDatasourcesResource } from './resources/datasources';
+import { createExperimentsResource } from './resources/experiments';
 import { createInternalTagsResource } from './resources/internal-tags';
 import { createPresetsResource } from './resources/presets';
 import { createSpacesResource } from './resources/spaces';
@@ -171,6 +172,7 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     components: createComponentsResource(deps),
     datasourceEntries: createDatasourceEntriesResource(deps),
     datasources: createDatasourcesResource(deps),
+    experiments: createExperimentsResource(deps),
     delete: httpDelete,
     get: httpGet,
     patch: httpPatch,

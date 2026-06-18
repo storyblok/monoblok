@@ -33,7 +33,7 @@ function collectAllDependencies(
 
     // Collect direct internal tag assignments
     if (component.internal_tag_ids && component.internal_tag_ids.length > 0) {
-      component.internal_tag_ids.forEach((tagId) => {
+      component.internal_tag_ids.forEach((tagId: string | number) => {
         // Handle both string and number tag IDs
         const numericTagId = typeof tagId === 'string' ? Number.parseInt(tagId, 10) : tagId;
         if (!Number.isNaN(numericTagId)) {

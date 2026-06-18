@@ -274,7 +274,7 @@ const getComponentPropertiesTypeAnnotations = async (
             const componentsWithTags = spaceData.components.filter(
               component =>
                 component.internal_tag_ids
-                && component.internal_tag_ids.some(tagId =>
+                && component.internal_tag_ids.some((tagId: string | number) =>
                   schema.component_tag_whitelist!.includes(Number(tagId)),
                 ),
             );

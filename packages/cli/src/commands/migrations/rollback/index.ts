@@ -67,7 +67,6 @@ rollbackCmd
           const payload: { story: StoryUpdate; force_update?: string; publish?: number } = {
             story: {
               content: story.content,
-              id: story.storyId,
               name: story.name,
             },
             force_update: '1',

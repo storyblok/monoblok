@@ -24,8 +24,18 @@ const preconditions = {
         'https://mapi.storyblok.com/v1/spaces/12345/stories',
         ({ request }) => {
           const url = new URL(request.url);
+          const matchesParam = (key: string, value: unknown): boolean => {
+            // Nested objects (e.g. filter_query) serialize to bracket params:
+            // filter_query[field][op]=value.
+            if (value !== null && typeof value === 'object') {
+              return Object.entries(value).every(
+                ([childKey, childValue]) => matchesParam(`${key}[${childKey}]`, childValue),
+              );
+            }
+            return url.searchParams.get(key) === String(value);
+          };
           const matchesAllParams = Object.entries(params).every(
-            ([key, value]) => url.searchParams.get(key) === String(value),
+            ([key, value]) => matchesParam(key, value),
           );
 
           const page = Number(url.searchParams.get('page') ?? 1);
@@ -172,7 +182,8 @@ describe('stories pull command', () => {
   it('should only pull stories matching the given filters', async () => {
     const stories = [makeMockStory(), makeMockStory(), makeMockStory()];
     preconditions.canPullStories([stories], {
-      filter_query: '[highlighted][in]=true',
+      // `--query` is parsed into the structured filter_query before the request.
+      filter_query: { highlighted: { in: 'true' } },
       starts_with: '/en/blog/',
     });
 

@@ -23,7 +23,7 @@ import {
 } from '../streams';
 import { createAssetInternalTag, fetchAssetInternalTagsByName } from '../actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMapped, AssetUpload, UnmappedAssetInternalTag } from '../types';
-import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets, isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
+import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets, isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData, toAssetUpload } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
 import type { Story } from '../../stories/constants';
@@ -133,11 +133,8 @@ pushCmd
           : basename(assetBinaryPath);
         const shortFilename = options.shortFilename || assetDataPartial.short_filename || sourceBasename;
         const folderId = options.folder ? Number(options.folder) : undefined;
-        assetData = {
-          ...assetDataPartial,
-          short_filename: shortFilename,
-          asset_folder_id: folderId,
-        } satisfies AssetUpload;
+        // `--folder` overrides any folder stored in the sidecar/`--data`.
+        assetData = { ...toAssetUpload(assetDataPartial, shortFilename), asset_folder_id: folderId };
       }
 
       const getAssetTransport = makeGetAssetAPITransport({ spaceId: targetSpace });

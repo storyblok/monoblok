@@ -1,17 +1,17 @@
-import { get, list } from '../generated/stories/sdk.gen';
-import type { GetData, GetResponses, ListData, ListResponses } from '../generated/stories/types.gen';
+import { getStoryById, listStories } from '../generated/capi/sdk.gen';
+import type { GetStoryByIdData, GetStoryByIdResponses, ListStoriesData, ListStoriesResponses } from '../generated/capi/types.gen';
 import type {
   AssetFieldValue,
-  BlokContent,
+  BlockContent as BlokContent,
   MultilinkFieldValue,
   PluginFieldValue,
   RichtextFieldValue,
-  StoryCapi,
   TableFieldValue,
-} from '../generated/stories';
+} from '../generated/types/field';
 import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
 import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
-import type { Story as CapiStory, Block as Component, RootBlocks as RootComponents } from '@storyblok/schema';
+import type { Block as Component, RootBlock as RootComponents } from '../generated/types/block';
+import type { Story } from '../generated/types/story';
 
 type InlinedStoryContentField =
   | string
@@ -33,7 +33,7 @@ interface InlinedStoryContent {
   [key: string]: InlinedStoryContentField;
 }
 
-export type StoryWithInlinedRelations = Omit<StoryCapi, 'content'> & {
+export type StoryWithInlinedRelations = Omit<Story, 'content'> & {
   content: InlinedStoryContent;
 };
 
@@ -51,7 +51,7 @@ type ResolvedFieldsFor<R extends string, ComponentName extends string> =
 
 /** A resolved relation: a full story typed to the component union. */
 type ResolvedRelation<TComponents extends Component> =
-  { [K in TComponents as K['name']]: CapiStory<K, TComponents> }[TComponents['name']];
+  { [K in TComponents as K['name']]: Story<K, TComponents> }[TComponents['name']];
 
 /**
  * Given a story type and a set of resolved field names, replaces
@@ -70,7 +70,7 @@ type WithResolvedRelations<
 
 /**
  * Resolves to a narrowed component-derived story type when `TComponents` is a specific
- * Component union, or falls back to the generated StoryCapi / StoryWithInlinedRelations
+ * Component union, or falls back to the generated Story / StoryWithInlinedRelations
  * when `TComponents` is the default Component base type (no type argument provided).
  *
  * When `ResolveRelations` is a string literal (e.g. `"article.author"`),
@@ -83,7 +83,7 @@ type WithResolvedRelations<
  * a distributive conditional + default-parameter pattern would collapse
  * both parameters to the distributed single member after inlining.
  *
- * The mapped type `{ [K in TComponents as K["name"]]: CapiStory<K, TComponents> }`
+ * The mapped type `{ [K in TComponents as K["name"]]: Story<K, TComponents> }`
  * iterates each union member as `K` while keeping `TComponents` as the full union
  * for nested blok field resolution. The final indexed access
  * `[TComponents["name"]]` produces the discriminated union of all story types.
@@ -94,34 +94,54 @@ type StoryResult<
   ResolveRelationsRaw extends string | undefined = undefined,
 > =
   Component extends TComponents
-    ? InlineRelations extends true ? StoryWithInlinedRelations : StoryCapi // fallback
+    ? InlineRelations extends true ? StoryWithInlinedRelations : Story // fallback
     : ResolveRelationsRaw extends string
       ? {
           [K in RootComponents<TComponents> as K['name']]: WithResolvedRelations<
-            CapiStory<K, TComponents>,
+            Story<K, TComponents>,
             TComponents,
             ResolvedFieldsFor<ResolveRelationsRaw, K['name']>
           >
         }[RootComponents<TComponents>['name']]
-      : CapiStory<TComponents>;
+      : Story<TComponents>;
 
 type GetResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
-> = Omit<GetResponses[200], 'story'> & {
+> = Omit<GetStoryByIdResponses[200], 'story'> & {
   story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>;
 };
 type ListResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
-> = Omit<ListResponses[200], 'stories'> & {
+> = Omit<ListStoriesResponses[200], 'stories'> & {
   stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>>;
 };
 
-/** Pre-resolved to avoid TypeScript emitting deep indexed-access chains that trip up DTS bundlers. */
-type StoryIdentifier = GetData['path']['identifier'];
+/**
+ * Internal relation-resolution shapes. The public response types expose the
+ * generic `Story`, but relation inlining needs to read the API's sidecar
+ * `rels`/`rel_uuids` fields off the raw payload. These three interfaces model
+ * that wire shape so the `response.data` narrowing below stays in one place
+ * instead of being scattered as inline casts.
+ */
+interface StoryRelationData {
+  rels?: Story[];
+  rel_uuids?: string[];
+}
+
+interface StoryData extends StoryRelationData {
+  story: Story;
+}
+
+interface StoriesData extends StoryRelationData {
+  stories: Story[];
+}
+
+/** The story identifier path param (full slug, numeric ID, or UUID), derived from the generated request type. */
+type StoryIdentifier = GetStoryByIdData['path']['id'];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -144,19 +164,19 @@ export function createStoriesResource<
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
       identifier: StoryIdentifier,
-      options: { query?: Omit<NonNullable<GetData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+      options: { query?: Omit<NonNullable<GetStoryByIdData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<GetData['query']>;
+      const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData['query']>;
       const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !typedQuery.find_by
         ? { ...typedQuery, find_by: 'uuid' }
         : typedQuery;
       const requestPath = `/v2/cdn/stories/${identifier}`;
       return requestWithCache('GET', requestPath, resolvedQuery, async (requestQuery: Record<string, unknown>) => {
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse(get({
+          asApiResponse(getStoryById({
             client,
-            path: { identifier },
+            path: { id: identifier },
             query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
@@ -167,7 +187,10 @@ export function createStoriesResource<
           return response;
         }
 
-        const resolved = await resolveRelationMap(response.data, requestQuery, { client, throttleManager });
+        // Narrow to the internal relation shape to read the API's sidecar
+        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+        const storyData = response.data as unknown as StoryData;
+        const resolved = await resolveRelationMap(storyData, requestQuery, { client, throttleManager });
         if (!resolved) {
           return response;
         }
@@ -176,9 +199,7 @@ export function createStoriesResource<
           ...response,
           data: {
             ...response.data,
-            // `inlineStoryContent` operates on raw `StoryCapi` shapes and mutates relation fields
-            // from UUID strings to full story objects. We cast to satisfy its parameter type.
-            story: inlineStoryContent(response.data.story as StoryCapi, resolved.relationPaths, resolved.relationMap),
+            story: inlineStoryContent(storyData.story, resolved.relationPaths, resolved.relationMap),
           },
         };
       }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
@@ -188,14 +209,14 @@ export function createStoriesResource<
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
-      options: { query?: Omit<NonNullable<ListData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+      options: { query?: Omit<NonNullable<ListStoriesData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
     ): Promise<ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<ListData['query']>;
+      const typedQuery = (query ?? {}) as NonNullable<ListStoriesData['query']>;
       const requestPath = '/v2/cdn/stories';
       return requestWithCache('GET', requestPath, typedQuery, async (requestQuery: Record<string, unknown>) => {
         const response = await throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse(list({
+          asApiResponse(listStories({
             client,
             query: requestQuery,
             signal,
@@ -207,7 +228,10 @@ export function createStoriesResource<
           return response;
         }
 
-        const resolved = await resolveRelationMap(response.data, requestQuery, { client, throttleManager });
+        // Narrow to the internal relation shape to read the API's sidecar
+        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+        const storiesData = response.data as unknown as StoriesData;
+        const resolved = await resolveRelationMap(storiesData, requestQuery, { client, throttleManager });
         if (!resolved) {
           return response;
         }
@@ -216,9 +240,7 @@ export function createStoriesResource<
           ...response,
           data: {
             ...response.data,
-            // `inlineStoriesContent` operates on raw `StoryCapi` shapes and mutates relation fields
-            // from UUID strings to full story objects. We cast to satisfy its parameter type.
-            stories: inlineStoriesContent(response.data.stories as StoryCapi[], resolved.relationPaths, resolved.relationMap),
+            stories: inlineStoriesContent(storiesData.stories, resolved.relationPaths, resolved.relationMap),
           },
         };
       }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);

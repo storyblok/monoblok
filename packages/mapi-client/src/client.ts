@@ -1,12 +1,13 @@
-import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/shared/client';
-import type { Middleware } from './generated/shared/client/utils.gen';
-import { createClient, createConfig } from './generated/shared/client';
+import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/mapi/client';
+import type { Middleware } from './generated/mapi/client/utils.gen';
+import { createClient, createConfig } from './generated/mapi/client';
 import { getManagementBaseUrl } from '@storyblok/region-helper';
 import type { Region } from '@storyblok/region-helper';
-import type { Block as Component } from '@storyblok/schema';
+import type { Block as Component } from './generated/types/block';
 import { ClientError } from './error';
 import type { RateLimitConfig } from './utils/rate-limit';
 import { createThrottleManager } from './utils/rate-limit';
+import { querySerializer } from './utils/query-serializer';
 import { createAssetFoldersResource } from './resources/asset-folders';
 import { createAssetsResource } from './resources/assets';
 import { createComponentFoldersResource } from './resources/component-folders';
@@ -181,6 +182,9 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
         ...(authHeader ? { Authorization: authHeader } : {}),
         ...headers,
       },
+      // Default serializer throws on nested objects; MAPI needs `filter_query`
+      // serialized as a nested hash (`filter_query[field][op]=value`).
+      querySerializer,
       throwOnError,
       kyOptions: {
         throwHttpErrors: true,
@@ -290,7 +294,6 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     assetFolders: createAssetFoldersResource(deps),
     assets: createAssetsResource(deps),
     componentFolders: createComponentFoldersResource(deps),
-    components: createComponentsResource(deps),
     datasourceEntries: createDatasourceEntriesResource(deps),
     datasources: createDatasourcesResource(deps),
     experiments: createExperimentsResource(deps),
@@ -322,6 +325,7 @@ export type ManagementApiClient<
   TComponents extends Component = Component,
   DefaultThrowOnError extends boolean = false,
 > = ReturnType<typeof buildResources<DefaultThrowOnError>> & {
+  components: ReturnType<typeof createComponentsResource<TComponents, DefaultThrowOnError>>;
   stories: ReturnType<typeof createStoriesResource<TComponents, DefaultThrowOnError>>;
   /**
    * Returns the same client instance cast to a version that narrows story content
@@ -349,6 +353,7 @@ export const createManagementApiClient = <
   const { deps, resources } = createManagementApiClientBase(config);
   const self: ManagementApiClient<Component, DefaultThrowOnError> = {
     ...resources,
+    components: createComponentsResource<Component, DefaultThrowOnError>(deps),
     stories: createStoriesResource<Component, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
       return self as unknown as ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;

@@ -150,7 +150,8 @@ describe('@storyblok/experiments CDN round-trip', () => {
         story: {
           name: 'E2E Experiments Home',
           slug: ORIGINAL_SLUG,
-          content: { _uid: 'e2e-experiments-root', component: COMPONENT_NAME, title: 'Home' },
+          // @ts-expect-error the generated `content` type wrongly requires `_uid`; this will be fixed upstream.
+          content: { component: COMPONENT_NAME, title: 'Home' },
         },
       },
     });

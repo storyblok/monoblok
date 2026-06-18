@@ -121,23 +121,21 @@ export async function useAsyncStoryblok(
     watch(
       () => result.data.value?.data?.story?.id,
       (storyId) => {
-        if (storyId && storyId !== registeredId) {
-          registeredId = storyId;
-          useStoryblokBridge(
-            storyId,
-            (evStory) => {
-              // In Nuxt 4, data is a shallowRef - we must replace the entire object
-              // to trigger reactivity instead of mutating nested properties
-              if (result.data.value) {
-                result.data.value = {
-                  ...result.data.value,
-                  data: { ...result.data.value.data, story: evStory },
-                };
-              }
-            },
-            bridgeOptions,
-          );
+        if (!storyId || storyId === registeredId) {
+          return;
         }
+        registeredId = storyId;
+        useStoryblokBridge(storyId, (evStory) => {
+          // In Nuxt 4, data is a shallowRef - we must replace the entire object
+          // to trigger reactivity instead of mutating nested properties
+          if (!result.data.value) {
+            return;
+          }
+          result.data.value = {
+            ...result.data.value,
+            data: { ...result.data.value.data, story: evStory },
+          };
+        }, bridgeOptions);
       },
       { immediate: true },
     );

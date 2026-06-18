@@ -8,7 +8,7 @@ import { confirm, input, select } from '@inquirer/prompts';
 import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
 import { basename, dirname, resolve } from 'pathe';
 import chalk from 'chalk';
-import { createSpace, type SpaceCreate } from '../spaces';
+import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
 import { Spinner } from '@topcli/spinner';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
@@ -291,14 +291,15 @@ export const createCommand = program
           name: toHumanReadable(projectName),
           domain: blueprintDomain,
         };
+        // `in_org`/`assign_partner` are create-time query parameters, not body fields.
+        const createSpaceQuery: Pick<SpaceCreateQuery, 'in_org' | 'assign_partner' | 'space_type' | 'dup_id'> = {};
         if (whereToCreateSpace === 'org') {
-          spaceToCreate.org = userData.org;
-          spaceToCreate.in_org = true;
+          createSpaceQuery.in_org = true;
         }
         else if (whereToCreateSpace === 'partner') {
-          spaceToCreate.assign_partner = true;
+          createSpaceQuery.assign_partner = true;
         }
-        createdSpace = await createSpace(spaceToCreate);
+        createdSpace = await createSpace(spaceToCreate, createSpaceQuery);
         spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
 
         // Create .env file with the Storyblok token

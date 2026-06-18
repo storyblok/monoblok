@@ -1,9 +1,10 @@
-import type { InternalTag, InternalTagCreate, InternalTagUpdate } from '../generated/mapi-types';
+import type { InternalTag, InternalTagCreate, InternalTagUpdate } from '../generated/mapi/types.gen';
 
 export type { InternalTag, InternalTagCreate, InternalTagUpdate };
 
 const INTERNAL_TAG_DEFAULTS = {
   id: 1,
+  object_type: 'asset' as const,
 };
 
 type InternalTagInput = { name: string } & Partial<Omit<InternalTag, 'name'>>;
@@ -19,6 +20,7 @@ type InternalTagInput = { name: string } & Partial<Omit<InternalTag, 'name'>>;
 export const defineInternalTag = (internalTag: InternalTagInput): InternalTag => ({
   ...INTERNAL_TAG_DEFAULTS,
   ...internalTag,
+  object_type: internalTag.object_type ?? INTERNAL_TAG_DEFAULTS.object_type,
 });
 
 /**

@@ -1,9 +1,20 @@
-import type { Space, SpaceCreate, SpaceUpdate } from '../generated/mapi-types';
+import type { Space, SpaceCreate, SpaceUpdate } from '../generated/mapi/types.gen';
 
 export type { Space, SpaceCreate, SpaceUpdate };
 
 const SPACE_DEFAULTS = {
   id: 1,
+  region: '',
+  owner_id: 1,
+  updated_at: '',
+  created_at: '',
+  plan: '',
+  plan_level: 0,
+  trial: false,
+  requires_2fa: false,
+  org_requires_2fa: false,
+  development_mode: false,
+  feature_limit_exceeded_flags: {},
 };
 
 type SpaceInput = { name: string } & Partial<Omit<Space, 'name'>>;

@@ -1,16 +1,16 @@
-import type { ComponentCreate, ComponentFolderCreate, ComponentSchemaField, ComponentUpdate, Datasource, DatasourceCreate } from '../../types';
+import type { ComponentCreate, ComponentFolderCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isSchemaField(value: unknown): value is ComponentSchemaField {
+function isSchemaField(value: unknown): value is Field {
   return isRecord(value) && 'type' in value;
 }
 
 /** Converts a Component's schema (which includes _uid/component sentinels) to a clean record. */
-function toSchemaRecord(schema: Record<string, unknown>): Record<string, ComponentSchemaField> {
-  const result: Record<string, ComponentSchemaField> = {};
+function toSchemaRecord(schema: Record<string, unknown>): Record<string, Field> {
+  const result: Record<string, Field> = {};
   for (const [key, value] of Object.entries(schema)) {
     if (key === '_uid' || key === 'component' || !isSchemaField(value)) { continue; }
     result[key] = value;

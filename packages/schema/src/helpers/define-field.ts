@@ -1,18 +1,15 @@
 import type {
-  ComponentSchemaField as Field,
-} from '../generated/mapi-types';
-import type {
   AssetFieldValue,
-  BlokContent as BlokContentGenerated,
+  Field,
   MultilinkFieldValue,
   PluginFieldValue,
   RichtextFieldValue,
   TableFieldValue,
-} from '../generated/types';
+} from '../generated/types/field';
 import type { Block } from './define-block';
 import type { Prettify } from '../utils/prettify';
 
-export { Field };
+export type { Field };
 
 /** Loose variant of the generated `BlokContent` with `_uid` optional — used as the fallback for write operations when no block union is provided. */
 type BlokContentLoose = {
@@ -99,7 +96,7 @@ interface FieldTypeValueMap {
   asset: AssetFieldValue;
   multiasset: AssetFieldValue[];
   multilink: MultilinkFieldValue;
-  bloks: BlokContentGenerated[];
+  bloks: BlockContent[];
   table: TableFieldValue;
   section: never;
   tab: never;
@@ -132,10 +129,10 @@ export type FieldValue<
     // Bloks field — guard against `never` first (it satisfies `[never] extends [X]`
     // for all X, which would incorrectly enter the typed path with empty results).
     ? [TBlocks] extends [never]
-        ? BlokContentGenerated[]
+        ? BlockContent[]
         : [TBlocks] extends [Block]
             ? BlockContent<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
-            : BlokContentGenerated[]
+            : BlockContent[]
     // No bloks field
     : FieldTypeValueMap[TField['type']]
 >;

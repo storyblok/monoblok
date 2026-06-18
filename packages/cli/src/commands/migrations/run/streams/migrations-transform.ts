@@ -160,8 +160,8 @@ export class MigrationStream extends Transform {
             id: story.id,
             name: story.name || '',
             content: story.content as BlokContent,
-            published: story.published,
-            unpublished_changes: story.unpublished_changes,
+            published: story.published ?? undefined,
+            unpublished_changes: story.unpublished_changes ?? undefined,
           },
           migrationTimestamp: this.timestamp,
           migrationNames,
@@ -179,8 +179,8 @@ export class MigrationStream extends Transform {
           storyId: story.id,
           name: story.name,
           content: storyContent,
-          published: story.published,
-          unpublished_changes: story.unpublished_changes,
+          published: story.published ?? undefined,
+          unpublished_changes: story.unpublished_changes ?? undefined,
         };
       }
       else if (processed && !contentChanged) {

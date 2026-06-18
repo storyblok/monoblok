@@ -22,7 +22,7 @@ export type { AssetFolder, AssetFolderCreate, AssetFolderUpdate } from './helper
 
 // Block
 export { defineBlock, defineBlockCreate, defineBlockUpdate } from './helpers/define-block';
-export type { Block, BlockSchema, ComponentCreate, ComponentUpdate, NestableBlocks, RootBlocks } from './helpers/define-block';
+export type { Block, BlockSchema, NestableBlock, RootBlock } from './helpers/define-block';
 
 // Block folder (MAPI-only)
 export { defineBlockFolder, defineBlockFolderCreate, defineBlockFolderUpdate } from './helpers/define-block-folder';
@@ -58,7 +58,7 @@ export type { Space, SpaceCreate, SpaceUpdate } from './helpers/define-space';
 
 // Story
 export { defineMapiStory, defineStory, defineStoryCreate, defineStoryUpdate } from './helpers/define-story';
-export type { MapiStory, Story, StoryAlternate, StoryComponent, StoryCreate, StoryLocalizedPath, StoryTranslatedSlug, StoryUpdate } from './helpers/define-story';
+export type { MapiStory, Story, StoryAlternate, StoryCreate, StoryLocalizedPath, StoryTranslatedSlug, StoryUpdate } from './helpers/define-story';
 
 // Tag (CDN-only)
 export { defineTag } from './helpers/define-tag';

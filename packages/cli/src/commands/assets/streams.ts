@@ -13,7 +13,7 @@ import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
 import { FetchError } from '../../utils/fetch';
 import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
-import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData } from './utils';
+import { getAssetBinaryFilename, getAssetFilename, getFolderFilename, getSidecarFilename, isRemoteSource, loadSidecarAssetData, toAssetUpload } from './utils';
 
 let _pipelineSlot: Sema | null = null;
 const getPipelineSlot = (): Sema => {
@@ -468,10 +468,12 @@ export const readLocalAssetsStream = ({
           const shortFilename: string = sidecar.short_filename
             || (sidecar.filename ? basename(sidecar.filename) : undefined)
             || file;
-          const asset = {
-            ...sidecar,
-            short_filename: shortFilename,
-          } satisfies AssetUpload;
+          const asset: AssetUpload = {
+            ...toAssetUpload(sidecar, shortFilename),
+            // Carry the read-only tag detail for source→target tag-name
+            // translation in `processAsset`; it is stripped before the API call.
+            ...(sidecar.internal_tags_list ? { internal_tags_list: sidecar.internal_tags_list } : {}),
+          };
           const fileBuffer = await readFile(binaryFilePath) as unknown as ArrayBuffer;
           const sidecarPath = getSidecarFilename(binaryFilePath);
           yield {
@@ -583,7 +585,7 @@ const mapInternalTagIds = (
   sourceTags: ReadonlyArray<{ id?: number; name?: string }> | null | undefined,
   assetInternalTagsByName: AssetInternalTagsByName,
   onUnmappedTag?: (tag: UnmappedAssetInternalTag) => void,
-): string[] => {
+): number[] => {
   if (!sourceIds || sourceIds.length === 0) {
     return [];
   }
@@ -593,7 +595,7 @@ const mapInternalTagIds = (
       sourceNamesById.set(tag.id, tag.name);
     }
   }
-  const mapped: string[] = [];
+  const mapped: number[] = [];
   for (const raw of sourceIds) {
     const sourceId = Number(raw);
     const sourceName = sourceNamesById.get(sourceId);
@@ -601,7 +603,7 @@ const mapInternalTagIds = (
       ? assetInternalTagsByName.get(sourceName)
       : undefined;
     if (typeof targetId === 'number') {
-      mapped.push(String(targetId));
+      mapped.push(targetId);
     }
     else {
       onUnmappedTag?.({ sourceId, name: sourceName });
@@ -685,16 +687,20 @@ const processAsset = async ({
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   const sourceTags = localAsset.internal_tags_list;
-  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): string[] =>
+  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): number[] =>
     maps.assetInternalTagsByName
       ? mapInternalTagIds(sourceIds, sourceTags, maps.assetInternalTagsByName, onUnmappedTag)
-      : (sourceIds ?? []).map(id => String(id));
+      : (sourceIds ?? []).map(id => Number(id));
 
   let newRemoteAsset: Asset;
   let status: 'created' | 'updated';
   if (remoteAsset) {
     // Build only the writable metadata fields for the API update.
     // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
+    // `AssetUpdate` keeps `null` for the nullable fields (alt/title/copyright/
+    // source/is_private/focus); `publish_at`/`expire_at`/`meta_data` are
+    // non-nullable in the spec, so their `null` source values are dropped.
+    const nullToUndef = <T>(v: T | null | undefined): T | undefined => v ?? undefined;
     const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
       alt: 'alt' in localAsset ? localAsset.alt : remoteAsset.alt,
@@ -703,10 +709,10 @@ const processAsset = async ({
       source: 'source' in localAsset ? localAsset.source : remoteAsset.source,
       is_private: 'is_private' in localAsset ? localAsset.is_private : remoteAsset.is_private,
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
-      expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
-      publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
-      internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
-      meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
+      expire_at: nullToUndef('expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at),
+      publish_at: nullToUndef('publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at),
+      internal_tag_ids: localAsset.internal_tag_ids ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
+      meta_data: nullToUndef('meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data),
     };
 
     // Always perform the full replace flow (sign → S3 upload → finalize)
@@ -717,24 +723,32 @@ const processAsset = async ({
       fileBuffer,
     );
     // updateAsset returns void; the remote asset's readonly fields are unchanged.
-    newRemoteAsset = { ...remoteAsset, ...updatePayload };
+    // `Asset.is_private` is a required boolean while `updatePayload.is_private`
+    // is nullable — coerce back to the remote value when unset.
+    newRemoteAsset = {
+      ...remoteAsset,
+      ...updatePayload,
+      is_private: updatePayload.is_private ?? remoteAsset.is_private,
+    };
     status = 'updated';
   }
   else if (hasShortFilename(localAsset)) {
-    // `internal_tags_list` is server-managed (read-only) and must not be sent.
-    // `internal_tag_ids` is rewritten through `maps.assetInternalTagsByName` so
-    // source-space IDs are translated to target-space IDs. When the
-    // source has no tag metadata, omit the field entirely so mapi-client skips
-    // the follow-up metadata PUT for tagless assets.
-    const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset;
-    const mappedTagIds = 'internal_tag_ids' in localAsset
+    // `internal_tags_list` is server-managed (read-only) and is dropped by
+    // `toAssetUpload`. `internal_tag_ids` is rewritten through
+    // `maps.assetInternalTagsByName` so source-space IDs are translated to
+    // target-space IDs before the create call.
+    const mappedTagIds = localAsset.internal_tag_ids
       ? resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;
-    const createPayload = {
-      ...rest,
-      asset_folder_id: remoteFolderId,
+    // Drop the source (untranslated) `internal_tag_ids` carried by
+    // `toAssetUpload` and re-add the target-space ids only when the source had
+    // tag metadata, so tagless assets omit the field entirely.
+    const { internal_tag_ids: _sourceTagIds, ...uploadBase } = toAssetUpload(localAsset, localAsset.short_filename);
+    const createPayload: AssetUpload = {
+      ...uploadBase,
+      asset_folder_id: remoteFolderId ?? undefined,
       ...(mappedTagIds !== undefined ? { internal_tag_ids: mappedTagIds } : {}),
-    } satisfies AssetUpload;
+    };
     newRemoteAsset = await transports.createAsset(createPayload, fileBuffer);
     status = 'created';
   }

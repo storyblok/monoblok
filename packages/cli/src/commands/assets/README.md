@@ -9,10 +9,6 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 
 > See each subcommand for detailed usage, options, and examples.
 
-## Shared libraries
-
-Both `pull` and `push` support the organization's shared asset libraries (top-level shared asset folders with per-space read or write access) via the `--target` flag. Library assets live under `.storyblok/assets/shared/<library_id>/`, parallel to the space subtree at `.storyblok/assets/<space_id>/`. See the [`push`](./push/README.md#shared-libraries) and [`pull`](./pull/README.md#shared-libraries) docs for details.
-
 ## Common Workflows
 
 ### Space-to-Space Migration

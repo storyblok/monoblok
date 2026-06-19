@@ -1898,6 +1898,42 @@ describe('assets push command', () => {
       expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
     });
 
+    it('paginates shared library tags so a match on a later page is reused, not recreated', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let createCalled = false;
+      server.use(
+        // Two pages of existing library tags; the match lives on page 2. With one
+        // unpaginated request only page 1 is seen and the tag is wrongly recreated.
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', ({ request }) => {
+          const page = new URL(request.url).searchParams.get('page');
+          const tags = page === '2'
+            ? [{ id: 999, name: 'hero', object_type: 'asset' }]
+            : [{ id: 100, name: 'other', object_type: 'asset' }];
+          return HttpResponse.json({ internal_tags: tags }, { headers: { 'Total': '2', 'Per-Page': '1' } });
+        }),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => {
+          createCalled = true;
+          return HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } });
+        }),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+          capturedPut = await request.json() as typeof capturedPut;
+          return HttpResponse.json({});
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', internal_tag_ids: ['300'], internal_tags_list: [{ id: 300, name: 'hero' }] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['999']);
+      expect(createCalled).toBe(false);
+    });
+
     it('bulk --target=space ignores shared subtrees', async () => {
       const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });

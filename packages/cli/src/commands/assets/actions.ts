@@ -555,12 +555,15 @@ export const fetchSharedInternalTags = async ({ spaceId, libraryId }: {
   libraryId: number;
 }) => {
   try {
-    const { data } = await getMapiClient().sharedInternalTags.list({
-      path: { space_id: Number(spaceId) },
-      query: { asset_folder_id: libraryId },
-      throwOnError: true,
-    });
-    return data?.internal_tags || [];
+    const client = getMapiClient();
+    return await fetchAllPages(
+      (page: number) => client.sharedInternalTags.list({
+        path: { space_id: Number(spaceId) },
+        query: { asset_folder_id: libraryId, page },
+        throwOnError: true,
+      }),
+      data => data?.internal_tags ?? [],
+    );
   }
   catch (maybeError) {
     handleAPIError('pull_shared_internal_tags', toError(maybeError));

@@ -83,7 +83,7 @@ const pushCmd = assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .addOption(new Option('--target <target>', 'push destination: space | shared | all').choices(PUSH_TARGETS).default('space'))
+  .addOption(new Option('--target <target>', 'push destination: space | shared | all (default: space for a single asset, all for a bulk push)').choices(PUSH_TARGETS))
   .option('--library <libraryId>', 'destination library ID (required for single-asset --target=shared)')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
@@ -118,11 +118,15 @@ pushCmd
       return;
     }
 
-    const target = (options.target as PushTarget) ?? 'space';
     const libraryId = options.library ? Number(options.library) : undefined;
     const assetBinaryPath = typeof assetInput === 'string' && assetInput.trim().length > 0
       ? assetInput
       : undefined;
+    // Default the destination by mode: a single asset has exactly one
+    // destination (the space), while a bulk push round-trips everything on disk
+    // (the space subtree plus every writable shared library), mirroring the
+    // default `pull`. `all` is a no-op for shared scopes that have nothing local.
+    const target = (options.target as PushTarget | undefined) ?? (assetBinaryPath ? 'space' : 'all');
 
     // Validate the target/library combination for single-asset pushes.
     if (assetBinaryPath) {

@@ -112,6 +112,56 @@ describe('storyRefMapper', () => {
     expect(mappedStory.content.asset.filename).toBe(expectedCdnFilename);
   });
 
+  it('should pass shared-asset references through unchanged when the id is absent from the space manifest', () => {
+    const story: any = structuredClone(makeStoryWithAllFieldTypes());
+    // A shared asset uses a /g/{org_id}/ filename and is never in the space map.
+    story.content.asset.filename = 'https://a.storyblok.com/g/1/500x500/shared-image.png';
+    const sharedId = story.content.asset.id;
+    const sharedFilename = story.content.asset.filename;
+    // The per-space manifest only ever contains space-local assets.
+    const maps = { assets: new Map<number, any>(), stories: new Map() };
+
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    // id and filename preserved verbatim — no remap, no normalization rewrite.
+    expect(mappedStory.content.asset.id).toBe(sharedId);
+    expect(mappedStory.content.asset.filename).toBe(sharedFilename);
+  });
+
+  it('should remap a local asset while passing a shared asset through in the same story', () => {
+    const story: any = structuredClone(makeStoryWithAllFieldTypes());
+    const localOldId = story.content.bloks[0].bloks[0].asset.id;
+    const localNew = { id: getID(), filename: 'https://a.storyblok.com/f/12345/500x500/local-new.png' };
+    story.content.asset.filename = 'https://a.storyblok.com/g/1/500x500/shared-image.png';
+    const sharedId = story.content.asset.id;
+    const sharedFilename = story.content.asset.filename;
+    const assetMap = new Map<number, any>();
+    assetMap.set(localOldId, { new: localNew }); // local asset is in the space manifest
+    const maps = { assets: assetMap, stories: new Map() };
+
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    // Local ref remapped through the target space manifest.
+    expect(mappedStory.content.bloks[0].bloks[0].asset.id).toBe(localNew.id);
+    expect(mappedStory.content.bloks[0].bloks[0].asset.filename).toBe(localNew.filename);
+    // Shared ref untouched.
+    expect(mappedStory.content.asset.id).toBe(sharedId);
+    expect(mappedStory.content.asset.filename).toBe(sharedFilename);
+  });
+
+  it('should pass multiasset shared references through unchanged when absent from the manifest', () => {
+    const story: any = structuredClone(makeStoryWithAllFieldTypes());
+    story.content.multi_assets[0].filename = 'https://a.storyblok.com/g/1/500x500/shared-multi.png';
+    const sharedId = story.content.multi_assets[0].id;
+    const sharedFilename = story.content.multi_assets[0].filename;
+    const maps = { assets: new Map<number, any>(), stories: new Map() };
+
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content.multi_assets[0].id).toBe(sharedId);
+    expect(mappedStory.content.multi_assets[0].filename).toBe(sharedFilename);
+  });
+
   it('should handle null parent_id for root-level stories', () => {
     const story = {
       name: 'Root Story',

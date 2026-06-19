@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { markdownToStoryblokRichtext } from './markdown-parser';
-import Heading from '@tiptap/extension-heading';
-import Paragraph from '@tiptap/extension-paragraph';
 
 describe('markdownToStoryblokRichtext', () => {
   it('parses tables', () => {
@@ -258,22 +256,15 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
-  it('allows using custom Tiptap extensions', () => {
+  it('allows custom heading level', () => {
     const markdown = '## Custom Heading';
     const result = markdownToStoryblokRichtext(markdown, {
-      tiptapExtensions: {
-        heading: Heading.extend({
-          addAttributes() {
-            return {
-              ...this.parent?.(),
-              level: {
-                parseHTML: () => {
-                  return 99;
-                },
-              },
-            };
+      parsers: {
+        heading: {
+          attributeParsers: {
+            level: () => 5,
           },
-        }),
+        },
       },
     });
     expect(result).toMatchObject({
@@ -281,7 +272,7 @@ describe('markdownToStoryblokRichtext', () => {
       content: [
         {
           type: 'heading',
-          attrs: { level: 99 },
+          attrs: { level: 5 },
           content: [
             { type: 'text', text: 'Custom Heading' },
           ],
@@ -290,22 +281,15 @@ describe('markdownToStoryblokRichtext', () => {
     });
   });
 
-  it('uses a custom paragraph Tiptap extension', () => {
+  it('customizes paragraph extension to be center aligned', () => {
     const md = 'Paragraph with custom attr.';
     const result = markdownToStoryblokRichtext(md, {
-      tiptapExtensions: {
-        paragraph: Paragraph.extend({
-          addAttributes() {
-            return {
-              ...this.parent?.(),
-              custom: {
-                parseHTML: () => {
-                  return 'yes';
-                },
-              },
-            };
+      parsers: {
+        paragraph: {
+          attributeParsers: {
+            textAlign: () => 'center',
           },
-        }),
+        },
       },
     });
     expect(result).toMatchObject({
@@ -313,7 +297,7 @@ describe('markdownToStoryblokRichtext', () => {
       content: [
         {
           type: 'paragraph',
-          attrs: { custom: 'yes' },
+          attrs: { textAlign: 'center' },
           content: [{ type: 'text', text: 'Paragraph with custom attr.' }],
         },
       ],

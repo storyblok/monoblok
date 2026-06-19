@@ -1,24 +1,4 @@
-import React, { forwardRef } from 'react';
+import StoryblokComponent from './core/storyblok-component';
+import { createStoryblokRichText } from './core/create-storyblok-richtext';
 
-import { convertAttributesInElement } from './utils';
-import { useStoryblokRichText } from './richtext';
-import type { StoryblokRichTextProps } from './types';
-
-const StoryblokRichText = forwardRef<HTMLDivElement, StoryblokRichTextProps>(
-  ({ doc, tiptapExtensions }, ref) => {
-    const { render } = useStoryblokRichText({
-      tiptapExtensions,
-    });
-
-    const html = render(doc);
-    const formattedHtml = convertAttributesInElement(html as React.ReactElement);
-
-    return (
-      <div ref={ref}>
-        {formattedHtml}
-      </div>
-    );
-  },
-);
-
-export default StoryblokRichText;
+export const StoryblokRichText = createStoryblokRichText(StoryblokComponent);

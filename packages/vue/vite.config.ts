@@ -46,6 +46,6 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['./src/__tests__/**/*'],
-    exclude: ['./src/__tests__/cypress', './src/__tests__/testing-components'],
+    exclude: ['./src/__tests__/cypress', './src/__tests__/testing-components', './src/__tests__/richtext'],
   },
 });

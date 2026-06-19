@@ -1,5 +1,5 @@
 import type { DOMOutputSpec } from 'prosemirror-model';
-import type { AttrValue, RenderSpec } from '../types';
+import type { RenderSpec } from '../types';
 import { stringToStyle, styleToString } from '../style';
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
@@ -12,7 +12,7 @@ interface DOMObjectSpec {
 }
 
 /** Attribute object in a DOM spec */
-type AttrsObject = Record<string, AttrValue>;
+type AttrsObject = Record<string, unknown>;
 
 // Custom DOM specs for nodes that need special handling
 const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {};
@@ -72,7 +72,11 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
       parsedChildren.push(parseArraySpec(child));
     }
   }
-
+  if (parsedChildren.length > 1) {
+    console.warn(
+      `\x1B[1;33m[Storyblok RichText]\x1B[0m Invalid DOM spec: <${tag}> has multiple sibling elements (${parsedChildren.map(child => `<${child.tag}>`).join(', ')}). This may lead to unexpected rendering.`,
+    );
+  }
   const filteredAttrs = attrs ? filterNullAttrs(attrs) : undefined;
 
   const result: RenderSpec = {
@@ -88,8 +92,8 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
 /** Filters out null and undefined attribute values. */
 function filterNullAttrs(
   attrs: AttrsObject,
-): Record<string, AttrValue> {
-  const result: Record<string, AttrValue> = {};
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
 
   for (const key of Object.keys(attrs)) {
     const value = attrs[key];
@@ -103,7 +107,7 @@ function filterNullAttrs(
     if (key === 'style' && typeof value === 'string') {
       const styleObj = stringToStyle(value);
 
-      const filteredStyle: Record<string, AttrValue> = {};
+      const filteredStyle: Record<string, unknown> = {};
 
       for (const styleKey of Object.keys(styleObj)) {
         const styleValue = styleObj[styleKey];
@@ -134,8 +138,9 @@ function isAttrsObject(value: unknown): value is AttrsObject {
     && !Array.isArray(value)
   );
 }
+/** Type guard for array-form DOM specs. */
 function isValidAttrValue(
-  value: AttrValue,
+  value: unknown,
 ): value is string | number | boolean {
   return (
     value !== null

@@ -5,7 +5,6 @@ import Feature from '../../playground/vue/src/components/Feature.vue';
 import MyCustomFallback from '../../playground/vue/src/components/MyCustomFallback.vue';
 import { apiPlugin, StoryblokVue } from '@storyblok/vue';
 import EmojiRandomizer from './testing-components/EmojiRandomizer.vue';
-import { RouterLink } from 'vue-router';
 import Essential from './testing-components/Essential.vue';
 import RealApi from './testing-components/RealApi.vue';
 import RichText from './testing-components/RichText.vue';
@@ -205,7 +204,6 @@ describe('@storyblok/vue', () => {
       prepare({ use: [apiPlugin] }, RichText, {
         components: { Teaser, Grid, Page, Feature },
       });
-
       cy.contains('h1', 'Headline 1', { timeout: 1000 });
     });
 
@@ -253,16 +251,15 @@ describe('@storyblok/vue', () => {
         .should('exist');
     });
 
-    it.skip('should redirect internal links', () => {
+    it('should redirect internal links', () => {
       prepare({ use: [apiPlugin] }, RichText, {
-        components: { EmojiRandomizer, RouterLink },
+        components: { EmojiRandomizer },
       });
-
       cy.get('[data-test=root]')
         .children()
         .find('a')
         .contains('Internal Link')
-        .should('have.attr', 'href', '/vue/test');
+        .should('have.attr', 'target', '_self');
     });
   });
 });

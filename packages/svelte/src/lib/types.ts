@@ -1,8 +1,12 @@
-import type { SbSDKOptions } from '@storyblok/js';
+import type { SbBlokData, SbSDKOptions } from '@storyblok/js';
 import type { Component } from 'svelte';
 
+export type StoryblokComponentProps<T> = {
+  blok: T;
+} & Record<string, unknown>;
+
 export interface SbSvelteComponentsMap {
-  [name: string]: Component;
+  [name: string]: Component<StoryblokComponentProps<SbBlokData>>;
 }
 
 export interface SbSvelteSDKOptions extends SbSDKOptions {
@@ -10,7 +14,6 @@ export interface SbSvelteSDKOptions extends SbSDKOptions {
 }
 
 export type {
-  BlockTypes,
   ISbAlternateObject,
   ISbCache,
   ISbConfig,
@@ -21,7 +24,6 @@ export type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
-  MarkTypes,
   SbBlokData,
   SbBlokKeyDataTypes,
   SbSDKOptions,
@@ -29,11 +31,5 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-  StoryblokRichTextDocumentNode,
-  StoryblokRichTextImageOptimizationOptions,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeTypes,
-  StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';

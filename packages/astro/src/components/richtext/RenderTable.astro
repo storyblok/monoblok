@@ -1,0 +1,20 @@
+---
+import { type SbRichTextNode, type SbAstroRichTextRenderContext, splitTableRows } from '../../';
+import ElementTag from './ElementTag.astro';
+import RenderNode from './RenderNode.astro';
+interface Props {
+  node: SbRichTextNode & { type: 'table' };
+  options: SbAstroRichTextRenderContext;
+}
+const { node, options } = Astro.props;
+const { headerRows, bodyRows } = splitTableRows(node.content);
+---
+
+<ElementTag node={node}>
+  {
+    headerRows.length > 0 && (<thead>{headerRows.map((row) => <RenderNode node={row} options={options} />)}</thead>)
+  }
+  {
+    bodyRows.length > 0 && (<tbody>{bodyRows.map((row) => <RenderNode node={row} options={options} />)}</tbody>)
+  }
+</ElementTag>

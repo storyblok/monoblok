@@ -7,7 +7,6 @@ const tiptapGlobals: Record<string, string> = {
   '@tiptap/extension-bold': 'TiptapBold',
   '@tiptap/extension-code': 'TiptapCode',
   '@tiptap/extension-code-block': 'TiptapCodeBlock',
-  '@tiptap/extension-details': 'TiptapDetails',
   '@tiptap/extension-document': 'TiptapDocument',
   '@tiptap/extension-emoji': 'TiptapEmoji',
   '@tiptap/extension-hard-break': 'TiptapHardBreak',
@@ -26,7 +25,6 @@ const tiptapGlobals: Record<string, string> = {
   '@tiptap/extension-text': 'TiptapText',
   '@tiptap/extension-text-style': 'TiptapTextStyle',
   '@tiptap/extension-underline': 'TiptapUnderline',
-  '@tiptap/extension-text-align': 'TiptapTextAlign',
 };
 
 const sharedConfig = {
@@ -34,49 +32,52 @@ const sharedConfig = {
   clean: true,
   dts: true,
   exports: true,
-  external: ['mdast'],
+  external: ['mdast', '@tiptap/core', '@tiptap/html', '@tiptap/suggestion', 'prosemirror-model', 'prosemirror-state', 'prosemirror-transform', 'prosemirror-view', 'prosemirror-commands', 'prosemirror-collab', 'prosemirror-changeset', 'orderedmap'],
   outDir: './dist',
   publint: true,
   sourcemap: true,
 };
 
+const entries = [
+  { name: 'index', path: './src/index.ts' },
+  { name: 'markdown-parser', path: './src/markdown-parser.ts' },
+  { name: 'html-parser', path: './src/html-parser.ts' },
+  { name: 'test-utils', path: './src/test-utils/index.ts' },
+];
+
 export default [
-  // ESM — one entry per config to avoid chunk splitting on .d.mts files
-  defineConfig({
-    ...sharedConfig,
-    entry: { index: './src/index.ts' },
-    format: 'esm',
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { 'markdown-parser': './src/markdown-parser.ts' },
-    format: 'esm',
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { static: './src/static/index.ts' },
-    format: ['esm', 'cjs'],
-  }),
-  defineConfig({
-    ...sharedConfig,
-    entry: { 'html-parser': './src/html-parser.ts' },
-    format: 'esm',
-  }),
-  // CJS + UMD
+  // ESM builds
+  ...entries.map(e =>
+    defineConfig({
+      ...sharedConfig,
+      entry: { [e.name]: e.path },
+      format: 'esm',
+    }),
+  ),
+
+  // CJS + UMD main entry
   defineConfig({
     ...sharedConfig,
     entry: { index: './src/index.ts' },
     format: ['cjs', 'umd'],
+    inlineOnly: false,
     globalName: 'StoryblokRichtext',
-    outputOptions: {
-      globals: tiptapGlobals,
-    },
   }),
+  defineConfig({
+    ...sharedConfig,
+    entry: { 'test-utils': './src/test-utils/index.ts' },
+    format: ['cjs', 'umd'],
+    inlineOnly: false,
+    globalName: 'StoryblokRichtextTestUtils',
+  }),
+
+  // Markdown parser CJS + UMD
   defineConfig({
     ...sharedConfig,
     entry: { 'markdown-parser': './src/markdown-parser.ts' },
     format: ['cjs', 'umd'],
     globalName: 'StoryblokRichtextMarkdownParser',
+    inlineOnly: false,
     outputOptions: {
       globals: {
         'markdown-it': 'markdownit',
@@ -84,11 +85,14 @@ export default [
       },
     },
   }),
+
+  // HTML parser CJS + UMD
   defineConfig({
     ...sharedConfig,
     entry: { 'html-parser': './src/html-parser.ts' },
     format: ['cjs', 'umd'],
     globalName: 'StoryblokRichtextHtmlParser',
+    inlineOnly: false,
     outputOptions: {
       globals: {
         'node-html-parser': 'NodeHtmlParser',

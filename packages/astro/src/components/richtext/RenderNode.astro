@@ -1,0 +1,46 @@
+---
+import {
+  type SbRichTextNode,
+  type SbAstroRichTextRenderContext,
+  isValidAstroComponent,
+  getStaticChildren,
+} from '../../';
+import StoryblokComponent from '../StoryblokComponent.astro';
+import RenderChildren from './RenderChildren.astro';
+import ElementTag from './ElementTag.astro';
+import RenderImage from './RenderImage.astro';
+import RenderStaticChildren from './RenderStaticChildren.astro';
+import RenderTable from './RenderTable.astro';
+import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
+
+interface Props {
+  node: SbRichTextNode;
+  options: SbAstroRichTextRenderContext;
+}
+const { node, options } = Astro.props;
+const components = options.components;
+const Custom = components && node.type !== 'text' ? components[node.type] : undefined;
+---
+
+{
+  node.type === 'text' ? (
+    <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
+  ) : isValidAstroComponent(Custom) ? (
+    <Custom {...node} context={options}>
+      {node.content && <RenderChildren nodes={node.content} options={options} />}
+    </Custom>
+  ) : node.type === 'image' ? (
+    <RenderImage node={node} options={options} />
+  ) : node.type === 'blok' ? (
+    <Fragment>
+      {Array.isArray(node.attrs?.body) &&
+        node.attrs.body.map((blok, index) => <StoryblokComponent blok={blok} key={blok._uid || index} />)}
+    </Fragment>
+  ) : node.type === 'table' ? (
+    <RenderTable node={node} options={options} />
+  ) : getStaticChildren(node) ? (
+    <RenderStaticChildren node={node} options={options} />
+  ) : (
+    <ElementTag node={node}>{node.content && <RenderChildren nodes={node.content} options={options} />}</ElementTag>
+  )
+}

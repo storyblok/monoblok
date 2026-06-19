@@ -1,7 +1,6 @@
 export type {
   ArrayFn,
   AsyncFn,
-  BlockTypes,
   ISbAlternateObject, // previously AlternateObject
   ISbCache, // previously StoryblokCache
   ISbConfig, // previously StoryblokConfig
@@ -18,7 +17,6 @@ export type {
   ISbStory, // previously Story
   ISbStoryData, // previously StoryData
   ISbStoryParams, // previously StoryParams
-  MarkTypes,
   SbBlokData,
   SbBlokKeyDataTypes,
   SbPluginFactory,
@@ -27,10 +25,4 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-  StoryblokRichTextDocumentNode,
-  StoryblokRichTextImageOptimizationOptions,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeTypes,
-  StoryblokRichTextOptions,
-  TextTypes,
 } from '@storyblok/js';

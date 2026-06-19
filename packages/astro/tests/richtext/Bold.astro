@@ -1,0 +1,9 @@
+---
+import type { SbAstroRichTextProps } from '../../src/index';
+
+type Props = SbAstroRichTextProps<'bold'>;
+
+const { attrs } = Astro.props;
+---
+
+<b data-type="custom-bold"><slot /></b>

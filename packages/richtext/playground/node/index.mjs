@@ -1,6 +1,5 @@
-import { richTextResolver } from '@storyblok/richtext';
+import { renderRichText } from '@storyblok/richtext';
 
-const { render } = richTextResolver();
 const rt = {
   type: 'doc',
   content: [
@@ -132,7 +131,7 @@ const rt = {
     },
   ],
 };
-const html = render(rt);
+const html = renderRichText(rt);
 
 // eslint-disable-next-line no-console
 console.log(html);

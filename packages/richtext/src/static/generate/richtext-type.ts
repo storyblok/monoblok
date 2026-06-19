@@ -1,89 +1,91 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
-import type { AttributeSpec, MarkType, NodeType, Schema } from 'prosemirror-model';
-import { markAttrKeys, nodeAttrKeys } from '../../extensions/richtext-attrs';
-import { getStoryblokExtensions } from '../../extensions';
-import { hints } from './type-hints';
+import type { MarkType, NodeType, Schema } from 'prosemirror-model';
+import { allAttrKeys, type ExtensionAttrMap } from '../../extensions/richtext-attrs';
+import { getStoryblokTiptapExtensions } from '../../extensions';
 
-const nodeAttrKeySet = new Set<string>(nodeAttrKeys);
-const markAttrKeySet = new Set<string>(markAttrKeys);
-
-/**
- * Converts a schema attrs object to a TS property string (with type from hints)
- * E.g. { color: { default: null } } -> 'color?: string | null;'
- */
-function getAttrType(attrName: string): string {
-  return hints[attrName] || 'unknown';
-}
-
-function genAttrsType(attrs: Record<string, AttributeSpec> | undefined): string {
-  if (!attrs || Object.keys(attrs).length === 0) {
-    return 'Record<string, never>';
-  }
-  let out = '{ ';
-  for (const [attrName] of Object.entries(attrs)) {
-    const typeStr = getAttrType(attrName);
-    out += `${attrName}?: ${typeStr}; `;
-  }
-  out += '}';
-  return out;
-}
+const attrKeySet = new Set<keyof ExtensionAttrMap>(allAttrKeys);
 
 /** Generate all node attribute interfaces and helpers */
 function genAttributeTypes(schema: Schema) {
   let nodeAttrs = '';
   let markAttrs = '';
 
-  for (const [name, type] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    if (nodeAttrKeySet.has(name)) {
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    if (attrKeySet.has(name as keyof ExtensionAttrMap)) {
       nodeAttrs += `  ${name}: NodeAttrTypeMap['${name}'];\n`;
     }
     else {
-      nodeAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+      nodeAttrs += `  ${name}: unknown;\n`;
     }
   }
 
-  for (const [name, type] of Object.entries(schema.marks) as [string, MarkType][]) {
-    if (markAttrKeySet.has(name)) {
+  for (const [name] of Object.entries(schema.marks) as [string, MarkType][]) {
+    if (attrKeySet.has(name as keyof ExtensionAttrMap)) {
       markAttrs += `  ${name}: MarkAttrTypeMap['${name}'];\n`;
     }
     else {
-      markAttrs += `  ${name}: ${genAttrsType(type.spec.attrs)};\n`;
+      markAttrs += `  ${name}: unknown;\n`;
     }
   }
 
   return { nodeAttrs, markAttrs };
 }
 
-/** Generate PMNode discriminated union type */
-function genPMNode(schema: Schema): string {
-  let out = 'export type PMNode =\n';
-
-  for (const [name, type] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    const hasText = name === 'text' ? 'text: string;' : '';
-
-    let children = '';
-    if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
-      children = 'content?: PMNode[];';
-    }
-    out += `  | { type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: PMMark[]; ${hasText} }\n`;
+function nodeShape(schema: Schema, name: string): string {
+  const type = schema.nodes[name];
+  const hasText = name === 'text' ? 'text: string;' : '';
+  let children = '';
+  if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
+    children = 'content?: SbRichTextNode[];';
   }
+  return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string; context?: TContext; }`;
+}
 
+function markShape(name: string): string {
+  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string; }`;
+}
+
+/** Generate SbRichTextNode discriminated union type */
+function genPMNode(schema: Schema): string {
+  let out = 'export type SbRichTextNode<TContext = unknown> =\n';
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    out += `  | ${nodeShape(schema, name)}\n`;
+  }
   return `${out};`;
 }
 
 function genPMMark(schema: Schema): string {
-  let out = 'export type PMMark =\n';
+  let out = 'export type SbRichTextMark =\n';
   for (const [name] of Object.entries(schema.marks)) {
-    out += `  | { type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; }\n`;
+    out += `  | ${markShape(name)}\n`;
   }
   return `${out};`;
 }
 
+/**
+ * Generate a flat lookup interface keyed by element name.
+ * This allows `SbRichTextElementByType[T]` indexed access to resolve to the
+ * concrete node/mark shape, which is supported by Vue's `<script setup>`
+ * `defineProps<T>()` type-only macro resolver (conditional/Extract are not).
+ */
+function genElementByType(schema: Schema): string {
+  let out = '/**\n * Flat lookup of element shapes keyed by `type`.\n';
+  out += ' * Prefer this over `Extract<SbRichTextNode, { type: T }>` in places\n';
+  out += ' * that need to be resolved by limited type resolvers (e.g. Vue SFC macros).\n */\n';
+  out += 'export interface SbRichTextElementByType<TContext = unknown> {\n';
+  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
+    out += `  ${name}: ${nodeShape(schema, name)};\n`;
+  }
+  for (const [name] of Object.entries(schema.marks)) {
+    out += `  ${name}: ${markShape(name)};\n`;
+  }
+  out += '}\n';
+  return out;
+}
+
 export function generateTypes() {
-  const defaultExtensions = getStoryblokExtensions({
-    allowCustomAttributes: true,
-  });
+  const defaultExtensions = getStoryblokTiptapExtensions({});
   const extensions = Object.values(defaultExtensions);
   const schema = getSchema(extensions as AnyExtension[]);
   const attributeTypes = genAttributeTypes(schema);
@@ -91,7 +93,6 @@ export function generateTypes() {
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
   output += `import type { MarkAttrTypeMap, NodeAttrTypeMap } from '../extensions/richtext-attrs';\n`;
-  output += `import type { SbBlokData } from './types';\n`;
   output += '\n';
   // --- Attribute types
   output += '/** Attribute types for all Tiptap node extensions */\n';
@@ -105,8 +106,9 @@ export function generateTypes() {
   // --- Node name unions
   output += 'export type TiptapNodeName = keyof TiptapNodeAttributes;\n';
   output += 'export type TiptapMarkName = keyof TiptapMarkAttributes;\n';
-  // --- PMNode/PMMark
+  // --- SbRichTextNode/SbRichTextMark
   output += `${genPMNode(schema)}\n\n`;
   output += `${genPMMark(schema)}\n\n`;
+  output += `${genElementByType(schema)}\n`;
   return output;
 }

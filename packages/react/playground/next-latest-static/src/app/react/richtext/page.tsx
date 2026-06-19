@@ -21,10 +21,6 @@ async function fetchData() {
   const sbParams: ISbStoriesParams = { version: 'draft' };
   const storyblokApi = getStoryblokApi();
 
-  if (typeof storyblokApi === 'function') {
-    const api = storyblokApi();
-    return api.get(`cdn/stories/react/richtext`, sbParams);
-  }
-
+  // storyblokApi is already the API instance, not a function
   return storyblokApi.get(`cdn/stories/react/richtext`, sbParams);
 }

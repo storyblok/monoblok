@@ -14,20 +14,24 @@ import {
   untracked,
 } from '@angular/core';
 import {
+  buildStoryblokImage,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,
   isSelfClosing,
+  normalizeNodes,
   processAttrs,
   resolveTag,
   splitTableRows,
-} from '@storyblok/richtext/static';
+} from '@storyblok/richtext';
 import type {
-  PMMark,
+  SbRichTextNode,
+  SbRichTextMark,
   RenderSpec,
-  SbRichTextDoc,
   SbRichTextElement,
-} from '@storyblok/richtext/static';
+  SbRichTextInput,
+  SbRichTextImageOptions,
+} from '@storyblok/richtext';
 import { StoryblokComponent } from '../blok/sb-component.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
 
@@ -41,7 +45,22 @@ import { StoryblokRichtextResolver } from './richtext.feature';
 })
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document or array of documents */
-  sbDocument = input.required<SbRichTextDoc | SbRichTextDoc[] | null | undefined>();
+  sbDocument = input.required<SbRichTextInput>();
+
+  /**
+   * Enable image optimization for Storyblok images.
+   * When `true`, applies default optimization. Pass an options object for fine-grained control.
+   *
+   * @example
+   * ```html
+   * <!-- Enable default optimization -->
+   * <sb-rich-text [sbDocument]="doc" [sbOptimizeImage]="true" />
+   *
+   * <!-- Custom optimization options -->
+   * <sb-rich-text [sbDocument]="doc" [sbOptimizeImage]="{ width: 800, loading: 'lazy' }" />
+   * ```
+   */
+  sbOptimizeImage = input<boolean | Partial<SbRichTextImageOptions>>(false);
 
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
@@ -62,10 +81,11 @@ export class SbRichTextComponent implements OnDestroy {
   private readonly componentRefs: any[] = [];
 
   constructor() {
-    // Use effect to reactively render when doc changes
+    // Use effect to reactively render when doc or optimizeImage changes
     // The effect runs synchronously during change detection, making it SSR-compatible
     effect(() => {
       const sbDocument = this.sbDocument();
+      const _optimizeImage = this.sbOptimizeImage(); // Track for reactivity
       // Use untracked to avoid re-triggering the effect when calling render
       untracked(() => this.render(sbDocument));
     });
@@ -85,26 +105,13 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Render entry
   // --------------------------------------------------
-  private render(sbDocument: SbRichTextDoc | SbRichTextDoc[] | null | undefined): void {
+  private render(sbDocument: SbRichTextInput): void {
     const version = ++this.renderVersion;
-
+    const nodes = normalizeNodes(sbDocument, true);
     this.clearContent();
-    if (!sbDocument) return;
 
-    // Handle array of documents
-    if (Array.isArray(sbDocument)) {
-      for (const doc of sbDocument) {
-        this.renderSingleDocument(doc, version);
-      }
-      return;
-    }
+    if (!nodes.length) return;
 
-    this.renderSingleDocument(sbDocument, version);
-  }
-
-  /** Render a single document */
-  private renderSingleDocument(doc: SbRichTextDoc, version: number): void {
-    const nodes = doc.type === 'doc' && doc.content ? doc.content : [doc];
     this.renderChildren(nodes, this.hostElement, version);
   }
 
@@ -112,12 +119,11 @@ export class SbRichTextComponent implements OnDestroy {
    * Renders child nodes with link mark merging.
    * Adjacent text nodes with the same link mark are grouped under a single anchor element.
    */
-  private renderChildren(children: SbRichTextDoc[], parent: HTMLElement, version: number): void {
+  private renderChildren(children: SbRichTextNode[], parent: HTMLElement, version: number): void {
     const groups = groupLinkNodes(children);
 
     for (const group of groups) {
       if (this.shouldAbort(version)) return;
-
       if (group.linkMark) {
         this.renderLinkGroup(group.nodes, group.linkMark, parent, version);
       } else {
@@ -131,8 +137,8 @@ export class SbRichTextComponent implements OnDestroy {
    * Creates a single anchor element containing all the text nodes with their inner marks.
    */
   private renderLinkGroup(
-    nodes: SbRichTextDoc[],
-    linkMark: PMMark,
+    nodes: SbRichTextNode[],
+    linkMark: SbRichTextMark,
     parent: HTMLElement,
     version: number,
   ): void {
@@ -143,7 +149,7 @@ export class SbRichTextComponent implements OnDestroy {
       // For custom link components, render each text node separately
       // since we can't easily project multiple nodes into ng-content
       for (const node of nodes) {
-        this.renderTextNode(node as SbRichTextDoc & { type: 'text' }, parent, version);
+        this.renderTextNode(node as SbRichTextNode & { type: 'text' }, parent, version);
       }
       return;
     }
@@ -151,7 +157,7 @@ export class SbRichTextComponent implements OnDestroy {
     const tag = resolveTag(linkMark);
     if (!tag) {
       for (const node of nodes) {
-        this.renderTextNode(node as SbRichTextDoc & { type: 'text' }, parent, version);
+        this.renderTextNode(node as SbRichTextNode & { type: 'text' }, parent, version);
       }
       return;
     }
@@ -201,7 +207,7 @@ export class SbRichTextComponent implements OnDestroy {
   // --------------------------------------------------
   // Node renderer (synchronous with deferred async for custom components)
   // --------------------------------------------------
-  private renderNode(node: SbRichTextDoc, parent: HTMLElement, version: number): void {
+  private renderNode(node: SbRichTextNode, parent: HTMLElement, version: number): void {
     if (this.shouldAbort(version)) return;
 
     if (node.type === 'text') {
@@ -253,6 +259,12 @@ export class SbRichTextComponent implements OnDestroy {
       return;
     }
 
+    // Handle image optimization
+    if (node.type === 'image' && this.sbOptimizeImage()) {
+      this.renderOptimizedImage(node, parent);
+      return;
+    }
+
     const el = this.renderer.createElement(tag);
     const attrs = processAttrs(node.type, node.attrs);
 
@@ -280,11 +292,35 @@ export class SbRichTextComponent implements OnDestroy {
   }
 
   /**
+   * Renders an image node with Storyblok image optimization applied.
+   */
+  private renderOptimizedImage(node: SbRichTextNode, parent: HTMLElement): void {
+    const attrs = node.attrs as Record<string, unknown> | undefined;
+    const src = attrs?.['src'] as string | undefined;
+
+    if (!src) {
+      return;
+    }
+
+    const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, this.sbOptimizeImage());
+
+    const finalAttrs = processAttrs('image', {
+      ...attrs,
+      src: optimizedSrc,
+      ...extraAttrs,
+    });
+
+    const el = this.renderer.createElement('img');
+    this.applyAttributes(el, finalAttrs);
+    this.renderer.appendChild(parent, el);
+  }
+
+  /**
    * Renders table content with proper thead/tbody grouping.
    * Header rows (containing only tableHeader cells) go in thead,
    * remaining rows go in tbody.
    */
-  private renderTableContent(rows: SbRichTextDoc[], tableEl: HTMLElement, version: number): void {
+  private renderTableContent(rows: SbRichTextNode[], tableEl: HTMLElement, version: number): void {
     const { headerRows, bodyRows } = splitTableRows(rows);
 
     if (headerRows.length > 0) {
@@ -306,7 +342,7 @@ export class SbRichTextComponent implements OnDestroy {
 
   /** Async resolution and mounting for lazy-loaded components */
   private async resolveAndMount(
-    node: SbRichTextDoc,
+    node: SbRichTextNode,
     parent: HTMLElement,
     anchor: Node,
     version: number,
@@ -328,7 +364,7 @@ export class SbRichTextComponent implements OnDestroy {
   // Text renderer (marks) - synchronous
   // --------------------------------------------------
   private renderTextNode(
-    node: SbRichTextDoc & { type: 'text' },
+    node: SbRichTextNode & { type: 'text' },
     parent: HTMLElement,
     version: number,
   ): void {
@@ -383,7 +419,7 @@ export class SbRichTextComponent implements OnDestroy {
 
   /** Async text node rendering for lazy-loaded mark components */
   private async renderTextNodeAsync(
-    node: SbRichTextDoc & { type: 'text' },
+    node: SbRichTextNode & { type: 'text' },
     parent: HTMLElement,
     anchor: Node,
     version: number,

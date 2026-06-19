@@ -21,25 +21,14 @@ import StoryblokRichText from './components/StoryblokRichText.vue';
 export { default as StoryblokComponent } from './components/StoryblokComponent.vue';
 
 export { default as StoryblokRichText } from './components/StoryblokRichText.vue';
-export * from './composables/useStoryblokRichText';
+export { useStoryblokRichText } from './composables/use-storyblok-rich-text';
+export type { SbVueRichTextComponentMap, SbVueRichTextProps, SbVueRichTextRenderContext } from './rich-text-renderer';
+
 export * from './types';
 
 export {
   apiPlugin,
-  asTag,
-  BlockTypes,
-  ComponentBlok,
-  LinkTypes,
-  MarkTypes,
-  renderRichText,
-  richTextResolver,
   StoryblokClient,
-  type StoryblokRichTextDocumentNode,
-  type StoryblokRichTextImageOptimizationOptions,
-  type StoryblokRichTextNode,
-  type StoryblokRichTextNodeTypes,
-  type StoryblokRichTextOptions,
-  TextTypes,
   useStoryblokBridge,
 } from '@storyblok/js';
 
@@ -129,3 +118,15 @@ export const StoryblokVue: Plugin = {
     app.provide('VueSDKOptions', pluginOptions);
   },
 };
+
+// Re-exporting same exports from @storyblok/richtext
+export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+
+export type {
+  SbRichTextDoc,
+  SbRichTextImageOptions,
+  SbRichTextMark,
+  SbRichTextNode,
+  SbRichTextProps,
+  SbRichTextRenderContext,
+} from '@storyblok/richtext';

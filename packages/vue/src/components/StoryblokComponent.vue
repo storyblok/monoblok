@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { inject, ref, resolveDynamicComponent } from 'vue';
-import type { SbComponentProps, SbVueSDKOptions } from '../types';
+import { inject, ref, resolveDynamicComponent, useSlots } from 'vue';
+import type { Slots } from 'vue';
+import type { SbBlokData, SbVueSDKOptions } from '../types.ts';
 
-const props = defineProps<SbComponentProps>();
+const props = defineProps<{ blok: SbBlokData }>();
+
+const slots: Slots = useSlots();
 
 const blokRef = ref();
-
 defineExpose({
   value: blokRef,
 });
@@ -13,7 +15,6 @@ defineExpose({
 const componentFound: boolean
   = typeof resolveDynamicComponent(props.blok.component) !== 'string';
 
-// Fallback component logic
 const VueSDKOptions: SbVueSDKOptions | undefined = inject('VueSDKOptions');
 
 const componentName = ref(props.blok.component?.replace(/_/g, '-'));
@@ -37,12 +38,8 @@ if (!componentFound && VueSDKOptions) {
 </script>
 
 <template>
-  <component
-    :is="componentName"
-    ref="blokRef"
-    v-bind="{ ...$props, ...$attrs }"
-  >
-    <template v-for="(_, name) in $slots" #[name]="slotProps">
+  <component :is="componentName" ref="blokRef" v-bind="{ ...$props, ...$attrs }">
+    <template v-for="name in Object.keys(slots)" #[name]="slotProps">
       <slot :name="name" v-bind="slotProps"></slot>
     </template>
   </component>

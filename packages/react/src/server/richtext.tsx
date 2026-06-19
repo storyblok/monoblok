@@ -1,6 +1,14 @@
+import { createDefaultBlok } from '@/core/create-default-blok';
+import { createRichTextRenderer } from '../core/richtext';
+import type { SbReactRichTextRenderContext } from '../core/richtext';
 import StoryblokServerComponent from './server-component';
-import { createRichTextHook } from '../core/richtext-hoc';
 
-export const useStoryblokServerRichText = createRichTextHook(StoryblokServerComponent, {
-  isServerContext: true,
-});
+export const useStoryblokServerRichText = (props: SbReactRichTextRenderContext = {}) => {
+  return createRichTextRenderer({
+    optimizeImage: props.optimizeImage,
+    components: {
+      blok: createDefaultBlok(StoryblokServerComponent),
+      ...props.components,
+    },
+  });
+};

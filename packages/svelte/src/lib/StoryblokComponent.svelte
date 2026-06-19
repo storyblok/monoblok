@@ -1,16 +1,18 @@
-<script>
-  import { getComponent } from './index';
+<script lang="ts" generics="T extends SbBlokData">
+  import { getComponent, type SbBlokData } from './index';
+  import type { Component } from 'svelte';
 
-  const { blok = null, ...rest } = $props();
+  type Props = {
+    blok: T;
+  } & Record<string, unknown>;
 
-  if (!blok) {
-    console.error('Please provide a \'blok\' property to the StoryblokComponent');
-  }
+  const props: Props = $props();
 
-  const component = $state(blok ? getComponent(blok.component) : null);
-  const SvelteComponent = $derived(component);
+  const SvelteComponent = $derived(
+    props.blok.component ? (getComponent(props.blok.component) as Component<Props>) : null,
+  );
 </script>
 
 {#if SvelteComponent}
-  <SvelteComponent {blok} {...rest} />
+  <SvelteComponent {...props} />
 {/if}

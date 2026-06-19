@@ -68,7 +68,8 @@
     }
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*"
+    "@storyblok/js": "workspace:*",
+    "@storyblok/richtext": "workspace:*"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",

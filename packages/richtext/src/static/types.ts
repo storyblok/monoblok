@@ -1,11 +1,7 @@
-import type { StoryblokRichTextImageOptimizationOptions as SbRichTextImageOptions } from '../types';
-import type { PMMark, PMNode, TiptapMarkName, TiptapNodeName } from './types.generated';
+import type { SbRichTextImageOptions } from '../types';
+import type { SbRichTextElementByType, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
 export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
-
-/** Valid attribute values for DOM elements */
-export type AttrValue = string | number | boolean;
-export type HtmlTag = keyof HTMLElementTagNameMap;
 
 interface ISbComponentType<T extends string> {
   _uid?: string;
@@ -20,7 +16,7 @@ export interface SbBlokData extends ISbComponentType<string> {
 
 export interface RenderSpec {
   tag: string;
-  attrs?: Record<string, AttrValue> & {
+  attrs?: Record<string, unknown> & {
     style?: string;
   };
   content?: boolean;
@@ -29,28 +25,27 @@ export interface RenderSpec {
 }
 
 /** Canonical type for a Storyblok RichText JSON root */
-export type SbRichTextDoc = PMNode;
+export type SbRichTextDoc = SbRichTextNode & { type: 'doc' };
+export type SbRichTextTextNode = SbRichTextNode & { type: 'text' };
+export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
 
-/** Base props for node/mark components */
-export type SbRichTextProps<T extends SbRichTextElement> =
-  T extends PMNode['type']
-    ? Extract<PMNode, { type: T }>
-    : T extends PMMark['type']
-      ? Extract<PMMark, { type: T }> & { children: string }
-      : never;
-
-/** Generic component map for any renderer target */
-export type SbRichTextComponents<
-  TComponent = string,
-> = {
-  [K in SbRichTextElement]?: (
-    props: SbRichTextProps<K>
-  ) => TComponent;
+export type SbRichTextProps<
+  T extends SbRichTextElement,
+> =
+  SbRichTextElementByType<SbRichTextRenderContext>[T]
+  & {
+    children: string;
+  };
+/**
+ * Component/render map for static renderers.
+ */
+export type SbRichTextRendererMap = {
+  [K in SbRichTextElement]?: (props: SbRichTextProps<K>) => string;
 };
 
-export interface SbRichTextOptions {
-  renderers?: SbRichTextComponents<string>;
-  optimizeImages?: boolean | Partial<SbRichTextImageOptions>;
+export interface SbRichTextRenderContext {
+  renderers?: SbRichTextRendererMap;
+  optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
 }
 
 export { SbRichTextImageOptions };

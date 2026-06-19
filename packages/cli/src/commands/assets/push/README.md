@@ -72,7 +72,7 @@ storyblok assets push --space YOUR_SPACE_ID ./path/to/image.png \
 | `--data <data>` | Inline asset data as JSON (supports Asset fields, `metadata` maps to `meta_data`) | - |
 | `--short-filename <short-filename>` | Override the asset filename (defaults to the source filename) | - |
 | `--folder <folderId>` | Destination asset folder ID | - |
-| `--target <target>` | Push destination: `space`, `org`, or `all` | `space` (single asset), `all` (bulk) |
+| `--target <target>` | Push destination: `space`, `shared`, or `all` | `space` (single asset), `all` (bulk) |
 | `--library <libraryId>` | Destination library ID. Required for a single-asset `--target=shared`, rejected with `--target=space` | - |
 | `--cleanup` | Delete local assets and metadata after a successful push | `false` |
 | `--update-stories` | Update file references in stories if necessary | `false` |

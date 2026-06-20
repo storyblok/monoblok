@@ -1,0 +1,12 @@
+---
+import type { SbAstroRichTextProps } from '@storyblok/astro';
+import CurrencyAmount from './CurrencyAmount.astro';
+import StoryblokRichText from '@storyblok/astro/StoryblokRichText.astro';
+
+type Props = SbAstroRichTextProps<'text'>;
+
+const { context, ...node } = Astro.props as Props;
+const isCurrency = node?.marks?.some((mark) => mark.type === 'styled' && mark.attrs?.class === 'currency') || false;
+---
+
+{isCurrency ? <CurrencyAmount amount={node.text} /> : <StoryblokRichText document={node} {...context} />}

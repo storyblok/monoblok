@@ -1,0 +1,29 @@
+---
+type Props = {
+  level: number;
+  id: string;
+};
+
+const { level, id } = Astro.props;
+const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+---
+
+<Tag id={id} class="custom-heading" data-level={level}>
+  <a href={`#${id}`} class="anchor-link">#</a>
+  <slot />
+</Tag>
+
+<style>
+  .custom-heading {
+    position: relative;
+  }
+  .anchor-link {
+    position: absolute;
+    left: -1.5em;
+    opacity: 0.3;
+    text-decoration: none;
+  }
+  .custom-heading:hover .anchor-link {
+    opacity: 1;
+  }
+</style>

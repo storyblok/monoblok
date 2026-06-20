@@ -1,0 +1,27 @@
+---
+// This component should receive the currency amount and format it
+// In NordVPN's use case, they want to pass { amount: node.text }
+
+interface Props {
+  amount: string;
+}
+
+const { amount } = Astro.props;
+
+// Format as currency (simple example)
+const formatted = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+}).format(parseFloat(amount) || 0);
+---
+
+<span class="currency-amount" data-original={amount}>
+  {formatted}
+</span>
+
+<style>
+  .currency-amount {
+    font-weight: bold;
+    color: green;
+  }
+</style>

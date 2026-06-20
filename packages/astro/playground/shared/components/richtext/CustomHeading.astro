@@ -1,0 +1,32 @@
+---
+// Custom heading component that adds anchor links
+import type { SbRichTextProps } from '@storyblok/astro';
+import Heading from '../Heading.astro';
+
+type Props = SbRichTextProps<'heading'>;
+
+const { attrs, content } = Astro.props;
+const level = attrs?.level || 1;
+
+// Try to extract text from content for ID generation
+function extractText(nodes: any[]): string {
+  if (!nodes) return '';
+  return nodes
+    .map((node) => {
+      if (node.type === 'text') return node.text || '';
+      if (node.content) return extractText(node.content);
+      return '';
+    })
+    .join('');
+}
+
+const text = extractText(content || []);
+const id = text
+  .toLowerCase()
+  .replace(/\s+/g, '-')
+  .replace(/[^a-z0-9-]/g, '');
+---
+
+<Heading level={level} id={id}>
+  <slot />
+</Heading>

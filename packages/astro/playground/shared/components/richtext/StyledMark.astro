@@ -1,0 +1,27 @@
+---
+// Custom styled mark component
+// This receives the mark attrs but NOT the text node
+import type { SbRichTextProps } from '@storyblok/astro';
+import CurrencyAmount from './CurrencyAmount.astro';
+
+type Props = SbRichTextProps<'styled'>;
+
+const { attrs } = Astro.props;
+const isCurrency = attrs?.class === 'currency';
+
+// Problem: We don't have access to node.text here
+// We only have the slot (already rendered children)
+// So we can't pass { amount: node.text } to CurrencyAmount
+---
+
+{isCurrency ? (
+  <span class="currency-wrapper">
+    <!-- We can't use CurrencyAmount properly because we don't have the raw text -->
+    <!-- We only have <slot /> which is the rendered children -->
+    <slot />
+  </span>
+) : (
+  <span class={attrs?.class}>
+    <slot />
+  </span>
+)}

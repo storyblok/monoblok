@@ -1,0 +1,117 @@
+---
+import StoryblokRichText from '@storyblok/astro/StoryblokRichText.astro';
+import BaseLayout from '@shared/components/BaseLayout.astro';
+import CustomHeading from '@shared/components/richtext/CustomHeading.astro';
+import StyledMark from '@shared/components/richtext/StyledMark.astro';
+import CustomText from '@shared/components/richtext/CustomText.astro';
+import type { SbRichTextDoc, SbAstroRichTextComponentMap } from '@storyblok/astro';
+
+// Dummy richtext JSON simulating NordVPN's use cases
+const dummyRichText: SbRichTextDoc = {
+  type: 'doc',
+  content: [
+    // Heading use case - custom component with anchor
+    {
+      type: 'heading',
+      attrs: { level: 2, textAlign: 'center' },
+      content: [{ type: 'text', text: 'Pricing Information' }],
+    },
+    // Regular paragraph
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'Our service costs ' }],
+    },
+    // Currency use case - styled mark with class="currency"
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'The monthly price is ' },
+        {
+          type: 'text',
+          text: '9.99',
+          marks: [{ type: 'styled', attrs: { class: 'currency' } }],
+        },
+        { type: 'text', text: ' per month.' },
+      ],
+    },
+    // Another heading
+    {
+      type: 'heading',
+      attrs: { level: 3, textAlign: 'left' },
+      content: [{ type: 'text', text: 'Annual Plan' }],
+    },
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Save money with our annual plan at just ' },
+        {
+          type: 'text',
+          text: '99.99',
+          marks: [{ type: 'styled', attrs: { class: 'currency' } }],
+        },
+        { type: 'text', text: ' per year!' },
+      ],
+    },
+    // Regular styled text (not currency)
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'This is ' },
+        {
+          type: 'text',
+          text: 'highlighted text',
+          marks: [{ type: 'styled', attrs: { class: 'highlight' } }],
+        },
+        { type: 'text', text: ' with a different class.' },
+      ],
+    },
+  ],
+};
+
+const components: SbAstroRichTextComponentMap = {
+  heading: CustomHeading,
+  styled: StyledMark,
+  text: CustomText,
+};
+---
+
+<BaseLayout>
+  <h1>RichText Custom Components Test</h1>
+
+  <section>
+    <h2>Test 1: With Custom Components</h2>
+    <div class="richtext-container">
+      <StoryblokRichText document={dummyRichText} components={components} />
+    </div>
+  </section>
+
+  <section>
+    <h2>Test 2: Default Rendering (no custom components)</h2>
+    <div class="richtext-container">
+      <StoryblokRichText document={dummyRichText} />
+    </div>
+  </section>
+
+  <hr />
+
+  <section>
+    <h2>Analysis</h2>
+    <p><strong>Heading component:</strong> Can access attrs.level and content array to derive custom props.</p>
+    <p><strong>Styled mark component:</strong> Can access attrs.class but NOT the text node's text value.</p>
+    <p>
+      Check the rendered output - the currency values (9.99, 99.99) are rendered as plain text, not formatted as
+      currency.
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .richtext-container {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  section {
+    margin: 2rem 0;
+  }
+</style>

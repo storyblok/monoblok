@@ -19,9 +19,9 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
+import type { StoryCreate } from '@storyblok/management-api-client';
 import { createApiClient } from '@storyblok/api-client';
 import {
-  createStoryHelpers,
   defineBlock,
   defineField,
 } from '@storyblok/schema';
@@ -75,7 +75,7 @@ interface StoryblokTypes {
   components: typeof pageComponent | typeof teaserComponent | typeof sectionComponent;
 }
 
-const { defineStoryCreate } = createStoryHelpers().withTypes<StoryblokTypes>();
+type Blocks = StoryblokTypes['components'];
 
 function createTypedCapiClient(accessToken: string) {
   return createApiClient({ accessToken, throwOnError: true }).withTypes<StoryblokTypes>();
@@ -151,10 +151,11 @@ describe('schema + capi-client CAPI round-trip', () => {
     } } });
 
     // 5. Create story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)
-    const storyPayload = defineStoryCreate(pageComponent, {
+    const storyPayload: StoryCreate<Blocks> = {
       name: 'E2E CAPI Test Page',
       slug: STORY_SLUG,
       content: {
+        component: pageComponent.name,
         headline: 'Hello from CAPI e2e',
         rating: 42,
         is_featured: true,
@@ -181,7 +182,7 @@ describe('schema + capi-client CAPI round-trip', () => {
           },
         ],
       },
-    });
+    };
     const storyRes = await mapiClient.stories.create({ body: { story: storyPayload } });
     storyId = storyRes.data!.story!.id!;
 

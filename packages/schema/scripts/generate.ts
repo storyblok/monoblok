@@ -15,21 +15,17 @@ const PKG_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 
 await generate({
   outDir: resolve(PKG_ROOT, 'src/generated'),
-  // `@storyblok/schema` exposes content shapes only: the block/field/datasource
-  // definitions plus the story/content types derived from them. Payload builders
-  // and wire-only entities live in the typed clients, not here.
+  // `@storyblok/schema` exposes content shapes only: block, field, and
+  // datasource definitions plus the story and block-content types derived from
+  // them. Story CRUD payloads (`StoryCreate`/`StoryUpdate`) are management-API
+  // wire shapes and live in `@storyblok/management-api-client`.
   include: [
     'Story',
+    'MapiStory',
     'RootBlock',
     'Block',
     'BlockContent',
     'BlockContentInput',
-    'MapiStory',
-    'StoryCreate',
-    'StoryUpdate',
-    'StoryAlternate',
-    'StoryTranslatedSlug',
-    'StoryLocalizedPath',
     'Field',
     'FieldType',
     'FieldValue',

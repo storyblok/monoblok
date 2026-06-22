@@ -1,20 +1,18 @@
-import { createStoryHelpers } from '@storyblok/schema';
-import type { Asset } from '@storyblok/management-api-client';
+import type { Asset, StoryCreate } from '@storyblok/management-api-client';
 import { pageBlock } from '../../schema/blocks/page';
 import { heroBlock } from '../../schema/blocks/hero';
 import { introBlock } from '../../schema/blocks/intro';
 import { mediaBlock } from '../../schema/blocks/media';
 import { teaserBlock } from '../../schema/blocks/teaser';
 import { teaserListBlock } from '../../schema/blocks/teaser-list';
-import type { Schema } from '../../schema/schema';
+import type { Blocks } from '../../schema/schema';
 
-const { defineStoryCreate } = createStoryHelpers().withTypes<Schema>();
-
-export function createHomeStory(mediaAsset: Asset) {
-  return defineStoryCreate(pageBlock, {
+export function createHomeStory(mediaAsset: Asset): StoryCreate<Blocks> {
+  return {
     name: 'Home',
     slug: 'home',
     content: {
+      component: pageBlock.name,
       seo_title: 'Welcome — Storyblok + Astro Demo',
       seo_description: 'A demo site built with Storyblok, @storyblok/schema, and Astro.',
       blocks: [
@@ -70,5 +68,5 @@ export function createHomeStory(mediaAsset: Asset) {
         },
       ],
     },
-  });
+  };
 }

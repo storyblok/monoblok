@@ -18,8 +18,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
+import type { StoryCreate, StoryUpdate } from '@storyblok/management-api-client';
 import {
-  createStoryHelpers,
   defineBlock,
   defineField,
 } from '@storyblok/schema';
@@ -68,7 +68,7 @@ interface StoryblokTypes {
   components: typeof pageComponent | typeof teaserComponent | typeof sectionComponent;
 }
 
-const { defineStoryCreate, defineStoryUpdate } = createStoryHelpers().withTypes<StoryblokTypes>();
+type Blocks = StoryblokTypes['components'];
 
 const client = createManagementApiClient({
   personalAccessToken: token,
@@ -222,10 +222,11 @@ describe('schema + mapi-client MAPI round-trip', () => {
     presetId = presetRes.data!.preset!.id!;
 
     // 8. Story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)
-    const storyPayload = defineStoryCreate(pageComponent, {
+    const storyPayload: StoryCreate<Blocks> = {
       name: STORY_NAME,
       slug: STORY_SLUG,
       content: {
+        component: pageComponent.name,
         headline: 'Hello from e2e',
         rating: 42,
         is_featured: true,
@@ -257,7 +258,7 @@ describe('schema + mapi-client MAPI round-trip', () => {
           },
         ],
       },
-    });
+    };
     const storyRes = await client.stories.create({ body: { story: storyPayload } });
     storyId = storyRes.data!.story!.id!;
   });
@@ -473,10 +474,11 @@ describe('schema + mapi-client MAPI round-trip', () => {
     });
 
     it('should round-trip story update correctly', async () => {
-      const updatedPayload = defineStoryUpdate(pageComponent, {
+      const updatedPayload: StoryUpdate<Blocks> = {
         name: `${STORY_NAME} (Updated)`,
         slug: STORY_SLUG,
         content: {
+          component: pageComponent.name,
           headline: 'Updated headline',
           rating: 100,
           is_featured: false,
@@ -488,7 +490,7 @@ describe('schema + mapi-client MAPI round-trip', () => {
           category: 'design',
           any_blocks: [],
         },
-      });
+      };
 
       await client.stories.update(storyId, { body: { story: updatedPayload } });
 

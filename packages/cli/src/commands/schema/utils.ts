@@ -1,5 +1,10 @@
 import { isAbsolute, relative } from 'pathe';
 
+/** Narrows a value to a plain object (excludes `null` and arrays). */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** Fields to strip from Component before serialization (read-only / API-assigned). */
 export const COMPONENT_STRIP_KEYS = new Set([
   'id',

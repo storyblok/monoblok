@@ -1,20 +1,17 @@
 import type { SchemaData } from '../types';
 import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '../utils';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {
-  return isObject(value)
+  return isRecord(value)
     && typeof value.name === 'string'
     && Array.isArray(value.fields);
 }
 
 /** Returns true if the value looks like a `defineDatasource()` result. */
 export function isDatasource(value: unknown): value is Record<string, unknown> {
-  return isObject(value)
+  return isRecord(value)
     && typeof value.name === 'string'
     && typeof value.slug === 'string'
     && !Array.isArray(value.fields);
@@ -22,7 +19,7 @@ export function isDatasource(value: unknown): value is Record<string, unknown> {
 
 /** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...} }`). */
 export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
-  return isObject(value)
+  return isRecord(value)
     && ('blocks' in value || 'datasources' in value);
 }
 
@@ -57,7 +54,7 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
     if (isSchemaObject(value)) {
       // Unwrap schema object: collect from each sub-record (blocks, datasources)
       for (const group of Object.values(value)) {
-        if (isObject(group)) {
+        if (isRecord(group)) {
           for (const entity of Object.values(group)) {
             collect(entity);
           }

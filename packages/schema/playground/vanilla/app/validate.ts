@@ -1,3 +1,5 @@
+import { sValidator } from '@hono/standard-validator';
+import { Hono } from 'hono';
 import { createStoryValidator, validateSchema, validateStory } from '@storyblok/schema';
 import { pageBlock } from '../base/blocks/page';
 import { schema } from '../base/schema';
@@ -46,15 +48,35 @@ for (const issue of bad.issues) {
   console.log(`${issue.severity} [${issue.code}] ${issue.path.join('.')}: ${issue.message}`);
 }
 
-// ── 4. createStoryValidator — a Standard Schema for `page` ────────────────────
+// ── 4. createStoryValidator — hand the validator to a framework ──────────────
 //
-// Composes with any Standard Schema tooling (tRPC inputs, form resolvers, …).
-// Also asserts the root `component` matches the given block.
+// `createStoryValidator` returns a Standard Schema, so any Standard-Schema-aware
+// library validates stories for you — you never touch the `['~standard']`
+// accessor yourself. Here it guards a Hono JSON route via
+// `@hono/standard-validator`; the same object drops into a tRPC `.input()` or a
+// form resolver unchanged. The validator also asserts the root `component`
+// matches `pageBlock`.
 
 const pageValidator = createStoryValidator(pageBlock, schema);
-const standardResult = pageValidator['~standard'].validate({
-  content: { component: 'article', title: 'Wrong root' },
+
+const app = new Hono();
+app.post('/pages', sValidator('json', pageValidator), (c) => {
+  // Reached only when the body is a valid `page` story.
+  return c.json({ saved: true });
 });
-if (!(standardResult instanceof Promise) && standardResult.issues) {
-  console.log(standardResult.issues); // root-component mismatch
-}
+
+// Valid `page` story → handler runs → 200.
+const okResponse = await app.request('/pages', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ content: { component: 'page', title: 'Hello world' } }),
+});
+console.log(`POST valid story → ${okResponse.status}`); // 200
+
+// Wrong root component → Hono rejects before the handler runs → 400.
+const badResponse = await app.request('/pages', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ content: { component: 'article', title: 'Wrong root' } }),
+});
+console.log(`POST invalid story → ${badResponse.status}`); // 400

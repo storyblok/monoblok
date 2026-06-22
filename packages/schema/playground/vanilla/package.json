@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "validate": "tsx app/validate.ts",
     "schema:init": "storyblok schema init -s $STORYBLOK_SPACE_ID",
     "schema:push": "storyblok schema push base/schema.ts -s $STORYBLOK_SPACE_ID",
     "schema:rollback": "storyblok schema rollback -s $STORYBLOK_SPACE_ID",
@@ -12,8 +13,10 @@
     "ver:2.0.0": "storyblok schema push versions/v2.0.0.ts -s $STORYBLOK_SPACE_ID"
   },
   "dependencies": {
+    "@hono/standard-validator": "^0.2.2",
     "@storyblok/api-client": "workspace:*",
     "@storyblok/schema": "workspace:*",
+    "hono": "^4.12.26",
     "zod": "^3.25.76"
   },
   "devDependencies": {

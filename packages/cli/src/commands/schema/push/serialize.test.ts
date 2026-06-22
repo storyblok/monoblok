@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   serializeComponent,
-  serializeComponentFolder,
   serializeDatasource,
 } from '../serialize';
 
@@ -159,22 +158,5 @@ describe('serializeDatasource', () => {
     expect(result).toContain('slug: \'categories\',');
     expect(result).not.toContain('id:');
     expect(result).not.toContain('created_at');
-  });
-});
-
-describe('serializeComponentFolder', () => {
-  it('should serialize a folder to defineBlockFolder() code', () => {
-    const folder = {
-      id: 1,
-      name: 'Layout',
-      uuid: 'abc-123',
-    };
-
-    const result = serializeComponentFolder(folder);
-
-    expect(result).toContain('defineBlockFolder({');
-    expect(result).toContain('name: \'Layout\',');
-    expect(result).not.toContain('id:');
-    expect(result).not.toContain('uuid');
   });
 });

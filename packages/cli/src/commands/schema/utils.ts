@@ -28,13 +28,6 @@ export const DATASOURCE_STRIP_KEYS = new Set(['id', 'created_at', 'updated_at'])
 export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set(['id', 'datasource_id', 'created_at', 'updated_at']);
 
 /**
- * Fields to strip from ComponentFolder before serialization for diffing. Groups
- * are derived from the directory layout (name-only, parentless), so `uuid`,
- * `parent_id`, and `parent_uuid` are stripped to diff remote folders by name.
- */
-export const FOLDER_STRIP_KEYS = new Set(['id', 'uuid', 'parent_id', 'parent_uuid']);
-
-/**
  * Default values for optional component fields.
  * Applied to both local and remote entities before diffing, and always included in push payloads.
  *

@@ -5,11 +5,11 @@ import { createTwoFilesPatch } from 'diff';
 
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from '../types';
 import { applyDefaults, COMPONENT_DEFAULTS } from '../utils';
-import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../serialize';
+import { serializeComponent, serializeDatasource } from '../serialize';
 import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils';
 import { fileExists, readDirectory } from '../../../utils/filesystem';
-import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
@@ -33,7 +33,7 @@ function stripApiFields(payload: Record<string, unknown>): Record<string, unknow
 
 /** A single rollback operation derived by inverting a `ChangesetEntry`. */
 export interface RollbackOp {
-  type: 'component' | 'componentFolder' | 'datasource';
+  type: 'component' | 'datasource';
   name: string;
   action: 'create' | 'update' | 'delete';
   payload: Record<string, unknown>;
@@ -116,7 +116,6 @@ function rollbackAction(original: ChangesetEntry['action']): 'create' | 'update'
 export function formatRollbackOutput(changes: ChangesetEntry[]): string {
   const byType: Record<string, ChangesetEntry[]> = {
     component: [],
-    componentFolder: [],
     datasource: [],
   };
   for (const entry of changes) {
@@ -132,7 +131,6 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
   const lines: string[] = [];
   const sections: [string, ChangesetEntry[]][] = [
     ['Components', byType.component],
-    ['Component Folders', byType.componentFolder],
     ['Datasources', byType.datasource],
   ];
 
@@ -154,10 +152,6 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
         if (entry.type === 'component') {
           fromStr = serializeComponent(applyDefaults(entry.after, COMPONENT_DEFAULTS));
           toStr = serializeComponent(applyDefaults(entry.before, COMPONENT_DEFAULTS));
-        }
-        else if (entry.type === 'componentFolder') {
-          fromStr = serializeComponentFolder(entry.after);
-          toStr = serializeComponentFolder(entry.before);
         }
         else {
           fromStr = serializeDatasource(entry.after);
@@ -192,13 +186,10 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
 
 /**
  * Applies rollback ops to the MAPI in dependency-safe order:
- * 1. Folder creates/updates (maps old folder UUID → new remote UUID)
- * 2. Remap component_group_uuid refs to newly created folder UUIDs
- * 3. Component creates/updates
- * 4. Datasource creates/updates
- * 5. Datasource deletes
- * 6. Component deletes
- * 7. Folder deletes (last — components may still reference them during deletion)
+ * 1. Component creates/updates
+ * 2. Datasource creates/updates
+ * 3. Datasource deletes
+ * 4. Component deletes
  *
  * @param spaceId - The Storyblok space ID.
  * @param ops - Rollback ops to apply.
@@ -216,64 +207,10 @@ export async function executeRollback(
   let updated = 0;
   let deleted = 0;
 
-  const folderOps = ops.filter(op => op.type === 'componentFolder');
   const componentOps = ops.filter(op => op.type === 'component');
   const datasourceOps = ops.filter(op => op.type === 'datasource');
 
-  // Maps old folder UUID → new remote UUID (populated during folder creation)
-  const folderUuidRemap = new Map<string, string>();
-
-  // 1. Folder creates/updates first (components may reference them)
-  for (const op of folderOps.filter(o => o.action !== 'delete')) {
-    if (op.action === 'create') {
-      const oldUuid = op.payload.uuid;
-      const payload = toComponentFolderCreate(stripApiFields(op.payload));
-      try {
-        const response = await client.componentFolders.create({
-          path: { space_id: spaceIdNum },
-          body: { component_group: payload },
-          throwOnError: true,
-        });
-        const remoteUuid = response.data?.component_group?.uuid;
-        if (remoteUuid && typeof oldUuid === 'string') {
-          folderUuidRemap.set(oldUuid, remoteUuid);
-        }
-        created++;
-      }
-      catch (error) {
-        handleAPIError('push_component_group', error as Error, `Failed to create folder ${op.name}`);
-      }
-    }
-    else if (op.action === 'update') {
-      const existing = remote.componentFolders.get(op.name);
-      if (existing?.id) {
-        const payload = toComponentFolderCreate(stripApiFields(op.payload));
-        try {
-          await client.componentFolders.update(existing.id, {
-            path: { space_id: spaceIdNum },
-            body: { component_group: payload },
-            throwOnError: true,
-          });
-          updated++;
-        }
-        catch (error) {
-          handleAPIError('update_component_group', error as Error, `Failed to update folder ${op.name}`);
-        }
-      }
-    }
-  }
-
-  // 2. Remap component_group_uuid for components referencing newly created folders
-  for (const op of componentOps) {
-    const oldUuid = op.payload.component_group_uuid;
-    if (typeof oldUuid !== 'string') { continue; }
-    const newUuid = folderUuidRemap.get(oldUuid);
-    if (newUuid) {
-      op.payload.component_group_uuid = newUuid;
-    }
-  }
-
-  // 3. Component creates/updates
+  // 1. Component creates/updates
   for (const op of componentOps.filter(o => o.action !== 'delete')) {
     if (op.action === 'create') {
       const payload = toComponentCreate(stripApiFields(op.payload));
@@ -308,7 +245,7 @@ export async function executeRollback(
     }
   }
 
-  // 4. Datasource creates/updates
+  // 2. Datasource creates/updates
   for (const op of datasourceOps.filter(o => o.action !== 'delete')) {
     if (op.action === 'create') {
       const payload = toDatasourceCreate(stripApiFields(op.payload));
@@ -343,7 +280,7 @@ export async function executeRollback(
     }
   }
 
-  // 5. Datasource deletes
+  // 3. Datasource deletes
   for (const op of datasourceOps.filter(o => o.action === 'delete')) {
     const existing = remote.datasources.get(op.name);
     if (existing?.id) {
@@ -360,7 +297,7 @@ export async function executeRollback(
     }
   }
 
-  // 6. Component deletes
+  // 4. Component deletes
   for (const op of componentOps.filter(o => o.action === 'delete')) {
     const existing = remote.components.get(op.name);
     if (existing?.id) {
@@ -373,23 +310,6 @@ export async function executeRollback(
       }
       catch (error) {
         handleAPIError('push_component', error as Error, `Failed to delete component ${op.name}`);
-      }
-    }
-  }
-
-  // 7. Folder deletes last (components may reference them)
-  for (const op of folderOps.filter(o => o.action === 'delete')) {
-    const existing = remote.componentFolders.get(op.name);
-    if (existing?.id) {
-      try {
-        await client.componentFolders.delete(existing.id, {
-          path: { space_id: spaceIdNum },
-          throwOnError: true,
-        });
-        deleted++;
-      }
-      catch (error) {
-        handleAPIError('push_component_group', error as Error, `Failed to delete folder ${op.name}`);
       }
     }
   }

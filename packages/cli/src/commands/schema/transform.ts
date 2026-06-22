@@ -1,4 +1,4 @@
-import type { ComponentCreate, ComponentFolderCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
+import type { ComponentCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
 import { isRecord } from './utils';
 
 function isSchemaField(value: unknown): value is Field {
@@ -46,16 +46,6 @@ export function toComponentCreate(input: unknown): ComponentCreate {
 /** Converts an unknown input to a ComponentUpdate-compatible payload. */
 export function toComponentUpdate(input: unknown): ComponentUpdate {
   return buildComponentPayload(input) satisfies ComponentUpdate;
-}
-
-/** Converts an unknown input to a ComponentFolderCreate-compatible payload. */
-export function toComponentFolderCreate(input: unknown): ComponentFolderCreate {
-  if (!isRecord(input)) { return { name: '' }; }
-
-  return {
-    name: typeof input.name === 'string' ? input.name : '',
-    ...(typeof input.parent_id === 'number' && { parent_id: input.parent_id }),
-  } satisfies ComponentFolderCreate;
 }
 
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */

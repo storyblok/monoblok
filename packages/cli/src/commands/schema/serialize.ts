@@ -2,7 +2,6 @@ import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
-  FOLDER_STRIP_KEYS,
   formatValue,
   stripKeys,
 } from './utils';
@@ -90,23 +89,4 @@ export function serializeDatasource(datasource: Record<string, unknown>): string
   }
 
   return `defineDatasource(${formatValue(ordered, 0)})`;
-}
-
-/**
- * Serializes a component folder to a normalized `defineBlockFolder()` code string.
- */
-export function serializeComponentFolder(folder: Record<string, unknown>): string {
-  const clean = stripKeys(folder, FOLDER_STRIP_KEYS);
-
-  const ordered: Record<string, unknown> = {};
-  if (clean.name !== undefined) { ordered.name = clean.name; }
-
-  const handled = new Set(['name']);
-  for (const [key, value] of Object.entries(clean).sort(([a], [b]) => a.localeCompare(b))) {
-    if (!handled.has(key)) {
-      ordered[key] = value;
-    }
-  }
-
-  return `defineBlockFolder(${formatValue(ordered, 0)})`;
 }

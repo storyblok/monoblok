@@ -45,7 +45,7 @@ export interface FieldChange {
 }
 
 export interface ChangesetEntry {
-  type: 'component' | 'componentFolder' | 'datasource';
+  type: 'component' | 'datasource';
   name: string;
   action: 'create' | 'update' | 'delete';
   before?: Record<string, unknown>;

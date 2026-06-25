@@ -1,23 +1,28 @@
 ---
 // Custom styled mark component
-// This receives the mark attrs but NOT the text node
-import type { SbRichTextProps } from '@storyblok/astro';
+// This receives the mark attrs and context.data for custom props
+import type { SbRichTextProps, SbAstroRichTextRenderContext } from '@storyblok/astro';
 import CurrencyAmount from './CurrencyAmount.astro';
 
-type Props = SbRichTextProps<'styled'>;
+interface CustomData {
+  headingPrefix?: string;
+  currencySymbol?: string;
+  locale?: string;
+}
 
-const { attrs } = Astro.props;
+type Props = SbRichTextProps<'styled'> & { context?: SbAstroRichTextRenderContext<CustomData> };
+
+const { attrs, context } = Astro.props;
 const isCurrency = attrs?.class === 'currency';
 
-// Problem: We don't have access to node.text here
-// We only have the slot (already rendered children)
-// So we can't pass { amount: node.text } to CurrencyAmount
+// Access custom data passed via the data prop
+const customData = context?.data;
+const currencySymbol = customData?.currencySymbol || '$';
 ---
 
 {isCurrency ? (
   <span class="currency-wrapper">
-    <!-- We can't use CurrencyAmount properly because we don't have the raw text -->
-    <!-- We only have <slot /> which is the rendered children -->
+    <span class="currency-symbol">{currencySymbol}</span>
     <slot />
   </span>
 ) : (
@@ -25,3 +30,13 @@ const isCurrency = attrs?.class === 'currency';
     <slot />
   </span>
 )}
+
+<style>
+  .currency-wrapper {
+    font-weight: bold;
+    color: #2e7d32;
+  }
+  .currency-symbol {
+    margin-right: 0.1em;
+  }
+</style>

@@ -1,12 +1,22 @@
 ---
 // Custom heading component that adds anchor links
-import type { SbRichTextProps } from '@storyblok/astro';
+import type { SbRichTextProps, SbAstroRichTextRenderContext } from '@storyblok/astro';
 import Heading from '../Heading.astro';
 
-type Props = SbRichTextProps<'heading'>;
+interface CustomData {
+  headingPrefix?: string;
+  currencySymbol?: string;
+  locale?: string;
+}
 
-const { attrs, content } = Astro.props;
+type Props = SbRichTextProps<'heading'> & { context?: SbAstroRichTextRenderContext<CustomData> };
+
+const { attrs, content, context } = Astro.props;
 const level = attrs?.level || 1;
+
+// Access custom data passed via the data prop
+const customData = context?.data;
+const prefix = customData?.headingPrefix;
 
 // Try to extract text from content for ID generation
 function extractText(nodes: any[]): string {
@@ -28,5 +38,13 @@ const id = text
 ---
 
 <Heading level={level} id={id}>
+  {prefix && <span class="heading-prefix">{prefix} </span>}
   <slot />
 </Heading>
+
+<style>
+  .heading-prefix {
+    color: #666;
+    font-size: 0.8em;
+  }
+</style>

@@ -73,20 +73,35 @@ const components: SbAstroRichTextComponentMap = {
   styled: StyledMark,
   text: CustomText,
 };
+
+// Custom data to pass to all richtext custom components
+const richtextData = {
+  currencySymbol: '$',
+  locale: 'en-US',
+  headingPrefix: '[Section]',
+};
 ---
 
 <BaseLayout>
   <h1>RichText Custom Components Test</h1>
 
   <section>
-    <h2>Test 1: With Custom Components</h2>
+    <h2>Test 1: With Custom Components + Data</h2>
+    <p><code>data={{ currencySymbol: '$', locale: 'en-US', headingPrefix: '[Section]' }}</code></p>
+    <div class="richtext-container">
+      <StoryblokRichText document={dummyRichText} components={components} data={richtextData} />
+    </div>
+  </section>
+
+  <section>
+    <h2>Test 2: With Custom Components (no data)</h2>
     <div class="richtext-container">
       <StoryblokRichText document={dummyRichText} components={components} />
     </div>
   </section>
 
   <section>
-    <h2>Test 2: Default Rendering (no custom components)</h2>
+    <h2>Test 3: Default Rendering (no custom components)</h2>
     <div class="richtext-container">
       <StoryblokRichText document={dummyRichText} />
     </div>
@@ -96,12 +111,9 @@ const components: SbAstroRichTextComponentMap = {
 
   <section>
     <h2>Analysis</h2>
-    <p><strong>Heading component:</strong> Can access attrs.level and content array to derive custom props.</p>
-    <p><strong>Styled mark component:</strong> Can access attrs.class but NOT the text node's text value.</p>
-    <p>
-      Check the rendered output - the currency values (9.99, 99.99) are rendered as plain text, not formatted as
-      currency.
-    </p>
+    <p><strong>Heading component:</strong> Can access attrs.level, content array, and context.data for custom props.</p>
+    <p><strong>Styled mark component:</strong> Can access attrs.class and context.data for currency formatting.</p>
+    <p><strong>Data prop:</strong> Pass any custom data via <code>data</code> prop, accessible in components via <code>context.data</code>.</p>
   </section>
 </BaseLayout>
 

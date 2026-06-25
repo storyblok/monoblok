@@ -23,7 +23,7 @@ const MarkComponent = mark && components ? components[mark.type] : undefined;
   reversedMarks.length === 0 ? (
     node.text
   ) : isValidAstroComponent(MarkComponent) ? (
-    <MarkComponent {...mark}>
+    <MarkComponent {...mark} context={options}>
       <Astro.self node={node} marks={rest} options={options} />
     </MarkComponent>
   ) : (

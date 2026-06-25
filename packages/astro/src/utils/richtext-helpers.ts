@@ -5,9 +5,11 @@ export type SbAstroRichTextComponentMap = {
   [K in SbRichTextElement]?: AstroComponentFactory;
 };
 
-export interface SbAstroRichTextRenderContext {
+export interface SbAstroRichTextRenderContext<TData = unknown> {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbAstroRichTextComponentMap;
+  /** User-provided data passed to all custom components via context.data */
+  data?: TData;
 }
 export type SbAstroRichTextProps<
   T extends SbRichTextElement,

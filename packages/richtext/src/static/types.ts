@@ -1,7 +1,7 @@
 import type { SbRichTextImageOptions } from '../types';
 import type { SbRichTextElementByType, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
-export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
+export type SbRichTextElement = TiptapNodeName | TiptapMarkName;
 
 interface ISbComponentType<T extends string> {
   _uid?: string;

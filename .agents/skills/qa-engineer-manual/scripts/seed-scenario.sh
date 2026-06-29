@@ -3,8 +3,13 @@ set -euo pipefail
 
 # Seeds a Storyblok QA scenario by:
 #   1. Copying scenario data from the skill folder into .storyblok/{resource}/qa-engineer-manual/
-#   2. Running CLI push commands against the real space
-#   3. Cleaning up the staging directory
+#   2. Running CLI push commands against the real space (failures surface and abort)
+#   3. Verifying the staged resources actually landed remotely
+#   4. Cleaning up the staging directory
+#
+# Each push is checked for success and the seeded counts are verified against the
+# space afterwards, so a push that errors (or silently creates nothing) fails the
+# seed loudly rather than reporting phantom success.
 #
 # Requires STORYBLOK_TOKEN loaded from ${PWD}/.env.qa-engineer-manual
 #
@@ -82,6 +87,10 @@ require_space_id
 # Constants
 # ---------------------------------------------------------------------------
 FAKE_ID="qa-seed"
+# Total attempts per CLI push (1 = no retry; 2 = one retry on failure).
+PUSH_ATTEMPTS=2
+# Total attempts when verifying a resource landed remotely (absorbs read-after-write lag).
+VERIFY_ATTEMPTS=3
 repo_root="$(git rev-parse --show-toplevel)"
 cli_bin="${repo_root}/packages/cli/dist/index.mjs"
 skill_dir="${repo_root}/.claude/skills/qa-engineer-manual"
@@ -130,6 +139,65 @@ cleanup() {
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# Counts staged files for a resource (assets are the non-JSON files; every
+# other resource is one *.json per entity).
+count_staged() {
+  local resource="$1"
+  local dir="${staging_dir}/${resource}/${FAKE_ID}"
+  if [ ! -d "${dir}" ]; then
+    printf "0"
+    return
+  fi
+  if [ "${resource}" = "assets" ]; then
+    find "${dir}" -maxdepth 1 -type f ! -name '*.json' ! -name '*.jsonl' | wc -l | tr -d ' '
+  else
+    find "${dir}" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' '
+  fi
+}
+
+# Runs a CLI push, capturing output and retrying once on failure. Prints "done"
+# only on real success; on failure it prints the captured CLI output and exits
+# non-zero, so the seed can never report phantom success for a push that
+# actually errored (previously output was sent to /dev/null and "done" printed
+# unconditionally).
+run_push() {
+  local label="$1"; shift
+  local attempts="${PUSH_ATTEMPTS}" attempt=1 status=0 out=""
+  printf "Pushing %s ... " "${label}"
+  while [ "${attempt}" -le "${attempts}" ]; do
+    out=$("$@" 2>&1) && { printf "done\n"; return 0; }
+    status=$?
+    attempt=$((attempt + 1))
+    if [ "${attempt}" -le "${attempts}" ]; then sleep 2; fi
+  done
+  printf "FAILED\n"
+  printf "%s push failed after %s attempt(s) (exit %s):\n" "${label}" "${attempts}" "${status}" >&2
+  printf '%s\n' "${out}" | sed 's/^/  | /' >&2
+  exit 1
+}
+
+# Asserts a resource actually landed remotely. Catches pushes that exit 0 but
+# create nothing (e.g. stories pushed against missing components): the remote
+# count must be at least the staged count. Retries briefly to absorb
+# read-after-write propagation lag.
+verify_seeded() {
+  local resource="$1" expected="$2" actual="" attempt=1
+  while [ "${attempt}" -le "${VERIFY_ATTEMPTS}" ]; do
+    actual=$(bash "${skill_dir}/scripts/list.sh" --resource "${resource}" --space "${space_id}" 2>/dev/null | tail -1 | awk '{print $1}') || actual=""
+    if [[ "${actual}" =~ ^[0-9]+$ ]] && [ "${actual}" -ge "${expected}" ]; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    if [ "${attempt}" -le "${VERIFY_ATTEMPTS}" ]; then sleep 2; fi
+  done
+  printf "Verification FAILED: staged %s %s but found '%s' remotely after retries — the push reported success but data did not land.\n" "${expected}" "${resource}" "${actual}" >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
 # Stage scenario data
 # ---------------------------------------------------------------------------
 printf "Staging scenario '%s' ... " "${scenario}"
@@ -162,15 +230,9 @@ fi
 
 # Build staged summary
 for resource in components stories assets datasources; do
-  dir="${staging_dir}/${resource}/${FAKE_ID}"
-  if [ -d "${dir}" ]; then
-    count=$(find "${dir}" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' ')
-    if [ "${resource}" = "assets" ]; then
-      count=$(find "${dir}" -maxdepth 1 -type f ! -name '*.json' ! -name '*.jsonl' | wc -l | tr -d ' ')
-    fi
-    if [ "${count}" -gt 0 ]; then
-      staged+=("${count} ${resource}")
-    fi
+  count="$(count_staged "${resource}")"
+  if [ "${count}" -gt 0 ]; then
+    staged+=("${count} ${resource}")
   fi
 done
 
@@ -183,54 +245,54 @@ printf "%s\n" "${staged_str}"
 # ---------------------------------------------------------------------------
 # CLI login
 # ---------------------------------------------------------------------------
-node "${cli_bin}" login --token "${STORYBLOK_TOKEN}" --region eu > /dev/null 2>&1
+if ! login_out=$(node "${cli_bin}" login --token "${STORYBLOK_TOKEN}" --region eu 2>&1); then
+  printf "CLI login failed:\n" >&2
+  printf '%s\n' "${login_out}" | sed 's/^/  | /' >&2
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # Push resources in dependency order
+#
+# Pushed sequentially (not in parallel): each push is verified to have actually
+# succeeded before the next runs, and assets must land before stories — stories
+# remap asset IDs from the asset manifest. run_push surfaces failures instead of
+# swallowing them.
 # ---------------------------------------------------------------------------
 
 # 1. Components
 if [ "${skip_components}" = false ] && [ -d "${staging_dir}/components/${FAKE_ID}" ]; then
-  printf "Pushing components ... "
-  node "${cli_bin}" components push --from "${FAKE_ID}" --space "${space_id}" --separate-files > /dev/null 2>&1
-  printf "done\n"
+  run_push "components" node "${cli_bin}" components push --from "${FAKE_ID}" --space "${space_id}" --separate-files
 fi
 
-# 2. Datasources + Assets in parallel (both independent)
-bg_pids=()
-bg_labels=()
-
+# 2. Datasources
 if [ "${skip_datasources}" = false ] && [ -d "${staging_dir}/datasources/${FAKE_ID}" ]; then
-  node "${cli_bin}" datasources push --from "${FAKE_ID}" --space "${space_id}" --separate-files > /dev/null 2>&1 &
-  bg_pids+=($!)
-  bg_labels+=("datasources")
+  run_push "datasources" node "${cli_bin}" datasources push --from "${FAKE_ID}" --space "${space_id}" --separate-files
 fi
 
+# 3. Assets (must precede stories)
 if [ "${skip_assets}" = false ] && [ -d "${staging_dir}/assets/${FAKE_ID}" ]; then
-  node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}" > /dev/null 2>&1 &
-  bg_pids+=($!)
-  bg_labels+=("assets")
+  run_push "assets" node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}"
 fi
 
-if [ "${#bg_pids[@]}" -gt 0 ]; then
-  bg_label_str=""
-  for l in "${bg_labels[@]}"; do
-    bg_label_str="${bg_label_str:+${bg_label_str}, }${l}"
-  done
-  printf "Pushing %s ... " "${bg_label_str}"
-  # Kill remaining background processes on failure to avoid orphans
-  trap 'for p in "${bg_pids[@]}"; do kill "${p}" 2>/dev/null || true; done; cleanup' ERR
-  wait "${bg_pids[@]}"
-  trap cleanup EXIT
-  printf "done\n"
-fi
-
-# 3. Stories (reads asset manifest.jsonl for ID remapping automatically)
+# 4. Stories (reads asset manifest.jsonl for ID remapping automatically)
 if [ "${skip_stories}" = false ] && [ -d "${staging_dir}/stories/${FAKE_ID}" ]; then
-  printf "Pushing stories ... "
-  node "${cli_bin}" stories push --from "${FAKE_ID}" --space "${space_id}" > /dev/null 2>&1
-  printf "done\n"
+  run_push "stories" node "${cli_bin}" stories push --from "${FAKE_ID}" --space "${space_id}"
 fi
+
+# ---------------------------------------------------------------------------
+# Verify what we staged actually landed remotely
+# ---------------------------------------------------------------------------
+for resource in components stories assets datasources; do
+  skip_var="skip_${resource}"
+  if [ "${!skip_var}" = true ]; then
+    continue
+  fi
+  expected="$(count_staged "${resource}")"
+  if [ "${expected}" -gt 0 ]; then
+    verify_seeded "${resource}" "${expected}"
+  fi
+done
 
 # ---------------------------------------------------------------------------
 # Summary
@@ -241,15 +303,9 @@ for resource in components stories assets datasources; do
   if [ "${!skip_var}" = true ]; then
     continue
   fi
-  dir="${staging_dir}/${resource}/${FAKE_ID}"
-  if [ -d "${dir}" ]; then
-    count=$(find "${dir}" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' ')
-    if [ "${resource}" = "assets" ]; then
-      count=$(find "${dir}" -maxdepth 1 -type f ! -name '*.json' ! -name '*.jsonl' | wc -l | tr -d ' ')
-    fi
-    if [ "${count}" -gt 0 ]; then
-      pushed_summary="${pushed_summary:+${pushed_summary}, }${count} ${resource}"
-    fi
+  count="$(count_staged "${resource}")"
+  if [ "${count}" -gt 0 ]; then
+    pushed_summary="${pushed_summary:+${pushed_summary}, }${count} ${resource}"
   fi
 done
 

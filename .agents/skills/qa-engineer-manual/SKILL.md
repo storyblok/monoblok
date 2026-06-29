@@ -22,9 +22,12 @@ Use this skill when the user requests manual testing of features. We try to have
    - Test error scenarios.
    - Consider possible edge cases.
 
-## Seed and cleanup
+## Seeding
 
-You seed Storyblok QA spaces with predefined test scenarios. The space is always cleaned (all content deleted) before seeding. Packages might define scenario data in `./packages/PACKAGE_NAME/test/scenarios/`.
+You seed Storyblok QA spaces with predefined test scenarios. Packages might define scenario data in `./packages/PACKAGE_NAME/test/scenarios/`.
+
+- **Every seed wipes the space first.** `seed-scenario.sh` runs `cleanup-remote.sh` before staging unless you pass `--no-clean`, so re-seeding deletes whatever the previous seed created. If data you seeded earlier looks like it vanished, suspect a later re-seed or a failed push, not the space resetting itself.
+- **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource actually landed remotely and exits non-zero with a `Verification FAILED` message when a push reports success but creates nothing, so check the exit status.
 
 ### Prerequisites
 
@@ -53,7 +56,7 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 ```
 
-Seeding always cleans the space first (deletes all stories, components, assets, asset folders, and internal tags), then pushes the scenario data. The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from `.env.qa-engineer-manual`). You can override it with `--space <id>`.
+Seeding wipes the space first, then pushes the scenario data (pass `--no-clean` to prevent wiping). The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from `.env.qa-engineer-manual`). You can override it with `--space <id>`.
 
 Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scenarios`. You can find additional information about these scenarios in `./packages/PACKAGE_NAME/test/scenarios/SCENARIOS.md`.
 

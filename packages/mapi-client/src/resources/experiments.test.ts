@@ -161,6 +161,22 @@ describe('experiments.stories', () => {
     expect(result.error).toBeUndefined();
     expect(captured).toMatchObject({ experiment_story: { story_id: 999 } });
   });
+
+  it('delete() should DELETE the experiment story path', async () => {
+    let calledPath: string | undefined;
+    server.use(
+      http.delete(`${BASE}/:experiment_id/stories/:story_id`, ({ request }) => {
+        calledPath = new URL(request.url).pathname;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const result = await createClient().experiments.stories.delete(55, 999);
+
+    expect(result.error).toBeUndefined();
+    expect(result.response.status).toBe(204);
+    expect(calledPath).toBe('/v1/spaces/123/experiments/55/stories/999');
+  });
 });
 
 describe('experiments.storyMappings', () => {

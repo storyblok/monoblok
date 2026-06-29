@@ -97,6 +97,13 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "playground/ssr/tsconfig.spec.json",
+            "include": ["playground/ssr/src/**/*.spec.ts"]
+          }
         }
       }
     },
@@ -157,6 +164,13 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "playground/app/tsconfig.spec.json",
+            "include": ["playground/app/src/**/*.spec.ts"]
+          }
         }
       }
     }

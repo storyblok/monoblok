@@ -16,6 +16,7 @@ import { createLinksResource } from './resources/links';
 import { createTagsResource } from './resources/tags';
 import { createDatasourcesResource } from './resources/datasources';
 import { createDatasourceEntriesResource } from './resources/datasource-entries';
+import { createExperimentsResource } from './resources/experiments';
 import { createSpacesResource } from './resources/spaces';
 
 type Prettify<T> = {
@@ -319,6 +320,7 @@ export const createApiClient = <
   return {
     datasourceEntries: createDatasourceEntriesResource(resourceDeps),
     datasources: createDatasourcesResource(resourceDeps),
+    experiments: createExperimentsResource(resourceDeps),
     flushCache,
     get: getRequest,
     interceptors: client.interceptors,

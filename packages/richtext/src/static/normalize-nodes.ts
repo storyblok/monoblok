@@ -36,8 +36,9 @@ function addKeys(
       ...mark,
       _key: generateKey(mark.type),
     })),
-    content: node.content
-      ? addKeys(node.content, generateKey)
-      : undefined,
+    // Only re-attach `content` when the node actually has it. The root `doc`
+    // node always carries `content`, while leaf and empty nodes legitimately
+    // omit it, so we must not force `content: undefined` onto them.
+    ...(node.content ? { content: addKeys(node.content, generateKey) } : {}),
   }));
 }

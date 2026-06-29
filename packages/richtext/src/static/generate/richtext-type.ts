@@ -36,7 +36,14 @@ function nodeShape(schema: Schema, name: string): string {
   const type = schema.nodes[name];
   const hasText = name === 'text' ? 'text: string;' : '';
   let children = '';
-  if (type.isBlock || name === 'doc' || type.spec.content || type.isInline) {
+  // The root `doc` node is the document body and always carries a `content`
+  // array, so it is required. Every other node may legitimately omit `content`,
+  // for example an empty paragraph or a leaf node like `image`, so for those it
+  // stays optional, matching what the Storyblok API actually returns. See #16.
+  if (name === 'doc') {
+    children = 'content: SbRichTextNode[];';
+  }
+  else if (type.isBlock || type.spec.content || type.isInline) {
     children = 'content?: SbRichTextNode[];';
   }
   return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string; context?: TContext; }`;

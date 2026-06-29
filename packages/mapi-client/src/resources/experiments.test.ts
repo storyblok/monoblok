@@ -97,13 +97,13 @@ describe('experiments.create()', () => {
   });
 });
 
-describe('experiments.remove()', () => {
+describe('experiments.delete()', () => {
   it('should DELETE the experiment and resolve with no error', async () => {
     server.use(
       http.delete(`${BASE}/:experiment_id`, () => new HttpResponse(null, { status: 204 })),
     );
 
-    const result = await createClient().experiments.remove(55);
+    const result = await createClient().experiments.delete(55);
 
     expect(result.error).toBeUndefined();
     expect(result.response.status).toBe(204);
@@ -185,7 +185,7 @@ describe('experiments.storyMappings', () => {
     expect(result.data?.story_mapping?.variant_story_id).toBe(1001);
   });
 
-  it('remove() should DELETE the deeply nested mapping path', async () => {
+  it('delete() should DELETE the deeply nested mapping path', async () => {
     let calledPath: string | undefined;
     server.use(
       http.delete(`${BASE}/:experiment_id/variants/:variant_id/story_mappings/:original_story_id`, ({ request }) => {
@@ -194,7 +194,7 @@ describe('experiments.storyMappings', () => {
       }),
     );
 
-    const result = await createClient().experiments.storyMappings.remove(55, 77, 999);
+    const result = await createClient().experiments.storyMappings.delete(55, 77, 999);
 
     expect(result.error).toBeUndefined();
     expect(result.response.status).toBe(204);

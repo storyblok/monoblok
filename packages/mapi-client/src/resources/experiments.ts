@@ -59,7 +59,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
       return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
         experimentsApi.update({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    remove<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[204], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[204], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<DeleteResponses[204], ThrowOnError>(() =>
@@ -116,7 +116,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         return wrapRequest<CreateExperimentStoryResponses[201], ThrowOnError>(() =>
           experimentsApi.createExperimentStory({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
-      remove<ThrowOnError extends boolean = false>(
+      delete<ThrowOnError extends boolean = false>(
         experimentId: number | string,
         storyId: number | string,
         options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
@@ -138,7 +138,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         return wrapRequest<CreateStoryMappingResponses[201], ThrowOnError>(() =>
           experimentsApi.createStoryMapping({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId, variant_id: variantId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
-      remove<ThrowOnError extends boolean = false>(
+      delete<ThrowOnError extends boolean = false>(
         experimentId: number | string,
         variantId: number | string,
         originalStoryId: number | string,

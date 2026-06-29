@@ -22,4 +22,20 @@ describe('buildGroupPathByUuid', () => {
     const paths = buildGroupPathByUuid([folder({ name: 'Content', uuid: 'content-uuid' })]);
     expect(paths.get('content-uuid')).toEqual(['content']);
   });
+
+  it('does not overflow on a self-referential group (parent_uuid === uuid)', () => {
+    const loopy = folder({ name: 'Loopy', uuid: 'self-uuid', parent_uuid: 'self-uuid' });
+
+    const paths = buildGroupPathByUuid([loopy]);
+
+    // Cyclic ancestry is broken: the group is treated as a path root.
+    expect(paths.get('self-uuid')).toEqual(['loopy']);
+  });
+
+  it('does not overflow on a multi-group parent cycle (A -> B -> A)', () => {
+    const a = folder({ name: 'A', uuid: 'uuid-a', parent_uuid: 'uuid-b' });
+    const b = folder({ name: 'B', uuid: 'uuid-b', parent_uuid: 'uuid-a' });
+
+    expect(() => buildGroupPathByUuid([a, b])).not.toThrow();
+  });
 });

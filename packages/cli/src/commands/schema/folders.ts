@@ -17,17 +17,24 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
   const byUuid = new Map(folders.map(folder => [folder.uuid, folder]));
   const cache = new Map<string, string[]>();
 
-  function pathFor(uuid: string | null): string[] {
+  // `visited` tracks the groups in the current upward walk so a self-referential
+  // (`parent_uuid === uuid`) or cyclic `parent_uuid` chain stops instead of
+  // recursing forever. On a detected cycle the chain is cut and the group is
+  // treated as a path root. (The `cache` can't guard this: it's only populated
+  // after the recursive call returns, so it's empty while a cycle is unwinding.)
+  function pathFor(uuid: string | null, visited: Set<string>): string[] {
     if (!uuid) { return []; }
     const cached = cache.get(uuid);
     if (cached) { return cached; }
     const folder = byUuid.get(uuid);
     if (!folder) { return []; }
-    const path = [...pathFor(folder.parent_uuid), slugify(folder.name)];
+    if (visited.has(uuid)) { return []; }
+    visited.add(uuid);
+    const path = [...pathFor(folder.parent_uuid, visited), slugify(folder.name)];
     cache.set(uuid, path);
     return path;
   }
 
-  for (const folder of folders) { pathFor(folder.uuid); }
+  for (const folder of folders) { pathFor(folder.uuid, new Set()); }
   return cache;
 }

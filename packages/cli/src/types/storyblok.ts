@@ -2,25 +2,28 @@ export type StoryblokPropertyType = 'asset' | 'multiasset' | 'multilink' | 'tabl
 
 export interface StoryblokAsset {
   alt: string | null;
-  copyright: string | null;
   fieldtype: 'asset';
   id: number;
   filename: string | null;
   name: string;
   title: string | null;
   focus: string | null;
-  meta_data: Record<string, any>;
-  source: string | null;
-  is_external_url: boolean;
-  is_private: boolean;
-  src: string;
-  updated_at: string;
+  // The properties below are only present in some asset responses (they
+  // depend on the asset itself, the space configuration and integrations such
+  // as Cloudinary), so they are optional to reflect the actual API payloads.
+  copyright?: string | null;
+  meta_data?: Record<string, any>;
+  source?: string | null;
+  is_external_url?: boolean;
+  is_private?: boolean;
+  src?: string;
+  updated_at?: string;
   // Cloudinary integration keys
-  width: number | null;
-  height: number | null;
-  aspect_ratio: number | null;
-  public_id: string | null;
-  content_type: string;
+  width?: number | null;
+  height?: number | null;
+  aspect_ratio?: number | null;
+  public_id?: string | null;
+  content_type?: string;
 }
 
 export interface StoryblokMultiasset extends Array<StoryblokAsset> {}

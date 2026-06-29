@@ -1,12 +1,25 @@
 ---
-import type { SbAstroRichTextProps } from '@storyblok/astro';
+import type { SbAstroRichTextProps, SbAstroRichTextRenderContext } from '@storyblok/astro';
 import CurrencyAmount from './CurrencyAmount.astro';
 import StoryblokRichText from '@storyblok/astro/StoryblokRichText.astro';
+interface CustomData {
+  currencySymbol: string;
+  locale: string;
+  headingPrefix: string;
+}
 
-type Props = SbAstroRichTextProps<'text'>;
+type Props = SbAstroRichTextProps<'text'> & {
+  context?: SbAstroRichTextRenderContext<CustomData>;
+};
 
 const { context, ...node } = Astro.props as Props;
 const isCurrency = node?.marks?.some((mark) => mark.type === 'styled' && mark.attrs?.class === 'currency') || false;
 ---
 
-{isCurrency ? <CurrencyAmount amount={node.text} /> : <StoryblokRichText document={node} {...context} />}
+{
+  isCurrency ? (
+    <CurrencyAmount amount={node.text} data={context?.data} />
+  ) : (
+    <StoryblokRichText document={node} {...context} />
+  )
+}

@@ -4,19 +4,24 @@
 
 interface Props {
   amount: string;
+  data?: {
+    currencySymbol: string;
+    locale: string;
+    headingPrefix: string;
+  };
 }
 
-const { amount } = Astro.props;
+const { amount, data } = Astro.props;
 
 // Format as currency (simple example)
-const formatted = new Intl.NumberFormat('en-US', {
+const formatted = new Intl.NumberFormat(data?.locale || 'en-US', {
   style: 'currency',
   currency: 'USD',
 }).format(parseFloat(amount) || 0);
 ---
 
 <span class="currency-amount" data-original={amount}>
-  {formatted}
+  {data?.currencySymbol}{formatted}
 </span>
 
 <style>

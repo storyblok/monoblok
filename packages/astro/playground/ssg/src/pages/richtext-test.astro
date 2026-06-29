@@ -73,10 +73,15 @@ const components: SbAstroRichTextComponentMap = {
   styled: StyledMark,
   text: CustomText,
 };
+interface CustomData {
+  currencySymbol: string;
+  locale: string;
+  headingPrefix: string;
+}
 
 // Custom data to pass to all richtext custom components
-const richtextData = {
-  currencySymbol: '$',
+const richtextData: CustomData = {
+  currencySymbol: '🔥',
   locale: 'en-US',
   headingPrefix: '[Section]',
 };
@@ -113,7 +118,11 @@ const richtextData = {
     <h2>Analysis</h2>
     <p><strong>Heading component:</strong> Can access attrs.level, content array, and context.data for custom props.</p>
     <p><strong>Styled mark component:</strong> Can access attrs.class and context.data for currency formatting.</p>
-    <p><strong>Data prop:</strong> Pass any custom data via <code>data</code> prop, accessible in components via <code>context.data</code>.</p>
+    <p>
+      <strong>Data prop:</strong> Pass any custom data via <code>data</code> prop, accessible in components via <code
+        >context.data</code
+      >.
+    </p>
   </section>
 </BaseLayout>
 

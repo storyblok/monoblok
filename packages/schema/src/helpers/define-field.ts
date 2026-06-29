@@ -13,6 +13,7 @@ import type {
   TableFieldValue,
 } from '../generated/types/field';
 import type { Prettify } from '../utils/prettify';
+import { isRecord } from '../utils/is-record';
 
 export type {
   AssetFieldValue,
@@ -83,10 +84,10 @@ export function defineField(name: string, field: Record<string, unknown>): Recor
   const normalized: Record<string, unknown> = { ...rest, name };
   if (allow !== undefined) {
     const refs = Array.isArray(allow) ? allow : [allow];
-    normalized.allow = refs.map(ref => (typeof ref === 'string' ? ref : (ref as { name: string })?.name));
+    normalized.allow = refs.map(ref => (typeof ref === 'string' ? ref : isRecord(ref) ? ref.name : undefined));
   }
   if (datasource !== undefined) {
-    normalized.datasource = typeof datasource === 'string' ? datasource : (datasource as { slug: string })?.slug;
+    normalized.datasource = typeof datasource === 'string' ? datasource : isRecord(datasource) ? datasource.slug : undefined;
   }
   return normalized;
 }

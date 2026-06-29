@@ -1,5 +1,7 @@
 import type { FieldType } from '../generated/types/field';
 
+export { isRecord } from '../utils/is-record';
+
 /**
  * Loose structural views of the content-shape definitions, used internally by
  * the validators. A real `Block` / `Datasource` (from the `define*` helpers) is
@@ -68,9 +70,4 @@ export function toValues<T>(input: Record<string, T> | readonly T[] | undefined)
     return [];
   }
   return Array.isArray(input) ? [...input] : Object.values(input as Record<string, T>);
-}
-
-/** Type guard for a plain object (record). */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

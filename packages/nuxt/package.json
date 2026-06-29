@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/nuxt",
   "type": "module",
-  "version": "11.0.0",
+  "version": "11.0.1",
   "description": "Storyblok Nuxt module",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/nuxt#readme",
   "repository": {

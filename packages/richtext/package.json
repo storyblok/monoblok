@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/richtext",
   "type": "module",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Storyblok RichText Resolver",
   "author": "Storyblok",
   "license": "MIT",

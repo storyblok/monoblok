@@ -59,7 +59,10 @@ export function vitePluginImportStoryblokComponents(
         manualImports,
       );
 
-      return moduleCode;
+      return {
+        code: moduleCode,
+        moduleType: 'js',
+      };
     },
   };
 }

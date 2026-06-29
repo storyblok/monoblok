@@ -33,18 +33,18 @@ export default defineConfig({
     }),
     viteStaticCopy({
       targets: [
-        { src: 'src/live-preview/middleware.ts', dest: 'live-preview' },
-        { src: 'src/dev-toolbar/toolbarApp.ts', dest: 'dev-toolbar' },
+        { src: 'src/live-preview/middleware.ts', dest: 'live-preview', rename: { stripBase: true } },
+        { src: 'src/dev-toolbar/toolbarApp.ts', dest: 'dev-toolbar', rename: { stripBase: true } },
         {
           src: ['src/lib/client.ts'],
           dest: 'lib',
+          rename: { stripBase: true },
         },
-        { src: 'src/public.d.ts', dest: '.' },
+        { src: 'src/public.d.ts', dest: '.', rename: { stripBase: true } },
         {
-          src: [
-            'src/components/*',
-          ],
+          src: ['src/components/**/*.astro'],
           dest: 'components',
+          rename: { stripBase: 2 }, // strip the `src/components` prefix, preserve any nesting below it
         },
       ],
     }),

@@ -20,7 +20,7 @@
  * ```
  */
 
-import { sanitizeJSON } from '@storyblok/astro';
+import { sanitizeJSON } from '../';
 
 const props = Astro.props;
 const safeJson = sanitizeJSON(props);

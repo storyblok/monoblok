@@ -18,7 +18,8 @@ export function vitePluginStoryblokInit(
     },
     async load(id: string) {
       if (id === resolvedVirtualModuleId) {
-        return `
+        return {
+          code: `
           import { storyblokInit, apiPlugin } from "@storyblok/astro";
           const { storyblokApi } = storyblokInit({
             accessToken: "${accessToken}",
@@ -26,7 +27,9 @@ export function vitePluginStoryblokInit(
             apiOptions: ${JSON.stringify(apiOptions)},
           });
           export const storyblokApiInstance = storyblokApi;  
-        `;
+        `,
+          moduleType: 'js',
+        };
       }
     },
   };

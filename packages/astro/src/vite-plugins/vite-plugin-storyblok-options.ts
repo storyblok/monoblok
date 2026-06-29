@@ -16,7 +16,10 @@ export function vitePluginStoryblokOptions(
     },
     async load(id: string) {
       if (id === resolvedVirtualModuleId) {
-        return `export default ${JSON.stringify(options)}`;
+        return {
+          code: `export default ${JSON.stringify(options)}`,
+          moduleType: 'js',
+        };
       }
     },
   };

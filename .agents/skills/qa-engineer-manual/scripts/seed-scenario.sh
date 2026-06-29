@@ -87,6 +87,10 @@ require_space_id
 # Constants
 # ---------------------------------------------------------------------------
 FAKE_ID="qa-seed"
+# Total attempts per CLI push (1 = no retry; 2 = one retry on failure).
+PUSH_ATTEMPTS=2
+# Total attempts when verifying a resource landed remotely (absorbs read-after-write lag).
+VERIFY_ATTEMPTS=3
 repo_root="$(git rev-parse --show-toplevel)"
 cli_bin="${repo_root}/packages/cli/dist/index.mjs"
 skill_dir="${repo_root}/.claude/skills/qa-engineer-manual"
@@ -161,7 +165,7 @@ count_staged() {
 # unconditionally).
 run_push() {
   local label="$1"; shift
-  local attempts=2 attempt=1 status=0 out=""
+  local attempts="${PUSH_ATTEMPTS}" attempt=1 status=0 out=""
   printf "Pushing %s ... " "${label}"
   while [ "${attempt}" -le "${attempts}" ]; do
     out=$("$@" 2>&1) && { printf "done\n"; return 0; }
@@ -181,13 +185,13 @@ run_push() {
 # read-after-write propagation lag.
 verify_seeded() {
   local resource="$1" expected="$2" actual="" attempt=1
-  while [ "${attempt}" -le 3 ]; do
+  while [ "${attempt}" -le "${VERIFY_ATTEMPTS}" ]; do
     actual=$(bash "${skill_dir}/scripts/list.sh" --resource "${resource}" --space "${space_id}" 2>/dev/null | tail -1 | awk '{print $1}') || actual=""
     if [[ "${actual}" =~ ^[0-9]+$ ]] && [ "${actual}" -ge "${expected}" ]; then
       return 0
     fi
     attempt=$((attempt + 1))
-    if [ "${attempt}" -le 3 ]; then sleep 2; fi
+    if [ "${attempt}" -le "${VERIFY_ATTEMPTS}" ]; then sleep 2; fi
   done
   printf "Verification FAILED: staged %s %s but found '%s' remotely after retries — the push reported success but data did not land.\n" "${expected}" "${resource}" "${actual}" >&2
   exit 1

@@ -63,4 +63,19 @@ describe('validateSchema', () => {
     const result = validateSchema({ blocks: { section } });
     expect(result.ok).toBe(true);
   });
+
+  it('flags a field that is missing a string name (silently dropped by the wire mapper)', () => {
+    // Bypass defineField's normalization to model malformed authored input.
+    const block = { name: 'broken', fields: [{ type: 'text' }] } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('missing_field_name');
+  });
+
+  it('flags a field that is not an object', () => {
+    const block = { name: 'broken', fields: ['nope'] } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('invalid_field');
+  });
 });

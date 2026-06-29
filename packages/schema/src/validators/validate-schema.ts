@@ -1,6 +1,6 @@
 import type { SchemaLike } from './shapes';
 import type { ValidationIssue, ValidationResult } from './types';
-import { toValues } from './shapes';
+import { isRecord, toValues } from './shapes';
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
@@ -58,8 +58,22 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
   for (const block of blocks) {
     const blockName = typeof block?.name === 'string' ? block.name : '';
     const fieldNames = new Set<string>();
-    for (const field of block?.fields ?? []) {
-      const fieldName = field?.name;
+    const fields = block?.fields ?? [];
+    for (let index = 0; index < fields.length; index++) {
+      const field = fields[index];
+      // Flag malformed fields the wire mapper would otherwise silently drop:
+      // a non-object entry, or one without a string `name` (its mapping key).
+      if (!isRecord(field)) {
+        issues.push({
+          severity: 'error',
+          code: 'invalid_field',
+          path: ['blocks', blockName, index],
+          entity: `block:${blockName}`,
+          message: `Field at index ${index} in block "${blockName}" is not an object.`,
+        });
+        continue;
+      }
+      const fieldName = field.name;
       if (typeof fieldName === 'string') {
         if (fieldNames.has(fieldName)) {
           issues.push({
@@ -72,8 +86,17 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         }
         fieldNames.add(fieldName);
       }
+      else {
+        issues.push({
+          severity: 'error',
+          code: 'missing_field_name',
+          path: ['blocks', blockName, index],
+          entity: `block:${blockName}`,
+          message: `Field at index ${index} in block "${blockName}" is missing a string "name".`,
+        });
+      }
 
-      for (const allowed of field?.allow ?? []) {
+      for (const allowed of field.allow ?? []) {
         if (typeof allowed === 'string' && !blockNames.has(allowed)) {
           issues.push({
             severity: 'error',
@@ -85,7 +108,7 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         }
       }
 
-      const datasource = field?.datasource;
+      const datasource = field.datasource;
       if (typeof datasource === 'string' && !datasourceSlugs.has(datasource)) {
         issues.push({
           severity: 'error',

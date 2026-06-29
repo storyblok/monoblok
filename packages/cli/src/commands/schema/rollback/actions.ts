@@ -309,7 +309,7 @@ export async function executeRollback(
         deleted++;
       }
       catch (error) {
-        handleAPIError('push_component', error as Error, `Failed to delete component ${op.name}`);
+        handleAPIError('delete_component', error as Error, `Failed to delete component ${op.name}`);
       }
     }
   }

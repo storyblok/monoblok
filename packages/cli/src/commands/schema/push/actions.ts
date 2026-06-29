@@ -184,7 +184,7 @@ export async function executePush(
       if (result.status === 'fulfilled') {
         if (result.value) { deleted++; }
       }
-      else { handleAPIError('push_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
+      else { handleAPIError('delete_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
     }
 
     // Delete stale datasources

@@ -429,6 +429,8 @@ paths:
                 properties:
                   experiment_result:
                     $ref: '#/components/schemas/ExperimentResult'
+        '204':
+          description: No results have been pushed yet
         '401':
           $ref: ../../shared/responses.yaml#/Unauthorized
         '404':

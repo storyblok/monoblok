@@ -40,7 +40,7 @@
 
 <!-- TODO: restore docs link once live — https://www.storyblok.com/docs/libraries/js/management-api-client (docs #536/#548) -->
 
-Full package documentation is coming soon. For now, browse the [package source on GitHub](https://github.com/storyblok/monoblok/tree/main/packages/mapi-client) or see it used in the [Astro playground](https://github.com/storyblok/monoblok/tree/main/packages/schema/playground/astro).
+Full package documentation is coming soon. For now, browse the [package source on GitHub](https://github.com/storyblok/monoblok/tree/alpha/packages/mapi-client) or see it used in the [Astro playground](https://github.com/storyblok/monoblok/tree/alpha/packages/schema/playground/astro).
 
 ## Contributing
 

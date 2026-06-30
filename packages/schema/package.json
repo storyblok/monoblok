@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/schema",
   "type": "module",
-  "version": "1.0.0-alpha.0",
+  "version": "0.1.0-alpha.0",
   "description": "Storyblok schema types and helpers",
   "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",

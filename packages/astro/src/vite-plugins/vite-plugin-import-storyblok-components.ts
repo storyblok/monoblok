@@ -96,35 +96,34 @@ export function generateModuleCode(
   // Only look into the storyblok folder
   const globPattern = `${normalizedComponentsDir}/storyblok/**/*.astro`;
 
-  // Extract import statements and registration calls from manual imports
+  // Extract import statements, wrapper definitions, and registration calls from manual imports
   const importStatements: string[] = [];
+  const wrapperDefinitions: string[] = [];
   const registrationCalls: string[] = [];
 
-  for (const importCode of manualImports) {
-    const lines = importCode.split('\n');
+  const parseLines = (code: string) => {
+    const lines = code.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith('import ')) {
         importStatements.push(trimmed);
       }
+      else if (trimmed.startsWith('const ')) {
+        wrapperDefinitions.push(trimmed);
+      }
       else if (trimmed.startsWith('registerComponent(')) {
         registrationCalls.push(trimmed);
       }
     }
+  };
+
+  for (const importCode of manualImports) {
+    parseLines(importCode);
   }
 
   // Extract fallback import and registration
   if (fallbackImport) {
-    const lines = fallbackImport.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('import ')) {
-        importStatements.push(trimmed);
-      }
-      else if (trimmed.startsWith('registerComponent(')) {
-        registrationCalls.push(trimmed);
-      }
-    }
+    parseLines(fallbackImport);
   }
 
   return `
@@ -156,6 +155,9 @@ export function generateModuleCode(
         registerComponent(componentName, modules[filePath]);
       }
     }
+
+    // Component wrappers with getters to defer access and avoid TDZ issues
+    ${wrapperDefinitions.join('\n    ')}
 
     // Register manual and fallback components
     ${registrationCalls.join('\n    ')}
@@ -268,6 +270,12 @@ interface CreateComponentRegistrationCodeOptions {
 /**
  * Generates import and registration code for a component.
  * Uses a unique variable name based on the component name to avoid conflicts.
+ *
+ * IMPORTANT: We wrap each import in an object with a getter to avoid TDZ errors.
+ * When Vite bundles modules, the order of code execution can cause
+ * "Cannot access 'X' before initialization" errors if we directly reference
+ * the imported component. By wrapping it in an object with a getter,
+ * the actual access is deferred until the component is needed.
  */
 function createComponentRegistrationCode({
   componentName,
@@ -275,8 +283,11 @@ function createComponentRegistrationCode({
 }: CreateComponentRegistrationCodeOptions): string {
   // Use a unique variable name to avoid conflicts between components
   const varName = `__${componentName}_component__`;
+  // Wrap in an object with a getter to defer access and avoid TDZ issues
+  const wrapperName = `__${componentName}_wrapper__`;
   return `
 import ${varName} from '${importPath}';
-registerComponent('${componentName}', ${varName});
+const ${wrapperName} = { get default() { return ${varName}; } };
+registerComponent('${componentName}', ${wrapperName});
 `.trim();
 }

@@ -123,9 +123,10 @@ pushCmd
       ? assetInput
       : undefined;
     // Default the destination by mode: a single asset has exactly one
-    // destination (the space), while a bulk push round-trips everything on disk
-    // (the space subtree plus every writable shared library), mirroring the
-    // default `pull`. `all` is a no-op for shared scopes that have nothing local.
+    // destination (the space), while a bulk push sends every local source to
+    // its destination (the space subtree plus every writable shared library).
+    // When nothing shared exists on disk, `all` behaves exactly like `space`,
+    // so the default never writes to a library the user did not pull from.
     const target = (options.target as PushTarget | undefined) ?? (assetBinaryPath ? 'space' : 'all');
 
     // Validate the target/library combination for single-asset pushes.

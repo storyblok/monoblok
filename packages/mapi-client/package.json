@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/management-api-client",
   "type": "module",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "private": false,
   "description": "Storyblok Management API Client",
   "author": "",

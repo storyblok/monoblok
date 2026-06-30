@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Component, ComponentFolder, Datasource } from '../../../types';
+import type { Component, Datasource } from '../../../types';
 import type { DiffResult, RemoteSchemaData, SchemaData } from '../types';
 import { buildChangesetEntries, formatDiffOutput } from './actions';
-import { toComponentCreate, toComponentFolderCreate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+import { toComponentCreate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 describe('toComponentCreate', () => {
   it('should strip API-assigned fields from a component', () => {
@@ -245,23 +245,6 @@ describe('toDatasourceUpdate', () => {
   });
 });
 
-describe('toComponentFolderCreate', () => {
-  it('should strip API-assigned fields from a folder', () => {
-    const folder = {
-      id: 3,
-      name: 'Layout',
-      uuid: 'abc-123',
-      parent_id: 1,
-    } as unknown as ComponentFolder;
-
-    const result = toComponentFolderCreate(folder);
-
-    expect(result).toEqual({ name: 'Layout', parent_id: 1 });
-    expect(result).not.toHaveProperty('id');
-    expect(result).not.toHaveProperty('uuid');
-  });
-});
-
 describe('buildChangesetEntries', () => {
   function makeDiffResult(diffs: DiffResult['diffs']): DiffResult {
     return {
@@ -277,7 +260,7 @@ describe('buildChangesetEntries', () => {
   const remoteComp = { id: 2, name: 'hero', schema: {} } as unknown as Component;
   const staleComp = { id: 3, name: 'footer', schema: {} } as unknown as Component;
 
-  const baseLocal: SchemaData = { components: [localComp], componentFolders: [], datasources: [] };
+  const baseLocal: SchemaData = { components: [localComp], datasources: [] };
   const baseRemote: RemoteSchemaData = {
     components: new Map([['hero', remoteComp], ['footer', staleComp]]),
     componentFolders: new Map(),
@@ -291,7 +274,6 @@ describe('buildChangesetEntries', () => {
     ]);
     const local: SchemaData = {
       components: [localComp, { id: 4, name: 'new-comp', schema: {} } as unknown as Component],
-      componentFolders: [],
       datasources: [],
     };
 

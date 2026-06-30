@@ -6,7 +6,7 @@ describe('defineBlock', () => {
   it('should preserve literal name type', () => {
     const comp = defineBlock({
       name: 'hero',
-      schema: [
+      fields: [
         defineField('title', { type: 'text' }),
       ],
     });
@@ -14,50 +14,45 @@ describe('defineBlock', () => {
   });
 
   it('should preserve is_root: true literal', () => {
-    const pageBlock = defineBlock({ name: 'page', is_root: true, schema: [] });
+    const pageBlock = defineBlock({ name: 'page', is_root: true, fields: [] });
     expectTypeOf(pageBlock.is_root).toEqualTypeOf<true>();
   });
 
   it('should preserve is_nestable: false literal', () => {
-    const pageBlock = defineBlock({ name: 'page', is_nestable: false, schema: [] });
+    const pageBlock = defineBlock({ name: 'page', is_nestable: false, fields: [] });
     expectTypeOf(pageBlock.is_nestable).toEqualTypeOf<false>();
   });
 
   it('should default is_root to false when not provided', () => {
-    const pageBlock = defineBlock({ name: 'page', schema: [] });
+    const pageBlock = defineBlock({ name: 'page', fields: [] });
     expectTypeOf(pageBlock.is_root).toEqualTypeOf<false>();
   });
 
   it('should default is_nestable to true when not provided', () => {
-    const pageBlock = defineBlock({ name: 'page', schema: [] });
+    const pageBlock = defineBlock({ name: 'page', fields: [] });
     expectTypeOf(pageBlock.is_nestable).toEqualTypeOf<true>();
   });
 
-  it('should default component_group_uuid to null when not provided', () => {
-    const pageBlock = defineBlock({ name: 'page', schema: [] });
-    expectTypeOf(pageBlock.component_group_uuid).toEqualTypeOf<null>();
-  });
-
-  it('should preserve explicit component_group_uuid literal', () => {
-    const pageBlock = defineBlock({ name: 'page', component_group_uuid: 'shared-group', schema: [] });
-    expectTypeOf(pageBlock.component_group_uuid).toEqualTypeOf<'shared-group'>();
-  });
-
   it('should accept a string or null description', () => {
-    const testBlock = defineBlock({ name: 'test', description: 'A test block', schema: [] });
-    const nullDescriptionBlock = defineBlock({ name: 'test', description: null, schema: [] });
+    const testBlock = defineBlock({ name: 'test', description: 'A test block', fields: [] });
+    const nullDescriptionBlock = defineBlock({ name: 'test', description: null, fields: [] });
     expectTypeOf(testBlock.description).toEqualTypeOf<string | null | undefined>();
     expectTypeOf(nullDescriptionBlock.description).toEqualTypeOf<string | null | undefined>();
   });
+
+  it('should accept the component_group_uuid escape hatch', () => {
+    const testBlock = defineBlock({ name: 'test', component_group_uuid: 'group-uuid', fields: [] });
+    expectTypeOf(testBlock.component_group_uuid).toEqualTypeOf<string | null | undefined>();
+  });
 });
 
-const schema = [
+const fields = [
   defineField('title', { type: 'text' }),
 ];
 
-const _pageBlock = defineBlock({ name: 'page', is_root: true, is_nestable: false, schema });
-const _heroBlock = defineBlock({ name: 'hero', is_root: true, schema }); // nestable by default
-const _teaserBlock = defineBlock({ name: 'teaser', schema }); // not root, nestable by default
+const _pageBlock = defineBlock({ name: 'page', is_root: true, is_nestable: false, fields });
+const _heroBlock = defineBlock({ name: 'hero', is_root: true, fields }); // nestable by default
+const _teaserBlock = defineBlock({ name: 'teaser', fields }); // not root, nestable by default
 
 type Schema = typeof _pageBlock | typeof _heroBlock | typeof _teaserBlock;
 

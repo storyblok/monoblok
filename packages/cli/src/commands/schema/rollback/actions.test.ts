@@ -100,19 +100,9 @@ describe('buildRollbackOps', () => {
 });
 
 describe('executeRollback', () => {
-  const NEW_FOLDER_UUID = 'new-remote-folder-uuid-999';
   let capturedComponentBody: Record<string, unknown> | undefined;
 
   const handlers = [
-    http.post('https://mapi.storyblok.com/v1/spaces/12345/component_groups', () => {
-      return HttpResponse.json({
-        component_group: {
-          id: 100,
-          name: 'Layout',
-          uuid: NEW_FOLDER_UUID,
-        },
-      }, { status: 201 });
-    }),
     http.post('https://mapi.storyblok.com/v1/spaces/12345/components', async ({ request }) => {
       const body = await request.json() as Record<string, unknown>;
       capturedComponentBody = body;
@@ -135,21 +125,13 @@ describe('executeRollback', () => {
   });
   afterAll(() => server.close());
 
-  it('should remap component_group_uuid to newly created folder UUID', async () => {
-    const OLD_FOLDER_UUID = 'old-folder-uuid-123';
-
+  it('should send a component create for a create rollback op', async () => {
     const ops: RollbackOp[] = [
-      {
-        type: 'componentFolder',
-        name: 'Layout',
-        action: 'create',
-        payload: { name: 'Layout', uuid: OLD_FOLDER_UUID },
-      },
       {
         type: 'component',
         name: 'hero',
         action: 'create',
-        payload: { name: 'hero', schema: {}, component_group_uuid: OLD_FOLDER_UUID },
+        payload: { name: 'hero', schema: {} },
       },
     ];
 
@@ -159,9 +141,10 @@ describe('executeRollback', () => {
       datasources: new Map(),
     };
 
-    await executeRollback('12345', ops, remote);
+    const result = await executeRollback('12345', ops, remote);
 
     const componentPayload = (capturedComponentBody as { component: Record<string, unknown> }).component;
-    expect(componentPayload.component_group_uuid).toBe(NEW_FOLDER_UUID);
+    expect(componentPayload.name).toBe('hero');
+    expect(result.created).toBe(1);
   });
 });

@@ -2,7 +2,11 @@ import type { RemoteSchemaData } from './types';
 import { getMapiClient } from '../../api';
 import { fetchAllPages } from '../../utils';
 
-/** Fetches remote components, component folders, and datasources from the MAPI. */
+/**
+ * Fetches remote components, component folders, and datasources from the MAPI.
+ * Component folders are fetched for `schema init` (to mirror groups as local
+ * directories); `schema push` does not diff or manage them.
+ */
 export async function fetchRemoteSchema(spaceId: string) {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);

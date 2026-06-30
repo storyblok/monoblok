@@ -1,5 +1,4 @@
 import type { Component } from '../components/constants';
-import type { Field } from '../../types';
 import type { Story } from './constants';
 import type { AssetMap } from '../assets/types';
 import { normalizeAssetUrl } from '@storyblok/management-api-client';
@@ -11,8 +10,11 @@ export interface RefMaps {
 
 export type ComponentSchemas = Record<Component['name'], Component['schema']>;
 
+/** A single field definition within a component's wire `schema` record. */
+type SchemaFieldDefinition = NonNullable<Component['schema']>[string];
+
 type RefMapper = <const T extends Record<string, unknown>>(data: T, options: {
-  schema: Field | undefined;
+  schema: SchemaFieldDefinition | undefined;
   schemas: ComponentSchemas;
   maps: RefMaps;
   fieldRefMappers: FieldRefMappers;

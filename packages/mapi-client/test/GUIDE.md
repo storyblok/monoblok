@@ -48,7 +48,7 @@ node packages/cli/dist/index.mjs components push \
 
 **Always push components before stories.** The CLI validates that each story's `content.component` (and any nested block components) exist in the space. Pushing stories first fails if the referenced components are not yet present.
 
-You can do the same with stories and `defineStory`. **Story filename convention:** the CLI requires files named `{slug}_{uuid}.json` where the part after the last `_` exactly matches `story.uuid` in the JSON. Use hyphens (not underscores) in UUIDs. A mismatch causes Pass 2 of the push (reference mapping + content update) to silently skip all stories.
+You can do the same with stories. **Story filename convention:** the CLI requires files named `{slug}_{uuid}.json` where the part after the last `_` exactly matches `story.uuid` in the JSON. Use hyphens (not underscores) in UUIDs. A mismatch causes Pass 2 of the push (reference mapping + content update) to silently skip all stories.
 
 ## Known quirks
 
@@ -56,4 +56,4 @@ You can do the same with stories and `defineStory`. **Story filename convention:
 - **MAPI `stories.get` takes a positional ID, not an options object:** `client.stories.get(id)` — there is no `getBySlug`. The `list` response does not include `content`; call `get(id)` for full content.
 - **MAPI client constructor uses `personalAccessToken`:** `createManagementApiClient({ personalAccessToken: '...', spaceId: ... })`.
 - **Delete methods are `delete`:** Use `client.RESOURCE.delete(id)`.
-- **Each story JSON must have a unique `id`.** `defineStory` defaults `id` to `1`. If multiple story files share the same `id`, the CLI's manifest maps all of them to the same `old_id` entry, causing "slug already taken" errors.
+- **Each story JSON must have a unique `id`.** If multiple story files share the same `id`, the CLI's manifest maps all of them to the same `old_id` entry, causing "slug already taken" errors.

@@ -46,11 +46,10 @@ export async function writeLocalComponents({
     await saveToFile(filePath, JSON.stringify(component, null, 2));
   }
 
+  // Component groups are not managed by the schema package (blocks are pushed
+  // flat), so remove any stale groups file left by an earlier version.
   const groupsPath = join(componentsDir, DEFAULT_GROUPS_FILENAME);
-  if (resolved.componentFolders.length > 0) {
-    await saveToFile(groupsPath, JSON.stringify(resolved.componentFolders, null, 2));
-  }
-  else if (await fileExists(groupsPath)) {
+  if (await fileExists(groupsPath)) {
     try {
       await unlink(groupsPath);
       logger.info('Removed stale local groups file', { path: displayPath(groupsPath, basePath) });
@@ -83,6 +82,5 @@ export async function writeLocalComponents({
   logger.info('Wrote local component files', {
     space,
     componentsWritten: resolved.components.length,
-    groupsWritten: resolved.componentFolders.length,
   });
 }

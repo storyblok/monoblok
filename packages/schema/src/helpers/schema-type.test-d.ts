@@ -2,31 +2,28 @@ import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
 import { defineDatasource } from './define-datasource';
-import { defineBlockFolder } from './define-block-folder';
 import type { Schema } from './schema-type';
 
 const pageBlock = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text' }),
   ],
 });
 
 const heroBlock = defineBlock({
   name: 'hero',
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
   ],
 });
 
-const layoutFolder = defineBlockFolder({ name: 'Layout' });
 const colorsDatasource = defineDatasource({ name: 'Colors', slug: 'colors' });
 
 const _schema = {
   blocks: { pageBlock, heroBlock },
-  blockFolders: { layoutFolder },
   datasources: { colorsDatasource },
 };
 
@@ -52,16 +49,11 @@ describe('Schema', () => {
     expectTypeOf<Types['blocks']['name']>().toEqualTypeOf<'page' | 'hero'>();
   });
 
-  it('produces a union of folder types from blockFolders key', () => {
-    expectTypeOf<Types['blockFolders']>().toEqualTypeOf<typeof layoutFolder>();
-  });
-
   it('produces a union of datasource types', () => {
     expectTypeOf<Types['datasources']>().toEqualTypeOf<typeof colorsDatasource>();
   });
 
-  it('blockFolders and datasources are never when not provided', () => {
-    expectTypeOf<TypesComponentsOnly['blockFolders']>().toBeNever();
+  it('datasources are never when not provided', () => {
     expectTypeOf<TypesComponentsOnly['datasources']>().toBeNever();
   });
 });

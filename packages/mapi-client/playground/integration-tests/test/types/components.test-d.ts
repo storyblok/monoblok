@@ -1,11 +1,11 @@
-import { defineBlock, defineBlockCreate, defineBlockUpdate, defineField } from '@storyblok/schema';
+import { defineBlock, defineField } from '@storyblok/schema';
 import { type Component as ComponentMapi, createManagementApiClient } from '@storyblok/management-api-client';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // Nestable block — not a root story type
 const teaserComponent = defineBlock({
   name: 'teaser',
-  schema: [
+  fields: [
     defineField('text', { type: 'text' }),
     defineField('image', { type: 'asset' }),
   ],
@@ -16,66 +16,27 @@ const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
     defineField('body', { type: 'richtext' }),
-    defineField('teasers', { type: 'bloks', component_whitelist: [teaserComponent.name] }),
+    defineField('teasers', { type: 'bloks', allow: [teaserComponent.name] }),
   ],
 });
 
 const CLIENT_CONFIG = { personalAccessToken: 'test-token', spaceId: 12345 };
 
-describe('components.create body type compatibility', () => {
-  it('should produce a defineBlockCreate result assignable to components.create body', () => {
-    const createPayload = defineBlockCreate({
-      name: 'article',
-      schema: {
-        title: { type: 'text', pos: 1 },
-      },
-    });
-
-    type CreateBody = Parameters<ReturnType<typeof createManagementApiClient>['components']['create']>[0]['body'];
-    type ComponentCreateInput = NonNullable<CreateBody['component']>;
-
-    expectTypeOf(createPayload).toExtend<ComponentCreateInput>();
-  });
-
-  it('should produce a defineBlockUpdate result assignable to components.update body', () => {
-    const updatePayload = defineBlockUpdate({
-      display_name: 'Article',
-    });
-
-    type UpdateBody = Parameters<ReturnType<typeof createManagementApiClient>['components']['update']>[1]['body'];
-    type ComponentUpdateInput = NonNullable<UpdateBody['component']>;
-
-    expectTypeOf(updatePayload).toExtend<ComponentUpdateInput>();
-  });
-});
-
 describe('components.get response shape', () => {
-  it('should return a Component from components.get matching the wire shape', async () => {
+  it('should return the wire Component (a `schema` record) from components.get', async () => {
     const client = createManagementApiClient(CLIENT_CONFIG);
     const result = await client.components.get(123);
 
     if (result.data?.component) {
-      // components.get() returns the wrapper Component (= Block), matching the wire shape
+      // components.get() returns the wire-shaped Component definition (a `schema`
+      // record), not the DSL `fields` block.
       expectTypeOf(result.data.component.id).toEqualTypeOf<ComponentMapi['id']>();
       expectTypeOf(result.data.component.name).toEqualTypeOf<ComponentMapi['name']>();
       expectTypeOf(result.data.component).toHaveProperty('schema');
     }
-  });
-});
-
-describe('components.create body type rejection', () => {
-  it('should reject a component create payload with wrong schema field type', () => {
-    const createPayload = defineBlockCreate({
-      name: 'article',
-      schema: {
-        // @ts-expect-error: schema value must be a field definition, not a string
-        title: 'invalid',
-      },
-    });
-    void createPayload;
   });
 });
 

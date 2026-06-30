@@ -16,7 +16,6 @@ import { loadSchema } from './load-schema';
 import { diffSchema } from './diff-schema';
 import { fetchRemoteSchema } from '../actions';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
-import { resolveFolderReferences } from './resolve-folders';
 import { saveChangeset } from '../changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
 import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
@@ -64,11 +63,11 @@ schemaCommand
         handleError(toError(maybeError), verbose);
         return;
       }
-      loadSpinner.succeed(`Found: ${local.components.length} components, ${local.componentFolders.length} component folders, ${local.datasources.length} datasources`);
+      loadSpinner.succeed(`Found: ${local.components.length} components, ${local.datasources.length} datasources`);
 
-      const totalLocal = local.components.length + local.componentFolders.length + local.datasources.length;
+      const totalLocal = local.components.length + local.datasources.length;
       if (totalLocal === 0) {
-        ui.warn('No components, folders, or datasources found in the entry file. Verify the file exports schema definitions.');
+        ui.warn('No components or datasources found in the entry file. Verify the file exports schema definitions.');
         return;
       }
 
@@ -84,13 +83,10 @@ schemaCommand
         return;
       }
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
-      remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.componentFolders.size} component folders, ${remote.datasources.size} datasources`);
+      remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`);
 
-      // 3. Resolve local folder UUIDs to remote UUIDs
-      const { resolved, pendingFolderAssignments } = resolveFolderReferences(local, remote);
-
-      // 4. Diff
-      const diffResult = diffSchema(resolved, remote);
+      // 3. Diff (blocks are pushed flat; component groups are not diffed)
+      const diffResult = diffSchema(local, remote);
 
       // 5. Display diffs
       ui.br();
@@ -98,7 +94,7 @@ schemaCommand
 
       // 6. Analyze breaking changes and offer migration generation
       if (options.migrations) {
-        const breakingChanges = analyzeBreakingChanges(diffResult, resolved, remote);
+        const breakingChanges = analyzeBreakingChanges(diffResult, local, remote);
 
         if (breakingChanges.length > 0) {
           const totalChanges = breakingChanges.reduce((sum, c) => sum + c.changes.length, 0);
@@ -199,12 +195,13 @@ schemaCommand
         timestamp,
         spaceId: Number(space),
         remote: { components: rawComponents, componentFolders: rawComponentFolders, datasources: rawDatasources },
-        changes: buildChangesetEntries(diffResult, resolved, remote, { delete: options.delete }),
+        changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
       });
       logger.info('Changeset saved', { path: displayPath(changesetPath, basePath) });
 
-      // 9. Execute push (skipped when nothing to push)
-      const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0 && (!options.delete || diffResult.stale === 0);
+      // 9. Execute push (skipped when nothing to push).
+      const nothingToPush = diffResult.creates === 0 && diffResult.updates === 0
+        && (!options.delete || diffResult.stale === 0);
       if (nothingToPush) {
         ui.ok('Everything up to date — nothing to push.');
       }
@@ -212,7 +209,7 @@ schemaCommand
         const pushSpinner = ui.createSpinner('Pushing schema...');
         let result: Awaited<ReturnType<typeof executePush>>;
         try {
-          result = await executePush(space, resolved, remote, diffResult, { delete: options.delete, pendingFolderAssignments });
+          result = await executePush(space, local, remote, diffResult, { delete: options.delete });
         }
         catch (error) {
           pushSpinner.failed('Failed to push schema');
@@ -233,7 +230,7 @@ schemaCommand
           await writeLocalComponents({
             space,
             basePath,
-            resolved,
+            resolved: local,
             diffResult,
             deleteRemoved: options.delete,
             ui,

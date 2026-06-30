@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses } from './types.gen';
+import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -75,6 +75,21 @@ export const getDatasourceById = <ThrowOnError extends boolean = false>(options:
             type: 'apiKey'
         }],
     url: '/v2/cdn/datasources/{id}',
+    ...options
+});
+
+/**
+ * List running experiments
+ *
+ * Retrieve all running experiments with their variants and associated story IDs. Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
+ */
+export const listCdnExperimentsV2 = <ThrowOnError extends boolean = false>(options?: Options<ListCdnExperimentsV2Data, ThrowOnError>) => (options?.client ?? client).get<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/experiments',
     ...options
 });
 

@@ -38,7 +38,9 @@
 
 ## Documentation
 
-For complete documentation, please visit [package reference](https://www.storyblok.com/docs/libraries/js/api-client)
+<!-- TODO: restore docs link once live — https://www.storyblok.com/docs/libraries/js/api-client (docs #536/#548) -->
+
+Full package documentation is coming soon. For now, browse the [package source on GitHub](https://github.com/storyblok/monoblok/tree/main/packages/capi-client) or see it used in the [Astro playground](https://github.com/storyblok/monoblok/tree/main/packages/schema/playground/astro).
 
 ## Contributing
 

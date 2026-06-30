@@ -27,6 +27,73 @@ export type Alternate = {
     translated_slug: string;
 };
 
+export type CdnExperiment = {
+    /**
+     * Numeric ID of the experiment
+     */
+    id: number;
+    /**
+     * Internal name (lowercase, numbers, underscores)
+     */
+    name: string;
+    /**
+     * Human-readable display name
+     */
+    display_name: string;
+    /**
+     * IDs of stories assigned to this experiment
+     */
+    story_ids: Array<number>;
+    /**
+     * Variants belonging to this experiment
+     */
+    variants: Array<CdnExperimentVariant>;
+};
+
+export type CdnExperimentVariant = {
+    /**
+     * Internal name (lowercase, numbers, underscores)
+     */
+    name: string;
+    /**
+     * Human-readable display name
+     */
+    display_name: string;
+    /**
+     * Public identifier for stable bucketing
+     */
+    public_id: string;
+    /**
+     * Traffic weight percentage (0-100)
+     */
+    weight: number;
+    /**
+     * Whether this is the control variant
+     */
+    is_control: boolean;
+    /**
+     * Mappings between original stories and their variant copies
+     */
+    story_mappings: Array<{
+        /**
+         * ID of the original story
+         */
+        original_story_id: number;
+        /**
+         * Slug of the original story
+         */
+        original_slug: string | null;
+        /**
+         * ID of the variant story copy
+         */
+        variant_story_id: number | null;
+        /**
+         * Slug of the variant story copy
+         */
+        variant_slug: string | null;
+    }>;
+};
+
 export type ErrorResponse = {
     /**
      * Error message.
@@ -597,6 +664,43 @@ export type GetDatasourceByIdResponses = {
 };
 
 export type GetDatasourceByIdResponse = GetDatasourceByIdResponses[keyof GetDatasourceByIdResponses];
+
+export type ListCdnExperimentsV2Data = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Access a particular cached version of a published story using its Unix timestamp.
+         */
+        cv?: number;
+    };
+    url: '/v2/cdn/experiments';
+};
+
+export type ListCdnExperimentsV2Errors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListCdnExperimentsV2Error = ListCdnExperimentsV2Errors[keyof ListCdnExperimentsV2Errors];
+
+export type ListCdnExperimentsV2Responses = {
+    /**
+     * Running experiments returned
+     */
+    200: {
+        experiments: Array<CdnExperiment>;
+        cv?: number | null;
+    };
+};
+
+export type ListCdnExperimentsV2Response = ListCdnExperimentsV2Responses[keyof ListCdnExperimentsV2Responses];
 
 export type ListLinksData = {
     body?: never;

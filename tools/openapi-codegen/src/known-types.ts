@@ -20,6 +20,8 @@ export const UPSTREAM_SCHEMAS = {
   capi: [
     'Alternate',
     'Asset',
+    'CdnExperiment',
+    'CdnExperimentVariant',
     'Datasource',
     'DatasourceEntry',
     'Dimension',

@@ -66,18 +66,26 @@ export function vitePluginImportStoryblokComponents(
     },
   };
 }
+export interface ResolvedComponent {
+  componentName: string;
+  importPath: string;
+}
+
 /**
  * Generates the complete virtual module code including:
  * - Auto-imported components via glob
- * - User-provided component imports
- * - Optional fallback component
+ * - User-provided component imports (via static imports at the top)
+ * - Optional fallback component (via static import at the top)
+ *
+ * Static imports are placed at the very beginning of the module to ensure
+ * they are hoisted correctly and available when registration code runs.
  *
  * @param componentsDir - Base directory of components
  * @param fallbackImport - Import statement for fallback (if any)
  * @param manualImports - Explicit imports generated from user-provided components
  * @returns Virtual module source code
  */
-function generateModuleCode(
+export function generateModuleCode(
   componentsDir: string,
   fallbackImport: string,
   manualImports: string[],
@@ -88,12 +96,45 @@ function generateModuleCode(
   // Only look into the storyblok folder
   const globPattern = `${normalizedComponentsDir}/storyblok/**/*.astro`;
 
+  // Extract import statements and registration calls from manual imports
+  const importStatements: string[] = [];
+  const registrationCalls: string[] = [];
+
+  for (const importCode of manualImports) {
+    const lines = importCode.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('import ')) {
+        importStatements.push(trimmed);
+      }
+      else if (trimmed.startsWith('registerComponent(')) {
+        registrationCalls.push(trimmed);
+      }
+    }
+  }
+
+  // Extract fallback import and registration
+  if (fallbackImport) {
+    const lines = fallbackImport.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('import ')) {
+        importStatements.push(trimmed);
+      }
+      else if (trimmed.startsWith('registerComponent(')) {
+        registrationCalls.push(trimmed);
+      }
+    }
+  }
+
   return `
-    // Import utilities and fallback component
+    // Static imports - placed at the top for proper hoisting
     import { toCamelCase } from '@storyblok/astro';
+    ${importStatements.join('\n    ')}
 
     // Dynamically import all Storyblok components using Vite's glob import
     const modules = import.meta.glob('${globPattern}', { eager: true });
+
     // Process imported modules into a components object
     const storyblokComponents = {};
     const createComponentLoader = (module) => {
@@ -106,19 +147,19 @@ function generateModuleCode(
         get: () => createComponentLoader(component),
       });
     };
+
+    // Register glob-imported components from storyblok folder
     for (const filePath in modules) {
-      // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
-      const componentName = toCamelCase(fileName?.replace(/\.[^/.]+$/, '') ?? '');
+      const componentName = toCamelCase(fileName?.replace(/\\.[^/.]+$/, '') ?? '');
       if (componentName) {
         registerComponent(componentName, modules[filePath]);
       }
     }
-    
-    // Manual components
-    ${manualImports.join('\n\n')}
-    // Add fallback component if enabled
-    ${fallbackImport}    
+
+    // Register manual and fallback components
+    ${registrationCalls.join('\n    ')}
+
     // Export the components object for use in Storyblok initialization
     export { storyblokComponents };
   `.trim();
@@ -163,7 +204,7 @@ async function resolveFallbackComponent(
  * @param components - User-specified mapping of blok names to component paths
  * @param componentsDir - Base directory for components
  * @param enableFallback - Whether to silently skip unresolved components
- * @returns Object containing import statements
+ * @returns Array of import and registration code strings
  */
 async function resolveUserComponents(
   ctx: any,
@@ -224,12 +265,18 @@ interface CreateComponentRegistrationCodeOptions {
   importPath: string;
 }
 
+/**
+ * Generates import and registration code for a component.
+ * Uses a unique variable name based on the component name to avoid conflicts.
+ */
 function createComponentRegistrationCode({
   componentName,
   importPath,
 }: CreateComponentRegistrationCodeOptions): string {
+  // Use a unique variable name to avoid conflicts between components
+  const varName = `__${componentName}_component__`;
   return `
-  import ${componentName} from '${importPath}';
-  registerComponent('${componentName}', ${componentName});
+import ${varName} from '${importPath}';
+registerComponent('${componentName}', ${varName});
 `.trim();
 }

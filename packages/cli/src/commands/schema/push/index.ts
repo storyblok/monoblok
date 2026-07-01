@@ -26,7 +26,6 @@ schemaCommand
   .command('push <entry-file>')
   .description('Push local TypeScript schema and datasource definitions to a Storyblok space')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .option('--dry-run', 'Show diffs without applying changes', false)
   .option('--delete', 'Delete remote entities not present in local schema', false)
   .option('--migrations', 'Generate scaffold migration files for breaking changes', true)

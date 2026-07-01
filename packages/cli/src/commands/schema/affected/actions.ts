@@ -5,14 +5,14 @@ import { validateStory } from '@storyblok/schema';
 import type { ValidationIssue } from '@storyblok/schema';
 
 import type { Story } from '../../../types';
-import type { DiffResult, RemoteSchemaData } from '../types';
+import type { DiffResult } from '../types';
 import type { BreakingChange, ComponentBreakingChanges } from '../migrations/types';
 import type { AdaptedSchema } from '../to-schema-like';
 import { fetchStoriesStream, fetchStoryStream, readLocalStoriesStream } from '../../stories/streams';
 import { collectComponentUsage } from './content-usage';
 
 /** How an impacted component changed. `removed` = deleted from the local schema. */
-export type ImpactAction = 'update' | 'removed' | 'target';
+export type ImpactAction = 'update' | 'removed';
 
 /** A field-level change that affects existing content. */
 export interface ImpactedField {
@@ -100,15 +100,12 @@ function toImpactedField(change: BreakingChange): ImpactedField {
  * analysis. Updated components with breaking field changes are always impacted.
  * Removed (stale) components are impacted only when `withDelete` is set, because a
  * plain `schema push` leaves stale components in place — it only deletes them with
- * `--delete` — so their content would not break otherwise. An optional `filter`
- * narrows the set to the named components, adding any named component that exists
- * remotely but is unchanged as a pure usage `target`.
+ * `--delete` — so their content would not break otherwise.
  */
 export function computeImpactedComponents(
   diffResult: DiffResult,
   breakingChanges: ComponentBreakingChanges[],
-  remote: RemoteSchemaData,
-  options: { filter?: string[]; withDelete?: boolean } = {},
+  options: { withDelete?: boolean } = {},
 ): ImpactedMap {
   const impacted: ImpactedMap = new Map();
 
@@ -128,24 +125,7 @@ export function computeImpactedComponents(
     }
   }
 
-  const { filter } = options;
-  if (!filter || filter.length === 0) {
-    return impacted;
-  }
-
-  const wanted = new Set(filter);
-  const narrowed: ImpactedMap = new Map();
-  for (const name of wanted) {
-    const existing = impacted.get(name);
-    if (existing) {
-      narrowed.set(name, existing);
-    }
-    else if (remote.components.has(name)) {
-      // Named component with no pending change: report pure usage.
-      narrowed.set(name, { component: name, action: 'target', fields: [] });
-    }
-  }
-  return narrowed;
+  return impacted;
 }
 
 /** Maps each impacted component to the content keys its impacted fields occupy. */

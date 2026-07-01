@@ -29,7 +29,12 @@ Each source is auto-detected: a numeric value is treated as a space ID (fetched 
 
 By default the command prints a human-readable diff to the terminal, grouping entities into added, changed, and removed relative to `--to`, with field-level changes for each modified entity.
 
-The full structured diff is also emitted through the reporter when reports are enabled (via the global `--report-enabled` flag). The report's `meta.diff` carries the entity-level actions and field-level changes (added, removed, modified, with before and after values), which is the machine-readable "diff file" downstream tooling reads, for example when replicating schema changes from one space to another.
+The full structured diff is also emitted through the reporter when reports are enabled (via the global `--report-enabled` flag). The report's `meta.diff` carries the entity-level actions and field-level changes, which is the machine-readable "diff file" downstream tooling reads, for example when replicating schema changes from one space to another.
+
+The machine-readable payload uses the same vocabulary as `schema push`, which differs from the human wording:
+
+- `meta.diff.entities[].action` is one of `create`, `update`, `stale`, or `unchanged` (the human output relabels these to added, changed, and removed relative to `--to`).
+- `meta.diff.entities[].changes[].change` is one of `added`, `removed`, or `modified`, each with `before` and `after` values.
 
 ## Notes
 

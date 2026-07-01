@@ -36,7 +36,7 @@ schemaCommand
       let fromSchema: Awaited<ReturnType<typeof resolveSource>>;
       let toSchema: Awaited<ReturnType<typeof resolveSource>>;
       try {
-        [fromSchema, toSchema] = await Promise.all([resolveSource(from), resolveSource(to)]);
+        [fromSchema, toSchema] = await Promise.all([resolveSource(from, '--from'), resolveSource(to, '--to')]);
       }
       catch (maybeError) {
         resolveSpinner.failed('Failed to resolve schemas');

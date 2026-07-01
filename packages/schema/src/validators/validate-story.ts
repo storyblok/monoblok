@@ -30,8 +30,18 @@ function checkValue(
   issues: ValidationIssue[],
 ): void {
   const result = schema['~standard'].validate(value);
-  // The Zod schemas are synchronous; a thenable result would indicate misuse.
+  // `validateStory` is synchronous. The internal Zod schemas never return a
+  // thenable, but a registered field plugin may ship an async validator — which
+  // cannot be awaited here. Surface it as an error instead of silently passing,
+  // which would report a false `ok: true`.
   if (result instanceof Promise) {
+    issues.push({
+      severity: 'error',
+      code: 'async_validator_unsupported',
+      path,
+      entity,
+      message: 'Field plugin validator is asynchronous; validateStory runs synchronously and cannot await it.',
+    });
     return;
   }
   if (result.issues) {

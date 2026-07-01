@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { defineBlock } from '../helpers/define-block';
 import { defineField } from '../helpers/define-field';
 import { defineFieldPlugin } from '../helpers/define-field-plugin';
+import { storyblokColorField } from '../field-plugins/storyblok-color-field';
 import { validateStory } from './validate-story';
 
 const teaser = defineBlock({ name: 'teaser', fields: [defineField('text', { type: 'text' })] });
@@ -165,6 +167,39 @@ describe('validateStory', () => {
       }, pluginSchema);
       expect(result.ok).toBe(true);
       expect(result.issues).toEqual([]);
+    });
+
+    it('reports the `color` sub-path for the shipped storyblokColorField plugin', () => {
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'storyblok-colorpicker', _uid: 'abc-123', color: 123 },
+        },
+      }, { blocks: { page: pageWithPlugin }, fieldPlugins: { storyblokColorField } });
+      expect(result.ok).toBe(false);
+      const colorIssue = result.issues.find(i => i.code === 'invalid_value');
+      expect(colorIssue?.path).toEqual(['content', 'accent', 'color']);
+    });
+
+    it('errors instead of silently passing when a plugin ships an async validator', () => {
+      const asyncValue: StandardSchemaV1<{ color: string }> = {
+        '~standard': {
+          version: 1,
+          vendor: 'test',
+          validate: () => Promise.resolve({ value: { color: 'x' } }),
+        },
+      };
+      const asyncPlugin = defineFieldPlugin({ fieldType: 'storyblok-colorpicker', value: asyncValue });
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'storyblok-colorpicker', _uid: 'abc-123', color: 'x' },
+        },
+      }, { blocks: { page: pageWithPlugin }, fieldPlugins: { asyncPlugin } });
+      expect(result.ok).toBe(false);
+      expect(codesFor(result)).toContain('async_validator_unsupported');
     });
   });
 });

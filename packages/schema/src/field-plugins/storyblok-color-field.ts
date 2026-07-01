@@ -20,7 +20,7 @@ const storyblokColorFieldValue: StandardSchemaV1<StoryblokColorFieldValue> = {
       if (isRecord(value) && typeof value.color === 'string') {
         return { value: { color: value.color } };
       }
-      return { issues: [{ message: 'Expected an object with a string `color` property.' }] };
+      return { issues: [{ message: 'Expected a string `color` property.', path: ['color'] }] };
     },
   },
 };

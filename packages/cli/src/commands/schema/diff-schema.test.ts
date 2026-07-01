@@ -149,7 +149,7 @@ describe('diffSchema', () => {
     const localComp = makeComponent('page', { title: { type: 'text', pos: 0 } });
     const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'group-uuid' } as Component;
 
-    const result = diffSchema(normalized([remoteComp]), normalized([localComp]));
+    const result = diffSchema(normalized([remoteComp]), normalized([localComp]), { compareGroupUuid: true });
 
     expect(result.unchanged).toBe(1);
     expect(result.updates).toBe(0);
@@ -159,10 +159,23 @@ describe('diffSchema', () => {
     const localComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'new-group' } as Component;
     const remoteComp = { ...makeComponent('page', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'old-group' } as Component;
 
-    const result = diffSchema(normalized([remoteComp]), normalized([localComp]));
+    const result = diffSchema(normalized([remoteComp]), normalized([localComp]), { compareGroupUuid: true });
 
     expect(result.updates).toBe(1);
     expect(result.diffs[0].changes.some(c => c.field === 'component_group_uuid')).toBe(true);
+  });
+
+  it('should treat components differing only by component_group_uuid as unchanged for space-to-space diffs', () => {
+    // Group UUIDs are per-space identifiers; without opting in (the default, as
+    // used for space-to-space diffs) they must not surface as a change.
+    const spaceA = { ...makeComponent('hero', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'group-a' } as Component;
+    const spaceB = { ...makeComponent('hero', { title: { type: 'text', pos: 0 } }), component_group_uuid: 'group-b' } as Component;
+
+    const result = diffSchema(normalized([spaceA]), normalized([spaceB]));
+
+    expect(result.updates).toBe(0);
+    expect(result.unchanged).toBe(1);
+    expect(result.diffs[0].changes.some(c => c.field === 'component_group_uuid')).toBe(false);
   });
 
   it('should handle all entity types together', () => {

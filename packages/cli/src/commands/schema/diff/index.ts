@@ -45,7 +45,11 @@ schemaCommand
       }
       resolveSpinner.succeed('Schemas resolved');
 
-      const diffResult = diffSchema(fromSchema, toSchema);
+      // Group UUIDs are per-space identifiers, so they are meaningless to
+      // compare against a remote space. Only diff them when both sides are local
+      // files, where an explicit `component_group_uuid` is a deliberate choice.
+      const compareGroupUuid = !isSpaceRef(from) && !isSpaceRef(to);
+      const diffResult = diffSchema(fromSchema, toSchema, { compareGroupUuid });
       report = buildDiffReport(diffResult, from, to);
 
       ui.br();

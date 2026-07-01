@@ -1,10 +1,8 @@
-import chalk from 'chalk';
-
 import type { Component } from '../../../types';
-import type { ChangesetEntry, DiffResult, EntityDiff, LocalFolder, RemoteSchemaData, SchemaData } from '../types';
+import type { ChangesetEntry, DiffResult, LocalFolder, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { CommandError, handleAPIError } from '../../../utils';
-import { renderFieldChanges } from '../format-diff';
+import { formatDiff } from '../format-diff';
 import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 import { buildGroupPathByUuid } from '../folders';
 import { isRecord } from '../utils';
@@ -74,59 +72,18 @@ function buildGroupByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
   return groupByPath;
 }
 
-/** Formats diff results for CLI display using chalk colors. */
+/** Formats diff results for `schema push` display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
-  const lines: string[] = [];
-
-  const byType = {
-    component: [] as EntityDiff[],
-    datasource: [] as EntityDiff[],
-    folder: [] as EntityDiff[],
-  };
-
-  for (const diff of result.diffs) {
-    byType[diff.type].push(diff);
-  }
-
   const willDelete = options?.delete ?? false;
-  const icons: Record<string, string> = {
-    create: chalk.green('+'),
-    update: chalk.yellow('~'),
-    unchanged: chalk.dim('='),
-    stale: chalk.red('-'),
-  };
-
-  const sections: [string, EntityDiff[]][] = [
-    ['Folders', byType.folder],
-    ['Components', byType.component],
-    ['Datasources', byType.datasource],
-  ];
-
-  for (const [label, diffs] of sections) {
-    if (diffs.length === 0) { continue; }
-
-    lines.push(chalk.bold(label));
-    for (const diff of diffs) {
-      const icon = icons[diff.action] ?? ' ';
-      const name = diff.action === 'stale' ? chalk.red(diff.name) : diff.name;
-      const actionLabel = diff.action === 'stale' && willDelete ? 'delete' : diff.action;
-      lines.push(`  ${icon} ${name} ${chalk.dim(`(${actionLabel})`)}`);
-
-      lines.push(...renderFieldChanges(diff.changes));
-    }
-    lines.push('');
-  }
-
-  const summary = [
-    result.creates > 0 ? chalk.green(`${result.creates} to create`) : null,
-    result.updates > 0 ? chalk.yellow(`${result.updates} to update`) : null,
-    result.unchanged > 0 ? chalk.dim(`${result.unchanged} unchanged`) : null,
-    result.stale > 0 ? chalk.red(`${result.stale} ${willDelete ? 'to delete' : 'stale'}`) : null,
-  ].filter(Boolean).join(', ');
-
-  lines.push(`Summary: ${summary}`);
-
-  return lines.join('\n');
+  return formatDiff(result, {
+    tags: { create: 'create', update: 'update', unchanged: 'unchanged', stale: willDelete ? 'delete' : 'stale' },
+    summary: {
+      create: 'to create',
+      update: 'to update',
+      unchanged: 'unchanged',
+      stale: willDelete ? 'to delete' : 'stale',
+    },
+  });
 }
 
 /** Pushes local schema changes to the remote space. */

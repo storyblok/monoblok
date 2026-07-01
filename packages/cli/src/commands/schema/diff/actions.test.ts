@@ -77,4 +77,18 @@ describe('formatSchemaDiff', () => {
 
     expect(output).toContain('1 unchanged');
   });
+
+  it('should omit unchanged entities from the listing while keeping the summary count', () => {
+    const result = makeResult([
+      { type: 'component', name: 'hero', action: 'create', changes: [], before: null, after: { name: 'hero' } },
+      { type: 'component', name: 'footer', action: 'unchanged', changes: [], before: {}, after: {} },
+    ]);
+
+    const output = formatSchemaDiff(result, '111', '222');
+
+    expect(output).toContain('hero (added)');
+    expect(output).not.toContain('footer');
+    expect(output).not.toContain('(unchanged)');
+    expect(output).toContain('1 unchanged');
+  });
 });

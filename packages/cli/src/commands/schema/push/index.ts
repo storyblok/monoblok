@@ -88,7 +88,9 @@ schemaCommand
 
       // 3. Diff components, datasources, and folders (component groups).
       // from = remote (base), to = local (target): the diff describes the push.
-      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local));
+      // The local DSL opts into group-uuid diffing, so a block that sets
+      // `component_group_uuid` explicitly gets its membership pushed.
+      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local), { compareGroupUuid: true });
 
       // 5. Display diffs
       ui.br();

@@ -8,13 +8,35 @@ export function isSpaceRef(ref: string): boolean {
   return /^\d+$/.test(ref.trim());
 }
 
-/** Resolves a source ref to a {@link NormalizedSchema}: numeric → remote space, otherwise → local entry file. */
-export async function resolveSource(ref: string): Promise<NormalizedSchema> {
-  if (isSpaceRef(ref)) {
-    const { remote } = await fetchRemoteSchema(ref.trim());
-    return remoteToNormalized(remote);
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Resolves a source ref to a {@link NormalizedSchema}: numeric → remote space,
+ * otherwise → local entry file. `label` (e.g. `--from`) names the side in errors.
+ */
+export async function resolveSource(ref: string, label: string): Promise<NormalizedSchema> {
+  const value = ref.trim();
+  if (isSpaceRef(value)) {
+    try {
+      const { remote } = await fetchRemoteSchema(value);
+      return remoteToNormalized(remote);
+    }
+    catch (error) {
+      throw new Error(
+        `Could not load space "${value}" (${label}): ${describeError(error)}. Check the space ID and that you are logged in with access to it.`,
+      );
+    }
   }
-  return localToNormalized(await loadSchema(ref));
+  try {
+    return localToNormalized(await loadSchema(value));
+  }
+  catch (error) {
+    throw new Error(
+      `Could not load schema entry file "${value}" (${label}): ${describeError(error)}. Check the path, and that it is a project where the schema package and its dependencies are installed.`,
+    );
+  }
 }
 
 /** Machine-readable diff payload emitted via the reporter's `meta.diff`. */

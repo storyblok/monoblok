@@ -18,8 +18,8 @@ import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../act
 import { buildGroupPathByUuid } from "../folders";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
-import { analyzeBreakingChanges } from "./migrations/analyze";
-import { renderMigrationCode, writeMigrationFile } from "./migrations/generate";
+import { analyzeBreakingChanges } from "../migrations/analyze";
+import { renderMigrationCode, writeMigrationFile } from "../migrations/generate";
 import { writeLocalComponents } from "./write-local-components";
 
 schemaCommand

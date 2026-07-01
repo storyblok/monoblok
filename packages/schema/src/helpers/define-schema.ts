@@ -3,7 +3,7 @@ import type { Datasource } from './define-datasource';
 import type { FieldPlugin } from './define-field-plugin';
 
 /** Minimal shape accepted by {@link defineSchema}; extra keys pass through unchanged. */
-interface SchemaConfig {
+export interface SchemaConfig {
   blocks: Record<string, Block>;
   datasources?: Record<string, Datasource>;
   fieldPlugins?: Record<string, FieldPlugin>;

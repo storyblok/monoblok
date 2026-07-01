@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { Block } from './define-block';
 import type { Datasource } from './define-datasource';
 import type { FieldPlugin } from './define-field-plugin';
+import type { SchemaConfig } from './define-schema';
 
 /**
  * Derives a `fieldType → validator output` map from a `fieldPlugins` record.
@@ -22,25 +22,21 @@ type FieldPluginMap<TPlugins> = TPlugins extends Record<string, FieldPlugin>
  *
  * @example
  * ```ts
+ * import { defineSchema } from '@storyblok/schema';
  * import type { Schema as InferSchema } from '@storyblok/schema';
  *
- * export const schema = {
+ * export const schema = defineSchema({
  *   blocks: { pageBlock, heroBlock },
  *   datasources: { colorsDatasource },
- * };
+ *   fieldPlugins: { storyblokColorField },
+ * });
  *
  * export type Schema = InferSchema<typeof schema>;
  * export type Blocks = Schema['blocks'];
- * export type Datasources = Schema['datasources'];
+ * export type FieldPlugins = Schema['fieldPlugins'];
  * ```
  */
-export interface Schema<
-  T extends {
-    blocks: Record<string, Block>;
-    datasources?: Record<string, Datasource>;
-    fieldPlugins?: Record<string, FieldPlugin>;
-  },
-> {
+export interface Schema<T extends SchemaConfig> {
   blocks: T['blocks'][keyof T['blocks']];
   datasources: T['datasources'] extends Record<string, Datasource>
     ? T['datasources'][keyof T['datasources']]

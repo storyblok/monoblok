@@ -4,6 +4,7 @@ import type { Component, Datasource } from '../../../types';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils';
+import { renderFieldChanges } from '../format-diff';
 import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** Formats diff results for CLI display using chalk colors. */
@@ -42,16 +43,7 @@ export function formatDiffOutput(result: DiffResult, options?: { delete?: boolea
       const actionLabel = diff.action === 'stale' && willDelete ? 'delete' : diff.action;
       lines.push(`  ${icon} ${name} ${chalk.dim(`(${actionLabel})`)}`);
 
-      if (diff.diff) {
-        for (const line of diff.diff.split('\n')) {
-          if (line.startsWith('+') && !line.startsWith('+++')) {
-            lines.push(`    ${chalk.green(line)}`);
-          }
-          else if (line.startsWith('-') && !line.startsWith('---')) {
-            lines.push(`    ${chalk.red(line)}`);
-          }
-        }
-      }
+      lines.push(...renderFieldChanges(diff.changes));
     }
     lines.push('');
   }

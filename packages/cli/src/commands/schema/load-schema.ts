@@ -1,6 +1,6 @@
-import type { SchemaData } from '../types';
-import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
-import { isRecord } from '../utils';
+import type { SchemaData } from './types';
+import { mapBlockToWire, mapDatasourceToWire } from './map-to-wire';
+import { isRecord } from './utils';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {

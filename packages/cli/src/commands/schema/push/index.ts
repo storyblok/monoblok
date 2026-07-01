@@ -12,9 +12,9 @@ import { schemaCommand } from '../command';
 import { displayPath } from '../utils';
 import type { SchemaPushOptions } from './constants';
 import type { SchemaData } from '../types';
-import { loadSchema } from './load-schema';
-import { diffSchema } from './diff-schema';
-import { fetchRemoteSchema } from '../actions';
+import { loadSchema } from '../load-schema';
+import { diffSchema } from '../diff-schema';
+import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from '../actions';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
@@ -85,8 +85,9 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`);
 
-      // 3. Diff (blocks are pushed flat; component groups are not diffed)
-      const diffResult = diffSchema(local, remote);
+      // 3. Diff (blocks are pushed flat; component groups are not diffed).
+      // from = remote (base), to = local (target): the diff describes the push.
+      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local));
 
       // 5. Display diffs
       ui.br();

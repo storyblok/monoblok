@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { defineBlock } from '../helpers/define-block';
 import { defineField } from '../helpers/define-field';
+import { defineFieldPlugin } from '../helpers/define-field-plugin';
 import { validateStory } from './validate-story';
 
 const teaser = defineBlock({ name: 'teaser', fields: [defineField('text', { type: 'text' })] });
@@ -80,6 +82,90 @@ describe('validateStory', () => {
     expect(result.ok).toBe(false);
     const unknown = result.issues.find(i => i.code === 'unknown_component');
     expect(unknown?.path).toEqual(['content', 'body', 0, 'component']);
+  });
+
+  describe('custom field plugins', () => {
+    const colorPlugin = defineFieldPlugin({
+      fieldType: 'storyblok-colorpicker',
+      value: z.object({ color: z.string() }),
+    });
+    const pageWithPlugin = defineBlock({
+      name: 'page',
+      is_root: true,
+      fields: [
+        defineField('headline', { type: 'text', required: true }),
+        defineField('accent', { type: 'custom', field_type: 'storyblok-colorpicker' }),
+      ],
+    });
+    const pluginSchema = { blocks: { page: pageWithPlugin }, fieldPlugins: { colorPlugin } };
+
+    it('accepts a registered plugin value that matches its validator', () => {
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'storyblok-colorpicker', _uid: 'abc-123', color: '#fff' },
+        },
+      }, pluginSchema);
+      expect(result.ok).toBe(true);
+      expect(result.issues).toEqual([]);
+    });
+
+    it('errors on a registered plugin value with the wrong inner type', () => {
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'storyblok-colorpicker', _uid: 'abc-123', color: 12345 },
+        },
+      }, pluginSchema);
+      expect(result.ok).toBe(false);
+      const colorIssue = result.issues.find(i => i.code === 'invalid_value');
+      expect(colorIssue?.path).toEqual(['content', 'accent', 'color']);
+    });
+
+    it('checks only the envelope for an unregistered field_type', () => {
+      const pageWithUnknownPlugin = defineBlock({
+        name: 'page',
+        is_root: true,
+        fields: [
+          defineField('headline', { type: 'text', required: true }),
+          defineField('accent', { type: 'custom', field_type: 'unregistered-plugin' }),
+        ],
+      });
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'unregistered-plugin', _uid: 'abc-123', color: 12345 },
+        },
+      }, { blocks: { page: pageWithUnknownPlugin }, fieldPlugins: { colorPlugin } });
+      expect(result.ok).toBe(true);
+    });
+
+    it('errors when the envelope plugin key is missing', () => {
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { color: '#fff' },
+        },
+      }, pluginSchema);
+      expect(result.ok).toBe(false);
+      expect(codesFor(result)).toContain('invalid_value');
+    });
+
+    it('accepts a non-UUID _uid string (envelope relaxation)', () => {
+      const result = validateStory({
+        content: {
+          component: 'page',
+          headline: 'Hi',
+          accent: { plugin: 'storyblok-colorpicker', _uid: 'not-a-uuid', color: '#fff' },
+        },
+      }, pluginSchema);
+      expect(result.ok).toBe(true);
+      expect(result.issues).toEqual([]);
+    });
   });
 });
 

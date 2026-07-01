@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { vol } from 'memfs';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import open from 'open';
-import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate } from './actions';
+import { createEnvFile, extractPortFromTopics, fetchBlueprintRepositories, generateProject, handleEnvFileCreation, openSpaceInBrowser, repositoryToTemplate, updateAngularEnvironmentFiles } from './actions';
 import * as filesystem from '../../utils/filesystem';
 import type { RegionCode } from '../../constants';
 import { appDomains } from '../../constants';
@@ -12,6 +12,7 @@ vi.mock('node:child_process');
 vi.mock('node:fs/promises', () => ({
   default: {
     access: vi.fn(),
+    readFile: vi.fn(),
   },
 }));
 vi.mock('open');
@@ -35,6 +36,7 @@ const mockedSpawn = vi.mocked(spawn);
 const mockedOpen = open as MockedFunction<typeof open>;
 const mockedSaveToFile = filesystem.saveToFile as MockedFunction<typeof filesystem.saveToFile>;
 const mockedFsAccess = vi.mocked(fs.access);
+const mockedFsReadFile = vi.mocked(fs.readFile);
 
 // Import the mocked modules
 const { createOctokit } = await import('../../github');
@@ -328,6 +330,143 @@ describe('create actions', () => {
       );
       expect(mockedUI.info).toHaveBeenCalledWith(
         expect.stringContaining('You can manually add STORYBLOK_REGION'),
+      );
+    });
+  });
+
+  describe('updateAngularEnvironmentFiles', () => {
+    const angularEnvTemplate = `export const environment = {
+  production: true,
+  accessToken: 'STORYBLOK_DELIVERY_API_TOKEN', // Replace with your Storyblok Delivery API token
+  region: 'STORYBLOK_REGION', // Replace with your Storyblok region
+};`;
+
+    it('should replace both token and region placeholders', async () => {
+      mockedFsReadFile.mockResolvedValue(angularEnvTemplate);
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      await updateAngularEnvironmentFiles('/test/project', 'my-actual-token', 'eu');
+
+      // Should be called twice (environment.ts and environment.development.ts)
+      expect(mockedSaveToFile).toHaveBeenCalledTimes(2);
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/src/environments/environment.ts',
+        expect.stringContaining('accessToken: \'my-actual-token\''),
+      );
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/src/environments/environment.ts',
+        expect.stringContaining('region: \'eu\''),
+      );
+    });
+
+    it('should replace only token placeholder when region not provided', async () => {
+      mockedFsReadFile.mockResolvedValue(angularEnvTemplate);
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      await updateAngularEnvironmentFiles('/test/project', 'my-token');
+
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('accessToken: \'my-token\''),
+      );
+      // Region placeholder should remain unchanged
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('STORYBLOK_REGION'),
+      );
+    });
+
+    it('should replace only region placeholder when token not provided', async () => {
+      mockedFsReadFile.mockResolvedValue(angularEnvTemplate);
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      await updateAngularEnvironmentFiles('/test/project', undefined, 'us');
+
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('region: \'us\''),
+      );
+      // Token placeholder should remain unchanged
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN'),
+      );
+    });
+
+    it('should skip missing environment files silently', async () => {
+      const enoentError = new Error('File not found') as NodeJS.ErrnoException;
+      enoentError.code = 'ENOENT';
+      mockedFsReadFile.mockRejectedValue(enoentError);
+
+      await expect(updateAngularEnvironmentFiles('/test/project', 'token', 'eu')).resolves.toBeUndefined();
+      expect(mockedSaveToFile).not.toHaveBeenCalled();
+    });
+
+    it('should throw error for non-ENOENT filesystem errors', async () => {
+      const permissionError = new Error('Permission denied') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
+      mockedFsReadFile.mockRejectedValue(permissionError);
+
+      await expect(updateAngularEnvironmentFiles('/test/project', 'token', 'eu'))
+        .rejects
+        .toThrow('Failed to update environment.ts: Permission denied');
+    });
+  });
+
+  describe('handleEnvFileCreation for Angular', () => {
+    const angularEnvTemplate = `export const environment = {
+  production: true,
+  accessToken: 'STORYBLOK_DELIVERY_API_TOKEN',
+  region: 'STORYBLOK_REGION',
+};`;
+
+    it('should update Angular environment files when template is angular', async () => {
+      mockedFsReadFile.mockResolvedValue(angularEnvTemplate);
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      const result = await handleEnvFileCreation('/test/project', 'my-token', 'eu', 'angular');
+
+      expect(result).toBe(true);
+      expect(mockedUI.ok).toHaveBeenCalledWith(
+        expect.stringContaining('Updated Angular environment files'),
+        true,
+      );
+      // Should NOT create .env file
+      expect(mockedSaveToFile).not.toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.any(String),
+      );
+    });
+
+    it('should return true and log info when no vars provided for angular', async () => {
+      const result = await handleEnvFileCreation('/test/project', undefined, undefined, 'angular');
+
+      expect(result).toBe(true);
+      expect(mockedUI.info).toHaveBeenCalledWith('No environment variables to write');
+    });
+
+    it('should handle Angular env file errors gracefully', async () => {
+      const permissionError = new Error('Permission denied') as NodeJS.ErrnoException;
+      permissionError.code = 'EACCES';
+      mockedFsReadFile.mockRejectedValue(permissionError);
+
+      const result = await handleEnvFileCreation('/test/project', 'token', 'eu', 'angular');
+
+      expect(result).toBe(false);
+      expect(mockedUI.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to update Angular environment files'),
+      );
+    });
+
+    it('should create .env file for non-angular templates', async () => {
+      mockedSaveToFile.mockResolvedValue(undefined);
+
+      const result = await handleEnvFileCreation('/test/project', 'token', 'eu', 'react');
+
+      expect(result).toBe(true);
+      expect(mockedSaveToFile).toHaveBeenCalledWith(
+        '/test/project/.env',
+        expect.stringContaining('STORYBLOK_DELIVERY_API_TOKEN=token'),
       );
     });
   });

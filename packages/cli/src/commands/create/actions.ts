@@ -115,8 +115,79 @@ ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\
   }
 };
 
-// Helper to create .env file and handle errors
-export async function handleEnvFileCreation(resolvedPath: string, token?: string, region?: RegionCode): Promise<boolean> {
+/**
+ * Updates Angular environment files with Storyblok configuration
+ * Angular uses TypeScript environment files instead of .env files
+ * @param projectPath - The absolute path to the project directory
+ * @param token - The Storyblok access token
+ * @param region - The Storyblok region code
+ * @returns Promise<void>
+ */
+export const updateAngularEnvironmentFiles = async (
+  projectPath: string,
+  token?: string,
+  region?: RegionCode,
+): Promise<void> => {
+  const environmentsDir = join(projectPath, 'src', 'environments');
+  const envFiles = ['environment.ts', 'environment.development.ts'];
+
+  for (const envFile of envFiles) {
+    const filePath = join(environmentsDir, envFile);
+    try {
+      let content = await fs.readFile(filePath, 'utf-8');
+
+      // Replace placeholder values with actual values
+      if (token) {
+        content = content.replaceAll('STORYBLOK_DELIVERY_API_TOKEN', token);
+      }
+      if (region) {
+        content = content.replaceAll('STORYBLOK_REGION', region);
+      }
+
+      await saveToFile(filePath, content);
+    }
+    catch (error) {
+      const fsError = error as NodeJS.ErrnoException;
+      // If file doesn't exist, skip it silently
+      if (fsError.code === 'ENOENT') {
+        continue;
+      }
+      throw new Error(`Failed to update ${envFile}: ${(error as Error).message}`);
+    }
+  }
+};
+
+// Helper to create .env file (or Angular environment files) and handle errors
+export async function handleEnvFileCreation(resolvedPath: string, token?: string, region?: RegionCode, template?: string): Promise<boolean> {
+  // Angular uses TypeScript environment files instead of .env
+  if (template === 'angular') {
+    if (!token && !region) {
+      ui.info('No environment variables to write');
+      return true;
+    }
+    try {
+      await updateAngularEnvironmentFiles(resolvedPath, token, region);
+      const writtenVars = [token && 'accessToken', region && 'region'].filter(Boolean).join(', ');
+      ui.ok(`Updated Angular environment files with: ${writtenVars}`, true);
+      return true;
+    }
+    catch (error) {
+      ui.warn(`Failed to update Angular environment files: ${(error as Error).message}`);
+      if (token) {
+        ui.info(
+          `You can manually add accessToken to src/environments/environment.ts and src/environments/environment.development.ts`,
+        );
+      }
+      if (region) {
+        ui.info(
+          `You can manually add region to src/environments/environment.ts and src/environments/environment.development.ts`,
+        );
+      }
+      return false;
+    }
+  }
+
+  // Default behavior for other frameworks: create .env file
   const envVars: Record<string, string> = {};
   if (token) {
     envVars.STORYBLOK_DELIVERY_API_TOKEN = token;

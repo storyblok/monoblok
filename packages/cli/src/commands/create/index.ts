@@ -209,14 +209,14 @@ export const createCommand = program
       let userData: User;
       let whereToCreateSpace = 'personal';
       if (token) {
-        await handleEnvFileCreation(resolvedPath, token, options.region || region);
+        await handleEnvFileCreation(resolvedPath, token, options.region || region, technologyTemplate);
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
       if (options.skipSpace) {
         // Only create .env file if region is available (useful for configuring SDK)
         if (options.region || region) {
-          await handleEnvFileCreation(resolvedPath, undefined, options.region || region);
+          await handleEnvFileCreation(resolvedPath, undefined, options.region || region, technologyTemplate);
         }
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
@@ -303,7 +303,7 @@ export const createCommand = program
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region!);
+          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region!, technologyTemplate);
         }
 
         // Open the space in the browser

@@ -1,4 +1,4 @@
-import { Writable } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import { validateStory } from '@storyblok/schema';
@@ -315,13 +315,15 @@ export interface AnalyzeHooks {
 }
 
 /**
- * Fetches remote stories that contain any impacted component (via the MAPI
- * `contain_component` filter), fetching full content per story, and analyzes each.
+ * Fetches remote stories that use any impacted component, fetches full content
+ * per story, and analyzes each.
  *
- * NOTE: `contain_component` is passed a comma-separated list and assumed to match
- * stories containing *any* listed component (OR semantics). Every other call site
- * passes a single component; if MAPI treats multiple values as AND/superset,
- * multi-component runs would under-fetch.
+ * MAPI's `contain_component` filter has AND (superset) semantics for a
+ * comma-separated list — it returns only stories containing *every* listed
+ * component. To get the union we need, we issue one request per impacted
+ * component and de-duplicate the list refs by story id before fetching content.
+ * Over-fetching a story matched by several components is harmless: `analyzeStory`
+ * recomputes usage from the story's own content.
  */
 export async function analyzeRemoteStories(
   spaceId: string,
@@ -332,13 +334,21 @@ export async function analyzeRemoteStories(
 ): Promise<AffectedStory[]> {
   const ctx = createAnalyzeContext(impacted, oldSchema, newSchema);
   const results: AffectedStory[] = [];
-  const containComponent = [...impacted.keys()].join(',');
 
-  const listStream = fetchStoriesStream({
-    spaceId,
-    params: { contain_component: containComponent },
-    setTotalStories: hooks.onTotal,
-  });
+  // Gather and de-duplicate list refs across one request per impacted component.
+  const refs = new Map<number, Story>();
+  for (const component of impacted.keys()) {
+    const listStream = fetchStoriesStream({
+      spaceId,
+      params: { contain_component: component },
+      onPageError: (error, page) => hooks.onStoryError?.(error, `component "${component}" (page ${page})`),
+    });
+    for await (const story of listStream) {
+      refs.set(story.id, story);
+    }
+  }
+  hooks.onTotal?.(refs.size);
+
   const fetchStream = fetchStoryStream({
     spaceId,
     // Increment per attempted story (success or failure) so progress reaches 100%.
@@ -356,7 +366,7 @@ export async function analyzeRemoteStories(
     },
   });
 
-  await pipeline(listStream, fetchStream, collector);
+  await pipeline(Readable.from(refs.values()), fetchStream, collector);
   return results;
 }
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyExports } from "./load-schema";
+import { classifyExports, loadSchema } from "./load-schema";
+
+describe("loadSchema", () => {
+  it("should throw a clear error when the entry file does not exist", async () => {
+    await expect(loadSchema("/definitely/missing/schema.ts")).rejects.toThrow(
+      /Schema entry file not found/,
+    );
+  });
+});
 
 // The DSL export predicates (`isComponent` / `isDatasource` / `isSchemaObject`)
 // are unit-tested in `src/utils/schema/classify-exports.test.ts`. This suite

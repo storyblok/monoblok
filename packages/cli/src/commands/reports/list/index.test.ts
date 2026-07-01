@@ -27,6 +27,11 @@ const preconditions = {
       'reports/12345/.gitkeep': '',
     });
   },
+  hasSpacelessReportFiles() {
+    vol.fromJSON({
+      [join(resolveCommandPath('reports'), 'storyblok-schema-diff-1234567890.jsonl')]: 'foo',
+    });
+  },
 };
 
 describe('reports list command', () => {
@@ -71,6 +76,35 @@ describe('reports list command', () => {
 
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('No reports found for space "12345"'),
+    );
+  });
+
+  it('should list space-less reports without an "undefined" space label', async () => {
+    preconditions.hasSpacelessReportFiles();
+
+    await reportsCommand.parseAsync(['node', 'test', 'list']);
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Found 1 report file:'),
+    );
+    expect(console.info).not.toHaveBeenCalledWith(
+      expect.stringContaining('undefined'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('storyblok-schema-diff-1234567890.jsonl'),
+    );
+  });
+
+  it('should not say space "undefined" when no reports and no space given', async () => {
+    preconditions.hasNoReportFiles();
+
+    await reportsCommand.parseAsync(['node', 'test', 'list']);
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('No reports found.'),
+    );
+    expect(console.info).not.toHaveBeenCalledWith(
+      expect.stringContaining('undefined'),
     );
   });
 });

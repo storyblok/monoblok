@@ -1,8 +1,8 @@
-import type { LocalFolder, SchemaData } from "../types";
-import { CommandError, isRecord } from "../../../utils";
-import { collectSchemaExports, loadSchemaModule } from "../../../utils/schema/classify-exports";
-import { expandFolderPath } from "../folders";
-import { mapBlockToWire, mapDatasourceToWire } from "../map-to-wire";
+import type { LocalFolder, SchemaData } from "./types";
+import { CommandError, isRecord } from "../../utils";
+import { collectSchemaExports, loadSchemaModule } from "../../utils/schema/classify-exports";
+import { expandFolderPath } from "./folders";
+import { mapBlockToWire, mapDatasourceToWire } from "./map-to-wire";
 
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested

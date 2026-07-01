@@ -106,4 +106,16 @@ describe('schema diff command', () => {
     // Local (to=remote 222 is empty, from=file has hero) → hero exists only in `from` → stale.
     expect(report?.meta.diff.summary).toMatchObject({ stale: 1 });
   });
+
+  it('should report which side failed to resolve when a file cannot be loaded', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(loadSchema).mockRejectedValue(new Error('Cannot find module /abs/missing.ts'));
+    spaceWith('222', []);
+
+    await schemaCommand.parseAsync(['node', 'test', 'diff', '--from', './missing.ts', '--to', '222']);
+
+    const message = consoleError.mock.calls.flat().join(' ');
+    expect(message).toContain('--from');
+    expect(message).toContain('schema entry file');
+  });
 });

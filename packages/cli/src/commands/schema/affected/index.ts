@@ -19,7 +19,7 @@ import {
   analyzeRemoteStories,
   computeImpactedComponents,
 } from './actions';
-import { formatSummary } from './format';
+import { formatSummary, pluralize } from './format';
 
 schemaCommand
   .command('affected <entry-file>')
@@ -142,10 +142,13 @@ Scope:
       const stories = storiesPath
         ? await analyzeLocalStories(storiesPath, impacted, oldSchema, newSchema, hooks)
         : await analyzeRemoteStories(space, impacted, oldSchema, newSchema, hooks);
-      progress.stop();
+      // Tear down the whole MultiBar (not just this bar) so its async renderer
+      // stops before we log the summary; a bare `progress.stop()` leaves the
+      // render loop alive and its final frame flushes after the output.
+      ui.stopAllProgressBars();
 
       if (fetchErrors > 0) {
-        ui.warn(`${fetchErrors} story(s) could not be fetched and were skipped. Re-run with --verbose for details.`);
+        ui.warn(`${pluralize(fetchErrors, 'story', 'stories')} could not be fetched and were skipped. Re-run with --verbose for details.`);
       }
 
       // 6. Aggregate + report

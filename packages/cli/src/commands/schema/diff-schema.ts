@@ -178,12 +178,16 @@ function diffComponent(
   toComp: Component | undefined,
   fromNames: NameSpace,
   toNames: NameSpace,
+  compareGroupUuid: boolean,
 ): EntityDiff {
-  // Only diff the group UUID when the target block opts into the escape hatch;
-  // otherwise it stays stripped on both sides so no false diff is produced.
-  const includeGroupUuid = typeof toComp?.component_group_uuid === 'string';
-  // Likewise for tag membership: a target block carrying a `tags` key manages it
-  // by name, so both sides are compared in name space.
+  // Group UUIDs are per-space identifiers, so they only carry meaning when the
+  // caller opts in (push, where the target is the local DSL and an explicit
+  // `component_group_uuid` is a deliberate escape hatch). When comparing two
+  // spaces they never match and would flag every grouped block as changed, so
+  // the field stays stripped on both sides unless both are opted in.
+  const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === 'string';
+  // Tag membership diffs by name whenever the target block manages it that way:
+  // a `tags` key is the block declaring its tags, in any space.
   const byTagName = toComp ? 'tags' in toComp : false;
   const fromClean = fromComp
     ? cleanComponent(applyDefaults(toNameSpace(fromComp, fromNames, byTagName), COMPONENT_DEFAULTS), { includeGroupUuid })
@@ -223,12 +227,19 @@ function diffFolder(name: string, fromFolder: LocalFolder | undefined, toFolder:
  * only in `from` are `stale`, in both and differing are `update` (with
  * field-level `changes`), otherwise `unchanged`.
  *
- * Folders (component groups) are diffed by slug path. A block's group
- * membership is only diffed when the target block opts into the escape hatch by
- * setting `component_group_uuid` explicitly. Group and tag references inside a
- * block are compared in name space, not in the id space the API uses.
+ * Folders (component groups) are diffed by slug path. Component group UUIDs are
+ * ignored by default (they are per-space identifiers); set `compareGroupUuid`
+ * when the target is a local DSL, so a block that sets `component_group_uuid`
+ * explicitly opts into having its group membership diffed and pushed. Group and
+ * tag references inside a block are compared in name space, not in the id space
+ * the API uses.
  */
-export function diffSchema(from: NormalizedSchema, to: NormalizedSchema): DiffResult {
+export function diffSchema(
+  from: NormalizedSchema,
+  to: NormalizedSchema,
+  options: { compareGroupUuid?: boolean } = {},
+): DiffResult {
+  const compareGroupUuid = options.compareGroupUuid ?? false;
   const diffs: EntityDiff[] = [];
 
   // Folders first: `schema push` creates them parent-first before the blocks
@@ -240,7 +251,7 @@ export function diffSchema(from: NormalizedSchema, to: NormalizedSchema): DiffRe
   const fromNames = nameSpaceFor(from, to);
   const toNames = nameSpaceFor(to, from);
   for (const name of orderedNames(from.components, to.components)) {
-    diffs.push(diffComponent(name, from.components.get(name), to.components.get(name), fromNames, toNames));
+    diffs.push(diffComponent(name, from.components.get(name), to.components.get(name), fromNames, toNames, compareGroupUuid));
   }
 
   for (const name of orderedNames(from.datasources, to.datasources)) {

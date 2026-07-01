@@ -25,42 +25,47 @@ type MapiStoryWithSchemaContent<
   TStory extends MapiStoryGenerated | StoryCreateGenerated | StoryUpdateGenerated,
   TBlock extends RootBlock = RootBlock,
   TBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
 > = RootBlock extends TBlock
   ? TStory
   : Override<TStory, {
     content: TStory extends StoryCreateGenerated | StoryUpdateGenerated
-      ? BlockContentInput<TBlock, TBlocks>
-      : BlockContent<TBlock, TBlocks>;
+      ? BlockContentInput<TBlock, TBlocks, TFieldPlugins>
+      : BlockContent<TBlock, TBlocks, TFieldPlugins>;
   }>;
 
 type MakeMapiStory<
   TStory extends MapiStoryGenerated | StoryCreateGenerated | StoryUpdateGenerated,
   TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TFieldPlugins = Record<never, never>,
   TBlocks = NoBlocks,
 > = Prettify<
   // caller passed root block(s) directly → use them as the content type
   [TBlockOrBlocks] extends [RootBlock]
-    ? MapiStoryWithSchemaContent<TStory, TBlockOrBlocks, TBlocks>
+    ? MapiStoryWithSchemaContent<TStory, TBlockOrBlocks, TBlocks, TFieldPlugins>
     // caller passed the full block union → derive root blocks, thread the union as the registry
     : TBlocks extends NoBlocks
-      ? MapiStoryWithSchemaContent<TStory, Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks>
+      ? MapiStoryWithSchemaContent<TStory, Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks, TFieldPlugins>
       : never
 >;
 
 /** A Storyblok MAPI story. */
 export type MapiStory<
   TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TFieldPlugins = Record<never, never>,
   TBlocks = NoBlocks,
-> = MakeMapiStory<MapiStoryGenerated, TBlockOrBlocks, TBlocks>;
+> = MakeMapiStory<MapiStoryGenerated, TBlockOrBlocks, TFieldPlugins, TBlocks>;
 
 /** Payload for creating a story via the MAPI. */
 export type StoryCreate<
   TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TFieldPlugins = Record<never, never>,
   TBlocks = NoBlocks,
-> = MakeMapiStory<StoryCreateGenerated, TBlockOrBlocks, TBlocks>;
+> = MakeMapiStory<StoryCreateGenerated, TBlockOrBlocks, TFieldPlugins, TBlocks>;
 
 /** Payload for updating a story via the MAPI. */
 export type StoryUpdate<
   TBlockOrBlocks extends RootBlock | Block = RootBlock,
+  TFieldPlugins = Record<never, never>,
   TBlocks = NoBlocks,
-> = MakeMapiStory<StoryUpdateGenerated, TBlockOrBlocks, TBlocks>;
+> = MakeMapiStory<StoryUpdateGenerated, TBlockOrBlocks, TFieldPlugins, TBlocks>;

@@ -1,5 +1,16 @@
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { Block } from './define-block';
 import type { Datasource } from './define-datasource';
+import type { FieldPlugin } from './define-field-plugin';
+
+/**
+ * Derives a `fieldType → validator output` map from a `fieldPlugins` record.
+ * Record keys are cosmetic labels; the map is keyed by each plugin's
+ * `fieldType`. Resolves to `{}` when no plugins are registered.
+ */
+type FieldPluginMap<TPlugins> = TPlugins extends Record<string, FieldPlugin>
+  ? { [K in keyof TPlugins as TPlugins[K]['fieldType']]: StandardSchemaV1.InferOutput<TPlugins[K]['value']> }
+  : Record<never, never>;
 
 /**
  * Derives a schema types interface from a schema object.
@@ -27,10 +38,12 @@ export interface Schema<
   T extends {
     blocks: Record<string, Block>;
     datasources?: Record<string, Datasource>;
+    fieldPlugins?: Record<string, FieldPlugin>;
   },
 > {
   blocks: T['blocks'][keyof T['blocks']];
   datasources: T['datasources'] extends Record<string, Datasource>
     ? T['datasources'][keyof T['datasources']]
     : never;
+  fieldPlugins: FieldPluginMap<T['fieldPlugins']>;
 }

@@ -21,11 +21,22 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./field-plugins": {
+      "import": "./dist/field-plugins/index.mjs",
+      "require": "./dist/field-plugins/index.cjs"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "field-plugins": [
+        "./dist/field-plugins/index.d.cts"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],

@@ -3,9 +3,9 @@ import { pageBlock } from '../../schema/blocks/page';
 import { heroBlock } from '../../schema/blocks/hero';
 import { introBlock } from '../../schema/blocks/intro';
 import { mediaBlock } from '../../schema/blocks/media';
-import type { Blocks } from '../../schema/schema';
+import type { Blocks, FieldPlugins } from '../../schema/schema';
 
-export function createAboutStory(mediaAsset: Asset): StoryCreate<Blocks> {
+export function createAboutStory(mediaAsset: Asset): StoryCreate<Blocks, FieldPlugins> {
   return {
     name: 'About',
     slug: 'about',
@@ -19,6 +19,8 @@ export function createAboutStory(mediaAsset: Asset): StoryCreate<Blocks> {
           eyebrow: 'About this project',
           headline: 'A monorepo playground for Storyblok packages.',
           image: null,
+          // Typed on write via the registered `storyblok-colorpicker` plugin.
+          accent_color: { plugin: 'storyblok-colorpicker', color: '#34d399' },
         },
         {
           component: mediaBlock.name,

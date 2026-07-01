@@ -9,5 +9,6 @@ export const heroBlock = defineBlock({
     eyebrowField,
     { ...headlineField, required: true },
     defineField('image', { type: 'asset', filetypes: ['images'] }),
+    defineField('accent_color', { type: 'custom', field_type: 'storyblok-colorpicker' }),
   ],
 });

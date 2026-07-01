@@ -1,10 +1,10 @@
+import { z } from 'zod';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from './shapes';
 import type { ValidationIssue, ValidationResult } from './types';
 import {
   zAssetFieldValue,
   zMultilinkFieldValue,
-  zPluginFieldValue,
   zRichtextFieldValue,
   zTableFieldValue,
 } from './internal-schemas';
@@ -12,6 +12,14 @@ import { isRecord, toValues } from './shapes';
 
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
+
+/**
+ * Relaxed plugin envelope used by the `custom` case. Mirrors the generated
+ * `zPluginFieldValue` but relaxes `_uid` from a UUID to a plain string, matching
+ * the CMS, which persists arbitrary `_uid` strings. Kept local so a codegen
+ * regenerate cannot revert it.
+ */
+const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
 
 /** Maps a Standard Schema validator to a {@link ValidationIssue} reporter at `path`. */
 function checkValue(
@@ -22,8 +30,18 @@ function checkValue(
   issues: ValidationIssue[],
 ): void {
   const result = schema['~standard'].validate(value);
-  // The Zod schemas are synchronous; a thenable result would indicate misuse.
+  // `validateStory` is synchronous. The internal Zod schemas never return a
+  // thenable, but a registered field plugin may ship an async validator — which
+  // cannot be awaited here. Surface it as an error instead of silently passing,
+  // which would report a false `ok: true`.
   if (result instanceof Promise) {
+    issues.push({
+      severity: 'error',
+      code: 'async_validator_unsupported',
+      path,
+      entity,
+      message: 'Field plugin validator is asynchronous; validateStory runs synchronously and cannot await it.',
+    });
     return;
   }
   if (result.issues) {
@@ -46,6 +64,7 @@ function validateFieldValue(
   field: SchemaFieldLike,
   value: unknown,
   blocksByName: Map<string, SchemaBlockLike>,
+  fieldPluginsByType: Map<string, StandardSchemaV1>,
   path: (string | number)[],
   entity: string,
   issues: ValidationIssue[],
@@ -70,11 +89,20 @@ function validateFieldValue(
       break;
     case 'richtext':
       checkValue(zRichtextFieldValue, value, path, entity, issues);
-      validateRichtextBloks(value, blocksByName, path, issues);
+      validateRichtextBloks(value, blocksByName, fieldPluginsByType, path, issues);
       break;
-    case 'custom':
-      checkValue(zPluginFieldValue, value, path, entity, issues);
+    case 'custom': {
+      checkValue(zPluginEnvelope, value, path, entity, issues);
+      const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
+      if (validator && isRecord(value)) {
+        // Envelope keys sit alongside the plugin's own keys; strip them so the
+        // plugin validator sees only its value. Sibling keys keep issue paths
+        // accurate (an issue at ['color'] maps to [...path, 'color']).
+        const { plugin: _plugin, _uid, ...pluginValue } = value;
+        checkValue(validator, pluginValue, path, entity, issues);
+      }
       break;
+    }
     case 'bloks':
       if (!Array.isArray(value)) {
         pushTypeIssue(value, 'array', path, entity, issues);
@@ -95,7 +123,7 @@ function validateFieldValue(
             message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${field.allow.join(', ')}.`,
           });
         }
-        validateBlokContent(item, blocksByName, [...path, index], issues);
+        validateBlokContent(item, blocksByName, fieldPluginsByType, [...path, index], issues);
       });
       break;
     case 'text':
@@ -254,6 +282,7 @@ function pushTypeIssue(
 function validateRichtextBloks(
   value: unknown,
   blocksByName: Map<string, SchemaBlockLike>,
+  fieldPluginsByType: Map<string, StandardSchemaV1>,
   path: (string | number)[],
   issues: ValidationIssue[],
 ): void {
@@ -266,12 +295,12 @@ function validateRichtextBloks(
     }
     if (node.type === 'blok' && isRecord(node.attrs) && Array.isArray(node.attrs.body)) {
       node.attrs.body.forEach((blok, blokIndex) =>
-        validateBlokContent(blok, blocksByName, [...path, 'content', index, 'attrs', 'body', blokIndex], issues),
+        validateBlokContent(blok, blocksByName, fieldPluginsByType, [...path, 'content', index, 'attrs', 'body', blokIndex], issues),
       );
     }
     else if (Array.isArray(node.content)) {
       // Recurse into nested marks/nodes that may themselves embed bloks.
-      validateRichtextBloks(node, blocksByName, [...path, 'content', index], issues);
+      validateRichtextBloks(node, blocksByName, fieldPluginsByType, [...path, 'content', index], issues);
     }
   });
 }
@@ -280,6 +309,7 @@ function validateRichtextBloks(
 function validateBlokContent(
   content: unknown,
   blocksByName: Map<string, SchemaBlockLike>,
+  fieldPluginsByType: Map<string, StandardSchemaV1>,
   path: (string | number)[],
   issues: ValidationIssue[],
 ): void {
@@ -337,7 +367,7 @@ function validateBlokContent(
       }
       continue;
     }
-    validateFieldValue(field, value, blocksByName, [...path, field.name], entity, issues);
+    validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);
   }
 }
 
@@ -353,7 +383,10 @@ function validateBlokContent(
 export function validateStory(story: unknown, schema: SchemaLike): ValidationResult {
   const issues: ValidationIssue[] = [];
   const blocksByName = new Map(toValues(schema.blocks).map(block => [block.name, block]));
+  const fieldPluginsByType = new Map(
+    toValues(schema.fieldPlugins).map(plugin => [plugin.fieldType, plugin.value]),
+  );
   const content = isRecord(story) ? story.content : undefined;
-  validateBlokContent(content, blocksByName, ['content'], issues);
+  validateBlokContent(content, blocksByName, fieldPluginsByType, ['content'], issues);
   return { ok: issues.every(issue => issue.severity !== 'error'), issues };
 }

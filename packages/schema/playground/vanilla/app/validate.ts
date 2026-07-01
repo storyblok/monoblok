@@ -48,7 +48,36 @@ for (const issue of bad.issues) {
   console.log(`${issue.severity} [${issue.code}] ${issue.path.join('.')}: ${issue.message}`);
 }
 
-// ── 4. createStoryValidator — hand the validator to a framework ──────────────
+// ── 4. validateStory — custom field plugins ──────────────────────────────────
+//
+// `hero.accent_color` is a `custom` field whose `field_type` matches the
+// registered `storyblokColorField` plugin. `validateStory` runs the plugin's
+// Standard Schema validator against the value, so a malformed color is caught
+// here — not at push time or in the browser.
+
+const validColor = validateStory({
+  content: {
+    component: 'page',
+    title: 'Colors',
+    body: [{ component: 'hero', headline: 'Welcome', accent_color: { plugin: 'storyblok-colorpicker', color: '#0ea5e9' } }],
+  },
+}, schema);
+console.log(`valid color ok: ${validColor.ok}`); // true
+
+const badColor = validateStory({
+  content: {
+    component: 'page',
+    title: 'Colors',
+    // `color` must be a string → the plugin validator flags it as invalid_value.
+    body: [{ component: 'hero', headline: 'Welcome', accent_color: { plugin: 'storyblok-colorpicker', color: 12345 } }],
+  },
+}, schema);
+console.log(`bad color ok: ${badColor.ok}`); // false
+for (const issue of badColor.issues) {
+  console.log(`${issue.severity} [${issue.code}] ${issue.path.join('.')}: ${issue.message}`);
+}
+
+// ── 5. createStoryValidator — hand the validator to a framework ──────────────
 //
 // `createStoryValidator` returns a Standard Schema, so any Standard-Schema-aware
 // library validates stories for you — you never touch the `['~standard']`

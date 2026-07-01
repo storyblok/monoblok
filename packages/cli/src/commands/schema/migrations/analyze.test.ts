@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DiffResult, RemoteSchemaData, SchemaData } from '../../types';
+import type { DiffResult, RemoteSchemaData, SchemaData } from '../types';
 
 import { analyzeBreakingChanges, classifyFieldChanges, detectRenames } from './analyze';
 

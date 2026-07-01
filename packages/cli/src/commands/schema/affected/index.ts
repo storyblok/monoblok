@@ -29,6 +29,13 @@ schemaCommand
   .option('--local', 'analyze locally pulled stories instead of fetching from the space', false)
   .option('--include-deleted', 'treat remote-only components as deleted (mirrors `schema push --delete`)', false)
   .option('--fail-on-break', 'exit with a non-zero code when any story would break (for CI gating)', false)
+  .addHelpText('after', `
+Scope:
+  Analyzes field-structural changes (field add/remove, type change, newly
+  required fields) and component deletion (--include-deleted). It does not
+  flag nested allow-list or reference constraint changes (e.g. narrowing a
+  bloks field's allowed components): Storyblok tolerates orphaned nested
+  bloks, so existing content is not broken by those changes.`)
   .action(async (entryFile: string, options: SchemaAffectedOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -43,6 +50,7 @@ schemaCommand
 
     if (!space) {
       handleError(new CommandError('Please provide the space as argument --space SPACE_ID.'), verbose);
+      process.exitCode = 1;
       return;
     }
 
@@ -56,9 +64,19 @@ schemaCommand
       catch (maybeError) {
         loadSpinner.failed('Failed to resolve schema');
         handleError(toError(maybeError), verbose);
+        process.exitCode = 1;
         return;
       }
       loadSpinner.succeed(`Found: ${local.components.length} components, ${local.datasources.length} datasources`);
+
+      // An empty resolved schema is almost always a misconfigured entry-file
+      // (typo, wrong export). Fail loudly rather than diffing nothing and
+      // reporting a false all-clear — critical under `--fail-on-break` in CI.
+      if (local.components.length + local.datasources.length === 0) {
+        ui.warn('No components or datasources found in the entry file. Verify the file exports schema definitions.');
+        process.exitCode = 1;
+        return;
+      }
 
       // 2. Fetch remote state
       const remoteSpinner = ui.createSpinner(`Fetching remote state from space ${space}...`);
@@ -69,6 +87,7 @@ schemaCommand
       catch (maybeError) {
         remoteSpinner.failed('Failed to fetch remote schema');
         handleError(toError(maybeError), verbose);
+        process.exitCode = 1;
         return;
       }
       const { remote, rawComponents } = remoteResult;
@@ -105,6 +124,7 @@ schemaCommand
           new CommandError(`No local stories found at ${storiesPath}. Run \`storyblok stories pull --space ${space}\` first.`),
           verbose,
         );
+        process.exitCode = 1;
         return;
       }
 
@@ -153,6 +173,7 @@ schemaCommand
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);
+      process.exitCode = 1;
     }
     finally {
       reporter.finalize();

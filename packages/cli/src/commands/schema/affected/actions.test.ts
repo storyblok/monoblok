@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Component, Story } from '../../../types';
-import type { DiffResult, RemoteSchemaData } from '../types';
+import type { DiffResult } from '../types';
 import type { ComponentBreakingChanges } from '../migrations/types';
 import { toSchemaLike } from '../to-schema-like';
 import {
@@ -20,14 +20,6 @@ function makeStory(overrides: Partial<Story> & { content: unknown }): Story {
   return { id: 1, uuid: 'u', name: 'Story', full_slug: 'story', ...overrides } as unknown as Story;
 }
 
-function makeRemote(names: string[]): RemoteSchemaData {
-  return {
-    components: new Map(names.map(name => [name, makeComponent(name, {})])),
-    componentFolders: new Map(),
-    datasources: new Map(),
-  };
-}
-
 describe('computeImpactedComponents', () => {
   const emptyDiff: DiffResult = { diffs: [], creates: 0, updates: 0, unchanged: 0, stale: 0 };
 
@@ -35,7 +27,7 @@ describe('computeImpactedComponents', () => {
     const breaking: ComponentBreakingChanges[] = [
       { componentName: 'hero', changes: [{ kind: 'removed', field: 'subtitle' }] },
     ];
-    const impacted = computeImpactedComponents(emptyDiff, breaking, makeRemote(['hero']));
+    const impacted = computeImpactedComponents(emptyDiff, breaking);
 
     expect(impacted.get('hero')).toMatchObject({ action: 'update' });
     expect(impacted.get('hero')?.fields[0]).toMatchObject({ field: 'subtitle', contentKey: 'subtitle', kind: 'removed' });
@@ -50,8 +42,8 @@ describe('computeImpactedComponents', () => {
       stale: 1,
     };
 
-    expect(computeImpactedComponents(diff, [], makeRemote(['teaser'])).has('teaser')).toBe(false);
-    expect(computeImpactedComponents(diff, [], makeRemote(['teaser']), { withDelete: true }).get('teaser'))
+    expect(computeImpactedComponents(diff, []).has('teaser')).toBe(false);
+    expect(computeImpactedComponents(diff, [], { withDelete: true }).get('teaser'))
       .toMatchObject({ action: 'removed' });
   });
 
@@ -59,19 +51,9 @@ describe('computeImpactedComponents', () => {
     const breaking: ComponentBreakingChanges[] = [
       { componentName: 'hero', changes: [{ kind: 'rename', field: 'headline', oldField: 'title' }] },
     ];
-    const impacted = computeImpactedComponents(emptyDiff, breaking, makeRemote(['hero']));
+    const impacted = computeImpactedComponents(emptyDiff, breaking);
 
     expect(impacted.get('hero')?.fields[0]).toMatchObject({ field: 'headline', contentKey: 'title', kind: 'rename' });
-  });
-
-  it('should narrow to the filter, adding unchanged remote components as targets', () => {
-    const breaking: ComponentBreakingChanges[] = [
-      { componentName: 'hero', changes: [{ kind: 'removed', field: 'subtitle' }] },
-    ];
-    const impacted = computeImpactedComponents(emptyDiff, breaking, makeRemote(['hero', 'teaser']), { filter: ['teaser'] });
-
-    expect(impacted.has('hero')).toBe(false);
-    expect(impacted.get('teaser')).toMatchObject({ action: 'target', fields: [] });
   });
 });
 

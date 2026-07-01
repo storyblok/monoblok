@@ -14,7 +14,10 @@ export function formatSummary(report: AffectedReport): string[] {
   for (const component of report.components) {
     lines.push(componentLine(component));
     for (const field of component.fields) {
-      lines.push(`  - ${field.field} (${field.kind}): ${field.used} affected, ${field.broken} would break`);
+      // `used` counts stories whose content contains the field; for `required_added`
+      // it is expected to be 0 (the field is absent), so phrase it as presence to
+      // avoid reading as a contradiction against the break count.
+      lines.push(`  - ${field.field} (${field.kind}): present in ${field.used} story(s), ${field.broken} would break`);
     }
   }
 

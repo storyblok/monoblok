@@ -21,9 +21,12 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        ssr: resolve(__dirname, 'src/ssr/index.ts'),
-        rsc: resolve(__dirname, 'src/rsc/index.ts'),
+        'index': resolve(__dirname, 'src/index.ts'),
+        'ssr': resolve(__dirname, 'src/ssr/index.ts'),
+        'rsc': resolve(__dirname, 'src/rsc/index.ts'),
+        'v2': resolve(__dirname, 'src/v2/index.ts'),
+        'v2/client': resolve(__dirname, 'src/v2/client/index.ts'),
+        'v2/rsc': resolve(__dirname, 'src/v2/rsc/index.ts'),
       },
       name: 'storyblokReact',
       fileName: (format, entry) => {

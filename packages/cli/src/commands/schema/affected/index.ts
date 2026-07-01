@@ -1,12 +1,11 @@
-import { colorPalette, commands } from '../../../constants';
+import { colorPalette, commands, directories } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
-import { resolvePath, saveToFileSync } from '../../../utils/filesystem';
+import { fileExists, resolveCommandPath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
-import { displayPath } from '../utils';
 import type { SchemaData } from '../types';
 import { loadSchema } from '../load-schema';
 import { diffSchema } from '../diff-schema';
@@ -20,19 +19,16 @@ import {
   analyzeRemoteStories,
   computeImpactedComponents,
 } from './actions';
-import { formatJson, formatStoryList, formatSummary } from './format';
+import { formatSummary } from './format';
 
 schemaCommand
   .command('affected <entry-file>')
   .alias('impact')
   .description('Report which stories a schema change affects and which would break')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
-  .option('--component <names>', 'restrict analysis to these components (comma-separated)')
-  .option('--stories <path>', 'analyze locally pulled story JSON files instead of fetching remote')
-  .option('--delete', 'treat remote-only components as removed (mirrors `schema push --delete`)', false)
-  .option('--list', 'print the full list of affected stories', false)
-  .option('--output <file>', 'write the detailed impact report to a JSON file')
+  .option('--local', 'analyze locally pulled stories instead of fetching from the space', false)
+  .option('--include-deleted', 'treat remote-only components as deleted (mirrors `schema push --delete`)', false)
+  .option('--fail-on-break', 'exit with a non-zero code when any story would break (for CI gating)', false)
   .action(async (entryFile: string, options: SchemaAffectedOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -83,10 +79,8 @@ schemaCommand
       const breakingChanges = analyzeBreakingChanges(diffResult, local, remote);
 
       // 4. Determine impacted components
-      const filter = options.component?.split(',').map(name => name.trim()).filter(Boolean);
-      const impacted = computeImpactedComponents(diffResult, breakingChanges, remote, {
-        filter,
-        withDelete: options.delete,
+      const impacted = computeImpactedComponents(diffResult, breakingChanges, {
+        withDelete: options.includeDeleted,
       });
 
       if (impacted.size === 0) {
@@ -100,6 +94,20 @@ schemaCommand
       // against both schemas so only errors the change introduces are counted.
       const oldSchema = toSchemaLike(rawComponents);
       const newSchema = toSchemaLike(local.components);
+
+      // `--local` reads pulled stories from the default directory; fail early with
+      // actionable guidance when it is missing rather than surfacing a raw fs error.
+      const storiesPath = options.local
+        ? resolveCommandPath(directories.stories, space, basePath)
+        : undefined;
+      if (storiesPath && !(await fileExists(storiesPath))) {
+        handleError(
+          new CommandError(`No local stories found at ${storiesPath}. Run \`storyblok stories pull --space ${space}\` first.`),
+          verbose,
+        );
+        return;
+      }
+
       const progress = ui.createProgressBar({ title: 'Analyzing stories' });
       let fetchErrors = 0;
       const hooks = {
@@ -111,8 +119,8 @@ schemaCommand
         },
       };
 
-      const stories = options.stories
-        ? await analyzeLocalStories(resolvePath(basePath, options.stories), impacted, oldSchema, newSchema, hooks)
+      const stories = storiesPath
+        ? await analyzeLocalStories(storiesPath, impacted, oldSchema, newSchema, hooks)
         : await analyzeRemoteStories(space, impacted, oldSchema, newSchema, hooks);
       progress.stop();
 
@@ -128,27 +136,20 @@ schemaCommand
         ui.log(line);
       }
 
-      if (options.list && report.stories.length > 0) {
-        ui.br();
-        ui.log('Affected stories:');
-        for (const line of formatStoryList(report)) {
-          ui.log(line);
-        }
-      }
-
-      if (options.output) {
-        const outputPath = resolvePath(basePath, options.output);
-        saveToFileSync(outputPath, formatJson(report));
-        ui.br();
-        ui.info(`Report written to ${displayPath(outputPath, basePath)}`);
-      }
-
+      // The full per-story/per-field detail rides along in the standard report
+      // file (`--report-enabled`, on by default); there is no bespoke JSON flag.
+      reporter.addMeta('schemaAffected', report);
       reporter.addSummary('schemaAffectedResults', {
         total: report.totals.usedStories,
         succeeded: report.totals.usedStories - report.totals.brokenStories,
         failed: report.totals.brokenStories,
       });
       logger.info('Schema affected finished', { totals: report.totals });
+
+      // Opt-in CI gate: surface breaking impact as a non-zero exit code.
+      if (options.failOnBreak && report.totals.brokenStories > 0) {
+        process.exitCode = 1;
+      }
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);

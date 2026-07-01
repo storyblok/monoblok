@@ -225,6 +225,38 @@ describe('schema affected command', () => {
     expect(report.components.map((c: { component: string }) => c.component).sort()).toEqual(['hero', 'teaser']);
   });
 
+  it('should include a story that uses an impacted component only as its root content type', async () => {
+    // `contain_component=page` never matches a story that uses `page` only as its
+    // root type with no nested bloks — that story must be caught via the
+    // `filter_query[component][in]` root-content-type request, or breakage is
+    // silently under-reported (a false all-clear under --fail-on-break).
+    preconditions.hasLocalSchema([makeComponent('page', { title: { type: 'text' }, subtitle: { type: 'text', required: true } })]);
+    preconditions.hasRemote([makeComponent('page', { title: { type: 'text' } })]);
+
+    const story: StoryFixture = { id: 300, uuid: 'u-p', name: 'P', full_slug: 'p', content: { _uid: 'r', component: 'page', title: 'Hi' } };
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
+        storiesListCalls += 1;
+        const url = new URL(request.url);
+        // Only the root-content-type filter returns the flat story; contain_component does not.
+        const rootIn = url.searchParams.get('filter_query[component][in]');
+        const matched = rootIn?.split(',').includes('page') ? [story] : [];
+        return HttpResponse.json(
+          { stories: matched.map(({ id, uuid, name, full_slug }) => ({ id, uuid, name, full_slug })) },
+          { headers: { 'Total': String(matched.length), 'Per-Page': '100' } },
+        );
+      }),
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`, ({ params }) =>
+        HttpResponse.json({ story: String(story.id) === params.id ? story : undefined })),
+    );
+
+    await runAffected();
+
+    const report = readOutputReport();
+    expect(report.totals).toMatchObject({ usedStories: 1, brokenStories: 1 });
+    expect(report.components.map((c: { component: string }) => c.component)).toEqual(['page']);
+  });
+
   it('should exit non-zero with --fail-on-break when a story would break', async () => {
     preconditions.hasLocalSchema([makeComponent('hero', { title: { type: 'text' }, subtitle: { type: 'text', required: true } })]);
     preconditions.hasRemote([makeComponent('hero', { title: { type: 'text' } })]);

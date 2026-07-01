@@ -298,12 +298,19 @@ export interface AnalyzeHooks {
  * Fetches remote stories that use any impacted component, fetches full content
  * per story, and analyzes each.
  *
- * MAPI's `contain_component` filter has AND (superset) semantics for a
- * comma-separated list — it returns only stories containing *every* listed
- * component. To get the union we need, we issue one request per impacted
- * component and de-duplicate the list refs by story id before fetching content.
- * Over-fetching a story matched by several components is harmless: `analyzeStory`
- * recomputes usage from the story's own content.
+ * Two MAPI filters are combined to cover every usage:
+ * - `contain_component` matches a component used as a *nested* blok. It has AND
+ *   (superset) semantics for a comma-separated list, so we issue one request per
+ *   impacted component to get their union.
+ * - `filter_query[component][in]` matches a component used as a story's *root*
+ *   content type. `contain_component` alone misses a root-only story that has no
+ *   nested bloks (its root component is never indexed as "contained"), so those
+ *   stories would be silently omitted — a false all-clear. One `in`-list request
+ *   covers all impacted names (OR semantics).
+ *
+ * Refs de-duplicate by story id, so a story matched by several filters is fetched
+ * once; over-fetching is harmless because `analyzeStory` recomputes usage from
+ * the story's own content.
  */
 export async function analyzeRemoteStories(
   spaceId: string,
@@ -315,7 +322,9 @@ export async function analyzeRemoteStories(
   const ctx = createAnalyzeContext(impacted, oldSchema, newSchema);
   const results: AffectedStory[] = [];
 
-  // Gather and de-duplicate list refs across one request per impacted component.
+  // Gather and de-duplicate list refs. One `contain_component` request per
+  // impacted component (nested usage) plus one `filter_query` request for all
+  // impacted names (root content-type usage).
   const refs = new Map<number, Story>();
   for (const component of impacted.keys()) {
     const listStream = fetchStoriesStream({
@@ -327,6 +336,16 @@ export async function analyzeRemoteStories(
       refs.set(story.id, story);
     }
   }
+
+  const rootStream = fetchStoriesStream({
+    spaceId,
+    params: { filter_query: { component: { in: [...impacted.keys()].join(',') } } },
+    onPageError: (error, page) => hooks.onStoryError?.(error, `root content type (page ${page})`),
+  });
+  for await (const story of rootStream) {
+    refs.set(story.id, story);
+  }
+
   hooks.onTotal?.(refs.size);
 
   const fetchStream = fetchStoryStream({

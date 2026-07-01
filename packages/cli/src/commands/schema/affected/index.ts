@@ -23,7 +23,6 @@ import { formatSummary, pluralize } from './format';
 
 schemaCommand
   .command('affected <entry-file>')
-  .alias('impact')
   .description('Report which stories a schema change affects and which would break')
   .option('-s, --space <space>', 'space ID')
   .option('--local', 'analyze locally pulled stories instead of fetching from the space', false)

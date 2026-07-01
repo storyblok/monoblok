@@ -1,14 +1,10 @@
 export interface SchemaAffectedOptions {
   space?: string;
   path?: string;
-  /** Comma-separated component names to restrict the analysis to. */
-  component?: string;
-  /** Directory of locally pulled story JSON files to analyze instead of fetching remote. */
-  stories?: string;
-  /** Treat remote-only (stale) components as removed, mirroring `schema push --delete`. */
-  delete?: boolean;
-  /** Print the full list of affected stories, not just the summary. */
-  list?: boolean;
-  /** Write the detailed impact report to this JSON file. */
-  output?: string;
+  /** Analyze locally pulled story JSON files (default stories directory) instead of fetching remote. */
+  local?: boolean;
+  /** Treat remote-only components as deleted, mirroring `schema push --delete`. */
+  includeDeleted?: boolean;
+  /** Exit with a non-zero code when any story would break (for CI gating). */
+  failOnBreak?: boolean;
 }

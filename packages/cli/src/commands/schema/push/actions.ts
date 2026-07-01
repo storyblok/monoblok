@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import { getMapiClient } from "../../../api";
 import { CommandError, handleAPIError } from "../../../utils";
+import { renderFieldChanges } from "../format-diff";
 import {
   toComponentCreate,
   toComponentUpdate,
@@ -127,15 +128,7 @@ export function formatDiffOutput(result: DiffResult, options?: { delete?: boolea
       const actionLabel = diff.action === "stale" && willDelete ? "delete" : diff.action;
       lines.push(`  ${icon} ${name} ${chalk.dim(`(${actionLabel})`)}`);
 
-      if (diff.diff) {
-        for (const line of diff.diff.split("\n")) {
-          if (line.startsWith("+") && !line.startsWith("+++")) {
-            lines.push(`    ${chalk.green(line)}`);
-          } else if (line.startsWith("-") && !line.startsWith("---")) {
-            lines.push(`    ${chalk.red(line)}`);
-          }
-        }
-      }
+      lines.push(...renderFieldChanges(diff.changes));
     }
     lines.push("");
   }

@@ -40,8 +40,9 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): Recor
 const FOLDER_UNGROUPED = '__FOLDER_UNGROUPED__';
 
 /**
- * Serializes a component to a normalized `defineBlock()` code string.
- * Strips API-assigned fields. Uses stable property ordering.
+ * Returns a component reduced to a normalized, stably-ordered object: API-assigned
+ * fields stripped, schema fields sorted by `pos`. Shared by
+ * {@link serializeComponent} and field-level diffing.
  *
  * `component_group_uuid` is stripped by default (groups are a UI concern), but
  * kept when `includeGroupUuid` is set — used by diffing when a block opts into
@@ -50,10 +51,10 @@ const FOLDER_UNGROUPED = '__FOLDER_UNGROUPED__';
  * The transient `folder` key (slug path, or `null` for explicitly ungrouped) is
  * emitted when present so group membership diffs in slug-path space.
  */
-export function serializeComponent(
+export function cleanComponent(
   component: Record<string, unknown>,
   options: { includeGroupUuid?: boolean } = {},
-): string {
+): Record<string, unknown> {
   const stripSet = options.includeGroupUuid
     ? new Set([...COMPONENT_STRIP_KEYS].filter(key => key !== 'component_group_uuid'))
     : COMPONENT_STRIP_KEYS;
@@ -84,13 +85,22 @@ export function serializeComponent(
 
   if (clean.schema !== undefined) { ordered.schema = clean.schema; }
 
-  return `defineBlock(${formatValue(ordered, 0)})`.replace(`folder: '${FOLDER_UNGROUPED}'`, 'folder: null');
+  return ordered;
+}
+
+export function serializeComponent(
+  component: Record<string, unknown>,
+  options: { includeGroupUuid?: boolean } = {},
+): string {
+  return `defineBlock(${formatValue(cleanComponent(component, options), 0)})`
+    .replace(`folder: '${FOLDER_UNGROUPED}'`, 'folder: null');
 }
 
 /**
- * Serializes a datasource to a normalized `defineDatasource()` code string.
+ * Returns a datasource reduced to a normalized, stably-ordered object (API-assigned
+ * keys stripped). Shared by {@link serializeDatasource} and field-level diffing.
  */
-export function serializeDatasource(datasource: Record<string, unknown>): string {
+export function cleanDatasource(datasource: Record<string, unknown>): Record<string, unknown> {
   const clean = stripKeys(datasource, DATASOURCE_STRIP_KEYS);
 
   if (Array.isArray(clean.dimensions)) {
@@ -112,5 +122,12 @@ export function serializeDatasource(datasource: Record<string, unknown>): string
     }
   }
 
-  return `defineDatasource(${formatValue(ordered, 0)})`;
+  return ordered;
+}
+
+/**
+ * Serializes a datasource to a normalized `defineDatasource()` code string.
+ */
+export function serializeDatasource(datasource: Record<string, unknown>): string {
+  return `defineDatasource(${formatValue(cleanDatasource(datasource), 0)})`;
 }

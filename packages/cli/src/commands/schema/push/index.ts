@@ -12,20 +12,19 @@ import { schemaCommand } from '../command';
 import { displayPath } from '../utils';
 import type { SchemaPushOptions } from './constants';
 import type { SchemaData } from '../types';
-import { loadSchema } from './load-schema';
-import { diffSchema } from './diff-schema';
+import { loadSchema } from '../load-schema';
+import { diffSchema } from '../diff-schema';
 import { fetchRemoteSchema } from '../actions';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
-import { analyzeBreakingChanges } from './migrations/analyze';
-import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
+import { analyzeBreakingChanges } from '../migrations/analyze';
+import { renderMigrationCode, writeMigrationFile } from '../migrations/generate';
 import { writeLocalComponents } from './write-local-components';
 
 schemaCommand
   .command('push <entry-file>')
   .description('Push local TypeScript schema and datasource definitions to a Storyblok space')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .option('--dry-run', 'Show diffs without applying changes', false)
   .option('--delete', 'Delete remote entities not present in local schema', false)
   .option('--migrations', 'Generate scaffold migration files for breaking changes', true)

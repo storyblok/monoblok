@@ -1,8 +1,8 @@
 import { createTwoFilesPatch } from 'diff';
 
-import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
-import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from '../utils';
-import { serializeComponent, serializeDatasource } from '../serialize';
+import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from './types';
+import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from './utils';
+import { serializeComponent, serializeDatasource } from './serialize';
 
 type EntityType = 'component' | 'datasource';
 

@@ -19,7 +19,6 @@ schemaCommand
   .command('rollback [changeset-file]')
   .description('Roll back a Storyblok space to the state captured in a changeset')
   .option('-s, --space <space>', 'space ID')
-  .option('-p, --path <path>', 'path for file storage')
   .option('--dry-run', 'Show what would be undone without applying changes', false)
   .option('--yes', 'Skip confirmation prompt', false)
   .option('--latest', 'Automatically select the most recent changeset', false)

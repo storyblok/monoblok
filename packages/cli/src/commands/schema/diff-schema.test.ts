@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RemoteSchemaData, SchemaData } from '../types';
+import type { RemoteSchemaData, SchemaData } from './types';
 import { diffSchema } from './diff-schema';
 
 function makeComponent(name: string, schema: Record<string, unknown>) {

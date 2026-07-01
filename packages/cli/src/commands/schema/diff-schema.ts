@@ -88,10 +88,18 @@ function orderedNames<T>(from: Map<string, T>, to: Map<string, T>): string[] {
   return names;
 }
 
-function diffComponent(name: string, fromComp: Component | undefined, toComp: Component | undefined): EntityDiff {
-  // Only diff the group UUID when the target block opts into the escape hatch;
-  // otherwise it stays stripped on both sides so no false diff is produced.
-  const includeGroupUuid = typeof toComp?.component_group_uuid === 'string';
+function diffComponent(
+  name: string,
+  fromComp: Component | undefined,
+  toComp: Component | undefined,
+  compareGroupUuid: boolean,
+): EntityDiff {
+  // Group UUIDs are per-space identifiers, so they only carry meaning when the
+  // caller opts in (push, where the target is the local DSL and an explicit
+  // `component_group_uuid` is a deliberate escape hatch). When comparing two
+  // spaces they never match and would flag every grouped block as changed, so
+  // the field stays stripped on both sides unless both are opted in.
+  const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === 'string';
   const fromClean = fromComp
     ? cleanComponent(applyDefaults(fromComp, COMPONENT_DEFAULTS), { includeGroupUuid })
     : null;
@@ -113,14 +121,20 @@ function diffDatasource(name: string, fromDs: Datasource | undefined, toDs: Data
  * only in `from` are `stale`, in both and differing are `update` (with
  * field-level `changes`), otherwise `unchanged`.
  *
- * Component groups are not diffed unless the target block opts into the escape
- * hatch by setting `component_group_uuid` explicitly.
+ * Component group UUIDs are ignored by default (they are per-space identifiers).
+ * Set `compareGroupUuid` when the target is a local DSL, so a block that sets
+ * `component_group_uuid` explicitly opts into having its group diffed and pushed.
  */
-export function diffSchema(from: NormalizedSchema, to: NormalizedSchema): DiffResult {
+export function diffSchema(
+  from: NormalizedSchema,
+  to: NormalizedSchema,
+  options: { compareGroupUuid?: boolean } = {},
+): DiffResult {
+  const compareGroupUuid = options.compareGroupUuid ?? false;
   const diffs: EntityDiff[] = [];
 
   for (const name of orderedNames(from.components, to.components)) {
-    diffs.push(diffComponent(name, from.components.get(name), to.components.get(name)));
+    diffs.push(diffComponent(name, from.components.get(name), to.components.get(name), compareGroupUuid));
   }
 
   for (const name of orderedNames(from.datasources, to.datasources)) {

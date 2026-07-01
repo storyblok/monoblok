@@ -1,8 +1,6 @@
-import chalk from 'chalk';
-
-import type { DiffAction, DiffResult, EntityDiff, NormalizedSchema } from '../types';
+import type { DiffResult, EntityDiff, NormalizedSchema } from '../types';
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from '../actions';
-import { renderFieldChanges } from '../format-diff';
+import { formatDiff } from '../format-diff';
 import { loadSchema } from '../load-schema';
 
 /** A schema source: a numeric space ID or a path to a schema entry file. */
@@ -18,21 +16,6 @@ export async function resolveSource(ref: string): Promise<NormalizedSchema> {
   }
   return localToNormalized(await loadSchema(ref));
 }
-
-/** Neutral, direction-aware labels: `from` (base) → `to` (target). */
-const DIFF_LABELS: Record<DiffAction, string> = {
-  create: 'added',
-  update: 'changed',
-  stale: 'removed',
-  unchanged: 'unchanged',
-};
-
-const ICONS: Record<DiffAction, string> = {
-  create: chalk.green('+'),
-  update: chalk.yellow('~'),
-  stale: chalk.red('-'),
-  unchanged: chalk.dim('='),
-};
 
 /** Machine-readable diff payload emitted via the reporter's `meta.diff`. */
 export interface SchemaDiffReport {
@@ -52,38 +35,18 @@ export function buildDiffReport(result: DiffResult, from: string, to: string): S
   };
 }
 
-/** Formats the diff for human terminal output with direction-aware wording. */
+/**
+ * Formats the diff for human terminal output with direction-aware wording.
+ * Unchanged entities are omitted from the listing (they stay in the summary
+ * count and in `meta.diff`) to keep space-to-space output readable.
+ */
 export function formatSchemaDiff(result: DiffResult, from: string, to: string): string {
-  const lines: string[] = [];
-  lines.push(chalk.dim(`from ${from} → to ${to}`));
-  lines.push('');
-
-  const sections: [string, EntityDiff['type']][] = [
-    ['Components', 'component'],
-    ['Datasources', 'datasource'],
-  ];
-
-  for (const [label, type] of sections) {
-    const diffs = result.diffs.filter(d => d.type === type);
-    if (diffs.length === 0) { continue; }
-
-    lines.push(chalk.bold(label));
-    for (const diff of diffs) {
-      const name = diff.action === 'stale' ? chalk.red(diff.name) : diff.name;
-      lines.push(`  ${ICONS[diff.action]} ${name} ${chalk.dim(`(${DIFF_LABELS[diff.action]})`)}`);
-      lines.push(...renderFieldChanges(diff.changes));
-    }
-    lines.push('');
-  }
-
-  const summary = [
-    result.creates > 0 ? chalk.green(`${result.creates} added`) : null,
-    result.updates > 0 ? chalk.yellow(`${result.updates} changed`) : null,
-    result.stale > 0 ? chalk.red(`${result.stale} removed`) : null,
-    result.unchanged > 0 ? chalk.dim(`${result.unchanged} unchanged`) : null,
-  ].filter(Boolean).join(', ');
-
-  lines.push(`Summary: ${summary || 'no differences'}`);
-
-  return lines.join('\n');
+  const labels = { create: 'added', update: 'changed', unchanged: 'unchanged', stale: 'removed' };
+  return formatDiff(result, {
+    header: `from ${from} → to ${to}`,
+    tags: labels,
+    summary: labels,
+    showUnchanged: false,
+    emptySummary: 'no differences',
+  });
 }

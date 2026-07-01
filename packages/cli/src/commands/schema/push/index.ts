@@ -85,9 +85,10 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`);
 
-      // 3. Diff (blocks are pushed flat; component groups are not diffed).
-      // from = remote (base), to = local (target): the diff describes the push.
-      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local));
+      // 3. Diff (blocks are pushed flat). from = remote (base), to = local
+      // (target): the diff describes the push. The local DSL opts into group
+      // diffing, so a block that sets `component_group_uuid` gets it pushed.
+      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local), { compareGroupUuid: true });
 
       // 5. Display diffs
       ui.br();

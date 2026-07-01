@@ -8,7 +8,8 @@ export default defineConfig({
   exports: true,
   publint: true,
   entry: {
-    index: './src/index.ts',
+    'index': './src/index.ts',
+    'field-plugins/index': './src/field-plugins/index.ts',
   },
   outDir: './dist',
   format: ['esm', 'cjs'],

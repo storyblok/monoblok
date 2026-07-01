@@ -50,8 +50,8 @@ type ResolvedFieldsFor<R extends string, ComponentName extends string> =
   Extract<ParseRelations<R>, { component: ComponentName }>['field'];
 
 /** A resolved relation: a full story typed to the component union. */
-type ResolvedRelation<TComponents extends Component> =
-  { [K in TComponents as K['name']]: Story<K, TComponents> }[TComponents['name']];
+type ResolvedRelation<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  { [K in TComponents as K['name']]: Story<K, TFieldPlugins, TComponents> }[TComponents['name']];
 
 /**
  * Given a story type and a set of resolved field names, replaces
@@ -61,9 +61,10 @@ type WithResolvedRelations<
   TStory,
   TComponents extends Component,
   Fields extends string,
+  TFieldPlugins = Record<never, never>,
 > = TStory extends { content: infer C } ? Omit<TStory, 'content'> & {
   content: {
-    [K in keyof C]: K extends Fields ? ResolvedRelation<TComponents> : C[K]
+    [K in keyof C]: K extends Fields ? ResolvedRelation<TComponents, TFieldPlugins> : C[K]
   };
 }
   : TStory;
@@ -83,7 +84,7 @@ type WithResolvedRelations<
  * a distributive conditional + default-parameter pattern would collapse
  * both parameters to the distributed single member after inlining.
  *
- * The mapped type `{ [K in TComponents as K["name"]]: Story<K, TComponents> }`
+ * The mapped type `{ [K in TComponents as K["name"]]: Story<K, TFieldPlugins, TComponents> }`
  * iterates each union member as `K` while keeping `TComponents` as the full union
  * for nested blok field resolution. The final indexed access
  * `[TComponents["name"]]` produces the discriminated union of all story types.
@@ -92,32 +93,36 @@ type StoryResult<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
+  TFieldPlugins = Record<never, never>,
 > =
   Component extends TComponents
     ? InlineRelations extends true ? StoryWithInlinedRelations : Story // fallback
     : ResolveRelationsRaw extends string
       ? {
           [K in RootComponents<TComponents> as K['name']]: WithResolvedRelations<
-            Story<K, TComponents>,
+            Story<K, TFieldPlugins, TComponents>,
             TComponents,
-            ResolvedFieldsFor<ResolveRelationsRaw, K['name']>
+            ResolvedFieldsFor<ResolveRelationsRaw, K['name']>,
+            TFieldPlugins
           >
         }[RootComponents<TComponents>['name']]
-      : Story<TComponents>;
+      : Story<TComponents, TFieldPlugins>;
 
 type GetResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
+  TFieldPlugins = Record<never, never>,
 > = Omit<GetStoryByIdResponses[200], 'story'> & {
-  story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>;
+  story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>;
 };
 type ListResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
+  TFieldPlugins = Record<never, never>,
 > = Omit<ListStoriesResponses[200], 'stories'> & {
-  stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw>>;
+  stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>>;
 };
 
 /**
@@ -151,6 +156,7 @@ export interface StoriesResourceDeps<DefaultThrowOnError extends boolean = false
 
 export function createStoriesResource<
   TComponents extends Component = Component,
+  TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
 >(
@@ -165,7 +171,7 @@ export function createStoriesResource<
     >(
       identifier: StoryIdentifier,
       options: { query?: Omit<NonNullable<GetStoryByIdData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
+    ): Promise<ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData['query']>;
       const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !typedQuery.find_by
@@ -181,7 +187,7 @@ export function createStoriesResource<
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
             ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
-          }))) satisfies ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>;
+          }))) satisfies ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>;
 
         if (!inlineRelations || response.data === undefined) {
           return response;
@@ -210,7 +216,7 @@ export function createStoriesResource<
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
       options: { query?: Omit<NonNullable<ListStoriesData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>> => {
+    ): Promise<ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const typedQuery = (query ?? {}) as NonNullable<ListStoriesData['query']>;
       const requestPath = '/v2/cdn/stories';
@@ -222,7 +228,7 @@ export function createStoriesResource<
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
             ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
-          }))) satisfies ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr>, ThrowOnError>;
+          }))) satisfies ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>;
 
         if (!inlineRelations || response.data === undefined) {
           return response;

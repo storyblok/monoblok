@@ -1,4 +1,6 @@
+import { defineSchema } from '@storyblok/schema';
 import type { Schema as InferSchema, Story as InferStory, MapiStory as InferStoryMapi } from '@storyblok/schema';
+import { storyblokColorField } from '@storyblok/schema/field-plugins';
 
 import { articleBlock } from './blocks/article';
 import { bannerBlock } from './blocks/banner';
@@ -14,7 +16,7 @@ import { teaserBlock } from './blocks/teaser';
 import { pageBlock } from './blocks/page';
 import { bannerThemesDatasource, faqCategoriesDatasource } from './datasources';
 
-export const schema = {
+export const schema = defineSchema({
   blocks: {
     pageBlock,
     heroBlock,
@@ -35,9 +37,13 @@ export const schema = {
     bannerThemesDatasource,
     faqCategoriesDatasource,
   },
-};
+  fieldPlugins: {
+    storyblokColorField,
+  },
+});
 
 export type Schema = InferSchema<typeof schema>;
 export type Blocks = Schema['blocks'];
-export type Story = InferStory<Blocks>;
-export type StoryMapi = InferStoryMapi<Blocks>;
+export type FieldPlugins = Schema['fieldPlugins'];
+export type Story = InferStory<Blocks, FieldPlugins>;
+export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;

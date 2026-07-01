@@ -34,4 +34,6 @@ The full structured diff is also emitted through the reporter when reports are e
 ## Notes
 
 - The direction matters: `--from` is the base and `--to` is the target. An entity present only in `--to` is reported as added, present only in `--from` as removed, and present in both but differing as changed.
+- Unchanged entities are omitted from the terminal output to keep space-to-space comparisons readable. They still appear in the summary count and in the structured `meta.diff`.
+- Component group UUIDs are per-space identifiers, so they are ignored unless both sides are local files. A component that differs only by its group assignment between two spaces is reported as unchanged.
 - The classification is the same one `schema push` computes internally, exposed here as a read-only command.

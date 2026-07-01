@@ -310,14 +310,14 @@ describe("buildChangesetEntries", () => {
 
   it("should map create and update actions correctly", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "update", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "update", changes: [], before: null, after: null },
       {
         type: "component",
         name: "new-comp",
         action: "create",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
     const local: SchemaData = {
@@ -339,9 +339,9 @@ describe("buildChangesetEntries", () => {
         type: "component",
         name: "hero",
         action: "unchanged",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -352,7 +352,14 @@ describe("buildChangesetEntries", () => {
 
   it("should skip stale entries when delete option is false", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "footer", action: "stale", diff: null, local: null, remote: null },
+      {
+        type: "component",
+        name: "footer",
+        action: "stale",
+        changes: [],
+        before: null,
+        after: null,
+      },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -362,7 +369,14 @@ describe("buildChangesetEntries", () => {
 
   it("should include stale as delete when delete option is true", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "footer", action: "stale", diff: null, local: null, remote: null },
+      {
+        type: "component",
+        name: "footer",
+        action: "stale",
+        changes: [],
+        before: null,
+        after: null,
+      },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: true });
@@ -373,7 +387,7 @@ describe("buildChangesetEntries", () => {
 
   it("should include before/after snapshots", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "update", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "update", changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -1031,9 +1045,9 @@ describe("formatDiffOutput", () => {
         type: "datasource",
         name: "Page Categories",
         action: "stale",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -1049,9 +1063,9 @@ describe("formatDiffOutput", () => {
         type: "datasource",
         name: "Page Categories",
         action: "stale",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 

@@ -1,6 +1,59 @@
-import type { RemoteSchemaData } from "./types";
+import type { LocalFolder, NormalizedSchema, RemoteSchemaData, SchemaData } from "./types";
 import { getMapiClient } from "../../api";
 import { fetchAllPages } from "../../utils";
+import { buildGroupPathByUuid } from "./folders";
+
+/**
+ * Reduces remote state to the common {@link NormalizedSchema} shape. Remote
+ * component groups are resolved into slug-path identity space (via their uuid
+ * parent chain) so folders diff against local folders in the same terms, and
+ * block tags into name space for the same reason.
+ */
+export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
+  const groupPathByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
+  const folders = new Map<string, LocalFolder>();
+  for (const folder of remote.componentFolders.values()) {
+    const segments = groupPathByUuid.get(folder.uuid);
+    if (!segments || segments.length === 0) {
+      continue;
+    }
+    const path = segments.join("/");
+    folders.set(path, {
+      name: folder.name,
+      path,
+      parentPath: segments.length > 1 ? segments.slice(0, -1).join("/") : null,
+    });
+  }
+  const tagNameById = new Map<string, string>();
+  for (const tag of remote.internalTags.values()) {
+    if (tag.id !== undefined) {
+      tagNameById.set(String(tag.id), tag.name);
+    }
+  }
+
+  return {
+    components: remote.components,
+    datasources: remote.datasources,
+    folders,
+    groupPathByUuid: new Map(
+      [...groupPathByUuid].map(([uuid, segments]) => [uuid, segments.join("/")]),
+    ),
+    tagNameById,
+  };
+}
+
+/** Reduces locally-loaded schema arrays to the common {@link NormalizedSchema} shape. */
+export function localToNormalized(local: SchemaData): NormalizedSchema {
+  return {
+    components: new Map(local.components.map((c) => [c.name, c])),
+    datasources: new Map(local.datasources.map((d) => [d.name, d])),
+    folders: new Map(local.folders.map((f) => [f.path, f])),
+    // A schema written in code names folders and tags directly; there is nothing
+    // to translate, and an id it does carry resolves against the other side.
+    groupPathByUuid: new Map(),
+    tagNameById: new Map(),
+  };
+}
 
 /**
  * Fetches remote components, component folders, block tags, and datasources from

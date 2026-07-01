@@ -294,6 +294,20 @@ export interface AnalyzeHooks {
   onStoryError?: (error: Error, storyRef?: string) => void;
 }
 
+/** A pipeline sink that analyzes each story and collects any impact into `results`. */
+function createAnalyzeCollector(ctx: AnalyzeContext, results: AffectedStory[]): Writable {
+  return new Writable({
+    objectMode: true,
+    write(story: Story, _encoding, callback) {
+      const result = analyzeStory(story, ctx);
+      if (result) {
+        results.push(result);
+      }
+      callback();
+    },
+  });
+}
+
 /**
  * Fetches remote stories that use any impacted component, fetches full content
  * per story, and analyzes each.
@@ -354,18 +368,8 @@ export async function analyzeRemoteStories(
     onIncrement: hooks.onStory,
     onStoryError: (error, story) => hooks.onStoryError?.(error, String(story.id)),
   });
-  const collector = new Writable({
-    objectMode: true,
-    write(story: Story, _encoding, callback) {
-      const result = analyzeStory(story, ctx);
-      if (result) {
-        results.push(result);
-      }
-      callback();
-    },
-  });
 
-  await pipeline(Readable.from(refs.values()), fetchStream, collector);
+  await pipeline(Readable.from(refs.values()), fetchStream, createAnalyzeCollector(ctx, results));
   return results;
 }
 
@@ -386,17 +390,7 @@ export async function analyzeLocalStories(
     onIncrement: hooks.onStory,
     onStoryError: (error, filename) => hooks.onStoryError?.(error, filename),
   });
-  const collector = new Writable({
-    objectMode: true,
-    write(story: Story, _encoding, callback) {
-      const result = analyzeStory(story, ctx);
-      if (result) {
-        results.push(result);
-      }
-      callback();
-    },
-  });
 
-  await pipeline(localStream, collector);
+  await pipeline(localStream, createAnalyzeCollector(ctx, results));
   return results;
 }

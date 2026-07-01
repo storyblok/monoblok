@@ -8,6 +8,8 @@ import { schemaCommand } from '../command';
 import type { SchemaData } from '../types';
 import type { Component } from '../../../types';
 import { DEFAULT_SPACE, getID } from '../../__tests__/helpers';
+import { getReporter, resetReporter } from '../../../lib/reporter/reporter';
+import { konsola } from '../../../utils';
 
 import { loadSchema } from '../load-schema';
 
@@ -73,12 +75,16 @@ const preconditions = {
   },
 };
 
+// The detailed impact report is attached to the standard report file via
+// `reporter.addMeta('schemaAffected', ...)`, so enable the reporter and read it back.
 function readOutputReport() {
   const entry = Object.entries(vol.toJSON()).find(([filename]) => filename.endsWith('report.json'));
-  return entry ? JSON.parse(entry[1] as string) : undefined;
+  return entry ? JSON.parse(entry[1] as string).meta?.schemaAffected : undefined;
 }
 
 async function runAffected(extraArgs: string[] = []) {
+  resetReporter();
+  getReporter({ enabled: true, filePath: 'report.json' });
   await schemaCommand.parseAsync([
     'node',
     'test',
@@ -86,8 +92,6 @@ async function runAffected(extraArgs: string[] = []) {
     'schema.ts',
     '--space',
     DEFAULT_SPACE,
-    '--output',
-    'report.json',
     ...extraArgs,
   ]);
 }
@@ -100,7 +104,9 @@ describe('schema affected command', () => {
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
+    resetReporter();
     storiesListCalls = 0;
+    process.exitCode = undefined;
   });
 
   afterAll(() => server.close());
@@ -135,7 +141,7 @@ describe('schema affected command', () => {
     expect(report.stories[0].issues.some((i: { code: string; severity: string }) => i.code === 'unknown_field' && i.severity === 'warning')).toBe(true);
   });
 
-  it('should flag stories using a removed component as broken with --delete', async () => {
+  it('should flag stories using a removed component as broken with --include-deleted', async () => {
     preconditions.hasLocalSchema([makeComponent('page', { body: { type: 'bloks' } })]);
     preconditions.hasRemote([
       makeComponent('page', { body: { type: 'bloks' } }),
@@ -145,7 +151,7 @@ describe('schema affected command', () => {
       { id: 102, uuid: 'u-b', name: 'B', full_slug: 'b', content: { _uid: 'r', component: 'page', body: [{ _uid: 'x', component: 'teaser', headline: 'Hey' }] } },
     ]);
 
-    await runAffected(['--delete']);
+    await runAffected(['--include-deleted']);
 
     const report = readOutputReport();
     const teaser = report.components.find((c: { component: string }) => c.component === 'teaser');
@@ -153,7 +159,7 @@ describe('schema affected command', () => {
     expect(report.totals.brokenStories).toBe(1);
   });
 
-  it('should not treat a removed component as affected without --delete', async () => {
+  it('should not treat a removed component as affected without --include-deleted', async () => {
     preconditions.hasLocalSchema([makeComponent('page', { body: { type: 'bloks' } })]);
     preconditions.hasRemote([
       makeComponent('page', { body: { type: 'bloks' } }),
@@ -217,6 +223,42 @@ describe('schema affected command', () => {
     const report = readOutputReport();
     expect(report.totals).toMatchObject({ usedStories: 2, brokenStories: 2 });
     expect(report.components.map((c: { component: string }) => c.component).sort()).toEqual(['hero', 'teaser']);
+  });
+
+  it('should exit non-zero with --fail-on-break when a story would break', async () => {
+    preconditions.hasLocalSchema([makeComponent('hero', { title: { type: 'text' }, subtitle: { type: 'text', required: true } })]);
+    preconditions.hasRemote([makeComponent('hero', { title: { type: 'text' } })]);
+    preconditions.hasStories([
+      { id: 100, uuid: 'u-home', name: 'Home', full_slug: 'home', content: { _uid: 'r', component: 'hero', title: 'Hi' } },
+    ]);
+
+    await runAffected(['--fail-on-break']);
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('should not set a non-zero exit code for breakage without --fail-on-break', async () => {
+    preconditions.hasLocalSchema([makeComponent('hero', { title: { type: 'text' }, subtitle: { type: 'text', required: true } })]);
+    preconditions.hasRemote([makeComponent('hero', { title: { type: 'text' } })]);
+    preconditions.hasStories([
+      { id: 100, uuid: 'u-home', name: 'Home', full_slug: 'home', content: { _uid: 'r', component: 'hero', title: 'Hi' } },
+    ]);
+
+    await runAffected();
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('should fail with actionable guidance when --local finds no pulled stories', async () => {
+    const errorSpy = vi.spyOn(konsola, 'error').mockImplementation(() => konsola);
+    preconditions.hasLocalSchema([makeComponent('hero', { title: { type: 'text' } })]);
+    preconditions.hasRemote([makeComponent('hero', { title: { type: 'text' }, subtitle: { type: 'text' } })]);
+
+    await runAffected(['--local']);
+
+    expect(errorSpy.mock.calls.some(([message]) => typeof message === 'string' && message.includes('stories pull'))).toBe(true);
+    // The guard returns before any analysis, so no impact report is attached.
+    expect(readOutputReport()).toBeUndefined();
   });
 
   it('should not fetch stories when there are no content-affecting changes', async () => {

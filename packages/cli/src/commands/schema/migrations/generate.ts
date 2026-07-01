@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'pathe';
 
-import { resolvePath } from '../../../../utils/filesystem';
-import { fileTimestamp } from '../../utils';
+import { resolvePath } from '../../../utils/filesystem';
+import { fileTimestamp } from '../utils';
 import type { BreakingChange } from './types';
 
 /** Compatible type pairs that don't need a content migration. */

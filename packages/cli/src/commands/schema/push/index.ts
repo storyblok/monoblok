@@ -12,14 +12,14 @@ import { schemaCommand } from '../command';
 import { displayPath } from '../utils';
 import type { SchemaPushOptions } from './constants';
 import type { SchemaData } from '../types';
-import { loadSchema } from './load-schema';
-import { diffSchema } from './diff-schema';
+import { loadSchema } from '../load-schema';
+import { diffSchema } from '../diff-schema';
 import { fetchRemoteSchema } from '../actions';
 import { buildGroupPathByUuid } from '../folders';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
-import { analyzeBreakingChanges } from './migrations/analyze';
-import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
+import { analyzeBreakingChanges } from '../migrations/analyze';
+import { renderMigrationCode, writeMigrationFile } from '../migrations/generate';
 import { writeLocalComponents } from './write-local-components';
 
 schemaCommand

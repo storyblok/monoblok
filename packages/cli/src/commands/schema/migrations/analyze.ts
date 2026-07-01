@@ -1,4 +1,4 @@
-import type { DiffResult, RemoteSchemaData, SchemaData } from '../../types';
+import type { DiffResult, RemoteSchemaData, SchemaData } from '../types';
 import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from './types';
 
 /** Fields treated as internal Storyblok sentinels — never part of user-defined schema. */

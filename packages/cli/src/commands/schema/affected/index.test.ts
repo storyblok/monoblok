@@ -167,7 +167,7 @@ describe('schema affected command', () => {
     expect(readOutputReport()).toBeUndefined();
   });
 
-  it('should analyze stories across multiple impacted components', async () => {
+  it('should union stories across multiple impacted components (MAPI contain_component is AND)', async () => {
     preconditions.hasLocalSchema([
       makeComponent('hero', { title: { type: 'text', required: true } }),
       makeComponent('teaser', { headline: { type: 'text', required: true } }),
@@ -176,10 +176,41 @@ describe('schema affected command', () => {
       makeComponent('hero', { title: { type: 'text' } }),
       makeComponent('teaser', { headline: { type: 'text' } }),
     ]);
-    preconditions.hasStories([
+
+    // No single story uses both components, so a single AND-filtered request for
+    // `hero,teaser` would return nothing. Only one request per component unions them.
+    const stories: StoryFixture[] = [
       { id: 200, uuid: 'u-h', name: 'H', full_slug: 'h', content: { _uid: 'r', component: 'hero' } },
       { id: 201, uuid: 'u-t', name: 'T', full_slug: 't', content: { _uid: 'r', component: 'teaser' } },
-    ]);
+    ];
+    const componentsOf = (content: unknown): Set<string> => {
+      const found = new Set<string>();
+      const walk = (value: unknown): void => {
+        if (Array.isArray(value)) { value.forEach(walk); return; }
+        if (value && typeof value === 'object') {
+          const component = (value as Record<string, unknown>).component;
+          if (typeof component === 'string') { found.add(component); }
+          Object.values(value).forEach(walk);
+        }
+      };
+      walk(content);
+      return found;
+    };
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
+        storiesListCalls += 1;
+        const contain = new URL(request.url).searchParams.get('contain_component');
+        const required = contain ? contain.split(',') : [];
+        // Mirror MAPI: match stories whose component set is a superset of all requested names.
+        const matched = stories.filter(story => required.every(name => componentsOf(story.content).has(name)));
+        return HttpResponse.json(
+          { stories: matched.map(({ id, uuid, name, full_slug }) => ({ id, uuid, name, full_slug })) },
+          { headers: { 'Total': String(matched.length), 'Per-Page': '100' } },
+        );
+      }),
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`, ({ params }) =>
+        HttpResponse.json({ story: stories.find(story => String(story.id) === params.id) })),
+    );
 
     await runAffected();
 

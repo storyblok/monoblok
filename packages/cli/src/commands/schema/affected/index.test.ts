@@ -259,6 +259,30 @@ describe('schema affected command', () => {
     expect(errorSpy.mock.calls.some(([message]) => typeof message === 'string' && message.includes('stories pull'))).toBe(true);
     // The guard returns before any analysis, so no impact report is attached.
     expect(readOutputReport()).toBeUndefined();
+    // An operational failure must not be a green run, so CI gating can trust it.
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('should warn and exit non-zero when the entry file resolves to an empty schema', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    preconditions.hasLocalSchema([]);
+
+    await runAffected();
+
+    expect(warnSpy.mock.calls.some(([message]) => typeof message === 'string' && message.includes('No components or datasources'))).toBe(true);
+    expect(process.exitCode).toBe(1);
+    // A misconfigured entry-file must never diff nothing and report a false all-clear.
+    expect(readOutputReport()).toBeUndefined();
+  });
+
+  it('should exit non-zero when the required --space is missing', async () => {
+    vi.spyOn(konsola, 'error').mockImplementation(() => konsola);
+    resetReporter();
+    getReporter({ enabled: true, filePath: 'report.json' });
+
+    await schemaCommand.parseAsync(['node', 'test', 'affected', 'schema.ts']);
+
+    expect(process.exitCode).toBe(1);
   });
 
   it('should not fetch stories when there are no content-affecting changes', async () => {

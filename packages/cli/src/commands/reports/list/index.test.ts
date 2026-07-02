@@ -14,9 +14,9 @@ const REPORTS_FILE_DIR = resolveCommandPath('reports', '12345');
 const preconditions = {
   hasReportFiles() {
     vol.fromJSON({
-      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567890.jsonl')]: 'foo',
-      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567891.jsonl')]: 'foo',
-      [join(REPORTS_FILE_DIR, 'storyblok-components-push-1234567892.jsonl')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567890.json')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-migrations-run-1234567891.json')]: 'foo',
+      [join(REPORTS_FILE_DIR, 'storyblok-components-push-1234567892.json')]: 'foo',
     });
   },
   hasNoReportFiles() {
@@ -25,6 +25,11 @@ const preconditions = {
   hasEmptyReportDirectory() {
     vol.fromJSON({
       'reports/12345/.gitkeep': '',
+    });
+  },
+  hasSpacelessReportFiles() {
+    vol.fromJSON({
+      [join(resolveCommandPath('reports'), 'storyblok-schema-diff-1234567890.json')]: 'foo',
     });
   },
 };
@@ -44,13 +49,13 @@ describe('reports list command', () => {
       expect.stringContaining('Found 3 report files for space "12345":'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('storyblok-components-push-1234567892.jsonl'),
+      expect.stringContaining('storyblok-components-push-1234567892.json'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('storyblok-migrations-run-1234567890.jsonl'),
+      expect.stringContaining('storyblok-migrations-run-1234567890.json'),
     );
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('storyblok-migrations-run-1234567891.jsonl'),
+      expect.stringContaining('storyblok-migrations-run-1234567891.json'),
     );
   });
 
@@ -71,6 +76,35 @@ describe('reports list command', () => {
 
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('No reports found for space "12345"'),
+    );
+  });
+
+  it('should list space-less reports without an "undefined" space label', async () => {
+    preconditions.hasSpacelessReportFiles();
+
+    await reportsCommand.parseAsync(['node', 'test', 'list']);
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('Found 1 report file:'),
+    );
+    expect(console.info).not.toHaveBeenCalledWith(
+      expect.stringContaining('undefined'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('storyblok-schema-diff-1234567890.json'),
+    );
+  });
+
+  it('should not say space "undefined" when no reports and no space given', async () => {
+    preconditions.hasNoReportFiles();
+
+    await reportsCommand.parseAsync(['node', 'test', 'list']);
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('No reports found.'),
+    );
+    expect(console.info).not.toHaveBeenCalledWith(
+      expect.stringContaining('undefined'),
     );
   });
 });

@@ -1,6 +1,19 @@
-import type { RemoteSchemaData } from './types';
+import type { NormalizedSchema, RemoteSchemaData, SchemaData } from './types';
 import { getMapiClient } from '../../api';
 import { fetchAllPages } from '../../utils';
+
+/** Reduces remote state to the common {@link NormalizedSchema} shape (drops component folders — not diffed). */
+export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
+  return { components: remote.components, datasources: remote.datasources };
+}
+
+/** Reduces locally-loaded schema arrays to the common {@link NormalizedSchema} shape. */
+export function localToNormalized(local: SchemaData): NormalizedSchema {
+  return {
+    components: new Map(local.components.map(c => [c.name, c])),
+    datasources: new Map(local.datasources.map(d => [d.name, d])),
+  };
+}
 
 /**
  * Fetches remote components, component folders, and datasources from the MAPI.

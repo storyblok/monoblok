@@ -269,8 +269,8 @@ describe('buildChangesetEntries', () => {
 
   it('should map create and update actions correctly', () => {
     const diffResult = makeDiffResult([
-      { type: 'component', name: 'hero', action: 'update', diff: null, local: null, remote: null },
-      { type: 'component', name: 'new-comp', action: 'create', diff: null, local: null, remote: null },
+      { type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null },
+      { type: 'component', name: 'new-comp', action: 'create', changes: [], before: null, after: null },
     ]);
     const local: SchemaData = {
       components: [localComp, { id: 4, name: 'new-comp', schema: {} } as unknown as Component],
@@ -286,7 +286,7 @@ describe('buildChangesetEntries', () => {
 
   it('should skip unchanged entries', () => {
     const diffResult = makeDiffResult([
-      { type: 'component', name: 'hero', action: 'unchanged', diff: null, local: null, remote: null },
+      { type: 'component', name: 'hero', action: 'unchanged', changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -296,7 +296,7 @@ describe('buildChangesetEntries', () => {
 
   it('should skip stale entries when delete option is false', () => {
     const diffResult = makeDiffResult([
-      { type: 'component', name: 'footer', action: 'stale', diff: null, local: null, remote: null },
+      { type: 'component', name: 'footer', action: 'stale', changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -306,7 +306,7 @@ describe('buildChangesetEntries', () => {
 
   it('should include stale as delete when delete option is true', () => {
     const diffResult = makeDiffResult([
-      { type: 'component', name: 'footer', action: 'stale', diff: null, local: null, remote: null },
+      { type: 'component', name: 'footer', action: 'stale', changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: true });
@@ -317,7 +317,7 @@ describe('buildChangesetEntries', () => {
 
   it('should include before/after snapshots', () => {
     const diffResult = makeDiffResult([
-      { type: 'component', name: 'hero', action: 'update', diff: null, local: null, remote: null },
+      { type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -342,7 +342,7 @@ describe('formatDiffOutput', () => {
 
   it('should label stale entities as "stale" by default', () => {
     const diffResult = makeDiffResult([
-      { type: 'datasource', name: 'Page Categories', action: 'stale', diff: null, local: null, remote: null },
+      { type: 'datasource', name: 'Page Categories', action: 'stale', changes: [], before: null, after: null },
     ]);
 
     const output = formatDiffOutput(diffResult);
@@ -353,7 +353,7 @@ describe('formatDiffOutput', () => {
 
   it('should label stale entities as "delete" when delete option is true', () => {
     const diffResult = makeDiffResult([
-      { type: 'datasource', name: 'Page Categories', action: 'stale', diff: null, local: null, remote: null },
+      { type: 'datasource', name: 'Page Categories', action: 'stale', changes: [], before: null, after: null },
     ]);
 
     const output = formatDiffOutput(diffResult, { delete: true });

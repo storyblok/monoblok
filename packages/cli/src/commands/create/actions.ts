@@ -121,15 +121,16 @@ ${Object.entries(storyblokVars).map(([key, value]) => `${key}=${value}`).join('\
  * @param projectPath - The absolute path to the project directory
  * @param token - The Storyblok access token
  * @param region - The Storyblok region code
- * @returns Promise<void>
+ * @returns Object containing array of files that were actually updated
  */
 export const updateAngularEnvironmentFiles = async (
   projectPath: string,
   token?: string,
   region?: RegionCode,
-): Promise<void> => {
+): Promise<{ updatedFiles: string[] }> => {
   const environmentsDir = join(projectPath, 'src', 'environments');
   const envFiles = ['environment.ts', 'environment.development.ts'];
+  const updatedFiles: string[] = [];
 
   for (const envFile of envFiles) {
     const filePath = join(environmentsDir, envFile);
@@ -145,6 +146,7 @@ export const updateAngularEnvironmentFiles = async (
       }
 
       await saveToFile(filePath, content);
+      updatedFiles.push(filePath);
     }
     catch (error) {
       const fsError = error as NodeJS.ErrnoException;
@@ -155,6 +157,8 @@ export const updateAngularEnvironmentFiles = async (
       throw new Error(`Failed to update ${envFile}: ${(error as Error).message}`);
     }
   }
+
+  return { updatedFiles };
 };
 
 // Helper to create .env file (or Angular environment files) and handle errors
@@ -166,7 +170,13 @@ export async function handleEnvFileCreation(resolvedPath: string, token?: string
       return true;
     }
     try {
-      await updateAngularEnvironmentFiles(resolvedPath, token, region);
+      const { updatedFiles } = await updateAngularEnvironmentFiles(resolvedPath, token, region);
+
+      if (updatedFiles.length === 0) {
+        ui.info('No Angular environment files found to update');
+        return true;
+      }
+
       const writtenVars = [token && 'accessToken', region && 'region'].filter(Boolean).join(', ');
       ui.ok(`Updated Angular environment files with: ${writtenVars}`, true);
       return true;

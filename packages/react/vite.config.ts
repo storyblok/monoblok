@@ -1,49 +1,17 @@
-import { defineConfig, type Plugin } from 'vitest/config';
-import { join, resolve } from 'node:path';
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { defineConfig } from 'vitest/config';
+import { resolve } from 'node:path';
+import preserveDirectives from 'rollup-plugin-preserve-directives';
 import dts from 'vite-plugin-dts';
 import react from '@vitejs/plugin-react';
-
-/**
- * Fixes vite-plugin-dts generating `export {}` at the end of re-export files,
- * which negates the `export * from '...'` statement.
- */
-function fixDtsExports(): Plugin {
-  return {
-    name: 'fix-dts-exports',
-    closeBundle() {
-      const distDir = resolve(__dirname, 'dist');
-      const fixFile = (filePath: string) => {
-        const content = readFileSync(filePath, 'utf-8');
-        // Fix: `export * from './foo'\nexport {}\n` -> `export * from './foo'\n`
-        if (content.includes('export {}') && content.includes('export *')) {
-          const fixed = content.replace(/\nexport \{\}\s*$/, '\n');
-          writeFileSync(filePath, fixed);
-        }
-      };
-      const walk = (dir: string) => {
-        for (const entry of readdirSync(dir)) {
-          const fullPath = join(dir, entry);
-          if (statSync(fullPath).isDirectory()) {
-            walk(fullPath);
-          }
-          else if (entry.endsWith('.d.ts') && !entry.endsWith('.d.ts.map')) {
-            fixFile(fullPath);
-          }
-        }
-      };
-      walk(distDir);
-    },
-  };
-}
 
 export default defineConfig({
   plugins: [
     react(),
     dts({
       insertTypesEntry: true,
+      rollupTypes: true,
     }),
-    fixDtsExports(),
+    preserveDirectives(),
   ],
   resolve: {
     alias: {
@@ -81,6 +49,7 @@ export default defineConfig({
         /^next\//,
       ],
       output: {
+        preserveModules: true,
         globals: { react: 'React' },
       },
     },

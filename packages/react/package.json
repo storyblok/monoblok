@@ -31,20 +31,20 @@
       "import": "./dist/rsc.mjs",
       "require": "./dist/rsc.js"
     },
-    "./v2": {
-      "types": "./dist/v2.d.ts",
-      "import": "./dist/v2.mjs",
-      "require": "./dist/v2.js"
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.mjs",
+      "require": "./dist/next.js"
     },
-    "./v2/client": {
-      "types": "./dist/v2/client.d.ts",
-      "import": "./dist/v2/client.mjs",
-      "require": "./dist/v2/client.js"
+    "./next/rsc": {
+      "types": "./dist/next/rsc.d.ts",
+      "import": "./dist/next/rsc.mjs",
+      "require": "./dist/next/rsc.js"
     },
-    "./v2/rsc": {
-      "types": "./dist/v2/rsc.d.ts",
-      "import": "./dist/v2/rsc.mjs",
-      "require": "./dist/v2/rsc.js"
+    "./next/client": {
+      "types": "./dist/next/client.d.ts",
+      "import": "./dist/next/client.mjs",
+      "require": "./dist/next/client.js"
     }
   },
   "main": "./dist/index.js",

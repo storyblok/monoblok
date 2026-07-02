@@ -14,9 +14,9 @@ const REPORTS_FILE_DIR = resolveCommandPath("reports", "12345");
 const preconditions = {
   hasReportFiles() {
     vol.fromJSON({
-      [join(REPORTS_FILE_DIR, "storyblok-migrations-run-1234567890.jsonl")]: "foo",
-      [join(REPORTS_FILE_DIR, "storyblok-migrations-run-1234567891.jsonl")]: "foo",
-      [join(REPORTS_FILE_DIR, "storyblok-components-push-1234567892.jsonl")]: "foo",
+      [join(REPORTS_FILE_DIR, "storyblok-migrations-run-1234567890.json")]: "foo",
+      [join(REPORTS_FILE_DIR, "storyblok-migrations-run-1234567891.json")]: "foo",
+      [join(REPORTS_FILE_DIR, "storyblok-components-push-1234567892.json")]: "foo",
     });
   },
 };
@@ -35,7 +35,7 @@ describe("reports prune command", () => {
     await reportsCommand.parseAsync(["node", "test", "prune", "--space", "12345"]);
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Deleted 3 report files"));
-    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".jsonl"));
+    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".json"));
     expect(remainingFiles).toHaveLength(0);
   });
 
@@ -45,7 +45,7 @@ describe("reports prune command", () => {
     await reportsCommand.parseAsync(["node", "test", "prune", "--space", "12345", "--keep", "2"]);
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Deleted 1 report file"));
-    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".jsonl"));
+    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".json"));
     expect(remainingFiles).toHaveLength(2);
   });
 
@@ -55,7 +55,7 @@ describe("reports prune command", () => {
     await reportsCommand.parseAsync(["node", "test", "prune", "--space", "12345", "--keep", "3"]);
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Deleted 0 report files"));
-    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".jsonl"));
+    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".json"));
     expect(remainingFiles).toHaveLength(3);
   });
 
@@ -65,7 +65,7 @@ describe("reports prune command", () => {
     await reportsCommand.parseAsync(["node", "test", "prune", "--space", "12345", "--keep", "10"]);
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Deleted 0 report files"));
-    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".jsonl"));
+    const remainingFiles = Object.keys(vol.toJSON()).filter((path) => path.includes(".json"));
     expect(remainingFiles).toHaveLength(3);
   });
 });

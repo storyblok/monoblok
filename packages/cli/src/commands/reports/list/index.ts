@@ -14,7 +14,7 @@ listCmd
     const { space, path } = command.optsWithGlobals();
     const ui = getUI();
     const reportsPath = resolveCommandPath(directories.reports, space, path);
-    const reportFiles = Reporter.listReportFiles(reportsPath, '.jsonl');
+    const reportFiles = Reporter.listReportFiles(reportsPath);
     // Reports from commands without a space (e.g. file-to-file `schema diff`)
     // live in the base reports directory, so only mention a space when given.
     const scope = space ? ` for space "${space}"` : '';

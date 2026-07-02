@@ -50,6 +50,8 @@ export default defineConfig({
       ],
       output: {
         globals: { react: 'React' },
+        preserveModules: true,
+        preserveModulesRoot: 'src',
       },
     },
   },

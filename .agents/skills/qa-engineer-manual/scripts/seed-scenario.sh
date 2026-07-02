@@ -272,7 +272,9 @@ fi
 
 # 3. Assets (must precede stories)
 if [ "${skip_assets}" = false ] && [ -d "${staging_dir}/assets/${FAKE_ID}" ]; then
-  run_push "assets" node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}"
+  # Seeding is space-scoped: never push to org shared libraries (bulk push
+  # otherwise defaults to --target=all and scans accessible libraries).
+  run_push "assets" node "${cli_bin}" assets push --from "${FAKE_ID}" --space "${space_id}" --target space
 fi
 
 # 4. Stories (reads asset manifest.jsonl for ID remapping automatically)

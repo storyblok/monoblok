@@ -28,6 +28,13 @@ for sid in "${space_ids[@]}"; do
   done
 done
 
+# Shared asset libraries live under .storyblok/assets/shared/<library_id>/,
+# keyed by org-global library ID rather than space ID, so clean the whole subtree.
+if [ -d ".storyblok/assets/shared" ]; then
+  rm -rf ".storyblok/assets/shared"
+  removed=$((removed + 1))
+fi
+
 if [ "${removed}" -eq 0 ]; then
   printf "clean\n"
 else

@@ -13,6 +13,9 @@ import { createDatasourcesResource } from './resources/datasources';
 import { createExperimentsResource } from './resources/experiments';
 import { createInternalTagsResource } from './resources/internal-tags';
 import { createPresetsResource } from './resources/presets';
+import { createSharedAssetFoldersResource } from './resources/shared-asset-folders';
+import { createSharedAssetsResource } from './resources/shared-assets';
+import { createSharedInternalTagsResource } from './resources/shared-internal-tags';
 import { createSpacesResource } from './resources/spaces';
 import { createStoriesResource } from './resources/stories';
 import { createUsersResource } from './resources/users';
@@ -181,6 +184,9 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
     post: httpPost,
     presets: createPresetsResource(deps),
     put: httpPut,
+    sharedAssetFolders: createSharedAssetFoldersResource(deps),
+    sharedAssets: createSharedAssetsResource(deps),
+    sharedInternalTags: createSharedInternalTagsResource(deps),
     spaces: createSpacesResource(deps),
     stories: createStoriesResource(deps),
     users: createUsersResource({ client, wrapRequest }),
@@ -189,6 +195,9 @@ export const createManagementApiClient = (config: ManagementApiClientConfig) => 
 
 export type ManagementApiClient = ReturnType<typeof createManagementApiClient>;
 
+export type { AccessLevel, AssetFolderAccess, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderGetResponse, SharedAssetFolderListResponse, SharedAssetFolderUpdate } from './resources/shared-asset-folders';
+export type { SharedAssetCreate, SharedAssetListQuery, SharedAssetListResponse, SharedAssetUploadRequest } from './resources/shared-assets';
+export type { SharedInternalTag, SharedInternalTagCreate, SharedInternalTagListQuery, SharedInternalTagListResponse, SharedInternalTagMutateResponse, SharedInternalTagObjectType } from './resources/shared-internal-tags';
 export type {
   ApiResponse,
   Asset,

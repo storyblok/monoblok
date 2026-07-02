@@ -4,8 +4,8 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 
 ## Subcommands
 
-- [`pull`](./pull/README.md): Download assets from your Storyblok space.
-- [`push`](./push/README.md): Upload assets to your Storyblok space.
+- [`pull`](./pull/README.md): Download assets from your Storyblok space, and optionally from the organization's shared libraries.
+- [`push`](./push/README.md): Upload assets to your Storyblok space, or to the organization's shared libraries.
 
 > See each subcommand for detailed usage, options, and examples.
 

@@ -5,6 +5,17 @@
 # Provides:
 #   load_env             — loads .env.qa-engineer-manual and asserts STORYBLOK_TOKEN
 #   require_space_id     — ensures space_id is set (from arg or env), exits if not
+#   require_library_id   — ensures library_id is set (from --library), exits if not
+#
+# Constants:
+#   QA_SHARED_PREFIX     — name prefix every QA-created shared resource must carry
+#                          so org-global libraries can be cleaned up safely
+#                          (only prefix-matched resources are ever deleted).
+
+# Shared asset libraries are org-global (shared across spaces), so a full wipe
+# is unsafe. Every QA-created shared asset, shared folder, and shared tag must
+# be named with this prefix; shared cleanup only deletes prefix-matched items.
+QA_SHARED_PREFIX="${QA_SHARED_PREFIX:-qa-}"
 
 # ---------------------------------------------------------------------------
 # load_env
@@ -50,6 +61,18 @@ require_space_id() {
 
   if [ -z "${space_id}" ]; then
     printf "Missing --space <spaceId> and no STORYBLOK_SPACE_ID in env.\n" >&2
+    exit 1
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# require_library_id
+#   Call after parsing args. Ensures the global `library_id` variable is set
+#   (a top-level shared asset folder id). Exits with an error if not.
+# ---------------------------------------------------------------------------
+require_library_id() {
+  if [ -z "${library_id:-}" ]; then
+    printf "Missing --library <libraryId> (a top-level shared asset folder id).\n" >&2
     exit 1
   fi
 }

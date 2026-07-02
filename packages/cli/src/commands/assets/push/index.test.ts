@@ -44,6 +44,7 @@ vi.spyOn(actions, 'createAsset');
 vi.spyOn(actions, 'updateAsset');
 vi.spyOn(actions, 'createAssetFolder');
 vi.spyOn(actions, 'updateAssetFolder');
+vi.spyOn(actions, 'createSharedAsset');
 vi.spyOn(storyActions, 'fetchStories');
 vi.spyOn(storyActions, 'updateStory');
 
@@ -62,6 +63,11 @@ const server = setupServer(
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/internal_tags', () => HttpResponse.json(
     { internal_tags: [] },
     { headers: { 'Total': '0', 'Per-Page': '100' } },
+  )),
+  // A bulk push (default `--target all`) lists shared libraries. Default to none;
+  // `preconditions.hasLibraries` overrides this for library-specific tests.
+  http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/shared_asset_folders', () => HttpResponse.json(
+    { shared_asset_folders: [] },
   )),
 );
 
@@ -394,6 +400,65 @@ const preconditions = {
       [filePath]: content,
     });
   },
+  hasLibraries(libraries: { id: number; name: string; accessLevel: 'read' | 'write' }[], { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_asset_folders`, () =>
+        HttpResponse.json({
+          shared_asset_folders: libraries.map(library => ({
+            id: library.id,
+            name: library.name,
+            parent_id: null,
+            uuid: `u${library.id}`,
+            asset_folder_access: [{ space_id: Number(space), access_level: library.accessLevel }],
+          })),
+        })),
+    );
+  },
+  canUpsertSharedAssets(assets: MockAsset[], {
+    space = DEFAULT_SPACE,
+    libraryId = 7,
+  }: { space?: string; libraryId?: number } = {}) {
+    const sourceName = (asset: MockAsset) => asset.short_filename ?? basename(asset.filename);
+    const remoteAssets = assets.map(asset => ({
+      ...asset,
+      id: getID(),
+      filename: `https://a.storyblok.com/g/1/${sourceName(asset)}`,
+      asset_folder_id: asset.asset_folder_id ?? libraryId,
+    }));
+    server.use(
+      // Step 1: sign (shared uses query params for filename).
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets`, ({ request }) => {
+        const filename = new URL(request.url).searchParams.get('filename');
+        const index = assets.findIndex(asset => sourceName(asset) === filename);
+        if (index === -1) {
+          return HttpResponse.json({ message: 'Error uploading shared asset' }, { status: 500 });
+        }
+        return HttpResponse.json({
+          post_url: 'https://s3.amazonaws.com/a.storyblok.com',
+          fields: { key: `g/1/${filename}` },
+          id: remoteAssets[index].id,
+        });
+      }),
+      // Step 2: upload to S3 (generic).
+      http.post('https://s3.amazonaws.com/a.storyblok.com', async ({ request }) => {
+        const form = await request.formData();
+        return HttpResponse.json({ key: form.get('key') });
+      }),
+      // Step 3: finish upload.
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId/finish_upload`, () =>
+        HttpResponse.json({ message: 'Upload finalized' })),
+      // Step 4: retrieve + metadata update target.
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId`, ({ params }) => {
+        const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
+        if (!match) {
+          return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
+        }
+        return HttpResponse.json(match);
+      }),
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/shared_assets/:assetId`, () => HttpResponse.json({})),
+    );
+    return remoteAssets;
+  },
 };
 
 const parseManifest = async (space: string = DEFAULT_SPACE, basePath?: string) => {
@@ -487,6 +552,19 @@ describe('assets push command', () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('pushes from a non-numeric source directory (e.g. seed staging "qa-seed")', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset();
+    // Local source subtree keyed by a non-numeric directory name. The source identifier is a directory, not a space ID.
+    preconditions.canLoadAssets([asset], { space: 'qa-seed' });
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', 'qa-seed', '--space', targetSpace]);
+
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -1591,5 +1669,282 @@ describe('assets push command', () => {
       expect.stringContaining('Dropped 1 unknown internal asset tag not present in target space: uncreatable-tag'),
     );
     expect(process.exitCode).not.toBe(1);
+  });
+
+  describe('shared library targets', () => {
+    it('pushes a single asset to a library (--target shared --library)', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'hero.png', filename: 'hero.png' })], { libraryId: 7 });
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '7']);
+
+      // Without --folder, the asset folder must default to the library root,
+      // otherwise shared-asset creation 403s.
+      expect(actions.createSharedAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ asset_folder_id: 7 }),
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('defaults a bulk shared-asset folder to the library root when the sidecar omits it', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png' }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(actions.createSharedAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ asset_folder_id: 7 }),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('rejects a single-asset --target shared without --library', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
+    it('rejects a single-asset --target all', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'all']);
+
+      expect(actions.createAsset).not.toHaveBeenCalled();
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
+    it('rejects an invalid --target value', async () => {
+      const push = assetsCommand.commands.find(command => command.name() === 'push')!;
+      push.exitOverride();
+
+      await expect(
+        assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'bogus']),
+      ).rejects.toThrow(/Allowed choices/i);
+    });
+
+    it('rejects --library combined with --target space', async () => {
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'space', '--library', '7']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+    });
+
+    it('fails fast pushing to a read-only library', async () => {
+      preconditions.hasLibraries([{ id: 8, name: 'Locked', accessLevel: 'read' }]);
+      preconditions.canLoadLocalFile('./hero.png', 'binary-content');
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '8']);
+
+      expect(actions.createSharedAsset).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(2);
+      expect(getLogFileContents(LOG_PREFIX)).toMatch(/Locked/);
+    });
+
+    it('bulk push without --target defaults to all (space subtree + each writable library)', async () => {
+      const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
+      const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canLoadAssets([spaceAsset]);
+      preconditions.canLoadAssets([libraryAsset], { space: join('shared', '7') });
+      preconditions.canUpsertRemoteAssets([spaceAsset]);
+      preconditions.canUpsertSharedAssets([libraryAsset], { libraryId: 7 });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
+
+      const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+      expect(written.some(p => p.includes('assets/12345/manifest.jsonl'))).toBe(true);
+      expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(true);
+    });
+
+    it('bulk --target=all processes the space subtree and each writable library', async () => {
+      const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
+      const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canLoadAssets([spaceAsset]);
+      preconditions.canLoadAssets([libraryAsset], { space: join('shared', '7') });
+      preconditions.canUpsertRemoteAssets([spaceAsset]);
+      preconditions.canUpsertSharedAssets([libraryAsset], { libraryId: 7 });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'all']);
+
+      const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+      expect(written.some(p => p.includes('assets/12345/manifest.jsonl'))).toBe(true);
+      expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(true);
+    });
+
+    it('skips the library root folder on bulk push, still pushes child folders', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([], { libraryId: 7 });
+      let rootFolderTouched = false;
+      let childFolderCreated = false;
+      server.use(
+        // The root (library) folder exists server-side; updating it from a
+        // space 403s. The child folder does not exist yet (create path).
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/7', () => {
+          rootFolderTouched = true;
+          return HttpResponse.json({ shared_asset_folder: { id: 7, name: 'Brand', parent_id: null } });
+        }),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/7', () => {
+          rootFolderTouched = true;
+          return HttpResponse.json({ message: 'Cannot update shared root asset folder in space context' }, { status: 403 });
+        }),
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', () =>
+          HttpResponse.json({ message: 'not found' }, { status: 404 })),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders', async ({ request }) => {
+          childFolderCreated = true;
+          const body = await request.json() as { shared_asset_folder: { name: string; parent_id?: number } };
+          return HttpResponse.json({ shared_asset_folder: { id: 80, name: body.shared_asset_folder.name, parent_id: body.shared_asset_folder.parent_id } });
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'folders', 'Brand_7.json')]: JSON.stringify({ id: 7, name: 'Brand', parent_id: null, uuid: 'u7' }),
+        [join(dir, 'folders', 'Sub_8.json')]: JSON.stringify({ id: 8, name: 'Sub', parent_id: 7, uuid: 'u8' }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(rootFolderTouched).toBe(false);
+      expect(childFolderCreated).toBe(true);
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('updates an existing child library folder with only whitelisted fields', async () => {
+      // A pull→push round-trip writes child sidecars carrying their id and the
+      // org-managed `asset_folder_access`/`regions`. The space may update such a
+      // folder, but only its name/parent — forwarding the access grant 403s.
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([], { libraryId: 7 });
+      let updatePayload: Record<string, unknown> | undefined;
+      server.use(
+        // Child folder 8 already exists server-side → the push takes the update path.
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', () =>
+          HttpResponse.json({ shared_asset_folder: { id: 8, name: 'Sub', parent_id: 7 } })),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders/8', async ({ request }) => {
+          updatePayload = ((await request.json()) as { shared_asset_folder: Record<string, unknown> }).shared_asset_folder;
+          // The backend rejects org-managed fields from space context.
+          if ('asset_folder_access' in updatePayload) {
+            return HttpResponse.json({ message: 'Forbidden' }, { status: 403 });
+          }
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'folders', 'Brand_7.json')]: JSON.stringify({ id: 7, name: 'Brand', parent_id: null, uuid: 'u7', asset_folder_access: [{ space_id: 12345, access_level: 'write' }], regions: ['eu'] }),
+        [join(dir, 'folders', 'Sub_8.json')]: JSON.stringify({ id: 8, name: 'Sub', parent_id: 7, uuid: 'u8', asset_folder_access: [{ space_id: 12345, access_level: 'write' }], regions: [] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(updatePayload).toEqual({ name: 'Sub', parent_id: 7 });
+      expect(process.exitCode).toBe(0);
+    });
+
+    it('round-trips meta_data for a shared asset', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { meta_data?: unknown; internal_tag_ids?: string[] } } | undefined;
+      server.use(http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+        capturedPut = await request.json() as typeof capturedPut;
+        return HttpResponse.json({});
+      }));
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', meta_data: { credit: 'ACME' } }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(capturedPut?.asset?.meta_data).toEqual({ credit: 'ACME' });
+    });
+
+    it('creates missing library tags and remaps internal_tag_ids on push', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tags: [] })),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } })),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+          capturedPut = await request.json() as typeof capturedPut;
+          return HttpResponse.json({});
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', internal_tag_ids: ['300'], internal_tags_list: [{ id: 300, name: 'hero' }] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
+    });
+
+    it('paginates shared library tags so a match on a later page is reused, not recreated', async () => {
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
+      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let createCalled = false;
+      server.use(
+        // Two pages of existing library tags; the match lives on page 2. With one
+        // unpaginated request only page 1 is seen and the tag is wrongly recreated.
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', ({ request }) => {
+          const page = new URL(request.url).searchParams.get('page');
+          const tags = page === '2'
+            ? [{ id: 999, name: 'hero', object_type: 'asset' }]
+            : [{ id: 100, name: 'other', object_type: 'asset' }];
+          return HttpResponse.json({ internal_tags: tags }, { headers: { 'Total': '2', 'Per-Page': '1' } });
+        }),
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => {
+          createCalled = true;
+          return HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } });
+        }),
+        http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', async ({ request }) => {
+          capturedPut = await request.json() as typeof capturedPut;
+          return HttpResponse.json({});
+        }),
+      );
+      const dir = resolveCommandPath(directories.assets, join('shared', '7'));
+      vol.fromJSON({
+        [join(dir, 'x_2.png')]: 'binary',
+        [join(dir, 'x_2.json')]: JSON.stringify({ id: 2, short_filename: 'x.png', filename: 'x.png', internal_tag_ids: ['300'], internal_tags_list: [{ id: 300, name: 'hero' }] }),
+      });
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['999']);
+      expect(createCalled).toBe(false);
+    });
+
+    it('bulk --target=space ignores shared subtrees', async () => {
+      const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
+      const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
+      preconditions.canLoadAssets([spaceAsset]);
+      preconditions.canLoadAssets([libraryAsset], { space: join('shared', '7') });
+      preconditions.canUpsertRemoteAssets([spaceAsset]);
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'space']);
+
+      const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
+      expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(false);
+    });
   });
 });

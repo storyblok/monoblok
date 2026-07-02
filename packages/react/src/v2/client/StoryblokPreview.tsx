@@ -1,3 +1,5 @@
+'use client';
+
 import { onStoryblokEditorEvent } from '@storyblok/live-preview';
 import type { Story } from '@storyblok/api-client';
 import {

@@ -198,7 +198,8 @@ export function generateSchemaFile(
 ): string {
   const lines: string[] = [];
 
-  // Import Schema and Story type helpers
+  // Import the defineSchema helper and the Schema/Story type helpers
+  lines.push('import { defineSchema } from \'@storyblok/schema\';');
   lines.push('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
   lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
@@ -224,7 +225,7 @@ export function generateSchemaFile(
   lines.push('');
 
   // Export schema object
-  lines.push('export const schema = {');
+  lines.push('export const schema = defineSchema({');
 
   if (components.length > 0) {
     lines.push('  blocks: {');
@@ -244,7 +245,7 @@ export function generateSchemaFile(
     lines.push('  },');
   }
 
-  lines.push('};');
+  lines.push('});');
   lines.push('');
 
   // Schema and Blocks types derived via Schema helper

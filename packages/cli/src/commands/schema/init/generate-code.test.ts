@@ -125,6 +125,7 @@ describe('generateSchemaFile', () => {
 
     const result = generateSchemaFile(components, datasources, groupPaths);
 
+    expect(result).toContain('import { defineSchema } from \'@storyblok/schema\';');
     expect(result).toContain('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
     expect(result).toContain('import { pageBlock } from \'./blocks/page\';');
     // Grouped block imported from its group subdirectory (segment verbatim)
@@ -132,7 +133,8 @@ describe('generateSchemaFile', () => {
     expect(result).toContain('import { teaserListBlock } from \'./blocks/teaser-list\';');
     expect(result).toContain('import { categoriesDatasource } from \'./datasources/categories\';');
 
-    expect(result).toContain('export const schema = {');
+    expect(result).toContain('export const schema = defineSchema({');
+    expect(result).toContain('});');
     expect(result).toContain('  blocks: {');
     expect(result).toContain('    pageBlock,');
     expect(result).toContain('  datasources: {');

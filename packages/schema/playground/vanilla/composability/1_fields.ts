@@ -13,5 +13,5 @@ export const bodyField = defineField('body', {
 export const themeOptionField = defineField('theme', {
   type: 'option',
   source: 'internal',
-  datasource_slug: 'themes',
+  datasource: 'themes',
 });

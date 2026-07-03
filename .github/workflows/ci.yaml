@@ -39,7 +39,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            projects: "tag:npm:public,@storyblok/mapi-integration-tests,@storyblok/capi-integration-tests"
+            projects: "tag:npm:public,@storyblok/openapi-codegen,@storyblok/mapi-integration-tests,@storyblok/capi-integration-tests"
           - os: windows-latest
             projects: storyblok
     runs-on: ${{ matrix.os }}

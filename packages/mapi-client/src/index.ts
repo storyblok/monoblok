@@ -33,9 +33,12 @@ export type {
   AssetFolderCreate,
   AssetFolderUpdate,
   AssetUpdate,
+  Component,
+  ComponentCreate,
   ComponentFolder,
   ComponentFolderCreate,
   ComponentFolderUpdate,
+  ComponentUpdate,
   DatasourceCreate,
   DatasourceUpdate,
   InternalTag,
@@ -56,10 +59,9 @@ export type {
 } from './generated/mapi/types-aliased.gen';
 
 // Domain types — sourced from the codegen tool's aliased + wrapper outputs.
+// `Component` is the wire-shaped component *definition* (see the aliased export
+// above); `RootComponents` is the DSL root-block helper used for story content.
 export type {
-  Block as Component,
-  ComponentCreate,
-  ComponentUpdate,
   RootBlock as RootComponents,
 } from './generated/types/block';
 export type { Field } from './generated/types/field';

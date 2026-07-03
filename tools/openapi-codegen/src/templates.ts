@@ -26,9 +26,9 @@ export interface TemplateMeta {
 
 export const TEMPLATES = {
   'block': {
-    provides: ['Block', 'BlockSchema', 'BlockSchemaInput', 'SchemaArrayToRecord', 'RootBlock', 'NestableBlock', 'ComponentCreate', 'ComponentUpdate'],
+    provides: ['Block', 'BlockFields', 'RootBlock', 'NestableBlock'],
     templateDeps: [],
-    sourceLeaves: ['Component', 'ComponentCreate', 'ComponentUpdate', 'Field'],
+    sourceLeaves: ['Component', 'Field'],
   },
   'field': {
     provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichtextFieldValue', 'TableFieldValue'],

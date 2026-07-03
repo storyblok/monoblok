@@ -4,7 +4,7 @@ export const kitchenSinkBlock = defineBlock({
   name: 'kitchen_sink',
   is_nestable: true,
   display_name: 'Kitchen Sink (All Field Types)',
-  schema: [
+  fields: [
     defineField('text_field', { type: 'text', max_length: 100 }),
     defineField('textarea_field', { type: 'textarea', max_length: 500 }),
     defineField('richtext_field', {
@@ -24,8 +24,8 @@ export const kitchenSinkBlock = defineBlock({
     defineField('asset_field', { type: 'asset', filetypes: ['images'] }),
     defineField('multiasset_field', { type: 'multiasset', filetypes: ['images', 'videos'] }),
     defineField('multilink_field', { type: 'multilink' }),
-    defineField('option_field', { type: 'option', source: 'internal', datasource_slug: 'icons' }),
-    defineField('options_field', { type: 'options', source: 'internal', datasource_slug: 'icons' }),
+    defineField('option_field', { type: 'option', source: 'internal', datasource: 'icons' }),
+    defineField('options_field', { type: 'options', source: 'internal', datasource: 'icons' }),
     defineField('bloks_field', { type: 'bloks' }),
     defineField('table_field', { type: 'table' }),
     defineField('settings_section', {

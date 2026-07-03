@@ -64,11 +64,6 @@ function makeMockComponent(overrides: Partial<MockComponent> = {}): MockComponen
   };
 }
 
-function makeMockFolder(overrides: Partial<MockFolder> = {}): MockFolder {
-  const id = getID();
-  return { id, name: `Folder-${id}`, uuid: `uuid-${id}`, ...overrides };
-}
-
 function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDatasource {
   const id = getID();
   return {
@@ -84,7 +79,7 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
 const server = setupServer();
 
 const preconditions = {
-  hasLocalSchema(schema: SchemaData) {
+  hasLocalSchema(schema: Pick<SchemaData, 'components' | 'datasources'>) {
     vi.mocked(loadSchema).mockResolvedValue(schema);
   },
   hasRemoteComponents(components: MockComponent[]) {
@@ -135,17 +130,6 @@ const preconditions = {
         HttpResponse.json({})),
     );
   },
-  canCreateFolders(folders: MockFolder[]) {
-    const created = folders.map(f => ({ ...f, id: getID() }));
-    server.use(
-      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups`, async ({ request }) => {
-        const body = await request.json() as { component_group: { name: string } };
-        const match = created.find(f => f.name === body.component_group.name);
-        return HttpResponse.json({ component_group: match ?? created[0] });
-      }),
-    );
-    return created;
-  },
   canCreateDatasources(datasources: MockDatasource[]) {
     const created = datasources.map(d => ({ ...d, id: getID() }));
     server.use(
@@ -160,12 +144,6 @@ const preconditions = {
   canDeleteDatasources() {
     server.use(
       http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/datasources/:id`, () =>
-        HttpResponse.json({})),
-    );
-  },
-  canDeleteFolders() {
-    server.use(
-      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`, () =>
         HttpResponse.json({})),
     );
   },
@@ -199,7 +177,6 @@ describe('schema push command', () => {
     const localComp = makeMockComponent({ name: 'hero' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasEmptyRemote();
@@ -215,7 +192,6 @@ describe('schema push command', () => {
     const localComp = makeMockComponent({ name: 'hero' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasEmptyRemote();
@@ -233,7 +209,6 @@ describe('schema push command', () => {
     const localComp = makeMockComponent({ name: 'hero' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasEmptyRemote();
@@ -254,7 +229,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([localComp, staleComp]);
@@ -275,7 +249,6 @@ describe('schema push command', () => {
     const localComp = makeMockComponent({ name: 'hero' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasEmptyRemote();
@@ -290,7 +263,6 @@ describe('schema push command', () => {
     const comp = makeMockComponent({ name: 'hero', schema: { title: { type: 'text', pos: 0 } } });
     preconditions.hasLocalSchema({
       components: [comp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([comp]);
@@ -311,7 +283,6 @@ describe('schema push command', () => {
     const staleComp = makeMockComponent({ name: 'footer' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([localComp, staleComp]);
@@ -331,7 +302,6 @@ describe('schema push command', () => {
     const staleComp = makeMockComponent({ name: 'footer' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([localComp, staleComp]);
@@ -348,32 +318,37 @@ describe('schema push command', () => {
     expect(changeset.changes.some((c: { action: string }) => c.action === 'delete')).toBe(true);
   });
 
-  it('should create all entity types', async () => {
+  it('should push components flat, neither setting nor clearing component groups', async () => {
     const comp = makeMockComponent({ name: 'hero' });
-    const folder = makeMockFolder({ name: 'Layout' });
     const ds = makeMockDatasource({ name: 'Colors', slug: 'colors' });
 
     preconditions.hasLocalSchema({
       components: [comp] as any,
-      componentFolders: [folder] as any,
       datasources: [ds] as any,
     });
     preconditions.hasEmptyRemote();
-    preconditions.canCreateComponents([comp]);
-    preconditions.canCreateFolders([folder]);
     preconditions.canCreateDatasources([ds]);
+
+    let componentBody: { name: string; component_group_uuid?: string } | undefined;
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, async ({ request }) => {
+        componentBody = (await request.json() as { component: typeof componentBody }).component;
+        return HttpResponse.json({ component: { ...comp, id: getID() } });
+      }),
+    );
+    // No component_groups POST handler is registered, and msw errors on
+    // unhandled requests — so any attempt to create a group would fail the test.
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
-    const files = Object.keys(vol.toJSON());
-    expect(files.some(f => f.includes('schema/changesets/'))).toBe(true);
+    expect(componentBody?.name).toBe('hero');
+    expect(componentBody?.component_group_uuid).toBeUndefined();
   });
 
   it('should handle API errors gracefully', async () => {
     const comp = makeMockComponent({ name: 'hero' });
     preconditions.hasLocalSchema({
       components: [comp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.failsToFetchRemote();
@@ -387,14 +362,13 @@ describe('schema push command', () => {
   it('should warn when entry file has zero exports', async () => {
     preconditions.hasLocalSchema({
       components: [],
-      componentFolders: [],
       datasources: [],
     });
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
     // ui.warn outputs to console.warn; verify the zero-export warning was shown
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No components, folders, or datasources'));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No components or datasources'));
   });
 
   it('should not include stale entities in changeset without --delete', async () => {
@@ -402,7 +376,6 @@ describe('schema push command', () => {
     const staleComp = makeMockComponent({ name: 'footer' });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([localComp, staleComp]);
@@ -436,7 +409,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -469,7 +441,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -500,7 +471,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -531,7 +501,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -566,7 +535,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -598,7 +566,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -632,7 +599,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -667,7 +633,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);
@@ -708,7 +673,6 @@ describe('schema push command', () => {
     });
     preconditions.hasLocalSchema({
       components: [localComp] as any,
-      componentFolders: [],
       datasources: [],
     });
     preconditions.hasRemoteComponents([remoteComp]);

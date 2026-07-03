@@ -31,19 +31,31 @@ describe('defineField type inference', () => {
     expectTypeOf(f.min_value).toEqualTypeOf<0>();
   });
 
-  it('should preserve component_whitelist as a readonly literal tuple on bloks fields', () => {
-    const f = defineField('body', { type: 'bloks', component_whitelist: ['teaser', 'hero'] });
+  it('should normalize a string `allow` list to a literal tuple on bloks fields', () => {
+    const f = defineField('body', { type: 'bloks', allow: ['teaser', 'hero'] });
     expectTypeOf(f.type).toEqualTypeOf<'bloks'>();
-    // const generic infers a readonly tuple — each element is a literal string
-    type CW = (typeof f)['component_whitelist'];
-    expectTypeOf<CW[number]>().toEqualTypeOf<'teaser' | 'hero'>();
+    type Allow = (typeof f)['allow'];
+    expectTypeOf<Allow[number]>().toEqualTypeOf<'teaser' | 'hero'>();
   });
 
-  it('should not include component_whitelist when not provided on a bloks field', () => {
+  it('should normalize block-object refs in `allow` to their name literals', () => {
+    const heroBlock = { name: 'hero' as const };
+    const teaserBlock = { name: 'teaser' as const };
+    const _f = defineField('body', { type: 'bloks', allow: [heroBlock, teaserBlock, 'intro'] });
+    type Allow = (typeof _f)['allow'];
+    expectTypeOf<Allow[number]>().toEqualTypeOf<'hero' | 'teaser' | 'intro'>();
+  });
+
+  it('should normalize a `datasource` ref to its slug literal', () => {
+    const colors = { slug: 'colors' as const };
+    const _f = defineField('theme', { type: 'option', source: 'internal', datasource: colors });
+    expectTypeOf<(typeof _f)['datasource']>().toEqualTypeOf<'colors'>();
+  });
+
+  it('should not include `allow` when not provided on a bloks field', () => {
     const f = defineField('body', { type: 'bloks' });
     expectTypeOf(f.type).toEqualTypeOf<'bloks'>();
-    // component_whitelist was not provided — it is absent from the inferred type
     // @ts-expect-error property does not exist when not supplied
-    void f.component_whitelist;
+    void f.allow;
   });
 });

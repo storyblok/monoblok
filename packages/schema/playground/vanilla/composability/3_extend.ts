@@ -12,14 +12,14 @@ export const heroBaseSchema = [
 export const baseHeroBlock = defineBlock({
   name: 'hero',
   is_nestable: true,
-  schema: heroBaseSchema,
+  fields: heroBaseSchema,
 });
 
 // Extend: append SEO fields
 export const heroWithSeoBlock = defineBlock({
   name: 'hero_with_seo',
   is_nestable: true,
-  schema: [...heroBaseSchema, ...seoFields()],
+  fields: [...heroBaseSchema, ...seoFields()],
 });
 
 // Override: replace headline with a shorter max_length
@@ -27,7 +27,7 @@ export const heroCompactBlock = defineBlock({
   name: 'hero_compact',
   display_name: 'Hero (Compact)',
   is_nestable: true,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', max_length: 60 }),
     imageField,
     ...ctaFields(),
@@ -39,7 +39,7 @@ export const heroNoCta = defineBlock({
   name: 'hero_no_cta',
   display_name: 'Hero (No CTA)',
   is_nestable: true,
-  schema: [
+  fields: [
     { ...headlineField, required: true },
     imageField,
   ],

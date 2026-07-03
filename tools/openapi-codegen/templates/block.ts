@@ -1,37 +1,42 @@
 import type {
-  ComponentCreate,
   Component as ComponentGenerated,
-  ComponentUpdate,
   Field,
 } from './_sources';
 import type { Override } from './_utils';
 
-export type { ComponentCreate, ComponentUpdate };
+/**
+ * Ordered array of named fields — the content-shape DSL form `defineBlock`
+ * accepts and returns. A field's position in the array sets the order it appears
+ * in the editor (mapped to the wire `pos` on push).
+ */
+export type BlockFields = ReadonlyArray<Field & { name: string; pos?: number; required?: boolean }>;
 
-/** Input form: an ordered array of named fields. The array index becomes `pos`. */
-export type BlockSchemaInput = ReadonlyArray<Field & { name: string; required?: boolean }>;
-
-/** Wire form: the MAPI object map keyed by field name. This is what `defineBlock` returns. */
-export type BlockSchema = Record<string, Field & { required?: boolean }>;
-
-/** Converts an array-form schema input into the wire-shape object map at the type level. */
-export type SchemaArrayToRecord<T extends BlockSchemaInput> = {
-  [F in T[number] as F['name']]: Omit<F, 'name'>;
-};
-
-/** A Storyblok block. */
+/**
+ * A Storyblok block: a named, ordered set of content fields. Uses the
+ * content-shape DSL `fields` array rather than the MAPI wire `schema` record.
+ */
 export type Block<
   TName extends string = string,
-  TBlockSchema extends BlockSchema = BlockSchema,
+  TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
-  TComponentGroupUuid extends string | null = string | null,
-> = Override<ComponentGenerated, {
+> = Override<Omit<ComponentGenerated, 'schema' | 'component_group_uuid'>, {
   name: TName;
-  schema: TBlockSchema;
+  fields: TFields;
   is_root?: TIsRoot;
   is_nestable?: TIsNestable;
-  component_group_uuid?: TComponentGroupUuid;
+  /**
+   * Escape hatch for pinning this block to a Storyblok UI-managed component
+   * group by UUID. Component groups are normally maintained in code via the
+   * schema directory layout; set this only if you intentionally manage groups
+   * in the Storyblok UI, and fill in the group UUID yourself. When set,
+   * `schema push` diffs it and sends it to the Management API; when omitted,
+   * the block's remote group is left untouched.
+   *
+   * @deprecated Prefer maintaining component groups in code through the
+   * directory layout.
+   */
+  component_group_uuid?: string | null;
 }>;
 
 /**

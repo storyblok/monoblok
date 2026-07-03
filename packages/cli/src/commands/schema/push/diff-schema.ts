@@ -2,9 +2,9 @@ import { createTwoFilesPatch } from 'diff';
 
 import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from '../utils';
-import { serializeComponent, serializeComponentFolder, serializeDatasource } from '../serialize';
+import { serializeComponent, serializeDatasource } from '../serialize';
 
-type EntityType = 'component' | 'componentFolder' | 'datasource';
+type EntityType = 'component' | 'datasource';
 
 function diffEntity(
   type: EntityType,
@@ -43,8 +43,14 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
   for (const comp of local.components) {
     processedComponentNames.add(comp.name);
     const remoteComp = remote.components.get(comp.name);
-    const localSerialized = serializeComponent(applyDefaults(comp, COMPONENT_DEFAULTS));
-    const remoteSerialized = remoteComp ? serializeComponent(applyDefaults(remoteComp, COMPONENT_DEFAULTS)) : null;
+    // Only diff the group UUID when the local block opts into the escape hatch;
+    // otherwise it stays stripped on both sides so remote UI groups are left
+    // untouched and no false diff is produced.
+    const includeGroupUuid = typeof comp.component_group_uuid === 'string';
+    const localSerialized = serializeComponent(applyDefaults(comp, COMPONENT_DEFAULTS), { includeGroupUuid });
+    const remoteSerialized = remoteComp
+      ? serializeComponent(applyDefaults(remoteComp, COMPONENT_DEFAULTS), { includeGroupUuid })
+      : null;
     diffs.push(diffEntity('component', comp.name, localSerialized, remoteSerialized));
   }
   for (const [name] of remote.components) {
@@ -53,20 +59,10 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     }
   }
 
-  // Diff component folders
-  const processedFolderNames = new Set<string>();
-  for (const folder of local.componentFolders) {
-    processedFolderNames.add(folder.name);
-    const remoteFolder = remote.componentFolders.get(folder.name);
-    const localSerialized = serializeComponentFolder(folder);
-    const remoteSerialized = remoteFolder ? serializeComponentFolder(remoteFolder) : null;
-    diffs.push(diffEntity('componentFolder', folder.name, localSerialized, remoteSerialized));
-  }
-  for (const [name] of remote.componentFolders) {
-    if (!processedFolderNames.has(name)) {
-      diffs.push(diffEntity('componentFolder', name, null, 'stale'));
-    }
-  }
+  // Component groups are normally maintained in code via the directory layout,
+  // so a block's group is not diffed by default and existing remote groups are
+  // left as-is. A block may opt into the escape hatch by setting
+  // `component_group_uuid` explicitly, in which case it is diffed above.
 
   // Diff datasources
   const processedDatasourceNames = new Set<string>();

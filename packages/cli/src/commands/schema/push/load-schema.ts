@@ -1,64 +1,60 @@
-import type { Component, ComponentFolder, Datasource } from '../../../types';
 import type { SchemaData } from '../types';
+import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
+import { isRecord } from '../utils';
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Returns true if the value looks like a defineBlock() result. */
-export function isComponent(value: unknown): value is Component {
-  return isObject(value)
+/** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
+export function isComponent(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
     && typeof value.name === 'string'
-    && 'schema' in value
-    && isObject(value.schema);
+    && Array.isArray(value.fields);
 }
 
-/** Returns true if the value looks like a defineDatasource() result. */
-export function isDatasource(value: unknown): value is Datasource {
-  return isObject(value)
+/** Returns true if the value looks like a `defineDatasource()` result. */
+export function isDatasource(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
     && typeof value.name === 'string'
     && typeof value.slug === 'string'
-    && !('schema' in value);
-}
-
-/** Returns true if the value looks like a defineBlockFolder() result. */
-export function isComponentFolder(value: unknown): value is ComponentFolder {
-  return isObject(value)
-    && typeof value.name === 'string'
-    && !('schema' in value)
-    && !('slug' in value)
-    && ('uuid' in value || 'parent_id' in value);
+    && !Array.isArray(value.fields);
 }
 
 /** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...} }`). */
 export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
-  return isObject(value)
-    && ('blocks' in value || 'blockFolders' in value || 'datasources' in value);
+  return isRecord(value)
+    && ('blocks' in value || 'datasources' in value);
 }
 
-/** Classifies a module's exports into components, component folders, and datasources. */
+/** An empty {@link SchemaData}, used as the accumulator base. */
+function emptySchemaData(): SchemaData {
+  return { components: [], datasources: [] };
+}
+
+/**
+ * Classifies a module's exports into wire components and datasources, mapping
+ * the content-shape DSL (`fields`/`allow`/`datasource`) to the MAPI wire shape.
+ */
 export function classifyExports(moduleExports: Record<string, unknown>): SchemaData {
-  const components: Component[] = [];
-  const componentFolders: ComponentFolder[] = [];
-  const datasources: Datasource[] = [];
+  const data = emptySchemaData();
+  const seenComponents = new Set<string>();
+  const seenDatasources = new Set<string>();
 
   function collect(value: unknown) {
     if (isComponent(value)) {
-      components.push(value);
+      if (seenComponents.has(value.name as string)) { return; }
+      seenComponents.add(value.name as string);
+      data.components.push(mapBlockToWire(value));
     }
     else if (isDatasource(value)) {
-      datasources.push(value);
-    }
-    else if (isComponentFolder(value)) {
-      componentFolders.push(value);
+      if (seenDatasources.has(value.name as string)) { return; }
+      seenDatasources.add(value.name as string);
+      data.datasources.push(mapDatasourceToWire(value));
     }
   }
 
   for (const value of Object.values(moduleExports)) {
     if (isSchemaObject(value)) {
-      // Unwrap schema object: collect from each sub-record
+      // Unwrap schema object: collect from each sub-record (blocks, datasources)
       for (const group of Object.values(value)) {
-        if (isObject(group)) {
+        if (isRecord(group)) {
           for (const entity of Object.values(group)) {
             collect(entity);
           }
@@ -70,21 +66,24 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
     }
   }
 
-  return { components, componentFolders, datasources };
+  return data;
 }
 
 /**
  * Loads a TypeScript schema entry file and returns classified exports.
- * Uses jiti for TypeScript support across all Node.js versions.
+ *
+ * Blocks and datasources are sourced solely from the entry file's exports
+ * (directly or via an exported `schema` object). A block must be registered in
+ * the entry file to be pushed; leaving a block file on disk without exporting it
+ * has no effect. Uses jiti for TypeScript support.
  */
 export async function loadSchema(entryPath: string): Promise<SchemaData> {
   const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, {
-    interopDefault: true,
-  });
+  const jiti = createJiti(import.meta.url, { interopDefault: true });
+  const { resolve } = await import('pathe');
 
-  const absolutePath = (await import('pathe')).resolve(entryPath);
-  const mod = await jiti.import(absolutePath) as Record<string, unknown>;
+  const entryAbs = resolve(entryPath);
+  const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
 
-  return classifyExports(mod);
+  return classifyExports(entryMod);
 }

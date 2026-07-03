@@ -38,6 +38,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
     "@storyblok/eslint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",

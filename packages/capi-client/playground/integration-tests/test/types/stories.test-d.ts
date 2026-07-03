@@ -6,7 +6,7 @@ import { createApiClient, type Story } from '@storyblok/api-client';
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({
   name: 'teaser',
-  schema: [
+  fields: [
     defineField('text', { type: 'text', required: true }),
     defineField('image', { type: 'asset' }),
   ],
@@ -18,7 +18,7 @@ const _teaserComponent = defineBlock({
 const _heroComponent = defineBlock({
   name: 'hero',
   is_root: true,
-  schema: [
+  fields: [
     defineField('title', { type: 'text', required: true }),
     defineField('count', { type: 'number', required: true }),
     // bloks field without a whitelist — resolves to nestable components only
@@ -33,12 +33,12 @@ const _pageComponent = defineBlock({
   name: 'page',
   is_root: true,
   is_nestable: false,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
     defineField('body', { type: 'richtext' }),
-    defineField('teasers', { type: 'bloks', component_whitelist: ['teaser'], required: true }),
-    defineField('hero', { type: 'bloks', component_whitelist: ['hero'], required: true }),
-    defineField('blocks', { type: 'bloks', component_whitelist: ['hero', 'teaser'], required: true }),
+    defineField('teasers', { type: 'bloks', allow: ['teaser'], required: true }),
+    defineField('hero', { type: 'bloks', allow: ['hero'], required: true }),
+    defineField('blocks', { type: 'bloks', allow: ['hero', 'teaser'], required: true }),
   ],
   id: 0,
   created_at: '',
@@ -226,14 +226,14 @@ describe('resolve_relations type narrowing', () => {
   const _authorComponent = defineBlock({
     name: 'author',
     is_root: true,
-    schema: [
+    fields: [
       defineField('bio', { type: 'text', required: true }),
     ],
   });
   const _articleComponent = defineBlock({
     name: 'article',
     is_root: true,
-    schema: [
+    fields: [
       defineField('title', { type: 'text', required: true }),
       // In Storyblok, this would be an option field with source: internal_stories.
       // At the schema level it's just a text/option field (string).
@@ -354,7 +354,7 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
     id: 42,
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
-    schema: [
+    fields: [
       defineField('title', { type: 'text', required: true }),
       defineField('price', { type: 'number', required: true }),
       defineField('tags', { type: 'options', required: true }),
@@ -368,7 +368,7 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
     id: 43,
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
-    schema: [
+    fields: [
       defineField('label', { type: 'text', required: true }),
     ],
   });

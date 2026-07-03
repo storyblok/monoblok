@@ -12,7 +12,7 @@ import type {
   TableFieldValue,
 } from './_sources';
 import type { Prettify } from './_utils';
-import type { Block } from './block';
+import type { Block, BlockFields } from './block';
 
 export type { Field };
 export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
@@ -27,17 +27,27 @@ type NoBlocks = false;
 /** True when `T` is the un-narrowed base `Block` (i.e. no specific block was supplied). */
 type IsBaseBlock<T> = [Block] extends [T] ? true : false;
 
-type RequiredFieldKeys<T> = {
-  [K in keyof T]: T[K] extends { required: true } ? K : never
-}[keyof T];
+/**
+ * Maps a block's ordered `fields` array to its read content object, splitting
+ * required (`required: true`) from optional fields. Each `F` is a member of the
+ * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
+ */
+type ContentFields<TFields extends BlockFields, TBlocks> = Prettify<
+  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValue<F, TBlocks> }
+  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValue<F, TBlocks> | null }
+>;
 
-type OptionalFieldKeys<T> = Exclude<keyof T, RequiredFieldKeys<T>>;
+/** Input (write) variant of {@link ContentFields}, resolving each field via {@link FieldValueInput}. */
+type ContentFieldsInput<TFields extends BlockFields, TBlocks> = Prettify<
+  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValueInput<F, TBlocks> }
+  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValueInput<F, TBlocks> | null }
+>;
 
 /**
  * Content object for a single block instance as returned by the Storyblok
  * Content Delivery API. Without a `TBlock` argument, this is the loose
  * runtime shape (any block, `_editable` optional). With a schema-typed
- * `TBlock`, fields are narrowed per the block's schema.
+ * `TBlock`, fields are narrowed per the block's `fields`.
  */
 export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks> =
   IsBaseBlock<TBlock> extends true
@@ -46,8 +56,7 @@ export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks> =
     : TBlock extends any
       ? Prettify<
         { _uid: string; component: TBlock['name']; _editable?: string }
-        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> }
-        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+        & ContentFields<TBlock['fields'], TBlocks>
       >
       : never;
 
@@ -59,8 +68,7 @@ export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks> 
     : TBlock extends any
       ? Prettify<
         { _uid?: string; component: TBlock['name']; _editable?: string }
-        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> }
-        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+        & ContentFieldsInput<TBlock['fields'], TBlocks>
       >
       : never;
 
@@ -97,10 +105,10 @@ type IsNestable<T> =
     : T extends { is_nestable: true } ? true
       : true;
 
-type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: ReadonlyArray<infer TWhitelisted extends string> }
-  // keep only the registry blocks named in the whitelist
-  ? Extract<TBlocks, { name: TWhitelisted }>
-  // no whitelist: distribute over the registry, keeping nestable blocks
+type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer TAllowed extends string> }
+  // keep only the registry blocks named in `allow`
+  ? Extract<TBlocks, { name: TAllowed }>
+  // no `allow`: distribute over the registry, keeping nestable blocks
   : TBlocks extends any
     ? IsNestable<TBlocks> extends true ? TBlocks : never
     : never;
@@ -116,7 +124,7 @@ export type FieldValue<
     ? [TBlocks] extends [never]
         ? BlockContentBase[]
         : [TBlocks] extends [Block]
-            ? BlockContent<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            ? BlockContent<ApplyAllow<TField, TBlocks>, TBlocks>[]
             : BlockContentBase[]
     : FieldTypeValueMap[TField['type']]
 >;
@@ -132,7 +140,7 @@ export type FieldValueInput<
     ? [TBlocks] extends [never]
         ? BlockContentInputBase[]
         : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            ? BlockContentInput<ApplyAllow<TField, TBlocks>, TBlocks>[]
             : BlockContentInputBase[]
     : FieldTypeValueMap[TField['type']]
 >;

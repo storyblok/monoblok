@@ -33,7 +33,6 @@ function makeDiff(stale: string[]): DiffResult {
 function makeSchema(overrides: Partial<SchemaData> = {}): SchemaData {
   return {
     components: [],
-    componentFolders: [],
     datasources: [],
     ...overrides,
   };
@@ -77,30 +76,7 @@ describe('writeLocalComponents', () => {
     expect(heroContent.schema).toEqual({ title: { type: 'text' } });
   });
 
-  it('writes groups.json when component folders exist', async () => {
-    const resolved = makeSchema({
-      components: [{ name: 'hero', schema: {}, component_group_uuid: 'g1' } as any],
-      componentFolders: [{ name: 'Layout', uuid: 'g1' } as any],
-    });
-
-    await writeLocalComponents({
-      space: SPACE,
-      basePath: undefined,
-      resolved,
-      diffResult: makeDiff([]),
-      deleteRemoved: false,
-      ui,
-      logger,
-    });
-
-    const files = Object.keys(vol.toJSON()).map(stripDriveLetter);
-    const groupsFile = files.find(f => f.endsWith(join(componentsDir, 'groups.json')));
-    expect(groupsFile).toBeDefined();
-    const content = JSON.parse(vol.readFileSync(groupsFile!, 'utf-8') as string);
-    expect(content).toEqual([{ name: 'Layout', uuid: 'g1' }]);
-  });
-
-  it('omits groups.json when no folders exist', async () => {
+  it('never writes groups.json (component groups are not managed)', async () => {
     const resolved = makeSchema({
       components: [{ name: 'hero', schema: {}, component_group_uuid: null } as any],
     });

@@ -1,13 +1,11 @@
 import { defineBlock, defineField } from '@storyblok/schema';
-import { layoutFolder } from './folders/layout';
 
 export const heroBlock = defineBlock({
   name: 'hero',
   is_nestable: true,
   display_name: 'Hero Banner',
   color: '#1b243f',
-  component_group_uuid: layoutFolder.uuid,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', max_length: 120, required: true }),
     defineField('subtitle', { type: 'text', max_length: 200, translatable: true }),
     defineField('image', { type: 'asset', filetypes: ['images'] }),

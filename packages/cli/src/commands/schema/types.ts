@@ -1,9 +1,13 @@
 import type { Component, ComponentFolder, Datasource } from '../../types';
 
-/** Local schema loaded from the user's TypeScript entry file. */
+/**
+ * Local schema loaded from the user's TypeScript entry file. The schema package
+ * is content-shape only: blocks and datasource definitions. Component groups are
+ * a UI concern owned by editors, so pushed blocks are flat (the `blocks/`
+ * directory layout is local organization only and never pushed as groups).
+ */
 export interface SchemaData {
   components: Component[];
-  componentFolders: ComponentFolder[];
   datasources: Datasource[];
 }
 
@@ -17,7 +21,7 @@ export interface RemoteSchemaData {
 export type DiffAction = 'create' | 'update' | 'unchanged' | 'stale';
 
 export interface EntityDiff {
-  type: 'component' | 'componentFolder' | 'datasource';
+  type: 'component' | 'datasource';
   name: string;
   action: DiffAction;
   diff: string | null;
@@ -41,7 +45,7 @@ export interface FieldChange {
 }
 
 export interface ChangesetEntry {
-  type: 'component' | 'componentFolder' | 'datasource';
+  type: 'component' | 'datasource';
   name: string;
   action: 'create' | 'update' | 'delete';
   before?: Record<string, unknown>;

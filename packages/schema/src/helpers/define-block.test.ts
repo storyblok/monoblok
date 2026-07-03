@@ -6,7 +6,7 @@ describe('defineBlock', () => {
   it('should return a type safe block', () => {
     const input = {
       name: 'page',
-      schema: [
+      fields: [
         defineField('headline', { type: 'text' }),
       ],
     };
@@ -18,29 +18,18 @@ describe('defineBlock', () => {
       updated_at: '',
       is_root: false,
       is_nestable: true,
-      component_group_uuid: null,
       name: 'page',
-      schema: {
-        headline: { type: 'text', pos: 0 },
-      },
+      fields: [
+        { type: 'text', name: 'headline', pos: 0 },
+      ],
     });
-  });
-
-  it('should preserve an explicit component group uuid', () => {
-    const result = defineBlock({
-      name: 'page',
-      component_group_uuid: 'shared-group',
-      schema: [],
-    });
-
-    expect(result.component_group_uuid).toBe('shared-group');
   });
 
   it('should throw when two fields share the same name', () => {
     expect(() =>
       defineBlock({
         name: 'page',
-        schema: [
+        fields: [
           defineField('headline', { type: 'text' }),
           defineField('headline', { type: 'textarea' }),
         ],

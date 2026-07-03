@@ -126,7 +126,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    const componentFile = files.find(f => f.includes('/components/hero.ts'));
+    const componentFile = files.find(f => f.includes('/blocks/hero.ts'));
     expect(componentFile).toBeDefined();
 
     const content = vol.readFileSync(componentFile!, 'utf-8') as string;
@@ -135,19 +135,28 @@ describe('schema init command', () => {
     expect(content).toContain('defineField(');
   });
 
-  it('should generate folder files', async () => {
-    const folder = makeMockFolder({ name: 'Content Blocks' });
-    preconditions.hasRemoteSchema({ folders: [folder] });
+  it('should mirror component groups as slugified directories (no folder files)', async () => {
+    const folder = makeMockFolder({ name: 'My Layout', uuid: 'layout-uuid' });
+    const comp = makeMockComponent({ name: 'hero', component_group_uuid: 'layout-uuid' } as any);
+    preconditions.hasRemoteSchema({ components: [comp], folders: [folder] });
 
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    const folderFile = files.find(f => f.includes('/components/folders/content-blocks.ts'));
-    expect(folderFile).toBeDefined();
+    // The block is placed inside its slugified group directory; no folder file is written.
+    const componentFile = files.find(f => f.includes('/blocks/my-layout/hero.ts'));
+    expect(componentFile).toBeDefined();
+    expect(files.some(f => f.includes('/blocks/folders/'))).toBe(false);
 
-    const content = vol.readFileSync(folderFile!, 'utf-8') as string;
-    expect(content).toContain('defineBlockFolder(');
-    expect(content).toContain('name: \'Content Blocks\'');
+    const content = vol.readFileSync(componentFile!, 'utf-8') as string;
+    expect(content).toContain('defineBlock(');
+    expect(content).not.toContain('defineBlockFolder');
+    // Groups aren't part of a content-shape definition, so the field is dropped.
+    expect(content).not.toContain('component_group_uuid');
+
+    // schema.ts imports the block from its slugified subdirectory.
+    const schemaFile = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
+    expect(schemaFile).toContain('./blocks/my-layout/hero');
   });
 
   it('should generate datasource files', async () => {
@@ -190,7 +199,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    expect(files.some(f => f.includes('.storyblok/schema/components/hero.ts'))).toBe(true);
+    expect(files.some(f => f.includes('.storyblok/schema/blocks/hero.ts'))).toBe(true);
     expect(files.some(f => f.includes('.storyblok/schema/schema.ts'))).toBe(true);
   });
 
@@ -201,7 +210,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE, '--out-dir', './custom/output']);
 
     const files = Object.keys(vol.toJSON());
-    expect(files.some(f => f.includes('custom/output/components/hero.ts'))).toBe(true);
+    expect(files.some(f => f.includes('custom/output/blocks/hero.ts'))).toBe(true);
     expect(files.some(f => f.includes('custom/output/schema.ts'))).toBe(true);
   });
 
@@ -247,7 +256,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    const componentFile = files.find(f => f.includes('/components/hero.ts'));
+    const componentFile = files.find(f => f.includes('/blocks/hero.ts'));
     expect(componentFile).toBeDefined();
 
     const content = vol.readFileSync(componentFile!, 'utf-8') as string;
@@ -263,13 +272,13 @@ describe('schema init command', () => {
 
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
-    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/components/hero.ts');
+    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/blocks/hero.ts');
     expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/schema.ts');
   });
 
   it('should refuse when the target directory is not empty', async () => {
     vol.fromJSON({
-      '.storyblok/schema/components/existing.ts': '// existing',
+      '.storyblok/schema/blocks/existing.ts': '// existing',
     });
     let unhandledRequest = false;
     server.use(
@@ -298,6 +307,6 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    expect(files.some(f => f.includes('.storyblok/schema/components/hero.ts'))).toBe(true);
+    expect(files.some(f => f.includes('.storyblok/schema/blocks/hero.ts'))).toBe(true);
   });
 });

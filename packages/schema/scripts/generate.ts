@@ -15,18 +15,17 @@ const PKG_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 
 await generate({
   outDir: resolve(PKG_ROOT, 'src/generated'),
+  // `@storyblok/schema` exposes content shapes only: block, field, and
+  // datasource definitions plus the story and block-content types derived from
+  // them. Story CRUD payloads (`StoryCreate`/`StoryUpdate`) are management-API
+  // wire shapes and live in `@storyblok/management-api-client`.
   include: [
     'Story',
+    'MapiStory',
     'RootBlock',
     'Block',
     'BlockContent',
     'BlockContentInput',
-    'MapiStory',
-    'StoryCreate',
-    'StoryUpdate',
-    'StoryAlternate',
-    'StoryTranslatedSlug',
-    'StoryLocalizedPath',
     'Field',
     'FieldType',
     'FieldValue',
@@ -36,36 +35,9 @@ await generate({
     'PluginFieldValue',
     'RichtextFieldValue',
     'TableFieldValue',
-    'ComponentCreate',
-    'ComponentUpdate',
-    'Asset',
-    'AssetCreate',
-    'AssetUpdate',
-    'AssetFolder',
-    'AssetFolderCreate',
-    'AssetFolderUpdate',
-    'ComponentFolder',
-    'ComponentFolderCreate',
-    'ComponentFolderUpdate',
     'Datasource',
-    'DatasourceCreate',
-    'DatasourceUpdate',
-    'DatasourceEntry',
-    'DatasourceEntryCreate',
-    'DatasourceEntryUpdate',
-    'MapiDatasourceEntry',
-    'InternalTag',
-    'InternalTagCreate',
-    'InternalTagUpdate',
-    'Link',
-    'Preset',
-    'PresetCreate',
-    'PresetUpdate',
-    'Space',
-    'SpaceCreate',
-    'SpaceUpdate',
-    'Tag',
-    'User',
-    'UserUpdate',
   ],
+  // Emit internal Zod v4 schemas for the overlay content-value shapes. These
+  // power the runtime validators.
+  zod: { spec: 'overlay' },
 });

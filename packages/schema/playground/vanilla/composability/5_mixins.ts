@@ -3,10 +3,10 @@ import type { Field } from '@storyblok/schema';
 
 type NamedField = Field & { name: string };
 
-/** Appends a `tracking_id` field to any schema array. */
-export function withTracking<const T extends readonly NamedField[]>(schema: T) {
+/** Appends a `tracking_id` field to any fields array. */
+export function withTracking<const T extends readonly NamedField[]>(fields: T) {
   return [
-    ...schema,
+    ...fields,
     defineField('tracking_id', {
       type: 'text',
       max_length: 50,
@@ -15,9 +15,9 @@ export function withTracking<const T extends readonly NamedField[]>(schema: T) {
   ];
 }
 
-/** Prepends a collapsible `section` grouping field to any schema array. */
+/** Prepends a collapsible `section` grouping field to any fields array. */
 export function withSection<const T extends readonly NamedField[]>(
-  schema: T,
+  fields: T,
   config: { title: string; keys: string[] },
 ) {
   return [
@@ -26,6 +26,6 @@ export function withSection<const T extends readonly NamedField[]>(
       keys: config.keys,
       fieldset: { title: config.title, collapsible: true, collapsed: false },
     }),
-    ...schema,
+    ...fields,
   ];
 }

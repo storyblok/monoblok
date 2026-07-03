@@ -1,11 +1,10 @@
 import chalk from 'chalk';
 
-import type { Component, ComponentFolder, Datasource } from '../../../types';
+import type { Component, Datasource } from '../../../types';
 import type { ChangesetEntry, DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
-import { getLogger } from '../../../lib/logger/logger';
 import { handleAPIError } from '../../../utils';
-import { toComponentCreate, toComponentFolderCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 
 /** Formats diff results for CLI display using chalk colors. */
 export function formatDiffOutput(result: DiffResult, options?: { delete?: boolean }): string {
@@ -13,7 +12,6 @@ export function formatDiffOutput(result: DiffResult, options?: { delete?: boolea
 
   const byType = {
     component: [] as EntityDiff[],
-    componentFolder: [] as EntityDiff[],
     datasource: [] as EntityDiff[],
   };
 
@@ -31,7 +29,6 @@ export function formatDiffOutput(result: DiffResult, options?: { delete?: boolea
 
   const sections: [string, EntityDiff[]][] = [
     ['Components', byType.component],
-    ['Component Folders', byType.componentFolder],
     ['Datasources', byType.datasource],
   ];
 
@@ -77,7 +74,7 @@ export async function executePush(
   local: SchemaData,
   remote: RemoteSchemaData,
   diffResult: DiffResult,
-  options: { delete: boolean; pendingFolderAssignments?: Map<string, string[]> },
+  options: { delete: boolean },
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
@@ -85,75 +82,11 @@ export async function executePush(
   let updated = 0;
   let deleted = 0;
 
-  // Map of folder name → remote UUID, populated as folders are created
-  const createdFolderUuids = new Map<string, string>();
-
-  // 1. Upsert component folders first (components may reference them)
-  const folderDiffs = diffResult.diffs.filter(d => d.type === 'componentFolder');
-  const folderResults = await Promise.allSettled(
-    folderDiffs.map(async (diff) => {
-      const localFolder = local.componentFolders.find(f => f.name === diff.name);
-      if (diff.action === 'create' && localFolder) {
-        const response = await client.componentFolders.create({
-          path: { space_id: spaceIdNum },
-          body: { component_group: toComponentFolderCreate(localFolder) },
-          throwOnError: true,
-        });
-        return { action: 'created' as const, uuid: response.data?.component_group?.uuid };
-      }
-      if (diff.action === 'update' && localFolder) {
-        const existing = remote.componentFolders.get(diff.name);
-        if (existing?.id) {
-          await client.componentFolders.update(existing.id, {
-            path: { space_id: spaceIdNum },
-            body: { component_group: toComponentFolderCreate(localFolder) },
-            throwOnError: true,
-          });
-          return { action: 'updated' as const };
-        }
-      }
-    }),
-  );
-  for (let i = 0; i < folderResults.length; i++) {
-    const result = folderResults[i];
-    const diff = folderDiffs[i];
-    if (result.status === 'fulfilled') {
-      if (result.value?.action === 'created') {
-        if (result.value.uuid) { createdFolderUuids.set(diff.name, result.value.uuid); }
-        created++;
-      }
-      else if (result.value?.action === 'updated') {
-        updated++;
-      }
-    }
-    else {
-      const eventId = diff.action === 'create' ? 'push_component_group' : 'update_component_group';
-      handleAPIError(eventId, result.reason, `Failed to ${diff.action} component folder ${diff.name}`);
-    }
-  }
-
-  // 2. Resolve pending folder assignments (folders that were just created)
-  const skippedComponents = new Set<string>();
-  if (options.pendingFolderAssignments) {
-    const logger = getLogger();
-    for (const [folderName, componentNames] of options.pendingFolderAssignments) {
-      const remoteUuid = createdFolderUuids.get(folderName);
-      if (!remoteUuid) {
-        logger.warn(`Could not resolve folder '${folderName}' — skipping components: ${componentNames.join(', ')}`);
-        for (const name of componentNames) { skippedComponents.add(name); }
-        continue;
-      }
-      for (const compName of componentNames) {
-        const comp = local.components.find(c => c.name === compName);
-        if (comp) {
-          comp.component_group_uuid = remoteUuid;
-        }
-      }
-    }
-  }
-
-  // 3. Upsert components
-  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component' && !skippedComponents.has(d.name));
+  // 1. Upsert components. Component groups are maintained in code via the
+  //    directory layout, so they are neither set nor cleared here — unless a
+  //    block opts into the escape hatch by setting `component_group_uuid`, which
+  //    `transform` then forwards to the Management API.
+  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component');
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {
       const localComp = local.components.find(c => c.name === diff.name);
@@ -191,7 +124,7 @@ export async function executePush(
     }
   }
 
-  // 4. Upsert datasources
+  // 2. Upsert datasources
   const datasourceDiffs = diffResult.diffs.filter(d => d.type === 'datasource');
   const datasourceResults = await Promise.allSettled(
     datasourceDiffs.map(async (diff) => {
@@ -230,7 +163,7 @@ export async function executePush(
     }
   }
 
-  // 5. Delete stale entities if --delete flag is set
+  // 3. Delete stale entities if --delete flag is set
   if (options.delete) {
     // Delete stale components
     const staleComponents = diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale');
@@ -251,7 +184,7 @@ export async function executePush(
       if (result.status === 'fulfilled') {
         if (result.value) { deleted++; }
       }
-      else { handleAPIError('push_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
+      else { handleAPIError('delete_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
     }
 
     // Delete stale datasources
@@ -275,28 +208,6 @@ export async function executePush(
       }
       else { handleAPIError('delete_datasource', result.reason, `Failed to delete datasource ${staleDatasources[i].name}`); }
     }
-
-    // Delete stale component folders (last, since components may reference them)
-    const staleFolders = diffResult.diffs.filter(d => d.type === 'componentFolder' && d.action === 'stale');
-    const deleteFolderResults = await Promise.allSettled(
-      staleFolders.map(async (diff) => {
-        const existing = remote.componentFolders.get(diff.name);
-        if (existing?.id) {
-          await client.componentFolders.delete(existing.id, {
-            path: { space_id: spaceIdNum },
-            throwOnError: true,
-          });
-          return true;
-        }
-      }),
-    );
-    for (let i = 0; i < deleteFolderResults.length; i++) {
-      const result = deleteFolderResults[i];
-      if (result.status === 'fulfilled') {
-        if (result.value) { deleted++; }
-      }
-      else { handleAPIError('push_component_group', result.reason, `Failed to delete folder ${staleFolders[i].name}`); }
-    }
   }
 
   return { created, updated, deleted };
@@ -317,16 +228,12 @@ export function buildChangesetEntries(
 
     const action = diff.action === 'stale' ? 'delete' : diff.action;
 
-    let remoteSrc: Component | ComponentFolder | Datasource | undefined;
-    let localSrc: Component | ComponentFolder | Datasource | undefined;
+    let remoteSrc: Component | Datasource | undefined;
+    let localSrc: Component | Datasource | undefined;
 
     if (diff.type === 'component') {
       remoteSrc = remote.components.get(diff.name);
       localSrc = local.components.find(c => c.name === diff.name);
-    }
-    else if (diff.type === 'componentFolder') {
-      remoteSrc = remote.componentFolders.get(diff.name);
-      localSrc = local.componentFolders.find(f => f.name === diff.name);
     }
     else if (diff.type === 'datasource') {
       remoteSrc = remote.datasources.get(diff.name);

@@ -19,11 +19,10 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createManagementApiClient } from '@storyblok/management-api-client';
+import type { StoryCreate } from '@storyblok/management-api-client';
 import { createApiClient } from '@storyblok/api-client';
 import {
-  createStoryHelpers,
   defineBlock,
-  defineBlockCreate,
   defineField,
 } from '@storyblok/schema';
 
@@ -36,7 +35,7 @@ const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
-  schema: [
+  fields: [
     defineField('title', { type: 'text', required: true }),
     defineField('image', { type: 'asset' }),
   ],
@@ -44,11 +43,11 @@ const teaserComponent = defineBlock({
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
-  schema: [
+  fields: [
     defineField('title', { type: 'text' }),
     defineField('items', {
       type: 'bloks',
-      component_whitelist: [teaserComponent.name],
+      allow: [teaserComponent.name],
       required: true,
     }),
   ],
@@ -56,13 +55,13 @@ const sectionComponent = defineBlock({
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
-  schema: [
+  fields: [
     defineField('headline', { type: 'text', required: true }),
     defineField('rating', { type: 'number' }),
     defineField('is_featured', { type: 'boolean' }),
     defineField('body', {
       type: 'bloks',
-      component_whitelist: [teaserComponent.name, sectionComponent.name],
+      allow: [teaserComponent.name, sectionComponent.name],
       required: true,
     }),
     defineField('any_blocks', {
@@ -76,7 +75,7 @@ interface StoryblokTypes {
   components: typeof pageComponent | typeof teaserComponent | typeof sectionComponent;
 }
 
-const { defineStoryCreate } = createStoryHelpers().withTypes<StoryblokTypes>();
+type Blocks = StoryblokTypes['components'];
 
 function createTypedCapiClient(accessToken: string) {
   return createApiClient({ accessToken, throwOnError: true }).withTypes<StoryblokTypes>();
@@ -118,28 +117,28 @@ describe('schema + capi-client CAPI round-trip', () => {
     previewToken = spaceRes.data!.space!.first_token!;
     expect(previewToken).toBeTruthy();
 
-    // 2. Create teaser component (innermost — whitelisted by section)
-    const teaserPayload = defineBlockCreate({
+    // 2. Create teaser component (innermost — whitelisted by section).
+    // Component create payloads are the MAPI wire shape (a `schema` record), not
+    // the DSL `fields` array used for typing above.
+    await mapiClient.components.create({ body: { component: {
       name: teaserComponent.name,
       schema: {
         title: { type: 'text', required: true, pos: 0 },
         image: { type: 'asset', pos: 1 },
       },
-    });
-    await mapiClient.components.create({ body: { component: teaserPayload } });
+    } } });
 
     // 3. Create section component (level 2 — whitelists teaser, whitelisted by page)
-    const sectionPayload = defineBlockCreate({
+    await mapiClient.components.create({ body: { component: {
       name: sectionComponent.name,
       schema: {
         title: { type: 'text', pos: 0 },
         items: { type: 'bloks', component_whitelist: [teaserComponent.name], pos: 1 },
       },
-    });
-    await mapiClient.components.create({ body: { component: sectionPayload } });
+    } } });
 
     // 4. Create page component (level 1 — whitelists both teaser and section)
-    const pagePayload = defineBlockCreate({
+    await mapiClient.components.create({ body: { component: {
       name: pageComponent.name,
       schema: {
         headline: { type: 'text', required: true, pos: 0 },
@@ -149,14 +148,14 @@ describe('schema + capi-client CAPI round-trip', () => {
         any_blocks: { type: 'bloks', pos: 4 },
       },
       is_root: true,
-    });
-    await mapiClient.components.create({ body: { component: pagePayload } });
+    } } });
 
     // 5. Create story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)
-    const storyPayload = defineStoryCreate(pageComponent, {
+    const storyPayload: StoryCreate<Blocks> = {
       name: 'E2E CAPI Test Page',
       slug: STORY_SLUG,
       content: {
+        component: pageComponent.name,
         headline: 'Hello from CAPI e2e',
         rating: 42,
         is_featured: true,
@@ -183,7 +182,7 @@ describe('schema + capi-client CAPI round-trip', () => {
           },
         ],
       },
-    });
+    };
     const storyRes = await mapiClient.stories.create({ body: { story: storyPayload } });
     storyId = storyRes.data!.story!.id!;
 

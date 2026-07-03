@@ -1,5 +1,10 @@
 import { isAbsolute, relative } from 'pathe';
 
+/** Narrows a value to a plain object (excludes `null` and arrays). */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /** Fields to strip from Component before serialization (read-only / API-assigned). */
 export const COMPONENT_STRIP_KEYS = new Set([
   'id',
@@ -13,6 +18,7 @@ export const COMPONENT_STRIP_KEYS = new Set([
   'image', // Read-only preview image URL
   'preview_tmpl', // Read-only preview template
   'metadata', // Not in current API types, stripped defensively
+  'component_group_uuid', // UI grouping; stripped by default — kept for diffing only when a block opts into the group escape hatch
 ]);
 
 /** Fields to strip from Datasource before serialization. */
@@ -20,12 +26,6 @@ export const DATASOURCE_STRIP_KEYS = new Set(['id', 'created_at', 'updated_at'])
 
 /** Fields to strip from Datasource dimension entries before serialization. */
 export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set(['id', 'datasource_id', 'created_at', 'updated_at']);
-
-/** Fields to strip from ComponentFolder during init code generation (keeps uuid for identity). */
-export const FOLDER_INIT_STRIP_KEYS = new Set(['id']);
-
-/** Fields to strip from ComponentFolder before serialization for diffing (strips uuid for cross-space portability). */
-export const FOLDER_STRIP_KEYS = new Set(['id', 'uuid']);
 
 /**
  * Default values for optional component fields.
@@ -42,7 +42,9 @@ export const FOLDER_STRIP_KEYS = new Set(['id', 'uuid']);
  *
  * Excluded intentionally:
  * - `is_root` / `is_nestable`: users set these explicitly; boolean, not nullable
- * - `component_group_uuid`: resetting would silently move component out of its folder
+ * - `component_group_uuid`: stripped before diffing (see COMPONENT_STRIP_KEYS)
+ *   unless a block opts into the group escape hatch by setting it explicitly;
+ *   diffing then keeps it on both sides so a changed group is pushed
  */
 /**
  * Default values for optional datasource fields.

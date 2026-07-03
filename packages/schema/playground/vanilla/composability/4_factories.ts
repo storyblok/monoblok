@@ -7,7 +7,6 @@ type NamedField = Field & { name: string };
 
 export function createSectionBlock(config: {
   name: string;
-  folderUuid?: string;
   displayName?: string;
   withCta?: boolean;
   withImage?: boolean;
@@ -16,8 +15,7 @@ export function createSectionBlock(config: {
     name: config.name,
     is_nestable: true,
     ...(config.displayName && { display_name: config.displayName }),
-    ...(config.folderUuid && { component_group_uuid: config.folderUuid }),
-    schema: [
+    fields: [
       { ...headlineField, required: true },
       bodyField,
       ...(config.withImage ? [imageField] : []),
@@ -28,15 +26,13 @@ export function createSectionBlock(config: {
 
 export function createCardBlock(config: {
   name: string;
-  folderUuid?: string;
   extraFields?: readonly NamedField[];
 }) {
   return defineBlock({
     name: config.name,
     is_nestable: true,
     preview_field: 'title',
-    ...(config.folderUuid && { component_group_uuid: config.folderUuid }),
-    schema: [
+    fields: [
       defineField('title', { type: 'text', max_length: 80, required: true }),
       defineField('description', { type: 'textarea', max_length: 300 }),
       imageField,

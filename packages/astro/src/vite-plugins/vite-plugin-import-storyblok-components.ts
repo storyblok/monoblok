@@ -3,14 +3,12 @@ import { normalizePath } from '../utils/normalizePath';
 import { toCamelCase } from '../utils/toCamelCase';
 import type { Plugin } from 'vite';
 
-// Virtual module identifiers for Vite's module system
 const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
+
 /**
- * Vite plugin that automatically imports Storyblok components from a specified directory
- * and merges them with optional user-provided component mappings.
- *
- * @returns Vite plugin object
+ * Vite plugin that auto-imports Storyblok components from a directory
+ * and merges them with user-provided component mappings.
  */
 export function vitePluginImportStoryblokComponents(
   components: Record<string, string>,
@@ -20,121 +18,75 @@ export function vitePluginImportStoryblokComponents(
 ): Plugin {
   return {
     name: 'vite-plugin-import-storyblok-components',
-    /**
-     * Resolves virtual module imports
-     */
+
     async resolveId(id: string) {
       if (id === VIRTUAL_MODULE_ID) {
         return RESOLVED_VIRTUAL_MODULE_ID;
       }
     },
 
-    /**
-     * Generates the virtual module content with dynamic imports
-     */
     async load(id: string) {
       if (id !== RESOLVED_VIRTUAL_MODULE_ID) {
         return;
       }
 
-      // Resolve fallback component import
-      const fallbackImport = await resolveFallbackComponent(
+      const fallbackRegistration = await resolveFallbackComponent(
         this,
         componentsDir,
         enableFallbackComponent,
         customFallbackComponent,
       );
 
-      const manualImports = await resolveUserComponents(
+      const manualRegistrations = await resolveUserComponents(
         this,
         components,
         componentsDir,
         enableFallbackComponent,
       );
 
-      // Generate the virtual module code
-      const moduleCode = generateModuleCode(
-        componentsDir,
-        fallbackImport,
-        manualImports,
-      );
-
       return {
-        code: moduleCode,
+        code: generateModuleCode(componentsDir, fallbackRegistration, manualRegistrations),
         moduleType: 'js',
       };
     },
   };
 }
-export interface ResolvedComponent {
-  componentName: string;
-  importPath: string;
+
+export interface ComponentRegistrationParts {
+  importStatement: string;
+  wrapperDefinition: string;
+  registrationCall: string;
 }
 
 /**
- * Generates the complete virtual module code including:
- * - Auto-imported components via glob
- * - User-provided component imports (via static imports at the top)
- * - Optional fallback component (via static import at the top)
- *
- * Static imports are placed at the very beginning of the module to ensure
- * they are hoisted correctly and available when registration code runs.
- *
- * @param componentsDir - Base directory of components
- * @param fallbackImport - Import statement for fallback (if any)
- * @param manualImports - Explicit imports generated from user-provided components
- * @returns Virtual module source code
+ * Generates the virtual module code with:
+ * - Static imports at the top for proper hoisting
+ * - Glob-imported components from storyblok folder
+ * - Manual and fallback component registrations
  */
 export function generateModuleCode(
   componentsDir: string,
-  fallbackImport: string,
-  manualImports: string[],
+  fallbackRegistration: ComponentRegistrationParts | null,
+  manualRegistrations: ComponentRegistrationParts[],
 ): string {
-  // Normalize components directory path for Vite globbing
   const normalizedComponentsDir = normalizePath(componentsDir);
-
-  // Only look into the storyblok folder
   const globPattern = `${normalizedComponentsDir}/storyblok/**/*.astro`;
 
-  // Extract import statements, wrapper definitions, and registration calls from manual imports
-  const importStatements: string[] = [];
-  const wrapperDefinitions: string[] = [];
-  const registrationCalls: string[] = [];
-
-  const parseLines = (code: string) => {
-    const lines = code.split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('import ')) {
-        importStatements.push(trimmed);
-      }
-      else if (trimmed.startsWith('const ')) {
-        wrapperDefinitions.push(trimmed);
-      }
-      else if (trimmed.startsWith('registerComponent(')) {
-        registrationCalls.push(trimmed);
-      }
-    }
-  };
-
-  for (const importCode of manualImports) {
-    parseLines(importCode);
+  const allRegistrations = [...manualRegistrations];
+  if (fallbackRegistration) {
+    allRegistrations.push(fallbackRegistration);
   }
 
-  // Extract fallback import and registration
-  if (fallbackImport) {
-    parseLines(fallbackImport);
-  }
+  const importStatements = allRegistrations.map(r => r.importStatement);
+  const wrapperDefinitions = allRegistrations.map(r => r.wrapperDefinition);
+  const registrationCalls = allRegistrations.map(r => r.registrationCall);
 
   return `
-    // Static imports - placed at the top for proper hoisting
     import { toCamelCase } from '@storyblok/astro';
     ${importStatements.join('\n    ')}
 
-    // Dynamically import all Storyblok components using Vite's glob import
     const modules = import.meta.glob('${globPattern}', { eager: true });
 
-    // Process imported modules into a components object
     const storyblokComponents = {};
     const createComponentLoader = (module) => {
       return async () => module?.default ?? module;
@@ -147,7 +99,6 @@ export function generateModuleCode(
       });
     };
 
-    // Register glob-imported components from storyblok folder
     for (const filePath in modules) {
       const fileName = filePath.split('/').pop();
       const componentName = toCamelCase(fileName?.replace(/\\.[^/.]+$/, '') ?? '');
@@ -156,13 +107,10 @@ export function generateModuleCode(
       }
     }
 
-    // Component wrappers with getters to defer access and avoid TDZ issues
     ${wrapperDefinitions.join('\n    ')}
 
-    // Register manual and fallback components
     ${registrationCalls.join('\n    ')}
 
-    // Export the components object for use in Storyblok initialization
     export { storyblokComponents };
   `.trim();
 }
@@ -172,21 +120,18 @@ async function resolveFallbackComponent(
   componentsDir: string,
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
-): Promise<string> {
+): Promise<ComponentRegistrationParts | null> {
   if (!enableFallbackComponent) {
-    return '';
+    return null;
   }
   if (!customFallbackComponent) {
-    return createComponentRegistrationCode({
+    return createComponentRegistrationParts({
       componentName: 'FallbackComponent',
       importPath: '@storyblok/astro/FallbackComponent.astro',
     });
   }
 
-  const componentPath = getComponentFullPath(
-    componentsDir,
-    customFallbackComponent,
-  );
+  const componentPath = getComponentFullPath(componentsDir, customFallbackComponent);
   const resolved = await ctx.resolve(componentPath);
   if (!resolved) {
     throw new Error(
@@ -194,27 +139,19 @@ async function resolveFallbackComponent(
     );
   }
 
-  return createComponentRegistrationCode({
+  return createComponentRegistrationParts({
     componentName: 'FallbackComponent',
     importPath: resolved.id,
   });
 }
-/**
- * Resolves user-provided Storyblok components into import statements.
- *
- * @param ctx - Vite plugin context (`this` in load hook)
- * @param components - User-specified mapping of blok names to component paths
- * @param componentsDir - Base directory for components
- * @param enableFallback - Whether to silently skip unresolved components
- * @returns Array of import and registration code strings
- */
+
 async function resolveUserComponents(
   ctx: any,
   components: Record<string, string>,
   componentsDir: string,
   enableFallback: boolean,
-): Promise<string[]> {
-  const resolvedComponents: string[] = [];
+): Promise<ComponentRegistrationParts[]> {
+  const resolvedComponents: ComponentRegistrationParts[] = [];
 
   for (const [blokName, componentPath] of Object.entries(components)) {
     const fullPath = getComponentFullPath(componentsDir, componentPath);
@@ -229,7 +166,7 @@ async function resolveUserComponents(
       continue;
     };
     const componentName = toCamelCase(blokName);
-    resolvedComponents.push(createComponentRegistrationCode({
+    resolvedComponents.push(createComponentRegistrationParts({
       componentName,
       importPath: resolved.id,
     }));
@@ -237,22 +174,6 @@ async function resolveUserComponents(
   return resolvedComponents;
 }
 
-/**
- * Builds the full normalized path to an Astro component file.
- *
- * - Ensures both the components directory and the component path
- *   are normalized (leading slash, no trailing slash, no duplicates).
- * - Concatenates them into a single path.
- * - Ensures the `.astro` extension is present.
- *
- * @param componentsDir - Base directory where Astro components live
- * @param componentPath - Relative path (or subpath) to the component
- * @returns Full normalized path ending with `.astro`
- *
- * @example
- * getComponentFullPath("components", "ui/Button");
- * // "/components/ui/Button.astro"
- */
 function getComponentFullPath(
   componentsDir: string,
   componentPath: string,
@@ -262,32 +183,29 @@ function getComponentFullPath(
   return normalizeAstroExtension(fullComponentPath);
 }
 
-interface CreateComponentRegistrationCodeOptions {
+interface CreateComponentRegistrationPartsOptions {
   componentName: string;
   importPath: string;
 }
 
 /**
- * Generates import and registration code for a component.
- * Uses a unique variable name based on the component name to avoid conflicts.
+ * Generates structured registration parts for a component.
  *
- * IMPORTANT: We wrap each import in an object with a getter to avoid TDZ errors.
- * When Vite bundles modules, the order of code execution can cause
- * "Cannot access 'X' before initialization" errors if we directly reference
- * the imported component. By wrapping it in an object with a getter,
- * the actual access is deferred until the component is needed.
+ * Uses a getter wrapper to avoid TDZ (Temporal Dead Zone) errors.
+ * When Vite bundles modules, direct references to imported components
+ * can cause "Cannot access 'X' before initialization" errors.
+ * The getter defers access until the component is actually needed.
  */
-function createComponentRegistrationCode({
+export function createComponentRegistrationParts({
   componentName,
   importPath,
-}: CreateComponentRegistrationCodeOptions): string {
-  // Use a unique variable name to avoid conflicts between components
+}: CreateComponentRegistrationPartsOptions): ComponentRegistrationParts {
   const varName = `__${componentName}_component__`;
-  // Wrap in an object with a getter to defer access and avoid TDZ issues
   const wrapperName = `__${componentName}_wrapper__`;
-  return `
-import ${varName} from '${importPath}';
-const ${wrapperName} = { get default() { return ${varName}; } };
-registerComponent('${componentName}', ${wrapperName});
-`.trim();
+
+  return {
+    importStatement: `import ${varName} from '${importPath}';`,
+    wrapperDefinition: `const ${wrapperName} = { get default() { return ${varName}; } };`,
+    registrationCall: `registerComponent('${componentName}', ${wrapperName});`,
+  };
 }

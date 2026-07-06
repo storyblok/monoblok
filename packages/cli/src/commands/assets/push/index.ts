@@ -41,7 +41,7 @@ import { assertLibraryWritable, listWritableLibraries, resolveScopeBaseDir, type
 type Summaries = [string, Report['summary'][string]][];
 
 /** Push destination: the space, the org's shared libraries, or both. */
-const PUSH_TARGETS = ['space', 'shared', 'all'] as const;
+const PUSH_TARGETS = ['space', 'shared', 'auto'] as const;
 type PushTarget = typeof PUSH_TARGETS[number];
 
 interface ScopeTransports {
@@ -83,7 +83,7 @@ const pushCmd = assetsCommand
   .option('--data <data>', 'inline asset data as JSON')
   .option('--short-filename <short-filename>', 'override the asset filename')
   .option('--folder <folderId>', 'destination asset folder ID')
-  .addOption(new Option('--target <target>', 'push destination: space | shared | all (default: space for a single asset, all for a bulk push)').choices(PUSH_TARGETS))
+  .addOption(new Option('--target <target>', 'push destination: space | shared | auto (default: space for a single asset, auto for a bulk push)').choices(PUSH_TARGETS))
   .option('--library <libraryId>', 'destination library ID (required for single-asset --target=shared)')
   .option('--cleanup', 'delete local assets and metadata after a successful push (note: does not cleanup manifests)')
   .option('--update-stories', 'update file references in stories if necessary', false)
@@ -125,16 +125,16 @@ pushCmd
     // Default the destination by mode: a single asset has exactly one
     // destination (the space), while a bulk push sends every local source to
     // its destination (the space subtree plus every writable shared library).
-    // When nothing shared exists on disk, `all` behaves exactly like `space`,
+    // When nothing shared exists on disk, `auto` behaves exactly like `space`,
     // so the default never writes to a library the user did not pull from.
-    const target = (options.target as PushTarget | undefined) ?? (assetBinaryPath ? 'space' : 'all');
+    const target = (options.target as PushTarget | undefined) ?? (assetBinaryPath ? 'space' : 'auto');
 
     // Validate the target/library combination for single-asset pushes.
     if (assetBinaryPath) {
-      if (target === 'all') {
-        // A single asset has exactly one destination; `all` would silently
+      if (target === 'auto') {
+        // A single asset has exactly one destination; `auto` would silently
         // fall back to space-only, so require an explicit target instead.
-        handleError(new CommandError('Pushing a single asset requires --target=space or --target=shared, not --target=all.'), verbose);
+        handleError(new CommandError('Pushing a single asset requires --target=space or --target=shared, not --target=auto.'), verbose);
         process.exitCode = 2;
         return;
       }
@@ -166,10 +166,10 @@ pushCmd
         }
       }
       else {
-        if (target === 'space' || target === 'all') {
+        if (target === 'space' || target === 'auto') {
           scopes.push({ kind: 'space', spaceId: fromSpace });
         }
-        if (target === 'shared' || target === 'all') {
+        if (target === 'shared' || target === 'auto') {
           // `listWritableLibraries` already filters to writable libraries, so
           // these scopes need no further access check.
           const libraries = await listWritableLibraries(targetSpace);

@@ -64,7 +64,7 @@ const server = setupServer(
     { internal_tags: [] },
     { headers: { 'Total': '0', 'Per-Page': '100' } },
   )),
-  // A bulk push (default `--target all`) lists shared libraries. Default to none;
+  // A bulk push (default `--target auto`) lists shared libraries. Default to none;
   // `preconditions.hasLibraries` overrides this for library-specific tests.
   http.get('https://mapi.storyblok.com/v1/spaces/:spaceId/shared_asset_folders', () => HttpResponse.json(
     { shared_asset_folders: [] },
@@ -1716,10 +1716,10 @@ describe('assets push command', () => {
       expect(process.exitCode).toBe(2);
     });
 
-    it('rejects a single-asset --target all', async () => {
+    it('rejects a single-asset --target auto', async () => {
       preconditions.canLoadLocalFile('./hero.png', 'binary-content');
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'all']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'auto']);
 
       expect(actions.createAsset).not.toHaveBeenCalled();
       expect(actions.createSharedAsset).not.toHaveBeenCalled();
@@ -1755,7 +1755,7 @@ describe('assets push command', () => {
       expect(getLogFileContents(LOG_PREFIX)).toMatch(/Locked/);
     });
 
-    it('bulk push without --target defaults to all (space subtree + each writable library)', async () => {
+    it('bulk push without --target defaults to auto (space subtree + each writable library)', async () => {
       const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
@@ -1771,7 +1771,7 @@ describe('assets push command', () => {
       expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(true);
     });
 
-    it('bulk --target=all processes the space subtree and each writable library', async () => {
+    it('bulk --target=auto processes the space subtree and each writable library', async () => {
       const spaceAsset = makeMockAsset({ short_filename: 'space.png' });
       const libraryAsset = makeMockAsset({ short_filename: 'lib.png' });
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
@@ -1780,7 +1780,7 @@ describe('assets push command', () => {
       preconditions.canUpsertRemoteAssets([spaceAsset]);
       preconditions.canUpsertSharedAssets([libraryAsset], { libraryId: 7 });
 
-      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'all']);
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'auto']);
 
       const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
       expect(written.some(p => p.includes('assets/12345/manifest.jsonl'))).toBe(true);

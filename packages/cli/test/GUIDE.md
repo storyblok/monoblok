@@ -42,7 +42,7 @@ Notes for manual testing:
 - A library must already exist before you can push to it. Libraries are root shared folders, which can only be created in org context (`POST /v1/orgs/{org_id}/shared_asset_folders` with `regions` and `asset_folder_access`), not from a space. Reuse an existing QA library when possible.
 - Shared-asset creation requires an `asset_folder_id` the space can write to. A library push defaults it to the library root, so `--folder` is optional.
 - The library root folder itself is skipped on bulk push (a space cannot push a root shared folder), while its child folders are pushed.
-- `--target` accepts only `space`, `shared`, or `all` for push, and `with-referenced`, `all`, `space`, or `shared` for pull. Unknown values fail fast.
+- `--target` accepts only `space`, `shared`, or `auto` for push, and `with-referenced`, `all`, `space`, or `shared` for pull. Unknown values fail fast.
 
 ### Cleaning up shared libraries safely
 

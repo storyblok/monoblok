@@ -26,18 +26,25 @@ export function renderRichText(
   return nodes?.length ? renderChildren(nodes, context) : '';
 }
 type NodeRenderer = (props: SbRichTextNode & { children: string; context?: SbRichTextRenderContext }) => string;
-type MarkRenderer = (props: SbRichTextMark & { children: string }) => string;
+type MarkRenderer = (props: SbRichTextMark & { children: string; context?: SbRichTextRenderContext }) => string;
 
 /** Renders a single node to HTML. */
 function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): string {
-  if (node.type === 'text') {
-    return renderTextNode(node, node.marks, context);
-  }
-  const content = node.content ? renderChildren(node.content, context) : '';
+  const content = node.type !== 'text' && node.content ? renderChildren(node.content, context) : '';
+
   // Custom renderer takes full control
   const customRenderer = context?.renderers?.[node.type] as NodeRenderer | undefined;
   if (customRenderer) {
-    return customRenderer({ ...node, children: content, context });
+    // When passing context to a custom renderer, exclude that renderer type
+    // to prevent infinite loops if the custom renderer calls renderRichText internally
+    const contextForCustom = context?.renderers?.[node.type]
+      ? { ...context, renderers: { ...context.renderers, [node.type]: undefined } }
+      : context;
+    return customRenderer({ ...node, children: content, context: contextForCustom });
+  }
+
+  if (node.type === 'text') {
+    return renderTextNode(node, node.marks, context);
   }
 
   if (node.type === 'blok') {
@@ -167,6 +174,7 @@ function wrapWithMark(
     return customRenderer({
       ...mark,
       children: content,
+      context,
     });
   }
 
@@ -202,6 +210,7 @@ function renderLinkGroup(
     return customRenderer({
       ...linkMark,
       children: inner,
+      context,
     });
   }
 

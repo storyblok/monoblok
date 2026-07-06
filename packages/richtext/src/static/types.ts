@@ -1,7 +1,7 @@
 import type { SbRichTextImageOptions } from '../types';
 import type { SbRichTextElementByType, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
-export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
+export type SbRichTextElement = TiptapNodeName | TiptapMarkName;
 
 interface ISbComponentType<T extends string> {
   _uid?: string;
@@ -46,6 +46,7 @@ export type SbRichTextRendererMap = {
 export interface SbRichTextRenderContext {
   renderers?: SbRichTextRendererMap;
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
+  data?: unknown;
 }
 
 export { SbRichTextImageOptions };

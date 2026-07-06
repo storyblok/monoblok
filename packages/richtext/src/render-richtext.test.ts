@@ -107,6 +107,35 @@ describe('renderRichText', () => {
       const html = renderRichText(table.input, options);
       expect(html).toBe(table.expected);
     });
+    const text_node = customRendererFixture.text_node;
+    it(text_node.title, () => {
+      const options: SbRichTextRenderContext = {
+        data: { prefix: '[prefix]' },
+        renderers: {
+          text: ({ text: content, context }) => {
+            const data = context?.data as { prefix: string };
+            return `${data.prefix} ${content.toUpperCase()}`;
+          },
+        },
+      };
+      const html = renderRichText(text_node.input, options);
+      expect(html).toBe(text_node.expected);
+    });
+    const infinite_loop = customRendererFixture.infinite_loop_prevention;
+    it(infinite_loop.title, () => {
+      const options: SbRichTextRenderContext = {
+        renderers: {
+          heading: ({ attrs, content, context }) => {
+            // Simulate what a real component would do: call renderRichText internally
+            // Without loop prevention, this would cause infinite recursion
+            const inner = renderRichText(content, context);
+            return `<h${attrs?.level} data-type="recursive-heading" data-level="${attrs?.level}">${inner}</h${attrs?.level}>`;
+          },
+        },
+      };
+      const html = renderRichText(infinite_loop.input, options);
+      expect(html).toBe(infinite_loop.expected);
+    });
   });
   describe('blok nodes', () => {
     const blokDoc: SbRichTextDoc = {
@@ -196,6 +225,103 @@ describe('renderRichText', () => {
     it('escapes HTML in attributes', () => {
       const node = text('Link', [linkMark('javascript:alert("xss")')]);
       expect(renderRichText(node)).toContain('href="javascript:alert(&quot;xss&quot;)"');
+    });
+  });
+
+  describe('context data', () => {
+    it('passes data to custom node renderers', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'heading', attrs: { level: 1 }, content: [text('Title')] }],
+      };
+      const options: SbRichTextRenderContext = {
+        data: { theme: 'dark', prefix: 'custom' },
+        renderers: {
+          heading: ({ attrs, children, context }) => {
+            const data = context?.data as { theme: string; prefix: string };
+            return `<h${attrs?.level} class="${data.theme}" data-prefix="${data.prefix}">${children}</h${attrs?.level}>`;
+          },
+        },
+      };
+      expect(renderRichText(doc, options)).toBe('<h1 class="dark" data-prefix="custom">Title</h1>');
+    });
+
+    it('passes data to custom mark renderers', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [text('Bold text', [{ type: 'bold' }])] }],
+      };
+      const options: SbRichTextRenderContext = {
+        data: { className: 'highlight' },
+        renderers: {
+          bold: ({ children, context }) => {
+            const data = context?.data as { className: string };
+            return `<strong class="${data.className}">${children}</strong>`;
+          },
+        },
+      };
+      expect(renderRichText(doc, options)).toBe('<p><strong class="highlight">Bold text</strong></p>');
+    });
+
+    it('passes data to custom link renderers', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [text('Click here', [linkMark('https://example.com')])] }],
+      };
+      const options: SbRichTextRenderContext = {
+        data: { trackingId: 'abc123' },
+        renderers: {
+          link: ({ attrs, children, context }) => {
+            const data = context?.data as { trackingId: string };
+            return `<a href="${attrs?.href}" data-tracking="${data.trackingId}">${children}</a>`;
+          },
+        },
+      };
+      expect(renderRichText(doc, options)).toBe('<p><a href="https://example.com" data-tracking="abc123">Click here</a></p>');
+    });
+
+    it('allows custom text node renderer', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [text('hello world')] }],
+      };
+      const options: SbRichTextRenderContext = {
+        renderers: {
+          text: ({ text: content }) => content.toUpperCase(),
+        },
+      };
+      expect(renderRichText(doc, options)).toBe('<p>HELLO WORLD</p>');
+    });
+
+    it('custom text renderer receives context with data', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [text('hello')] }],
+      };
+      const options: SbRichTextRenderContext = {
+        data: { wrap: '**' },
+        renderers: {
+          text: ({ text: content, context }) => {
+            const data = context?.data as { wrap: string };
+            return `${data.wrap}${content}${data.wrap}`;
+          },
+        },
+      };
+      expect(renderRichText(doc, options)).toBe('<p>**hello**</p>');
+    });
+
+    it('custom text renderer with marks still applies marks', () => {
+      const doc: SbRichTextDoc = {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [text('hello', [{ type: 'bold' }])] }],
+      };
+      const options: SbRichTextRenderContext = {
+        renderers: {
+          text: ({ text: content }) => content.toUpperCase(),
+        },
+      };
+      // Custom text renderer takes full control, marks are not applied
+      expect(renderRichText(doc, options)).toBe('<p>HELLO</p>');
     });
   });
 });

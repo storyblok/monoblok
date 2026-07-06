@@ -112,4 +112,46 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
     ]),
     expected: '<table class="custom-table"><thead><tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr></thead><tbody><tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr></tbody></table>',
   },
+  text_node:
+  {
+    title: 'allows custom text node renderer with context data',
+    input: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [text('Hello '), text('World')],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [text('Title')],
+        },
+      ],
+    },
+    expected: '<p>[prefix] HELLO [prefix] WORLD</p><h1>[prefix] TITLE</h1>',
+  },
+  infinite_loop_prevention:
+  {
+    title: 'prevents infinite loop when custom renderer calls renderRichText/StoryblokRichText internally',
+    input: {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [text('Outer'), text(' Heading', [{ type: 'bold' }])],
+        },
+        {
+          type: 'paragraph',
+          content: [text('Normal paragraph')],
+        },
+      ],
+    },
+    // The custom heading renderer calls renderRichText internally for its children.
+    // Without loop prevention, it would infinitely recurse on headings.
+    // With protection, the heading renderer is removed from context when rendering children,
+    // so nested headings render with default behavior.
+    expected: '<h1 data-type="recursive-heading" data-level="1">Outer<strong> Heading</strong></h1><p>Normal paragraph</p>',
+  },
 };

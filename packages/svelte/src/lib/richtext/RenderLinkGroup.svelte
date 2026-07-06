@@ -16,7 +16,7 @@
 </script>
 
 {#if CustomComponent}
-  <CustomComponent {...linkMark}>
+  <CustomComponent {...linkMark} context={options}>
     <RenderLinkInner {nodes} {options} />
   </CustomComponent>
 {:else}

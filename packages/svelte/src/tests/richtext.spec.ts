@@ -7,6 +7,8 @@ import Bold from './richtext/Bold.svelte';
 import CustomCode from './richtext/CustomCode.svelte';
 import Heading from './richtext/Heading.svelte';
 import CustomLink from './richtext/CustomLink.svelte';
+import CustomText from './richtext/CustomText.svelte';
+import HeadingWithRichText from './richtext/HeadingWithRichText.svelte';
 
 // Helper function to clean up the HTML output for easier comparison
 export function cleanHtml(html: string) {
@@ -173,6 +175,37 @@ describe('storyblok Richtext', () => {
       flushSync();
       const result = cleanHtml(target.innerHTML);
       expect(result).toBe(table.expected);
+      unmount(component);
+    });
+    const text_node = customRendererFixture.text_node;
+    it(text_node.title, () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: text_node.input,
+          data: { prefix: '[prefix]' },
+          components: { text: CustomText },
+        },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe(text_node.expected);
+      unmount(component);
+    });
+    const infinite_loop = customRendererFixture.infinite_loop_prevention;
+    it(infinite_loop.title, () => {
+      const target = document.createElement('div');
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: infinite_loop.input,
+          components: { heading: HeadingWithRichText },
+        },
+      });
+      flushSync();
+      const result = cleanHtml(target.innerHTML);
+      expect(result).toBe(infinite_loop.expected);
       unmount(component);
     });
   });

@@ -4,6 +4,7 @@ import type { Component, Snippet } from 'svelte';
 export interface SbSvelteRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbSvelteRichTextComponentMap;
+  data?: unknown;
 }
 
 type AnyComponent = Component<any>;

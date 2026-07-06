@@ -7,6 +7,8 @@ import CustomBold from './richtext/CustomBold.vue';
 import CustomLink from './richtext/CustomLink.vue';
 import CustomCodeBlock from './richtext/CustomCodeBlock.vue';
 import CustomTable from './richtext/CustomTable.vue';
+import CustomText from './richtext/CustomText.vue';
+import HeadingWithRichText from './richtext/HeadingWithRichText.vue';
 import { h } from 'vue';
 
 describe('storyblok vue richtext rendering', () => {
@@ -162,6 +164,33 @@ describe('storyblok vue richtext rendering', () => {
         },
       });
       expect((wrapper.html({ raw: true }))).toBe(table.expected);
+    });
+    const text_node = customRendererFixture.text_node;
+    it(text_node.title, () => {
+      const components: SbVueRichTextComponentMap = {
+        text: CustomText,
+      };
+      const wrapper = mount(StoryblokRichText, {
+        props: {
+          document: text_node.input,
+          components,
+          data: { prefix: '[prefix]' },
+        },
+      });
+      expect((wrapper.html({ raw: true }))).toBe(text_node.expected);
+    });
+    const infinite_loop = customRendererFixture.infinite_loop_prevention;
+    it(infinite_loop.title, () => {
+      const components: SbVueRichTextComponentMap = {
+        heading: HeadingWithRichText,
+      };
+      const wrapper = mount(StoryblokRichText, {
+        props: {
+          document: infinite_loop.input,
+          components,
+        },
+      });
+      expect((wrapper.html({ raw: true }))).toBe(infinite_loop.expected);
     });
   });
 });

@@ -650,15 +650,8 @@ export const makeCleanupAssetFSTransport = (): CleanupAssetTransport =>
 const hasId = (a: unknown): a is { id: number } => {
   return !!a && typeof a === 'object' && 'id' in a && typeof (a as any).id === 'number';
 };
-const hasShortFilename = (a: unknown): a is { short_filename: string } => {
-  return !!a && typeof a === 'object' && 'short_filename' in a && typeof (a as any).short_filename === 'string';
-};
-const hasFilename = (a: unknown): a is { filename: string } => {
-  return !!a && typeof a === 'object' && 'filename' in a && typeof (a as any).filename === 'string';
-};
-const hasSize = (a: unknown): a is { size: string } => {
-  return !!a && typeof a === 'object' && 'size' in a && typeof (a as any).size === 'string';
-};
+const hasProp = <K extends string>(a: unknown, key: K): a is Record<K, string> =>
+  !!a && typeof a === 'object' && key in a && typeof (a as any)[key] === 'string';
 
 const processAsset = async ({
   localAsset,
@@ -726,7 +719,7 @@ const processAsset = async ({
     newRemoteAsset = { ...remoteAsset, ...updatePayload };
     status = 'updated';
   }
-  else if (hasShortFilename(localAsset)) {
+  else if (hasProp(localAsset, 'short_filename')) {
     // `internal_tags_list` is server-managed (read-only) and must not be sent.
     // `internal_tag_ids` is rewritten through `maps.assetInternalTagsByName` so
     // source-space IDs are translated to target-space IDs. When the
@@ -739,7 +732,7 @@ const processAsset = async ({
     // Storyblok only keeps the `<width>x<height>` folder in the CDN URL when it
     // was supplied at upload time; it is not derived server-side from the file.
     // Carry it over from the source asset's filename so pushed assets keep it.
-    const size = hasSize(rest) ? rest.size : (hasFilename(localAsset) ? extractAssetSizeFromFilename(localAsset.filename) : undefined);
+    const size = hasProp(rest, 'size') ? rest.size : (hasProp(localAsset, 'filename') ? extractAssetSizeFromFilename(localAsset.filename) : undefined);
     const createPayload = {
       ...rest,
       asset_folder_id: remoteFolderId,

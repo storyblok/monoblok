@@ -3,10 +3,12 @@ import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures,
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import StoryblokRichText from '../src/components/StoryblokRichText.astro';
 import Heading from './richtext/Heading.astro';
+import HeadingWithRichText from './richtext/HeadingWithRichText.astro';
 import Bold from './richtext/Bold.astro';
 import CustomLink from './richtext/CustomLink.astro';
 import CodeBlock from './richtext/CodeBlock.astro';
 import CustomTable from './richtext/CustomTable.astro';
+import CustomText from './richtext/CustomText.astro';
 // Removes source file and location attributes that Astro adds for hydration
 const clean = (result: string) => result.replace(/ data-astro-source-file="[^"]*"/g, '').replace(/ data-astro-source-loc="[^"]*"/g, '');
 
@@ -167,6 +169,33 @@ describe('storyblok Richtext', async () => {
         },
       });
       expect(clean(result)).toBe(table.expected);
+    });
+    const text_node = customRendererFixture.text_node;
+    it(text_node.title, async () => {
+      const container = await AstroContainer.create();
+      const result = await container.renderToString(StoryblokRichText, {
+        props: {
+          document: text_node.input,
+          data: { prefix: '[prefix]' },
+          components: {
+            text: CustomText,
+          },
+        },
+      });
+      expect(clean(result)).toBe(text_node.expected);
+    });
+    const infinite_loop = customRendererFixture.infinite_loop_prevention;
+    it(infinite_loop.title, async () => {
+      const container = await AstroContainer.create();
+      const result = await container.renderToString(StoryblokRichText, {
+        props: {
+          document: infinite_loop.input,
+          components: {
+            heading: HeadingWithRichText,
+          },
+        },
+      });
+      expect(clean(result)).toBe(infinite_loop.expected);
     });
   });
 });

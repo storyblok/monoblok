@@ -8,6 +8,7 @@ export type SbAstroRichTextComponentMap = {
 export interface SbAstroRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbAstroRichTextComponentMap;
+  data?: unknown;
 }
 export type SbAstroRichTextProps<
   T extends SbRichTextElement,

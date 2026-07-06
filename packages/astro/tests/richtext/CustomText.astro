@@ -1,0 +1,11 @@
+---
+import type { SbAstroRichTextProps } from '../../src/index';
+
+type Props = SbAstroRichTextProps<'text'>;
+
+const { text, context } = Astro.props;
+const data = context?.data as { prefix: string } | undefined;
+const prefix = data?.prefix ?? '';
+---
+
+{prefix} {text.toUpperCase()}

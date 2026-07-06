@@ -1,13 +1,7 @@
 import { type ComponentType, type ReactNode, Suspense } from 'react';
+import type { SbBlokData } from '.';
 
-export interface SbBlokData {
-  _uid: string;
-  component: string;
-  _editable?: string;
-  [key: string]: unknown;
-}
-
-type StoryblokComponentType = ComponentType<{ blok: any }>;
+type StoryblokComponentType = ComponentType<{ blok: SbBlokData }>;
 
 /**
  * Component entry that supports async components with Suspense.

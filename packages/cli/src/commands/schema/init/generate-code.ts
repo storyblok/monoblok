@@ -55,11 +55,21 @@ export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug
  * Reverse of the push-time DSL→wire field mapping: renames the wire reference
  * keys back to their DSL form (`component_whitelist`→`allow`,
  * `datasource_slug`→`datasource`). The `source` selector is left untouched.
+ *
+ * `restrict_components: true` and `restrict_type: ''` are dropped alongside a
+ * `component_whitelist` — they're the wire byproduct `defineField`'s `allow`
+ * re-derives on push, not independent DSL state.
  */
 function toDslField(field: Record<string, unknown>): Record<string, unknown> {
-  const { component_whitelist, datasource_slug, ...rest } = field;
+  const { component_whitelist, datasource_slug, restrict_components, restrict_type, ...rest } = field;
   const out: Record<string, unknown> = { ...rest };
-  if (component_whitelist !== undefined) { out.allow = component_whitelist; }
+  if (component_whitelist !== undefined) {
+    out.allow = component_whitelist;
+  }
+  else {
+    if (restrict_components !== undefined) { out.restrict_components = restrict_components; }
+    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
+  }
   if (datasource_slug !== undefined) { out.datasource = datasource_slug; }
   return out;
 }

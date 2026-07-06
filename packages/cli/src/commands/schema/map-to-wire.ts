@@ -5,7 +5,9 @@ import { isRecord } from './utils';
  * Maps a single content-shape DSL field to its MAPI wire form. The field's
  * `name` becomes the schema record key (returned separately); the DSL reference
  * keys are renamed to their wire equivalents:
- * - `allow` → `component_whitelist`
+ * - `allow` → `component_whitelist`, plus `restrict_components: true` and
+ *   `restrict_type: ''` on `bloks` fields so MAPI actually enforces the
+ *   whitelist (a bare `component_whitelist` is otherwise ignored)
  * - `datasource` → `datasource_slug` (the `source` selector passes through)
  *
  * Every other key (`type`, `pos`, `source`, `required`, validation options, and
@@ -15,7 +17,13 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
   const { name, allow, datasource, ...rest } = field;
 
   const value: Record<string, unknown> = { ...rest };
-  if (allow !== undefined) { value.component_whitelist = allow; }
+  if (allow !== undefined) {
+    value.component_whitelist = allow;
+    if (rest.type === 'bloks') {
+      value.restrict_components = true;
+      value.restrict_type = '';
+    }
+  }
   if (datasource !== undefined) { value.datasource_slug = datasource; }
 
   // The wire `Field` is a loose, fully-optional index shape; the structural

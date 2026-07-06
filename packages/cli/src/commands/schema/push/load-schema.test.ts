@@ -71,7 +71,13 @@ describe('classifyExports', () => {
     const { components } = classifyExports(moduleExports);
 
     expect(components[0].schema).toEqual({
-      body: { type: 'bloks', pos: 0, component_whitelist: ['hero', 'teaser'] },
+      body: {
+        type: 'bloks',
+        pos: 0,
+        component_whitelist: ['hero', 'teaser'],
+        restrict_components: true,
+        restrict_type: '',
+      },
       theme: { type: 'option', pos: 1, source: 'internal', datasource_slug: 'colors' },
     });
   });

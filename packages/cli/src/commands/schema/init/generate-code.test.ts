@@ -65,6 +65,53 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('datasource_slug');
   });
 
+  it('should drop restrict_components and restrict_type when they accompany a component_whitelist', () => {
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          component_whitelist: ['hero'],
+          restrict_components: true,
+          restrict_type: '',
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('allow: [');
+    expect(result).not.toContain('restrict_components');
+    expect(result).not.toContain('restrict_type');
+  });
+
+  it('should keep restrict_components and restrict_type for group/tag restrictions', () => {
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_group_whitelist: ['group-uuid'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('restrict_components: true,');
+    expect(result).toContain('restrict_type: \'groups\',');
+  });
+
   it('should drop component_group_uuid by default (group encoded by directory)', () => {
     const component = {
       id: 1,

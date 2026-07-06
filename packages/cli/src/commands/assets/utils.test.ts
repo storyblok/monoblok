@@ -1,6 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets } from './utils';
+import { collectAssetInternalTagNames, ensureAssetInternalTags, extractAssetSizeFromFilename, internalTagNamesFromAssets } from './utils';
+
+describe('extractAssetSizeFromFilename', () => {
+  it('extracts the dimensions segment from a CDN URL', () => {
+    expect(extractAssetSizeFromFilename('https://a.storyblok.com/f/329189/2048x1820/7fb286a4c5/image.jpg')).toBe('2048x1820');
+  });
+
+  it('returns undefined when the URL has no dimensions segment', () => {
+    expect(extractAssetSizeFromFilename('https://a.storyblok.com/f/293255674717942/8ae82d3a12/image.jpg')).toBeUndefined();
+  });
+
+  it('returns undefined for an empty or invalid filename', () => {
+    expect(extractAssetSizeFromFilename(undefined)).toBeUndefined();
+    expect(extractAssetSizeFromFilename('not-a-url')).toBeUndefined();
+  });
+});
 
 describe('internalTagNamesFromAssets', () => {
   it('collects unique tag names in first-seen order, ignoring blanks', () => {

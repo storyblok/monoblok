@@ -151,6 +151,8 @@ export function createAssetsResource(deps: MapiResourceDeps) {
           short_filename: body.short_filename,
           asset_folder_id: body.asset_folder_id,
           is_private: body.is_private,
+          size: body.size,
+          validate_upload: body.validate_upload,
         },
         file,
         signal,

@@ -490,6 +490,34 @@ describe('assets push command', () => {
     expect(process.exitCode).toBe(0);
   });
 
+  it('should carry the dimensions segment from the source filename into the create payload as `size`', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset({ filename: `https://a.storyblok.com/f/${DEFAULT_SPACE}/2048x1820/7fb286a4c5/photo.jpg` });
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(expect.objectContaining({
+      size: '2048x1820',
+    }), expect.anything(), expect.anything());
+  });
+
+  it('should not set `size` when the source filename has no dimensions segment', async () => {
+    const targetSpace = '54321';
+    const asset = makeMockAsset({ filename: `https://a.storyblok.com/f/${DEFAULT_SPACE}/7fb286a4c5/photo.jpg` });
+    preconditions.canLoadAssets([asset]);
+    preconditions.canUpsertRemoteAssets([asset], { space: targetSpace });
+
+    await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
+
+    expect(actions.createAsset).toHaveBeenCalledWith(
+      expect.not.objectContaining({ size: expect.anything() }),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it('should correctly resolve parent IDs even when child folders precede parents', async () => {
     const targetSpace = '54321';
     const numPairs = 10;

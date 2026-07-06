@@ -25,6 +25,7 @@ export type SbReactRichTextComponentMap = {
 export interface SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
   components?: SbReactRichTextComponentMap;
+  data?: unknown;
 }
 export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
   optimizeImage?: boolean | SbRichTextImageOptions;
@@ -82,7 +83,7 @@ function renderLinkGroup(
   const Custom = resolveComponent(linkMark.type, options.components);
   if (Custom) {
     return (
-      <Custom key={key} {...linkMark}>
+      <Custom key={key} {...linkMark} context={options}>
         {inner}
       </Custom>
     );
@@ -97,17 +98,26 @@ function renderLinkGroup(
 }
 
 function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext, key: React.Key): ReactNode {
-  if (node.type === 'text') {
-    return renderTextNode(node as SbRichTextTextNode, options, key);
-  }
+  const content = node.type !== 'text' && node.content ? renderChildren(node.content, options) : null;
+
+  // Custom renderer takes full control
   const Custom = resolveComponent(node.type, options.components);
 
   if (Custom) {
+    // When passing context to a custom component, exclude that component type
+    // to prevent infinite loops if the custom component uses StoryblokRichText internally
+    const contextForCustom = options.components?.[node.type]
+      ? { ...options, components: { ...options.components, [node.type]: undefined } }
+      : options;
     return (
-      <Custom key={key} {...node} context={options}>
-        {node.content ? renderChildren(node.content, options) : null}
+      <Custom key={key} {...node} context={contextForCustom}>
+        {content}
       </Custom>
     );
+  }
+
+  if (node.type === 'text') {
+    return renderTextNode(node as SbRichTextTextNode, options, key);
   }
   const tag = resolveTag(node);
   if (!tag) {
@@ -249,7 +259,7 @@ function renderTextNodeWithMarks(
 function wrapMark(children: ReactNode, mark: SbRichTextMark, options: SbReactRichTextRenderContext): ReactNode {
   const Custom = resolveComponent(mark.type, options.components);
   if (Custom) {
-    return <Custom {...mark}>{children}</Custom>;
+    return <Custom {...mark} context={options}>{children}</Custom>;
   }
 
   const tag = resolveTag(mark);

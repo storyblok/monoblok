@@ -21,6 +21,7 @@ export function createStoryblokRichText(
     document,
     optimizeImage,
     components,
+    data,
     wrapper = true,
     ...rest
   }: SbRichTextProps): ReactNode {
@@ -30,6 +31,7 @@ export function createStoryblokRichText(
         blok: DefaultBlok,
         ...components,
       },
+      data,
     });
 
     const content = render(document);

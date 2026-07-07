@@ -106,18 +106,37 @@ export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, compo
   };
 }
 
-/**
- * Filters space data to only include components matching a glob pattern and their dependencies.
- */
-export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern: string): SpaceComponentsData {
-  const matchingComponents = spaceData.components.filter(component => minimatch(component.name, pattern));
+export interface ComponentSelectors {
+  filter?: string;
+  groupUuids?: Set<string>;
+  tagIds?: Set<number>;
+}
 
-  if (matchingComponents.length === 0) {
+/**
+ * Filters space data by any combination of selectors. Selector types combine with AND;
+ * a glob matches component names, group membership matches the resolved subtree, tags match
+ * on intersection (OR within the tag set). Matched components are expanded to their
+ * dependencies via `collectAllDependencies`.
+ */
+export function filterSpaceData(spaceData: SpaceComponentsData, selectors: ComponentSelectors): SpaceComponentsData {
+  const { filter, groupUuids, tagIds } = selectors;
+
+  const base = spaceData.components.filter((component) => {
+    if (filter && !minimatch(component.name, filter)) { return false; }
+    if (groupUuids && !(component.component_group_uuid !== undefined && groupUuids.has(component.component_group_uuid))) { return false; }
+    if (tagIds) {
+      const ids = (component.internal_tag_ids ?? []).map(id => Number(id));
+      if (!ids.some(id => tagIds.has(id))) { return false; }
+    }
+    return true;
+  });
+
+  if (base.length === 0) {
     return emptySpaceData();
   }
 
   const { filteredComponents, filteredGroups, filteredTags } = collectAllDependencies(
-    matchingComponents,
+    base,
     spaceData.components,
     spaceData.groups,
     spaceData.internalTags,
@@ -133,6 +152,13 @@ export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern
     presets: filteredPresets,
     datasources: [],
   };
+}
+
+/**
+ * Filters space data to only include components matching a glob pattern and their dependencies.
+ */
+export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern: string): SpaceComponentsData {
+  return filterSpaceData(spaceData, { filter: pattern });
 }
 
 /**

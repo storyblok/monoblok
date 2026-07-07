@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { Component, ComponentFolder, InternalTag } from './constants';
+import type { Component, ComponentFolder, InternalTag, SpaceComponentsData } from './constants';
 import { CommandError } from '../../utils';
-import { collectAllDependencies, resolveGroupSelector, resolveTagSelector } from './utils';
+import { collectAllDependencies, filterSpaceData, resolveGroupSelector, resolveTagSelector } from './utils';
 
 function component(partial: Partial<Component> & { name: string }): Component {
   return { id: 1, name: partial.name, schema: {}, ...partial } as Component;
+}
+
+function spaceData(components: Component[], extras: Partial<SpaceComponentsData> = {}): SpaceComponentsData {
+  return { components, groups: [], internalTags: [], presets: [], datasources: [], ...extras };
 }
 
 describe('collectAllDependencies (option A)', () => {
@@ -130,5 +134,37 @@ describe('resolveTagSelector', () => {
 
   it('throws when a tag name does not exist', () => {
     expect(() => resolveTagSelector(tags, ['ghost'])).toThrow(/ghost/);
+  });
+});
+
+describe('filterSpaceData', () => {
+  const a = component({ name: 'checkout-form', id: 1, component_group_uuid: 'checkout', internal_tag_ids: ['10'] });
+  const b = component({ name: 'checkout-cart', id: 2, component_group_uuid: 'checkout', internal_tag_ids: [] });
+  const c = component({ name: 'hero', id: 3, component_group_uuid: 'marketing', internal_tag_ids: ['10'] });
+
+  it('combines selector types with AND', () => {
+    const result = filterSpaceData(spaceData([a, b, c]), {
+      groupUuids: new Set(['checkout']),
+      tagIds: new Set([10]),
+    });
+    expect(result.components.map(x => x.name)).toEqual(['checkout-form']);
+  });
+
+  it('matches tags with OR within the tag set', () => {
+    const result = filterSpaceData(spaceData([a, b, c]), { tagIds: new Set([10]) });
+    expect(result.components.map(x => x.name).sort()).toEqual(['checkout-form', 'hero']);
+  });
+
+  it('applies the glob on top of other selectors', () => {
+    const result = filterSpaceData(spaceData([a, b, c]), {
+      filter: 'checkout-*',
+      groupUuids: new Set(['checkout']),
+    });
+    expect(result.components.map(x => x.name).sort()).toEqual(['checkout-cart', 'checkout-form']);
+  });
+
+  it('returns empty data when nothing matches', () => {
+    const result = filterSpaceData(spaceData([a, b, c]), { groupUuids: new Set(['nope']) });
+    expect(result.components).toEqual([]);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Component, ComponentFolder, InternalTag } from './constants';
+import { CommandError } from '../../utils';
 import { collectAllDependencies, resolveGroupSelector, resolveTagSelector } from './utils';
 
 function component(partial: Partial<Component> & { name: string }): Component {
@@ -101,6 +102,18 @@ describe('resolveGroupSelector', () => {
 
   it('throws when no group matches', () => {
     expect(() => resolveGroupSelector(groups, 'Nope')).toThrow(/no component group/i);
+  });
+
+  it('throws on an ambiguous bare name without hanging when parent_uuid chain is cyclic', () => {
+    const cyclicGroups: ComponentFolder[] = [
+      { id: 1, uuid: 'a', name: 'Forms', parent_uuid: 'b' },
+      { id: 2, uuid: 'b', name: 'Forms', parent_uuid: 'a' },
+    ];
+    expect(() => resolveGroupSelector(cyclicGroups, 'Forms')).toThrow(CommandError);
+  });
+
+  it('throws when the selector produces no path segments', () => {
+    expect(() => resolveGroupSelector(groups, '/')).toThrow(CommandError);
   });
 });
 

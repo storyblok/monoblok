@@ -147,6 +147,9 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
 
   if (selector.includes('/')) {
     const segments = selector.split('/').map(s => s.trim()).filter(Boolean);
+    if (segments.length === 0) {
+      throw new CommandError(`No component group found for path "${selector}".`);
+    }
     let parentUuid: string | undefined;
     for (const segment of segments) {
       const candidates = groups.filter(g => g.name === segment && (g.parent_uuid ?? undefined) === parentUuid);
@@ -168,8 +171,10 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
     if (candidates.length > 1) {
       const paths = candidates.map((g) => {
         const parts = [g.name];
+        const visited = new Set<string>();
         let p = g.parent_uuid;
-        while (p) {
+        while (p && !visited.has(p)) {
+          visited.add(p);
           parts.unshift(nameOf(p) ?? p);
           p = byUuid.get(p)?.parent_uuid;
         }

@@ -136,15 +136,21 @@ if [ "${shared_mode}" = true ]; then
     done
   done <<< "${tree_ids}"
 
-  # 2. Shared internal tags scoped to the library (no name filter).
-  tags_resp=$(curl -s --retry 3 --retry-delay 1 "${tags_url}/?asset_folder_id=${library_id}" \
-    -H "Authorization: ${STORYBLOK_TOKEN}")
-  tag_ids=$(printf '%s' "${tags_resp}" | node -e '
-    const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
-    process.stdout.write((data.internal_tags || []).map(t => t.id).join("\n"));
-  ')
-  read -r bf bd <<< "$(delete_ids "${tags_url}" "${library_id}/shared_internal_tags" "?asset_folder_id=${library_id}" "${tag_ids}")"
-  found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
+  # 2. Shared internal tags scoped to the library (no name filter), paginated
+  #    per pass: delete a page, then re-fetch page 1 until none remain.
+  while true; do
+    tags_resp=$(curl -s --retry 3 --retry-delay 1 \
+      "${tags_url}/?asset_folder_id=${library_id}&page=1&per_page=${per_page}" \
+      -H "Authorization: ${STORYBLOK_TOKEN}")
+    tag_ids=$(printf '%s' "${tags_resp}" | node -e '
+      const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
+      process.stdout.write((data.internal_tags || []).map(t => t.id).join("\n"));
+    ')
+    [ -z "${tag_ids}" ] && break
+    read -r bf bd <<< "$(delete_ids "${tags_url}" "${library_id}/shared_internal_tags" "?asset_folder_id=${library_id}" "${tag_ids}")"
+    found_total=$((found_total + bf)); deleted_total=$((deleted_total + bd))
+    [ "${bd}" -eq 0 ] && break
+  done
 
   # 3. Shared child folders in the library tree (never the root), deepest first
   #    so leaf folders are removed before their parents.

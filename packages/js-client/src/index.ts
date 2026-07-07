@@ -287,47 +287,47 @@ export class Storyblok {
     slug: string,
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
-  ): Promise<ISbResponseData> {
+  ): Promise<ISbResponse> {
     const url = `/${slug}`;
 
     const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'post', url, params, fetchOptions) as Promise<ISbResponseData>;
+    return this.throttleManager.execute(rateLimit, 'post', url, params, fetchOptions) as Promise<ISbResponse>;
   }
 
   public put(
     slug: string,
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
-  ): Promise<ISbResponseData> {
+  ): Promise<ISbResponse> {
     const url = `/${slug}`;
 
     const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'put', url, params, fetchOptions) as Promise<ISbResponseData>;
+    return this.throttleManager.execute(rateLimit, 'put', url, params, fetchOptions) as Promise<ISbResponse>;
   }
 
   public patch(
     slug: string,
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
-  ): Promise<ISbResponseData> {
+  ): Promise<ISbResponse> {
     const url = `/${slug}`;
 
     const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'patch', url, params, fetchOptions) as Promise<ISbResponseData>;
+    return this.throttleManager.execute(rateLimit, 'patch', url, params, fetchOptions) as Promise<ISbResponse>;
   }
 
   public delete(
     slug: string,
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
-  ): Promise<ISbResponseData> {
+  ): Promise<ISbResponse> {
     if (!params) {
       params = {} as ISbStoriesParams;
     }
     const url = `/${slug}`;
 
     const rateLimit = determineRateLimit(undefined, undefined, this.rateLimitConfig, MANAGEMENT_API_DEFAULT_RATE_LIMIT);
-    return this.throttleManager.execute(rateLimit, 'delete', url, params, fetchOptions) as Promise<ISbResponseData>;
+    return this.throttleManager.execute(rateLimit, 'delete', url, params, fetchOptions) as Promise<ISbResponse>;
   }
 
   public getStories(

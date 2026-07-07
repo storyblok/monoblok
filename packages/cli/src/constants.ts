@@ -14,11 +14,13 @@ export const commands = {
   REPORTS: 'reports',
   ASSETS: 'assets',
   STORIES: 'stories',
+  OAUTH: 'oauth',
 } as const;
 
 export const colorPalette = {
   PRIMARY: '#8d60ff',
   LOGIN: '#dad4ff',
+  OAUTH: '#dad4ff',
   LOGOUT: '#6d6d6d',
   SIGNUP: '#b6ff6d',
   USER: '#71d300',

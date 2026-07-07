@@ -9,9 +9,20 @@ describe('mapFieldToWire', () => {
     expect(value).toEqual({ type: 'text', pos: 0, max_length: 70 });
   });
 
-  it('renames allow to component_whitelist', () => {
+  it('renames allow to component_whitelist and activates the restriction on bloks fields', () => {
     const { value } = mapFieldToWire({ name: 'body', type: 'bloks', pos: 0, allow: ['hero', 'teaser'] });
-    expect(value).toEqual({ type: 'bloks', pos: 0, component_whitelist: ['hero', 'teaser'] });
+    expect(value).toEqual({
+      type: 'bloks',
+      pos: 0,
+      component_whitelist: ['hero', 'teaser'],
+      restrict_components: true,
+      restrict_type: '',
+    });
+  });
+
+  it('renames allow to component_whitelist without restriction flags on non-bloks fields', () => {
+    const { value } = mapFieldToWire({ name: 'link', type: 'multilink', pos: 0, allow: ['page'] });
+    expect(value).toEqual({ type: 'multilink', pos: 0, component_whitelist: ['page'] });
   });
 
   it('renames datasource to datasource_slug and keeps the source selector', () => {
@@ -38,7 +49,13 @@ describe('mapBlockToWire', () => {
       is_nestable: false,
       schema: {
         title: { type: 'text', pos: 0 },
-        body: { type: 'bloks', pos: 1, component_whitelist: ['hero'] },
+        body: {
+          type: 'bloks',
+          pos: 1,
+          component_whitelist: ['hero'],
+          restrict_components: true,
+          restrict_type: '',
+        },
       },
     });
   });

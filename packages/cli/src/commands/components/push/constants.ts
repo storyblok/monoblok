@@ -22,6 +22,15 @@ export interface PushComponentsOptions extends CommandOptions {
    * Suffix to add to the component name.
    */
   suffix?: string;
+  /**
+   * Component group name(s) or `Parent/Child` path(s) to select from local files. Includes descendants.
+   * Repeatable; multiple values match any of the given groups.
+   */
+  group?: string[];
+  /**
+   * Component tag name(s) to select from local files. Repeatable and comma-separated; multiple values match any.
+   */
+  tag?: string[];
 }
 
 export interface ReadComponentsOptions extends PushComponentsOptions {

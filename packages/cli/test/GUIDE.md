@@ -46,7 +46,7 @@ Notes for manual testing:
 
 ### Cleaning up shared libraries safely
 
-Shared libraries are org-global, so you must never wipe them wholesale. Name every QA-created shared asset, folder, and tag with the `qa-` prefix (`generate-asset.sh` already does this by default), then clean up only those:
+Shared libraries are org-global, so you must never wipe them wholesale. The `--shared` cleanup is scoped by folder membership: it deletes every shared asset in the given library's folder tree, every internal tag scoped to the library, and every child folder, but never the library root or anything outside the library. Because it removes all content inside the library regardless of name, only run it against a dedicated QA library:
 
 ```bash
 # Inspect a library.
@@ -54,7 +54,7 @@ bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-assets 
 bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-folders
 bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --library <libraryId>
 
-# Delete ONLY qa-* shared resources in the library (assets, child folders, tags).
+# Delete all shared resources in the library's folder tree (assets, child folders, tags).
 bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 ```
 

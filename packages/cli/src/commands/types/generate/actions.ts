@@ -40,12 +40,17 @@ const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: s
 
   let type: string | string[] = 'unknown';
 
-  const options = property.options && property.options.length > 0 ? property.options.map((item: { value: string }) => item.value) : [];
+  // Manual empty options behave like clearing the field, so normalize them out first,
+  // then decide whether "" is a reachable stored value based solely on `required`.
+  // `exclude_empty_option` ("Hide empty option") is a UI-only setting and must not
+  // affect the generated types.
+  const optionValues = property.options && property.options.length > 0
+    ? property.options.map((item: { value: string }) => item.value).filter(value => value !== '')
+    : [];
 
-  // Add empty option to options array
-  if (options.length > 0 && property.exclude_empty_option !== true) {
-    options.unshift('');
-  }
+  const options = optionValues.length > 0 && !property.required
+    ? ['', ...optionValues]
+    : optionValues;
 
   if (property.source === 'internal_stories') {
     // Only if there is a filter_content_type, we can return a proper type

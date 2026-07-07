@@ -1046,6 +1046,84 @@ describe('component property type annotations', () => {
   });
 });
 
+describe('single-option empty value', () => {
+  const opt = (values: string[], required: boolean, excludeEmpty: boolean) => ({
+    type: 'option' as const,
+    pos: 0,
+    required,
+    exclude_empty_option: excludeEmpty,
+    options: values.map(value => ({ name: value, value })),
+  });
+
+  const generate = async (schema: Record<string, unknown>) => {
+    const component: Component = {
+      name: 'test_component',
+      display_name: 'Test Component',
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      id: 1,
+      schema,
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    } as unknown as Component;
+    const spaceData: SpaceComponentsData = {
+      components: [component],
+      datasources: [],
+    } as unknown as SpaceComponentsData;
+    return (await generateTypes(spaceData, { strict: false })) as string;
+  };
+
+  // "" inclusion must be driven by `required`, never by `exclude_empty_option`
+  // (UI-only "Hide empty option"). Assert on the field's own union, not the
+  // `[k: string]: unknown` index signature (unrelated non-strict-mode behavior).
+
+  it('required field excludes "" regardless of exclude_empty_option', async () => {
+    const result = await generate({
+      first: opt(['one', 'two'], true, false),
+      second: opt(['one', 'two'], true, true),
+    });
+    expect(result).toContain('first: "one" | "two";');
+    expect(result).toContain('second: "one" | "two";');
+    expect(result).not.toContain('first: "" | "one" | "two"');
+  });
+
+  it('non-required field includes "" regardless of exclude_empty_option', async () => {
+    const result = await generate({
+      third: opt(['one', 'two'], false, false),
+      fourth: opt(['one', 'two'], false, true),
+    });
+    expect(result).toContain('third?: "" | "one" | "two";');
+    expect(result).toContain('fourth?: "" | "one" | "two";');
+  });
+
+  it('required field with a manual empty option still excludes ""', async () => {
+    const result = await generate({
+      fifth: opt(['one', 'two', ''], true, false),
+      sixth: opt(['one', 'two', ''], true, true),
+    });
+    expect(result).toContain('fifth: "one" | "two";');
+    expect(result).toContain('sixth: "one" | "two";');
+  });
+
+  it('non-required field with a manual empty option includes "" once', async () => {
+    const result = await generate({
+      seventh: opt(['one', 'two', ''], false, false),
+      eighth: opt(['one', 'two', ''], false, true),
+    });
+    expect(result).toContain('seventh?: "" | "one" | "two";');
+    expect(result).toContain('eighth?: "" | "one" | "two";');
+  });
+
+  it('multi-options mirrors the same required-driven "" behavior on items', async () => {
+    const result = await generate({
+      tags: { type: 'options', pos: 0, required: false, options: [{ name: 'one', value: 'one' }, { name: 'two', value: 'two' }] },
+      musts: { type: 'options', pos: 1, required: true, options: [{ name: 'one', value: 'one' }, { name: 'two', value: 'two' }] },
+    });
+    expect(result).toContain('tags?: ("" | "one" | "two")[];');
+    expect(result).toContain('musts: ("one" | "two")[];');
+  });
+});
+
 describe('generateStoryblokTypes', () => {
   beforeEach(() => {
     vi.clearAllMocks();

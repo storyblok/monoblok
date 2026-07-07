@@ -83,7 +83,12 @@ const loginSubcommand = oauthCommand
       konsola.ok(`Logged in. Access token ${maskToken(tokens.access_token)} (expires in ${tokens.expires_in}s).`, true);
       konsola.info(`Granted scope: ${tokens.scope ?? '(none reported)'}`);
       konsola.info(`Refresh token returned: ${tokens.refresh_token ? `yes (${maskToken(tokens.refresh_token)})` : 'NO'}`);
-      konsola.info(`Raw token response keys: ${Object.keys(tokens.raw).join(', ')}`);
+      const redactedResponse = {
+        ...tokens.raw,
+        access_token: maskToken(tokens.access_token),
+        ...(tokens.refresh_token ? { refresh_token: maskToken(tokens.refresh_token) } : {}),
+      };
+      konsola.info(`Raw token response (redacted): ${JSON.stringify(redactedResponse, null, 2)}`);
     }
     catch (error) {
       handleError(error as Error, verbose);

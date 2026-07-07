@@ -1,7 +1,7 @@
 import type { RegionCode } from '../../constants';
 import { getStoryblokUrl } from '../../utils/api-routes';
 import { customFetch, FetchError } from '../../utils/fetch';
-import { CommandError } from '../../utils';
+import { CommandError, konsola } from '../../utils';
 import { OAUTH_APP_NAME, OAUTH_REDIRECT_URI } from './constants';
 import type { OauthClientCredentials } from './store';
 
@@ -38,11 +38,14 @@ export const fetchScopeCatalog = async (pat: string, region: RegionCode): Promis
     `${url}/oauth_clients/metadata`,
     { headers: patHeaders(pat) },
   );
+  konsola.info(`Raw scope metadata: ${JSON.stringify({ available_scopes, additional_scopes })}`);
   const grouped = Array.isArray(available_scopes)
     ? available_scopes
     : Object.values(available_scopes as Record<string, unknown>);
   const flat = (grouped as unknown[]).flat(Infinity).filter(scope => typeof scope === 'string') as string[];
-  return [...new Set([...flat, ...additional_scopes])];
+  const scopes = [...new Set([...flat, ...additional_scopes])];
+  konsola.info(`Resolved allowed_scopes (${scopes.length}): ${scopes.join(' ')}`);
+  return scopes;
 };
 
 export const findOrCreateCliClient = async (pat: string, region: RegionCode): Promise<OauthClientCredentials> => {

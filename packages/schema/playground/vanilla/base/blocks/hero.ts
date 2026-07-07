@@ -11,5 +11,6 @@ export const heroBlock = defineBlock({
     defineField('image', { type: 'asset', filetypes: ['images'] }),
     defineField('cta_label', { type: 'text', max_length: 40 }),
     defineField('cta_link', { type: 'multilink' }),
+    defineField('accent_color', { type: 'custom', field_type: 'storyblok-colorpicker' }),
   ],
 });

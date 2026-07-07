@@ -155,13 +155,6 @@ export function filterSpaceData(spaceData: SpaceComponentsData, selectors: Compo
 }
 
 /**
- * Filters space data to only include components matching a glob pattern and their dependencies.
- */
-export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern: string): SpaceComponentsData {
-  return filterSpaceData(spaceData, { filter: pattern });
-}
-
-/**
  * Resolves a group selector (a name, or a `Parent/Child` path) to the set of UUIDs covering
  * the matched group and all of its descendants. Throws when the name is ambiguous or missing.
  */

@@ -27,6 +27,15 @@ export interface PullComponentsOptions extends CommandOptions {
    * (assigned groups with ancestors, tags, presets, and schema-whitelisted groups/tags) are pulled.
    */
   filter?: string;
+  /**
+   * Component group name(s) or `Parent/Child` path(s) to select. Includes descendant groups.
+   * Repeatable; multiple values match any of the given groups.
+   */
+  group?: string[];
+  /**
+   * Component tag name(s) to select. Repeatable and comma-separated; multiple values match any.
+   */
+  tag?: string[];
 }
 
 export interface SaveComponentsOptions extends PullComponentsOptions {

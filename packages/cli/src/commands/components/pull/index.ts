@@ -12,7 +12,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
-import { filterSpaceDataByPattern } from '../utils';
+import { filterSpaceData, resolveGroupSelector, resolveTagSelector } from '../utils';
 
 const pullCmd = componentsCommand
   .command('pull [componentName]')
@@ -21,6 +21,8 @@ const pullCmd = componentsCommand
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .option('-s, --space <space>', 'space ID')
   .option('--fi, --filter <filter>', 'glob pattern to select components by name')
+  .option('--gr, --group <group>', 'component group name or Parent/Child path (repeatable, includes descendants)', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--tg, --tag <tag>', 'component tag name (repeatable, comma-separated)', (value: string, previous: string[] = []) => [...previous, ...value.split(',').map(v => v.trim()).filter(Boolean)])
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`);
 
 pullCmd
@@ -36,6 +38,8 @@ pullCmd
       suffix,
       filename,
       filter,
+      group,
+      tag,
     } = options;
 
     // Use default filename when not provided
@@ -91,10 +95,18 @@ pullCmd
           return;
         }
 
-        if (filter) {
-          const filtered = filterSpaceDataByPattern(
+        const hasSelectors = Boolean(filter) || (group && group.length > 0) || (tag && tag.length > 0);
+        if (hasSelectors) {
+          const groupUuids = group && group.length > 0
+            ? new Set<string>(group.flatMap(g => [...resolveGroupSelector(groups || [], g)]))
+            : undefined;
+          const tagIds = tag && tag.length > 0
+            ? resolveTagSelector(internalTags || [], tag)
+            : undefined;
+
+          const filtered = filterSpaceData(
             { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
-            filter,
+            { filter, groupUuids, tagIds },
           );
           if (filtered.components.length === 0) {
             spinnerComponents.failed('No components found matching the given selectors.');

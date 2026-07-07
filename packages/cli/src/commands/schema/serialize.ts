@@ -18,6 +18,13 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): Recor
   return Object.fromEntries(
     entries.map(([key, field]) => {
       const { id, ...rest } = field;
+      // `restrict_type: ''` is the wire byproduct of a component whitelist (the
+      // "restrict by component" mode). MAPI never reads it and omits it on read,
+      // and the Visual Editor treats `''` and absent identically — so a value
+      // re-derived from the DSL `allow` must not diff against a remote that
+      // lacks the key. A non-empty `restrict_type` (`'groups'`/`'tags'`) is real
+      // state and is kept.
+      if (rest.restrict_type === '') { delete rest.restrict_type; }
       return [key, rest];
     }),
   );

@@ -1,5 +1,6 @@
 import type { Component, ComponentFolder, InternalTag, SpaceComponentsData } from './constants';
 import { minimatch } from 'minimatch';
+import { CommandError } from '../../utils';
 import { collectWhitelistDependencies } from './push/graph-operations/dependency-graph';
 
 /**
@@ -132,4 +133,86 @@ export function filterSpaceDataByPattern(spaceData: SpaceComponentsData, pattern
     presets: filteredPresets,
     datasources: [],
   };
+}
+
+/**
+ * Resolves a group selector (a name, or a `Parent/Child` path) to the set of UUIDs covering
+ * the matched group and all of its descendants. Throws when the name is ambiguous or missing.
+ */
+export function resolveGroupSelector(groups: ComponentFolder[], selector: string): Set<string> {
+  const byUuid = new Map(groups.filter(g => g.uuid).map(g => [g.uuid as string, g]));
+  const nameOf = (uuid?: string) => (uuid ? byUuid.get(uuid)?.name : undefined);
+
+  let matched: ComponentFolder | undefined;
+
+  if (selector.includes('/')) {
+    const segments = selector.split('/').map(s => s.trim()).filter(Boolean);
+    let parentUuid: string | undefined;
+    for (const segment of segments) {
+      const candidates = groups.filter(g => g.name === segment && (g.parent_uuid ?? undefined) === parentUuid);
+      if (candidates.length === 0) {
+        throw new CommandError(`No component group found for path "${selector}".`);
+      }
+      if (candidates.length > 1) {
+        throw new CommandError(`The component group path "${selector}" is ambiguous.`);
+      }
+      matched = candidates[0];
+      parentUuid = matched.uuid;
+    }
+  }
+  else {
+    const candidates = groups.filter(g => g.name === selector);
+    if (candidates.length === 0) {
+      throw new CommandError(`No component group found named "${selector}".`);
+    }
+    if (candidates.length > 1) {
+      const paths = candidates.map((g) => {
+        const parts = [g.name];
+        let p = g.parent_uuid;
+        while (p) {
+          parts.unshift(nameOf(p) ?? p);
+          p = byUuid.get(p)?.parent_uuid;
+        }
+        return parts.join('/');
+      });
+      throw new CommandError(`The component group name "${selector}" is ambiguous. Use a path: ${paths.join(', ')}.`);
+    }
+    matched = candidates[0];
+  }
+
+  const result = new Set<string>();
+  const queue: string[] = matched?.uuid ? [matched.uuid] : [];
+  while (queue.length > 0) {
+    const uuid = queue.shift() as string;
+    if (result.has(uuid)) { continue; }
+    result.add(uuid);
+    for (const child of groups) {
+      if (child.parent_uuid === uuid && child.uuid) {
+        queue.push(child.uuid);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Resolves tag names to their numeric ids. Throws when any name is missing.
+ */
+export function resolveTagSelector(tags: InternalTag[], names: string[]): Set<number> {
+  const byName = new Map(tags.filter(t => t.id !== undefined).map(t => [t.name, t.id as number]));
+  const result = new Set<number>();
+  const missing: string[] = [];
+  for (const name of names) {
+    const id = byName.get(name);
+    if (id === undefined) {
+      missing.push(name);
+    }
+    else {
+      result.add(id);
+    }
+  }
+  if (missing.length > 0) {
+    throw new CommandError(`No component tag found named: ${missing.join(', ')}.`);
+  }
+  return result;
 }

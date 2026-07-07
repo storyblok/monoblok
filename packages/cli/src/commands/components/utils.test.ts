@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Component, ComponentFolder, InternalTag } from './constants';
-import { collectAllDependencies } from './utils';
+import { collectAllDependencies, resolveGroupSelector, resolveTagSelector } from './utils';
 
 function component(partial: Partial<Component> & { name: string }): Component {
   return { id: 1, name: partial.name, schema: {}, ...partial } as Component;
@@ -69,5 +69,53 @@ describe('collectAllDependencies (option A)', () => {
     const { filteredTags } = collectAllDependencies([checkout], [checkout], [], [tag]);
 
     expect(filteredTags.map(t => t.id)).toEqual([7]);
+  });
+});
+
+const groups: ComponentFolder[] = [
+  { id: 1, uuid: 'marketing', name: 'Marketing' },
+  { id: 2, uuid: 'checkout', name: 'Checkout', parent_uuid: 'marketing', parent_id: 1 },
+  { id: 3, uuid: 'checkout-forms', name: 'Forms', parent_uuid: 'checkout', parent_id: 2 },
+  { id: 4, uuid: 'blog', name: 'Blog' },
+  { id: 5, uuid: 'blog-forms', name: 'Forms', parent_uuid: 'blog', parent_id: 4 },
+];
+
+describe('resolveGroupSelector', () => {
+  it('resolves an unambiguous name to its subtree of uuids', () => {
+    expect([...resolveGroupSelector(groups, 'Checkout')].sort())
+      .toEqual(['checkout', 'checkout-forms']);
+  });
+
+  it('resolves a Parent/Child path', () => {
+    expect([...resolveGroupSelector(groups, 'Blog/Forms')]).toEqual(['blog-forms']);
+  });
+
+  it('includes descendants of the resolved group', () => {
+    expect([...resolveGroupSelector(groups, 'Marketing')].sort())
+      .toEqual(['checkout', 'checkout-forms', 'marketing']);
+  });
+
+  it('throws on an ambiguous bare name', () => {
+    expect(() => resolveGroupSelector(groups, 'Forms')).toThrow(/ambiguous/i);
+  });
+
+  it('throws when no group matches', () => {
+    expect(() => resolveGroupSelector(groups, 'Nope')).toThrow(/no component group/i);
+  });
+});
+
+describe('resolveTagSelector', () => {
+  const tags: InternalTag[] = [
+    { id: 10, name: 'beta' },
+    { id: 11, name: 'checkout-team' },
+  ];
+
+  it('maps names to ids', () => {
+    expect([...resolveTagSelector(tags, ['beta', 'checkout-team'])].sort((a, b) => a - b))
+      .toEqual([10, 11]);
+  });
+
+  it('throws when a tag name does not exist', () => {
+    expect(() => resolveTagSelector(tags, ['ghost'])).toThrow(/ghost/);
   });
 });

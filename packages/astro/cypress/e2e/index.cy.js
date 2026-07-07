@@ -3,6 +3,7 @@ Tests:
 - Bridge should be loaded
 - storyblokEditable attributes are assigned
 - globally loaded component is rendered correctly
+- TDZ fix works for manually registered components
 */
 
 describe("@storyblok/astro", () => {
@@ -31,6 +32,26 @@ describe("@storyblok/astro", () => {
     cy.visit("http://localhost:4321/");
     cy.get("[data-test=custom-fallback-component]").should("exist");
   });
+
+  /**
+   * TDZ (Temporal Dead Zone) Test
+   *
+   * Verifies that manually-registered components don't cause
+   * "Cannot access 'X' before initialization" errors when:
+   * 1. A component is registered in astro.config.mjs
+   * 2. The same component is directly imported in a page
+   *
+   * If the page loads and renders correctly, the TDZ fix is working.
+   */
+  it("TDZ fix: directly imported components work alongside registration", () => {
+    cy.visit("http://localhost:4321/tdz-test");
+    // Page should load without TDZ errors
+    cy.contains("TDZ Test Page").should("exist");
+    cy.contains("If you can see this, the TDZ fix is working correctly.").should("exist");
+    // Directly imported Teaser component should render
+    cy.contains("Direct Import Test").should("exist");
+  });
+
   /* it("RichText Renderer renders embedded bloks correctly", () => {
     cy.visit("http://localhost:4321/");
     cy.get("[data-test=embedded-blok]").should("exist");

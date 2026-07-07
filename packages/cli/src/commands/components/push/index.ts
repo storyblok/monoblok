@@ -20,7 +20,7 @@ const pushCmd = componentsCommand
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
-  .option('--gr, --group <group>', 'component group name or Parent/Child path (repeatable, includes descendants)', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--gr, --group <group>', 'component group to select by name (e.g. "Checkout"), or by a slash-separated path of nested group names to disambiguate (e.g. "Checkout/Payment"). Repeatable, includes descendant groups', (value: string, previous: string[] = []) => [...previous, value])
   .option('--tg, --tag <tag>', 'component tag name (repeatable, comma-separated)', (value: string, previous: string[] = []) => [...previous, ...value.split(',').map(v => v.trim()).filter(Boolean)])
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Load only files matching *.<suffix>.json (e.g. components.dev.json)')

@@ -21,7 +21,7 @@ const pullCmd = componentsCommand
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .option('-s, --space <space>', 'space ID')
   .option('--fi, --filter <filter>', 'glob pattern to select components by name')
-  .option('--gr, --group <group>', 'component group name or Parent/Child path (repeatable, includes descendants)', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--gr, --group <group>', 'component group to select by name (e.g. "Checkout"), or by a slash-separated path of nested group names to disambiguate (e.g. "Checkout/Payment"). Repeatable, includes descendant groups', (value: string, previous: string[] = []) => [...previous, value])
   .option('--tg, --tag <tag>', 'component tag name (repeatable, comma-separated)', (value: string, previous: string[] = []) => [...previous, ...value.split(',').map(v => v.trim()).filter(Boolean)])
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`);
 

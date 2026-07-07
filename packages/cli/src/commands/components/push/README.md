@@ -54,31 +54,11 @@ This will upload a single component and its dependencies from:
 | `-s, --space <space>`     | (Required) The ID of the space to push components to                                                           | -                       |
 | `-f, --from <from>`       | Source space ID to read components from                                                                        | Target space ID         |
 | `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | -                       |
-| `--gr, --group <name>`    | Component group name or `Parent/Child` path to select. Repeatable                                              | -                       |
+| `--gr, --group <name>`    | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | -                       |
 | `--tg, --tag <name>`      | Component tag name to select. Repeatable and comma-separated                                                   | -                       |
 | `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                         | `false`                 |
 | `--su, --suffix <suffix>` | Suffix to add to the files names                                                                               | -                       |
 | `-p, --path <path>`       | Custom path to read the files from                                                                             | `.storyblok/components` |
-
-## Selective push
-
-`--filter`, `--group`, and `--tag` mirror the selectors on `components pull` and select which locally stored components to push, rather than pushing the whole file. Each selector accepts multiple values (`--group` is repeatable, `--tag` accepts a comma-separated list or repeated flags) that combine with OR, while different selectors combine with AND: a component must match every selector you provide.
-
-- `--filter <glob>` selects components by name using a glob pattern, and also selects their dependencies: assigned groups (with ancestors), assigned tags, presets, and schema-whitelisted groups and tags.
-- `--group <name>` selects components assigned to a group. Pass a plain name to match a group anywhere in the tree, or a `Parent/Child` path to disambiguate nested or duplicate group names. Matching a group includes its descendant groups.
-- `--tag <name>` selects components carrying a tag.
-
-Sibling components referenced through a `component_whitelist` field are not pushed automatically. If you push a selected slice to a different space, a `component_whitelist` entry can reference a component name that does not exist yet in the target space; this is harmless and resolves itself once you push the referenced component too.
-
-Examples:
-
-```bash
-storyblok components push --space 12345 --group Checkout
-```
-
-```bash
-storyblok components push --space 12345 --tag beta
-```
 
 ## Examples
 

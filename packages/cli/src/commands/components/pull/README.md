@@ -49,42 +49,8 @@ This will download a single component and its dependencies to:
 | `--su, --suffix <suffix>` | Suffix to add to the files names  | |
 | `-p, --path <path>` | Custom path to store the files | `.storyblok/components` |
 | `--fi, --filter <glob>` | Glob pattern to select components by name | - |
-| `--gr, --group <name>` | Component group name or `Parent/Child` path to select. Repeatable | - |
+| `--gr, --group <name>` | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | - |
 | `--tg, --tag <name>` | Component tag name to select. Repeatable and comma-separated | - |
-
-## Selective pull
-
-Use `--filter`, `--group`, and `--tag` to pull a subset of components instead of the whole space. Each selector accepts multiple values (`--group` is repeatable, `--tag` accepts a comma-separated list or repeated flags), and multiple values for the same selector combine with OR: a component matches if it satisfies any of the given values. When you combine different selectors, they combine with AND: a component must match every selector you provide.
-
-- `--filter <glob>` matches components by name using a glob pattern (via `minimatch`).
-- `--group <name>` matches components assigned to a group. Pass a plain name (`Checkout`) to match a group anywhere in the tree, or a `Parent/Child` path to disambiguate nested or duplicate group names. Matching a group also includes all of its descendant groups, so their components are selected too.
-- `--tag <name>` matches components carrying a tag.
-
-A selected pull always includes each matched component's dependencies: its assigned groups (with ancestor groups), its assigned tags, its presets, and any groups or tags referenced by its own schema whitelists. Sibling components referenced through a `component_whitelist` field are not pulled in, since that reference is name-based and does not require the referenced component's record to be present.
-
-Examples:
-
-```bash
-storyblok components pull --space 12345 --filter "checkout-*"
-```
-
-```bash
-storyblok components pull --space 12345 --group Checkout
-```
-
-```bash
-storyblok components pull --space 12345 --group "Checkout/Payment"
-```
-
-```bash
-storyblok components pull --space 12345 --tag beta
-```
-
-```bash
-storyblok components pull --space 12345 --group Checkout --tag beta
-```
-
-The last example pulls only components that are both in the `Checkout` group tree and tagged `beta`.
 
 ## Examples
 

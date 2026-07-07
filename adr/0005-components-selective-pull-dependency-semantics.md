@@ -9,9 +9,15 @@ Teams that share a single Storyblok space often only want to sync the components
 
 Selecting a subset of components raises a dependency question: when a component is selected, which of its related records (groups, tags, presets, and other components referenced from its schema) should be pulled or pushed alongside it? Components can reference groups and tags by ID (as their assigned group and tags) and can also reference groups and tags from inside field-level whitelists (`component_group_whitelist`, `component_tag_whitelist`), and they can reference other components by name through `component_whitelist`.
 
+## Options considered
+
+- **Option A (chosen): matches plus their own direct dependencies, minus sibling components.** A selected set includes the matched components, their assigned groups (with ancestors), assigned tags, presets, and the groups (with ancestors) and tags referenced by their own schema whitelists. It does not follow `component_whitelist` to pull in sibling components.
+- **Option B: matches plus their full transitive dependencies, including sibling components.** This extends option A by following each matched component's `component_whitelist` to its sibling components, then collecting those siblings' dependencies too, recursively. It is the behavior `push --filter` had before this change. Rejected: `component_whitelist` is name-based and self-heals, so siblings are not required for a valid push, and following it silently expands a selection outward until it can reach most of the space, which defeats the point of a team syncing only the components it owns.
+- **Option C: literal matches only, no dependencies.** Only the matched components, with no groups, tags, or presets. Rejected: group and tag references are ID-based and cannot self-heal, so a cross-space push of a component without its group and tag records leaves those references dangling, and a nested group whose ancestors are absent is rejected by the backend with a 422.
+
 ## Decision
 
-### Dependency semantics (option A)
+### Dependency semantics
 
 A selected set of components includes:
 

@@ -271,4 +271,56 @@ describe('pull', () => {
       expect(ui.warn).toHaveBeenCalledWith(`The --filename option is ignored when using --separate-files`);
     });
   });
+
+  describe('--filter option', () => {
+    it('should save only components matching the glob and their dependencies', async () => {
+      const checkout = {
+        name: 'checkout-form',
+        display_name: 'Checkout Form',
+        id: 1,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+      const hero = {
+        name: 'hero',
+        display_name: 'Hero',
+        id: 2,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+
+      vi.mocked(fetchComponents).mockResolvedValue([checkout, hero]);
+
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filter', 'checkout-*']);
+
+      expect(saveComponentsToFiles).toHaveBeenCalledWith('12345', expect.objectContaining({
+        components: [checkout],
+      }), expect.any(Object));
+    });
+
+    it('should warn and not save when the glob matches nothing', async () => {
+      const hero = {
+        name: 'hero',
+        display_name: 'Hero',
+        id: 2,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+      vi.mocked(fetchComponents).mockResolvedValue([hero]);
+
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filter', 'checkout-*']);
+
+      expect(saveComponentsToFiles).not.toHaveBeenCalled();
+      expect(ui.warn).toHaveBeenCalledWith('No components found matching the given selectors.');
+    });
+  });
 });

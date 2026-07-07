@@ -22,6 +22,11 @@ export interface PullComponentsOptions extends CommandOptions {
    * @default false
    */
   separateFiles?: boolean;
+  /**
+   * Glob pattern to select components by name. Matching components and their dependencies
+   * (assigned groups with ancestors, tags, presets, and schema-whitelisted groups/tags) are pulled.
+   */
+  filter?: string;
 }
 
 export interface SaveComponentsOptions extends PullComponentsOptions {
@@ -32,7 +37,7 @@ export interface SaveComponentsOptions extends PullComponentsOptions {
    */
   path?: string;
   /**
-   * The regex filter to apply to the components before pushing.
+   * Glob pattern to select components by name before pushing.
    * @default `.*`
    */
   filter?: string;

@@ -163,6 +163,9 @@ type ResolveComponents<T extends StoryblokTypesConfig> =
     : T extends { blocks: infer B extends Component } ? B
       : never;
 
+/** Extracts the `fieldType → value` plugin map from a Schema, defaulting to an empty map. */
+type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
+
 /**
  * The return type of `createApiClient`, parameterised by `TComponents` and `InlineRelations`
  * so that `.withTypes<T>()` can change the story response types without touching the
@@ -170,10 +173,11 @@ type ResolveComponents<T extends StoryblokTypesConfig> =
  */
 export type ContentApiClient<
   TComponents extends Component = Component,
+  TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   ThrowOnError extends boolean = false,
 > = Omit<ReturnType<typeof createApiClientBase>, 'stories' | 'withTypes'> & {
-  stories: ReturnType<typeof createStoriesResource<TComponents, InlineRelations, ThrowOnError>>;
+  stories: ReturnType<typeof createStoriesResource<TComponents, TFieldPlugins, InlineRelations, ThrowOnError>>;
   /**
    * Returns the same client instance cast to a version that narrows story content
    * to the provided component types. No runtime cost — the type parameter is erased.
@@ -190,7 +194,7 @@ export type ContentApiClient<
    * // story.content is now typed as a discriminated union
    * ```
    */
-  withTypes: <T extends StoryblokTypesConfig>() => ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError>;
+  withTypes: <T extends StoryblokTypesConfig>() => ContentApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, InlineRelations, ThrowOnError>;
 };
 
 // ---------------------------------------------------------------------------
@@ -382,7 +386,7 @@ export const createApiClientBase = <
     throttleManager,
   };
 
-  const stories = createStoriesResource<Component, InlineRelations, ThrowOnError>({
+  const stories = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
     ...resourceDeps,
     inlineRelations,
   });
@@ -431,12 +435,12 @@ export const createApiClient = <
   InlineRelations extends boolean = false,
 >(
   config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
-): ContentApiClient<Component, InlineRelations, ThrowOnError> => {
+): ContentApiClient<Component, Record<never, never>, InlineRelations, ThrowOnError> => {
   const base = createApiClientBase(config);
-  const self: ContentApiClient<Component, InlineRelations, ThrowOnError> = {
+  const self: ContentApiClient<Component, Record<never, never>, InlineRelations, ThrowOnError> = {
     ...base,
-    withTypes<T extends StoryblokTypesConfig>(): ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError> {
-      return self as unknown as ContentApiClient<ResolveComponents<T>, InlineRelations, ThrowOnError>;
+    withTypes<T extends StoryblokTypesConfig>(): ContentApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, InlineRelations, ThrowOnError> {
+      return self as unknown as ContentApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, InlineRelations, ThrowOnError>;
     },
   };
   return self;

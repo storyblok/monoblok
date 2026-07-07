@@ -22,6 +22,7 @@ export type { Datasource } from './helpers/define-datasource';
 
 // Field
 export { defineField } from './helpers/define-field';
+
 export type {
   AssetFieldValue,
   BlockContent,
@@ -38,8 +39,12 @@ export type {
   RichtextFieldValue,
   TableFieldValue,
 } from './helpers/define-field';
+// Field plugin
+export { defineFieldPlugin } from './helpers/define-field-plugin';
+export type { FieldPlugin } from './helpers/define-field-plugin';
 
-// Schema type helper
+// Schema
+export { defineSchema } from './helpers/define-schema';
 export type { Schema } from './helpers/schema-type';
 
 // Validators (Zod-powered, non-throwing)

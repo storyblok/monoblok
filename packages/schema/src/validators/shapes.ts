@@ -1,3 +1,4 @@
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { FieldType } from '../generated/types/field';
 
 export { isRecord } from '../utils/is-record';
@@ -13,6 +14,8 @@ export { isRecord } from '../utils/is-record';
 export interface SchemaFieldLike {
   name: string;
   type: FieldType;
+  /** `custom`: the field plugin discriminant, matched against registered `fieldPlugins`. */
+  field_type?: string;
   required?: boolean;
   /** Normalized block-name references for `bloks` fields. */
   allow?: readonly string[];
@@ -58,10 +61,17 @@ export interface SchemaDatasourceLike {
   slug?: string;
 }
 
-/** The schema object accepted by the validators: blocks (required) and datasources (optional). */
+/** A field plugin registration (`defineFieldPlugin` result). */
+export interface FieldPluginLike {
+  fieldType: string;
+  value: StandardSchemaV1;
+}
+
+/** The schema object accepted by the validators: blocks (required), datasources and field plugins (optional). */
 export interface SchemaLike {
   blocks: Record<string, SchemaBlockLike> | readonly SchemaBlockLike[];
   datasources?: Record<string, SchemaDatasourceLike> | readonly SchemaDatasourceLike[];
+  fieldPlugins?: Record<string, FieldPluginLike> | readonly FieldPluginLike[];
 }
 
 /** Normalizes a record-or-array of entities to an array of values. */

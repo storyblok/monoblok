@@ -186,7 +186,7 @@ describe('schema init command', () => {
     const schemaFile = files.find(f => f.endsWith('/schema.ts'));
     expect(schemaFile).toBeDefined();
     const schemaContent = vol.readFileSync(schemaFile!, 'utf-8') as string;
-    expect(schemaContent).toContain('export const schema = {');
+    expect(schemaContent).toContain('export const schema = defineSchema({');
     expect(schemaContent).toContain('pageBlock,');
     expect(schemaContent).toContain('InferSchema<typeof schema>');
     expect(schemaContent).toContain('export type Story = InferStory');

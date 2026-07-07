@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { storyblokColorField } from '../field-plugins/storyblok-color-field';
 import { defineBlock } from '../helpers/define-block';
 import { defineDatasource } from '../helpers/define-datasource';
 import { defineField } from '../helpers/define-field';
@@ -77,5 +78,19 @@ describe('validateSchema', () => {
     const result = validateSchema({ blocks: [block] });
     expect(result.ok).toBe(false);
     expect(codesFor(result)).toContain('invalid_field');
+  });
+
+  it('flags a custom field referencing an unregistered field plugin', () => {
+    const block = defineBlock({ name: 'hero', fields: [defineField('bg', { type: 'custom', field_type: 'storyblok-colorpicker' })] });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('unresolved_field_plugin');
+  });
+
+  it('resolves a custom field to a registered field plugin', () => {
+    const block = defineBlock({ name: 'hero', fields: [defineField('bg', { type: 'custom', field_type: 'storyblok-colorpicker' })] });
+    const result = validateSchema({ blocks: [block], fieldPlugins: { storyblokColorField } });
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 });

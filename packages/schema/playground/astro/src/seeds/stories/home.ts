@@ -5,9 +5,9 @@ import { introBlock } from '../../schema/blocks/intro';
 import { mediaBlock } from '../../schema/blocks/media';
 import { teaserBlock } from '../../schema/blocks/teaser';
 import { teaserListBlock } from '../../schema/blocks/teaser-list';
-import type { Blocks } from '../../schema/schema';
+import type { Blocks, FieldPlugins } from '../../schema/schema';
 
-export function createHomeStory(mediaAsset: Asset): StoryCreate<Blocks> {
+export function createHomeStory(mediaAsset: Asset): StoryCreate<Blocks, FieldPlugins> {
   return {
     name: 'Home',
     slug: 'home',
@@ -21,6 +21,8 @@ export function createHomeStory(mediaAsset: Asset): StoryCreate<Blocks> {
           eyebrow: 'Built with Storyblok',
           headline: 'Code-driven content, fully typed.',
           image: null,
+          // Typed on write via the registered `storyblok-colorpicker` plugin.
+          accent_color: { plugin: 'storyblok-colorpicker', color: '#818cf8' },
         },
         {
           component: introBlock.name,

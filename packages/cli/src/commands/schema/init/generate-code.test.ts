@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  componentVarName,
+  datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
@@ -197,5 +199,28 @@ describe('generateSchemaFile', () => {
 
     expect(result).toContain('  blocks: {');
     expect(result).not.toContain('  datasources: {');
+  });
+});
+
+describe('componentVarName / datasourceVarName', () => {
+  it('keeps well-formed names unchanged', () => {
+    expect(componentVarName('teaser_list')).toBe('teaserListBlock');
+    expect(datasourceVarName('Categories')).toBe('categoriesDatasource');
+  });
+
+  it('strips characters that are invalid in JS identifiers', () => {
+    expect(datasourceVarName('Colors & Sizes')).toBe('colorsSizesDatasource');
+    expect(datasourceVarName('Colors / Sizes')).toBe('colorsSizesDatasource');
+    // Symbols with no surrounding space are stripped (not treated as word
+    // boundaries), so `A` and `B` merge — still a valid identifier.
+    expect(datasourceVarName('A+B (C)')).toBe('abCDatasource');
+  });
+
+  it('prefixes a leading digit so the identifier is valid', () => {
+    expect(datasourceVarName('123 items')).toBe('_123ItemsDatasource');
+  });
+
+  it('falls back to `_` when the name has no identifier-safe characters', () => {
+    expect(datasourceVarName('&&&')).toBe('_Datasource');
   });
 });

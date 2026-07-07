@@ -1,4 +1,5 @@
 import type { Component, Datasource } from '../../../types';
+import { slugify } from '../../../utils/format';
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
@@ -11,13 +12,17 @@ import {
 const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
 
 /**
- * Converts a string to camelCase.
- * Handles snake_case, kebab-case, and space-separated words.
+ * Converts an arbitrary name into a valid camelCase JS identifier.
+ * `slugify` reduces the input to `[a-z0-9_-]` (symbols stripped, spaces → `-`);
+ * we then camelCase across `_`/`-` runs and guard against an empty or
+ * leading-digit result so the output is always usable as an identifier.
  */
-function toCamelCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[\s_-]+(.)/g, (_, char: string) => char.toUpperCase());
+function toCamelCaseIdentifier(str: string): string {
+  const camel = slugify(str)
+    .replace(/^[_-]+/, '')
+    .replace(/[_-]+(.)/g, (_, char: string) => char.toUpperCase());
+  if (!camel) { return '_'; }
+  return /^\d/.test(camel) ? `_${camel}` : camel;
 }
 
 /**
@@ -33,12 +38,12 @@ function toKebabCase(str: string): string {
 
 /** Returns the variable name for a component. e.g. `'teaser_list'` -> `'teaserListBlock'` */
 export function componentVarName(name: string): string {
-  return `${toCamelCase(name)}Block`;
+  return `${toCamelCaseIdentifier(name)}Block`;
 }
 
 /** Returns the variable name for a datasource. e.g. `'Categories'` -> `'categoriesDatasource'` */
 export function datasourceVarName(name: string): string {
-  return `${toCamelCase(name)}Datasource`;
+  return `${toCamelCaseIdentifier(name)}Datasource`;
 }
 
 /** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */

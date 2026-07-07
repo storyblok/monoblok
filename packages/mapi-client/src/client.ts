@@ -17,6 +17,9 @@ import { createDatasourcesResource } from './resources/datasources';
 import { createExperimentsResource } from './resources/experiments';
 import { createInternalTagsResource } from './resources/internal-tags';
 import { createPresetsResource } from './resources/presets';
+import { createSharedAssetFoldersResource } from './resources/shared-asset-folders';
+import { createSharedAssetsResource } from './resources/shared-assets';
+import { createSharedInternalTagsResource } from './resources/shared-internal-tags';
 import { createSpacesResource } from './resources/spaces';
 import { createStoriesResource } from './resources/stories';
 import { createUsersResource } from './resources/users';
@@ -305,6 +308,9 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     post: httpPost,
     presets: createPresetsResource(deps),
     put: httpPut,
+    sharedAssetFolders: createSharedAssetFoldersResource(deps),
+    sharedAssets: createSharedAssetsResource(deps),
+    sharedInternalTags: createSharedInternalTagsResource(deps),
     spaces: createSpacesResource(deps),
     users: createUsersResource<DefaultThrowOnError>({ client, wrapRequest: deps.wrapRequest }),
   };
@@ -317,6 +323,9 @@ type ResolveComponents<T extends StoryblokTypesConfig> =
     : T extends { blocks: infer B extends Block } ? B
       : never;
 
+/** Extracts the `fieldType → value` plugin map from a Schema, defaulting to an empty map. */
+type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
+
 /**
  * The return type of `createManagementApiClient`, parameterised by `TBlocks` so that
  * `.stories` methods can narrow story content types without touching the runtime object.
@@ -324,10 +333,11 @@ type ResolveComponents<T extends StoryblokTypesConfig> =
  */
 export type ManagementApiClient<
   TBlocks extends Block = Block,
+  TFieldPlugins = Record<never, never>,
   DefaultThrowOnError extends boolean = false,
 > = ReturnType<typeof buildResources<DefaultThrowOnError>> & {
   components: ReturnType<typeof createComponentsResource<DefaultThrowOnError>>;
-  stories: ReturnType<typeof createStoriesResource<TBlocks, DefaultThrowOnError>>;
+  stories: ReturnType<typeof createStoriesResource<TBlocks, TFieldPlugins, DefaultThrowOnError>>;
   /**
    * Returns the same client instance cast to a version that narrows story content
    * to the provided component types. No runtime cost — type parameter is erased.
@@ -343,21 +353,21 @@ export type ManagementApiClient<
    *   .withTypes<Schema>();
    * ```
    */
-  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;
+  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, DefaultThrowOnError>;
 };
 
 export const createManagementApiClient = <
   DefaultThrowOnError extends boolean = false,
 >(
   config: ManagementApiClientConfig<DefaultThrowOnError>,
-): ManagementApiClient<Block, DefaultThrowOnError> => {
+): ManagementApiClient<Block, Record<never, never>, DefaultThrowOnError> => {
   const { deps, resources } = createManagementApiClientBase(config);
-  const self: ManagementApiClient<Block, DefaultThrowOnError> = {
+  const self: ManagementApiClient<Block, Record<never, never>, DefaultThrowOnError> = {
     ...resources,
     components: createComponentsResource<DefaultThrowOnError>(deps),
-    stories: createStoriesResource<Block, DefaultThrowOnError>(deps),
+    stories: createStoriesResource<Block, Record<never, never>, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
-      return self as unknown as ManagementApiClient<ResolveComponents<T>, DefaultThrowOnError>;
+      return self as unknown as ManagementApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, DefaultThrowOnError>;
     },
   };
   return self;

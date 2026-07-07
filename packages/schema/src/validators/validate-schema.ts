@@ -6,7 +6,8 @@ import { isRecord, toValues } from './shapes';
  * Validates a schema definition without throwing. Checks structural identity
  * (duplicate block names, field names, and datasource slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
- * resolves to a defined datasource).
+ * resolves to a defined datasource; every `custom` field's `field_type`
+ * resolves to a registered field plugin).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -16,6 +17,15 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
   const issues: ValidationIssue[] = [];
   const blocks = toValues(schema.blocks);
   const datasources = toValues(schema.datasources);
+  const fieldPlugins = toValues(schema.fieldPlugins);
+
+  const fieldPluginTypes = new Set<string>();
+  for (const plugin of fieldPlugins) {
+    const fieldType = plugin?.fieldType;
+    if (typeof fieldType === 'string') {
+      fieldPluginTypes.add(fieldType);
+    }
+  }
 
   const datasourceSlugs = new Set<string>();
   for (const datasource of datasources) {
@@ -116,6 +126,17 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           path: ['blocks', blockName, fieldName ?? '', 'datasource'],
           entity: `block:${blockName}`,
           message: `Field "${fieldName}" references unknown datasource "${datasource}".`,
+        });
+      }
+
+      const fieldType = field.field_type;
+      if (field.type === 'custom' && typeof fieldType === 'string' && !fieldPluginTypes.has(fieldType)) {
+        issues.push({
+          severity: 'error',
+          code: 'unresolved_field_plugin',
+          path: ['blocks', blockName, fieldName ?? '', 'field_type'],
+          entity: `block:${blockName}`,
+          message: `Field "${fieldName}" references unregistered field plugin "${fieldType}".`,
         });
       }
     }

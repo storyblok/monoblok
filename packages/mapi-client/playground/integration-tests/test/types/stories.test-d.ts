@@ -1,5 +1,6 @@
-import { defineBlock, defineField } from '@storyblok/schema';
-import { createManagementApiClient, type Story as StoryMapi } from '@storyblok/management-api-client';
+import { defineBlock, defineField, defineSchema, type Schema as InferSchema } from '@storyblok/schema';
+import { storyblokColorField } from '@storyblok/schema/field-plugins';
+import { createManagementApiClient, type PluginFieldValue, type Story as StoryMapi } from '@storyblok/management-api-client';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // Nestable block — not a root story type
@@ -268,6 +269,42 @@ describe('withTypes() write-body narrowing', () => {
       if (story.content.component === 'page') {
         expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
       }
+    }
+  });
+});
+
+describe('createManagementApiClient with .withTypes() — field plugins', () => {
+  const _themedComponent = defineBlock({
+    name: 'themed',
+    is_root: true,
+    fields: [
+      defineField('bg', { type: 'custom', field_type: 'storyblok-colorpicker' }),
+      defineField('legacy', { type: 'custom', field_type: 'unregistered-plugin' }),
+    ],
+  });
+  const _schema = defineSchema({
+    blocks: { themedComponent: _themedComponent },
+    fieldPlugins: { storyblokColorField },
+  });
+  type Schema = InferSchema<typeof _schema>;
+
+  it('resolves a registered custom field to the validator output merged with the plugin envelope', async () => {
+    const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
+    const result = await client.stories.get(123);
+    if (result.data?.story && result.data.story.content.component === 'themed') {
+      expectTypeOf<NonNullable<typeof result.data.story.content.bg>>().toEqualTypeOf<{
+        color: string;
+        plugin: string;
+        _uid?: string;
+      }>();
+    }
+  });
+
+  it('leaves an unregistered custom field as PluginFieldValue', async () => {
+    const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
+    const result = await client.stories.get(123);
+    if (result.data?.story && result.data.story.content.component === 'themed') {
+      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<PluginFieldValue>();
     }
   });
 });

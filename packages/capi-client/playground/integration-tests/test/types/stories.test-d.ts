@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import { defineBlock, defineField } from '@storyblok/schema';
+import { defineBlock, defineField, defineSchema, type Schema as InferSchema, type PluginFieldValue } from '@storyblok/schema';
+import { storyblokColorField } from '@storyblok/schema/field-plugins';
 
 import { createApiClient, type Story } from '@storyblok/api-client';
 
@@ -407,6 +408,42 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
         // product is the only root component
         expectTypeOf(story.content.component).toEqualTypeOf<'product'>();
       }
+    }
+  });
+});
+
+describe('createApiClient with .withTypes() — field plugins', () => {
+  const _themedComponent = defineBlock({
+    name: 'themed',
+    is_root: true,
+    fields: [
+      defineField('bg', { type: 'custom', field_type: 'storyblok-colorpicker' }),
+      defineField('legacy', { type: 'custom', field_type: 'unregistered-plugin' }),
+    ],
+  });
+  const _schema = defineSchema({
+    blocks: { themedComponent: _themedComponent },
+    fieldPlugins: { storyblokColorField },
+  });
+  type Schema = InferSchema<typeof _schema>;
+
+  it('resolves a registered custom field to the validator output merged with the plugin envelope', async () => {
+    const client = createApiClient({ accessToken: 'test-token' }).withTypes<Schema>();
+    const result = await client.stories.get('home');
+    if (result.data && result.data.story.content.component === 'themed') {
+      expectTypeOf<NonNullable<typeof result.data.story.content.bg>>().toEqualTypeOf<{
+        color: string;
+        plugin: string;
+        _uid?: string;
+      }>();
+    }
+  });
+
+  it('leaves an unregistered custom field as PluginFieldValue', async () => {
+    const client = createApiClient({ accessToken: 'test-token' }).withTypes<Schema>();
+    const result = await client.stories.get('home');
+    if (result.data && result.data.story.content.component === 'themed') {
+      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<PluginFieldValue>();
     }
   });
 });

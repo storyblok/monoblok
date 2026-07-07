@@ -7,6 +7,7 @@ import {
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
+  resolveVarNames,
 } from './generate-code';
 
 describe('generateComponentFile', () => {
@@ -235,5 +236,43 @@ describe('componentVarName / datasourceVarName', () => {
 
   it('falls back to `_` when the name has no identifier-safe characters', () => {
     expect(datasourceVarName('&&&')).toBe('_Datasource');
+  });
+});
+
+describe('resolveVarNames', () => {
+  it('leaves distinct names untouched', () => {
+    expect(resolveVarNames(['page', 'hero'], componentVarName))
+      .toEqual(['pageBlock', 'heroBlock']);
+  });
+
+  it('appends a numeric suffix when sanitized names collide', () => {
+    expect(resolveVarNames(['Colors & Sizes', 'Colors / Sizes'], datasourceVarName))
+      .toEqual(['colorsSizesDatasource', 'colorsSizesDatasource2']);
+  });
+});
+
+describe('generateComponentFile with explicit var name', () => {
+  it('uses the provided var name for the export', () => {
+    const result = generateComponentFile(
+      { id: 1, name: 'hero', created_at: '', updated_at: '', schema: {} } as any,
+      'heroBlock2',
+    );
+    expect(result).toContain('export const heroBlock2 = defineBlock({');
+  });
+});
+
+describe('generateSchemaFile with colliding datasources', () => {
+  it('imports and keys each datasource under a unique identifier', () => {
+    const datasources = [
+      { name: 'Colors & Sizes', slug: 'colors-sizes' },
+      { name: 'Colors / Sizes', slug: 'colors-slash-sizes' },
+    ] as any[];
+
+    const result = generateSchemaFile([], datasources);
+
+    expect(result).toContain('import { colorsSizesDatasource } from \'./datasources/colors-sizes\';');
+    expect(result).toContain('import { colorsSizesDatasource2 } from \'./datasources/colors-slash-sizes\';');
+    expect(result).toContain('    colorsSizesDatasource,');
+    expect(result).toContain('    colorsSizesDatasource2,');
   });
 });

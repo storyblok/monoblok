@@ -50,6 +50,24 @@ export function datasourceVarName(name: string): string {
   return `${toCamelCaseIdentifier(name)}Datasource`;
 }
 
+/**
+ * Resolves an ordered list of raw names to unique variable names. Names that
+ * sanitize to the same identifier get a numeric suffix (`…2`, `…3`), so the
+ * generated `export const`s and schema-object keys never collide. Index-aligned
+ * to `rawNames`.
+ */
+export function resolveVarNames(rawNames: string[], baseVarName: (name: string) => string): string[] {
+  const used = new Set<string>();
+  return rawNames.map((raw) => {
+    const base = baseVarName(raw);
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate)) { candidate = `${base}${n++}`; }
+    used.add(candidate);
+    return candidate;
+  });
+}
+
 /** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
 export function componentFileName(name: string): string {
   return toKebabCase(name);
@@ -110,7 +128,7 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [stri
  * `defineField()` calls (sorted by `pos`). `component_group_uuid` is dropped —
  * groups are a UI concern and aren't part of a content-shape definition.
  */
-export function generateComponentFile(component: Component): string {
+export function generateComponentFile(component: Component, varName?: string): string {
   const lines: string[] = [];
 
   lines.push('import {');
@@ -119,8 +137,8 @@ export function generateComponentFile(component: Component): string {
   lines.push('} from \'@storyblok/schema\';');
   lines.push('');
 
-  const varName = componentVarName(component.name);
-  lines.push(`export const ${varName} = defineBlock({`);
+  const resolvedVarName = varName ?? componentVarName(component.name);
+  lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
   const clean = stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS);
 
@@ -173,14 +191,14 @@ export function generateComponentFile(component: Component): string {
  * Generates a full TypeScript file for a datasource with `defineDatasource()`.
  * Strips API-assigned fields (id, created_at, updated_at).
  */
-export function generateDatasourceFile(datasource: Datasource): string {
+export function generateDatasourceFile(datasource: Datasource, varName?: string): string {
   const lines: string[] = [];
 
   lines.push('import { defineDatasource } from \'@storyblok/schema\';');
   lines.push('');
 
-  const varName = datasourceVarName(datasource.name);
-  lines.push(`export const ${varName} = defineDatasource({`);
+  const resolvedVarName = varName ?? datasourceVarName(datasource.name);
+  lines.push(`export const ${resolvedVarName} = defineDatasource({`);
 
   const clean = stripKeys(datasource as unknown as Record<string, unknown>, DATASOURCE_STRIP_KEYS);
 
@@ -214,8 +232,13 @@ export function generateSchemaFile(
   components: Component[],
   datasources: Datasource[],
   groupPathByComponentName: Map<string, string[]> = new Map(),
+  componentVarNames?: string[],
+  datasourceVarNames?: string[],
 ): string {
   const lines: string[] = [];
+
+  const compVars = componentVarNames ?? resolveVarNames(components.map(c => c.name), componentVarName);
+  const dsVars = datasourceVarNames ?? resolveVarNames(datasources.map(d => d.name), datasourceVarName);
 
   // Import the defineSchema helper and the Schema/Story type helpers
   lines.push('import { defineSchema } from \'@storyblok/schema\';');
@@ -224,22 +247,22 @@ export function generateSchemaFile(
   lines.push('');
 
   // Import blocks from their group subdirectory
-  for (const component of components) {
-    const varName = componentVarName(component.name);
+  components.forEach((component, i) => {
+    const varName = compVars[i];
     const fileName = componentFileName(component.name);
     // Blocks are imported from their (slugified) group subdirectory — local
     // organization that mirrors the remote groups; `schema push` ignores it.
     const segments = groupPathByComponentName.get(component.name) ?? [];
     const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
     lines.push(`import { ${varName} } from './blocks/${subPath}${fileName}';`);
-  }
+  });
 
   // Import datasources
-  for (const datasource of datasources) {
-    const varName = datasourceVarName(datasource.name);
+  datasources.forEach((datasource, i) => {
+    const varName = dsVars[i];
     const fileName = datasourceFileName(datasource);
     lines.push(`import { ${varName} } from './datasources/${fileName}';`);
-  }
+  });
 
   lines.push('');
 
@@ -248,19 +271,17 @@ export function generateSchemaFile(
 
   if (components.length > 0) {
     lines.push('  blocks: {');
-    for (const component of components) {
-      const varName = componentVarName(component.name);
+    compVars.forEach((varName) => {
       lines.push(`    ${varName},`);
-    }
+    });
     lines.push('  },');
   }
 
   if (datasources.length > 0) {
     lines.push('  datasources: {');
-    for (const datasource of datasources) {
-      const varName = datasourceVarName(datasource.name);
+    dsVars.forEach((varName) => {
       lines.push(`    ${varName},`);
-    }
+    });
     lines.push('  },');
   }
 

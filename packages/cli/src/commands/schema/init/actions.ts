@@ -6,10 +6,13 @@ import type { Component, ComponentFolder, Datasource } from '../../../types';
 import { buildGroupPathByUuid } from '../folders';
 import {
   componentFileName,
+  componentVarName,
   datasourceFileName,
+  datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
+  resolveVarNames,
 } from './generate-code';
 
 /** Writes a file, creating parent directories as needed. */
@@ -35,29 +38,34 @@ export async function writeSchemaFiles(
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
   const groupPathByComponentName = new Map<string, string[]>();
+  const componentVarNames = resolveVarNames(components.map(c => c.name), componentVarName);
+  const datasourceVarNames = resolveVarNames(datasources.map(d => d.name), datasourceVarName);
 
   // Write component files into their group directory
-  for (const comp of components) {
+  for (const [i, comp] of components.entries()) {
     const segments = comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [];
     if (segments.length > 0) { groupPathByComponentName.set(comp.name, segments); }
 
     const fileName = componentFileName(comp.name);
     const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
-    await writeFileWithDirs(filePath, generateComponentFile(comp));
+    await writeFileWithDirs(filePath, generateComponentFile(comp, componentVarNames[i]));
     writtenFiles.push(filePath);
   }
 
   // Write datasource files
-  for (const ds of datasources) {
+  for (const [i, ds] of datasources.entries()) {
     const fileName = datasourceFileName(ds);
     const filePath = join(targetPath, 'datasources', `${fileName}.ts`);
-    await writeFileWithDirs(filePath, generateDatasourceFile(ds));
+    await writeFileWithDirs(filePath, generateDatasourceFile(ds, datasourceVarNames[i]));
     writtenFiles.push(filePath);
   }
 
   // Write schema.ts (entry point with schema object, types, and Story alias)
   const schemaPath = join(targetPath, 'schema.ts');
-  await writeFileWithDirs(schemaPath, generateSchemaFile(components, datasources, groupPathByComponentName));
+  await writeFileWithDirs(
+    schemaPath,
+    generateSchemaFile(components, datasources, groupPathByComponentName, componentVarNames, datasourceVarNames),
+  );
   writtenFiles.push(schemaPath);
 
   return writtenFiles;

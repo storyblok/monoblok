@@ -79,6 +79,20 @@ export function applyDefaults<T extends Record<string, unknown>>(entity: T, defa
 export const INDENT = '  ';
 
 /**
+ * Serializes a string as a single-quoted TS literal with correct escaping.
+ * Uses JSON.stringify for backslash/control-char/newline handling, then converts
+ * the double-quoted result to single-quoted output. Without this, backslashes in
+ * values like regexes are silently dropped and raw newlines break the parse.
+ */
+export function quoteString(value: string): string {
+  const escaped = JSON.stringify(value)
+    .slice(1, -1) // strip the surrounding double quotes
+    .replace(/\\"/g, '"') // JSON-escaped `\"` → `"` (no need to escape " inside '...')
+    .replace(/'/g, '\\\''); // escape single quotes for the '...' delimiter
+  return `'${escaped}'`;
+}
+
+/**
  * Formats a JavaScript value as a multi-line code string.
  * All object properties are placed on separate lines.
  * Object keys are sorted alphabetically for stable output.
@@ -91,7 +105,7 @@ export function formatValue(value: unknown, depth: number): string {
     return String(value);
   }
   if (typeof value === 'string') {
-    return `'${value.replace(/'/g, '\\\'')}'`;
+    return quoteString(value);
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value);

@@ -68,6 +68,14 @@ export function resolveVarNames(rawNames: string[], baseVarName: (name: string) 
   });
 }
 
+/**
+ * File names are sanitized but not deduplicated (unlike variable names): the
+ * scheme relies on the source identifiers already being unique — component
+ * `name` is unique per space, and datasource `slug` is a required, unique,
+ * URL-friendly string. If two entries ever produced the same file name, the
+ * second would overwrite the first and its `schema.ts` import would break.
+ */
+
 /** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
 export function componentFileName(name: string): string {
   return toKebabCase(name);

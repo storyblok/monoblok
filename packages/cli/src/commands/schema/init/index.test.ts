@@ -175,6 +175,29 @@ describe('schema init command', () => {
     expect(content).toContain('slug: \'categories\'');
   });
 
+  it('generates valid identifiers for datasource names containing special characters', async () => {
+    const ds = makeMockDatasource({ name: 'Colors & Sizes', slug: 'colors-sizes' });
+    preconditions.hasRemoteSchema({ datasources: [ds] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+
+    // Datasource file name is shell-safe.
+    const dsFile = files.find(f => f.includes('/datasources/colors-sizes.ts'));
+    expect(dsFile).toBeDefined();
+    const dsContent = vol.readFileSync(dsFile!, 'utf-8') as string;
+    expect(dsContent).toContain('export const colorsSizesDatasource = defineDatasource({');
+
+    // schema.ts import, export reference, and key all agree and contain no `&`.
+    const schemaFile = files.find(f => f.endsWith('/schema.ts'));
+    expect(schemaFile).toBeDefined();
+    const schemaContent = vol.readFileSync(schemaFile!, 'utf-8') as string;
+    expect(schemaContent).toContain('import { colorsSizesDatasource } from \'./datasources/colors-sizes\';');
+    expect(schemaContent).toContain('    colorsSizesDatasource,');
+    expect(schemaContent).not.toContain('&');
+  });
+
   it('should generate schema.ts with schema object and types', async () => {
     const comp = makeMockComponent({ name: 'page', is_root: true });
     preconditions.hasRemoteSchema({ components: [comp] });

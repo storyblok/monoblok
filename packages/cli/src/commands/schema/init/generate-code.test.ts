@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  componentFileName,
   componentVarName,
   datasourceVarName,
   generateComponentFile,
@@ -199,6 +200,18 @@ describe('generateSchemaFile', () => {
 
     expect(result).toContain('  blocks: {');
     expect(result).not.toContain('  datasources: {');
+  });
+});
+
+describe('componentFileName', () => {
+  it('keeps well-formed names unchanged', () => {
+    expect(componentFileName('teaser_list')).toBe('teaser-list');
+    expect(componentFileName('page')).toBe('page');
+  });
+
+  it('strips characters that are not filesystem/shell-safe', () => {
+    expect(componentFileName('Interaktion & CTAs')).toBe('interaktion-ctas');
+    expect(componentFileName('A+B (C)')).toBe('a-b-c');
   });
 });
 

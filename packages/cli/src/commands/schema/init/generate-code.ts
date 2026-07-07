@@ -26,14 +26,18 @@ function toCamelCaseIdentifier(str: string): string {
 }
 
 /**
- * Converts a string to kebab-case.
- * Handles snake_case, camelCase, PascalCase, and space-separated words.
+ * Converts a string to kebab-case, keeping only filesystem/shell-safe
+ * characters. Handles snake_case, camelCase, PascalCase, and space-separated
+ * words; any remaining non-`[a-z0-9-]` characters collapse to a single `-`.
  */
 function toKebabCase(str: string): string {
   return str
     .replace(/[\s_]+/g, '-')
     .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /** Returns the variable name for a component. e.g. `'teaser_list'` -> `'teaserListBlock'` */

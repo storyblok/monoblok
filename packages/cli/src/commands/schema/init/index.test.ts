@@ -175,6 +175,75 @@ describe('schema init command', () => {
     expect(content).toContain('slug: \'categories\'');
   });
 
+  it('generates valid identifiers for datasource names containing special characters', async () => {
+    const ds = makeMockDatasource({ name: 'Colors & Sizes', slug: 'colors-sizes' });
+    preconditions.hasRemoteSchema({ datasources: [ds] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+
+    // Datasource file name is shell-safe.
+    const dsFile = files.find(f => f.includes('/datasources/colors-sizes.ts'));
+    expect(dsFile).toBeDefined();
+    const dsContent = vol.readFileSync(dsFile!, 'utf-8') as string;
+    expect(dsContent).toContain('export const colorsSizesDatasource = defineDatasource({');
+
+    // schema.ts import, export reference, and key all agree and contain no `&`.
+    const schemaFile = files.find(f => f.endsWith('/schema.ts'));
+    expect(schemaFile).toBeDefined();
+    const schemaContent = vol.readFileSync(schemaFile!, 'utf-8') as string;
+    expect(schemaContent).toContain('import { colorsSizesDatasource } from \'./datasources/colors-sizes\';');
+    expect(schemaContent).toContain('    colorsSizesDatasource,');
+    expect(schemaContent).not.toContain('&');
+  });
+
+  it('writes distinct files when component names collapse to the same kebab-case file name', async () => {
+    // `hero_cta` and `hero-cta` are distinct component names that both kebab to
+    // `hero-cta`. Without dedup the second file would overwrite the first while
+    // schema.ts still imports two symbols from the one path (uncompilable TS).
+    const comps = [
+      makeMockComponent({ name: 'hero_cta' }),
+      makeMockComponent({ name: 'hero-cta' }),
+    ];
+    preconditions.hasRemoteSchema({ components: comps });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+    // Both blocks land in their own file — no overwrite.
+    expect(files.some(f => f.endsWith('/blocks/hero-cta.ts'))).toBe(true);
+    expect(files.some(f => f.endsWith('/blocks/hero-cta-2.ts'))).toBe(true);
+
+    // schema.ts imports each block from a distinct existing path.
+    const schemaContent = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
+    expect(schemaContent).toContain('from \'./blocks/hero-cta\';');
+    expect(schemaContent).toContain('from \'./blocks/hero-cta-2\';');
+  });
+
+  it('keeps a shared file name for colliding blocks in different group directories', async () => {
+    // `hero_cta` and `hero-cta` both kebab to `hero-cta`, but they live in
+    // different group directories — they don't collide on disk, so each keeps
+    // the shared file name and its import carries the distinguishing subpath.
+    const folderA = makeMockFolder({ name: 'Group A', uuid: 'group-a-uuid' });
+    const folderB = makeMockFolder({ name: 'Group B', uuid: 'group-b-uuid' });
+    const comps = [
+      makeMockComponent({ name: 'hero_cta', component_group_uuid: 'group-a-uuid' } as any),
+      makeMockComponent({ name: 'hero-cta', component_group_uuid: 'group-b-uuid' } as any),
+    ];
+    preconditions.hasRemoteSchema({ components: comps, folders: [folderA, folderB] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.endsWith('/blocks/group-a/hero-cta.ts'))).toBe(true);
+    expect(files.some(f => f.endsWith('/blocks/group-b/hero-cta.ts'))).toBe(true);
+
+    const schemaContent = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
+    expect(schemaContent).toContain('from \'./blocks/group-a/hero-cta\';');
+    expect(schemaContent).toContain('from \'./blocks/group-b/hero-cta\';');
+  });
+
   it('should generate schema.ts with schema object and types', async () => {
     const comp = makeMockComponent({ name: 'page', is_root: true });
     preconditions.hasRemoteSchema({ components: [comp] });

@@ -1,4 +1,5 @@
 import { text } from './helpers';
+import type { SbRichTextNode } from '../static';
 import type { HtmlFixture } from './types';
 
 export const nodeFixtures: HtmlFixture[] = [
@@ -82,7 +83,8 @@ export const nodeFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [
         { type: 'paragraph', content: [text('Outer')] },
-        { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] },
+        // doc nested inside content — runtime edge case the renderer handles
+        { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] } as unknown as SbRichTextNode,
       ],
     },
     expected: '<p>Outer</p><p>Inner</p>',

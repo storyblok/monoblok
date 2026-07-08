@@ -1,7 +1,7 @@
-import type { SbRichTextNode } from '../static';
+import type { SbRichTextInput } from '../static';
 
 export interface HtmlFixture {
   title: string;
-  input: SbRichTextNode | SbRichTextNode[];
+  input: NonNullable<SbRichTextInput>;
   expected: string;
 };

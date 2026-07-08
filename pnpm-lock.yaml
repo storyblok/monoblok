@@ -1227,6 +1227,9 @@ importers:
       '@storyblok/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@storyblok/openapi-codegen':
+        specifier: workspace:*
+        version: link:../../tools/openapi-codegen
       '@types/markdown-it':
         specifier: ^14.1.2
         version: 14.1.2

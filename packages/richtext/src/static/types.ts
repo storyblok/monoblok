@@ -1,7 +1,10 @@
 import type { SbRichTextImageOptions } from '../types';
-import type { SbRichTextElementByType, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
+import type { RichtextDoc } from '../generated/overlay/types.gen';
+import type { SbRichTextElementByType, SbRichTextMark, SbRichTextNode, TiptapMarkName, TiptapNodeName } from './types.generated';
 
 export type SbRichTextElement = Exclude<TiptapNodeName | TiptapMarkName, 'text'>;
+
+export type { SbRichTextMark, SbRichTextNode };
 
 interface ISbComponentType<T extends string> {
   _uid?: string;
@@ -25,9 +28,9 @@ export interface RenderSpec {
 }
 
 /** Canonical type for a Storyblok RichText JSON root */
-export type SbRichTextDoc = SbRichTextNode & { type: 'doc' };
+export type SbRichTextDoc = RichtextDoc;
 export type SbRichTextTextNode = SbRichTextNode & { type: 'text' };
-export type SbRichTextInput = SbRichTextNode | SbRichTextNode[] | null | undefined;
+export type SbRichTextInput = SbRichTextDoc | SbRichTextNode | SbRichTextNode[] | null | undefined;
 
 export type SbRichTextProps<
   T extends SbRichTextElement,

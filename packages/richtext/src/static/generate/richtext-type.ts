@@ -53,23 +53,6 @@ function markShape(name: string): string {
   return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string; }`;
 }
 
-/** Generate SbRichTextNode discriminated union type */
-function genPMNode(schema: Schema): string {
-  let out = 'export type SbRichTextNode<TContext = unknown> =\n';
-  for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
-    out += `  | ${nodeShape(schema, name)}\n`;
-  }
-  return `${out};`;
-}
-
-function genPMMark(schema: Schema): string {
-  let out = 'export type SbRichTextMark =\n';
-  for (const [name] of Object.entries(schema.marks)) {
-    out += `  | ${markShape(name)}\n`;
-  }
-  return `${out};`;
-}
-
 /**
  * Generate a flat lookup interface keyed by element name.
  * This allows `SbRichTextElementByType[T]` indexed access to resolve to the
@@ -100,6 +83,7 @@ export function generateTypes() {
   let output = '';
   output += '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n';
   output += `import type { MarkAttrTypeMap, NodeAttrTypeMap } from '../extensions/richtext-attrs';\n`;
+  output += `import type { RichTextMark as _RichTextMark, RichTextNode as _RichTextNode } from '../generated/overlay/types.gen';\n`;
   output += '\n';
   // --- Attribute types
   output += '/** Attribute types for all Tiptap node extensions */\n';
@@ -113,9 +97,13 @@ export function generateTypes() {
   // --- Node name unions
   output += 'export type TiptapNodeName = keyof TiptapNodeAttributes;\n';
   output += 'export type TiptapMarkName = keyof TiptapMarkAttributes;\n';
-  // --- SbRichTextNode/SbRichTextMark
-  output += `${genPMNode(schema)}\n\n`;
-  output += `${genPMMark(schema)}\n\n`;
+  // --- SbRichTextNode/SbRichTextMark delegate to OpenAPI-generated types,
+  //     adding common optional fields so the renderer can access content/marks/attrs
+  //     without narrowing every union member, plus _key and context generics.
+  output += '/** Richtext node — wire shape from OpenAPI extended with renderer additions. */\n';
+  output += 'export type SbRichTextNode<TContext = unknown> = _RichTextNode & { content?: Array<SbRichTextNode<TContext>>; marks?: Array<SbRichTextMark<TContext>>; attrs?: Record<string, unknown>; _key?: string; context?: TContext };\n';
+  output += '/** Richtext mark — wire shape from OpenAPI extended with renderer additions. */\n';
+  output += 'export type SbRichTextMark<TContext = unknown> = _RichTextMark & { attrs?: Record<string, unknown>; _key?: string; context?: TContext };\n\n';
   output += `${genElementByType(schema)}\n`;
   return output;
 }

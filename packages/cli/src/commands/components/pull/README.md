@@ -48,6 +48,9 @@ This will download a single component and its dependencies to:
 | `--sf, --separate-files` | Create a separate file for each component | `false` |
 | `--su, --suffix <suffix>` | Suffix to add to the files names  | |
 | `-p, --path <path>` | Custom path to store the files | `.storyblok/components` |
+| `--fi, --filter <glob>` | Glob pattern to select components by name | - |
+| `--gr, --group <name>` | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | - |
+| `--tg, --tag <name>` | Component tag name to select. Repeatable and comma-separated | - |
 
 ## Examples
 

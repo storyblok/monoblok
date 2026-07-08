@@ -6,7 +6,7 @@ import { CommandError, handleError, requireAuthentication } from '../../../utils
 import { session } from '../../../session';
 import { deleteComponentPreset, readComponentsFiles } from './actions';
 import { componentsCommand } from '../command';
-import { filterSpaceDataByComponent, filterSpaceDataByPattern } from './utils';
+import { filterSpaceData, filterSpaceDataByComponent, resolveGroupSelector, resolveTagSelector } from './utils';
 import { pushWithDependencyGraph } from './graph-operations';
 import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
@@ -20,6 +20,8 @@ const pushCmd = componentsCommand
   .description(`Push your space's components schema as json`)
   .option('-f, --from <from>', 'source space id')
   .option('--fi, --filter <filter>', 'glob filter to apply to the components before pushing')
+  .option('--gr, --group <group>', 'component group to select by name (e.g. "Checkout"), or by a slash-separated path of nested group names to disambiguate (e.g. "Checkout/Payment"). Repeatable, includes descendant groups', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--tg, --tag <tag>', 'component tag name (repeatable, comma-separated)', (value: string, previous: string[] = []) => [...previous, ...value.split(',').map(v => v.trim()).filter(Boolean)])
   .option('--sf, --separate-files', 'Read from separate files instead of consolidated files', false)
   .option('--su, --suffix <suffix>', 'Load only files matching *.<suffix>.json (e.g. components.dev.json)')
   .option('-s, --space <space>', 'space ID');
@@ -33,7 +35,7 @@ pushCmd
 
     const { space, path, verbose } = command.optsWithGlobals();
 
-    const { filter } = options;
+    const { filter, group, tag } = options;
     const fromSpace = options.from || space;
 
     // Check if the user is logged in
@@ -137,14 +139,22 @@ pushCmd
           return;
         }
       }
-      // If filter pattern is provided, filter space data to match the pattern
-      else if (filter) {
-        spaceState.local = filterSpaceDataByPattern(spaceState.local, filter);
+      // If a filter, group, or tag selector is provided, filter space data to match the selectors
+      else if (filter || (group && group.length > 0) || (tag && tag.length > 0)) {
+        const groupUuids = group && group.length > 0
+          ? new Set<string>(group.flatMap(g => [...resolveGroupSelector(spaceState.local.groups, g)]))
+          : undefined;
+        const tagIds = tag && tag.length > 0
+          ? resolveTagSelector(spaceState.local.internalTags, tag)
+          : undefined;
+
+        spaceState.local = filterSpaceData(spaceState.local, { filter, groupUuids, tagIds });
         if (!spaceState.local.components.length) {
-          handleError(new CommandError(`No components found matching pattern "${filter}".`), verbose);
+          handleError(new CommandError('No components found matching the given selectors.'), verbose);
           return;
         }
-        ui.info(`Filter applied: ${filter}`);
+        const applied = [filter && `filter ${filter}`, group?.length && `group ${group.join(', ')}`, tag?.length && `tag ${tag.join(', ')}`].filter(Boolean).join('; ');
+        ui.info(`Selectors applied: ${applied}`);
       }
 
       if (!spaceState.local.components.length) {

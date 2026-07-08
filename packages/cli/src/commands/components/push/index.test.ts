@@ -8,7 +8,7 @@ import '../index';
 import { componentsCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
-import { deleteComponentPreset, upsertComponent } from './actions';
+import { deleteComponentPreset, upsertComponent, upsertComponentGroup } from './actions';
 import { getUI } from '../../../utils/ui';
 
 vi.mock('./actions', async () => {
@@ -255,6 +255,149 @@ describe('push', () => {
 
       // Should not delete presets for components not being pushed
       expect(vi.mocked(deleteComponentPreset)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('--group option', () => {
+    const checkoutForm = {
+      name: 'checkout-form',
+      display_name: 'Checkout Form',
+      id: 1,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      component_group_uuid: 'checkout',
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+    const hero = {
+      name: 'hero',
+      display_name: 'Hero',
+      id: 2,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      component_group_uuid: 'marketing',
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+    const checkoutGroup = { id: 1, uuid: 'checkout', name: 'Checkout' };
+    const marketingGroup = { id: 2, uuid: 'marketing', name: 'Marketing' };
+
+    beforeEach(() => {
+      vol.fromJSON({
+        '.storyblok/components/source-space/components.json': JSON.stringify([checkoutForm, hero]),
+        '.storyblok/components/source-space/groups.json': JSON.stringify([checkoutGroup, marketingGroup]),
+      });
+      vi.mocked(fetchComponents).mockResolvedValue([]);
+      vi.mocked(fetchComponentGroups).mockResolvedValue([]);
+      vi.mocked(fetchComponentPresets).mockResolvedValue([]);
+      vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
+      vi.mocked(upsertComponent).mockResolvedValue(checkoutForm as unknown as Component);
+      vi.mocked(upsertComponentGroup).mockResolvedValue(checkoutGroup as any);
+    });
+
+    it('pushes only components in the named group', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'push', '--space', 'target-space', '--from', 'source-space', '--group', 'Checkout']);
+
+      const pushedNames = vi.mocked(upsertComponent).mock.calls.map(c => c[1]?.name);
+      expect(pushedNames).toContain('checkout-form');
+      expect(pushedNames).not.toContain('hero');
+    });
+
+    it('errors on an unknown group name', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'push', '--space', 'target-space', '--from', 'source-space', '--group', 'Ghost']);
+
+      expect(konsola.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'), null, { header: true });
+      expect(vi.mocked(upsertComponent)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('--tag option', () => {
+    const taggedComponent = {
+      name: 'tagged',
+      display_name: 'Tagged',
+      id: 1,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: ['10'],
+    };
+    const untaggedComponent = {
+      name: 'untagged',
+      display_name: 'Untagged',
+      id: 2,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+    const betaTag = { id: 10, name: 'beta', object_type: 'component' };
+
+    beforeEach(() => {
+      vol.fromJSON({
+        '.storyblok/components/source-space/components.json': JSON.stringify([taggedComponent, untaggedComponent]),
+        '.storyblok/components/source-space/tags.json': JSON.stringify([betaTag]),
+      });
+      vi.mocked(fetchComponents).mockResolvedValue([]);
+      vi.mocked(fetchComponentGroups).mockResolvedValue([]);
+      vi.mocked(fetchComponentPresets).mockResolvedValue([]);
+      vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
+      vi.mocked(upsertComponent).mockResolvedValue(taggedComponent as unknown as Component);
+      vi.mocked(upsertComponentGroup).mockResolvedValue({} as any);
+    });
+
+    it('pushes only components carrying the named tag', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'push', '--space', 'target-space', '--from', 'source-space', '--tag', 'beta']);
+
+      const names = vi.mocked(upsertComponent).mock.calls.map(c => c[1]?.name);
+      expect(names).toContain('tagged');
+      expect(names).not.toContain('untagged');
+    });
+  });
+
+  describe('--filter option', () => {
+    const checkoutFormFilter = {
+      name: 'checkout-form',
+      display_name: 'Checkout Form',
+      id: 1,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+    const heroFilter = {
+      name: 'hero',
+      display_name: 'Hero',
+      id: 2,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+
+    beforeEach(() => {
+      vol.fromJSON({
+        '.storyblok/components/source-space/components.json': JSON.stringify([checkoutFormFilter, heroFilter]),
+      });
+      vi.mocked(fetchComponents).mockResolvedValue([]);
+      vi.mocked(fetchComponentGroups).mockResolvedValue([]);
+      vi.mocked(fetchComponentPresets).mockResolvedValue([]);
+      vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
+      vi.mocked(upsertComponent).mockResolvedValue(checkoutFormFilter as unknown as Component);
+      vi.mocked(upsertComponentGroup).mockResolvedValue({} as any);
+    });
+
+    it('pushes only components matching the glob filter', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'push', '--space', 'target-space', '--from', 'source-space', '--filter', 'checkout-*']);
+
+      const names = vi.mocked(upsertComponent).mock.calls.map(c => c[1]?.name);
+      expect(names).toContain('checkout-form');
+      expect(names).not.toContain('hero');
     });
   });
 });

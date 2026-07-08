@@ -12,6 +12,7 @@ import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
+import { filterSpaceData, resolveGroupSelector, resolveTagSelector } from '../utils';
 
 const pullCmd = componentsCommand
   .command('pull [componentName]')
@@ -19,6 +20,9 @@ const pullCmd = componentsCommand
   .option('--sf, --separate-files', 'Argument to create a single file for each component')
   .option('--su, --suffix <suffix>', 'suffix to add to the file name (e.g. components.<suffix>.json)')
   .option('-s, --space <space>', 'space ID')
+  .option('--fi, --filter <filter>', 'glob pattern to select components by name')
+  .option('--gr, --group <group>', 'component group to select by name (e.g. "Checkout"), or by a slash-separated path of nested group names to disambiguate (e.g. "Checkout/Payment"). Repeatable, includes descendant groups', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--tg, --tag <tag>', 'component tag name (repeatable, comma-separated)', (value: string, previous: string[] = []) => [...previous, ...value.split(',').map(v => v.trim()).filter(Boolean)])
   .description(`Download your space's components schema as json. Optionally specify a component name to pull a single component.`);
 
 pullCmd
@@ -33,6 +37,9 @@ pullCmd
       separateFiles = false,
       suffix,
       filename,
+      filter,
+      group,
+      tag,
     } = options;
 
     // Use default filename when not provided
@@ -59,15 +66,15 @@ pullCmd
 
     try {
       // Fetch components groups
-      const groups = await fetchComponentGroups(space);
+      let groups = await fetchComponentGroups(space);
       spinnerGroups.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Completed in ${spinnerGroups.elapsedTime.toFixed(2)}ms`);
 
       // Fetch components presets
-      const presets = await fetchComponentPresets(space);
+      let presets = await fetchComponentPresets(space);
       spinnerPresets.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Completed in ${spinnerPresets.elapsedTime.toFixed(2)}ms`);
 
       // Fetch components internal tags
-      const internalTags = await fetchComponentInternalTags(space);
+      let internalTags = await fetchComponentInternalTags(space);
       spinnerInternalTags.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Completed in ${spinnerInternalTags.elapsedTime.toFixed(2)}ms`);
 
       // Save everything using the new structure
@@ -86,6 +93,30 @@ pullCmd
         if (!components || components.length === 0) {
           spinnerComponents.failed(`No components found in the space ${space}`);
           return;
+        }
+
+        const hasSelectors = Boolean(filter) || (group && group.length > 0) || (tag && tag.length > 0);
+        if (hasSelectors) {
+          const groupUuids = group && group.length > 0
+            ? new Set<string>(group.flatMap(g => [...resolveGroupSelector(groups || [], g)]))
+            : undefined;
+          const tagIds = tag && tag.length > 0
+            ? resolveTagSelector(internalTags || [], tag)
+            : undefined;
+
+          const filtered = filterSpaceData(
+            { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
+            { filter, groupUuids, tagIds },
+          );
+          if (filtered.components.length === 0) {
+            spinnerComponents.failed('No components found matching the given selectors.');
+            ui.warn('No components found matching the given selectors.');
+            return;
+          }
+          components = filtered.components;
+          groups = filtered.groups;
+          presets = filtered.presets;
+          internalTags = filtered.internalTags;
         }
       }
       spinnerComponents.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Components')} - Completed in ${spinnerComponents.elapsedTime.toFixed(2)}ms`);

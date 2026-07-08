@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
 import { CommandError, konsola } from '../../../utils';
-import { fetchComponent, fetchComponents, saveComponentsToFiles } from './actions';
+import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponents, saveComponentsToFiles } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
 // Import the main module first to ensure proper initialization
@@ -269,6 +269,112 @@ describe('pull', () => {
         datasources: [],
       }, expect.objectContaining({ separateFiles: true, filename: 'custom' }));
       expect(ui.warn).toHaveBeenCalledWith(`The --filename option is ignored when using --separate-files`);
+    });
+  });
+
+  describe('--filter option', () => {
+    it('should save only components matching the glob and their dependencies', async () => {
+      const checkout = {
+        name: 'checkout-form',
+        display_name: 'Checkout Form',
+        id: 1,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+      const hero = {
+        name: 'hero',
+        display_name: 'Hero',
+        id: 2,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+
+      vi.mocked(fetchComponents).mockResolvedValue([checkout, hero]);
+
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filter', 'checkout-*']);
+
+      expect(saveComponentsToFiles).toHaveBeenCalledWith('12345', expect.objectContaining({
+        components: [checkout],
+      }), expect.any(Object));
+    });
+
+    it('should warn and not save when the glob matches nothing', async () => {
+      const hero = {
+        name: 'hero',
+        display_name: 'Hero',
+        id: 2,
+        created_at: '',
+        updated_at: '',
+        schema: { type: 'object' },
+        internal_tags_list: [] as { id?: number; name?: string }[],
+        internal_tag_ids: [] as string[],
+      };
+      vi.mocked(fetchComponents).mockResolvedValue([hero]);
+
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--filter', 'checkout-*']);
+
+      expect(saveComponentsToFiles).not.toHaveBeenCalled();
+      expect(ui.warn).toHaveBeenCalledWith('No components found matching the given selectors.');
+    });
+  });
+
+  describe('--group and --tag options', () => {
+    const inCheckout = {
+      name: 'checkout-form',
+      display_name: 'Checkout Form',
+      id: 1,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      component_group_uuid: 'checkout',
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: ['10'],
+    };
+    const inMarketing = {
+      name: 'hero',
+      display_name: 'Hero',
+      id: 2,
+      created_at: '',
+      updated_at: '',
+      schema: { type: 'object' },
+      component_group_uuid: 'marketing',
+      internal_tags_list: [] as { id?: number; name?: string }[],
+      internal_tag_ids: [] as string[],
+    };
+    const checkoutGroup = { id: 1, uuid: 'checkout', name: 'Checkout' };
+    const marketingGroup = { id: 2, uuid: 'marketing', name: 'Marketing' };
+    const betaTag = { id: 10, name: 'beta' };
+
+    beforeEach(() => {
+      vi.mocked(fetchComponents).mockResolvedValue([inCheckout, inMarketing]);
+      vi.mocked(fetchComponentGroups).mockResolvedValue([checkoutGroup, marketingGroup]);
+      vi.mocked(fetchComponentInternalTags).mockResolvedValue([betaTag]);
+    });
+
+    it('pulls only components in the named group and its dependencies', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--group', 'Checkout']);
+      expect(saveComponentsToFiles).toHaveBeenCalledWith('12345', expect.objectContaining({
+        components: [inCheckout],
+      }), expect.any(Object));
+    });
+
+    it('pulls only components carrying the named tag', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--tag', 'beta']);
+      expect(saveComponentsToFiles).toHaveBeenCalledWith('12345', expect.objectContaining({
+        components: [inCheckout],
+      }), expect.any(Object));
+    });
+
+    it('errors on an unknown group name', async () => {
+      await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--group', 'Ghost']);
+      expect(konsola.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'), null, { header: true });
+      expect(saveComponentsToFiles).not.toHaveBeenCalled();
     });
   });
 });

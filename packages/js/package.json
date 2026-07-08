@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/js",
   "type": "module",
-  "version": "6.0.1",
+  "version": "6.1.0",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
   "license": "MIT",

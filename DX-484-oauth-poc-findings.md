@@ -66,6 +66,23 @@
 - Narrowed scope requests work: requesting a subset (`stories:read offline_access`) of the app's 32 allowed scopes shows only the read permission on the consent screen and issues a grant with exactly that scope (confirmed visually by the operator).
 - No other UX surprises: consent wording, space picker, and redirects all behaved as expected across both consent runs (operator confirmed).
 
+## MAPI client integration assessment
+
+How OAuth would work in `@storyblok/management-api-client`, based on the verified backend behavior:
+
+1. **Login stays outside the client.** The host (CLI browser flow, MCP server, app) performs the consent dance and hands the client an access token, refresh token, client id/secret, and a persist callback.
+2. **Requests** send `Authorization: Bearer <access_token>` (PAT uses the bare token, so the client must switch header formats by auth type).
+3. **Refresh proactively or on 401 only.** Access tokens live 15 minutes, so any session longer than that refreshes. Either check `expires_at` before requests or intercept 401. Never refresh on 403: that is a scope problem, cleanly distinguishable by status code (no `WWW-Authenticate` header to parse).
+4. **Refresh must be single-flight with persist-before-use.** Because the refresh token rotates and the old one is single-use, the client must serialize concurrent refreshes, call the persist callback with the new refresh token before using the new access token, then retry the original request once.
+
+**Verdict: practical for interactive, single-process use; risky beyond that.** The mechanics are all fine (clean 401/403 split, refresh-after-expiry works, scope errors name the missing scope). The one backend design choice that hurts is strict rotation with no grace window:
+
+- Two processes sharing one credentials file (two CLI invocations, or CLI plus MCP server) invalidate each other's session on refresh. In-process single-flight does not fix cross-process races; that needs file locking or per-process grants.
+- A crash between refresh and persist permanently kills the session (re-login required, no recovery).
+- 15-minute access tokens make refresh a constant occurrence, not a rare edge case.
+
+Recommendation: ship OAuth for the CLI (one process, one credentials file, easy to lock), but for long-running or multi-process consumers ask the backend team for either a short reuse grace period on rotated refresh tokens or a machine-to-machine grant for CI. Also note the token response omits the consented `space_ids`, so the client cannot tell which space it is authorized for without a probe call or `GET /oauth/grant`.
+
 ## Additional observations
 
 - **Env-var client credentials path works:** with `oauth.eu.client` removed from `credentials.json` and `STORYBLOK_OAUTH_CLIENT_ID` / `STORYBLOK_OAUTH_CLIENT_SECRET` set, `oauth login` completes normally, so the zero-setup CI/scripting path is viable.

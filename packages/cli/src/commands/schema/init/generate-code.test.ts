@@ -44,6 +44,49 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('created_at');
   });
 
+  it('should escape backslashes and newlines in field values so the output round-trips', () => {
+    const component = {
+      id: 1,
+      name: 'vimeo-video',
+      created_at: '',
+      updated_at: '',
+      description: 'The identifier can be found here:\nhttps://vimeo.com/<id>',
+      schema: {
+        videoId: {
+          type: 'text',
+          pos: 0,
+          regex: String.raw`^\s*\b\w+(?:\s+\w+){0,3}\s*$`,
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    // Backslashes are escaped so the regex survives byte-for-byte (was silently
+    // corrupted to `^s*w+...` when only single quotes were escaped).
+    expect(result).toContain(String.raw`regex: '^\\s*\\b\\w+(?:\\s+\\w+){0,3}\\s*$',`);
+    // The multiline description is escaped instead of breaking the parse.
+    expect(result).toContain(String.raw`description: 'The identifier can be found here:\nhttps://vimeo.com/<id>',`);
+    // No raw line break leaks into a string literal.
+    expect(result).not.toContain('found here:\n');
+  });
+
+  it('should escape single quotes in field names', () => {
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        'it\'s': { type: 'text', pos: 0 },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('defineField(\'it\\\'s\', {');
+  });
+
   it('should reverse-map wire reference keys to the DSL form', () => {
     const component = {
       id: 1,

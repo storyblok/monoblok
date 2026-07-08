@@ -1,7 +1,10 @@
 import type { AnyExtension } from '@tiptap/core';
 import { getSchema } from '@tiptap/core';
 import type { MarkType, NodeType, Schema } from 'prosemirror-model';
-import { allAttrKeys, type ExtensionAttrMap } from '../../extensions/richtext-attrs';
+import {
+  allAttrKeys,
+  type ExtensionAttrMap,
+} from '../../extensions/richtext-attrs';
 import { getStoryblokTiptapExtensions } from '../../extensions';
 
 const attrKeySet = new Set<keyof ExtensionAttrMap>(allAttrKeys);
@@ -63,7 +66,7 @@ function genPMNode(schema: Schema): string {
 }
 
 function genPMMark(schema: Schema): string {
-  let out = 'export type SbRichTextMark =\n';
+  let out = 'export type SbRichTextMark<TContext = unknown> =\n';
   for (const [name] of Object.entries(schema.marks)) {
     out += `  | ${markShape(name)}\n`;
   }
@@ -78,8 +81,10 @@ function genPMMark(schema: Schema): string {
  */
 function genElementByType(schema: Schema): string {
   let out = '/**\n * Flat lookup of element shapes keyed by `type`.\n';
-  out += ' * Prefer this over `Extract<SbRichTextNode, { type: T }>` in places\n';
-  out += ' * that need to be resolved by limited type resolvers (e.g. Vue SFC macros).\n */\n';
+  out
+    += ' * Prefer this over `Extract<SbRichTextNode, { type: T }>` in places\n';
+  out
+    += ' * that need to be resolved by limited type resolvers (e.g. Vue SFC macros).\n */\n';
   out += 'export interface SbRichTextElementByType<TContext = unknown> {\n';
   for (const [name] of Object.entries(schema.nodes) as [string, NodeType][]) {
     out += `  ${name}: ${nodeShape(schema, name)};\n`;

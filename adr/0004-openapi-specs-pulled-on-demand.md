@@ -10,7 +10,7 @@ Several packages generate their public types (and, for the API clients, SDK code
 Two pressures motivated a change:
 
 - The hand-written spec is a second source of truth that can drift from the backend, and the plan is to stop shipping any OpenAPI spec as a public artifact in the monorepo. The authoritative, overlay-applied specs live in a private repository (`storyblok/openapi-wdx`) that external contributors cannot access, yet the monorepo must stay buildable by them.
-- A single shared types package coupled unrelated consumers: any spec change bumped the shared package, cascading version bumps to every dependent regardless of whether its slice of the surface actually changed (WDX-430).
+- A single shared types package coupled unrelated consumers: any spec change bumped the shared package, cascading version bumps to every dependent regardless of whether its slice of the surface actually changed (DX-430).
 
 ## Decision
 
@@ -30,4 +30,4 @@ Key choices:
 - Version bumps are scoped per consumer, never driven by a shared types package or by the codegen tool.
 - Spec updates require a manual fetch, regeneration, and commit by someone with access. CI cannot do it.
 
-Links: WDX-406, WDX-430.
+Links: DX-406, DX-430.

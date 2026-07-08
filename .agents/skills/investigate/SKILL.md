@@ -16,11 +16,11 @@ Investigate the following GitHub issue: $ARGUMENTS
 ### Phase 1: Fetch Issue Details
 
 1. Parse the input:
-   - `WDX-123` or `linear.app` URL → **Linear ticket**
+   - `DX-123` or `linear.app` URL → **Linear ticket**
    - `#123`, bare number, or `github.com` URL → **GitHub issue**
 2. Fetch the ticket:
    - **GitHub:** `gh issue view <number> --json title,body,labels,comments,author,createdAt,state`
-   - **Linear:** `bash .agents/skills/triage/scripts/linear-fetch.sh issue WDX-123`
+   - **Linear:** `bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123`
 3. Extract: error messages, stack traces, reproduction steps, environment details
 
 ### Phase 2: Identify Affected Package(s)
@@ -47,7 +47,7 @@ For each root cause: the fix (file paths + line numbers), test coverage needed, 
 
 ## Output
 
-1. Extract identifier from arguments (issue `424` → `424`, ticket `WDX-296` → `WDX-296`, text → slugified)
+1. Extract identifier from arguments (issue `424` → `424`, ticket `DX-296` → `DX-296`, text → slugified)
 2. `mkdir -p claude-output`
 3. Write to `claude-output/investigate-<identifier>.md`
 4. Confirm to user: "Investigation written to `claude-output/investigate-<identifier>.md`"

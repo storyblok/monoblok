@@ -23,15 +23,20 @@ interface OauthClientResponse {
   oauth_client: OauthClientDetail;
 }
 
+interface ScopeGroup {
+  resource: string;
+  actions: string[];
+}
+
 interface ScopeMetadataResponse {
-  available_scopes: unknown;
+  available_scopes: ScopeGroup[];
   additional_scopes: string[];
 }
 
 const patHeaders = (pat: string) => ({ Authorization: pat });
 
-// The grouped-scopes shape is a UI-oriented structure; flatten defensively and
-// keep only plain scope strings. Log the raw payload once during the runbook to confirm.
+// Scope strings are built as `resource:action` from the grouped catalog
+// (storyrails token_scopeable.rb VALID_SCOPES).
 export const fetchScopeCatalog = async (pat: string, region: RegionCode): Promise<string[]> => {
   const url = getStoryblokUrl(region);
   const { available_scopes, additional_scopes } = await customFetch<ScopeMetadataResponse>(
@@ -39,10 +44,7 @@ export const fetchScopeCatalog = async (pat: string, region: RegionCode): Promis
     { headers: patHeaders(pat) },
   );
   konsola.info(`Raw scope metadata: ${JSON.stringify({ available_scopes, additional_scopes })}`);
-  const grouped = Array.isArray(available_scopes)
-    ? available_scopes
-    : Object.values(available_scopes as Record<string, unknown>);
-  const flat = (grouped as unknown[]).flat(Infinity).filter(scope => typeof scope === 'string') as string[];
+  const flat = available_scopes.flatMap(group => group.actions.map(action => `${group.resource}:${action}`));
   const scopes = [...new Set([...flat, ...additional_scopes])];
   konsola.info(`Resolved allowed_scopes (${scopes.length}): ${scopes.join(' ')}`);
   return scopes;
@@ -71,6 +73,9 @@ export const findOrCreateCliClient = async (pat: string, region: RegionCode): Pr
       body: {
         oauth_client: {
           name: OAUTH_APP_NAME,
+          // App validates slug format with no allow_blank and global uniqueness,
+          // so creates need a unique slug (storyrails app.rb).
+          slug: `storyblok-cli-${Date.now().toString(36)}`,
           oauth_redirect_uri: OAUTH_REDIRECT_URI,
           allowed_scopes: scopes,
         },
@@ -89,6 +94,12 @@ export const findOrCreateCliClient = async (pat: string, region: RegionCode): Pr
         + `Managing OAuth clients requires an org manager role and the org must be enabled for OAuth grants.\n`
         + `If you are not an org manager, ask your org admin for a client id + secret and run:\n`
         + `  storyblok oauth setup --client-id <id> --client-secret <secret>`,
+      );
+    }
+    if (error instanceof FetchError) {
+      // Surface the raw error body — it's runbook evidence (e.g. 422 validation shapes).
+      throw new CommandError(
+        `/v1/oauth_clients request failed (${error.response.status} ${error.response.statusText}): ${JSON.stringify(error.response.data)}`,
       );
     }
     throw error;

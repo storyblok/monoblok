@@ -3,7 +3,7 @@ import type { SbBlokData } from '../static/types';
 import type { TiptapMarkName, TiptapNodeName } from '../static/types.generated';
 
 /** For node and mark that do not have any attribute support */
-export type NoAttrs = Record<string, never>;
+export type NoAttrs = Record<string, unknown>;
 
 /** Node Attributes */
 

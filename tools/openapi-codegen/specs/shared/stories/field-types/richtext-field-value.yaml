@@ -42,7 +42,7 @@ $defs:
 
   LinkMark:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -50,6 +50,7 @@ $defs:
       attrs:
         type: object
         description: Link attributes
+        required: [href, uuid, anchor, target, linktype]
         properties:
           href:
             type: [string, 'null']
@@ -135,7 +136,7 @@ $defs:
 
   HighlightMark:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -150,7 +151,7 @@ $defs:
 
   TextStyleMark:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -167,7 +168,7 @@ $defs:
 
   AnchorMark:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -182,13 +183,14 @@ $defs:
 
   StyledMark:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [styled]
       attrs:
         type: object
+        required: [class]
         properties:
           class:
             type: [string, 'null']
@@ -221,13 +223,14 @@ $defs:
 
   ParagraphNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [paragraph]
       attrs:
         type: object
+        required: [textAlign]
         properties:
           textAlign:
             description: Text alignment
@@ -261,13 +264,14 @@ $defs:
 
   HeadingNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [heading]
       attrs:
         type: object
+        required: [textAlign]
         properties:
           level:
             description: Heading level (h1–h6)
@@ -324,7 +328,7 @@ $defs:
 
   OrderedListNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -362,13 +366,14 @@ $defs:
 
   CodeBlockNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [code_block]
       attrs:
         type: object
+        required: [class]
         properties:
           class:
             type: [string, 'null']
@@ -404,14 +409,14 @@ $defs:
 
   ImageNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [image]
       attrs:
         type: object
-        required: [src]
+        required: [src, id, alt, title, source, copyright, meta_data]
         properties:
           id:
             type: [integer, 'null']
@@ -432,6 +437,7 @@ $defs:
             description: Asset metadata
             oneOf:
               - type: object
+                required: [alt, title, source, copyright]
                 properties:
                   alt:
                     type: [string, 'null']
@@ -449,7 +455,7 @@ $defs:
 
   EmojiNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -502,7 +508,7 @@ $defs:
 
   TableCellNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -530,7 +536,7 @@ $defs:
 
   TableHeaderNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
@@ -556,13 +562,14 @@ $defs:
 
   BlokNode:
     type: object
-    required: [type]
+    required: [type, attrs]
     properties:
       type:
         type: string
         enum: [blok]
       attrs:
         type: object
+        required: [id, body]
         properties:
           id:
             type: [string, 'null']
@@ -581,5 +588,4 @@ $defs:
                       type: string
                     _editable:
                       type: string
-                  additionalProperties: true
               - type: 'null'

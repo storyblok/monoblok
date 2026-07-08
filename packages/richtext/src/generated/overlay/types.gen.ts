@@ -32,11 +32,11 @@ export type RichtextFieldValueRichTextMark = RichtextFieldValueLinkMark | Richte
 
 export interface RichtextFieldValueParagraphNode {
   type: 'paragraph';
-  attrs?: {
+  attrs: {
     /**
      * Text alignment
      */
-    textAlign?: 'left' | 'center' | 'right' | 'justify' | null;
+    textAlign: 'left' | 'center' | 'right' | 'justify' | null;
   };
   content?: Array<RichtextFieldValueRichTextNode>;
   marks?: Array<RichtextFieldValueRichTextMark>;
@@ -53,7 +53,7 @@ export interface RichtextFieldValueTextNode {
 
 export interface RichtextFieldValueHeadingNode {
   type: 'heading';
-  attrs?: {
+  attrs: {
     /**
      * Heading level (h1–h6)
      */
@@ -61,7 +61,7 @@ export interface RichtextFieldValueHeadingNode {
     /**
      * Text alignment
      */
-    textAlign?: 'left' | 'center' | 'right' | 'justify' | null;
+    textAlign: 'left' | 'center' | 'right' | 'justify' | null;
   };
   content?: Array<RichtextFieldValueRichTextNode>;
   marks?: Array<RichtextFieldValueRichTextMark>;
@@ -81,7 +81,7 @@ export interface RichtextFieldValueBulletListNode {
 
 export interface RichtextFieldValueOrderedListNode {
   type: 'ordered_list';
-  attrs?: {
+  attrs: {
     /**
      * Starting number for the ordered list
      */
@@ -99,11 +99,11 @@ export interface RichtextFieldValueListItemNode {
 
 export interface RichtextFieldValueCodeBlockNode {
   type: 'code_block';
-  attrs?: {
+  attrs: {
     /**
      * Language class (e.g. "language-typescript")
      */
-    class?: string | null;
+    class: string | null;
   };
   content?: Array<RichtextFieldValueRichTextNode>;
   marks?: Array<RichtextFieldValueRichTextMark>;
@@ -120,11 +120,11 @@ export interface RichtextFieldValueHorizontalRuleNode {
 
 export interface RichtextFieldValueImageNode {
   type: 'image';
-  attrs?: {
+  attrs: {
     /**
      * Storyblok asset ID
      */
-    id?: number | null;
+    id: number | null;
     /**
      * Image URL
      */
@@ -132,18 +132,18 @@ export interface RichtextFieldValueImageNode {
     /**
      * Alternative text
      */
-    alt?: string | null;
-    title?: string | null;
-    source?: string | null;
-    copyright?: string | null;
+    alt: string | null;
+    title: string | null;
+    source: string | null;
+    copyright: string | null;
     /**
      * Asset metadata
      */
-    meta_data?: {
-      alt?: string | null;
-      title?: string | null;
-      source?: string | null;
-      copyright?: string | null;
+    meta_data: {
+      alt: string | null;
+      title: string | null;
+      source: string | null;
+      copyright: string | null;
     } | null;
   };
   marks?: Array<RichtextFieldValueRichTextMark>;
@@ -151,7 +151,7 @@ export interface RichtextFieldValueImageNode {
 
 export interface RichtextFieldValueEmojiNode {
   type: 'emoji';
-  attrs?: {
+  attrs: {
     /**
      * Emoji name/slug
      */
@@ -181,7 +181,7 @@ export interface RichtextFieldValueTableRowNode {
 
 export interface RichtextFieldValueTableCellNode {
   type: 'tableCell';
-  attrs?: {
+  attrs: {
     colspan?: number;
     rowspan?: number;
     /**
@@ -195,7 +195,7 @@ export interface RichtextFieldValueTableCellNode {
 
 export interface RichtextFieldValueTableHeaderNode {
   type: 'tableHeader';
-  attrs?: {
+  attrs: {
     colspan?: number;
     rowspan?: number;
     /**
@@ -208,19 +208,18 @@ export interface RichtextFieldValueTableHeaderNode {
 
 export interface RichtextFieldValueBlokNode {
   type: 'blok';
-  attrs?: {
+  attrs: {
     /**
      * Blok instance ID
      */
-    id?: string | null;
+    id: string | null;
     /**
      * Array of embedded component instances
      */
-    body?: Array<{
+    body: Array<{
       _uid: string;
       component: string;
       _editable?: string;
-      [key: string]: unknown | string | undefined;
     }> | null;
   };
 }
@@ -230,27 +229,27 @@ export interface RichtextFieldValueLinkMark {
   /**
    * Link attributes
    */
-  attrs?: {
+  attrs: {
     /**
      * Link URL
      */
-    href?: string | null;
+    href: string | null;
     /**
      * UUID of the linked story (for internal links)
      */
-    uuid?: string | null;
+    uuid: string | null;
     /**
      * Anchor/fragment identifier
      */
-    anchor?: string | null;
+    anchor: string | null;
     /**
      * Link target attribute
      */
-    target?: '_self' | '_blank' | '_parent' | '_top' | null;
+    target: '_self' | '_blank' | '_parent' | '_top' | null;
     /**
      * Type of link
      */
-    linktype?: 'story' | 'url' | 'email' | 'asset' | null;
+    linktype: 'story' | 'url' | 'email' | 'asset' | null;
     /**
      * Custom link attributes
      */
@@ -290,7 +289,7 @@ export interface RichtextFieldValueSubscriptMark {
 
 export interface RichtextFieldValueHighlightMark {
   type: 'highlight';
-  attrs?: {
+  attrs: {
     /**
      * Highlight color (CSS color value)
      */
@@ -300,7 +299,7 @@ export interface RichtextFieldValueHighlightMark {
 
 export interface RichtextFieldValueTextStyleMark {
   type: 'textStyle';
-  attrs?: {
+  attrs: {
     color?: string | null;
     id?: string | null;
     class?: string | null;
@@ -309,7 +308,7 @@ export interface RichtextFieldValueTextStyleMark {
 
 export interface RichtextFieldValueAnchorMark {
   type: 'anchor';
-  attrs?: {
+  attrs: {
     /**
      * Anchor identifier
      */
@@ -319,10 +318,10 @@ export interface RichtextFieldValueAnchorMark {
 
 export interface RichtextFieldValueStyledMark {
   type: 'styled';
-  attrs?: {
+  attrs: {
     /**
      * CSS class name
      */
-    class?: string | null;
+    class: string | null;
   };
 }

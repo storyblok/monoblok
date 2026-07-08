@@ -15,7 +15,7 @@ Generate a spec for: $ARGUMENTS
 **IMPORTANT:** Write the spec output to a markdown file, NOT to the terminal.
 
 1. Extract an identifier from the arguments:
-   - For ticket IDs like `WDX-237` -> use `wdx-237`
+   - For ticket IDs like `DX-237` -> use `dx-237`
    - For descriptions -> slugify the first few words (e.g., "CLI login flow" -> `cli-login-flow`)
 
 2. Create the output directory if it doesn't exist:

@@ -2,9 +2,9 @@
 # Fetch Linear issues for triage.
 #
 # Usage:
-#   linear-fetch.sh issue WDX-123          # Single issue by identifier
-#   linear-fetch.sh issue WDX-123 WDX-456  # Multiple issues
-#   linear-fetch.sh triage                  # Triage issues for WDX team (default)
+#   linear-fetch.sh issue DX-123          # Single issue by identifier
+#   linear-fetch.sh issue DX-123 DX-456  # Multiple issues
+#   linear-fetch.sh triage                  # Triage issues for DX team (default)
 #   linear-fetch.sh triage --team OTHER    # Triage issues for a different team
 #
 # Requires LINEAR_API_KEY in the project .env file.
@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 LINEAR_API="https://api.linear.app/graphql"
-DEFAULT_TEAM="WDX"
+DEFAULT_TEAM="DX"
 
 # ---------------------------------------------------------------------------
 # load_env — loads LINEAR_API_KEY from .env
@@ -47,7 +47,7 @@ gql() {
 }
 
 # ---------------------------------------------------------------------------
-# fetch_issue — fetch a single issue by identifier (e.g. WDX-123)
+# fetch_issue — fetch a single issue by identifier (e.g. DX-123)
 # ---------------------------------------------------------------------------
 fetch_issue() {
   local identifier="$1"
@@ -77,7 +77,7 @@ fetch_issue() {
     }
   '
 
-  # Extract team key and number from identifier (e.g. WDX-123)
+  # Extract team key and number from identifier (e.g. DX-123)
   local team_key="${identifier%%-*}"
   local number="${identifier##*-}"
 
@@ -150,7 +150,7 @@ shift || true
 case "$command" in
   issue)
     if [ $# -eq 0 ]; then
-      echo "Usage: linear-fetch.sh issue WDX-123 [WDX-456 ...]" >&2
+      echo "Usage: linear-fetch.sh issue DX-123 [DX-456 ...]" >&2
       exit 1
     fi
     # Fetch each issue and collect results
@@ -166,8 +166,8 @@ case "$command" in
     echo "Usage: linear-fetch.sh <issue|triage> [args...]" >&2
     echo ""
     echo "Commands:"
-    echo "  issue WDX-123 [WDX-456 ...]   Fetch specific issues by identifier"
-    echo "  triage [--team WDX]            Fetch all issues in Triage state"
+    echo "  issue DX-123 [DX-456 ...]   Fetch specific issues by identifier"
+    echo "  triage [--team DX]            Fetch all issues in Triage state"
     exit 1
     ;;
 esac

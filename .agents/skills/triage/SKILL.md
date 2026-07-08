@@ -18,9 +18,9 @@ Read the ticket thoroughly, but do not dig into code. The goal is to classify, p
 
 ### Step 1: Parse ticket references
 
-- Anything matching `WDX-\d+` or a `linear.app` URL → **Linear**
+- Anything matching `DX-\d+` or a `linear.app` URL → **Linear**
 - Anything matching `#\d+`, a bare number, or a `github.com` URL → **GitHub**
-- `linear:triage` → fetch all Linear issues in Triage state (WDX team)
+- `linear:triage` → fetch all Linear issues in Triage state (DX team)
 
 ### Step 2: Fetch tickets
 
@@ -31,7 +31,7 @@ gh issue view <number> --repo storyblok/monoblok --json title,body,labels,state,
 
 **Linear:**
 ```bash
-bash .claude/skills/triage/scripts/linear-fetch.sh issue WDX-123 WDX-456
+bash .claude/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
 bash .claude/skills/triage/scripts/linear-fetch.sh triage
 ```
 
@@ -113,7 +113,7 @@ If exact duplicate → mark as **duplicate** with link to original. If related b
 | Ticket | Title | Type | Priority | Verdict | Package |
 |--------|-------|------|----------|---------|---------|
 | #368 | ... | bug | P1 | actionable | cli |
-| WDX-123 | ... | improvement | P2 | actionable | vue |
+| DX-123 | ... | improvement | P2 | actionable | vue |
 ```
 
 #### Detailed assessment (one per ticket)

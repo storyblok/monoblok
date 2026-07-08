@@ -186,7 +186,7 @@ export default defineConfig({
     },
     types: {
       generate: {
-        output: 'storyblok-component-types.d.ts',
+        filename: 'storyblok-component-types.d.ts',
       },
     },
   },

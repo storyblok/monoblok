@@ -1,4 +1,11 @@
-import { linkMark, table, tableCell, tableHeader, tableRow, text } from './helpers';
+import {
+  linkMark,
+  table,
+  tableCell,
+  tableHeader,
+  tableRow,
+  text,
+} from './helpers';
 import type { HtmlFixture } from './types';
 
 export const integrationFixtures: HtmlFixture[] = [
@@ -7,9 +14,13 @@ export const integrationFixtures: HtmlFixture[] = [
     input: {
       type: 'paragraph',
       attrs: { textAlign: 'center' },
-      content: [text('Centered text with ', [linkMark('/url')]), text('link', [linkMark('/url')])],
+      content: [
+        text('Centered text with ', [linkMark('/url')]),
+        text('link', [linkMark('/url')]),
+      ],
     },
-    expected: '<p style="text-align: center;"><a href="/url">Centered text with link</a></p>',
+    expected:
+      '<p style="text-align: center;"><a href="/url">Centered text with link</a></p>',
   },
   {
     title: 'renders empty paragraph with alignment',
@@ -23,16 +34,58 @@ export const integrationFixtures: HtmlFixture[] = [
   {
     title: 'kitchen sink document',
     input: [
-      { type: 'heading', attrs: { level: 4, textAlign: 'right' }, content: [text('Feature Heading', [{ type: 'highlight', attrs: { color: 'rgb(204, 255, 204)' } }, linkMark('/feature', { target: '_blank' })])] },
-      { type: 'paragraph', attrs: { textAlign: 'center' }, content: [text('Intro', [{ type: 'bold' }, { type: 'styled', attrs: { class: 'lead' } }])] },
-      { type: 'image', attrs: { id: 44, src: 'https://foo', alt: 'center', title: 'T', source: 'Z', copyright: null, meta_data: null } },
-      { type: 'bullet_list', content: [{ type: 'list_item', content: [{ type: 'paragraph', content: [text('B')] }] }] },
+      {
+        type: 'heading',
+        attrs: { level: 4, textAlign: 'right' },
+        content: [
+          text('Feature Heading', [
+            { type: 'highlight', attrs: { color: 'rgb(204, 255, 204)' } },
+            linkMark('/feature', { target: '_blank' }),
+          ]),
+        ],
+      },
+      {
+        type: 'paragraph',
+        attrs: { textAlign: 'center' },
+        content: [
+          text('Intro', [
+            { type: 'bold' },
+            { type: 'styled', attrs: { class: 'lead' } },
+          ]),
+        ],
+      },
+      {
+        type: 'image',
+        attrs: {
+          id: 44,
+          src: 'https://foo',
+          alt: 'center',
+          title: 'T',
+          source: 'Z',
+          copyright: null,
+          meta_data: null,
+        },
+      },
+      {
+        type: 'bullet_list',
+        content: [
+          {
+            type: 'list_item',
+            content: [{ type: 'paragraph', content: [text('B')] }],
+          },
+        ],
+      },
     ],
-    expected: '<h4 style="text-align: right;"><a href="/feature" target="_blank"><mark style="background-color: rgb(204, 255, 204);">Feature Heading</mark></a></h4><p style="text-align: center;"><span class="lead"><strong>Intro</strong></span></p><img id="44" src="https://foo" alt="center" title="T"><ul><li><p>B</p></li></ul>',
+    expected:
+      '<h4 style="text-align: right;"><a href="/feature" target="_blank"><mark style="background-color: rgb(204, 255, 204);">Feature Heading</mark></a></h4><p style="text-align: center;"><span class="lead"><strong>Intro</strong></span></p><img id="44" src="https://foo" alt="center" title="T"><ul><li><p>B</p></li></ul>',
   },
 ];
 
-const testLinkMark = linkMark('/richtext', { linktype: 'story', target: '_self', custom: { rel: 'noopener', title: 'Navigate to richtext page' } });
+const testLinkMark = linkMark('/richtext', {
+  linktype: 'story',
+  target: '_self',
+  custom: { rel: 'noopener', title: 'Navigate to richtext page' },
+});
 export const customRendererFixture: Record<string, HtmlFixture> = {
   node_and_mark: {
     title: 'renders custom node and mark overrides',
@@ -61,85 +114,99 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
             text('This is a '),
             text('bold text', [{ type: 'bold' }]),
             text(' with a '),
-            text('blue color', [{
-              type: 'textStyle',
-              attrs: {
-                color: 'rgb(27, 74, 230)',
+            text('blue color', [
+              {
+                type: 'textStyle',
+                attrs: {
+                  color: 'rgb(27, 74, 230)',
+                },
               },
-            }]),
+            ]),
             text(' and a link to '),
             text('some ', [testLinkMark]),
             text('Italic', [testLinkMark, { type: 'italic' }]),
             text(' link', [testLinkMark]),
             text('.'),
-
           ],
         },
       ],
     },
-    expected: '<h2 data-type="custom-heading" data-level="2">Custom Rich Text Test</h2><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a data-type="custom-link" href="/richtext" target="_self" rel="noopener" title="Navigate to richtext page">some <em>Italic</em> link</a>.</p>',
+    expected:
+      '<h2 data-type="custom-heading" data-level="2">Custom Rich Text Test</h2><p>This is a <b data-type="custom-bold">bold text</b> with a <span style="color: rgb(27, 74, 230);">blue color</span> and a link to <a data-type="custom-link" href="/richtext" target="_self" rel="noopener" title="Navigate to richtext page">some <em>Italic</em> link</a>.</p>',
   },
-  recursive:
-  {
-    title: 'renders custom node overrides with recursive StoryblokRichText or renderRichtext in custom renderers',
-    input: [{
-      type: 'heading',
-      attrs: { level: 1, textAlign: null },
-      content: [text('Title', [{ type: 'bold' }])],
-    }, {
-      type: 'paragraph',
-      attrs: { textAlign: 'center' },
-      content: [text('Hello Storyblok', [{ type: 'bold' }])],
-    }],
-    expected: '<h1 data-type="custom-heading" data-level="1"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
+  recursive: {
+    title:
+      'renders custom node overrides with recursive StoryblokRichText or renderRichtext in custom renderers',
+    input: [
+      {
+        type: 'heading',
+        attrs: { level: 1, textAlign: null },
+        content: [text('Title', [{ type: 'bold' }])],
+      },
+      {
+        type: 'paragraph',
+        attrs: { textAlign: 'center' },
+        content: [text('Hello Storyblok', [{ type: 'bold' }])],
+      },
+    ],
+    expected:
+      '<h1 data-type="custom-heading" data-level="1"><b data-type="custom-bold">Title</b></h1><p style="text-align: center;"><b data-type="custom-bold">Hello Storyblok</b></p>',
   },
-  code_block:
-  {
+  code_block: {
     title: 'allows custom code_block renderer to control attribute placement',
     input: {
       type: 'code_block',
       attrs: { class: 'typescript' },
       content: [text('const x: number = 1;')],
     },
-    expected: '<pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre>',
+    expected:
+      '<pre class="language-typescript"><code data-lang="typescript">const x: number = 1;</code></pre>',
   },
-  table:
-  {
+  table: {
     title: 'allows custom table renderer',
     input: table([
-      tableRow([tableHeader('Name'), tableHeader('Age'), tableHeader('Location')]),
-      tableRow([tableCell('John', { colspan: 2 }, [{ type: 'bold' }]), tableCell('25'), tableCell('New York')]),
+      tableRow([
+        tableHeader('Name'),
+        tableHeader('Age'),
+        tableHeader('Location'),
+      ]),
+      tableRow([
+        tableCell('John', { colspan: 2 }, [{ type: 'bold' }]),
+        tableCell('25'),
+        tableCell('New York'),
+      ]),
     ]),
-    expected: '<table class="custom-table"><thead><tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr></thead><tbody><tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr></tbody></table>',
+    expected:
+      '<table class="custom-table"><thead><tr><th><p>Name</p></th><th><p>Age</p></th><th><p>Location</p></th></tr></thead><tbody><tr><td colspan="2"><p><b data-type="custom-bold">John</b></p></td><td><p>25</p></td><td><p>New York</p></td></tr></tbody></table>',
   },
-  text_node:
-  {
+  text_node: {
     title: 'allows custom text node renderer with context data',
     input: {
       type: 'doc',
       content: [
         {
           type: 'paragraph',
+          attrs: { textAlign: null },
           content: [text('Hello '), text('World')],
         },
         {
           type: 'heading',
-          attrs: { level: 1 },
+          attrs: { level: 1, textAlign: null },
           content: [text('Title')],
         },
       ],
     },
     expected: '<p>[prefix] HELLO [prefix] WORLD</p><h1>[prefix] TITLE</h1>',
   },
-  infinite_loop_prevention:
-  {
-    title: 'prevents infinite loop when custom renderer calls renderRichText/StoryblokRichText internally',
+  infinite_loop_prevention: {
+    title:
+      'prevents infinite loop when custom renderer calls renderRichText/StoryblokRichText internally',
     input: {
       type: 'doc',
       content: [
         {
           type: 'heading',
-          attrs: { level: 1 },
+          attrs: { level: 1, textAlign: null },
           content: [text('Outer'), text(' Heading', [{ type: 'bold' }])],
         },
         {
@@ -152,6 +219,7 @@ export const customRendererFixture: Record<string, HtmlFixture> = {
     // Without loop prevention, it would infinitely recurse on headings.
     // With protection, the heading renderer is removed from context when rendering children,
     // so nested headings render with default behavior.
-    expected: '<h1 data-type="recursive-heading" data-level="1">Outer<strong> Heading</strong></h1><p>Normal paragraph</p>',
+    expected:
+      '<h1 data-type="recursive-heading" data-level="1">Outer<strong> Heading</strong></h1><p>Normal paragraph</p>',
   },
 };

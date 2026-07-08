@@ -50,7 +50,7 @@ function nodeShape(schema: Schema, name: string): string {
 }
 
 function markShape(name: string): string {
-  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string; }`;
+  return `{ type: '${name}'; attrs?: TiptapMarkAttributes['${name}']; _key?: string; context?: TContext; }`;
 }
 
 /** Generate SbRichTextNode discriminated union type */

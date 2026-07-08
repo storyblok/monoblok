@@ -69,12 +69,31 @@ export function resolveVarNames(rawNames: string[], baseVarName: (name: string) 
 }
 
 /**
- * File names are sanitized but not deduplicated (unlike variable names): the
- * scheme relies on the source identifiers already being unique — component
- * `name` is unique per space, and datasource `slug` is a required, unique,
- * URL-friendly string. If two entries ever produced the same file name, the
- * second would overwrite the first and its `schema.ts` import would break.
+ * Resolves an ordered list of already-sanitized base file names to unique ones.
+ * `toKebabCase` is lossy (it collapses `_`/`-` runs and strips symbols), so two
+ * distinct source names can produce the same file name even though the raw names
+ * are unique. Collisions get a `-2`, `-3`, … suffix so generated files never
+ * overwrite each other and each `schema.ts` import resolves unambiguously.
+ *
+ * `dirKeys` scopes uniqueness per directory: blocks live in their group
+ * subdirectory, so two blocks with the same file name in *different* group
+ * directories don't collide on disk and must keep their shared name. Pass the
+ * containing directory (e.g. the joined group path) per index; omit for a flat
+ * layout (datasources). Index-aligned to `baseNames`.
  */
+export function resolveFileNames(baseNames: string[], dirKeys?: string[]): string[] {
+  const usedByDir = new Map<string, Set<string>>();
+  return baseNames.map((base, i) => {
+    const dir = dirKeys?.[i] ?? '';
+    let used = usedByDir.get(dir);
+    if (!used) { used = new Set<string>(); usedByDir.set(dir, used); }
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate)) { candidate = `${base}-${n++}`; }
+    used.add(candidate);
+    return candidate;
+  });
+}
 
 /** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
 export function componentFileName(name: string): string {
@@ -242,11 +261,18 @@ export function generateSchemaFile(
   groupPathByComponentName: Map<string, string[]> = new Map(),
   componentVarNames?: string[],
   datasourceVarNames?: string[],
+  componentFileNames?: string[],
+  datasourceFileNames?: string[],
 ): string {
   const lines: string[] = [];
 
   const compVars = componentVarNames ?? resolveVarNames(components.map(c => c.name), componentVarName);
   const dsVars = datasourceVarNames ?? resolveVarNames(datasources.map(d => d.name), datasourceVarName);
+  const compFiles = componentFileNames ?? resolveFileNames(
+    components.map(c => componentFileName(c.name)),
+    components.map(c => (groupPathByComponentName.get(c.name) ?? []).join('/')),
+  );
+  const dsFiles = datasourceFileNames ?? resolveFileNames(datasources.map(d => datasourceFileName(d)));
 
   // Import the defineSchema helper and the Schema/Story type helpers
   lines.push('import { defineSchema } from \'@storyblok/schema\';');
@@ -257,7 +283,7 @@ export function generateSchemaFile(
   // Import blocks from their group subdirectory
   components.forEach((component, i) => {
     const varName = compVars[i];
-    const fileName = componentFileName(component.name);
+    const fileName = compFiles[i];
     // Blocks are imported from their (slugified) group subdirectory — local
     // organization that mirrors the remote groups; `schema push` ignores it.
     const segments = groupPathByComponentName.get(component.name) ?? [];
@@ -266,9 +292,9 @@ export function generateSchemaFile(
   });
 
   // Import datasources
-  datasources.forEach((datasource, i) => {
+  datasources.forEach((_datasource, i) => {
     const varName = dsVars[i];
-    const fileName = datasourceFileName(datasource);
+    const fileName = dsFiles[i];
     lines.push(`import { ${varName} } from './datasources/${fileName}';`);
   });
 

@@ -68,11 +68,24 @@ export class FileTransport implements LogTransport {
       return 0;
     }
 
+    let deleted = 0;
     for (const file of files.slice(0, filesToDelete)) {
-      unlinkSync(join(directory, file));
+      try {
+        unlinkSync(join(directory, file));
+      }
+      catch (error) {
+        // `readdirSync` and `unlinkSync` are not atomic, so a concurrent CLI
+        // process logging to the same directory may prune the same file first.
+        // The file is already gone, which is the desired outcome, so ignore it
+        // rather than letting best-effort log rotation crash the command.
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+      }
+      deleted += 1;
     }
 
-    return filesToDelete;
+    return deleted;
   }
 
   public static listLogFiles(

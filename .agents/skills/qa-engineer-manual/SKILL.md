@@ -34,6 +34,9 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
 - Storyblok CLI built: `pnpm nx build storyblok`
 - `.env.qa-engineer-manual` file in repo root with `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID`
 
+> [!NOTE]
+> The seed resolves the CLI and the `.storyblok` staging directory from `git rev-parse --show-toplevel`, i.e. the repo of your current working directory. To exercise changes in a worktree, build the CLI in that worktree and run the seed from inside it; otherwise it falls back to the main checkout's `dist`.
+
 ```bash
 # .env.qa-engineer-manual
 STORYBLOK_TOKEN=your_personal_access_token
@@ -103,6 +106,18 @@ bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 
 Deletes all stories, components (except the default `page` component), assets, asset folders, and internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
 
+### Shared asset libraries
+
+Shared (org-level) asset libraries are global: they belong to the organization and can be shared across spaces, so a full wipe is destructive. Cleanup is scoped by folder membership, not by name. `--shared --library <libraryId>` deletes every shared asset in the library's folder tree, every internal tag scoped to the library, and every child folder. It never deletes the library root folder or any resource outside the given library. Folder scoping is deliberate: transferred assets keep their original names, so a `qa-` name prefix would miss them.
+
+Because this removes all content inside the library regardless of name, only run it against a dedicated QA library, never a shared library that holds real org content.
+
+```bash
+bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
+```
+
+Inspect a library first with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against libraries.
+
 ### Scenario structure
 
 A scenario is a directory with optional subdirectories for each resource type:
@@ -143,8 +158,8 @@ Paths are relative to this `SKILL.md`.
 | Script | Purpose |
 | --- | --- |
 | `./scripts/cleanup-local.sh` | Deletes local QA artifacts in `.storyblok/`. |
-| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. |
-| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. |
+| `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. Add `--shared --library <id>` to instead delete all shared resources in the given org library's folder tree, never the root (see "Shared asset libraries" below). |
+| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`. |
 | `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`. |
 | `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path. |
 

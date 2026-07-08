@@ -54,7 +54,7 @@ describe('assets transfer command', () => {
   });
   afterAll(() => server.close());
 
-  it('should transfer a local asset to the global library', async () => {
+  it('should transfer a local asset to the shared library', async () => {
     preconditions.canTransferAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);

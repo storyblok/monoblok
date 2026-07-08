@@ -7,7 +7,7 @@ import { appendToFile, fileExists, saveToFile } from '../../utils/filesystem';
 import { toError } from '../../utils/error/error';
 import type { RegionCode } from '../../constants';
 import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
-import { createAsset, createAssetFolder, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, updateAsset, updateAssetFolder } from './actions';
+import { createAsset, createAssetFolder, createSharedAsset, createSharedAssetFolder, createSharedInternalTag, downloadAssetFile, downloadFile, fetchAssetFolders, fetchAssets, fetchSharedAssetFolders, fetchSharedAssets, fetchSharedInternalTags, getSharedAsset, getSharedAssetFolder, updateAsset, updateAssetFolder, updateSharedAsset, updateSharedAssetFolder } from './actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderMap, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetMap, AssetUpdate, AssetUpload, UnmappedAssetInternalTag } from './types';
 import { getMapiClient } from '../../api';
 import { handleAPIError } from '../../utils/error/api-error';
@@ -26,6 +26,7 @@ const getPipelineSlot = (): Sema => {
 export const fetchAssetsStream = ({
   spaceId,
   params = {},
+  fetchPage = fetchAssets,
   setTotalAssets,
   setTotalPages,
   onIncrement,
@@ -34,6 +35,8 @@ export const fetchAssetsStream = ({
 }: {
   spaceId: string;
   params?: AssetListQuery;
+  /** Page fetcher; defaults to the space `fetchAssets`. Shared libraries inject a `fetchSharedAssets` binding. */
+  fetchPage?: typeof fetchAssets;
   setTotalAssets?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
   onIncrement?: () => void;
@@ -48,7 +51,7 @@ export const fetchAssetsStream = ({
 
     while (page <= totalPages) {
       try {
-        const result = await fetchAssets({
+        const result = await fetchPage({
           spaceId,
           params: {
             ...params,
@@ -83,6 +86,31 @@ export const fetchAssetsStream = ({
 
   return Readable.from(listGenerator());
 };
+
+/**
+ * Streams assets from a shared library via the `shared_assets` endpoints,
+ * filtered to `libraryId`. Reuses the space pagination loop by injecting a
+ * `fetchSharedAssets` page fetcher.
+ */
+export const fetchSharedAssetsStream = ({
+  spaceId,
+  libraryId,
+  ...rest
+}: {
+  spaceId: string;
+  libraryId: number;
+  params?: AssetListQuery;
+  setTotalAssets?: (total: number) => void;
+  setTotalPages?: (totalPages: number) => void;
+  onIncrement?: () => void;
+  onPageSuccess?: (page: number, total: number) => void;
+  onPageError?: (error: Error, page: number, total: number) => void;
+}) =>
+  fetchAssetsStream({
+    spaceId,
+    ...rest,
+    fetchPage: ({ params }) => fetchSharedAssets({ spaceId, libraryId, params }),
+  });
 
 export const downloadAssetStream = ({
   assetToken,
@@ -216,6 +244,41 @@ export const fetchAssetFoldersStream = ({
   return Readable.from(listGenerator());
 };
 
+/**
+ * Streams a library's shared folders (the library root and its descendants)
+ * via the `shared_asset_folders` endpoints.
+ */
+export const fetchSharedAssetFoldersStream = ({
+  spaceId,
+  libraryId,
+  setTotalFolders,
+  onSuccess,
+  onError,
+}: {
+  spaceId: string;
+  libraryId: number;
+  setTotalFolders?: (total: number) => void;
+  onSuccess?: (folders: AssetFolder[]) => void;
+  onError?: (error: Error) => void;
+}) => {
+  const listGenerator = async function* sharedFolderListIterator() {
+    try {
+      const { asset_folders } = await fetchSharedAssetFolders({ spaceId, libraryId });
+      setTotalFolders?.(asset_folders.length);
+      onSuccess?.(asset_folders);
+
+      for (const folder of asset_folders) {
+        yield folder;
+      }
+    }
+    catch (maybeError) {
+      onError?.(toError(maybeError));
+    }
+  };
+
+  return Readable.from(listGenerator());
+};
+
 export type WriteAssetFolderTransport = (folder: AssetFolder) => Promise<AssetFolder>;
 
 export const makeWriteAssetFolderFSTransport = ({ directoryPath }: {
@@ -273,6 +336,14 @@ export interface ReadLocalAssetFolderOptions {
   directoryPath: string;
   setTotalFolders?: (total: number) => void;
   onFolderError?: (error: Error) => void;
+  /**
+   * Skip root folders (`parent_id == null`). Shared libraries are themselves
+   * root shared folders that only exist in org context, so pushing one from a
+   * space 403s. Their children still resolve: a child's `parent_id` is the
+   * library's real id, which the upsert resolves without the root being pushed.
+   */
+  skipRootFolders?: boolean;
+  onFolderSkip?: () => void;
 }
 
 export interface LocalAssetFolderPayload {
@@ -286,6 +357,8 @@ export const readLocalAssetFoldersStream = ({
   directoryPath,
   setTotalFolders,
   onFolderError,
+  skipRootFolders,
+  onFolderSkip,
 }: ReadLocalAssetFolderOptions) => {
   const iterator = async function* readFolders() {
     try {
@@ -302,6 +375,13 @@ export const readLocalAssetFoldersStream = ({
             const content = await readFile(filePath, 'utf8');
             const folder = JSON.parse(content) as AssetFolder;
             jsonFiles.delete(file);
+            // Skip root folders when requested, but still mark them processed so
+            // their children resolve their parent and are not postponed forever.
+            if (skipRootFolders && !folder.parent_id) {
+              processed.add(folder.id);
+              onFolderSkip?.();
+              continue;
+            }
             // We must ensure the parent folder was already processed before
             // we can pass it to the next step in the pipeline. Otherwise,
             // mapping from local to remote parent ID does not work correctly.
@@ -673,7 +753,7 @@ const processAsset = async ({
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName; resolveSharedTagIds?: SharedTagResolver };
   onUnmappedTag?: (tag: UnmappedAssetInternalTag) => void;
 }): Promise<{ status: 'created' | 'updated'; remoteAsset: Asset }> => {
   const remoteFolderId = localAsset.asset_folder_id
@@ -684,16 +764,26 @@ const processAsset = async ({
   const remoteAsset = remoteAssetId ? await transports.getAsset(remoteAssetId) : null;
 
   const sourceTags = localAsset.internal_tags_list;
-  const resolveInternalTagIds = (sourceIds: ReadonlyArray<number | string> | undefined): string[] =>
-    maps.assetInternalTagsByName
+  // Library pushes resolve to the library's shared tags (creating missing ones);
+  // cross-space pushes map through the target space's tags by name; same-space
+  // pushes keep their IDs. Async because shared resolution may create tags.
+  const resolveInternalTagIds = async (sourceIds: ReadonlyArray<number | string> | undefined): Promise<string[]> => {
+    if (maps.resolveSharedTagIds) {
+      return maps.resolveSharedTagIds(sourceIds, sourceTags);
+    }
+    return maps.assetInternalTagsByName
       ? mapInternalTagIds(sourceIds, sourceTags, maps.assetInternalTagsByName, onUnmappedTag)
       : (sourceIds ?? []).map(id => String(id));
+  };
 
   let newRemoteAsset: Asset;
   let status: 'created' | 'updated';
   if (remoteAsset) {
     // Build only the writable metadata fields for the API update.
     // Read-only fields (filename, short_filename, etc.) are intentionally excluded.
+    const updateTagIds = 'internal_tag_ids' in localAsset
+      ? await resolveInternalTagIds(localAsset.internal_tag_ids)
+      : remoteAsset.internal_tag_ids;
     const updatePayload: AssetUpdate = {
       asset_folder_id: remoteFolderId,
       alt: 'alt' in localAsset ? localAsset.alt : remoteAsset.alt,
@@ -704,7 +794,7 @@ const processAsset = async ({
       focus: 'focus' in localAsset ? localAsset.focus : remoteAsset.focus,
       expire_at: 'expire_at' in localAsset ? localAsset.expire_at : remoteAsset.expire_at,
       publish_at: 'publish_at' in localAsset ? localAsset.publish_at : remoteAsset.publish_at,
-      internal_tag_ids: 'internal_tag_ids' in localAsset ? resolveInternalTagIds(localAsset.internal_tag_ids) : remoteAsset.internal_tag_ids,
+      internal_tag_ids: updateTagIds,
       meta_data: 'meta_data' in localAsset ? localAsset.meta_data : remoteAsset.meta_data,
     };
 
@@ -727,7 +817,7 @@ const processAsset = async ({
     // the follow-up metadata PUT for tagless assets.
     const { internal_tags_list: _internalTagsList, internal_tag_ids: _sourceTagIds, ...rest } = localAsset;
     const mappedTagIds = 'internal_tag_ids' in localAsset
-      ? resolveInternalTagIds(localAsset.internal_tag_ids)
+      ? await resolveInternalTagIds(localAsset.internal_tag_ids)
       : undefined;
     // Storyblok only keeps the `<width>x<height>` folder in the CDN URL when it
     // was supplied at upload time; it is not derived server-side from the file.
@@ -773,7 +863,7 @@ export const upsertAssetStream = ({
     appendAssetManifest: AppendAssetManifestTransport;
     cleanupAsset?: CleanupAssetTransport;
   };
-  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName };
+  maps: { assets: AssetMap; assetFolders: AssetFolderMap; assetInternalTagsByName?: AssetInternalTagsByName; resolveSharedTagIds?: SharedTagResolver };
   onIncrement?: () => void;
   onAssetSuccess?: (localAsset: Asset | AssetUpload, remoteAsset: Asset) => void;
   onAssetError?: (error: Error, asset: Asset | AssetUpload) => void;
@@ -817,4 +907,103 @@ export const upsertAssetStream = ({
       Promise.all(processing).finally(() => callback());
     },
   });
+};
+
+/**
+ * Shared (library) transport factories. These mirror their space-scoped
+ * counterparts above but bind to the `shared_*` API actions, so the existing
+ * upsert/write streams can drive a library scope unchanged.
+ */
+export const makeCreateSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetTransport =>
+  (asset, fileBuffer) => createSharedAsset(asset, fileBuffer, { spaceId });
+
+export const makeUpdateSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetTransport =>
+  (id, asset, fileBuffer) => updateSharedAsset(id, asset, { spaceId, fileBuffer });
+
+export const makeGetSharedAssetAPITransport = ({ spaceId }: { spaceId: string }): GetAssetTransport =>
+  async (assetId: number) => {
+    const data = await getSharedAsset(assetId, { spaceId });
+    if (data?.deleted_at) {
+      return undefined;
+    }
+    return data;
+  };
+
+export const makeCreateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): CreateAssetFolderTransport =>
+  folder => createSharedAssetFolder({
+    name: folder.name,
+    parent_id: folder.parent_id ?? undefined,
+  }, { spaceId });
+
+export const makeUpdateSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): UpdateAssetFolderTransport =>
+  // Whitelist mutable fields only. Pulled sidecars carry org-managed fields
+  // (`asset_folder_access`, `regions`, `uuid`, `id`); forwarding them on a
+  // space-context update 403s. Mirror the create transport.
+  (id, folder) => updateSharedAssetFolder(id, {
+    name: folder.name,
+    parent_id: folder.parent_id ?? undefined,
+  }, { spaceId });
+
+export const makeGetSharedAssetFolderAPITransport = ({ spaceId }: { spaceId: string }): GetAssetFolderTransport =>
+  folderId => getSharedAssetFolder(folderId, { spaceId });
+
+export type SharedTagResolver = (
+  sourceIds: ReadonlyArray<number | string> | undefined,
+  sourceTags: ReadonlyArray<{ id?: number; name?: string }> | null | undefined,
+) => Promise<string[]>;
+
+/**
+ * Builds a resolver that maps a local asset's `internal_tag_ids` to the
+ * matching shared (library-scoped) tag IDs for a library push, creating any
+ * missing tags in the library (`asset_folder_id` = library root). Uses the
+ * asset's `internal_tags_list` (`[{ id, name }]`) to map local IDs to names;
+ * IDs whose name is unknown are dropped. The library's tag list is fetched once
+ * and cached per push run. Mirrors `mapInternalTagIds` for the space scope so
+ * the shared create and update paths remap identically.
+ */
+export const makeSharedTagResolver = ({ spaceId, libraryId }: { spaceId: string; libraryId: number }): SharedTagResolver => {
+  let libraryTags: { id: number; name: string }[] | undefined;
+  const ensureTags = async () => {
+    if (!libraryTags) {
+      libraryTags = await fetchSharedInternalTags({ spaceId, libraryId });
+    }
+    return libraryTags;
+  };
+
+  return async (sourceIds, sourceTags) => {
+    if (!sourceIds || sourceIds.length === 0) {
+      return [];
+    }
+
+    const nameByLocalId = new Map<number, string>();
+    for (const tag of sourceTags ?? []) {
+      if (typeof tag?.id === 'number' && typeof tag.name === 'string') {
+        nameByLocalId.set(tag.id, tag.name);
+      }
+    }
+    const existing = await ensureTags();
+    const idByName = new Map(existing.map(tag => [tag.name, tag.id]));
+
+    const remapped: string[] = [];
+    for (const raw of sourceIds) {
+      const name = nameByLocalId.get(Number(raw));
+      if (!name) {
+        continue;
+      }
+      let sharedId = idByName.get(name);
+      if (sharedId === undefined) {
+        const created = await createSharedInternalTag({ name, object_type: 'asset', asset_folder_id: libraryId }, { spaceId });
+        if (created?.id) {
+          sharedId = created.id;
+          idByName.set(name, sharedId);
+          existing.push({ id: created.id, name });
+        }
+      }
+      if (sharedId !== undefined) {
+        remapped.push(String(sharedId));
+      }
+    }
+
+    return remapped;
+  };
 };

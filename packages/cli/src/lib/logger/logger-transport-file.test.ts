@@ -1,5 +1,6 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
+import * as nodeFs from 'node:fs';
 import { FileTransport } from './logger-transport-file';
 import { APIError } from '../../utils/error';
 import { FetchError } from '../../utils/fetch';
@@ -54,4 +55,43 @@ it('should only keep n number of log files', () => {
   expect(fileContents.some(content => content?.includes('Log 3'))).toBe(true);
   expect(fileContents.some(content => content?.includes('Log 4'))).toBe(true);
   expect(fileContents.some(content => content?.includes('Log 5'))).toBe(true);
+});
+
+it('should not throw when a pruned file was already removed by a concurrent process', () => {
+  vol.fromJSON({ './a.jsonl': 'a', './b.jsonl': 'b', './c.jsonl': 'c' });
+
+  // Simulate the race: between `readdirSync` and `unlinkSync` another CLI
+  // process deletes the same oldest file, so the first `unlinkSync` raises
+  // ENOENT. Pruning must swallow it and keep deleting the remaining files.
+  const enoent = Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' });
+  const unlinkSpy = vi.spyOn(nodeFs, 'unlinkSync').mockImplementationOnce(() => {
+    throw enoent;
+  });
+
+  let deleted = 0;
+  expect(() => {
+    deleted = FileTransport.pruneLogFiles('.', 1, '.jsonl');
+  }).not.toThrow();
+
+  // Both targeted files (a.jsonl, b.jsonl) are gone after the call; only the
+  // most recent (c.jsonl) is kept.
+  expect(deleted).toBe(2);
+  const remaining = Object.keys(vol.toJSON()).map(p => p.split('/').pop()).sort();
+  expect(remaining).not.toContain('b.jsonl');
+  expect(remaining).toContain('c.jsonl');
+
+  unlinkSpy.mockRestore();
+});
+
+it('should rethrow non-ENOENT errors while pruning', () => {
+  vol.fromJSON({ './a.jsonl': 'a', './b.jsonl': 'b' });
+
+  const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+  const unlinkSpy = vi.spyOn(nodeFs, 'unlinkSync').mockImplementationOnce(() => {
+    throw eacces;
+  });
+
+  expect(() => FileTransport.pruneLogFiles('.', 1, '.jsonl')).toThrow('EACCES');
+
+  unlinkSpy.mockRestore();
 });

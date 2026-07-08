@@ -5,11 +5,11 @@ import { collectWhitelistDependencies } from './push/graph-operations/dependency
 
 /**
  * Collects the dependencies required to make a set of matched components independently
- * pushable, following option A: the matched components plus their assigned groups (with
- * ancestors), assigned tags, and the groups/tags referenced by their own schema whitelists
- * (groups with ancestors). Sibling components referenced via `component_whitelist` are NOT
- * pulled in: those references are name-based, need no id remapping, and self-heal once a
- * component of that name exists in the target.
+ * pushable: the matched components plus their assigned groups (with ancestors), assigned
+ * tags, and the groups/tags referenced by their own schema whitelists (groups with
+ * ancestors). Sibling components referenced via `component_whitelist` are NOT pulled in:
+ * those references are name-based, need no id remapping, and self-heal once a component of
+ * that name exists in the target. See adr/0005 for the full rationale.
  */
 export function collectAllDependencies(
   components: Component[],
@@ -45,9 +45,12 @@ export function collectAllDependencies(
 
     if (component.schema) {
       const schemaDeps = collectWhitelistDependencies(component.schema);
+      // Whitelisted groups/tags are referenced by id/uuid, which differ per space and can't
+      // self-heal, so they must travel with the component for the push to remap them.
       schemaDeps.groupUuids.forEach(groupUuid => requiredGroupUuids.add(groupUuid));
       schemaDeps.tagIds.forEach(tagId => requiredTagIds.add(tagId));
-      // Option A: do NOT add schemaDeps.componentNames. Sibling components are not pulled in.
+      // Intentionally skip schemaDeps.componentNames: `component_whitelist` is name-based,
+      // needs no id remapping, and self-heals once a component of that name exists in the target.
     }
   }
 

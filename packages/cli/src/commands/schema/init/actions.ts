@@ -5,15 +5,11 @@ import { dirname, join } from 'pathe';
 import type { Component, ComponentFolder, Datasource } from '../../../types';
 import { buildGroupPathByUuid } from '../folders';
 import {
-  componentFileName,
-  componentVarName,
-  datasourceFileName,
-  datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
-  resolveFileNames,
-  resolveVarNames,
+  resolveComponents,
+  resolveDatasources,
 } from './generate-code';
 
 /** Writes a file, creating parent directories as needed. */
@@ -38,53 +34,36 @@ export async function writeSchemaFiles(
 ): Promise<string[]> {
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
-  const groupPathByComponentName = new Map<string, string[]>();
-  const componentVarNames = resolveVarNames(components.map(c => c.name), componentVarName);
-  const datasourceVarNames = resolveVarNames(datasources.map(d => d.name), datasourceVarName);
 
-  // Precompute each block's group directory segments (mirrors remote groups).
-  const componentSegments = components.map((comp) => {
-    const segments = comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [];
-    if (segments.length > 0) { groupPathByComponentName.set(comp.name, segments); }
-    return segments;
-  });
-  // Dedup file names so two names that kebab-collapse to the same file don't
-  // overwrite each other (and schema.ts doesn't import two symbols from one
-  // path). Scoped per group directory for blocks; datasources are flat.
-  const componentFileNames = resolveFileNames(
-    components.map(c => componentFileName(c.name)),
-    componentSegments.map(s => s.join('/')),
+  // Each block's group directory segments (mirrors remote groups); ungrouped
+  // blocks resolve to `[]` and are written at the blocks root.
+  const componentSegments = components.map(comp =>
+    comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [],
   );
-  const datasourceFileNames = resolveFileNames(datasources.map(d => datasourceFileName(d)));
+
+  // Resolve unique variable and file names once so the written file path and
+  // the schema.ts import path are the same value. File names are deduped per
+  // group directory for blocks (kebab-casing is lossy); datasources are flat.
+  const resolvedComponents = resolveComponents(components, componentSegments);
+  const resolvedDatasources = resolveDatasources(datasources);
 
   // Write component files into their group directory
-  for (const [i, comp] of components.entries()) {
-    const filePath = join(targetPath, 'blocks', ...componentSegments[i], `${componentFileNames[i]}.ts`);
-    await writeFileWithDirs(filePath, generateComponentFile(comp, componentVarNames[i]));
+  for (const { component, varName, fileName, segments } of resolvedComponents) {
+    const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
+    await writeFileWithDirs(filePath, generateComponentFile(component, varName));
     writtenFiles.push(filePath);
   }
 
   // Write datasource files
-  for (const [i, ds] of datasources.entries()) {
-    const filePath = join(targetPath, 'datasources', `${datasourceFileNames[i]}.ts`);
-    await writeFileWithDirs(filePath, generateDatasourceFile(ds, datasourceVarNames[i]));
+  for (const { datasource, varName, fileName } of resolvedDatasources) {
+    const filePath = join(targetPath, 'datasources', `${fileName}.ts`);
+    await writeFileWithDirs(filePath, generateDatasourceFile(datasource, varName));
     writtenFiles.push(filePath);
   }
 
   // Write schema.ts (entry point with schema object, types, and Story alias)
   const schemaPath = join(targetPath, 'schema.ts');
-  await writeFileWithDirs(
-    schemaPath,
-    generateSchemaFile(
-      components,
-      datasources,
-      groupPathByComponentName,
-      componentVarNames,
-      datasourceVarNames,
-      componentFileNames,
-      datasourceFileNames,
-    ),
-  );
+  await writeFileWithDirs(schemaPath, generateSchemaFile(resolvedComponents, resolvedDatasources));
   writtenFiles.push(schemaPath);
 
   return writtenFiles;

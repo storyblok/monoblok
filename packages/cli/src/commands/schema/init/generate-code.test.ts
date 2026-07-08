@@ -7,6 +7,8 @@ import {
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
+  resolveComponents,
+  resolveDatasources,
   resolveFileNames,
   resolveVarNames,
 } from './generate-code';
@@ -173,9 +175,11 @@ describe('generateSchemaFile', () => {
   it('should generate schema.ts exporting { blocks, datasources }', () => {
     const components = [{ name: 'page' }, { name: 'hero' }, { name: 'teaser_list' }] as any[];
     const datasources = [{ name: 'Categories', slug: 'categories' }] as any[];
-    const groupPaths = new Map([['hero', ['Layout']]]);
 
-    const result = generateSchemaFile(components, datasources, groupPaths);
+    const result = generateSchemaFile(
+      resolveComponents(components, [[], ['Layout'], []]),
+      resolveDatasources(datasources),
+    );
 
     expect(result).toContain('import { defineSchema } from \'@storyblok/schema\';');
     expect(result).toContain('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
@@ -198,7 +202,10 @@ describe('generateSchemaFile', () => {
   });
 
   it('should omit empty sections from the schema object', () => {
-    const result = generateSchemaFile([{ name: 'page' }] as any[], []);
+    const result = generateSchemaFile(
+      resolveComponents([{ name: 'page' }] as any[], [[]]),
+      resolveDatasources([]),
+    );
 
     expect(result).toContain('  blocks: {');
     expect(result).not.toContain('  datasources: {');
@@ -279,7 +286,7 @@ describe('generateSchemaFile with colliding block file names', () => {
       { id: 2, name: 'hero-cta', created_at: '', updated_at: '', schema: {} },
     ] as any[];
 
-    const result = generateSchemaFile(components, []);
+    const result = generateSchemaFile(resolveComponents(components, [[], []]), resolveDatasources([]));
 
     expect(result).toContain('from \'./blocks/hero-cta\';');
     expect(result).toContain('from \'./blocks/hero-cta-2\';');
@@ -303,7 +310,7 @@ describe('generateSchemaFile with colliding datasources', () => {
       { name: 'Colors / Sizes', slug: 'colors-slash-sizes' },
     ] as any[];
 
-    const result = generateSchemaFile([], datasources);
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources(datasources));
 
     expect(result).toContain('import { colorsSizesDatasource } from \'./datasources/colors-sizes\';');
     expect(result).toContain('import { colorsSizesDatasource2 } from \'./datasources/colors-slash-sizes\';');
@@ -318,7 +325,7 @@ describe('generateSchemaFile with colliding datasources', () => {
       { name: 'Colors B', slug: 'colors_sizes' },
     ] as any[];
 
-    const result = generateSchemaFile([], datasources);
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources(datasources));
 
     expect(result).toContain('from \'./datasources/colors-sizes\';');
     expect(result).toContain('from \'./datasources/colors-sizes-2\';');

@@ -106,6 +106,57 @@ export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug
 }
 
 /**
+ * A component paired with the identifiers derived for it: a unique `export`
+ * variable name, a unique file name (deduped within its group directory), and
+ * the group-path `segments` that place its file. Resolved once so the written
+ * file path and the `schema.ts` import path are the same value by construction.
+ */
+export interface ResolvedComponent {
+  component: Component;
+  varName: string;
+  fileName: string;
+  segments: string[];
+}
+
+/** A datasource paired with its unique variable name and (flat) file name. */
+export interface ResolvedDatasource {
+  datasource: Datasource;
+  varName: string;
+  fileName: string;
+}
+
+/**
+ * Resolves each component to its unique variable and file names.
+ * `segmentsByIndex` gives the group-path directory segments per component
+ * (index-aligned to `components`); file-name uniqueness is scoped to that
+ * directory, so identically-named blocks in different groups keep their name.
+ */
+export function resolveComponents(components: Component[], segmentsByIndex: string[][]): ResolvedComponent[] {
+  const varNames = resolveVarNames(components.map(c => c.name), componentVarName);
+  const fileNames = resolveFileNames(
+    components.map(c => componentFileName(c.name)),
+    segmentsByIndex.map(segments => segments.join('/')),
+  );
+  return components.map((component, i) => ({
+    component,
+    varName: varNames[i],
+    fileName: fileNames[i],
+    segments: segmentsByIndex[i],
+  }));
+}
+
+/** Resolves each datasource to its unique variable and file names (flat layout). */
+export function resolveDatasources(datasources: Datasource[]): ResolvedDatasource[] {
+  const varNames = resolveVarNames(datasources.map(d => d.name), datasourceVarName);
+  const fileNames = resolveFileNames(datasources.map(d => datasourceFileName(d)));
+  return datasources.map((datasource, i) => ({
+    datasource,
+    varName: varNames[i],
+    fileName: fileNames[i],
+  }));
+}
+
+/**
  * Reverse of the push-time DSL→wire field mapping: renames the wire reference
  * keys back to their DSL form (`component_whitelist`→`allow`,
  * `datasource_slug`→`datasource`). The `source` selector is left untouched.
@@ -252,27 +303,14 @@ export function generateDatasourceFile(datasource: Datasource, varName?: string)
 
 /**
  * Generates a `schema.ts` file that combines the schema object, types, and Story
- * alias. Blocks are imported from their group subdirectory (encoded by
- * `groupPathByComponentName`); the schema object exports `{ blocks, datasources }`.
+ * alias. Blocks are imported from their group subdirectory (via each resolved
+ * component's `segments`); the schema object exports `{ blocks, datasources }`.
  */
 export function generateSchemaFile(
-  components: Component[],
-  datasources: Datasource[],
-  groupPathByComponentName: Map<string, string[]> = new Map(),
-  componentVarNames?: string[],
-  datasourceVarNames?: string[],
-  componentFileNames?: string[],
-  datasourceFileNames?: string[],
+  components: ResolvedComponent[],
+  datasources: ResolvedDatasource[],
 ): string {
   const lines: string[] = [];
-
-  const compVars = componentVarNames ?? resolveVarNames(components.map(c => c.name), componentVarName);
-  const dsVars = datasourceVarNames ?? resolveVarNames(datasources.map(d => d.name), datasourceVarName);
-  const compFiles = componentFileNames ?? resolveFileNames(
-    components.map(c => componentFileName(c.name)),
-    components.map(c => (groupPathByComponentName.get(c.name) ?? []).join('/')),
-  );
-  const dsFiles = datasourceFileNames ?? resolveFileNames(datasources.map(d => datasourceFileName(d)));
 
   // Import the defineSchema helper and the Schema/Story type helpers
   lines.push('import { defineSchema } from \'@storyblok/schema\';');
@@ -280,23 +318,17 @@ export function generateSchemaFile(
   lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
-  // Import blocks from their group subdirectory
-  components.forEach((component, i) => {
-    const varName = compVars[i];
-    const fileName = compFiles[i];
-    // Blocks are imported from their (slugified) group subdirectory — local
-    // organization that mirrors the remote groups; `schema push` ignores it.
-    const segments = groupPathByComponentName.get(component.name) ?? [];
+  // Import blocks from their (slugified) group subdirectory — local
+  // organization that mirrors the remote groups; `schema push` ignores it.
+  for (const { varName, fileName, segments } of components) {
     const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
     lines.push(`import { ${varName} } from './blocks/${subPath}${fileName}';`);
-  });
+  }
 
   // Import datasources
-  datasources.forEach((_datasource, i) => {
-    const varName = dsVars[i];
-    const fileName = dsFiles[i];
+  for (const { varName, fileName } of datasources) {
     lines.push(`import { ${varName} } from './datasources/${fileName}';`);
-  });
+  }
 
   lines.push('');
 
@@ -305,17 +337,17 @@ export function generateSchemaFile(
 
   if (components.length > 0) {
     lines.push('  blocks: {');
-    compVars.forEach((varName) => {
+    for (const { varName } of components) {
       lines.push(`    ${varName},`);
-    });
+    }
     lines.push('  },');
   }
 
   if (datasources.length > 0) {
     lines.push('  datasources: {');
-    dsVars.forEach((varName) => {
+    for (const { varName } of datasources) {
       lines.push(`    ${varName},`);
-    });
+    }
     lines.push('  },');
   }
 

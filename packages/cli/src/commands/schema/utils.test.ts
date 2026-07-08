@@ -1,7 +1,7 @@
 import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 
-import { applyDefaults, displayPath, fileTimestamp, formatValue, stripKeys } from './utils';
+import { applyDefaults, displayPath, fileTimestamp, formatValue, quoteString, stripKeys } from './utils';
 
 describe('fileTimestamp', () => {
   it('should convert an ISO timestamp to compact YYYYMMDDHHmmss form', () => {
@@ -49,6 +49,27 @@ describe('formatValue', () => {
     expect(formatValue('it\'s', 0)).toBe('\'it\\\'s\'');
   });
 
+  it('should escape backslashes so regex values are not silently dropped', () => {
+    // Emitted as '\\d+' — a single-quoted literal that parses back to the exact
+    // input `\d+`. The old serializer emitted '\d+', which parses to `d+`.
+    expect(formatValue(String.raw`\d+`, 0)).toBe(String.raw`'\\d+'`);
+    expect(formatValue(String.raw`^\s*\b\w+(?:\s+\w+){0,3}\s*$`, 0))
+      .toBe(String.raw`'^\\s*\\b\\w+(?:\\s+\\w+){0,3}\\s*$'`);
+  });
+
+  it('should escape newlines instead of emitting raw line breaks', () => {
+    expect(formatValue('a\nb', 0)).toBe(String.raw`'a\nb'`);
+    expect(formatValue('a\nb', 0)).not.toContain('\n');
+  });
+
+  it('should escape a trailing backslash so it does not consume the closing quote', () => {
+    expect(formatValue('path\\', 0)).toBe(String.raw`'path\\'`);
+  });
+
+  it('should leave double quotes untouched inside single-quoted literals', () => {
+    expect(formatValue('he said "hi"', 0)).toBe(String.raw`'he said "hi"'`);
+  });
+
   it('should format numbers and booleans', () => {
     expect(formatValue(42, 0)).toBe('42');
     expect(formatValue(true, 0)).toBe('true');
@@ -81,6 +102,32 @@ describe('formatValue', () => {
   it('should handle nested objects with correct indentation', () => {
     const result = formatValue({ outer: { inner: 'value' } }, 0);
     expect(result).toContain('outer: {\n    inner:');
+  });
+});
+
+describe('quoteString', () => {
+  it('should wrap plain strings in single quotes', () => {
+    expect(quoteString('hello')).toBe(String.raw`'hello'`);
+  });
+
+  it('should escape single quotes', () => {
+    expect(quoteString('it\'s')).toBe('\'it\\\'s\'');
+  });
+
+  it('should escape backslashes', () => {
+    expect(quoteString(String.raw`\d+`)).toBe(String.raw`'\\d+'`);
+  });
+
+  it('should escape newlines', () => {
+    expect(quoteString('a\nb')).toBe(String.raw`'a\nb'`);
+  });
+
+  it('should escape a trailing backslash', () => {
+    expect(quoteString('path\\')).toBe(String.raw`'path\\'`);
+  });
+
+  it('should escape a backslash followed by a quote', () => {
+    expect(quoteString(String.raw`a\"b`)).toBe(String.raw`'a\\"b'`);
   });
 });
 

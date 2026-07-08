@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  componentFileName,
+  componentVarName,
+  datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
+  resolveComponents,
+  resolveDatasources,
+  resolveFileNames,
+  resolveVarNames,
 } from './generate-code';
 
 describe('generateComponentFile', () => {
@@ -211,9 +218,11 @@ describe('generateSchemaFile', () => {
   it('should generate schema.ts exporting { blocks, datasources }', () => {
     const components = [{ name: 'page' }, { name: 'hero' }, { name: 'teaser_list' }] as any[];
     const datasources = [{ name: 'Categories', slug: 'categories' }] as any[];
-    const groupPaths = new Map([['hero', ['Layout']]]);
 
-    const result = generateSchemaFile(components, datasources, groupPaths);
+    const result = generateSchemaFile(
+      resolveComponents(components, [[], ['Layout'], []]),
+      resolveDatasources(datasources),
+    );
 
     expect(result).toContain('import { defineSchema } from \'@storyblok/schema\';');
     expect(result).toContain('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
@@ -236,9 +245,132 @@ describe('generateSchemaFile', () => {
   });
 
   it('should omit empty sections from the schema object', () => {
-    const result = generateSchemaFile([{ name: 'page' }] as any[], []);
+    const result = generateSchemaFile(
+      resolveComponents([{ name: 'page' }] as any[], [[]]),
+      resolveDatasources([]),
+    );
 
     expect(result).toContain('  blocks: {');
     expect(result).not.toContain('  datasources: {');
+  });
+});
+
+describe('componentFileName', () => {
+  it('keeps well-formed names unchanged', () => {
+    expect(componentFileName('teaser_list')).toBe('teaser-list');
+    expect(componentFileName('page')).toBe('page');
+  });
+
+  it('strips characters that are not filesystem/shell-safe', () => {
+    expect(componentFileName('Interaktion & CTAs')).toBe('interaktion-ctas');
+    expect(componentFileName('A+B (C)')).toBe('a-b-c');
+  });
+});
+
+describe('componentVarName / datasourceVarName', () => {
+  it('keeps well-formed names unchanged', () => {
+    expect(componentVarName('teaser_list')).toBe('teaserListBlock');
+    expect(datasourceVarName('Categories')).toBe('categoriesDatasource');
+  });
+
+  it('strips characters that are invalid in JS identifiers', () => {
+    expect(datasourceVarName('Colors & Sizes')).toBe('colorsSizesDatasource');
+    expect(datasourceVarName('Colors / Sizes')).toBe('colorsSizesDatasource');
+    // Symbols with no surrounding space are stripped (not treated as word
+    // boundaries), so `A` and `B` merge — still a valid identifier.
+    expect(datasourceVarName('A+B (C)')).toBe('abCDatasource');
+  });
+
+  it('prefixes a leading digit so the identifier is valid', () => {
+    expect(datasourceVarName('123 items')).toBe('_123ItemsDatasource');
+  });
+
+  it('falls back to `_` when the name has no identifier-safe characters', () => {
+    expect(datasourceVarName('&&&')).toBe('_Datasource');
+  });
+});
+
+describe('resolveVarNames', () => {
+  it('leaves distinct names untouched', () => {
+    expect(resolveVarNames(['page', 'hero'], componentVarName))
+      .toEqual(['pageBlock', 'heroBlock']);
+  });
+
+  it('appends a numeric suffix when sanitized names collide', () => {
+    expect(resolveVarNames(['Colors & Sizes', 'Colors / Sizes'], datasourceVarName))
+      .toEqual(['colorsSizesDatasource', 'colorsSizesDatasource2']);
+  });
+});
+
+describe('resolveFileNames', () => {
+  it('leaves distinct file names untouched', () => {
+    expect(resolveFileNames(['page', 'hero'])).toEqual(['page', 'hero']);
+  });
+
+  it('appends a -N suffix when kebab-collapsed names collide', () => {
+    // `hero_cta` and `hero-cta` both kebab to `hero-cta`.
+    expect(resolveFileNames(['hero-cta', 'hero-cta', 'hero-cta']))
+      .toEqual(['hero-cta', 'hero-cta-2', 'hero-cta-3']);
+  });
+
+  it('scopes uniqueness per directory so different dirs may share a name', () => {
+    // Same file name in different group directories does not collide on disk.
+    expect(resolveFileNames(['hero', 'hero', 'hero'], ['group-a', 'group-b', 'group-a']))
+      .toEqual(['hero', 'hero', 'hero-2']);
+  });
+});
+
+describe('generateSchemaFile with colliding block file names', () => {
+  it('imports each block from a unique path scoped per group directory', () => {
+    // `hero_cta` and `hero-cta` are distinct component names that both kebab to
+    // `hero-cta`; ungrouped, so they share the blocks root and must not collide.
+    const components = [
+      { id: 1, name: 'hero_cta', created_at: '', updated_at: '', schema: {} },
+      { id: 2, name: 'hero-cta', created_at: '', updated_at: '', schema: {} },
+    ] as any[];
+
+    const result = generateSchemaFile(resolveComponents(components, [[], []]), resolveDatasources([]));
+
+    expect(result).toContain('from \'./blocks/hero-cta\';');
+    expect(result).toContain('from \'./blocks/hero-cta-2\';');
+  });
+});
+
+describe('generateComponentFile with explicit var name', () => {
+  it('uses the provided var name for the export', () => {
+    const result = generateComponentFile(
+      { id: 1, name: 'hero', created_at: '', updated_at: '', schema: {} } as any,
+      'heroBlock2',
+    );
+    expect(result).toContain('export const heroBlock2 = defineBlock({');
+  });
+});
+
+describe('generateSchemaFile with colliding datasources', () => {
+  it('imports and keys each datasource under a unique identifier', () => {
+    const datasources = [
+      { name: 'Colors & Sizes', slug: 'colors-sizes' },
+      { name: 'Colors / Sizes', slug: 'colors-slash-sizes' },
+    ] as any[];
+
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources(datasources));
+
+    expect(result).toContain('import { colorsSizesDatasource } from \'./datasources/colors-sizes\';');
+    expect(result).toContain('import { colorsSizesDatasource2 } from \'./datasources/colors-slash-sizes\';');
+    expect(result).toContain('    colorsSizesDatasource,');
+    expect(result).toContain('    colorsSizesDatasource2,');
+  });
+
+  it('imports each datasource from a unique path when slugs kebab-collapse to the same file name', () => {
+    // Distinct slugs `colors-sizes` and `colors_sizes` both kebab to `colors-sizes`.
+    const datasources = [
+      { name: 'Colors A', slug: 'colors-sizes' },
+      { name: 'Colors B', slug: 'colors_sizes' },
+    ] as any[];
+
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources(datasources));
+
+    expect(result).toContain('from \'./datasources/colors-sizes\';');
+    expect(result).toContain('from \'./datasources/colors-sizes-2\';');
   });
 });

@@ -95,6 +95,33 @@ describe('serializeComponent', () => {
     expect(result).toContain('type: \'bloks\',');
   });
 
+  it('should treat an empty restrict_type as equivalent to an absent one', () => {
+    // MAPI never stores `restrict_type: ''` (the "restrict by component whitelist"
+    // mode) and omits the key on read, while a whitelist re-derived from the DSL
+    // `allow` re-adds it on push. The two must serialize identically so no false
+    // diff is produced.
+    const withEmpty = {
+      name: 'page',
+      schema: { body: { type: 'bloks', pos: 0, restrict_components: true, component_whitelist: ['hero'], restrict_type: '' } },
+    };
+    const withoutKey = {
+      name: 'page',
+      schema: { body: { type: 'bloks', pos: 0, restrict_components: true, component_whitelist: ['hero'] } },
+    };
+
+    expect(serializeComponent(withEmpty)).toBe(serializeComponent(withoutKey));
+    expect(serializeComponent(withEmpty)).not.toContain('restrict_type');
+  });
+
+  it('should keep a non-empty restrict_type (e.g. group restriction)', () => {
+    const component = {
+      name: 'page',
+      schema: { body: { type: 'bloks', pos: 0, restrict_type: 'groups', component_group_whitelist: ['group-uuid'] } },
+    };
+
+    expect(serializeComponent(component)).toContain('restrict_type: \'groups\',');
+  });
+
   it('should strip component_group_uuid by default', () => {
     const component = {
       name: 'hero',

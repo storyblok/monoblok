@@ -5,11 +5,11 @@ import { dirname, join } from 'pathe';
 import type { Component, ComponentFolder, Datasource } from '../../../types';
 import { buildGroupPathByUuid } from '../folders';
 import {
-  componentFileName,
-  datasourceFileName,
   generateComponentFile,
   generateDatasourceFile,
   generateSchemaFile,
+  resolveComponents,
+  resolveDatasources,
 } from './generate-code';
 
 /** Writes a file, creating parent directories as needed. */
@@ -34,30 +34,36 @@ export async function writeSchemaFiles(
 ): Promise<string[]> {
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
-  const groupPathByComponentName = new Map<string, string[]>();
+
+  // Each block's group directory segments (mirrors remote groups); ungrouped
+  // blocks resolve to `[]` and are written at the blocks root.
+  const componentSegments = components.map(comp =>
+    comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [],
+  );
+
+  // Resolve unique variable and file names once so the written file path and
+  // the schema.ts import path are the same value. File names are deduped per
+  // group directory for blocks (kebab-casing is lossy); datasources are flat.
+  const resolvedComponents = resolveComponents(components, componentSegments);
+  const resolvedDatasources = resolveDatasources(datasources);
 
   // Write component files into their group directory
-  for (const comp of components) {
-    const segments = comp.component_group_uuid ? groupPathByUuid.get(comp.component_group_uuid) ?? [] : [];
-    if (segments.length > 0) { groupPathByComponentName.set(comp.name, segments); }
-
-    const fileName = componentFileName(comp.name);
+  for (const { component, varName, fileName, segments } of resolvedComponents) {
     const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
-    await writeFileWithDirs(filePath, generateComponentFile(comp));
+    await writeFileWithDirs(filePath, generateComponentFile(component, varName));
     writtenFiles.push(filePath);
   }
 
   // Write datasource files
-  for (const ds of datasources) {
-    const fileName = datasourceFileName(ds);
+  for (const { datasource, varName, fileName } of resolvedDatasources) {
     const filePath = join(targetPath, 'datasources', `${fileName}.ts`);
-    await writeFileWithDirs(filePath, generateDatasourceFile(ds));
+    await writeFileWithDirs(filePath, generateDatasourceFile(datasource, varName));
     writtenFiles.push(filePath);
   }
 
   // Write schema.ts (entry point with schema object, types, and Story alias)
   const schemaPath = join(targetPath, 'schema.ts');
-  await writeFileWithDirs(schemaPath, generateSchemaFile(components, datasources, groupPathByComponentName));
+  await writeFileWithDirs(schemaPath, generateSchemaFile(resolvedComponents, resolvedDatasources));
   writtenFiles.push(schemaPath);
 
   return writtenFiles;

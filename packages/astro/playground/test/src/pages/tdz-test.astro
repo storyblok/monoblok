@@ -1,0 +1,31 @@
+---
+/**
+ * TDZ (Temporal Dead Zone) Test Page
+ *
+ * This page verifies that manually-registered components don't cause
+ * "Cannot access 'X' before initialization" errors during SSR builds.
+ *
+ * The TDZ issue occurs when:
+ * 1. A component is registered in astro.config.mjs: components: { teaser: '...' }
+ * 2. The same component is directly imported in a page (like below)
+ * 3. During bundling, the registration code may execute before the component is defined
+ *
+ * If this page builds successfully, the TDZ fix is working.
+ */
+import Teaser from '@shared/storyblok/Teaser.astro';
+import Grid from '@shared/storyblok/Grid.astro';
+---
+
+<html>
+  <head>
+    <title>TDZ Test</title>
+  </head>
+  <body>
+    <h1>TDZ Test Page</h1>
+    <p>If you can see this, the TDZ fix is working correctly.</p>
+
+    <!-- Direct usage of manually-registered components -->
+    <Teaser blok={{ component: 'teaser', headline: 'Direct Import Test', _uid: '1' }} />
+    <Grid blok={{ component: 'grid', columns: [], _uid: '2' }} />
+  </body>
+</html>

@@ -19,6 +19,31 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+const preconditions = {
+  canCreateAssetWithSize({ space = '123' }: { space?: string } = {}) {
+    let signedBody: { filename?: string; size?: string } | undefined;
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
+        signedBody = await request.json() as { filename?: string; size?: string };
+        return HttpResponse.json({
+          id: 1,
+          post_url: 'https://s3.amazonaws.com/a.storyblok.com',
+          fields: { key: `f/${space}/${signedBody.size}/hash/${signedBody.filename}` },
+        });
+      }),
+      http.post('https://s3.amazonaws.com/a.storyblok.com', () => HttpResponse.json({})),
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:asset_id/finish_upload`, () => HttpResponse.json({})),
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:asset_id`, () => HttpResponse.json({
+        id: 1,
+        filename: `https://a.storyblok.com/f/${space}/2048x1820/hash/hero.png`,
+      })),
+    );
+    return {
+      getSignedBody: () => signedBody,
+    };
+  },
+};
+
 describe('assets.list()', () => {
   it('should successfully retrieve multiple assets', async () => {
     const client = createManagementApiClient({
@@ -72,6 +97,25 @@ describe('assets.list()', () => {
 
     expect(result.error).toBeUndefined();
     expect(resolvedSpaceId).toBe('999');
+  });
+});
+
+describe('assets.create()', () => {
+  it('forwards the `size` field to the sign request so the CDN URL keeps its dimensions', async () => {
+    const { getSignedBody } = preconditions.canCreateAssetWithSize();
+    const client = createManagementApiClient({
+      personalAccessToken: 'test-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    await client.assets.create({
+      body: { short_filename: 'hero.png', size: '2048x1820' },
+      file: new ArrayBuffer(0),
+    });
+
+    expect(getSignedBody()?.size).toBe('2048x1820');
   });
 });
 

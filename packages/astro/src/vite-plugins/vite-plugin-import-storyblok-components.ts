@@ -3,14 +3,12 @@ import { normalizePath } from '../utils/normalizePath';
 import { toCamelCase } from '../utils/toCamelCase';
 import type { Plugin } from 'vite';
 
-// Virtual module identifiers for Vite's module system
 const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
+
 /**
- * Vite plugin that automatically imports Storyblok components from a specified directory
- * and merges them with optional user-provided component mappings.
- *
- * @returns Vite plugin object
+ * Vite plugin that auto-imports Storyblok components from a directory
+ * and merges them with user-provided component mappings.
  */
 export function vitePluginImportStoryblokComponents(
   components: Record<string, string>,
@@ -20,81 +18,75 @@ export function vitePluginImportStoryblokComponents(
 ): Plugin {
   return {
     name: 'vite-plugin-import-storyblok-components',
-    /**
-     * Resolves virtual module imports
-     */
+
     async resolveId(id: string) {
       if (id === VIRTUAL_MODULE_ID) {
         return RESOLVED_VIRTUAL_MODULE_ID;
       }
     },
 
-    /**
-     * Generates the virtual module content with dynamic imports
-     */
     async load(id: string) {
       if (id !== RESOLVED_VIRTUAL_MODULE_ID) {
         return;
       }
 
-      // Resolve fallback component import
-      const fallbackImport = await resolveFallbackComponent(
+      const fallbackRegistration = await resolveFallbackComponent(
         this,
         componentsDir,
         enableFallbackComponent,
         customFallbackComponent,
       );
 
-      const manualImports = await resolveUserComponents(
+      const manualRegistrations = await resolveUserComponents(
         this,
         components,
         componentsDir,
         enableFallbackComponent,
       );
 
-      // Generate the virtual module code
-      const moduleCode = generateModuleCode(
-        componentsDir,
-        fallbackImport,
-        manualImports,
-      );
-
       return {
-        code: moduleCode,
+        code: generateModuleCode(componentsDir, fallbackRegistration, manualRegistrations),
         moduleType: 'js',
       };
     },
   };
 }
-/**
- * Generates the complete virtual module code including:
- * - Auto-imported components via glob
- * - User-provided component imports
- * - Optional fallback component
- *
- * @param componentsDir - Base directory of components
- * @param fallbackImport - Import statement for fallback (if any)
- * @param manualImports - Explicit imports generated from user-provided components
- * @returns Virtual module source code
- */
-function generateModuleCode(
-  componentsDir: string,
-  fallbackImport: string,
-  manualImports: string[],
-): string {
-  // Normalize components directory path for Vite globbing
-  const normalizedComponentsDir = normalizePath(componentsDir);
 
-  // Only look into the storyblok folder
+export interface ComponentRegistrationParts {
+  importStatement: string;
+  wrapperDefinition: string;
+  registrationCall: string;
+}
+
+/**
+ * Generates the virtual module code with:
+ * - Static imports at the top for proper hoisting
+ * - Glob-imported components from storyblok folder
+ * - Manual and fallback component registrations
+ */
+export function generateModuleCode(
+  componentsDir: string,
+  fallbackRegistration: ComponentRegistrationParts | null,
+  manualRegistrations: ComponentRegistrationParts[],
+): string {
+  const normalizedComponentsDir = normalizePath(componentsDir);
   const globPattern = `${normalizedComponentsDir}/storyblok/**/*.astro`;
 
-  return `
-    // Import utilities and fallback component
-    import { toCamelCase } from '@storyblok/astro';
+  const allRegistrations = [...manualRegistrations];
+  if (fallbackRegistration) {
+    allRegistrations.push(fallbackRegistration);
+  }
 
-    // Dynamically import all Storyblok components using Vite's glob import
+  const importStatements = allRegistrations.map(r => r.importStatement);
+  const wrapperDefinitions = allRegistrations.map(r => r.wrapperDefinition);
+  const registrationCalls = allRegistrations.map(r => r.registrationCall);
+
+  return `
+    import { toCamelCase } from '@storyblok/astro';
+    ${importStatements.join('\n    ')}
+
     const modules = import.meta.glob('${globPattern}', { eager: true });
-    // Process imported modules into a components object
+
     const storyblokComponents = {};
     const createComponentLoader = (module) => {
       return async () => module?.default ?? module;
@@ -106,20 +98,19 @@ function generateModuleCode(
         get: () => createComponentLoader(component),
       });
     };
+
     for (const filePath in modules) {
-      // Extract component name from file path (remove extension)
       const fileName = filePath.split('/').pop();
-      const componentName = toCamelCase(fileName?.replace(/\.[^/.]+$/, '') ?? '');
+      const componentName = toCamelCase(fileName?.replace(/\\.[^/.]+$/, '') ?? '');
       if (componentName) {
         registerComponent(componentName, modules[filePath]);
       }
     }
-    
-    // Manual components
-    ${manualImports.join('\n\n')}
-    // Add fallback component if enabled
-    ${fallbackImport}    
-    // Export the components object for use in Storyblok initialization
+
+    ${wrapperDefinitions.join('\n    ')}
+
+    ${registrationCalls.join('\n    ')}
+
     export { storyblokComponents };
   `.trim();
 }
@@ -129,21 +120,18 @@ async function resolveFallbackComponent(
   componentsDir: string,
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
-): Promise<string> {
+): Promise<ComponentRegistrationParts | null> {
   if (!enableFallbackComponent) {
-    return '';
+    return null;
   }
   if (!customFallbackComponent) {
-    return createComponentRegistrationCode({
+    return createComponentRegistrationParts({
       componentName: 'FallbackComponent',
       importPath: '@storyblok/astro/FallbackComponent.astro',
     });
   }
 
-  const componentPath = getComponentFullPath(
-    componentsDir,
-    customFallbackComponent,
-  );
+  const componentPath = getComponentFullPath(componentsDir, customFallbackComponent);
   const resolved = await ctx.resolve(componentPath);
   if (!resolved) {
     throw new Error(
@@ -151,27 +139,19 @@ async function resolveFallbackComponent(
     );
   }
 
-  return createComponentRegistrationCode({
+  return createComponentRegistrationParts({
     componentName: 'FallbackComponent',
     importPath: resolved.id,
   });
 }
-/**
- * Resolves user-provided Storyblok components into import statements.
- *
- * @param ctx - Vite plugin context (`this` in load hook)
- * @param components - User-specified mapping of blok names to component paths
- * @param componentsDir - Base directory for components
- * @param enableFallback - Whether to silently skip unresolved components
- * @returns Object containing import statements
- */
+
 async function resolveUserComponents(
   ctx: any,
   components: Record<string, string>,
   componentsDir: string,
   enableFallback: boolean,
-): Promise<string[]> {
-  const resolvedComponents: string[] = [];
+): Promise<ComponentRegistrationParts[]> {
+  const resolvedComponents: ComponentRegistrationParts[] = [];
 
   for (const [blokName, componentPath] of Object.entries(components)) {
     const fullPath = getComponentFullPath(componentsDir, componentPath);
@@ -186,7 +166,7 @@ async function resolveUserComponents(
       continue;
     };
     const componentName = toCamelCase(blokName);
-    resolvedComponents.push(createComponentRegistrationCode({
+    resolvedComponents.push(createComponentRegistrationParts({
       componentName,
       importPath: resolved.id,
     }));
@@ -194,22 +174,6 @@ async function resolveUserComponents(
   return resolvedComponents;
 }
 
-/**
- * Builds the full normalized path to an Astro component file.
- *
- * - Ensures both the components directory and the component path
- *   are normalized (leading slash, no trailing slash, no duplicates).
- * - Concatenates them into a single path.
- * - Ensures the `.astro` extension is present.
- *
- * @param componentsDir - Base directory where Astro components live
- * @param componentPath - Relative path (or subpath) to the component
- * @returns Full normalized path ending with `.astro`
- *
- * @example
- * getComponentFullPath("components", "ui/Button");
- * // "/components/ui/Button.astro"
- */
 function getComponentFullPath(
   componentsDir: string,
   componentPath: string,
@@ -219,17 +183,29 @@ function getComponentFullPath(
   return normalizeAstroExtension(fullComponentPath);
 }
 
-interface CreateComponentRegistrationCodeOptions {
+interface CreateComponentRegistrationPartsOptions {
   componentName: string;
   importPath: string;
 }
 
-function createComponentRegistrationCode({
+/**
+ * Generates structured registration parts for a component.
+ *
+ * Uses a getter wrapper to avoid TDZ (Temporal Dead Zone) errors.
+ * When Vite bundles modules, direct references to imported components
+ * can cause "Cannot access 'X' before initialization" errors.
+ * The getter defers access until the component is actually needed.
+ */
+export function createComponentRegistrationParts({
   componentName,
   importPath,
-}: CreateComponentRegistrationCodeOptions): string {
-  return `
-  import ${componentName} from '${importPath}';
-  registerComponent('${componentName}', ${componentName});
-`.trim();
+}: CreateComponentRegistrationPartsOptions): ComponentRegistrationParts {
+  const varName = `__${componentName}_component__`;
+  const wrapperName = `__${componentName}_wrapper__`;
+
+  return {
+    importStatement: `import ${varName} from '${importPath}';`,
+    wrapperDefinition: `const ${wrapperName} = { get default() { return ${varName}; } };`,
+    registrationCall: `registerComponent('${componentName}', ${wrapperName});`,
+  };
 }

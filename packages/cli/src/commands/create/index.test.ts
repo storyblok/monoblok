@@ -143,7 +143,7 @@ describe('createCommand', () => {
       // Should generate project
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
       // Should create .env file with provided token and session region
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'eu', 'react');
       // Should NOT create space or open browser
       expect(createSpace).not.toHaveBeenCalled();
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
@@ -167,7 +167,7 @@ describe('createCommand', () => {
       // Should generate project
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.any(String));
       // Should create .env file with provided token and region
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us', 'react');
       // Should NOT create space, require authentication, or prompt for login
       expect(createSpace).not.toHaveBeenCalled();
       expect(requireAuthentication).not.toHaveBeenCalled();
@@ -411,7 +411,7 @@ describe('createCommand', () => {
       });
 
       // Verify .env file creation
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
 
       // Verify browser opening
       expect(openSpaceInBrowser).toHaveBeenCalledWith(12345, 'eu');
@@ -470,7 +470,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       // Should call handleEnvFileCreation
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
       // Should continue with browser opening even if .env creation fails
       expect(openSpaceInBrowser).toHaveBeenCalled();
     });
@@ -587,7 +587,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', './projects/my-project', '--template', 'react']);
 
       expect(generateProject).toHaveBeenCalledWith('react', 'my-project', expect.stringContaining('projects'));
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.stringContaining('my-project'), 'space-token-123', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.stringContaining('my-project'), 'space-token-123', 'eu', 'react');
     });
 
     it('should handle absolute paths correctly', async () => {
@@ -630,7 +630,7 @@ describe('createCommand', () => {
       // Verify space creation is skipped
       expect(createSpace).not.toHaveBeenCalled();
       // handleEnvFileCreation IS called with session region (eu from mock)
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'eu', 'react');
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
 
       // Verify success message still shows
@@ -665,7 +665,7 @@ describe('createCommand', () => {
       // Verify space-related operations are skipped
       expect(createSpace).not.toHaveBeenCalled();
       // handleEnvFileCreation IS called with session region (eu from mock)
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'eu', 'vue');
       expect(openSpaceInBrowser).not.toHaveBeenCalled();
     });
 
@@ -1081,7 +1081,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token', '--region', 'us']);
 
       // Should create .env file with provided token and region
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'us', 'react');
     });
 
     it('should validate region and show error for invalid region', async () => {
@@ -1117,7 +1117,7 @@ describe('createCommand', () => {
 
         expect(handleError).not.toHaveBeenCalled();
         expect(generateProject).toHaveBeenCalled();
-        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'token', region);
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'token', region, 'react');
       }
     });
 
@@ -1135,7 +1135,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react']);
 
       // Should create .env file with space token and session region (eu by default in tests)
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
     });
 
     it('should not include region in .env when --token is provided without --region', async () => {
@@ -1148,7 +1148,7 @@ describe('createCommand', () => {
       await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-access-token']);
 
       // Should create .env file with session region (eu from mock) when --region not provided
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-access-token', 'eu', 'react');
     });
 
     it('should work with --region and --skip-space flags together', async () => {
@@ -1165,7 +1165,7 @@ describe('createCommand', () => {
 
       // Should not create space but should call handleEnvFileCreation with only the region (no token)
       expect(createSpace).not.toHaveBeenCalled();
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca', 'react');
     });
 
     it('should throw error when provided region does not match user account region during space creation', async () => {
@@ -1206,7 +1206,7 @@ describe('createCommand', () => {
       expect(handleError).not.toHaveBeenCalled();
       expect(generateProject).toHaveBeenCalled();
       expect(createSpace).toHaveBeenCalled();
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
     });
 
     it('should not throw region mismatch error when --token is provided with different region', async () => {
@@ -1222,7 +1222,7 @@ describe('createCommand', () => {
       // Should proceed without region mismatch error
       expect(handleError).not.toHaveBeenCalled();
       expect(generateProject).toHaveBeenCalled();
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us', 'react');
 
       // Should not create space
       expect(createSpace).not.toHaveBeenCalled();
@@ -1244,7 +1244,7 @@ describe('createCommand', () => {
 
       // Should not create space but should call handleEnvFileCreation with undefined token and region
       expect(createSpace).not.toHaveBeenCalled();
-      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'us');
+      expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'us', 'react');
     });
 
     describe('session region fallback behavior', () => {
@@ -1258,7 +1258,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token']);
 
-        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us');
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'us', 'react');
       });
 
       it('should use CA session region as fallback when no --region provided with --skip-space', async () => {
@@ -1271,7 +1271,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--skip-space']);
 
-        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca');
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), undefined, 'ca', 'react');
       });
 
       it('should prioritize user-provided --region over session region', async () => {
@@ -1285,7 +1285,7 @@ describe('createCommand', () => {
         // User provides 'ap' region, should use that instead of 'us' session region
         await createCommand.parseAsync(['node', 'test', 'my-project', '--template', 'react', '--token', 'my-token', '--region', 'ap']);
 
-        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'ap');
+        expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'my-token', 'ap', 'react');
       });
     });
   });

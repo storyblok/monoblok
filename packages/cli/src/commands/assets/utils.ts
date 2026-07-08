@@ -83,6 +83,25 @@ export const loadAssetFolderMap = async (manifestFile: string) => {
 };
 
 /**
+ * Extracts the `<width>x<height>` dimensions segment from an asset CDN URL,
+ * e.g. `https://a.storyblok.com/f/123/2048x1820/hash/image.jpg` -> `2048x1820`.
+ * Storyblok only keeps this segment in the path when it was supplied at
+ * upload time (see `getAssetSizeForUpload`); it is not derived from the file.
+ */
+export const extractAssetSizeFromFilename = (filename?: string): string | undefined => {
+  if (!filename) {
+    return undefined;
+  }
+  try {
+    const segments = new URL(filename).pathname.split('/');
+    return segments.find(segment => /^\d+x\d+$/.test(segment));
+  }
+  catch {
+    return undefined;
+  }
+};
+
+/**
  * Extracts the sanitized name and extension from an asset.
  * Uses short_filename if available, otherwise falls back to the filename basename.
  */

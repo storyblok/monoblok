@@ -2,6 +2,7 @@ import { Component, input, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SbRichTextComponent } from './rich-text.component';
 import { StoryblokRichtextResolver } from './richtext.feature';
+import type { SbAngularRichTextRenderContext } from './richtext.feature';
 import type { SbRichTextDoc, SbRichTextNode } from '@storyblok/richtext';
 import type { SbAngularRichTextProps } from '../types';
 import {
@@ -38,6 +39,32 @@ class MockCustomParagraphComponent {
 })
 class MockCustomMarkComponent {
   readonly data = input.required<SbAngularRichTextProps<'link'>>();
+}
+
+/**
+ * Mock custom text component — uppercases the text content.
+ */
+@Component({
+  selector: 'app-custom-text',
+  standalone: true,
+  template: `<span class="custom-text">{{ data().text.toUpperCase() }}</span>`,
+})
+class MockCustomTextComponent {
+  readonly data = input.required<SbAngularRichTextProps<'text'>>();
+}
+
+/**
+ * Recursive text component: passes the text node back into sb-rich-text.
+ * Without loop prevention this causes infinite recursion.
+ */
+@Component({
+  selector: 'app-recursive-text',
+  standalone: true,
+  imports: [SbRichTextComponent],
+  template: `<sb-rich-text [sbDocument]="data()" />`,
+})
+class RecursiveTextComponent {
+  readonly data = input.required<SbAngularRichTextProps<'text'>>();
 }
 
 /**
@@ -251,6 +278,154 @@ describe('SbRichTextComponent', () => {
       const code = fixture.nativeElement.querySelector('code');
       expect(pre?.className).toBe('language-js');
       expect(code?.getAttribute('data-lang')).toBe('js');
+    });
+
+    it('passes sbData to custom components via context input', async () => {
+      @Component({
+        selector: 'app-ctx-text',
+        standalone: true,
+        template: `<span class="ctx-text">{{ prefix() }}{{ data().text }}</span>`,
+      })
+      class ContextTextComponent {
+        readonly data    = input.required<SbAngularRichTextProps<'text'>>();
+        readonly context = input<SbAngularRichTextRenderContext>();
+        readonly prefix  = () => (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? '';
+      }
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ text: ContextTextComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        content: [text('world')],
+      };
+      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput('sbData', { prefix: 'hello ' });
+      fixture.detectChanges();
+
+      const span = fixture.nativeElement.querySelector('.ctx-text');
+      expect(span?.textContent).toBe('hello world');
+    });
+
+    it('does not throw when a custom component does not declare a context input', async () => {
+      // MockCustomParagraphComponent has no context input — setInput should be caught silently.
+      const node: SbRichTextNode = { type: 'paragraph', content: [text('Hello')] };
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ paragraph: MockCustomParagraphComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput('sbData', { foo: 'bar' });
+
+      expect(() => fixture.detectChanges()).not.toThrow();
+      expect(fixture.nativeElement.querySelector('.custom-node')).toBeTruthy();
+    });
+
+    it('passes sbData to custom mark components via context input', async () => {
+      @Component({
+        selector: 'app-ctx-bold',
+        standalone: true,
+        template: `<b class="ctx-bold" [attr.data-prefix]="prefix()"><ng-content /></b>`,
+      })
+      class ContextBoldComponent {
+        readonly data    = input.required<SbAngularRichTextProps<'bold'>>();
+        readonly context = input<SbAngularRichTextRenderContext>();
+        readonly prefix  = () => (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? '';
+      }
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ bold: ContextBoldComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        content: [text('hello', [{ type: 'bold' }])],
+      };
+      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput('sbData', { prefix: 'test' });
+      fixture.detectChanges();
+
+      const bold = fixture.nativeElement.querySelector('.ctx-bold');
+      expect(bold).toBeTruthy();
+      expect(bold.getAttribute('data-prefix')).toBe('test');
+    });
+
+    it('renders custom text component when text type is registered', async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ text: MockCustomTextComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        content: [text('hello'), text('world')],
+      };
+      fixture.componentRef.setInput('sbDocument', node);
+      fixture.detectChanges();
+
+      const spans = fixture.nativeElement.querySelectorAll('.custom-text');
+      expect(spans.length).toBe(2);
+      expect(spans[0].textContent.trim()).toBe('HELLO');
+      expect(spans[1].textContent.trim()).toBe('WORLD');
+    });
+
+    it('prevents infinite loop when a custom text component uses sb-rich-text internally', async () => {
+      // RecursiveTextComponent feeds the same text node back into <sb-rich-text>.
+      // Without prevention this blows the call stack.
+      // With prevention: a child EnvironmentInjector is created with 'text' excluded,
+      // so the nested <sb-rich-text> falls back to native text rendering.
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({ text: RecursiveTextComponent }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        content: [text('hello')],
+      };
+      fixture.componentRef.setInput('sbDocument', node);
+
+      expect(() => fixture.detectChanges()).not.toThrow();
+      expect(fixture.nativeElement.textContent).toContain('hello');
     });
   });
 

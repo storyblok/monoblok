@@ -12,6 +12,7 @@ import {
   ApplicationRef,
   EnvironmentInjector,
   untracked,
+  createEnvironmentInjector,
 } from '@angular/core';
 import {
   buildStoryblokImage,
@@ -33,7 +34,11 @@ import type {
   SbRichTextImageOptions,
 } from '@storyblok/richtext';
 import { StoryblokComponent } from '../blok/sb-component.component';
-import { StoryblokRichtextResolver } from './richtext.feature';
+import {
+  StoryblokRichtextResolver,
+  STORYBLOK_RICHTEXT_EXCLUDED_TYPES,
+  type SbAngularRichTextRenderContext,
+} from './richtext.feature';
 
 @Component({
   selector: 'sb-rich-text',
@@ -62,11 +67,24 @@ export class SbRichTextComponent implements OnDestroy {
    */
   sbOptimizeImage = input<boolean | Partial<SbRichTextImageOptions>>(false);
 
+  /**
+   * Arbitrary data forwarded to every custom node/mark component via their `context` input.
+   * Use this to pass application state (e.g. locale, theme, user data) into richtext renderers
+   * without prop-drilling through the document tree.
+   *
+   * @example
+   * ```html
+   * <sb-rich-text [sbDocument]="doc" [sbData]="{ prefix: '[draft]' }" />
+   * ```
+   */
+  sbData = input<unknown>();
+
   private readonly renderer = inject(Renderer2);
   private readonly hostElement: HTMLElement = inject(ElementRef).nativeElement;
   private readonly appRef = inject(ApplicationRef);
   private readonly envInjector = inject(EnvironmentInjector);
   private readonly resolver = inject(StoryblokRichtextResolver);
+  private readonly excludedTypes = inject(STORYBLOK_RICHTEXT_EXCLUDED_TYPES);
 
   /** Prevent async work after destroy */
   private destroyed = false;
@@ -80,12 +98,16 @@ export class SbRichTextComponent implements OnDestroy {
   /** Track dynamically created components */
   private readonly componentRefs: any[] = [];
 
+  /** Track child EnvironmentInjectors created for loop prevention */
+  private readonly childInjectors: EnvironmentInjector[] = [];
+
   constructor() {
     // Use effect to reactively render when doc or optimizeImage changes
     // The effect runs synchronously during change detection, making it SSR-compatible
     effect(() => {
       const sbDocument = this.sbDocument();
       const _optimizeImage = this.sbOptimizeImage(); // Track for reactivity
+      const _data = this.sbData(); // Track for reactivity
       // Use untracked to avoid re-triggering the effect when calling render
       untracked(() => this.render(sbDocument));
     });
@@ -100,6 +122,12 @@ export class SbRichTextComponent implements OnDestroy {
       ref.destroy();
     }
     this.componentRefs.length = 0;
+
+    // destroy child injectors created for loop prevention
+    for (const injector of this.childInjectors) {
+      injector.destroy();
+    }
+    this.childInjectors.length = 0;
   }
 
   // --------------------------------------------------
@@ -182,6 +210,7 @@ export class SbRichTextComponent implements OnDestroy {
           });
 
           ref.setInput('data', mark);
+          try { ref.setInput('context', this.getContext()); } catch { /* context input not declared */ }
           this.appRef.attachView(ref.hostView);
           this.componentRefs.push(ref);
 
@@ -211,22 +240,44 @@ export class SbRichTextComponent implements OnDestroy {
     if (this.shouldAbort(version)) return;
 
     if (node.type === 'text') {
+      // Check for a custom text component before falling back to native rendering.
+      // Skip if this type is excluded (loop prevention).
+      if (!this.excludedTypes.has('text')) {
+        const syncTextComponent = this.resolver.getSync('text');
+        if (syncTextComponent) {
+          const anchor = this.renderer.createComment('sb-node');
+          this.renderer.appendChild(parent, anchor);
+          this.mountComponent(syncTextComponent, { data: node }, parent, anchor, 'text');
+          return;
+        }
+
+        if (this.resolver.has('text')) {
+          const anchor = this.renderer.createComment('sb-node');
+          this.renderer.appendChild(parent, anchor);
+          this.resolveAndMount(node, parent, anchor, version);
+          return;
+        }
+      }
+
       this.renderTextNode(node, parent, version);
       return;
     }
 
-    // Try to get cached or eagerly loaded component synchronously first
-    const syncComponent = this.resolver.getSync(node.type);
+    // Try to get cached or eagerly loaded component synchronously first.
+    // Skip if this type is excluded (loop prevention).
+    const syncComponent = !this.excludedTypes.has(node.type)
+      ? this.resolver.getSync(node.type)
+      : null;
 
     if (syncComponent) {
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
-      this.mountComponent(syncComponent, { data: node }, parent, anchor);
+      this.mountComponent(syncComponent, { data: node }, parent, anchor, node.type);
       return;
     }
 
-    // Check if this type has an async loader registered
-    if (this.resolver.has(node.type)) {
+    // Check if this type has an async loader registered (and is not excluded)
+    if (!this.excludedTypes.has(node.type) && this.resolver.has(node.type)) {
       const anchor = this.renderer.createComment('sb-node');
       this.renderer.appendChild(parent, anchor);
       this.resolveAndMount(node, parent, anchor, version);
@@ -354,7 +405,7 @@ export class SbRichTextComponent implements OnDestroy {
     if (!this.isValidAnchor(anchor, parentNode)) return;
 
     if (CustomNode) {
-      this.mountComponent(CustomNode, { data: node }, parentNode, anchor);
+      this.mountComponent(CustomNode, { data: node }, parentNode, anchor, node.type);
     } else {
       this.renderer.removeChild(parentNode, anchor);
     }
@@ -396,6 +447,7 @@ export class SbRichTextComponent implements OnDestroy {
         });
 
         ref.setInput('data', mark);
+        try { ref.setInput('context', this.getContext()); } catch { /* context input not declared */ }
         this.appRef.attachView(ref.hostView);
 
         this.componentRefs.push(ref);
@@ -437,6 +489,7 @@ export class SbRichTextComponent implements OnDestroy {
         });
 
         ref.setInput('data', mark);
+        try { ref.setInput('context', this.getContext()); } catch { /* context input not declared */ }
         this.appRef.attachView(ref.hostView);
 
         this.componentRefs.push(ref);
@@ -489,20 +542,50 @@ export class SbRichTextComponent implements OnDestroy {
     return resolved;
   }
 
+  /** Build the render context forwarded to every custom component's `context` input. */
+  private getContext(): SbAngularRichTextRenderContext {
+    const optimizeImage = this.sbOptimizeImage();
+    const ctx: SbAngularRichTextRenderContext = { data: this.sbData() };
+    if (optimizeImage) ctx.optimizeImage = optimizeImage;
+    return ctx;
+  }
+
   /** Mount dynamic component safely */
   private mountComponent(
     Component: any,
     inputs: Record<string, unknown>,
     parent: HTMLElement,
     anchor: Node,
+    excludeType?: string,
   ) {
     if (this.destroyed) return;
 
+    // When a custom component is mounted for a given type, create a child
+    // EnvironmentInjector that marks that type as excluded.  Any <sb-rich-text>
+    // rendered inside the custom component's template will inherit this injector
+    // and fall back to native HTML for that type, preventing infinite loops.
+    let injector = this.envInjector;
+    if (excludeType) {
+      injector = createEnvironmentInjector(
+        [{ provide: STORYBLOK_RICHTEXT_EXCLUDED_TYPES, useValue: new Set([excludeType]) }],
+        this.envInjector,
+      );
+      this.childInjectors.push(injector);
+    }
+
     const ref = createComponent(Component, {
-      environmentInjector: this.envInjector,
+      environmentInjector: injector,
     });
 
     Object.entries(inputs).forEach(([k, v]) => ref.setInput(k, v));
+
+    // Forward render context (sbData, optimizeImage) if the component declares a context input.
+    // setInput throws for undeclared inputs, so we catch and ignore it silently.
+    try {
+      ref.setInput('context', this.getContext());
+    } catch {
+      // Component does not declare a context input — skip.
+    }
 
     this.appRef.attachView(ref.hostView);
     this.componentRefs.push(ref);

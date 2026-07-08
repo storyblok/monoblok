@@ -27,6 +27,7 @@ export type {
   SbAngularRichTextComponentMap,
   SbAngularRichTextComponent,
   SbAngularRichTextProps,
+  SbAngularRichTextRenderContext,
 } from './lib/richtext/richtext.feature';
 
 export type { Story } from '@storyblok/api-client';

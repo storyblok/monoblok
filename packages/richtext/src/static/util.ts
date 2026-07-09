@@ -7,11 +7,13 @@ import { escapeAttr } from './attribute';
  * @param node - The Richtext node or mark to resolve the tag for.
  * @returns The resolved HTML tag as a string, or null if no tag could be resolved.
  * @example
- * const node = { type: 'paragraph', attrs: {} };
+ * const node = { type: 'paragraph', attrs: { textAlign: null } };
  * const tag = resolveTag(node);
  * console.log(tag); // Output: "p"
  */
-export function resolveTag(node: SbRichTextNode | SbRichTextMark): string | null {
+export function resolveTag(
+  node: SbRichTextNode | SbRichTextMark,
+): string | null {
   const type = node.type;
 
   const entry
@@ -58,7 +60,8 @@ export function isSelfClosing(tag: string): boolean {
  */
 export function getStaticChildren(node: SbRichTextNode) {
   const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
-  const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
+  const staticChildren
+    = renderMap && 'children' in renderMap ? renderMap.children : null;
   return staticChildren;
 }
 

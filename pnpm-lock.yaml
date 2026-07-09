@@ -6,7 +6,6 @@ settings:
 
 overrides:
   cypress: ^14.3.3
-  happy-dom: ^20.8.8
 
 importers:
 
@@ -400,6 +399,9 @@ importers:
       '@storyblok/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@storyblok/openapi-codegen':
+        specifier: workspace:*
+        version: link:../../tools/openapi-codegen
       '@types/cli-progress':
         specifier: ^3.11.6
         version: 3.11.6
@@ -1227,6 +1229,9 @@ importers:
       '@storyblok/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@storyblok/openapi-codegen':
+        specifier: workspace:*
+        version: link:../../tools/openapi-codegen
       '@types/markdown-it':
         specifier: ^14.1.2
         version: 14.1.2
@@ -5086,7 +5091,7 @@ packages:
       '@testing-library/vue': ^7.0.0 || ^8.0.1
       '@vitest/ui': '*'
       '@vue/test-utils': ^2.4.2
-      happy-dom: ^20.8.8
+      happy-dom: '*'
       jsdom: '*'
       playwright-core: ^1.43.1
       vitest: ^3.2.0
@@ -7192,7 +7197,7 @@ packages:
     peerDependencies:
       '@tiptap/core': ^3.22.3
       '@tiptap/pm': ^3.22.3
-      happy-dom: ^20.8.8
+      happy-dom: ^20.8.9
 
   '@tiptap/pm@3.22.3':
     resolution: {integrity: sha512-NjfWjZuvrqmpICT+GZWNIjtOdhPyqFKDMtQy7tsQ5rErM9L2ZQdy/+T/BKSO1JdTeBhdg9OP+0yfsqoYp2aT6A==}
@@ -15955,7 +15960,7 @@ packages:
       '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
       '@vitest/browser': 3.2.4
       '@vitest/ui': 3.2.4
-      happy-dom: ^20.8.8
+      happy-dom: '*'
       jsdom: '*'
     peerDependenciesMeta:
       '@edge-runtime/vm':
@@ -15985,7 +15990,7 @@ packages:
       '@vitest/browser-preview': 4.0.18
       '@vitest/browser-webdriverio': 4.0.18
       '@vitest/ui': 4.0.18
-      happy-dom: ^20.8.8
+      happy-dom: '*'
       jsdom: '*'
     peerDependenciesMeta:
       '@edge-runtime/vm':

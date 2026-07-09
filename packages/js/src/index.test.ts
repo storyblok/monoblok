@@ -25,21 +25,26 @@ describe('@storyblok/js', () => {
 
     it('is loaded correctly when using the apiPlugin', async () => {
       // Mock fetch to return a successful response
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [
-            { id: 1, name: 'Story 1' },
-            { id: 2, name: 'Story 2' },
-            { id: 3, name: 'Story 3' },
-          ],
-        })));
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            stories: [
+              { id: 1, name: 'Story 1' },
+              { id: 2, name: 'Story 2' },
+              { id: 3, name: 'Story 3' },
+            ],
+          }),
+        ),
+      );
 
       const { storyblokApi } = storyblokInit({
         accessToken: 'TEST_TOKEN',
         use: [apiPlugin],
       });
 
-      const result = await storyblokApi!.getAll('cdn/stories', { version: 'draft' });
+      const result = await storyblokApi!.getAll('cdn/stories', {
+        version: 'draft',
+      });
 
       expect(result.length).toBeGreaterThan(0);
       expect(fetchSpy).toHaveBeenCalled();
@@ -66,7 +71,8 @@ describe('@storyblok/js', () => {
 
     it('should handle failed API calls', async () => {
       // Create an isolated mock just for this test
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
         .mockRejectedValueOnce(new Error('API Error'));
 
       const { storyblokApi } = storyblokInit({
@@ -82,10 +88,13 @@ describe('@storyblok/js', () => {
 
     it('should support different API endpoints', async () => {
       // Create a spy that returns successful responses
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(JSON.stringify({ stories: [] })))
         .mockResolvedValueOnce(new Response(JSON.stringify({ links: [] })))
-        .mockResolvedValueOnce(new Response(JSON.stringify({ datasources: [] })));
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ datasources: [] })),
+        );
 
       const { storyblokApi } = storyblokInit({
         accessToken: 'test-token',
@@ -105,19 +114,28 @@ describe('@storyblok/js', () => {
 
     it('should handle pagination correctly', async () => {
       // Mock fetch to return paginated responses
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [{ id: 1 }, { id: 2 }],
-          total: 4,
-          perPage: 2,
-          page: 1,
-        })))
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          stories: [{ id: 3 }, { id: 4 }],
-          total: 4,
-          perPage: 2,
-          page: 2,
-        })));
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              stories: [{ id: 1 }, { id: 2 }],
+              total: 4,
+              perPage: 2,
+              page: 1,
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              stories: [{ id: 3 }, { id: 4 }],
+              total: 4,
+              perPage: 2,
+              page: 2,
+            }),
+          ),
+        );
 
       const { storyblokApi } = storyblokInit({
         accessToken: 'test-token',
@@ -150,12 +168,7 @@ describe('@storyblok/js', () => {
 
       // Verify pagination results
       expect(allStories).toHaveLength(4);
-      expect(allStories).toEqual([
-        { id: 1 },
-        { id: 2 },
-        { id: 3 },
-        { id: 4 },
-      ]);
+      expect(allStories).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
 
       // Verify that fetch was called twice for the two pages
       expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -203,7 +216,9 @@ describe('@storyblok/js', () => {
       });
 
       // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+      const bridgeScript = document.querySelector(
+        '#storyblok-javascript-bridge',
+      );
 
       // Verify bridge script was added with correct URL
       expect(bridgeScript).toBeTruthy();
@@ -238,7 +253,9 @@ describe('@storyblok/js', () => {
       });
 
       // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+      const bridgeScript = document.querySelector(
+        '#storyblok-javascript-bridge',
+      );
 
       // Verify the script was created
       expect(bridgeScript).toBeTruthy();
@@ -256,17 +273,20 @@ describe('@storyblok/js', () => {
   describe('editable', () => {
     it('gets data-blok-c and data-blok-uid', async () => {
       // Mock fetch to return a story response
-      const fetchSpy = vi.spyOn(globalThis, 'fetch')
-        .mockResolvedValueOnce(new Response(JSON.stringify({
-          story: {
-            id: 123456,
-            uid: 'test-uid-123',
-            content: {
-              component: 'page',
-              body: [],
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            story: {
+              id: 123456,
+              uid: 'test-uid-123',
+              content: {
+                component: 'page',
+                body: [],
+              },
             },
-          },
-        })));
+          }),
+        ),
+      );
 
       const { storyblokApi } = storyblokInit({
         accessToken: 'TEST_TOKEN',
@@ -300,9 +320,16 @@ describe('@storyblok/js', () => {
     });
 
     it('should use renderers for customize elements', () => {
-      const data: SbRichTextDoc = { type: 'doc', content: [
-        { type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] },
-      ] };
+      const data: SbRichTextDoc = {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [{ type: 'text', text: 'Hello' }],
+          },
+        ],
+      };
 
       const html = renderRichText(data, {
         renderers: {
@@ -326,7 +353,9 @@ describe('@storyblok/js', () => {
       const loadPromise = loadBridge(bridgeUrl);
 
       // Check if script was added to DOM
-      const script = document.querySelector('#storyblok-javascript-bridge') as HTMLScriptElement;
+      const script = document.querySelector(
+        '#storyblok-javascript-bridge',
+      ) as HTMLScriptElement;
       expect(script).toBeTruthy();
       expect(script?.getAttribute('src')).toBe(bridgeUrl);
       expect(script?.async).toBe(true);
@@ -345,7 +374,9 @@ describe('@storyblok/js', () => {
       const script = document.querySelector('#storyblok-javascript-bridge');
 
       // Simulate script error
-      const event = new ErrorEvent('error', { error: new Error('Failed to load script') });
+      const event = new ErrorEvent('error', {
+        error: new Error('Failed to load script'),
+      });
       script?.dispatchEvent(event);
 
       await expect(loadPromise).rejects.toBeDefined();
@@ -435,9 +466,11 @@ describe('@storyblok/js', () => {
       const originalWindow = globalThis.window;
       delete (globalThis as any).window;
 
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .rejects
-        .toThrow('Cannot load Storyblok bridge: window is undefined (server-side environment)');
+      await expect(
+        loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'),
+      ).rejects.toThrow(
+        'Cannot load Storyblok bridge: window is undefined (server-side environment)',
+      );
 
       // Restore window
       globalThis.window = originalWindow;
@@ -451,9 +484,9 @@ describe('@storyblok/js', () => {
       document.head.appendChild(existingScript);
 
       // Should resolve immediately since script already exists
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .resolves
-        .toBe(undefined);
+      await expect(
+        loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'),
+      ).resolves.toBe(undefined);
 
       // Clean up
       existingScript.remove();

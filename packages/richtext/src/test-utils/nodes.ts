@@ -1,15 +1,16 @@
 import { text } from './helpers';
+import type { SbRichTextNode } from '../static';
 import type { HtmlFixture } from './types';
 
 export const nodeFixtures: HtmlFixture[] = [
   {
     title: 'paragraph',
-    input: { type: 'paragraph', content: [text('Hello')] },
+    input: { type: 'paragraph', attrs: { textAlign: null }, content: [text('Hello')] },
     expected: '<p>Hello</p>',
   },
   {
     title: 'empty paragraph',
-    input: { type: 'paragraph', content: [] },
+    input: { type: 'paragraph', attrs: { textAlign: null }, content: [] },
     expected: '<p></p>',
   },
   {
@@ -24,17 +25,17 @@ export const nodeFixtures: HtmlFixture[] = [
   },
   {
     title: 'blockquote',
-    input: { type: 'blockquote', content: [{ type: 'paragraph', content: [text('Quote')] }] },
+    input: { type: 'blockquote', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text('Quote')] }] },
     expected: '<blockquote><p>Quote</p></blockquote>',
   },
   {
     title: 'bullet list',
-    input: { type: 'bullet_list', content: [{ type: 'list_item', content: [{ type: 'paragraph', content: [text('List')] }] }] },
+    input: { type: 'bullet_list', content: [{ type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text('List')] }] }] },
     expected: '<ul><li><p>List</p></li></ul>',
   },
   {
     title: 'ordered list',
-    input: { type: 'ordered_list', attrs: { order: 5 }, content: [{ type: 'list_item', content: [{ type: 'paragraph', content: [text('Ordered')] }] }] },
+    input: { type: 'ordered_list', attrs: { order: 5 }, content: [{ type: 'list_item', content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text('Ordered')] }] }] },
     expected: '<ol start="5"><li><p>Ordered</p></li></ol>',
   },
   {
@@ -71,8 +72,8 @@ export const nodeFixtures: HtmlFixture[] = [
   {
     title: 'renders array of nodes',
     input: [
-      { type: 'paragraph', content: [text('First')] },
-      { type: 'paragraph', content: [text('Second')] },
+      { type: 'paragraph', attrs: { textAlign: null }, content: [text('First')] },
+      { type: 'paragraph', attrs: { textAlign: null }, content: [text('Second')] },
     ],
     expected: '<p>First</p><p>Second</p>',
   },
@@ -81,8 +82,9 @@ export const nodeFixtures: HtmlFixture[] = [
     input: {
       type: 'doc',
       content: [
-        { type: 'paragraph', content: [text('Outer')] },
-        { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] },
+        { type: 'paragraph', attrs: { textAlign: null }, content: [text('Outer')] },
+        // doc nested inside content — runtime edge case the renderer handles
+        { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] } as unknown as SbRichTextNode,
       ],
     },
     expected: '<p>Outer</p><p>Inner</p>',

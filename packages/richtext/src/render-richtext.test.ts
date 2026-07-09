@@ -1,7 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
 import type { SbRichTextDoc, SbRichTextRenderContext } from './static';
-import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from './test-utils';
+import {
+  customRendererFixture,
+  integrationFixtures,
+  linkFixtures,
+  linkMark,
+  markFixtures,
+  nodeFixtures,
+  tableFixtures,
+  text,
+} from './test-utils';
 import { attrsToHtmlString, splitTableRows } from './static';
 
 describe('renderRichText', () => {
@@ -61,9 +70,11 @@ describe('renderRichText', () => {
     it(node_and_mark.title, () => {
       const options: SbRichTextRenderContext = {
         renderers: {
-          heading: ({ content, attrs, context }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
+          heading: ({ content, attrs, context }) =>
+            `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
-          link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
+          link: ({ children, attrs }) =>
+            `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
         },
       };
       const result = renderRichText(node_and_mark.input, options);
@@ -73,7 +84,8 @@ describe('renderRichText', () => {
     it(recursive.title, () => {
       const options: SbRichTextRenderContext = {
         renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }) =>
+            `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
@@ -111,16 +123,18 @@ describe('renderRichText', () => {
   describe('blok nodes', () => {
     const blokDoc: SbRichTextDoc = {
       type: 'doc',
-      content: [{
-        type: 'blok',
-        attrs: {
-          id: 'blok-123',
-          body: [
-            { _uid: '1', component: 'button', title: 'Click Me' },
-            { _uid: '2', component: 'button', title: 'Submit' },
-          ],
+      content: [
+        {
+          type: 'blok',
+          attrs: {
+            id: 'blok-123',
+            body: [
+              { _uid: '1', component: 'button', title: 'Click Me' },
+              { _uid: '2', component: 'button', title: 'Submit' },
+            ],
+          },
         },
-      }],
+      ],
     };
 
     it('warns when no custom renderer provided', () => {
@@ -141,7 +155,9 @@ describe('renderRichText', () => {
         renderers: {
           blok: ({ attrs }) => {
             const body = Array.isArray(attrs?.body) ? attrs.body : [];
-            return body.map(b => `<button data-uid="${b._uid}">${b.title}</button>`).join('');
+            return body
+              .map(b => `<button data-uid="${b._uid}">${b.title}</button>`)
+              .join('');
           },
         },
       };
@@ -179,23 +195,43 @@ describe('renderRichText', () => {
       const content: SbRichTextDoc = {
         type: 'doc',
         content: [
-          { type: 'paragraph', content: [text('Before')] },
-          { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1' }] } },
-          { type: 'paragraph', content: [text('After')] },
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [text('Before')],
+          },
+          {
+            type: 'blok',
+            attrs: {
+              id: 'x',
+              body: [{ _uid: '1', component: 'button', title: 'Click Me' }],
+            },
+          },
+          {
+            type: 'paragraph',
+            attrs: { textAlign: null },
+            content: [text('After')],
+          },
         ],
       };
-      expect(renderRichText(content, options)).toBe('<p>Before</p><widget /><p>After</p>');
+      expect(renderRichText(content, options)).toBe(
+        '<p>Before</p><widget /><p>After</p>',
+      );
     });
   });
   describe('xSS prevention', () => {
     it('escapes HTML in text content', () => {
       const node = text('<script>alert("xss")</script>');
-      expect(renderRichText(node)).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+      expect(renderRichText(node)).toBe(
+        '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
+      );
     });
 
     it('escapes HTML in attributes', () => {
       const node = text('Link', [linkMark('javascript:alert("xss")')]);
-      expect(renderRichText(node)).toContain('href="javascript:alert(&quot;xss&quot;)"');
+      expect(renderRichText(node)).toContain(
+        'href="javascript:alert(&quot;xss&quot;)"',
+      );
     });
   });
 });

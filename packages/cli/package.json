@@ -36,6 +36,7 @@
     "dist/**"
   ],
   "scripts": {
+    "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "build": "unbuild",
     "release": "release-it",
     "dev": "pnpm run build && node dist/index.mjs",
@@ -46,6 +47,31 @@
     "test:types": "tsc --noEmit --skipLibCheck",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage"
+  },
+  "nx": {
+    "targets": {
+      "generate:openapi": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "^build"
+        ],
+        "outputs": [
+          "{projectRoot}/dist/**"
+        ]
+      }
+    }
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
@@ -72,6 +98,7 @@
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",
     "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
     "@types/cli-progress": "^3.11.6",
     "@types/inquirer": "^9.0.8",
     "@types/node": "^24.11.0",

@@ -1,18 +1,597 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
 # See: https://www.storyblok.com/docs/packages/storyblok-richtext
+# Types mirror packages/richtext/src/extensions/richtext-attrs.ts and
+# packages/richtext/src/static/types.generated.ts — keep in sync.
 type: object
-description: Richtext field type - structured rich text document (ProseMirror format)
+description: Richtext field type - structured rich text document (ProseMirror/Tiptap format)
 required:
   - type
+  - content
 properties:
   type:
     type: string
     enum: [doc]
-    description: Root node type for richtext documents
+    description: Root node type — always "doc"
   content:
     type: array
-    description: Array of richtext nodes (paragraphs, headings, lists, bloks, etc.)
+    description: Top-level richtext nodes
     items:
-      type: object
-      additionalProperties: true
-      description: Richtext node structure varies by type (paragraph, heading, bullet_list, ordered_list, blockquote, code_block, horizontal_rule, hard_break, image, blok, etc.)
+      $ref: '#/$defs/RichTextNode'
+
+$defs:
+
+  # -----------------------------------------------------------------------
+  # Marks
+  # -----------------------------------------------------------------------
+
+  RichTextMark:
+    description: Inline formatting mark applied to a text node
+    oneOf:
+      - $ref: '#/$defs/LinkMark'
+      - $ref: '#/$defs/BoldMark'
+      - $ref: '#/$defs/ItalicMark'
+      - $ref: '#/$defs/StrikeMark'
+      - $ref: '#/$defs/UnderlineMark'
+      - $ref: '#/$defs/CodeMark'
+      - $ref: '#/$defs/SuperscriptMark'
+      - $ref: '#/$defs/SubscriptMark'
+      - $ref: '#/$defs/HighlightMark'
+      - $ref: '#/$defs/TextStyleMark'
+      - $ref: '#/$defs/AnchorMark'
+      - $ref: '#/$defs/StyledMark'
+
+  LinkMark:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [link]
+      attrs:
+        type: object
+        description: Link attributes
+        required: [href, uuid, anchor, target, linktype]
+        properties:
+          href:
+            type: [string, 'null']
+            description: Link URL
+          uuid:
+            type: [string, 'null']
+            description: UUID of the linked story (for internal links)
+          anchor:
+            type: [string, 'null']
+            description: Anchor/fragment identifier
+          target:
+            description: Link target attribute
+            oneOf:
+              - type: string
+                enum: [_self, _blank, _parent, _top]
+              - type: 'null'
+          linktype:
+            description: Type of link
+            oneOf:
+              - type: string
+                enum: [story, url, email, asset]
+              - type: 'null'
+          custom:
+            type: object
+            additionalProperties: true
+            description: Custom link attributes
+
+  BoldMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [bold]
+
+  ItalicMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [italic]
+
+  StrikeMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [strike]
+
+  UnderlineMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [underline]
+
+  CodeMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [code]
+
+  SuperscriptMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [superscript]
+
+  SubscriptMark:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [subscript]
+
+  HighlightMark:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [highlight]
+      attrs:
+        type: object
+        required: [color]
+        properties:
+          color:
+            type: string
+            description: Highlight color (CSS color value)
+
+  TextStyleMark:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [textStyle]
+      attrs:
+        type: object
+        properties:
+          color:
+            type: [string, 'null']
+          id:
+            type: [string, 'null']
+          class:
+            type: [string, 'null']
+
+  AnchorMark:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [anchor]
+      attrs:
+        type: object
+        required: [id]
+        properties:
+          id:
+            type: string
+            description: Anchor identifier
+
+  StyledMark:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [styled]
+      attrs:
+        type: object
+        required: [class]
+        properties:
+          class:
+            type: [string, 'null']
+            description: CSS class name
+
+  # -----------------------------------------------------------------------
+  # Nodes
+  # -----------------------------------------------------------------------
+
+  RichTextNode:
+    description: A richtext document node
+    oneOf:
+      - $ref: '#/$defs/ParagraphNode'
+      - $ref: '#/$defs/TextNode'
+      - $ref: '#/$defs/HeadingNode'
+      - $ref: '#/$defs/BlockquoteNode'
+      - $ref: '#/$defs/BulletListNode'
+      - $ref: '#/$defs/OrderedListNode'
+      - $ref: '#/$defs/ListItemNode'
+      - $ref: '#/$defs/CodeBlockNode'
+      - $ref: '#/$defs/HardBreakNode'
+      - $ref: '#/$defs/HorizontalRuleNode'
+      - $ref: '#/$defs/ImageNode'
+      - $ref: '#/$defs/EmojiNode'
+      - $ref: '#/$defs/TableNode'
+      - $ref: '#/$defs/TableRowNode'
+      - $ref: '#/$defs/TableCellNode'
+      - $ref: '#/$defs/TableHeaderNode'
+      - $ref: '#/$defs/BlokNode'
+
+  ParagraphNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [paragraph]
+      attrs:
+        type: object
+        required: [textAlign]
+        properties:
+          textAlign:
+            description: Text alignment
+            oneOf:
+              - type: string
+                enum: [left, center, right, justify]
+              - type: 'null'
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  TextNode:
+    type: object
+    required: [type, text]
+    properties:
+      type:
+        type: string
+        enum: [text]
+      text:
+        type: string
+        description: The text content
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  HeadingNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [heading]
+      attrs:
+        type: object
+        required: [textAlign]
+        properties:
+          level:
+            description: Heading level (h1–h6)
+            oneOf:
+              - type: integer
+                enum: [1, 2, 3, 4, 5, 6]
+              - type: 'null'
+          textAlign:
+            description: Text alignment
+            oneOf:
+              - type: string
+                enum: [left, center, right, justify]
+              - type: 'null'
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  BlockquoteNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [blockquote]
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  BulletListNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [bullet_list]
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  OrderedListNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [ordered_list]
+      attrs:
+        type: object
+        properties:
+          order:
+            type: integer
+            description: Starting number for the ordered list
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  ListItemNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [list_item]
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  CodeBlockNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [code_block]
+      attrs:
+        type: object
+        required: [class]
+        properties:
+          class:
+            type: [string, 'null']
+            description: Language class (e.g. "language-typescript")
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  HardBreakNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [hard_break]
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  HorizontalRuleNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [horizontal_rule]
+
+  ImageNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [image]
+      attrs:
+        type: object
+        required: [src, id, alt, title, source, copyright, meta_data]
+        properties:
+          id:
+            type: [integer, 'null']
+            description: Storyblok asset ID
+          src:
+            type: string
+            description: Image URL
+          alt:
+            type: [string, 'null']
+            description: Alternative text
+          title:
+            type: [string, 'null']
+          source:
+            type: [string, 'null']
+          copyright:
+            type: [string, 'null']
+          meta_data:
+            description: Asset metadata
+            oneOf:
+              - type: object
+                required: [alt, title, source, copyright]
+                properties:
+                  alt:
+                    type: [string, 'null']
+                  title:
+                    type: [string, 'null']
+                  source:
+                    type: [string, 'null']
+                  copyright:
+                    type: [string, 'null']
+              - type: 'null'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  EmojiNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [emoji]
+      attrs:
+        type: object
+        required: [name, emoji, fallbackImage]
+        properties:
+          name:
+            type: string
+            description: Emoji name/slug
+          emoji:
+            type: string
+            description: Emoji character
+          fallbackImage:
+            type: string
+            description: URL to a fallback image for unsupported environments
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+      marks:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextMark'
+
+  TableNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [table]
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+
+  TableRowNode:
+    type: object
+    required: [type]
+    properties:
+      type:
+        type: string
+        enum: [tableRow]
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+
+  TableCellNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [tableCell]
+      attrs:
+        type: object
+        properties:
+          colspan:
+            type: integer
+          rowspan:
+            type: integer
+          colwidth:
+            description: Column widths in pixels
+            oneOf:
+              - type: array
+                items:
+                  type: integer
+              - type: 'null'
+          backgroundColor:
+            type: [string, 'null']
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+
+  TableHeaderNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [tableHeader]
+      attrs:
+        type: object
+        properties:
+          colspan:
+            type: integer
+          rowspan:
+            type: integer
+          colwidth:
+            description: Column widths in pixels
+            oneOf:
+              - type: array
+                items:
+                  type: integer
+              - type: 'null'
+      content:
+        type: array
+        items:
+          $ref: '#/$defs/RichTextNode'
+
+  BlokNode:
+    type: object
+    required: [type, attrs]
+    properties:
+      type:
+        type: string
+        enum: [blok]
+      attrs:
+        type: object
+        required: [id, body]
+        properties:
+          id:
+            type: [string, 'null']
+            description: Blok instance ID
+          body:
+            description: Array of embedded component instances
+            oneOf:
+              - type: array
+                items:
+                  type: object
+                  required: ['_uid', 'component']
+                  properties:
+                    _uid:
+                      type: string
+                    component:
+                      type: string
+                    _editable:
+                      type: string
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                      - type: number
+                      - type: boolean
+                      - type: object
+              - type: 'null'

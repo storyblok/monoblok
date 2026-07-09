@@ -2,7 +2,7 @@ import type { SbRichTextDoc, SbRichTextMark, SbRichTextNode } from '../static';
 
 export const text = (
   content: string,
-  marks?: SbRichTextNode['marks'],
+  marks?: SbRichTextMark[],
 ): SbRichTextNode => ({
   type: 'text',
   text: content,
@@ -33,10 +33,10 @@ export const linkMark = (
 export const tableCell = (
   content: string,
   attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
-  marks?: SbRichTextNode['marks'],
+  marks?: SbRichTextMark[],
 ): SbRichTextNode => ({
   type: 'tableCell',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+  content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text(content, marks)] }],
   attrs: {
     colspan: attrs.colspan ?? 1,
     rowspan: attrs.rowspan ?? 1,
@@ -45,9 +45,9 @@ export const tableCell = (
   },
 });
 
-export const tableHeader = (content: string, marks?: SbRichTextNode['marks']): SbRichTextNode => ({
+export const tableHeader = (content: string, marks?: SbRichTextMark[]): SbRichTextNode => ({
   type: 'tableHeader',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+  content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text(content, marks)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 

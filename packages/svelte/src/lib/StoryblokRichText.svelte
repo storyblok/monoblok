@@ -7,8 +7,8 @@
     document: SbRichTextInput;
   } & Record<string, unknown>;
 
-  const { document, components = {}, optimizeImage }: Props = $props();
+  const { document, components = {}, optimizeImage, data }: Props = $props();
   const nodes = $derived.by(() => normalizeNodes(document, true));
 </script>
 
-<RenderChildren {nodes} options={{ components, optimizeImage }} />
+<RenderChildren {nodes} options={{ components, optimizeImage, data }} />

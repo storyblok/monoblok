@@ -20,6 +20,10 @@ export default defineComponent({
       type: Object as PropType<SbVueRichTextComponentMap>,
       required: false,
     },
+    data: {
+      type: null as unknown as PropType<unknown>,
+      required: false,
+    },
   },
 
   setup(props) {
@@ -29,6 +33,7 @@ export default defineComponent({
         blok: BlokRenderer,
         ...props.components,
       },
+      data: props.data,
     });
     return () => render(props.document);
   },

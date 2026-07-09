@@ -20,7 +20,7 @@ const Custom = components ? components[linkMark.type] : undefined;
 
 {
   isValidAstroComponent(Custom) ? (
-    <Custom {...linkMark}>
+    <Custom {...linkMark} context={options}>
       <RenderLinkInner nodes={nodes} options={options} />
     </Custom>
   ) : (

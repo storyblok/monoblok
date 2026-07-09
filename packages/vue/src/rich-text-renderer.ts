@@ -38,6 +38,7 @@ function resolveComponentOverride<K extends SbRichTextElement>(
 export interface SbVueRichTextRenderContext {
   optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
   components?: SbVueRichTextComponentMap;
+  data?: unknown;
 }
 
 /**
@@ -98,7 +99,7 @@ function renderLinkGroup(
   });
   const Custom = resolveComponentOverride(linkMark.type, options.components);
   if (Custom) {
-    return h(Custom, { key, ...linkMark }, {
+    return h(Custom, { key, ...linkMark, context: options }, {
       default: () => inner,
     });
   }
@@ -112,19 +113,28 @@ function renderLinkGroup(
 }
 
 function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, key: number | string): VNode {
+  const content = node.type !== 'text' && node.content ? renderChildren(node.content, options) : [];
+
+  // Custom renderer takes full control
+  const Custom = resolveComponentOverride(node.type, options.components);
+
+  if (Custom) {
+    // When passing context to a custom component, exclude that component type
+    // to prevent infinite loops if the custom component uses StoryblokRichText internally
+    const contextForCustom = options.components?.[node.type]
+      ? { ...options, components: { ...options.components, [node.type]: undefined } }
+      : options;
+    return h(Custom, { key, ...node, context: contextForCustom }, content.length
+      ? {
+          default: () => content,
+        }
+      : undefined);
+  }
+
   if (node.type === 'text') {
     return renderTextNode(node as SbRichTextTextNode, options, key);
   }
 
-  const Custom = resolveComponentOverride(node.type, options.components);
-
-  if (Custom) {
-    return h(Custom, { key, ...node, context: options }, node.content
-      ? {
-          default: () => renderChildren(node.content!, options),
-        }
-      : undefined);
-  }
   const tag = resolveTag(node);
 
   // Some nodes (e.g. nested docs) don't render an element themselves.
@@ -268,7 +278,7 @@ function wrapMark(children: VNode | string, mark: SbRichTextMark, options: SbVue
   const Custom = resolveComponentOverride(mark.type, options.components);
   if (Custom) {
     const childContent = typeof children === 'string' ? createTextVNode(children) : children;
-    return h(Custom, { ...mark }, {
+    return h(Custom, { ...mark, context: options }, {
       default: () => [childContent],
     });
   }

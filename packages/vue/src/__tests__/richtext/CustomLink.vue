@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SbVueRichTextProps } from '../../index.ts';
 
+defineOptions({ inheritAttrs: false });
 const props = defineProps<SbVueRichTextProps['link']>();
 </script>
 

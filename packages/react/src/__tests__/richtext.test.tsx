@@ -7,6 +7,8 @@ import CustomHeading from './richtext/CustomHeading';
 import CustomLink from './richtext/CustomLink';
 import CustomCodeBlock from './richtext/CodeComponent';
 import CustomTable from './richtext/CustomTable';
+import CustomText from './richtext/CustomText';
+import HeadingWithRichText from './richtext/HeadingWithRichText';
 
 interface AttributePositionRule {
   key: string;
@@ -199,6 +201,22 @@ describe('react StoryblokRichText component', () => {
       };
       const { container } = render(<StoryblokRichText wrapper={false} document={table.input} components={options} />);
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(table.expected);
+    });
+    const text_node = customRendererFixture.text_node;
+    it(text_node.title, () => {
+      const options: SbReactRichTextComponentMap = {
+        text: CustomText,
+      };
+      const { container } = render(<StoryblokRichText wrapper={false} document={text_node.input} components={options} data={{ prefix: '[prefix]' }} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(text_node.expected);
+    });
+    const infinite_loop = customRendererFixture.infinite_loop_prevention;
+    it(infinite_loop.title, () => {
+      const options: SbReactRichTextComponentMap = {
+        heading: HeadingWithRichText,
+      };
+      const { container } = render(<StoryblokRichText wrapper={false} document={infinite_loop.input} components={options} />);
+      expect(alignImageSrcAttribute(container.innerHTML)).toBe(infinite_loop.expected);
     });
   });
 });

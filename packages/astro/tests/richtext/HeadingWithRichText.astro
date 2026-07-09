@@ -1,0 +1,18 @@
+---
+/**
+ * Custom heading component that internally uses StoryblokRichText.
+ * This tests the infinite loop prevention - without it, this would cause:
+ * HeadingWithRichText -> StoryblokRichText -> HeadingWithRichText -> ...
+ */
+import type { SbAstroRichTextProps } from '../../src/index';
+import StoryblokRichText from '../../src/components/StoryblokRichText.astro';
+
+type Props = SbAstroRichTextProps<'heading'>;
+
+const { attrs, content, context } = Astro.props;
+const Tag = `h${attrs?.level}`;
+---
+
+<Tag data-type="recursive-heading" data-level={attrs?.level}>
+  {content && <StoryblokRichText document={content} {...context} />}
+</Tag>

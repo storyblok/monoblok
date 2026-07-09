@@ -16,18 +16,26 @@
 
   const { node, options }: Props = $props();
   const CustomComponent = $derived(
-    options.components && node.type !== 'text' ? options.components[node.type] : undefined,
+    options.components ? options.components[node.type] : undefined,
+  );
+
+  // When passing context to a custom component, exclude that component type
+  // to prevent infinite loops if the custom component uses StoryblokRichText internally
+  const contextForCustom = $derived(
+    CustomComponent
+      ? { ...options, components: { ...options.components, [node.type]: undefined } }
+      : options,
   );
 </script>
 
-{#if node.type === 'text'}
-  <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
-{:else if CustomComponent}
-  <CustomComponent {...node} context={options}>
-    {#if node.content}
+{#if CustomComponent}
+  <CustomComponent {...node} context={contextForCustom}>
+    {#if node.type !== 'text' && node.content}
       <RenderChildren nodes={node.content} {options} />
     {/if}
   </CustomComponent>
+{:else if node.type === 'text'}
+  <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
 {:else if node.type === 'image'}
   <RenderImage {node} {options} />
 {:else if node.type === 'blok'}

@@ -5,7 +5,8 @@ import type { SbRichTextRenderContext } from '@storyblok/richtext';
 import test from '/test.md?url&raw';
 import testHTML from '/test.html?url&raw';
 
-const richtextFromMarkdown = markdownToStoryblokRichtext(test, /*  {
+const richtextFromMarkdown = markdownToStoryblokRichtext(
+  test /*  {
   resolvers: {
     [MarkdownTokenTypes.PARAGRAPH]: (_token, children) => {
       return {
@@ -15,16 +16,12 @@ const richtextFromMarkdown = markdownToStoryblokRichtext(test, /*  {
       };
     },
   },
-} */);
+} */,
+);
 
 const richtextFromHTML = htmlToStoryblokRichtext(testHTML);
 
 const options: SbRichTextRenderContext = {
-  // resolvers: {
-  //   [BlockTypes.HEADING]: (node: StoryblokRichTextNode<string>, ctx) => {
-  //     return ctx.originalResolvers.get(BlockTypes.HEADING)?.(node, ctx) || '';
-  //   },
-  // },
   // optimizeImages: {
   //   class: 'v-class',
   //   loading: 'lazy',

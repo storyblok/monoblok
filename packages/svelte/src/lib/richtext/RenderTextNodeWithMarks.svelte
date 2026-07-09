@@ -24,7 +24,7 @@
 {#if reversedMarks.length === 0}
   {node.text}
 {:else if MarkComponent}
-  <MarkComponent {...mark}>
+  <MarkComponent {...mark} context={options}>
     <RenderTextNodeWithMarks {node} marks={rest} {options} />
   </MarkComponent>
 {:else}

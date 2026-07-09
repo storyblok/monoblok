@@ -19,16 +19,22 @@ interface Props {
 }
 const { node, options } = Astro.props;
 const components = options.components;
-const Custom = components && node.type !== 'text' ? components[node.type] : undefined;
+const Custom = components ? components[node.type] : undefined;
+
+// When passing context to a custom component, exclude that component type
+// to prevent infinite loops if the custom component uses StoryblokRichText internally
+const contextForCustom = Custom
+  ? { ...options, components: { ...components, [node.type]: undefined } }
+  : options;
 ---
 
 {
-  node.type === 'text' ? (
-    <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
-  ) : isValidAstroComponent(Custom) ? (
-    <Custom {...node} context={options}>
-      {node.content && <RenderChildren nodes={node.content} options={options} />}
+  isValidAstroComponent(Custom) ? (
+    <Custom {...node} context={contextForCustom}>
+      {node.type !== 'text' && node.content && <RenderChildren nodes={node.content} options={options} />}
     </Custom>
+  ) : node.type === 'text' ? (
+    <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
   ) : node.type === 'image' ? (
     <RenderImage node={node} options={options} />
   ) : node.type === 'blok' ? (

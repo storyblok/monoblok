@@ -58,11 +58,7 @@ Add the Storyblok provider to your application configuration:
 ```typescript
 // app.config.ts
 import { ApplicationConfig } from '@angular/core';
-import {
-  provideStoryblok,
-  withStoryblokComponents,
-  withLivePreview,
-} from '@storyblok/angular';
+import { provideStoryblok, withStoryblokComponents, withLivePreview } from '@storyblok/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -75,7 +71,7 @@ export const appConfig: ApplicationConfig = {
         page: () => import('./components/page').then((m) => m.PageComponent),
         teaser: () => import('./components/teaser').then((m) => m.TeaserComponent),
       }),
-      withLivePreview()
+      withLivePreview(),
     ),
   ],
 };
@@ -143,8 +139,8 @@ provideStoryblok(
   { accessToken: 'YOUR_ACCESS_TOKEN' },
   withLivePreview({
     resolveRelations: ['article.author'],
-  })
-)
+  }),
+);
 ```
 
 In your route component, listen for live updates:
@@ -159,7 +155,7 @@ import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storybl
 })
 export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
-  
+
   readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
   readonly story = linkedSignal(() => this.storyInput());
 
@@ -177,14 +173,14 @@ Use the `SbRichTextComponent` to render rich text fields:
 
 ```typescript
 import { Component, input } from '@angular/core';
-import { SbRichTextComponent, type StoryblokRichTextNode } from '@storyblok/angular';
+import { SbRichTextComponent, type SbRichTextNode } from '@storyblok/angular';
 
 @Component({
   imports: [SbRichTextComponent],
   template: `<sb-rich-text [doc]="content()" />`,
 })
 export class ArticleComponent {
-  readonly content = input<StoryblokRichTextNode>();
+  readonly content = input<SbRichTextNode>();
 }
 ```
 
@@ -201,35 +197,30 @@ provideStoryblok(
   withStoryblokRichtextComponents({
     link: CustomLinkComponent,
     image: OptimizedImageComponent,
-  })
-)
+  }),
+);
 ```
 
 Create a custom component using the `props` input pattern:
 
 ```typescript
-import { Component, input, computed } from '@angular/core';
-import { SbRichTextNodeComponent, type AngularRenderNode } from '@storyblok/angular';
-
-interface LinkProps {
-  href?: string;
-  target?: string;
-  children?: AngularRenderNode[];
-}
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import type { SbAngularRichTextProps } from '@storyblok/angular';
 
 @Component({
-  imports: [SbRichTextNodeComponent],
+  selector: 'app-link',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a [href]="href()" [target]="target()" class="custom-link">
-      <sb-rich-text-node [nodes]="children()" />
+    <a [href]="data().attrs?.href">
+      <ng-content />
     </a>
   `,
+  host: {
+    style: 'display: inline-block',
+  },
 })
-export class CustomLinkComponent {
-  readonly props = input<LinkProps>({});
-  readonly href = computed(() => this.props().href ?? '');
-  readonly target = computed(() => this.props().target ?? '_self');
-  readonly children = computed(() => this.props().children ?? []);
+export class LinkComponent {
+  readonly data = input.required<SbAngularRichTextProps<'link'>>();
 }
 ```
 
@@ -246,44 +237,44 @@ const storyblokComponents: StoryblokComponentsMap = {
 
 provideStoryblok(
   { accessToken: 'YOUR_ACCESS_TOKEN' },
-  withStoryblokComponents(storyblokComponents)
-)
+  withStoryblokComponents(storyblokComponents),
+);
 ```
 
 ## API reference
 
 ### Providers
 
-| Provider | Description |
-|----------|-------------|
+| Provider                                | Description                                               |
+| --------------------------------------- | --------------------------------------------------------- |
 | `provideStoryblok(config, ...features)` | Configure the SDK with access token and optional features |
-| `withStoryblokComponents(map)` | Register Storyblok components (eager or lazy) |
-| `withLivePreview(options?)` | Enable real-time visual editing |
-| `withStoryblokRichtextComponents(map)` | Register custom rich text components |
+| `withStoryblokComponents(map)`          | Register Storyblok components (eager or lazy)             |
+| `withLivePreview(options?)`             | Enable real-time visual editing                           |
+| `withStoryblokRichtextComponents(map)`  | Register custom rich text components                      |
 
 ### Services
 
-| Service | Description |
-|---------|-------------|
-| `StoryblokService` | Access the Storyblok API client |
+| Service              | Description                     |
+| -------------------- | ------------------------------- |
+| `StoryblokService`   | Access the Storyblok API client |
 | `LivePreviewService` | Listen for live preview updates |
 
 ### Components and directives
 
-| Component/Directive | Description |
-|---------------------|-------------|
-| `SbBlokDirective` | Dynamically render Storyblok components |
-| `SbRichTextComponent` | Render rich text content |
+| Component/Directive       | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| `SbBlokDirective`         | Dynamically render Storyblok components        |
+| `SbRichTextComponent`     | Render rich text content                       |
 | `SbRichTextNodeComponent` | Render rich text nodes (for custom components) |
 
 ### Types
 
-| Type | Description |
-|------|-------------|
-| `SbBlokData` | Base type for Storyblok block data |
-| `ISbStoryData` | Story data from the API |
-| `StoryblokRichTextNode` | Rich text document node |
-| `AngularRenderNode` | Rendered node in rich text AST |
+| Type                | Description                        |
+| ------------------- | ---------------------------------- |
+| `SbBlokData`        | Base type for Storyblok block data |
+| `ISbStoryData`      | Story data from the API            |
+| `SbRichTextNode`    | Rich text document node            |
+| `AngularRenderNode` | Rendered node in rich text AST     |
 
 ## Documentation
 

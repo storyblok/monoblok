@@ -220,6 +220,9 @@ export interface RichtextFieldValueBlokNode {
       _uid: string;
       component: string;
       _editable?: string;
+      [key: string]: string | number | boolean | {
+        [key: string]: unknown;
+      } | string | undefined;
     }> | null;
   };
 }

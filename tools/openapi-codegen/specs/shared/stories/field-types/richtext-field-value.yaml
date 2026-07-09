@@ -580,7 +580,7 @@ $defs:
               - type: array
                 items:
                   type: object
-                  required: [_uid, component]
+                  required: ['_uid', 'component']
                   properties:
                     _uid:
                       type: string
@@ -588,4 +588,10 @@ $defs:
                       type: string
                     _editable:
                       type: string
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                      - type: number
+                      - type: boolean
+                      - type: object
               - type: 'null'

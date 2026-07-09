@@ -15,10 +15,15 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generate } from '@storyblok/openapi-codegen';
+import { execSync } from 'node:child_process';
 
 const PKG_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 
 await generate({
   outDir: resolve(PKG_ROOT, 'src/generated'),
   include: ['RichtextDoc', 'RichTextNode', 'RichTextMark'],
+});
+const GENERATED_PATH = resolve(PKG_ROOT, 'src/generated');
+execSync(`pnpm eslint ${GENERATED_PATH} --fix`, {
+  stdio: 'inherit',
 });

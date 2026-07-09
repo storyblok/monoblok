@@ -1,110 +1,53 @@
 import type { MarkSpec, NodeSpec } from 'prosemirror-model';
 import type { SbBlokData } from '../static/types';
 import type { TiptapMarkName, TiptapNodeName } from '../static/types.generated';
+import type {
+  RichtextFieldValueAnchorMark,
+  RichtextFieldValueBlokNode,
+  RichtextFieldValueCodeBlockNode,
+  RichtextFieldValueEmojiNode,
+  RichtextFieldValueHeadingNode,
+  RichtextFieldValueHighlightMark,
+  RichtextFieldValueImageNode,
+  RichtextFieldValueLinkMark,
+  RichtextFieldValueOrderedListNode,
+  RichtextFieldValueParagraphNode,
+  RichtextFieldValueStyledMark,
+  RichtextFieldValueTableCellNode,
+  RichtextFieldValueTableHeaderNode,
+  RichtextFieldValueTextStyleMark,
+} from '../generated/overlay/types.gen';
 
 /** For node and mark that do not have any attribute support */
 export type NoAttrs = Record<string, unknown>;
 
-/** Node Attributes */
+/** Node Attributes — derived from OpenAPI-generated types so they stay in sync automatically. */
 
-export interface ParagraphAttrs {
-  textAlign: 'left' | 'center' | 'right' | 'justify' | null;
-  [key: string]: unknown;
-}
+export type ParagraphAttrs = RichtextFieldValueParagraphNode['attrs'] & Record<string, unknown>;
+export type HeadingAttrs = RichtextFieldValueHeadingNode['attrs'] & Record<string, unknown>;
+export type CodeBlockAttrs = RichtextFieldValueCodeBlockNode['attrs'] & Record<string, unknown>;
+export type OrderedListAttrs = RichtextFieldValueOrderedListNode['attrs'] & Record<string, unknown>;
+export type TableCellAttrs = RichtextFieldValueTableCellNode['attrs'] & Record<string, unknown>;
+export type TableHeaderAttrs = RichtextFieldValueTableHeaderNode['attrs'] & Record<string, unknown>;
+export type ImageAttrs = RichtextFieldValueImageNode['attrs'] & Record<string, unknown>;
+export type EmojiAttrs = RichtextFieldValueEmojiNode['attrs'] & Record<string, unknown>;
 
-export interface HeadingAttrs {
-  textAlign: 'left' | 'center' | 'right' | 'justify' | null;
-  level?: 1 | 2 | 3 | 4 | 5 | 6;
-  [key: string]: unknown;
-}
-
-export interface CodeBlockAttrs {
-  class: string | null;
-  [key: string]: unknown;
-}
-
-export interface OrderedListAttrs {
-  order?: number;
-  [key: string]: unknown;
-}
-
-export interface TableCellAttrs {
-  colspan?: number;
-  rowspan?: number;
-  colwidth?: number[] | null;
-  backgroundColor?: string | null;
-  [key: string]: unknown;
-}
-
-export interface TableHeaderAttrs {
-  colspan?: number;
-  rowspan?: number;
-  colwidth?: number[] | null;
-  [key: string]: unknown;
-}
-
-export interface ImageAttrs {
-  id: number | null;
-  alt: string | null;
-  src: string;
-  title: string | null;
-  source: string | null;
-  copyright: string | null;
-  meta_data: {
-    alt: string | null;
-    title: string | null;
-    source: string | null;
-    copyright: string | null;
-  } | null;
-  [key: string]: unknown;
-}
-
-export interface EmojiAttrs {
-  name: string;
-  emoji: string;
-  fallbackImage: string;
-  [key: string]: unknown;
-}
-
-export interface BlokAttrs {
-  id: string | null;
+/**
+ * BlokAttrs keeps `body` typed as `SbBlokData[]` (the repo-wide blok type) rather
+ * than the inline shape from the generated spec, which is structurally equivalent
+ * but less convenient to work with.
+ */
+export type BlokAttrs = Omit<RichtextFieldValueBlokNode['attrs'], 'body'> & {
   body: SbBlokData[] | null;
-  [key: string]: unknown;
-}
+} & Record<string, unknown>;
 
-/** Mark Attributes */
+/** Mark Attributes — derived from OpenAPI-generated types. */
 
-export interface LinkAttrs {
-  href: string | null;
-  uuid: string | null;
-  anchor: string | null;
-  target: '_self' | '_blank' | '_parent' | '_top' | null;
-  linktype: 'story' | 'url' | 'email' | 'asset' | null;
-  custom?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-export interface HighlightAttrs {
-  color: string;
-  [key: string]: unknown;
-}
-
-export interface TextStyleAttrs {
-  color?: string | null;
-  id?: string | null;
-  class?: string | null;
-  [key: string]: unknown;
-}
-
-export interface AnchorAttrs {
-  id: string;
-  [key: string]: unknown;
-}
-
-export interface StyledAttrs {
-  class: string | null;
-  [key: string]: unknown;
-}
+export type LinkAttrs = RichtextFieldValueLinkMark['attrs'] & Record<string, unknown>;
+export type HighlightAttrs = RichtextFieldValueHighlightMark['attrs'] & Record<string, unknown>;
+export type TextStyleAttrs = RichtextFieldValueTextStyleMark['attrs'] & Record<string, unknown>;
+export type AnchorAttrs = RichtextFieldValueAnchorMark['attrs'] & Record<string, unknown>;
+export type StyledAttrs = RichtextFieldValueStyledMark['attrs'] & Record<string, unknown>;
 
 /** Attribute Maps */
 

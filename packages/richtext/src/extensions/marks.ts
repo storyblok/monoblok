@@ -9,22 +9,27 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import Underline from '@tiptap/extension-underline';
 
-import {
-  mapToAttribute,
-  supportedAttributesByTagName,
-} from './utils';
-import type { AnchorAttrs, ExtensionOptions, StyledAttrs, TextStyleAttrs } from './richtext-attrs';
+import { mapToAttribute, supportedAttributesByTagName } from './utils';
+import type {
+  AnchorAttrs,
+  ExtensionOptions,
+  StyledAttrs,
+  TextStyleAttrs,
+} from './richtext-attrs';
 
 export { Bold, Code, Italic, Strike, Subscript, Superscript, Underline };
 
-export function buildHighlightExtension(options?: ExtensionOptions<'highlight'>) {
+export function buildHighlightExtension(
+  options?: ExtensionOptions<'highlight'>,
+) {
   const parser = options?.attributeParsers;
   return Highlight.extend({
     addAttributes() {
       return {
         color: {
           default: null,
-          parseHTML: parser?.color ?? mapToAttribute(undefined, 'color'),
+          parseHTML:
+            parser?.color ?? mapToAttribute(undefined, 'background-color'),
         },
       };
     },
@@ -32,7 +37,9 @@ export function buildHighlightExtension(options?: ExtensionOptions<'highlight'>)
 }
 const parseCustomLinkAttributes = (element: HTMLElement) => {
   const defaultLinkAttributes = supportedAttributesByTagName.a;
-  const customAttributeNames = element.getAttributeNames().filter(n => !defaultLinkAttributes.includes(n));
+  const customAttributeNames = element
+    .getAttributeNames()
+    .filter(n => !defaultLinkAttributes.includes(n));
   const customAttributes: Record<string, string | null> = {};
   for (const attributeName of customAttributeNames) {
     customAttributes[attributeName] = element.getAttribute(attributeName);
@@ -79,12 +86,17 @@ export function buildAnchorExtension(options?: ExtensionOptions<'anchor'>) {
     name: 'anchor',
     addAttributes() {
       return {
-        id: { default: null, parseHTML: parser?.id ?? mapToAttribute(['id', 'data-id']) },
+        id: {
+          default: null,
+          parseHTML: parser?.id ?? mapToAttribute(['id', 'data-id']),
+        },
       };
     },
-    parseHTML: options?.parseHTML ?? (() => {
-      return [{ tag: 'span[id]' }];
-    }),
+    parseHTML:
+      options?.parseHTML
+      ?? (() => {
+        return [{ tag: 'span[id]' }];
+      }),
     renderHTML({ HTMLAttributes }) {
       const { id } = HTMLAttributes as AnchorAttrs;
       return ['span', { id }, 0];
@@ -96,49 +108,69 @@ export function buildStyledExtension(options?: ExtensionOptions<'textStyle'>) {
   const parser = options?.attributeParsers;
   return Mark.create({
     name: 'styled',
-    parseHTML: options?.parseHTML ?? (() => {
-      return [{ tag: 'span', consuming: false, getAttrs: (element: HTMLElement) => {
-        // Only match spans with inline style containing color
-        const className = element.getAttribute('class');
-        if (className) {
-          return null;
-        }
-        return false;
-      } }];
-    }),
+    parseHTML:
+      options?.parseHTML
+      ?? (() => {
+        return [
+          {
+            tag: 'span',
+            consuming: false,
+            getAttrs: (element: HTMLElement) => {
+              // Only match spans with inline style containing color
+              const className = element.getAttribute('class');
+              if (className) {
+                return null;
+              }
+              return false;
+            },
+          },
+        ];
+      }),
     addAttributes() {
       return {
-        class: { default: null, parseHTML: parser?.class ?? mapToAttribute('class') },
+        class: {
+          default: null,
+          parseHTML: parser?.class ?? mapToAttribute('class'),
+        },
       };
     },
     renderHTML({ HTMLAttributes }) {
       const { class: className } = HTMLAttributes as StyledAttrs;
-      return [
-        'span',
-        { class: className },
-        0,
-      ];
+      return ['span', { class: className }, 0];
     },
   });
 }
 
-export function buildTextStyleExtension(options?: ExtensionOptions<'textStyle'>) {
+export function buildTextStyleExtension(
+  options?: ExtensionOptions<'textStyle'>,
+) {
   const parser = options?.attributeParsers;
   return Mark.create({
     name: 'textStyle',
-    parseHTML: options?.parseHTML ?? (() => {
-      return [{ tag: 'span', consuming: false, getAttrs: (element: HTMLElement) => {
-        // Only match spans with inline style containing color
-        const style = element.getAttribute('style');
-        if (style && /color/i.test(style)) {
-          return null;
-        }
-        return false;
-      } }];
-    }),
+    parseHTML:
+      options?.parseHTML
+      ?? (() => {
+        return [
+          {
+            tag: 'span',
+            consuming: false,
+            getAttrs: (element: HTMLElement) => {
+              // Only match spans with inline style containing color
+              const style = element.getAttribute('style');
+              if (style && /color/i.test(style)) {
+                return null;
+              }
+              return false;
+            },
+          },
+        ];
+      }),
     addAttributes() {
       return {
-        color: { default: null, parseHTML: parser?.color ?? mapToAttribute(undefined, 'color') },
+        color: {
+          default: null,
+          parseHTML: parser?.color ?? mapToAttribute(undefined, 'color'),
+        },
       };
     },
     renderHTML({ HTMLAttributes }) {
@@ -178,12 +210,19 @@ export const Reporter = Mark.create({
             return false;
           }
 
-          const unsupportedAttributes = element.getAttributeNames().filter((attr) => {
-            const supportedAttrs = tagName in supportedAttributesByTagName ? supportedAttributesByTagName[tagName] : [];
-            return !supportedAttrs.includes(attr);
-          });
+          const unsupportedAttributes = element
+            .getAttributeNames()
+            .filter((attr) => {
+              const supportedAttrs
+                = tagName in supportedAttributesByTagName
+                  ? supportedAttributesByTagName[tagName]
+                  : [];
+              return !supportedAttrs.includes(attr);
+            });
           for (const attr of unsupportedAttributes) {
-            console.warn(`[StoryblokRichText] - \`${attr}\` "${element.getAttribute(attr)}" on \`<${tagName}>\` can not be transformed to rich text.`);
+            console.warn(
+              `[StoryblokRichText] - \`${attr}\` "${element.getAttribute(attr)}" on \`<${tagName}>\` can not be transformed to rich text.`,
+            );
           }
 
           return false;

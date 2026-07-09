@@ -3,17 +3,26 @@ import { htmlToStoryblokRichtext } from './html-parser';
 import { renderRichText } from './render-richtext';
 import { mapToAttribute } from './extensions/utils';
 import { doc } from './test-utils/helpers';
-import { linkFixtures, markFixtures, nodeFixtures, tableFixtures } from './test-utils';
+import {
+  linkFixtures,
+  markFixtures,
+  nodeFixtures,
+  tableFixtures,
+} from './test-utils';
 
 describe('hTML → Richtext (strict): Input handling', () => {
   it('returns doc with empty paragraph for empty string', () => {
     const document = htmlToStoryblokRichtext('');
-    expect(document).toMatchObject(doc({ type: 'paragraph' }));
+    expect(document).toMatchObject(
+      doc({ type: 'paragraph', attrs: { textAlign: null } }),
+    );
   });
 
   it('returns doc with empty paragraph for whitespace-only input', () => {
     const document = htmlToStoryblokRichtext('   \n\t  ');
-    expect(document).toMatchObject(doc({ type: 'paragraph' }));
+    expect(document).toMatchObject(
+      doc({ type: 'paragraph', attrs: { textAlign: null } }),
+    );
   });
 });
 
@@ -66,7 +75,8 @@ describe('hTML → Richtext (strict): Table', () => {
 
 describe('hTML → Richtext (strict): Custom parsers', () => {
   it('parses emoji with custom extension', () => {
-    const html = '<div data-type="emoji" data-test="rocket" data-emoji="🚀"><img src="https://cdn.example.com/rocket.png" alt="🚀"></div>';
+    const html
+      = '<div data-type="emoji" data-test="rocket" data-emoji="🚀"><img src="https://cdn.example.com/rocket.png" alt="🚀"></div>';
     const result = htmlToStoryblokRichtext(html, {
       parsers: {
         emoji: {
@@ -82,22 +92,27 @@ describe('hTML → Richtext (strict): Custom parsers', () => {
         },
       },
     });
-    expect(result).toEqual(doc({
-      type: 'paragraph',
-      attrs: { textAlign: null },
-      content: [{
-        type: 'emoji',
-        attrs: {
-          name: 'rocket',
-          emoji: '🚀',
-          fallbackImage: 'https://cdn.example.com/rocket.png',
-        },
-      }],
-    }));
+    expect(result).toEqual(
+      doc({
+        type: 'paragraph',
+        attrs: { textAlign: null },
+        content: [
+          {
+            type: 'emoji',
+            attrs: {
+              name: 'rocket',
+              emoji: '🚀',
+              fallbackImage: 'https://cdn.example.com/rocket.png',
+            },
+          },
+        ],
+      }),
+    );
   });
 
   it('parses code block with custom language extraction', () => {
-    const html = '<pre><code class="language-typescript">const greeting: string = "Hello";</code></pre>';
+    const html
+      = '<pre><code class="language-typescript">const greeting: string = "Hello";</code></pre>';
     const result = htmlToStoryblokRichtext(html, {
       parsers: {
         code_block: {
@@ -112,11 +127,13 @@ describe('hTML → Richtext (strict): Custom parsers', () => {
         },
       },
     });
-    expect(result).toEqual(doc({
-      type: 'code_block',
-      attrs: { class: 'typescript' },
-      content: [{ type: 'text', text: 'const greeting: string = "Hello";' }],
-    }));
+    expect(result).toEqual(
+      doc({
+        type: 'code_block',
+        attrs: { class: 'typescript' },
+        content: [{ type: 'text', text: 'const greeting: string = "Hello";' }],
+      }),
+    );
   });
 
   it('parses image with custom meta_data extraction', () => {
@@ -143,22 +160,24 @@ describe('hTML → Richtext (strict): Custom parsers', () => {
         },
       },
     });
-    expect(result).toEqual(doc({
-      type: 'image',
-      attrs: {
-        id: null,
-        src: 'https://a.storyblok.com/f/12345/800x600/image.jpg',
-        alt: 'A beautiful landscape',
-        title: 'Mountain View',
-        source: 'Unsplash',
-        copyright: '© 2024 Photographer Name',
-        meta_data: {
+    expect(result).toEqual(
+      doc({
+        type: 'image',
+        attrs: {
+          id: null,
+          src: 'https://a.storyblok.com/f/12345/800x600/image.jpg',
           alt: 'A beautiful landscape',
           title: 'Mountain View',
           source: 'Unsplash',
           copyright: '© 2024 Photographer Name',
+          meta_data: {
+            alt: 'A beautiful landscape',
+            title: 'Mountain View',
+            source: 'Unsplash',
+            copyright: '© 2024 Photographer Name',
+          },
         },
-      },
-    }));
+      }),
+    );
   });
 });

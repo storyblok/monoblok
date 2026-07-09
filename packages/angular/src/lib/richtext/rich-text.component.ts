@@ -567,7 +567,7 @@ export class SbRichTextComponent implements OnDestroy {
     let injector = this.envInjector;
     if (excludeType) {
       injector = createEnvironmentInjector(
-        [{ provide: STORYBLOK_RICHTEXT_EXCLUDED_TYPES, useValue: new Set([excludeType]) }],
+        [{ provide: STORYBLOK_RICHTEXT_EXCLUDED_TYPES, useValue: new Set([...this.excludedTypes, excludeType]) }],
         this.envInjector,
       );
       this.childInjectors.push(injector);

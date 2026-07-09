@@ -427,6 +427,53 @@ describe('SbRichTextComponent', () => {
       expect(() => fixture.detectChanges()).not.toThrow();
       expect(fixture.nativeElement.textContent).toContain('hello');
     });
+
+    it('preserves all ancestor excluded types across multiple nesting levels', async () => {
+      // Scenario: both `paragraph` and `text` have custom components that each
+      // re-render their node via <sb-rich-text>.
+      //
+      // Without the fix the child injector for `text` creates Set(['text']),
+      // forgetting that `paragraph` is already excluded. The innermost
+      // <sb-rich-text> then re-enables the paragraph custom component and
+      // recurses infinitely.
+      //
+      // With the fix the excluded set accumulates: Set(['paragraph', 'text']),
+      // so both types fall back to native rendering at the deepest level.
+
+      @Component({
+        selector: 'app-recursive-paragraph',
+        standalone: true,
+        imports: [SbRichTextComponent],
+        template: `<sb-rich-text [sbDocument]="data()" />`,
+      })
+      class RecursiveParagraphComponent {
+        readonly data = input.required<SbAngularRichTextProps<'paragraph'>>();
+      }
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [SbRichTextComponent],
+        providers: [
+          {
+            provide: StoryblokRichtextResolver,
+            useValue: createMockResolver({
+              paragraph: RecursiveParagraphComponent,
+              text: RecursiveTextComponent,
+            }),
+          },
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SbRichTextComponent);
+
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        content: [text('hello')],
+      };
+      fixture.componentRef.setInput('sbDocument', node);
+
+      expect(() => fixture.detectChanges()).not.toThrow();
+      expect(fixture.nativeElement.textContent).toContain('hello');
+    });
   });
 
   // ============================================================================

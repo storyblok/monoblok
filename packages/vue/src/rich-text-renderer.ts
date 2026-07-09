@@ -119,7 +119,7 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
   const Custom = resolveComponentOverride(node.type, options.components);
 
   if (Custom) {
-    return h(Custom, { key, ...node, context: options }, node.content
+    return h(Custom as Component, { key, ...node, context: options }, node.content
       ? {
           default: () => renderChildren(node.content!, options),
         }

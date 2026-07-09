@@ -125,10 +125,7 @@ export interface StoryblokTable {
   }>;
 }
 
-export interface StoryblokRichtext {
-  type: string;
-  content?: StoryblokRichtext[];
-  marks?: StoryblokRichtext[];
-  attrs?: Record<string, any>;
-  text?: string;
-}
+export type { RichtextDoc, RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
+
+// Backward-compatible alias
+export type { RichtextDoc as StoryblokRichtext } from '../generated/overlay/types.gen';

@@ -34,6 +34,7 @@ export const linkFixtures: HtmlFixture[] = [
       content: [
         {
           type: 'paragraph',
+          attrs: { textAlign: null },
           content: [
             text('Hello ', [linkMark('/url')]),
             text('World', [linkMark('/url')]),
@@ -49,6 +50,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('Hello ', [linkMark('/a', { custom: { title: 'google' } })]),
           text('Storyblok', [linkMark('/a', { custom: { title: 'google' } })]),
@@ -63,6 +65,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('normal ', [linkMark('/url')]),
           text('bold', [{ type: 'bold' }, linkMark('/url')]),
@@ -78,6 +81,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('start ', [linkMark('/url')]),
           text('bold', [{ type: 'bold' }, linkMark('/url')]),
@@ -95,6 +99,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('Before ', [linkMark('/x')]),
           { type: 'hard_break' },
@@ -110,6 +115,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('A', [linkMark('/a')]),
           text('B', [linkMark('/a', { target: '_blank' })]),
@@ -124,6 +130,7 @@ export const linkFixtures: HtmlFixture[] = [
       type: 'doc',
       content: [{
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [
           text('A', [linkMark('/a', { custom: { title: 'google' } })]),
           text('B', [linkMark('/a', { custom: { title: 'new' } })]),

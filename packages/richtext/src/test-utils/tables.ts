@@ -50,15 +50,15 @@ export const tableFixtures: HtmlFixture[] = [
       type: 'table',
       content: [
         tableRow([
-          { type: 'tableHeader', attrs: { colspan: 1, rowspan: 1, colwidth: [100] }, content: [{ type: 'paragraph', content: [text('THead')] }] },
+          { type: 'tableHeader', attrs: { colspan: 1, rowspan: 1, colwidth: [100] }, content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text('THead')] }] },
         ]),
         tableRow([
           {
             type: 'tableCell',
             attrs: { colspan: 1, rowspan: 1, backgroundColor: 'rgb(204, 255, 204)' },
             content: [
-              { type: 'paragraph', content: [text('cell', [linkMark('/c'), { type: 'superscript' }])] },
-              { type: 'paragraph', content: [{ type: 'emoji', attrs: { fallbackImage: 'https://cdn/foo.png', name: 'plane', emoji: '✈️' } }] },
+              { type: 'paragraph', attrs: { textAlign: null }, content: [text('cell', [linkMark('/c'), { type: 'superscript' }])] },
+              { type: 'paragraph', attrs: { textAlign: null }, content: [{ type: 'emoji', attrs: { fallbackImage: 'https://cdn/foo.png', name: 'plane', emoji: '✈️' } }] },
             ],
           },
         ]),

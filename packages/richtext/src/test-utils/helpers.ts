@@ -36,7 +36,7 @@ export const tableCell = (
   marks?: SbRichTextMark[],
 ): SbRichTextNode => ({
   type: 'tableCell',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+  content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text(content, marks)] }],
   attrs: {
     colspan: attrs.colspan ?? 1,
     rowspan: attrs.rowspan ?? 1,
@@ -47,7 +47,7 @@ export const tableCell = (
 
 export const tableHeader = (content: string, marks?: SbRichTextMark[]): SbRichTextNode => ({
   type: 'tableHeader',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+  content: [{ type: 'paragraph', attrs: { textAlign: null }, content: [text(content, marks)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 

@@ -29,7 +29,7 @@ export const docWithoutContent: SbRichTextDoc = {
 export const docWithContentlessChildren: SbRichTextDoc = {
   type: 'doc',
   content: [
-    { type: 'paragraph' },
+    { type: 'paragraph', attrs: { textAlign: null } }, // no `content` here
     { type: 'horizontal_rule' },
     {
       type: 'bullet_list',
@@ -41,4 +41,5 @@ export const docWithContentlessChildren: SbRichTextDoc = {
 // A bare nested node without `content` is assignable to `SbRichTextNode`.
 export const contentlessNode: SbRichTextNode = {
   type: 'paragraph',
+  attrs: { textAlign: null },
 };

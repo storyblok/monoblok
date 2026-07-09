@@ -39,8 +39,8 @@ export const markFixtures: HtmlFixture[] = [
   },
   {
     title: 'highlight mark',
-    input: text('Highlight', [{ type: 'highlight' }]),
-    expected: '<mark>Highlight</mark>', // highlight is typically rendered as <mark>
+    input: text('Highlight', [{ type: 'highlight', attrs: { color: 'yellow' } }]),
+    expected: '<mark style="background-color: yellow;">Highlight</mark>', // highlight is typically rendered as <mark>
   },
   {
     title: 'anchor mark',

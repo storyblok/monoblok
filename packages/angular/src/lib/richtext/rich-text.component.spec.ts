@@ -162,7 +162,11 @@ describe('SbRichTextComponent', () => {
   });
   describe('custom renderers', () => {
     it('overrides node rendering with custom component', async () => {
-      const node: SbRichTextNode = { type: 'paragraph', content: [text('Hello')] };
+      const node: SbRichTextNode = {
+        type: 'paragraph',
+        attrs: { textAlign: null },
+        content: [text('Hello')],
+      };
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -198,6 +202,7 @@ describe('SbRichTextComponent', () => {
 
       const node: SbRichTextNode = {
         type: 'paragraph',
+        attrs: { textAlign: null },
         content: [text('Bold Link', [{ type: 'bold' }, linkMark('https://example.com')])],
       };
       fixture.componentRef.setInput('sbDocument', node);
@@ -314,9 +319,9 @@ describe('SbRichTextComponent', () => {
       const content: SbRichTextDoc = {
         type: 'doc',
         content: [
-          { type: 'paragraph', content: [text('Before')] },
+          { type: 'paragraph', attrs: { textAlign: null }, content: [text('Before')] },
           { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1', component: 'test' }] } },
-          { type: 'paragraph', content: [text('After')] },
+          { type: 'paragraph', attrs: { textAlign: null }, content: [text('After')] },
         ],
       };
       fixture.componentRef.setInput('sbDocument', content);
@@ -431,9 +436,9 @@ describe('SbRichTextComponent', () => {
       const doc: SbRichTextDoc = {
         type: 'doc',
         content: [
-          { type: 'paragraph', content: [text('Before image')] },
+          { type: 'paragraph', attrs: { textAlign: null }, content: [text('Before image')] },
           imageNode,
-          { type: 'paragraph', content: [text('After image')] },
+          { type: 'paragraph', attrs: { textAlign: null }, content: [text('After image')] },
         ],
       };
       fixture.componentRef.setInput('sbDocument', doc);

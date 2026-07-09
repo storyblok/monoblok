@@ -11,6 +11,10 @@ describe('extractAssetSizeFromFilename', () => {
     expect(extractAssetSizeFromFilename('https://a.storyblok.com/f/293255674717942/8ae82d3a12/image.jpg')).toBeUndefined();
   });
 
+  it('extracts the dimensions segment when it uses an uppercase X', () => {
+    expect(extractAssetSizeFromFilename('https://a.storyblok.com/f/329189/860X645/7aa24cb39f/image.jpg')).toBe('860X645');
+  });
+
   it('returns undefined for an empty or invalid filename', () => {
     expect(extractAssetSizeFromFilename(undefined)).toBeUndefined();
     expect(extractAssetSizeFromFilename('not-a-url')).toBeUndefined();

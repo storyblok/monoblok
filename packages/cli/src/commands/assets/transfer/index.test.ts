@@ -195,7 +195,19 @@ describe('assets transfer command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('should reject --query when --all is not set', async () => {
+  it('should transfer the filtered set when --query is used without --all', async () => {
+    let seen: URL | undefined;
+    preconditions.canListAssets([{ id: 42 }], { onRequest: (url) => { seen = url; } });
+    preconditions.canTransferAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(seen?.searchParams.get('search')).toBe('logo');
+    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should reject --query combined with explicit asset IDs', async () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();

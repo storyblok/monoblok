@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { getMapiClient } from '../../api';
-import { transferAsset } from './actions';
+import { fetchAllSpaceAssetIds, transferAsset } from './actions';
 import { APIError } from '../../utils/error/api-error';
 
 const server = setupServer();
@@ -40,5 +40,41 @@ describe('transferAsset', () => {
     expect(error).toBeInstanceOf(APIError);
     expect(error.message).toContain('write access');
     expect(error.code).toBe(403);
+  });
+});
+
+describe('fetchAllSpaceAssetIds', () => {
+  it('should paginate and return every numeric asset id', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/123/assets', ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? 1);
+        const pages: Record<number, Array<{ id: number }>> = {
+          1: [{ id: 1 }, { id: 2 }],
+          2: [{ id: 3 }],
+        };
+        return HttpResponse.json(
+          { assets: pages[page] ?? [] },
+          { headers: { 'Total': '3', 'Per-Page': '2' } },
+        );
+      }),
+    );
+
+    const ids = await fetchAllSpaceAssetIds('123');
+
+    expect(ids).toEqual([1, 2, 3]);
+  });
+
+  it('should skip entries without a numeric id', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/123/assets', () =>
+        HttpResponse.json(
+          { assets: [{ id: 10 }, { id: null }, { filename: 'x.png' }] },
+          { headers: { 'Total': '3', 'Per-Page': '100' } },
+        )),
+    );
+
+    const ids = await fetchAllSpaceAssetIds('123');
+
+    expect(ids).toEqual([10]);
   });
 });

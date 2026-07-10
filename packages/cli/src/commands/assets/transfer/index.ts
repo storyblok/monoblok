@@ -7,12 +7,13 @@ import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, logOnlyError } from '../../../utils/error/error';
-import { transferAssets } from '../actions';
+import { fetchAllSpaceAssetIds, transferAssets } from '../actions';
 
 const transferCmd = assetsCommand
-  .command('transfer <asset-id...>')
+  .command('transfer [asset-id...]')
   .option('-s, --space <space>', 'space ID')
   .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
+  .option('--all', 'Transfer every asset in the space to the shared library')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Transfer space assets into the organization's shared asset library.`);
 
@@ -50,11 +51,29 @@ transferCmd
       return;
     }
 
-    const ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
-    if (ids.length === 0) {
-      handleError(new CommandError(`Please provide at least one valid asset ID.`), verbose);
+    if (options.all && assetIds.length > 0) {
+      handleError(new CommandError(`Cannot combine --all with explicit asset IDs.`), verbose);
       process.exitCode = 2;
       return;
+    }
+
+    let ids: number[];
+    if (options.all) {
+      ids = await fetchAllSpaceAssetIds(space);
+      if (ids.length === 0) {
+        ui.info(`No assets found in space ${space}. Nothing to transfer.`);
+        logger.info('Transferring assets finished (no assets found)');
+        process.exitCode = 0;
+        return;
+      }
+    }
+    else {
+      ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
+      if (ids.length === 0) {
+        handleError(new CommandError(`Please provide at least one valid asset ID, or use --all.`), verbose);
+        process.exitCode = 2;
+        return;
+      }
     }
 
     if (options.dryRun) {

@@ -223,6 +223,7 @@ describe('analyzeBreakingChanges', () => {
       components: [
         { name: 'hero', schema: { author: { type: 'text', pos: 0 }, rating: { type: 'number', pos: 1 } } },
       ] as any,
+      folders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -253,6 +254,7 @@ describe('analyzeBreakingChanges', () => {
   it('should skip non-update diffs', () => {
     const local: SchemaData = {
       components: [{ name: 'hero', schema: { title: { type: 'text', pos: 0 } } }] as any,
+      folders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -275,6 +277,7 @@ describe('analyzeBreakingChanges', () => {
   it('should skip components with no breaking changes', () => {
     const local: SchemaData = {
       components: [{ name: 'hero', schema: { title: { type: 'text', pos: 0 }, subtitle: { type: 'text', pos: 1 } } }] as any,
+      folders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -301,6 +304,7 @@ describe('analyzeBreakingChanges', () => {
       components: [
         { name: 'hero', schema: { subtitle: { type: 'text', pos: 0, required: true } } },
       ] as any,
+      folders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {
@@ -337,6 +341,7 @@ describe('analyzeBreakingChanges', () => {
       components: [
         { name: 'hero', schema: { title: { type: 'text', pos: 0, required: true } } },
       ] as any,
+      folders: [],
       datasources: [],
     };
     const remote: RemoteSchemaData = {

@@ -129,3 +129,87 @@ describe('classifyExports', () => {
     expect(result.datasources).toHaveLength(0);
   });
 });
+
+describe('classifyExports folders', () => {
+  const folder = (name: string, parent?: any) => ({
+    name,
+    ...(parent && { parent }),
+    path: parent ? `${parent.path}/${name}` : name,
+  });
+
+  it('should collect registered folders from a schema object', () => {
+    const layout = folder('Layout');
+    const heros = folder('Heros', layout);
+    const data = classifyExports({ schema: { blocks: {}, folders: { layout, heros } } });
+    expect(data.folders).toEqual([
+      { name: 'Layout', path: 'layout', parentPath: null },
+      { name: 'Heros', path: 'layout/heros', parentPath: 'layout' },
+    ]);
+  });
+
+  it('should materialize folders from block folder paths, including prefixes', () => {
+    const data = classifyExports({
+      hero: { name: 'hero', folder: 'Layout/Heros', fields: [] },
+    });
+    expect(data.folders.map(f => f.path)).toEqual(['layout', 'layout/heros']);
+  });
+
+  it('should materialize folders from allow entries', () => {
+    const data = classifyExports({
+      page: {
+        name: 'page',
+        fields: [{ name: 'body', type: 'bloks', allow: [{ folder: 'Marketing' }] }],
+      },
+    });
+    expect(data.folders).toEqual([{ name: 'Marketing', path: 'marketing', parentPath: null }]);
+  });
+
+  it('should dedupe by slug path with registered display name winning', () => {
+    const data = classifyExports({
+      myLayout: folder('My Layout'),
+      hero: { name: 'hero', folder: 'my layout/Heros', fields: [] },
+    });
+    const root = data.folders.find(f => f.path === 'my-layout');
+    expect(root?.name).toBe('My Layout');
+  });
+
+  it('should throw on conflicting registered names for the same slug path', () => {
+    expect(() => classifyExports({
+      a: folder('My Layout'),
+      b: folder('My-Layout'),
+    })).toThrow('Conflicting folder names for path "my-layout": "My Layout" vs "My-Layout"');
+  });
+
+  it('should throw on duplicate slugified leaf names under different parents', () => {
+    expect(() => classifyExports({
+      a: { name: 'hero', folder: 'Layout/Heros', fields: [] },
+      b: { name: 'card', folder: 'Marketing/Heros', fields: [] },
+    })).toThrow(/Duplicate folder name "heros" \(folders "layout\/heros" and "marketing\/heros"\): Storyblok group names must be unique per space/);
+  });
+
+  it('should not throw when the same leaf appears via dedupe of a single path', () => {
+    expect(() => classifyExports({
+      a: { name: 'hero', folder: 'Layout/Heros', fields: [] },
+      b: { name: 'card', folder: 'layout/heros', fields: [] },
+    })).not.toThrow();
+  });
+
+  it('should not classify folders as components or datasources', () => {
+    const data = classifyExports({ layout: folder('Layout') });
+    expect(data.components).toEqual([]);
+    expect(data.datasources).toEqual([]);
+  });
+
+  it('should unwrap a schema object that only has folders', () => {
+    const data = classifyExports({
+      schema: {
+        folders: {
+          layout: { name: 'Layout', path: 'Layout' },
+        },
+      },
+    });
+    expect(data.folders).toEqual([
+      { name: 'Layout', path: 'layout', parentPath: null },
+    ]);
+  });
+});

@@ -33,7 +33,7 @@ function stripApiFields(payload: Record<string, unknown>): Record<string, unknow
 
 /** A single rollback operation derived by inverting a `ChangesetEntry`. */
 export interface RollbackOp {
-  type: 'component' | 'datasource';
+  type: 'component' | 'datasource' | 'folder';
   name: string;
   action: 'create' | 'update' | 'delete';
   payload: Record<string, unknown>;

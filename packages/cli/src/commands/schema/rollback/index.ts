@@ -95,6 +95,12 @@ schemaCommand
       ui.br();
       ui.log(formatRollbackOutput(changeset.changes));
 
+      // Folder (component group) operations are captured in changesets but not
+      // reverted by rollback; surface that so folder changes aren't assumed undone.
+      if (changeset.changes.some(c => c.type === 'folder')) {
+        ui.info('Folder operations are not rolled back; component group changes must be reverted manually.');
+      }
+
       // 5. Dry run stops here
       if (options.dryRun) {
         ui.info('Dry run — no changes applied.');

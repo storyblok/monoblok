@@ -145,6 +145,24 @@ describe('schema rollback command', () => {
     // msw configured with onUnhandledRequest: 'error' — no fetch handlers registered, so any HTTP call would fail
   });
 
+  it('notes that folder operations are not rolled back when the changeset has folder entries', async () => {
+    preconditions.hasChangeset(makeChangeset([
+      { type: 'folder', name: 'layout', action: 'create', after: { name: 'Layout', path: 'layout', parentPath: null } },
+    ]));
+
+    await schemaCommand.parseAsync([
+      'node',
+      'test',
+      'rollback',
+      CHANGESET_PATH,
+      '--space',
+      DEFAULT_SPACE,
+      '--dry-run',
+    ]);
+
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Folder operations are not rolled back'));
+  });
+
   it('should cancel when user declines confirmation', async () => {
     const comp = makeMockComponent({ name: 'hero' });
     preconditions.hasChangeset(makeChangeset([

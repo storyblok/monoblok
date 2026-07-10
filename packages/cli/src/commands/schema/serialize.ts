@@ -31,12 +31,24 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): Recor
 }
 
 /**
+ * Sentinel for an explicitly-ungrouped component (`folder: null`). `stripKeys`
+ * and `formatValue` both drop null object values, which would erase the
+ * distinction between "ungrouped" and "unmanaged" and hide a group-membership
+ * diff — so `null` is carried through as this sentinel and rewritten to a
+ * literal `null` in the final output.
+ */
+const FOLDER_UNGROUPED = '__FOLDER_UNGROUPED__';
+
+/**
  * Serializes a component to a normalized `defineBlock()` code string.
  * Strips API-assigned fields. Uses stable property ordering.
  *
  * `component_group_uuid` is stripped by default (groups are a UI concern), but
  * kept when `includeGroupUuid` is set — used by diffing when a block opts into
  * the group escape hatch, so a changed group is detected and pushed.
+ *
+ * The transient `folder` key (slug path, or `null` for explicitly ungrouped) is
+ * emitted when present so group membership diffs in slug-path space.
  */
 export function serializeComponent(
   component: Record<string, unknown>,
@@ -51,14 +63,19 @@ export function serializeComponent(
     clean.schema = sortSchemaByPos(clean.schema as Record<string, Record<string, unknown>>);
   }
 
-  // Enforce property order: name, display_name, is_root, is_nestable, then rest, schema last
+  // Enforce property order: name, display_name, is_root, is_nestable, folder, then rest, schema last
   const ordered: Record<string, unknown> = {};
   if (clean.name !== undefined) { ordered.name = clean.name; }
   if (clean.display_name !== undefined) { ordered.display_name = clean.display_name; }
   if (clean.is_root !== undefined) { ordered.is_root = clean.is_root; }
   if (clean.is_nestable !== undefined) { ordered.is_nestable = clean.is_nestable; }
+  // Read `folder` from the original component: `stripKeys` already dropped a
+  // `null` value, so `clean` can't be trusted for it.
+  if ('folder' in component) {
+    ordered.folder = component.folder === null ? FOLDER_UNGROUPED : component.folder;
+  }
 
-  const handled = new Set(['name', 'display_name', 'is_root', 'is_nestable', 'schema']);
+  const handled = new Set(['name', 'display_name', 'is_root', 'is_nestable', 'folder', 'schema']);
   for (const [key, value] of Object.entries(clean).sort(([a], [b]) => a.localeCompare(b))) {
     if (!handled.has(key)) {
       ordered[key] = value;
@@ -67,7 +84,7 @@ export function serializeComponent(
 
   if (clean.schema !== undefined) { ordered.schema = clean.schema; }
 
-  return `defineBlock(${formatValue(ordered, 0)})`;
+  return `defineBlock(${formatValue(ordered, 0)})`.replace(`folder: '${FOLDER_UNGROUPED}'`, 'folder: null');
 }
 
 /**

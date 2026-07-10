@@ -1,10 +1,13 @@
 import type { ComponentFolder } from '../../types';
 import { slugify } from '../../utils/format';
+import type { LocalFolder } from './types';
 
 /**
  * `schema init` lays remote blocks out into local directories that mirror their
- * Storyblok component groups, purely for local organization — `schema push`
- * never reads these directories back as groups (pushed blocks are flat). Group
+ * Storyblok component groups, purely for local organization — the directory
+ * layout itself is cosmetic. Group membership is instead managed in code: a
+ * block declares its folder via a `folder` key and `schema push` creates,
+ * resolves, and (with `--delete`) removes the matching component groups. Group
  * names become slugified directory segments (e.g. `My Layout` → `my-layout`).
  */
 
@@ -37,4 +40,38 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
 
   for (const folder of folders) { pathFor(folder.uuid, new Set()); }
   return cache;
+}
+
+/**
+ * Slugifies each `/` segment of a display path: `'My Layout/Heros'` →
+ * `'my-layout/heros'`. Empty segments are dropped (matching
+ * {@link expandFolderPath}), so `'Layout/'` → `'layout'`, not `'layout/'`.
+ *
+ * This is folder-path *identity*: a folder authored as a `defineFolder` ref or
+ * as a string shorthand with different casing/separators must canonicalize to
+ * the same value here and in `@storyblok/schema`'s `slugifyFolderPath`, which
+ * the schema validators use. The two implementations share this algorithm (the
+ * per-segment `slugify`) and are each locked by golden-case tests; keep them in
+ * sync. (The CLI does not import the schema helper to avoid a runtime dependency
+ * on `@storyblok/schema`.)
+ */
+export function slugifyPath(displayPath: string): string {
+  return displayPath.split('/').filter(Boolean).map(segment => slugify(segment)).join('/');
+}
+
+/**
+ * Expands a display path into one {@link LocalFolder} per prefix, parent-first.
+ * `'Layout/Heros'` → Layout (root) then Heros (child). Paths are slug space;
+ * names keep the display casing for group creation.
+ */
+export function expandFolderPath(displayPath: string): LocalFolder[] {
+  const segments = displayPath.split('/').filter(Boolean);
+  const result: LocalFolder[] = [];
+  let parentPath: string | null = null;
+  for (const segment of segments) {
+    const path: string = parentPath ? `${parentPath}/${slugify(segment)}` : slugify(segment);
+    result.push({ name: segment, path, parentPath });
+    parentPath = path;
+  }
+  return result;
 }

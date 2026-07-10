@@ -6,10 +6,12 @@ import {
   datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
+  generateFoldersFile,
   generateSchemaFile,
   resolveComponents,
   resolveDatasources,
   resolveFileNames,
+  resolveFolders,
   resolveVarNames,
 } from './generate-code';
 
@@ -343,6 +345,78 @@ describe('generateComponentFile with explicit var name', () => {
       'heroBlock2',
     );
     expect(result).toContain('export const heroBlock2 = defineBlock({');
+  });
+});
+
+describe('resolveFolders / generateFoldersFile', () => {
+  it('should generate a folders.ts with nested defineFolder consts, parent-first', () => {
+    const layout = { id: 1, uuid: 'u1', name: 'Layout', parent_id: null, parent_uuid: null };
+    const heros = { id: 2, uuid: 'u2', name: 'Heros', parent_id: 1, parent_uuid: 'u1' };
+    const resolved = resolveFolders([heros, layout] as any); // input order must not matter
+    const code = generateFoldersFile(resolved);
+
+    expect(code).toContain('import { defineFolder } from \'@storyblok/schema\';');
+    expect(code).toContain(`export const layoutFolder = defineFolder({\n  name: 'Layout',\n});`);
+    expect(code).toContain(`export const herosFolder = defineFolder({\n  name: 'Heros',\n  parent: layoutFolder,\n});`);
+    expect(code.indexOf('layoutFolder')).toBeLessThan(code.indexOf('herosFolder'));
+  });
+
+  it('dedupes folder var names via resolveVarNames', () => {
+    const a = { id: 1, uuid: 'u1', name: 'Colors & Sizes', parent_id: null, parent_uuid: null };
+    const b = { id: 2, uuid: 'u2', name: 'Colors / Sizes', parent_id: null, parent_uuid: null };
+    const resolved = resolveFolders([a, b] as any);
+
+    expect(resolved.map(r => r.varName)).toEqual(['colorsSizesFolder', 'colorsSizesFolder2']);
+  });
+});
+
+describe('generateComponentFile with a folder ref', () => {
+  it('should emit folder refs on grouped component files', () => {
+    const component = { name: 'hero', schema: {}, component_group_uuid: 'u2' } as any;
+    const code = generateComponentFile(component, 'heroBlock', { varName: 'herosFolder', segments: ['layout', 'heros'] });
+
+    expect(code).toContain('import { herosFolder } from \'../../../folders\';');
+    expect(code).toContain('folder: herosFolder,');
+    expect(code).not.toContain('component_group_uuid');
+  });
+
+  it('should not emit a folder import or ref for ungrouped components', () => {
+    const component = { name: 'hero', schema: {} } as any;
+    const code = generateComponentFile(component, 'heroBlock');
+
+    expect(code).not.toContain('folders\';');
+    expect(code).not.toContain('folder:');
+  });
+
+  it('uses a single \'../folders\' import for a root-level grouped block', () => {
+    const component = { name: 'hero', schema: {}, component_group_uuid: 'u1' } as any;
+    const code = generateComponentFile(component, 'heroBlock', { varName: 'layoutFolder', segments: ['layout'] });
+
+    expect(code).toContain('import { layoutFolder } from \'../../folders\';');
+  });
+});
+
+describe('generateSchemaFile with folders', () => {
+  it('should register folders in the generated schema file', () => {
+    const layout = { id: 1, uuid: 'u1', name: 'Layout', parent_id: null, parent_uuid: null };
+    const resolvedFolders = resolveFolders([layout] as any);
+
+    const result = generateSchemaFile(
+      resolveComponents([], []),
+      resolveDatasources([]),
+      resolvedFolders,
+    );
+
+    expect(result).toContain('import { layoutFolder } from \'./folders\';');
+    expect(result).toContain('  folders: {');
+    expect(result).toContain('    layoutFolder,');
+  });
+
+  it('should omit folders from schema.ts when there are none', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    expect(result).not.toContain('folders:');
+    expect(result).not.toContain('./folders');
   });
 });
 

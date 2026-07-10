@@ -1,5 +1,6 @@
-import type { Component, Datasource } from '../../../types';
+import type { Component, ComponentFolder, Datasource } from '../../../types';
 import { slugify } from '../../../utils/format';
+import { buildGroupPathByUuid } from '../folders';
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
@@ -49,6 +50,11 @@ export function componentVarName(name: string): string {
 /** Returns the variable name for a datasource. e.g. `'Categories'` -> `'categoriesDatasource'` */
 export function datasourceVarName(name: string): string {
   return `${toCamelCaseIdentifier(name)}Datasource`;
+}
+
+/** Returns the variable name for a folder. e.g. `'My Layout'` -> `'myLayoutFolder'` */
+export function folderVarName(name: string): string {
+  return `${toCamelCaseIdentifier(name)}Folder`;
 }
 
 /**
@@ -158,6 +164,34 @@ export function resolveDatasources(datasources: Datasource[]): ResolvedDatasourc
 }
 
 /**
+ * A remote component group paired with its unique `folders.ts` variable name
+ * and the (slugified) directory-path segments it corresponds to.
+ */
+export interface ResolvedFolder {
+  folder: ComponentFolder;
+  varName: string;
+  /** Slugified path segments (identity + directory mirror), parent-first. */
+  segments: string[];
+}
+
+/**
+ * Resolves remote component groups to unique `folders.ts` variable names, in
+ * parent-first order (parents are declared, and thus referenceable, before
+ * their children — required since `defineFolder({ parent })` is a value ref).
+ */
+export function resolveFolders(folders: ComponentFolder[]): ResolvedFolder[] {
+  const pathByUuid = buildGroupPathByUuid(folders);
+  const ordered = [...folders].sort((a, b) =>
+    (pathByUuid.get(a.uuid)?.length ?? 0) - (pathByUuid.get(b.uuid)?.length ?? 0));
+  const varNames = resolveVarNames(ordered.map(f => f.name), folderVarName);
+  return ordered.map((folder, i) => ({
+    folder,
+    varName: varNames[i],
+    segments: pathByUuid.get(folder.uuid) ?? [],
+  }));
+}
+
+/**
  * Reverse of the push-time DSL→wire field mapping: renames the wire reference
  * keys back to their DSL form (`component_whitelist`→`allow`,
  * `datasource_slug`→`datasource`). The `source` selector is left untouched.
@@ -200,14 +234,35 @@ function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [stri
     });
 }
 
+/** Generates `folders.ts`: one `defineFolder` const per remote group, parents first. */
+export function generateFoldersFile(resolved: ResolvedFolder[]): string {
+  const varByUuid = new Map(resolved.map(r => [r.folder.uuid, r.varName]));
+  const lines: string[] = ['import { defineFolder } from \'@storyblok/schema\';', ''];
+  for (const { folder, varName } of resolved) {
+    const parentVar = folder.parent_uuid ? varByUuid.get(folder.parent_uuid) : undefined;
+    lines.push(`export const ${varName} = defineFolder({`);
+    lines.push(`${INDENT}name: ${quoteString(folder.name)},`);
+    if (parentVar) { lines.push(`${INDENT}parent: ${parentVar},`); }
+    lines.push('});');
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 /**
  * Generates a full TypeScript file for a component with `defineBlock()`.
  *
  * Strips API-assigned fields; schema fields become an ordered `fields:` array of
  * `defineField()` calls (sorted by `pos`). `component_group_uuid` is dropped —
- * groups are a UI concern and aren't part of a content-shape definition.
+ * groups are a UI concern and aren't part of a content-shape definition; when the
+ * component belonged to a remote group, `folderRef` re-encodes it as an explicit
+ * `folder: <folderVar>` reference (import path adjusted for its group depth).
  */
-export function generateComponentFile(component: Component, varName?: string): string {
+export function generateComponentFile(
+  component: Component,
+  varName?: string,
+  folderRef?: { varName: string; segments: string[] },
+): string {
   const lines: string[] = [];
 
   lines.push('import {');
@@ -216,20 +271,28 @@ export function generateComponentFile(component: Component, varName?: string): s
   lines.push('} from \'@storyblok/schema\';');
   lines.push('');
 
+  if (folderRef) {
+    const rel = '../'.repeat(folderRef.segments.length + 1);
+    lines.push(`import { ${folderRef.varName} } from '${rel}folders';`);
+    lines.push('');
+  }
+
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
   const clean = stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS);
 
-  // The group is encoded by the directory layout, never emitted on the block.
+  // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;
 
-  // Enforce property order: name, display_name, is_root, is_nestable, then rest, fields last
+  // Enforce property order: name, display_name, is_root, is_nestable, folder, then rest, fields last
   const orderedKeys: string[] = [];
   if (clean.name !== undefined) { orderedKeys.push('name'); }
   if (clean.display_name !== undefined) { orderedKeys.push('display_name'); }
   if (clean.is_root !== undefined) { orderedKeys.push('is_root'); }
   if (clean.is_nestable !== undefined) { orderedKeys.push('is_nestable'); }
+
+  const prefixKeyCount = orderedKeys.length;
 
   const handled = new Set(['name', 'display_name', 'is_root', 'is_nestable', 'schema']);
   for (const key of Object.keys(clean).sort()) {
@@ -238,8 +301,17 @@ export function generateComponentFile(component: Component, varName?: string): s
     }
   }
 
-  for (const key of orderedKeys) {
+  orderedKeys.forEach((key, i) => {
     lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1)},`);
+    // The folder ref is emitted right after the fixed name/display_name/is_root/
+    // is_nestable block, regardless of which of those keys are actually present.
+    if (folderRef && i === prefixKeyCount - 1) {
+      lines.push(`${INDENT}folder: ${folderRef.varName},`);
+    }
+  });
+
+  if (folderRef && prefixKeyCount === 0) {
+    lines.push(`${INDENT}folder: ${folderRef.varName},`);
   }
 
   // Schema fields — emitted as an ordered `fields:` array of `defineField('name', {...})` calls.
@@ -305,11 +377,13 @@ export function generateDatasourceFile(datasource: Datasource, varName?: string)
 /**
  * Generates a `schema.ts` file that combines the schema object, types, and Story
  * alias. Blocks are imported from their group subdirectory (via each resolved
- * component's `segments`); the schema object exports `{ blocks, datasources }`.
+ * component's `segments`); the schema object exports `{ blocks, datasources,
+ * folders }` — folders are only included when the space has remote groups.
  */
 export function generateSchemaFile(
   components: ResolvedComponent[],
   datasources: ResolvedDatasource[],
+  folders: ResolvedFolder[] = [],
 ): string {
   const lines: string[] = [];
 
@@ -331,6 +405,11 @@ export function generateSchemaFile(
     lines.push(`import { ${varName} } from './datasources/${fileName}';`);
   }
 
+  // Import folders (only when the space has remote groups)
+  if (folders.length > 0) {
+    lines.push(`import { ${folders.map(f => f.varName).join(', ')} } from './folders';`);
+  }
+
   lines.push('');
 
   // Export schema object
@@ -347,6 +426,14 @@ export function generateSchemaFile(
   if (datasources.length > 0) {
     lines.push('  datasources: {');
     for (const { varName } of datasources) {
+      lines.push(`    ${varName},`);
+    }
+    lines.push('  },');
+  }
+
+  if (folders.length > 0) {
+    lines.push('  folders: {');
+    for (const { varName } of folders) {
       lines.push(`    ${varName},`);
     }
     lines.push('  },');

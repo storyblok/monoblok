@@ -1,6 +1,14 @@
 import type { ComponentCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
 import { isRecord } from './utils';
 
+/**
+ * The MAPI accepts `component_group_uuid: null` on component create/update to clear the
+ * group, but the generated `ComponentCreate`/`ComponentUpdate` types (from the OpenAPI spec)
+ * only allow `string | undefined` for that field. This is an upstream spec gap (fix pending) —
+ * widen precisely here instead of hand-editing the generated types or casting with `as`.
+ */
+type WithNullableGroup<T extends { component_group_uuid?: string }> = Omit<T, 'component_group_uuid'> & { component_group_uuid?: string | null };
+
 function isSchemaField(value: unknown): value is Field {
   return isRecord(value) && 'type' in value;
 }
@@ -34,18 +42,28 @@ function buildComponentPayload(input: unknown) {
     ...(isRecord(input.schema) && { schema: toSchemaRecord(input.schema) }),
     ...(typeof input.is_root === 'boolean' && { is_root: input.is_root }),
     ...(typeof input.is_nestable === 'boolean' && { is_nestable: input.is_nestable }),
-    ...(typeof input.component_group_uuid === 'string' && { component_group_uuid: input.component_group_uuid }),
+    // Forward the group membership only when the key is present on input: a
+    // string sets the group, an explicit `null` clears it. Unmanaged components
+    // (key absent) omit it so their remote group is left untouched.
+    ...('component_group_uuid' in input
+      && (typeof input.component_group_uuid === 'string' || input.component_group_uuid === null)
+      && { component_group_uuid: input.component_group_uuid }),
   };
 }
 
 /** Converts an unknown input to a ComponentCreate-compatible payload. */
 export function toComponentCreate(input: unknown): ComponentCreate {
-  return buildComponentPayload(input) satisfies ComponentCreate;
+  const payload = buildComponentPayload(input) satisfies WithNullableGroup<ComponentCreate>;
+  // `satisfies` validated every field except `component_group_uuid` against the real
+  // (nullable-on-the-wire) shape above; this narrows back to the generated type for callers.
+  return payload as ComponentCreate;
 }
 
 /** Converts an unknown input to a ComponentUpdate-compatible payload. */
 export function toComponentUpdate(input: unknown): ComponentUpdate {
-  return buildComponentPayload(input) satisfies ComponentUpdate;
+  const payload = buildComponentPayload(input) satisfies WithNullableGroup<ComponentUpdate>;
+  // See toComponentCreate: the wider shape was already validated by `satisfies` above.
+  return payload as ComponentUpdate;
 }
 
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */

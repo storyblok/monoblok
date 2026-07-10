@@ -17,12 +17,9 @@ export { defineBlock } from './helpers/define-block';
 export type { Block, BlockFields, NestableBlock, RootBlock } from './helpers/define-block';
 // Datasource
 export { defineDatasource } from './helpers/define-datasource';
-
 export type { Datasource } from './helpers/define-datasource';
-
 // Field
 export { defineField } from './helpers/define-field';
-
 export type {
   AssetFieldValue,
   BlockContent,
@@ -41,7 +38,13 @@ export type {
 } from './helpers/define-field';
 // Field plugin
 export { defineFieldPlugin } from './helpers/define-field-plugin';
+
 export type { FieldPlugin } from './helpers/define-field-plugin';
+
+// Folder
+export { defineFolder } from './helpers/define-folder';
+
+export type { BlockFolder } from './helpers/define-folder';
 
 // Schema
 export { defineSchema } from './helpers/define-schema';

@@ -4,6 +4,7 @@ import type {
   NestableBlock,
   RootBlock,
 } from '../generated/types/block';
+import type { BlockFolder } from './define-folder';
 import type { Prettify } from '../utils/prettify';
 
 export type { Block, BlockFields, NestableBlock, RootBlock };
@@ -19,17 +20,25 @@ const BLOCK_DEFAULTS = {
 /** Fields that have safe defaults and may be omitted from block input. */
 type BlockOptional = keyof typeof BLOCK_DEFAULTS;
 
+/** Accepted input for a block's `folder`: a folder ref, a raw path string, or `null` to explicitly ungroup. */
+type FolderInput = BlockFolder | string | null;
+
+/** Normalizes a folder input type to the display path literal it resolves to. */
+type NormalizeFolder<T> = T extends { path: infer P extends string } ? P : T;
+
 type BlockInput<
   TName extends string = string,
   TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  TFolder extends FolderInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | BlockOptional> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'folder' | BlockOptional> & {
     name: TName;
     fields: TFields;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
+    folder?: TFolder;
   } & Partial<Pick<Block, Exclude<BlockOptional, 'is_root' | 'is_nestable'>>>
 >;
 
@@ -38,13 +47,14 @@ type DefinedBlock<
   TFields extends BlockFields,
   TIsRoot extends boolean,
   TIsNestable extends boolean,
+  TFolder extends FolderInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable'> & {
+  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'folder'> & {
     name: TName;
     fields: TFields;
     is_root: TIsRoot;
     is_nestable: TIsNestable;
-  }
+  } & (TFolder extends undefined ? unknown : { folder: NormalizeFolder<TFolder> })
 >;
 
 /**
@@ -68,9 +78,10 @@ export function defineBlock<
   const TFields extends BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
+  const TFolder extends FolderInput | undefined = undefined,
 >(
-  block: BlockInput<TName, TFields, TIsRoot, TIsNestable>,
-): DefinedBlock<TName, TFields, TIsRoot, TIsNestable>;
+  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TFolder>,
+): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TFolder>;
 
 export function defineBlock(block: any) {
   const inputFields = Array.isArray(block?.fields) ? block.fields : [];
@@ -85,5 +96,22 @@ export function defineBlock(block: any) {
     }
     return { ...field, pos: index };
   });
-  return { ...BLOCK_DEFAULTS, ...block, fields };
+
+  const { folder, ...restBlock } = block ?? {};
+  if (folder !== undefined && typeof restBlock.component_group_uuid === 'string') {
+    throw new Error(`defineBlock: block "${block?.name ?? ''}" sets both "folder" and "component_group_uuid"; use one`);
+  }
+  if (typeof folder === 'string' && !folder.split('/').some(segment => segment.trim() !== '')) {
+    throw new Error(`defineBlock: block "${block?.name ?? ''}" has an empty "folder" path`);
+  }
+  const normalizedFolder = folder === undefined
+    ? undefined
+    : (folder !== null && typeof folder === 'object' ? folder.path : folder);
+
+  return {
+    ...BLOCK_DEFAULTS,
+    ...restBlock,
+    ...(folder !== undefined && { folder: normalizedFolder }),
+    fields,
+  };
 }

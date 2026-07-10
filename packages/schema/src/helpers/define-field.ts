@@ -12,6 +12,7 @@ import type {
   RichtextFieldValue,
   TableFieldValue,
 } from '../generated/types/field';
+import type { BlockFolder } from './define-folder';
 import type { Prettify } from '../utils/prettify';
 import { isRecord } from '../utils/is-record';
 
@@ -32,16 +33,26 @@ export type {
 
 /** A block reference for `allow`: a defined block object or its name. */
 type AllowRef = string | { name: string };
+/** A folder reference for `allow`: a defined folder object (no string shorthand — bare strings are block names). */
+type FolderAllowRef = BlockFolder;
 /** A datasource reference for `datasource`: a defined datasource object or its slug. */
 type DatasourceRef = string | { slug: string };
 
 type NameOf<T> = T extends string ? T : T extends { name: infer N extends string } ? N : never;
 type SlugOf<T> = T extends string ? T : T extends { slug: infer S extends string } ? S : never;
 
-/** Normalizes an `allow` input (ref, name, or array thereof) to a tuple of block-name strings. */
+/** Normalizes a single `allow` entry: folder refs to `{ folder: path }`, everything else to a name string. */
+type NormalizeAllowEntry<T> = T extends { path: infer P extends string }
+  ? { folder: P }
+  : NameOf<T>;
+/** Normalizes an `allow` input (ref, name, or array thereof) to a tuple of normalized entries. */
 type NormalizeAllow<T> = T extends readonly any[]
-  ? { [I in keyof T]: NameOf<T[I]> }
-  : readonly [NameOf<T>];
+  ? { [I in keyof T]: NormalizeAllowEntry<T[I]> }
+  : readonly [NormalizeAllowEntry<T>];
+
+/** Type guard for a defined folder ref: has `path`, and never `fields` (defined block) or `slug` (datasource). */
+const isFolderRef = (ref: unknown): ref is BlockFolder =>
+  isRecord(ref) && typeof ref.path === 'string' && !Array.isArray(ref.fields) && !('slug' in ref);
 
 /**
  * Field config accepted by {@link defineField}: the content-shape field plus the
@@ -49,7 +60,7 @@ type NormalizeAllow<T> = T extends readonly any[]
  * holds the datasource ref/slug (the wire `source` selector still passes through).
  */
 export type FieldInput = Field & {
-  allow?: AllowRef | readonly AllowRef[];
+  allow?: AllowRef | FolderAllowRef | readonly (AllowRef | FolderAllowRef)[];
   datasource?: DatasourceRef;
   required?: boolean;
 };
@@ -84,7 +95,15 @@ export function defineField(name: string, field: Record<string, unknown>): Recor
   const normalized: Record<string, unknown> = { ...rest, name };
   if (allow !== undefined) {
     const refs = Array.isArray(allow) ? allow : [allow];
-    normalized.allow = refs.map(ref => (typeof ref === 'string' ? ref : isRecord(ref) ? ref.name : undefined));
+    const folderRefs = refs.filter(isFolderRef);
+    if (folderRefs.length > 0 && folderRefs.length < refs.length) {
+      throw new Error(`defineField: "allow" on field "${name}" mixes block and folder references; the editor restricts by either blocks or folders, not both`);
+    }
+    normalized.allow = refs.map(ref =>
+      isFolderRef(ref)
+        ? { folder: ref.path }
+        : (typeof ref === 'string' ? ref : isRecord(ref) ? ref.name : undefined),
+    );
   }
   if (datasource !== undefined) {
     normalized.datasource = typeof datasource === 'string' ? datasource : isRecord(datasource) ? datasource.slug : undefined;

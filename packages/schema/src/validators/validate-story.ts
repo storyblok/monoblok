@@ -9,6 +9,7 @@ import {
   zTableFieldValue,
 } from './internal-schemas';
 import { isRecord, toValues } from './shapes';
+import { slugifyFolderPath } from '../utils/slugify-folder-path';
 
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
@@ -110,18 +111,37 @@ function validateFieldValue(
       }
       checkCount(value.length, field.minimum, field.maximum, 'block(s)', path, entity, issues);
       value.forEach((item, index) => {
-        if (
-          field.allow && field.allow.length > 0
-          && isRecord(item) && typeof item.component === 'string'
-          && !field.allow.includes(item.component)
-        ) {
-          issues.push({
-            severity: 'error',
-            code: 'disallowed_component',
-            path: [...path, index, 'component'],
-            entity,
-            message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${field.allow.join(', ')}.`,
-          });
+        const allowEntries = field.allow ?? [];
+        if (allowEntries.length > 0 && isRecord(item) && typeof item.component === 'string') {
+          const blockNamesAllowed = allowEntries.filter((entry): entry is string => typeof entry === 'string');
+          const folderPathsAllowed = allowEntries.filter(
+            (entry): entry is { folder: string } =>
+              typeof entry === 'object' && entry !== null && typeof entry.folder === 'string',
+          );
+          const itemBlock = blocksByName.get(item.component);
+          const itemBlockFolder = itemBlock?.folder;
+          const allowedByName = blockNamesAllowed.includes(item.component);
+          // Canonicalize both sides to slug space so a folder referenced two
+          // ways (a `defineFolder` ref vs. a string shorthand with different
+          // casing or separators) matches the same way the CLI/editor group it.
+          const itemFolderSlug = typeof itemBlockFolder === 'string' ? slugifyFolderPath(itemBlockFolder) : undefined;
+          const allowedByFolder = itemFolderSlug !== undefined
+            && folderPathsAllowed.some(({ folder }) => {
+              const allowedSlug = slugifyFolderPath(folder);
+              return itemFolderSlug === allowedSlug || itemFolderSlug.startsWith(`${allowedSlug}/`);
+            });
+          if (!allowedByName && !allowedByFolder) {
+            const allowedList = allowEntries
+              .map(entry => (typeof entry === 'string' ? entry : `folder:${entry.folder}`))
+              .join(', ');
+            issues.push({
+              severity: 'error',
+              code: 'disallowed_component',
+              path: [...path, index, 'component'],
+              entity,
+              message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
+            });
+          }
         }
         validateBlokContent(item, blocksByName, fieldPluginsByType, [...path, index], issues);
       });

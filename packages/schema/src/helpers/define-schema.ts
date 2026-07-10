@@ -1,10 +1,12 @@
 import type { Block } from './define-block';
 import type { Datasource } from './define-datasource';
+import type { BlockFolder } from './define-folder';
 import type { FieldPlugin } from './define-field-plugin';
 
 /** Minimal shape accepted by {@link defineSchema}; extra keys pass through unchanged. */
 export interface SchemaConfig {
   blocks: Record<string, Block>;
+  folders?: Record<string, BlockFolder>;
   datasources?: Record<string, Datasource>;
   fieldPlugins?: Record<string, FieldPlugin>;
 }
@@ -18,6 +20,7 @@ export interface SchemaConfig {
  * @example
  * export const schema = defineSchema({
  *   blocks: { pageBlock, heroBlock },
+ *   folders: { layout },
  *   datasources: { colorsDatasource },
  *   fieldPlugins: { colorPicker },
  * });

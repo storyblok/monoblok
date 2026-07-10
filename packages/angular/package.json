@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/angular",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": false,
   "description": "Official Angular integration for the Storyblok Headless CMS",
   "author": "Storyblok",

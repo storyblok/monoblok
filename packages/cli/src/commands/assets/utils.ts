@@ -94,7 +94,7 @@ export const extractAssetSizeFromFilename = (filename?: string): string | undefi
   }
   try {
     const segments = new URL(filename).pathname.split('/');
-    return segments.find(segment => /^\d+x\d+$/.test(segment));
+    return segments.find(segment => /^\d+x\d+$/i.test(segment));
   }
   catch {
     return undefined;

@@ -14,7 +14,7 @@ const transferCmd = assetsCommand
   .option('-s, --space <space>', 'space ID')
   .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
   .option('--all', 'Transfer every asset in the space to the shared library')
-  .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
+  .option('-q, --query <query>', 'Transfer every asset in the space matching a Storyblok filter query. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Transfer space assets into the organization's shared asset library.`);
 
@@ -52,20 +52,19 @@ transferCmd
       return;
     }
 
-    if (options.all && assetIds.length > 0) {
-      handleError(new CommandError(`Cannot combine --all with explicit asset IDs.`), verbose);
-      process.exitCode = 2;
-      return;
-    }
+    // `--query` selects a filtered subset of the space, so it implies the bulk
+    // path just like `--all`; either flag means "transfer what's in the space",
+    // which is mutually exclusive with naming explicit asset IDs.
+    const bulk = Boolean(options.all || options.query);
 
-    if (options.query && !options.all) {
-      handleError(new CommandError(`--query can only be used together with --all.`), verbose);
+    if (bulk && assetIds.length > 0) {
+      handleError(new CommandError(`Cannot combine explicit asset IDs with --all or --query.`), verbose);
       process.exitCode = 2;
       return;
     }
 
     let ids: number[];
-    if (options.all) {
+    if (bulk) {
       const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : undefined;
       try {
         ids = await fetchAllSpaceAssetIds(space, params);
@@ -76,7 +75,9 @@ transferCmd
         return;
       }
       if (ids.length === 0) {
-        ui.info(`No assets found in space ${space}. Nothing to transfer.`);
+        ui.info(options.query
+          ? `No assets in space ${space} match the query. Nothing to transfer.`
+          : `No assets found in space ${space}. Nothing to transfer.`);
         logger.info('Transferring assets finished (no assets found)');
         process.exitCode = 0;
         return;

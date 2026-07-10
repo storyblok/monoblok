@@ -14,6 +14,7 @@ const transferCmd = assetsCommand
   .option('-s, --space <space>', 'space ID')
   .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
   .option('--all', 'Transfer every asset in the space to the shared library')
+  .option('-q, --query <query>', 'Filter assets using Storyblok filter query syntax. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Transfer space assets into the organization's shared asset library.`);
 
@@ -57,10 +58,17 @@ transferCmd
       return;
     }
 
+    if (options.query && !options.all) {
+      handleError(new CommandError(`--query can only be used together with --all.`), verbose);
+      process.exitCode = 2;
+      return;
+    }
+
     let ids: number[];
     if (options.all) {
+      const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : undefined;
       try {
-        ids = await fetchAllSpaceAssetIds(space);
+        ids = await fetchAllSpaceAssetIds(space, params);
       }
       catch (maybeError) {
         handleError(toError(maybeError), verbose);

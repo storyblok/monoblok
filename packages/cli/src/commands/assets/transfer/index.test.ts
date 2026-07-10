@@ -39,10 +39,12 @@ const preconditions = {
         HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
     );
   },
-  canListAssets(assets: Array<{ id: number }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
+  canListAssets(assets: Array<{ id: number }>, { space = DEFAULT_SPACE, onRequest }: { space?: string; onRequest?: (url: URL) => void } = {}) {
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, ({ request }) => {
-        const page = Number(new URL(request.url).searchParams.get('page') ?? 1);
+        const url = new URL(request.url);
+        onRequest?.(url);
+        const page = Number(url.searchParams.get('page') ?? 1);
         return HttpResponse.json(
           { assets: page === 1 ? assets : [] },
           { headers: { 'Total': String(assets.length), 'Per-Page': '100' } },
@@ -178,5 +180,26 @@ describe('assets transfer command', () => {
     expect(actions.transferAssets).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN MODE ENABLED'));
     expect(process.exitCode).toBe(0);
+  });
+
+  it('should forward --query filters to the asset list request when --all is set', async () => {
+    let seen: URL | undefined;
+    preconditions.canListAssets([{ id: 42 }], { onRequest: (url) => { seen = url; } });
+    preconditions.canTransferAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--query', 'search=logo&with_tags=hero', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(seen?.searchParams.get('search')).toBe('logo');
+    expect(seen?.searchParams.get('with_tags')).toBe('hero');
+    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should reject --query when --all is not set', async () => {
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--query'), '');
+    expect(process.exitCode).toBe(2);
   });
 });

@@ -42,17 +42,18 @@ export const fetchAssets = async ({ spaceId, params }: {
 };
 
 /**
- * Fetches the IDs of every asset in a space by paginating the Management API
- * asset list. Used by `assets transfer --all` to resolve the full working set
- * before transferring. Mirrors the pagination in `fetchAssetInternalTagsByName`.
+ * Fetches the IDs of every asset in a space (optionally filtered) by
+ * paginating the Management API asset list. Used by `assets transfer --all`
+ * to resolve the full working set before transferring. Mirrors the
+ * pagination in `fetchAssetInternalTagsByName`.
  */
-export const fetchAllSpaceAssetIds = async (spaceId: string): Promise<number[]> => {
+export const fetchAllSpaceAssetIds = async (spaceId: string, params?: AssetListQuery): Promise<number[]> => {
   try {
     const client = getMapiClient();
     const assets = await fetchAllPages(
       (page: number) => client.assets.list({
         path: { space_id: Number(spaceId) },
-        query: { page, per_page: 100 },
+        query: { ...params, page, per_page: 100 },
         throwOnError: true,
       }),
       data => data?.assets ?? [],

@@ -104,10 +104,16 @@ transferCmd
 
     // Per-ID errors are captured individually, so unlike push/pull this
     // command needs no outer fatalError try/catch wrapper.
+    const progress = ui.createProgressBar({ title: 'Transferring assets...' });
+    progress.setTotal(ids.length);
+
     const results = await transferAssets(space, ids, folderId, {
       onSuccess: ({ assetId, filename }) => logger.info('Transferred asset', { assetId, filename }),
       onError: (error, assetId) => logOnlyError(error, { assetId }),
+      onProgress: () => progress.increment(),
     });
+
+    ui.stopAllProgressBars();
 
     const succeeded = results.filter(result => result.status === 'transferred').length;
     const summary = { total: results.length, succeeded, failed: results.length - succeeded };

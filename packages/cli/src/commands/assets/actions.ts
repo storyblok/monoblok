@@ -360,11 +360,20 @@ export interface TransferResult {
 }
 
 /**
+ * Upper bound on promises allocated at once by `transferAssets`, so very large
+ * `--all` sets don't build one suspended promise per asset up front. Concurrency
+ * is still governed by the backpressure lock; this only caps promise allocation.
+ */
+const TRANSFER_CHUNK_SIZE = 500;
+
+/**
  * Transfers multiple assets into the shared asset library, bounding in-flight
  * requests with the shared pipeline backpressure lock (2× the configured rate
  * limit), matching the throttle headroom used by the asset and story streams.
  * Per-asset errors are captured as failed results rather than aborting the
- * whole batch.
+ * whole batch. Fan-out is chunked (`TRANSFER_CHUNK_SIZE`) so very large asset
+ * sets don't allocate one promise per asset up front, and `onProgress` reports
+ * completion count as each asset finishes.
  */
 export const transferAssets = async (
   spaceId: string,
@@ -373,26 +382,37 @@ export const transferAssets = async (
   callbacks: {
     onSuccess?: (result: { assetId: number; filename?: string }) => void;
     onError?: (error: Error, assetId: number) => void;
+    onProgress?: (completed: number, total: number) => void;
   } = {},
 ): Promise<TransferResult[]> => {
   const lock = createPipelineBackpressureLock();
+  const results: TransferResult[] = [];
+  let completed = 0;
 
-  return Promise.all(assetIds.map(async (assetId): Promise<TransferResult> => {
-    await lock.acquire();
-    try {
-      const asset = await transferAsset(spaceId, assetId, folderId);
-      callbacks.onSuccess?.({ assetId, filename: asset.filename });
-      return { assetId, status: 'transferred', filename: asset.filename };
-    }
-    catch (maybeError) {
-      const error = toError(maybeError);
-      callbacks.onError?.(error, assetId);
-      return { assetId, status: 'failed', reason: error.message };
-    }
-    finally {
-      lock.release();
-    }
-  }));
+  for (let start = 0; start < assetIds.length; start += TRANSFER_CHUNK_SIZE) {
+    const chunk = assetIds.slice(start, start + TRANSFER_CHUNK_SIZE);
+    const chunkResults = await Promise.all(chunk.map(async (assetId): Promise<TransferResult> => {
+      await lock.acquire();
+      try {
+        const asset = await transferAsset(spaceId, assetId, folderId);
+        callbacks.onSuccess?.({ assetId, filename: asset.filename });
+        return { assetId, status: 'transferred', filename: asset.filename };
+      }
+      catch (maybeError) {
+        const error = toError(maybeError);
+        callbacks.onError?.(error, assetId);
+        return { assetId, status: 'failed', reason: error.message };
+      }
+      finally {
+        lock.release();
+        completed += 1;
+        callbacks.onProgress?.(completed, assetIds.length);
+      }
+    }));
+    results.push(...chunkResults);
+  }
+
+  return results;
 };
 
 /**

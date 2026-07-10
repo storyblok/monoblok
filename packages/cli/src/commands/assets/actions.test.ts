@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { getMapiClient } from '../../api';
-import { fetchAllSpaceAssetIds, transferAsset } from './actions';
+import { fetchAllSpaceAssetIds, transferAsset, transferAssets } from './actions';
 import { APIError } from '../../utils/error/api-error';
 
 const server = setupServer();
@@ -93,5 +93,38 @@ describe('fetchAllSpaceAssetIds', () => {
     await fetchAllSpaceAssetIds('123', { search: 'logo' } as never);
 
     expect(seen?.searchParams.get('search')).toBe('logo');
+  });
+});
+
+describe('transferAssets', () => {
+  it('should report progress once per asset and preserve input order', async () => {
+    server.use(
+      http.post('https://mapi.storyblok.com/v1/spaces/123/assets/:assetId/convert', ({ params }) =>
+        HttpResponse.json({ id: Number(params.assetId), filename: `f-${params.assetId}.png`, space_id: null })),
+    );
+    const progress: number[] = [];
+
+    const results = await transferAssets('123', [3, 1, 2], 7, {
+      onProgress: completed => progress.push(completed),
+    });
+
+    expect(results.map(r => r.assetId)).toEqual([3, 1, 2]); // order preserved
+    expect(results.every(r => r.status === 'transferred')).toBe(true);
+    expect(progress).toHaveLength(3);
+    expect(progress[progress.length - 1]).toBe(3);
+  });
+
+  it('should capture per-asset failures without aborting the batch', async () => {
+    server.use(
+      http.post('https://mapi.storyblok.com/v1/spaces/123/assets/:assetId/convert', ({ params }) =>
+        Number(params.assetId) === 2
+          ? HttpResponse.json({ error: 'Forbidden' }, { status: 403 })
+          : HttpResponse.json({ id: Number(params.assetId), filename: `f-${params.assetId}.png`, space_id: null })),
+    );
+
+    const results = await transferAssets('123', [1, 2, 3], 7);
+
+    expect(results.find(r => r.assetId === 2)?.status).toBe('failed');
+    expect(results.filter(r => r.status === 'transferred')).toHaveLength(2);
   });
 });

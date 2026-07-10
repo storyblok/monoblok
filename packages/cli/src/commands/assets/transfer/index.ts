@@ -119,10 +119,27 @@ transferCmd
     const succeeded = results.filter(result => result.status === 'transferred').length;
     const summary = { total: results.length, succeeded, failed: results.length - succeeded };
 
-    ui.info(`Transfer results: ${summary.total} processed, ${summary.failed} failed`);
-    ui.list(results.map(result => result.status === 'transferred'
-      ? `${result.assetId}  ✓ transferred -> ${result.filename}`
-      : `${result.assetId}  ✗ failed: ${result.reason}`));
+    ui.info(`Transfer results: ${summary.succeeded} transferred, ${summary.failed} failed (of ${summary.total}).`);
+
+    if (summary.failed > 0) {
+      // Group failures by reason so the output stays a short summary even when
+      // thousands of assets fail with the same cause, instead of printing one
+      // line per failed asset. Per-asset detail is still in the log/report.
+      const countsByReason = new Map<string, number>();
+      for (const result of results) {
+        if (result.status === 'failed') {
+          const reason = result.reason ?? 'Unknown error';
+          countsByReason.set(reason, (countsByReason.get(reason) ?? 0) + 1);
+        }
+      }
+      const byReason = [...countsByReason.entries()].sort((a, b) => b[1] - a[1]);
+      const MAX_REASONS = 10;
+      const lines = byReason.slice(0, MAX_REASONS).map(([reason, count]) => `✗ ${reason} (${count})`);
+      if (byReason.length > MAX_REASONS) {
+        lines.push(`… and ${byReason.length - MAX_REASONS} more failure reason(s)`);
+      }
+      ui.list(lines);
+    }
 
     reporter.addSummary('transferResults', summary);
     reporter.finalize();

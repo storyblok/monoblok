@@ -50,6 +50,12 @@ const preconditions = {
       }),
     );
   },
+  failsToListAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, () =>
+        HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
+    );
+  },
 };
 
 describe('assets transfer command', () => {
@@ -153,6 +159,15 @@ describe('assets transfer command', () => {
     // `ui.info` calls `console.info` directly (see UI#info in utils/ui.ts).
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('No assets found'));
     expect(process.exitCode).toBe(0);
+  });
+
+  it('should surface a friendly error and exit 2 when enumeration fails for --all', async () => {
+    preconditions.failsToListAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
   });
 
   it('should enumerate but not transfer in --all --dry-run mode', async () => {

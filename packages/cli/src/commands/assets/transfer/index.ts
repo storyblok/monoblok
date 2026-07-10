@@ -6,7 +6,7 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
-import { handleError, logOnlyError } from '../../../utils/error/error';
+import { handleError, logOnlyError, toError } from '../../../utils/error/error';
 import { fetchAllSpaceAssetIds, transferAssets } from '../actions';
 
 const transferCmd = assetsCommand
@@ -59,7 +59,14 @@ transferCmd
 
     let ids: number[];
     if (options.all) {
-      ids = await fetchAllSpaceAssetIds(space);
+      try {
+        ids = await fetchAllSpaceAssetIds(space);
+      }
+      catch (maybeError) {
+        handleError(toError(maybeError), verbose);
+        process.exitCode = 2;
+        return;
+      }
       if (ids.length === 0) {
         ui.info(`No assets found in space ${space}. Nothing to transfer.`);
         logger.info('Transferring assets finished (no assets found)');

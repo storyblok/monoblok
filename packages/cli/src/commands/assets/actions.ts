@@ -42,6 +42,34 @@ export const fetchAssets = async ({ spaceId, params }: {
 };
 
 /**
+ * Fetches the IDs of every asset in a space by paginating the Management API
+ * asset list. Used by `assets transfer --all` to resolve the full working set
+ * before transferring. Mirrors the pagination in `fetchAssetInternalTagsByName`.
+ */
+export const fetchAllSpaceAssetIds = async (spaceId: string): Promise<number[]> => {
+  try {
+    const client = getMapiClient();
+    const assets = await fetchAllPages(
+      (page: number) => client.assets.list({
+        path: { space_id: Number(spaceId) },
+        query: { page, per_page: 100 },
+        throwOnError: true,
+      }),
+      data => data?.assets ?? [],
+    );
+    return assets.reduce<number[]>((ids, asset) => {
+      if (typeof asset?.id === 'number') {
+        ids.push(asset.id);
+      }
+      return ids;
+    }, []);
+  }
+  catch (maybeError) {
+    handleAPIError('pull_assets', toError(maybeError));
+  }
+};
+
+/**
  * Fetches the space's internal tags of type `asset` keyed by name.
  *
  * Used by `assets push` to translate source-space tag names carried in pulled

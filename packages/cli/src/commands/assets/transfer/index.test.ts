@@ -39,6 +39,17 @@ const preconditions = {
         HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
     );
   },
+  canListAssets(assets: Array<{ id: number }>, { space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? 1);
+        return HttpResponse.json(
+          { assets: page === 1 ? assets : [] },
+          { headers: { 'Total': String(assets.length), 'Per-Page': '100' } },
+        );
+      }),
+    );
+  },
 };
 
 describe('assets transfer command', () => {
@@ -106,5 +117,51 @@ describe('assets transfer command', () => {
 
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('write access'));
     expect(process.exitCode).toBe(1);
+  });
+
+  it('should transfer every space asset when --all is set', async () => {
+    preconditions.canListAssets([{ id: 42 }, { id: 43 }]);
+    preconditions.canTransferAssets();
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42, 43], 7, expect.anything());
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should reject --all combined with explicit asset IDs', async () => {
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all'), '');
+    expect(process.exitCode).toBe(2);
+  });
+
+  it('should fail when neither --all nor asset IDs are provided', async () => {
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+  });
+
+  it('should exit 0 without transferring when --all finds no assets', async () => {
+    preconditions.canListAssets([]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    // `ui.info` calls `console.info` directly (see UI#info in utils/ui.ts).
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('No assets found'));
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should enumerate but not transfer in --all --dry-run mode', async () => {
+    preconditions.canListAssets([{ id: 42 }, { id: 43 }]);
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7', '--dry-run']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN MODE ENABLED'));
+    expect(process.exitCode).toBe(0);
   });
 });

@@ -97,6 +97,37 @@ describe('resolveExperiment', () => {
     expect(result.exposure?.variant.public_id).toBe('var_b');
   });
 
+  it('resolves the assigned experiment when two running experiments share the same slug', () => {
+    // A story can belong to more than one running experiment (the backend enforces
+    // no cross-experiment exclusivity), so both experiments map `original_slug: home`.
+    // The assignment is for the second one; selecting by slug-first would pick the
+    // first and drop the assignment.
+    const first = homepageExperiment;
+    const second: Experiment = {
+      ...homepageExperiment,
+      id: 456,
+      name: 'homepage_hero_2',
+      variants: [
+        homepageExperiment.variants[0],
+        {
+          ...homepageExperiment.variants[1],
+          public_id: 'var_b2',
+          story_mappings: [
+            { original_story_id: 1, original_slug: 'home', variant_story_id: 3, variant_slug: 'home-c' },
+          ],
+        },
+      ],
+    };
+    const result = resolveExperiment({
+      experiments: [first, second],
+      slug: 'home',
+      assignment: { experimentId: 456, variant: second.variants[1] },
+    });
+    expect(result.slug).toBe('home-c');
+    expect(result.variant?.public_id).toBe('var_b2');
+    expect(result.exposure?.experiment.id).toBe(456);
+  });
+
   it('falls back to the original slug when the variant mapping has a null variant_slug', () => {
     const nullSlug: Experiment = {
       ...homepageExperiment,

@@ -22,13 +22,24 @@ export interface ResolvedExperiment {
  * to a different experiment.
  */
 export function resolveExperiment({ experiments, slug, assignment }: ResolveExperimentOptions): ResolvedExperiment {
-  const experiment = experiments.find(candidate =>
-    candidate.variants.some(variant =>
-      variant.story_mappings.some(mapping => mapping.original_slug === slug),
-    ),
-  );
+  if (!assignment) {
+    return { slug };
+  }
 
-  if (!experiment || !assignment || assignment.experimentId !== experiment.id) {
+  // Select the experiment by the assignment, not by first slug match: one story
+  // can belong to multiple running experiments, so a slug-first lookup could pick
+  // a different experiment than the one the visitor was bucketed into and drop the
+  // assignment (no exposure, no remap).
+  const experiment = experiments.find(candidate => candidate.id === assignment.experimentId);
+  if (!experiment) {
+    return { slug };
+  }
+
+  // The assigned experiment must actually map this slug; otherwise pass through.
+  const mapsSlug = experiment.variants.some(variant =>
+    variant.story_mappings.some(mapping => mapping.original_slug === slug),
+  );
+  if (!mapsSlug) {
     return { slug };
   }
 

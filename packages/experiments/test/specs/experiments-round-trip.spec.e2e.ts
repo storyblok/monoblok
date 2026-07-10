@@ -14,6 +14,13 @@
  * management endpoints directly through the generic HTTP escape hatches (`mapi.post`,
  * `mapi.put`, `mapi.get`, `mapi.delete`).
  *
+ * Scope: only a ROOT-LEVEL story is exercised, where `slug === full_slug`. Folder-nested
+ * stories are not covered here because the CDN payload serializes `original_slug` as the
+ * bare `story.slug` (last segment) while `variant_slug` is the `full_slug` — so nested
+ * matching in `resolveExperiment` is broken upstream until the backend serializes
+ * `original_slug` as a full slug too (see PR description). The SDK's own handling of
+ * nested full slugs is covered by a unit test in `resolve-experiment.test.ts`.
+ *
  * Run manually (never in CI):
  *   pnpm --filter @storyblok/experiments test:e2e
  *

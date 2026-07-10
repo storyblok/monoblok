@@ -50,4 +50,42 @@ describe('createExperiments', () => {
 
     expect(adapter).not.toHaveBeenCalled();
   });
+
+  it('swallows a synchronously throwing adapter and routes it to onError', () => {
+    const onError = vi.fn();
+    const boom = new Error('sink down');
+    const exp = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [() => { throw boom; }],
+      onError,
+    });
+
+    expect(() => exp.resolveExperiment({ slug: 'home', visitorId: 'visitor-1' })).not.toThrow();
+    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: 'exposure' }));
+  });
+
+  it('swallows a rejecting async adapter and routes it to onError', async () => {
+    const onError = vi.fn();
+    const boom = new Error('network');
+    const exp = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [() => Promise.reject(boom)],
+      onError,
+    });
+
+    exp.resolveExperiment({ slug: 'home', visitorId: 'visitor-1' });
+
+    // The rejection is handled on a microtask, so let it settle.
+    await Promise.resolve();
+    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: 'exposure' }));
+  });
+
+  it('does not throw when an adapter fails and no onError is given', () => {
+    const exp = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [() => { throw new Error('sink down'); }],
+    });
+
+    expect(() => exp.resolveExperiment({ slug: 'home', visitorId: 'visitor-1' })).not.toThrow();
+  });
 });

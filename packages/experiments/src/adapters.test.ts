@@ -18,7 +18,7 @@ const event: ExperimentEvent = {
 };
 
 describe('fetchAdapter', () => {
-  it('pOSTs the event as JSON to the configured url', async () => {
+  it('sends the event as a JSON POST to the configured url', async () => {
     let captured: { body: unknown; contentType: string | null } | undefined;
     server.use(
       http.post('https://sink.example/events', async ({ request }) => {
@@ -57,5 +57,13 @@ describe('fetchAdapter', () => {
     await fetchAdapter('https://sink.example/events', { fetch: fakeFetch })(event);
 
     expect(calls).toEqual(['https://sink.example/events']);
+  });
+
+  it('rejects on a non-2xx response', async () => {
+    server.use(
+      http.post('https://sink.example/events', () => new HttpResponse(null, { status: 500 })),
+    );
+
+    await expect(fetchAdapter('https://sink.example/events')(event)).rejects.toThrow(/500/);
   });
 });

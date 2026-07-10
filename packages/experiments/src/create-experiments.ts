@@ -6,6 +6,12 @@ import { trackEvent } from './track-event';
 export interface CreateExperimentsOptions {
   experiments: Experiment[];
   adapters?: Adapter[];
+  /**
+   * Called when an adapter throws or its returned promise rejects. Adapter
+   * failures are otherwise swallowed so a downed analytics sink never breaks
+   * the request. Defaults to a no-op.
+   */
+  onError?: (error: unknown, event: ExperimentEvent) => void;
 }
 
 export interface FactoryResolveOptions {
@@ -34,14 +40,22 @@ export interface Experiments {
  * per-request use. The bare `resolveExperiment` / `assignVariant` / `trackEvent`
  * functions stay available for full control.
  */
-export function createExperiments({ experiments, adapters = [] }: CreateExperimentsOptions): Experiments {
+export function createExperiments({ experiments, adapters = [], onError }: CreateExperimentsOptions): Experiments {
   // Per-instance (per-request) state: assignments made during resolveExperiment,
   // keyed by experiment id, so track() can attribute without re-passing context.
   const assignments = new Map<number, Assignment>();
 
+  // Fire-and-forget: an adapter that throws synchronously or rejects
+  // asynchronously must never surface as an unhandled rejection or break the
+  // request. Route failures to `onError` (default: swallow).
   const emit = (event: ExperimentEvent): void => {
     for (const adapter of adapters) {
-      trackEvent(event, { adapter });
+      try {
+        Promise.resolve(trackEvent(event, { adapter })).catch(error => onError?.(error, event));
+      }
+      catch (error) {
+        onError?.(error, event);
+      }
     }
   };
 

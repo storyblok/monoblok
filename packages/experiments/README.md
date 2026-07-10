@@ -1,120 +1,73 @@
-# @storyblok/experiments
+<div align="center">
 
-Runtime A/B testing utilities for the Storyblok experiments API (`GET /v2/cdn/experiments`). Bucket visitors, decide which story to render, and track exposure and conversion events. Composable, framework-agnostic, and server-first.
+![Storyblok ImagoType](https://raw.githubusercontent.com/storyblok/.github/refs/heads/main/profile/public/github-banner.png)
 
-Storyblok variants are whole separate stories (`original_slug` maps to `variant_slug`), not field-level content, so this package decides which slug to render. Fetching the story and the experiments payload stays on your own client, which keeps the core dependency-free.
+<h1 align="center">@storyblok/experiments</h1>
+ <p>
+    Framework-agnostic, server-first, dependency-free runtime A/B testing utilities for the Storyblok experiments API
+  </p>
+  <br />
+</div>
 
-## Installation
+<p align="center">
+  <a href="https://npmjs.com/package/@storyblok/experiments">
+    <img src="https://img.shields.io/npm/v/@storyblok/experiments/latest.svg?style=flat-square&color=8d60ff" alt="@storyblok/experiments" />
+  </a>
+  <a href="https://npmjs.com/package/@storyblok/experiments" rel="nofollow">
+    <img src="https://img.shields.io/npm/dt/@storyblok/experiments.svg?style=appveyor&color=8d60ff" alt="npm">
+  </a>
+  <a href="https://storyblok.com/join-discord">
+   <img src="https://img.shields.io/discord/700316478792138842?label=Join%20Our%20Discord%20Community&style=appveyor&logo=discord&color=8d60ff">
+   </a>
+  <a href="https://twitter.com/intent/follow?screen_name=storyblok">
+    <img src="https://img.shields.io/badge/Follow-%40storyblok-8d60ff?style=appveyor&logo=twitter" alt="Follow @Storyblok" />
+  </a><br/>
+  <a href="https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=@storyblok/experiments">
+    <img src="https://img.shields.io/badge/Try%20Storyblok-Free-8d60ff?style=appveyor&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAABGdBTUEAALGPC/xhBQAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAHqADAAQAAAABAAAAHgAAAADpiRU/AAACRElEQVRIDWNgGGmAEd3D3Js3LPrP8D8WXZwSPiMjw6qvPoHhyGYwIXNAbGpbCjbzP0MYuj0YFqMroBV/wCxmIeSju64eDNzMBJUxvP/9i2Hnq5cM1devMnz984eQsQwETeRhYWHgIcJiXqC6VHlFBjUeXgav40cIWkz1oLYXFmGwFBImaDFBHyObcOzdW4aSq5eRhRiE2dgYlpuYoYSKJi8vw3GgWnyAJIs/AuPu4scPGObd/fqVQZ+PHy7+6udPOBsXgySLDfn5GRYYmaKYJcXBgWLpsx8/GPa8foWiBhuHJIsl2DkYQqWksZkDFgP5PObcKYZff//iVAOTIDlx/QPqRMb/YSYBaWlOToZIaVkGZmAZSQiQ5OPtwHwacuo4iplMQEu6tXUZMhSUGDiYmBjylFQYvv/7x9B04xqKOnQOyT5GN+Df//8M59ASXKyMHLoyDD5JPtbj42OYrm+EYgg70JfuYuIoYmLs7AwMjIzA+uY/zjAnyWJpDk6GOFnCvrn86SOwmsNtKciVFAc1ileBHFDC67lzG10Yg0+SjzF0ownsf/OaofvOLYaDQJoQIGix94ljv1gIZI8Pv38zPvj2lQWYf3HGKbpDCFp85v07NnRN1OBTPY6JdRSGxcCw2k6sZuLVMZ5AV4s1TozPnGGFKbz+/PE7IJsHmC//MDMyhXBw8e6FyRFLv3Z0/IKuFqvFyIqAzd1PwBzJw8jAGPfVx38JshwlbIygxmYY43/GQmpais0ODDHuzevLMARHBcgIAQAbOJHZW0/EyQAAAABJRU5ErkJggg==" alt="Follow @Storyblok" />
+  </a>
+</p>
 
-```sh
-npm install @storyblok/experiments
-pnpm add @storyblok/experiments
-yarn add @storyblok/experiments
-```
+## Features
 
-## Units
+- **Framework-agnostic**: Plain functions, usable with any framework or none
+- **Server-first**: Deterministic, storage-free bucketing designed for per-request server use
+- **Dependency-free**: The core ships with zero runtime dependencies
+- **Composable**: `assignVariant`, `resolveExperiment`, and `trackEvent` are usable on their own, or bind them together with the `createExperiments` factory
+- **Pluggable adapters**: Deliver exposure and conversion events to any sink, or use the built-in `fetchAdapter`
 
-Each unit is usable on its own.
+## Documentation
 
-### `resolveExperiment`
+For complete documentation, please visit [package reference](https://www.storyblok.com/docs/libraries/js/experiments)
 
-Maps the experiments payload, a slug, and an assignment to the slug that should be rendered, plus an exposure descriptor. Control resolves to the original slug, an assigned variant resolves to its mapped slug. Pure, no I/O.
+## Contributing
 
-```ts
-import { resolveExperiment } from '@storyblok/experiments';
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
-const { slug, variant, exposure } = resolveExperiment({ experiments, slug: 'home', assignment });
-const story = await client.stories.get(`cdn/stories/${slug}`); // your own client
-```
+## Community
 
-When no experiment matches the slug, or the assignment is missing, the slug passes through unchanged and `exposure` is `undefined`.
+For help, discussion about best practices, or any other conversation that would benefit from being searchable:
 
-### `assignVariant`
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
-Deterministic weighted bucketing. The same `visitorId` always lands on the same variant for a given experiment, with no storage. You decide what `visitorId` is (a cookie, a header, anything), and persisting it is your job.
+For community support, chatting with other users, please visit:
 
-```ts
-import { assignVariant } from '@storyblok/experiments';
+- [Discuss Storyblok on Discord](https://storyblok.com/join-discord)
 
-const assignment = assignVariant({ experiment, visitorId }); // sticky for the same visitorId
-```
+## Support
 
-`assignVariant` hashes `visitorId` plus the experiment id into a `0..99` bucket and walks the variants' cumulative weights, so the same visitor resolves to the same variant on every request.
+For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-### `trackEvent`
+> [!IMPORTANT]
+> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
-Sends an event to a pluggable adapter. The event is the subject, the adapter is the destination.
+### I can't share my company project code
 
-```ts
-import { trackEvent } from '@storyblok/experiments';
-import { fetchAdapter } from '@storyblok/experiments/adapters';
+We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
 
-trackEvent(exposure, { adapter: fetchAdapter('https://my-sink.example/events') });
+### Feedback
 
-// Bring your own sink:
-trackEvent(
-  { type: 'conversion', experiment, variant, name: 'signup' },
-  { adapter: event => myAnalytics.track(event) },
-);
-```
-
-Adapters live in their own entrypoint, `@storyblok/experiments/adapters`, which is the source of truth for adapter imports. They are intentionally not re-exported from the package root: most users bring their own sink, and a separate entrypoint keeps adapters out of the bundle when they go unused.
-
-## Full example
-
-```ts
-import { assignVariant, resolveExperiment, trackEvent } from '@storyblok/experiments';
-import { fetchAdapter } from '@storyblok/experiments/adapters';
-
-const adapter = fetchAdapter('https://my-sink.example/events');
-
-// 1. Fetch the experiment config (cacheable, same for every visitor).
-const { experiments } = await client.experiments.list();
-
-// 2. Identify the visitor (you own this: cookie, header, etc.).
-const visitorId = getCookie('visitor_id') ?? setCookie('visitor_id', crypto.randomUUID());
-
-// 3. Assign: deterministic bucketing, same visitorId maps to the same variant.
-const experiment = experiments.find(candidate => candidate.name === 'homepage_hero');
-const assignment = assignVariant({ experiment, visitorId });
-
-// 4. Resolve: which slug does this visitor get? (pure, no I/O)
-const { slug, exposure } = resolveExperiment({ experiments, slug: 'home', assignment });
-
-// 5. Fetch and render the resolved story with your existing client.
-const story = await client.stories.get(`cdn/stories/${slug}`);
-render(story);
-
-// 6. Exposure: fire when the visitor actually saw the variant.
-//    `exposure` is undefined when no experiment applied, so guard it.
-if (exposure) {
-  trackEvent(exposure, { adapter });
-}
-
-// 7. Conversion: later, wherever the goal happens.
-trackEvent(
-  { type: 'conversion', experiment, variant: assignment.variant, name: 'signup' },
-  { adapter },
-);
-```
-
-## Factory
-
-`createExperiments` pre-binds the config and adapters, auto-fires exposure on resolve, and remembers assignments so conversions attribute without re-passing context. Designed for server-side, per-request use.
-
-```ts
-import { createExperiments } from '@storyblok/experiments';
-import { fetchAdapter } from '@storyblok/experiments/adapters';
-
-const exp = createExperiments({ experiments, adapters: [fetchAdapter(url)] });
-
-const { slug } = exp.resolveExperiment({ slug: 'home', visitorId }); // exposure auto-fired
-const story = await client.stories.get(`cdn/stories/${slug}`);
-
-// later, on the page:
-exp.track('signup', { plan: 'pro' }); // conversion
-```
+If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 
-MIT
+[License](/LICENSE)

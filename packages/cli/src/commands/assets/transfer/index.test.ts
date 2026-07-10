@@ -79,18 +79,21 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('transferred'));
+    // `ui.info` (→ console.info) carries the summary; successes are not listed
+    // one row per asset (see UI#info / UI#list in utils/ui.ts).
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('1 transferred, 0 failed'));
     expect(process.exitCode).toBe(0);
   });
 
-  it('should transfer multiple asset IDs and report one row per ID', async () => {
+  it('should report a count summary rather than one row per asset', async () => {
     preconditions.canTransferAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '43', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42, 43], 7, expect.anything());
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('42'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('43'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('2 transferred, 0 failed (of 2)'));
+    // No per-asset success rows on the successful path.
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('✓'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -124,6 +127,18 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('write access'));
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('should group repeated failure reasons into a single counted line', async () => {
+    preconditions.failsToTransferWithAuthError();
+
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '43', '44', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    // Summary counts, then one grouped reason line with the count — not three
+    // separate per-asset rows.
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('0 transferred, 3 failed (of 3)'));
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('(3)'));
     expect(process.exitCode).toBe(1);
   });
 

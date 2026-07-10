@@ -77,4 +77,21 @@ describe('fetchAllSpaceAssetIds', () => {
 
     expect(ids).toEqual([10]);
   });
+
+  it('should forward filter params to the asset list query', async () => {
+    let seen: URL | undefined;
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/123/assets', ({ request }) => {
+        seen = new URL(request.url);
+        return HttpResponse.json(
+          { assets: [{ id: 1 }] },
+          { headers: { 'Total': '1', 'Per-Page': '100' } },
+        );
+      }),
+    );
+
+    await fetchAllSpaceAssetIds('123', { search: 'logo' } as never);
+
+    expect(seen?.searchParams.get('search')).toBe('logo');
+  });
 });

@@ -1,4 +1,4 @@
-export default <T extends Record<string, unknown>>(blok?: T) => {
+export default (blok?: { _editable?: string }) => {
   if (typeof blok !== 'object' || typeof blok._editable !== 'string') {
     return {};
   }

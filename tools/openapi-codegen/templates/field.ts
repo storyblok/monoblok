@@ -107,10 +107,14 @@ type AllowEntry = string | { folder: string };
 
 /**
  * Keeps `TBlock` when its `folder` is `TFolder` or any nested subfolder (mirrors
- * the editor's `isAnywhereInFolder`). Compared case-insensitively via `Lowercase`
- * so `folder: 'blog'` and a `Blog` folder ref narrow the same. TypeScript cannot
- * replicate the CLI's full slug at the type level, so separator/symbol drift
- * (`'My Layout'` vs `'my-layout'`) is only reconciled at push/validate time.
+ * the editor's `isAnywhereInFolder`). This is a best-effort compile-time check,
+ * compared case-insensitively via `Lowercase` so `folder: 'blog'` and a `Blog`
+ * folder ref narrow the same. TypeScript cannot replicate the CLI's full slug at
+ * the type level, so separator/symbol drift (`'My Layout'` vs `'my-layout'`) is
+ * only reconciled at push/validate time — full folder identity is enforced
+ * there, not here. To rely on narrowing, prefer a `defineFolder` ref over a
+ * string path on both the block's `folder` and the field's `allow`: a shared ref
+ * carries the exact path on both sides, so no drift is possible.
  */
 type MatchesFolder<TBlock, TFolder extends string> =
   TBlock extends { folder: infer BF extends string }

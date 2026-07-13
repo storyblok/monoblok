@@ -4,8 +4,14 @@ import { isRecord } from './utils';
 /**
  * The MAPI accepts `component_group_uuid: null` on component create/update to clear the
  * group, but the generated `ComponentCreate`/`ComponentUpdate` types (from the OpenAPI spec)
- * only allow `string | undefined` for that field. This is an upstream spec gap (fix pending) —
- * widen precisely here instead of hand-editing the generated types or casting with `as`.
+ * only allow `string | undefined` for that field.
+ *
+ * The correct fix lives in `@storyblok/management-api-client`'s codegen: a wrapper template
+ * (like `tools/openapi-codegen/templates/block.ts` does for `Component`) that emits
+ * `Override<ComponentCreateBase, { component_group_uuid?: string | null }>`. That widens the
+ * public type for every consumer and requires regenerating mapi-client against the private
+ * spec cache — a separate, mapi-client-owned change. Until then, widen precisely here at the
+ * point of use instead of hand-editing the generated types or casting with `as`.
  */
 type WithNullableGroup<T extends { component_group_uuid?: string }> = Omit<T, 'component_group_uuid'> & { component_group_uuid?: string | null };
 

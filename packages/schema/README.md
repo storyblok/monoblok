@@ -63,7 +63,7 @@ const heroBlock = defineBlock({
 
 **Key behaviors:**
 
-- **Ref or string** — assign a block to a folder using a `defineFolder` ref or a raw path string (`'Layout/Heros'`).
+- **Ref or string** — assign a block to a folder using a `defineFolder` ref or a raw path string (`'Layout/Heros'`). Prefer the ref when a `bloks`/`richtext` field's `allow` narrows on that folder: a shared ref carries the exact path on both sides, so type-level narrowing always agrees with push-time matching (see the caveat below).
 - **Explicit ungrouping** — set `folder: null` to explicitly remove a block from any folder (`schema push` clears its group).
 - **Absent = unmanaged** — omit the `folder` key to leave the block's remote group untouched (today's behavior; useful for incremental adoption).
 - **Folder in `allow`** — restrict a `bloks` or `richtext` field to blocks in a specific folder using a folder ref:
@@ -119,7 +119,7 @@ The CLI resolves folder paths to remote component groups using **case-insensitiv
 **Limitations:**
 
 - **Names are unique per space** — Storyblok component group names must be unique across the whole space, not just under a parent. Two folders that resolve to the same slugified leaf name (even under different parents) are rejected at push time. Re-parenting a folder while keeping its leaf name is a two-step push: rename or delete the old folder first, then push the re-parented one.
-- **Consistent display paths** — when a folder is referenced by both a `defineFolder` ref and a string shorthand, write the display path consistently across all references (the schema-package validators compare display paths as written; the CLI matches them case-insensitively in slug space).
+- **Type narrowing is best-effort** — when a `bloks`/`richtext` field's `allow` narrows content to a folder, the compile-time check compares folder paths case-insensitively but cannot replicate the CLI's full slugification (separator/symbol drift like `'My Layout'` vs `'my-layout'` is only reconciled at validate/push time, where full folder identity is enforced). To keep type narrowing exact, reference a folder through a shared `defineFolder` ref on both the block's `folder` and the field's `allow` rather than mixing a ref with a hand-written string path.
 - **No rename support in v1** — a folder rename is accomplished by creating a new folder and marking the old one stale (same as component renames). Remote display names are set only at creation and are never updated by the CLI.
 - **No state files** — folder identity lives entirely in code.
 

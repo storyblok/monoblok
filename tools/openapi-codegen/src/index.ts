@@ -17,6 +17,7 @@ import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from './aliases.ts';
 import type { KnownType } from './known-types.ts';
 import { hashCache, readLock } from './lock.ts';
 import { SPEC_PATHS, TEMPLATES_DIR } from './paths.ts';
+import { SPEC_PARSERS } from './patches.ts';
 import { templateFor, TEMPLATES, type WrapperFile } from './templates.ts';
 import { type KeepEntry, transformGeneratedFile } from './transform.ts';
 
@@ -85,6 +86,7 @@ export async function generate(config: GenerateConfig): Promise<void> {
       await createClient({
         input: SPEC_PATHS[spec],
         output: tempDir,
+        parser: SPEC_PARSERS[spec],
         plugins: ['@hey-api/typescript'],
         logs: { level: 'silent' },
       });
@@ -139,6 +141,7 @@ async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean
     await createClient({
       input: SPEC_PATHS[spec],
       output: tempDir,
+      parser: SPEC_PARSERS[spec],
       plugins: [
         '@hey-api/typescript',
         { name: 'zod', compatibilityVersion: 4 },
@@ -172,6 +175,7 @@ async function emitFullSdk(spec: 'capi' | 'mapi', outDir: string, verbose: boole
   await createClient({
     input: SPEC_PATHS[spec],
     output: sdkDir,
+    parser: SPEC_PARSERS[spec],
     plugins: [
       '@hey-api/typescript',
       '@hey-api/client-ky',

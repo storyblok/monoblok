@@ -106,9 +106,32 @@ type IsNestable<T> =
     : T extends { is_nestable: true } ? true
       : true;
 
-type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer TAllowed extends string> }
-  // keep only the registry blocks named in `allow`
-  ? Extract<TBlocks, { name: TAllowed }>
+type AllowEntry = string | { folder: string };
+
+/**
+ * Keeps `TBlock` when its `folder` is `TFolder` or any nested subfolder (mirrors
+ * the editor's `isAnywhereInFolder`). This is a best-effort compile-time check,
+ * compared case-insensitively via `Lowercase` so `folder: 'blog'` and a `Blog`
+ * folder ref narrow the same. TypeScript cannot replicate the CLI's full slug at
+ * the type level, so separator/symbol drift (`'My Layout'` vs `'my-layout'`) is
+ * only reconciled at push/validate time — full folder identity is enforced
+ * there, not here. To rely on narrowing, prefer a `defineFolder` ref over a
+ * string path on both the block's `folder` and the field's `allow`: a shared ref
+ * carries the exact path on both sides, so no drift is possible.
+ */
+type MatchesFolder<TBlock, TFolder extends string> =
+  TBlock extends { folder: infer BF extends string }
+    ? Lowercase<BF> extends Lowercase<TFolder> | `${Lowercase<TFolder>}/${string}` ? TBlock : never
+    : never;
+
+type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer TAllowed extends AllowEntry> }
+  ? TAllowed extends string
+    // keep only the registry blocks named in `allow`
+    ? Extract<TBlocks, { name: TAllowed }>
+    : TAllowed extends { folder: infer F extends string }
+      // keep registry blocks in the folder (or any nested folder)
+      ? TBlocks extends any ? MatchesFolder<TBlocks, F> : never
+      : never
   // no `allow`: distribute over the registry, keeping nestable blocks
   : TBlocks extends any
     ? IsNestable<TBlocks> extends true ? TBlocks : never

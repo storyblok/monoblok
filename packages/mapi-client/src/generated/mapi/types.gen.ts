@@ -1111,7 +1111,7 @@ export type ComponentCreateRequest = {
         /**
          * UUID
          */
-        component_group_uuid?: string;
+        component_group_uuid?: string | null;
         /**
          * Component color for UI display
          */
@@ -1212,7 +1212,7 @@ export type ComponentUpdateRequest = {
         /**
          * UUID
          */
-        component_group_uuid?: string;
+        component_group_uuid?: string | null;
         /**
          * Component color for UI display
          */

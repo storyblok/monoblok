@@ -1,20 +1,6 @@
 import type { ComponentCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
 import { isRecord } from './utils';
 
-/**
- * The MAPI accepts `component_group_uuid: null` on component create/update to clear the
- * group, but the generated `ComponentCreate`/`ComponentUpdate` types (from the OpenAPI spec)
- * only allow `string | undefined` for that field.
- *
- * The correct fix lives in `@storyblok/management-api-client`'s codegen: a wrapper template
- * (like `tools/openapi-codegen/templates/block.ts` does for `Component`) that emits
- * `Override<ComponentCreateBase, { component_group_uuid?: string | null }>`. That widens the
- * public type for every consumer and requires regenerating mapi-client against the private
- * spec cache — a separate, mapi-client-owned change. Until then, widen precisely here at the
- * point of use instead of hand-editing the generated types or casting with `as`.
- */
-type WithNullableGroup<T extends { component_group_uuid?: string }> = Omit<T, 'component_group_uuid'> & { component_group_uuid?: string | null };
-
 function isSchemaField(value: unknown): value is Field {
   return isRecord(value) && 'type' in value;
 }
@@ -57,19 +43,18 @@ function buildComponentPayload(input: unknown) {
   };
 }
 
+// `component_group_uuid: null` (clearing a block's group) is modeled directly by
+// the generated `ComponentCreate`/`ComponentUpdate` types — the codegen patches
+// the MAPI write bodies to `string | null` (see tools/openapi-codegen/src/patches.ts).
+
 /** Converts an unknown input to a ComponentCreate-compatible payload. */
 export function toComponentCreate(input: unknown): ComponentCreate {
-  const payload = buildComponentPayload(input) satisfies WithNullableGroup<ComponentCreate>;
-  // `satisfies` validated every field except `component_group_uuid` against the real
-  // (nullable-on-the-wire) shape above; this narrows back to the generated type for callers.
-  return payload as ComponentCreate;
+  return buildComponentPayload(input) satisfies ComponentCreate;
 }
 
 /** Converts an unknown input to a ComponentUpdate-compatible payload. */
 export function toComponentUpdate(input: unknown): ComponentUpdate {
-  const payload = buildComponentPayload(input) satisfies WithNullableGroup<ComponentUpdate>;
-  // See toComponentCreate: the wider shape was already validated by `satisfies` above.
-  return payload as ComponentUpdate;
+  return buildComponentPayload(input) satisfies ComponentUpdate;
 }
 
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */

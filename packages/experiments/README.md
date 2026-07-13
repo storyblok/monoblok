@@ -32,7 +32,7 @@
 - **Framework-agnostic**: Plain functions, usable with any framework or none
 - **Server-first**: Deterministic, storage-free bucketing designed for per-request server use
 - **Dependency-free**: The core ships with zero runtime dependencies
-- **Composable**: `assignVariant`, `resolveExperiment`, and `trackEvent` are usable on their own, or bind them together with the `createExperiments` factory
+- **Composable**: `assignVariant` and `resolveExperiment` are usable on their own, or bind them together with the `createExperiments` factory
 - **Pluggable adapters**: Deliver exposure and conversion events to any sink, or use the built-in `fetchAdapter`
 
 ## Documentation

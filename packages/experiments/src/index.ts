@@ -9,8 +9,6 @@ export type {
 } from './create-experiments';
 export { resolveExperiment } from './resolve-experiment';
 export type { ResolvedExperiment, ResolveExperimentOptions } from './resolve-experiment';
-export { trackEvent } from './track-event';
-export type { TrackEventOptions } from './track-event';
 export type {
   Adapter,
   Assignment,

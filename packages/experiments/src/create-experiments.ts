@@ -1,7 +1,6 @@
 import type { Adapter, Assignment, Experiment, ExperimentEvent, ExperimentVariant } from './types';
 import { assignVariant } from './assign-variant';
 import { resolveExperiment } from './resolve-experiment';
-import { trackEvent } from './track-event';
 
 export interface CreateExperimentsOptions {
   experiments: Experiment[];
@@ -37,8 +36,8 @@ export interface Experiments {
 
 /**
  * Pre-binds the experiments payload and adapters for ergonomic, server-side
- * per-request use. The bare `resolveExperiment` / `assignVariant` / `trackEvent`
- * functions stay available for full control.
+ * per-request use. The bare `resolveExperiment` / `assignVariant` functions
+ * stay available for full control.
  */
 export function createExperiments({ experiments, adapters = [], onError }: CreateExperimentsOptions): Experiments {
   // Per-instance (per-request) state: assignments made during resolveExperiment,
@@ -51,7 +50,7 @@ export function createExperiments({ experiments, adapters = [], onError }: Creat
   const emit = (event: ExperimentEvent): void => {
     for (const adapter of adapters) {
       try {
-        Promise.resolve(trackEvent(event, { adapter })).catch(error => onError?.(error, event));
+        Promise.resolve(adapter(event)).catch(error => onError?.(error, event));
       }
       catch (error) {
         onError?.(error, event);

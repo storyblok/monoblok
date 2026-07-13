@@ -12,11 +12,11 @@ export interface FetchAdapterOptions {
 /**
  * An adapter that POSTs each event as JSON to `url`. This is the generic sink
  * for any HTTP endpoint. For other destinations, pass your own `Adapter`
- * function to `trackEvent` instead.
+ * function instead.
  *
  * `fetch` only rejects on a network failure, so a non-2xx response is turned
- * into a thrown error to make delivery failures observable (caught by
- * `trackEvent`'s caller or `createExperiments`'s `onError`).
+ * into a thrown error to make delivery failures observable (surfaced through
+ * `createExperiments`'s `onError`).
  */
 export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Adapter {
   const { fetch = globalThis.fetch, headers } = options;

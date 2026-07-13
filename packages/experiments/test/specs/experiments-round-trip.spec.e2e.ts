@@ -7,7 +7,7 @@
  *  2. `assignVariant` deterministically buckets visitors into the real variants.
  *  3. `resolveExperiment` maps the original slug to the control's original slug and to a
  *     variant's mapped `variant_slug`, with an exposure event.
- *  4. `trackEvent` and the `createExperiments` factory deliver events through an adapter.
+ *  4. The `createExperiments` factory delivers exposure and conversion events through an adapter.
  *  5. The resolved slug points at a story that is actually fetchable via the CAPI.
  *
  * The MAPI client has no dedicated experiments resource yet, so the setup drives the
@@ -34,7 +34,7 @@
 import type { Experiment, ExperimentEvent } from '@storyblok/experiments';
 import { createApiClient } from '@storyblok/api-client';
 import { createManagementApiClient } from '@storyblok/management-api-client';
-import { assignVariant, createExperiments, resolveExperiment, trackEvent } from '@storyblok/experiments';
+import { assignVariant, createExperiments, resolveExperiment } from '@storyblok/experiments';
 import { fetchAdapter } from '@storyblok/experiments/adapters';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -291,14 +291,15 @@ describe('@storyblok/experiments CDN round-trip', () => {
     });
   });
 
-  describe('trackEvent', () => {
-    it('delivers the exposure event to an adapter', () => {
+  describe('event delivery', () => {
+    it('produces an exposure event an adapter can consume', () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
       const assignment = { experimentId: experiment.id, variant };
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const captured: ExperimentEvent[] = [];
-      trackEvent(resolved.exposure!, { adapter: event => captured.push(event) });
+      const adapter = (event: ExperimentEvent) => captured.push(event);
+      adapter(resolved.exposure!);
 
       expect(captured).toHaveLength(1);
       expect(captured[0]).toMatchObject({ type: 'exposure', experiment: { id: experiment.id } });

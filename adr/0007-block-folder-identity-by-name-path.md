@@ -53,7 +53,7 @@ Folder identity is the **resolved name path**, matched against the remote space 
 
 - **CLI materialization** — the CLI collects folders from: (a) explicit `defineFolder` registrations, (b) folder assignments on blocks, (c) `{ folder }` entries in field `allow`, and (d) all parent paths of the above. Deduplication by slugified path.
 - **Push ordering** — folders are created parent-first (breadth-first by depth); components are upserted with UUID resolution applied at send time; stale entities are deleted children-first (deepest first).
-- **No rollback of folder mutations** — changeset tracking is implemented but rollback is out of scope for v1.
+- **Rollback of folder mutations** — `schema rollback` inverts folder changes alongside components and datasources: a push that created a folder is undone by deleting it (children-first, after components are restored off it), and a push that deleted a folder is undone by recreating it (parent-first). Because a recreated group receives a *new* server uuid, restored components have their stored `component_group_uuid` and field `component_group_whitelist` uuids remapped (old → new) so they land in the recreated group rather than a dangling reference.
 
 ## Related ADRs
 

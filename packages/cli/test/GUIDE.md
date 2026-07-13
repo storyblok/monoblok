@@ -82,8 +82,8 @@ node ./dist/index.mjs schema init --space "$STORYBLOK_SPACE_ID" --out-dir ../../
 #    the generated files live outside a workspace package, e.g. .claude/tmp/):
 #    import { defineBlock } from '@storyblok/schema'
 #    -> import { defineBlock } from '/abs/path/to/monoblok/packages/schema/src/index'
-#    import { defineBlockFolder } from '@storyblok/schema'
-#    -> import { defineBlockFolder } from '/abs/path/to/monoblok/packages/schema/src/index'
+#    import { defineFolder } from '@storyblok/schema'
+#    -> import { defineFolder } from '/abs/path/to/monoblok/packages/schema/src/index'
 
 # 4. Push back — should show all entities as "unchanged"
 node ./dist/index.mjs schema push ../../.claude/tmp/schema-test/schema.ts --space "$STORYBLOK_SPACE_ID" --dry-run --no-migrations
@@ -104,8 +104,15 @@ node ./dist/index.mjs schema push ./schema-reduced.ts --space "$STORYBLOK_SPACE_
 
 **Rollback:**
 ```bash
-# After a push, rollback using the changeset
-node ./dist/index.mjs schema rollback .storyblok/schema/changesets/TIMESTAMP.json --space "$STORYBLOK_SPACE_ID"
+# After a push, rollback using the changeset. Rollback prompts for confirmation
+# before applying, so pass --yes for non-interactive runs.
+node ./dist/index.mjs schema rollback .storyblok/schema/changesets/TIMESTAMP.json --space "$STORYBLOK_SPACE_ID" --yes
+
+# Roll back the most recent changeset without naming the file:
+node ./dist/index.mjs schema rollback --latest --space "$STORYBLOK_SPACE_ID" --yes
+
+# Preview the inverse operations without applying them:
+node ./dist/index.mjs schema rollback --latest --space "$STORYBLOK_SPACE_ID" --dry-run
 ```
 
 ### Changeset and migration storage
@@ -114,10 +121,13 @@ By default, changesets are saved to `.storyblok/schema/changesets/` relative to 
 
 ### Component-folder assignment
 
-Assigning components to folders requires the folder's UUID (API-assigned). To test:
-1. Push a schema with folders.
-2. Pull to get UUIDs, or query MAPI: `components pull --space $STORYBLOK_SPACE_ID` then inspect `groups.json`.
-3. Add `component_group_uuid: '<uuid>'` to component definitions and push again.
+Folders (component groups) are declared in code with `defineFolder` and assigned by name path, never by UUID. The CLI resolves paths to group UUIDs at push time. To test:
+1. Declare folders with `defineFolder({ name, parent? })` and register them under `defineSchema({ folders })`.
+2. Assign a block to a folder with `folder: <folderRef>` (or a `'Parent/Child'` path string, or `null` to explicitly ungroup).
+3. Restrict a `bloks` or `richtext` field to a folder with `allow: [<folderRef>]`.
+4. Push the schema. `schema push` creates missing groups parent-first, resolves membership to UUIDs, and (with `--delete`) removes stale groups children-first.
+
+See `adr/0007-block-folder-identity-by-name-path.md` for the identity model.
 
 ## Known quirks
 

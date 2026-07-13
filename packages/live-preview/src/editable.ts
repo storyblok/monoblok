@@ -1,13 +1,11 @@
-import type { BlockContent } from './generated/types/field';
-
 interface EditableOptions {
   id: string;
   uid: string;
 }
 
-export default function storyblokEditable(block?: Pick<BlockContent, '_editable'>) {
+export default function storyblokEditable(block?: { _editable?: string }) {
   const editable = block?._editable;
-  if (!editable) {
+  if (typeof editable !== 'string' || !editable) {
     return {};
   }
 

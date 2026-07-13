@@ -830,6 +830,66 @@ describe('stories push command', () => {
       );
     });
 
+    it('should preserve shared-asset references and remap local ones on cross-space push', async () => {
+      const fromSpace = '54321';
+      const targetSpace = DEFAULT_SPACE;
+      const localOldId = 111;
+      const localNewId = 222;
+      const localOldFilename = 'https://a.storyblok.com/f/54321/500x500/local.png';
+      const localNewFilename = 'https://a.storyblok.com/f/12345/500x500/local.png';
+      const sharedId = 999111; // globally-unique shared asset id, never in the space manifest
+      const sharedFilename = 'https://a.storyblok.com/g/1/500x500/shared.png';
+      const storyA = makeMockStory({
+        slug: 'story-a',
+        content: {
+          _uid: randomUUID(),
+          component: 'page',
+          local_asset: { id: localOldId, filename: localOldFilename, fieldtype: 'asset' },
+          shared_asset: { id: sharedId, filename: sharedFilename, fieldtype: 'asset' },
+        },
+      });
+      preconditions.canLoadStories([storyA], fromSpace);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: 'page',
+          schema: {
+            local_asset: { type: 'asset' },
+            shared_asset: { type: 'asset' },
+          },
+        }),
+      ], fromSpace);
+      // The per-space asset manifest contains ONLY the local asset mapping; the
+      // shared asset is never present (separate namespace — WDX-411 invariant).
+      preconditions.canLoadAssetManifest([
+        {
+          old_id: localOldId,
+          new_id: localNewId,
+          old_filename: localOldFilename,
+          new_filename: localNewFilename,
+          created_at: new Date().toISOString(),
+        },
+      ], fromSpace);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(['node', 'test', 'push', '--space', targetSpace, '--from', fromSpace]);
+
+      const [storyARemote] = remoteStories;
+      expect(actions.updateStory).toHaveBeenCalledWith(targetSpace, storyARemote.id, expect.objectContaining({
+        story: expect.objectContaining({
+          content: expect.objectContaining({
+            // Local ref remapped through the target space manifest.
+            local_asset: { id: localNewId, filename: localNewFilename, fieldtype: 'asset' },
+            // Shared ref preserved verbatim (id + filename unchanged).
+            shared_asset: { id: sharedId, filename: sharedFilename, fieldtype: 'asset' },
+          }),
+        }),
+      }));
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('Push results: 1 story pushed, 0 stories failed'),
+      );
+    });
+
     it('should match existing stories by full_slug in a duplicated space', async () => {
       const sourceSpace = '99999';
       const targetSpace = DEFAULT_SPACE;

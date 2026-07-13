@@ -47,7 +47,7 @@ Folder identity is the **resolved name path**, matched against the remote space 
 - **Slugified matching** — folder paths are matched against remote groups using the same case-insensitive slugification as existing component group paths. A folder `Heros` matches remote group `heros` or `HEROS`. This enables teams to adopt the schema DSL incrementally without renaming all existing groups.
 - **Restriction modes are exclusive** — code cannot mix block refs and folder refs in a single field's `allow` array. The editor honors this constraint; attempting to do so throws at define time.
 - **Richtext support** — folder restrictions apply to both `bloks` and `richtext` fields identically.
-- **Upstream OpenAPI spec issue** — the Management API spec currently requires `component_group_uuid` on component objects, even though it should be nullable for ungrouped blocks (the CLI locally widened it during code generation). A spec update is needed to make this nullable.
+- **Nullable `component_group_uuid` on write bodies** — the Management API accepts `component_group_uuid: null` to clear a block's group, but the OpenAPI `ComponentCreateRequest`/`ComponentUpdateRequest` bodies declared a non-nullable `string` (the read `Component` schema was already nullable). This is corrected at the codegen layer via a hey-api parser patch (`tools/openapi-codegen/src/patches.ts`) that widens the field to `string | null` before generation, so the generated `ComponentCreate`/`ComponentUpdate` types model `null` for every consumer. The patch is a documented stopgap; the fix should also land upstream in `storyblok/openapi-wdx`.
 
 ## Implementation Notes
 

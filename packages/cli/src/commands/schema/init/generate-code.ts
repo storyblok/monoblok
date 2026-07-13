@@ -6,7 +6,9 @@ import {
   DATASOURCE_STRIP_KEYS,
   formatValue,
   INDENT,
+  isRecord,
   quoteString,
+  RawCode,
   stripKeys,
 } from '../utils';
 
@@ -192,21 +194,45 @@ export function resolveFolders(folders: ComponentFolder[]): ResolvedFolder[] {
 }
 
 /**
+ * Resolves a field's `component_group_whitelist` uuids to `defineFolder` ref
+ * identifiers when every uuid maps to a known folder var, returning the ordered
+ * {@link RawCode} refs. Returns `undefined` when there is nothing to resolve or
+ * any uuid is unknown, so the caller keeps the raw wire form (still round-trips
+ * via the diff's uuid↔path translation) rather than emitting a broken ref.
+ */
+function resolveGroupWhitelistRefs(
+  whitelist: unknown,
+  folderVarByUuid?: Map<string, string>,
+): RawCode[] | undefined {
+  if (!folderVarByUuid || !Array.isArray(whitelist) || whitelist.length === 0) { return undefined; }
+  const vars = whitelist.map(uuid => (typeof uuid === 'string' ? folderVarByUuid.get(uuid) : undefined));
+  if (!vars.every((v): v is string => typeof v === 'string')) { return undefined; }
+  return vars.map(v => new RawCode(v));
+}
+
+/**
  * Reverse of the push-time DSL→wire field mapping: renames the wire reference
  * keys back to their DSL form (`component_whitelist`→`allow`,
- * `datasource_slug`→`datasource`). The `source` selector is left untouched.
+ * `component_group_whitelist`→`allow` with folder refs, `datasource_slug`→`datasource`).
+ * The `source` selector is left untouched.
  *
- * `restrict_components: true` and `restrict_type: ''` are dropped alongside a
- * `component_whitelist` — they're the wire byproduct `defineField`'s `allow`
- * re-derives on push, not independent DSL state.
+ * `restrict_components: true` and `restrict_type` are dropped alongside a
+ * resolved `allow` — they're the wire byproduct `defineField`'s `allow`
+ * re-derives on push, not independent DSL state. A group whitelist that cannot
+ * be fully resolved to folder refs keeps its raw wire form.
  */
-function toDslField(field: Record<string, unknown>): Record<string, unknown> {
-  const { component_whitelist, datasource_slug, restrict_components, restrict_type, ...rest } = field;
+function toDslField(field: Record<string, unknown>, folderVarByUuid?: Map<string, string>): Record<string, unknown> {
+  const { component_whitelist, component_group_whitelist, datasource_slug, restrict_components, restrict_type, ...rest } = field;
   const out: Record<string, unknown> = { ...rest };
+  const groupRefs = resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
   if (component_whitelist !== undefined) {
     out.allow = component_whitelist;
   }
+  else if (groupRefs) {
+    out.allow = groupRefs;
+  }
   else {
+    if (component_group_whitelist !== undefined) { out.component_group_whitelist = component_group_whitelist; }
     if (restrict_components !== undefined) { out.restrict_components = restrict_components; }
     if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
   }
@@ -218,9 +244,32 @@ function toDslField(field: Record<string, unknown>): Record<string, unknown> {
  * Generates a `defineField('name', {...})` code string for a single schema field.
  * Position is implicit in the array index, so `pos` is stripped from the config.
  */
-function generateFieldCode(fieldName: string, fieldData: Record<string, unknown>, depth: number): string {
-  const clean = toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS));
+function generateFieldCode(
+  fieldName: string,
+  fieldData: Record<string, unknown>,
+  depth: number,
+  folderVarByUuid?: Map<string, string>,
+): string {
+  const clean = toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid);
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
+}
+
+/**
+ * Collects the sorted, unique `defineFolder` var names a component's fields
+ * reference through fully-resolvable group whitelists, so the generated file can
+ * import them.
+ */
+function collectWhitelistFolderVars(
+  schema: Record<string, Record<string, unknown>>,
+  folderVarByUuid?: Map<string, string>,
+): string[] {
+  const vars = new Set<string>();
+  for (const field of Object.values(schema)) {
+    if (!isRecord(field)) { continue; }
+    const refs = resolveGroupWhitelistRefs(field.component_group_whitelist, folderVarByUuid);
+    if (refs) { refs.forEach(ref => vars.add(ref.code)); }
+  }
+  return [...vars].sort();
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */
@@ -257,11 +306,17 @@ export function generateFoldersFile(resolved: ResolvedFolder[]): string {
  * groups are a UI concern and aren't part of a content-shape definition; when the
  * component belonged to a remote group, `folderRef` re-encodes it as an explicit
  * `folder: <folderVar>` reference (import path adjusted for its group depth).
+ *
+ * `folderVarByUuid` maps remote group uuids to their `folders.ts` var names so a
+ * field's group whitelist is emitted as `allow: [<folderVar>]` (symmetric with a
+ * block-name `allow`) instead of raw uuids; every referenced folder is imported
+ * from the same `folders.ts` alongside the block's own folder ref.
  */
 export function generateComponentFile(
   component: Component,
   varName?: string,
   folderRef?: { varName: string; segments: string[] },
+  folderVarByUuid?: Map<string, string>,
 ): string {
   const lines: string[] = [];
 
@@ -271,9 +326,18 @@ export function generateComponentFile(
   lines.push('} from \'@storyblok/schema\';');
   lines.push('');
 
-  if (folderRef) {
-    const rel = '../'.repeat(folderRef.segments.length + 1);
-    lines.push(`import { ${folderRef.varName} } from '${rel}folders';`);
+  // A block sits at `blocks/<...group segments>/<name>.ts`; every folder var it
+  // references lives in the root `folders.ts`, so all imports share one relative
+  // path derived from the block's own group depth (0 when ungrouped).
+  const blockDepth = folderRef?.segments.length ?? 0;
+  const schema = isRecord(component.schema) ? component.schema as Record<string, Record<string, unknown>> : {};
+  const folderVars = [...new Set([
+    ...(folderRef ? [folderRef.varName] : []),
+    ...collectWhitelistFolderVars(schema, folderVarByUuid),
+  ])].sort();
+  if (folderVars.length > 0) {
+    const rel = '../'.repeat(blockDepth + 1);
+    lines.push(`import { ${folderVars.join(', ')} } from '${rel}folders';`);
     lines.push('');
   }
 
@@ -322,7 +386,7 @@ export function generateComponentFile(
     if (sortedFields.length > 0) {
       lines.push(`${INDENT}fields: [`);
       for (const [fieldName, fieldData] of sortedFields) {
-        const fieldCode = generateFieldCode(fieldName, fieldData, 2);
+        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid);
         lines.push(`${INDENT}${INDENT}${fieldCode},`);
       }
       lines.push(`${INDENT}],`);

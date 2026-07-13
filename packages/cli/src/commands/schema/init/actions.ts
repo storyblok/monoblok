@@ -53,6 +53,9 @@ export async function writeSchemaFiles(
   const resolvedDatasources = resolveDatasources(datasources);
   const resolvedFolders = resolveFolders(componentFolders);
   const folderByUuid = new Map(resolvedFolders.map(r => [r.folder.uuid, r]));
+  // uuid → folders.ts var name, so a field's group whitelist can be re-encoded
+  // as `allow: [<folderVar>]` instead of raw uuids.
+  const folderVarByUuid = new Map([...folderByUuid].map(([uuid, r]) => [uuid, r.varName]));
 
   // Write component files into their group directory, with a `folder` ref
   // when the component belonged to a remote group.
@@ -60,7 +63,7 @@ export async function writeSchemaFiles(
     const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
     const folder = component.component_group_uuid ? folderByUuid.get(component.component_group_uuid) : undefined;
     const folderRef = folder && { varName: folder.varName, segments };
-    await writeFileWithDirs(filePath, generateComponentFile(component, varName, folderRef));
+    await writeFileWithDirs(filePath, generateComponentFile(component, varName, folderRef, folderVarByUuid));
     writtenFiles.push(filePath);
   }
 

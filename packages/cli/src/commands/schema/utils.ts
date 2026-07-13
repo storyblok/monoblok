@@ -79,6 +79,15 @@ export function applyDefaults<T extends Record<string, unknown>>(entity: T, defa
 export const INDENT = '  ';
 
 /**
+ * Wraps a string so {@link formatValue} emits it verbatim (unquoted) instead of
+ * as a string literal. Used by code generation to place a bare identifier (e.g.
+ * an imported `defineFolder` ref) inside an otherwise data-shaped value.
+ */
+export class RawCode {
+  constructor(public readonly code: string) {}
+}
+
+/**
  * Serializes a string as a single-quoted TS literal with correct escaping.
  * Uses JSON.stringify for backslash/control-char/newline handling, then converts
  * the double-quoted result to single-quoted output. Without this, backslashes in
@@ -103,6 +112,9 @@ export function formatValue(value: unknown, depth: number): string {
 
   if (value === null || value === undefined) {
     return String(value);
+  }
+  if (value instanceof RawCode) {
+    return value.code;
   }
   if (typeof value === 'string') {
     return quoteString(value);

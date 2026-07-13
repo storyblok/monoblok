@@ -271,8 +271,16 @@ export async function executePush(
     }
   }
 
-  // 4. Delete stale entities if --delete flag is set
+  // 4. Delete stale entities if --delete flag is set.
+  //
+  // Deletes are attempted across all three entity types even if some fail; the
+  // first failure is surfaced only after folders have been processed. This
+  // matters because an undeletable stale component (e.g. the space's default
+  // content type, which the API rejects with a 422) must not abort the push
+  // before stale folders are cleaned up, or those groups are left orphaned.
   if (options.delete) {
+    const deleteErrors: { action: 'delete_component' | 'delete_datasource' | 'delete_component_folder'; reason: unknown; message: string }[] = [];
+
     // Delete stale components
     const staleComponents = diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale');
     const deleteComponentResults = await Promise.allSettled(
@@ -292,7 +300,7 @@ export async function executePush(
       if (result.status === 'fulfilled') {
         if (result.value) { deleted++; }
       }
-      else { handleAPIError('delete_component', result.reason, `Failed to delete component ${staleComponents[i].name}`); }
+      else { deleteErrors.push({ action: 'delete_component', reason: result.reason, message: `Failed to delete component ${staleComponents[i].name}` }); }
     }
 
     // Delete stale datasources
@@ -314,7 +322,7 @@ export async function executePush(
       if (result.status === 'fulfilled') {
         if (result.value) { deleted++; }
       }
-      else { handleAPIError('delete_datasource', result.reason, `Failed to delete datasource ${staleDatasources[i].name}`); }
+      else { deleteErrors.push({ action: 'delete_datasource', reason: result.reason, message: `Failed to delete datasource ${staleDatasources[i].name}` }); }
     }
 
     // Delete stale folders children-first (deeper slug paths before their
@@ -333,8 +341,17 @@ export async function executePush(
         deleted++;
       }
       catch (error) {
-        handleAPIError('delete_component_folder', error, `Failed to delete folder ${diff.name}`);
+        deleteErrors.push({ action: 'delete_component_folder', reason: error, message: `Failed to delete folder ${diff.name}` });
       }
+    }
+
+    // Surface the first delete failure now that every stale entity has been
+    // attempted. Additional failures are appended to the message so none are
+    // silently swallowed.
+    if (deleteErrors.length > 0) {
+      const first = deleteErrors[0];
+      const suffix = deleteErrors.length > 1 ? ` (and ${deleteErrors.length - 1} more delete error(s))` : '';
+      handleAPIError(first.action, first.reason, `${first.message}${suffix}`);
     }
   }
 

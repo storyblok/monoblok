@@ -184,10 +184,18 @@ schemaCommand
           for (const [uuid, segments] of buildGroupPathByUuid([...remote.componentFolders.values()])) {
             uuidByPath.set(segments.join('/'), uuid);
           }
+          // Only components that survive the push are truly ungrouped. A stale
+          // component inside the folder is being deleted, not ungrouped, so it
+          // must not inflate the count.
+          const staleComponentNames = new Set(
+            diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale').map(d => d.name),
+          );
           for (const folder of staleFolders) {
             const uuid = uuidByPath.get(folder.name);
             if (!uuid) { continue; }
-            const count = [...remote.components.values()].filter(c => c.component_group_uuid === uuid).length;
+            const count = [...remote.components.values()]
+              .filter(c => c.component_group_uuid === uuid && !staleComponentNames.has(c.name))
+              .length;
             if (count > 0) {
               ui.warn(`Folder '${folder.name}' will be deleted; ${count} component(s) inside will be ungrouped.`);
             }

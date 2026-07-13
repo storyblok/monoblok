@@ -411,6 +411,31 @@ describe('schema push command', () => {
     );
   });
 
+  it('excludes stale (deleted) components from the ungroup count', async () => {
+    // `keep` stays (declared locally, unmanaged), `gone` is stale and deleted.
+    // Both live in the Layout group remotely; only `keep` is truly ungrouped.
+    const keep = makeMockComponent({ name: 'keep', schema: { title: { type: 'text', pos: 0 } } });
+    const keepRemote = { ...keep, component_group_uuid: 'u-layout' };
+    const goneRemote = { ...makeMockComponent({ name: 'gone' }), component_group_uuid: 'u-layout' };
+    preconditions.hasLocalSchema({ components: [keep] as any, datasources: [] });
+    preconditions.hasRemoteComponents([keepRemote, goneRemote]);
+    preconditions.hasRemoteFolders([{ id: 10, name: 'Layout', uuid: 'u-layout' }]);
+    preconditions.hasRemoteDatasources([]);
+    server.use(
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
+        HttpResponse.json({})),
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`, () =>
+        HttpResponse.json({})),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--delete']);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Folder \'layout\' will be deleted; 1 component(s) inside will be ungrouped.'),
+    );
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('2 component(s) inside will be ungrouped'));
+  });
+
   it('should not include stale entities in changeset without --delete', async () => {
     const localComp = makeMockComponent({ name: 'hero', schema: { title: { type: 'text', pos: 0 } } });
     const staleComp = makeMockComponent({ name: 'footer' });

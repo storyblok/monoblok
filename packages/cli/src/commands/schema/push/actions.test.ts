@@ -666,6 +666,40 @@ describe('executePush - folders', () => {
     expect(result.deleted).toBe(2);
   });
 
+  it('still deletes stale folders when a stale component delete fails, then reports the error', async () => {
+    const deletedGroupIds: number[] = [];
+    server.use(
+      // The default content type cannot be deleted -> 422.
+      http.delete('https://mapi.storyblok.com/v1/spaces/12345/components/:id', () =>
+        HttpResponse.json({ error: 'default content type' }, { status: 422 })),
+      http.delete('https://mapi.storyblok.com/v1/spaces/12345/component_groups/:id', ({ params }) => {
+        deletedGroupIds.push(Number(params.id));
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    const remote: RemoteSchemaData = {
+      components: new Map([
+        ['page', { id: 5, name: 'page' } as unknown as Component],
+      ]),
+      componentFolders: new Map([
+        ['Old', { id: 10, uuid: 'uuid-old', name: 'Old', parent_uuid: null } as unknown as ComponentFolder],
+      ]),
+      datasources: new Map(),
+    };
+    const local: SchemaData = { components: [], folders: [], datasources: [] };
+    const diffResult = makeDiffResult([
+      { type: 'component', name: 'page', action: 'stale', diff: null, local: null, remote: null },
+      { type: 'folder', name: 'old', action: 'stale', diff: null, local: null, remote: null },
+    ]);
+
+    await expect(executePush('12345', local, remote, diffResult, { delete: true }))
+      .rejects
+      .toThrow(/Failed to delete component page/);
+    // The stale folder was still deleted despite the component delete failure.
+    expect(deletedGroupIds).toEqual([10]);
+  });
+
   it('throws a CommandError when a component folder path cannot be resolved to a group', async () => {
     const local: SchemaData = {
       components: [{ name: 'hero', folder: 'unknown/path', schema: {} } as unknown as Component],

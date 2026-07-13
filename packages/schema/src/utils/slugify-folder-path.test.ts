@@ -23,6 +23,12 @@ describe('slugifyFolderPath', () => {
     expect(slugifyFolderPath('Hero & Teaser')).toBe('hero-teaser');
   });
 
+  it('should drop a segment that slugifies to empty (symbol-only), not leave a double slash', () => {
+    expect(slugifyFolderPath('Layout/&/Heros')).toBe('layout/heros');
+    expect(slugifyFolderPath('Layout/---/Heros')).toBe('layout/heros');
+    expect(slugifyFolderPath('A/&/B')).toBe('a/b');
+  });
+
   it('should return an empty string for a path with no meaningful segments', () => {
     expect(slugifyFolderPath('')).toBe('');
     expect(slugifyFolderPath('/')).toBe('');

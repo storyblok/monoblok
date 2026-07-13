@@ -61,6 +61,11 @@ describe('slugifyPath', () => {
     expect(slugifyPath('Hero & Teaser')).toBe('hero-teaser');
     expect(slugifyPath('')).toBe('');
     expect(slugifyPath('/')).toBe('');
+    // Segment that is non-empty raw but slugifies to empty must be dropped
+    // (filter after slugify), not left as a double slash.
+    expect(slugifyPath('A/&/B')).toBe('a/b');
+    expect(slugifyPath('Layout/&/Heros')).toBe('layout/heros');
+    expect(slugifyPath('Layout/---/Heros')).toBe('layout/heros');
   });
 });
 
@@ -75,6 +80,13 @@ describe('expandFolderPath', () => {
   it('should handle a root path', () => {
     expect(expandFolderPath('Layout')).toEqual([
       { name: 'Layout', path: 'layout', parentPath: null },
+    ]);
+  });
+
+  it('should drop a middle segment that slugifies to empty (matching slugifyPath identity)', () => {
+    expect(expandFolderPath('Layout/&/Heros')).toEqual([
+      { name: 'Layout', path: 'layout', parentPath: null },
+      { name: 'Heros', path: 'layout/heros', parentPath: 'layout' },
     ]);
   });
 });

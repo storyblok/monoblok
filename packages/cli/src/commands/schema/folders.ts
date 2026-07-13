@@ -44,33 +44,41 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
 
 /**
  * Slugifies each `/` segment of a display path: `'My Layout/Heros'` →
- * `'my-layout/heros'`. Empty segments are dropped (matching
- * {@link expandFolderPath}), so `'Layout/'` → `'layout'`, not `'layout/'`.
+ * `'my-layout/heros'`. Segments are dropped when they slugify to empty, so
+ * `'Layout/'` → `'layout'` (not `'layout/'`) and `'A/&/B'` → `'a/b'` (the
+ * symbol-only segment vanishes, not `'a//b'`).
  *
  * This is folder-path *identity*: a folder authored as a `defineFolder` ref or
  * as a string shorthand with different casing/separators must canonicalize to
  * the same value here and in `@storyblok/schema`'s `slugifyFolderPath`, which
  * the schema validators use. The two implementations share this algorithm (the
- * per-segment `slugify`) and are each locked by golden-case tests; keep them in
- * sync. (The CLI does not import the schema helper to avoid a runtime dependency
- * on `@storyblok/schema`.)
+ * per-segment `slugify`, filtered *after* slugifying so a segment that reduces
+ * to empty is dropped rather than left as a double slash) and are each locked by
+ * golden-case tests; keep them in sync. (The CLI does not import the schema
+ * helper to avoid a runtime dependency on `@storyblok/schema`.)
  */
 export function slugifyPath(displayPath: string): string {
-  return displayPath.split('/').filter(Boolean).map(segment => slugify(segment)).join('/');
+  return displayPath.split('/').map(segment => slugify(segment)).filter(Boolean).join('/');
 }
 
 /**
  * Expands a display path into one {@link LocalFolder} per prefix, parent-first.
  * `'Layout/Heros'` → Layout (root) then Heros (child). Paths are slug space;
- * names keep the display casing for group creation.
+ * names keep the display casing for group creation. Segments that slugify to
+ * empty (blank or symbol-only, e.g. the `&` in `'Layout/&/Heros'`) are dropped,
+ * matching {@link slugifyPath} so a path expands to the same identity it
+ * canonicalizes to.
  */
 export function expandFolderPath(displayPath: string): LocalFolder[] {
-  const segments = displayPath.split('/').filter(Boolean);
+  const segments = displayPath
+    .split('/')
+    .map(segment => ({ name: segment, slug: slugify(segment) }))
+    .filter(segment => segment.slug !== '');
   const result: LocalFolder[] = [];
   let parentPath: string | null = null;
-  for (const segment of segments) {
-    const path: string = parentPath ? `${parentPath}/${slugify(segment)}` : slugify(segment);
-    result.push({ name: segment, path, parentPath });
+  for (const { name, slug } of segments) {
+    const path: string = parentPath ? `${parentPath}/${slug}` : slug;
+    result.push({ name, path, parentPath });
     parentPath = path;
   }
   return result;

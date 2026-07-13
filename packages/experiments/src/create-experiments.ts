@@ -76,7 +76,7 @@ export function createExperiments({ experiments, adapters = [], onError }: Creat
       }
       assignments.set(experiment.id, assignment);
 
-      const resolved = resolveExperiment({ experiments, slug, assignment });
+      const resolved = resolveExperiment({ experiments: [experiment], slug, assignment });
       if (resolved.exposure) {
         emit(resolved.exposure);
       }

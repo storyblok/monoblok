@@ -227,6 +227,9 @@ const bloksFieldRefMapper: RefMapper = (
   );
 };
 
+// Remaps an asset reference only when its id is present in the asset map.
+// Absent ids (including shared assets, whose ids are globally unique and never
+// added to the per-space map) pass through unchanged, preserving id+filename.
 const assetFieldRefMapper: RefMapper = (data, { maps }) => {
   if (!isRecord(data)) {
     return data;

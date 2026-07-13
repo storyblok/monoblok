@@ -44,15 +44,20 @@ export function createDatasourceEntriesResource(deps: MapiResourceDeps) {
 
     update<ThrowOnError extends boolean = false>(
       datasourceEntryId: number,
-      options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      options: { body: UpdateData['body']; query?: { dimension_id?: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
     ): Promise<ApiResponse<void, ThrowOnError>> {
-      const { body, signal, path, throwOnError, fetchOptions } = options;
+      const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
         datasourceEntriesApi.update({
           client,
           path: { space_id: resolvedSpaceId, datasource_entry_id: datasourceEntryId },
           body,
+          // The update endpoint accepts a `dimension_id` query param to write a
+          // per-dimension child value, but it is not modeled in the OpenAPI spec
+          // yet (generated `UpdateData['query']` is `never`). The generated sdk
+          // forwards `query` verbatim, so pass it through with a localized cast.
+          ...(query ? { query } as { query: never } : {}),
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),

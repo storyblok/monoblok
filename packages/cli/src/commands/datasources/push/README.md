@@ -172,23 +172,27 @@ The command performs the following operations:
 
 Each datasource file contains:
 - **Datasource metadata**: `id`, `name`, `slug`, `dimensions`, timestamps
-- **Entries**: Array of datasource entries with `id`, `name`, `value`, `dimension_value`
+- **Entries**: Array of datasource entries with `id`, `name`, `value`, and an optional `dimension_values` map
+
+`dimension_values` holds the value of an entry for each defined dimension, keyed by the dimension code (`entry_value`, e.g. `en`). Codes stay stable across spaces, so datasources push cleanly into a target space. When push creates a datasource, it also creates its dimensions in the target, which assigns fresh ids. On push, each code is resolved to the target space's dimension id; a code with no matching dimension in the target space is skipped with a warning, and a dimension removed locally is cleared in the target. Push does not reconcile dimensions on an existing target datasource: dimensions are created only when the datasource itself is created.
 
 Example datasource file:
 ```json
 {
   "id": 1,
-  "name": "colors",
-  "slug": "colors",
-  "dimensions": [],
+  "name": "greetings",
+  "slug": "greetings",
+  "dimensions": [
+    { "id": 1, "name": "English", "entry_value": "en", "datasource_id": 1 }
+  ],
   "created_at": "2024-01-01T00:00:00.000Z",
   "updated_at": "2024-01-01T00:00:00.000Z",
   "entries": [
     {
       "id": 101,
-      "name": "blue",
-      "value": "#0000ff",
-      "dimension_value": "",
+      "name": "hello",
+      "value": "hello",
+      "dimension_values": { "en": "hi" },
       "datasource_id": 1
     }
   ]

@@ -121,4 +121,33 @@ describe('datasourceEntries.update()', () => {
     expect(result.error).toBeUndefined();
     expect(result.data).toBeNull();
   });
+
+  it('should forward the dimension_id query param', async () => {
+    let requestUrl: string | undefined;
+    server.use(
+      http.put('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id', ({ request }) => {
+        requestUrl = request.url;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const client = createManagementApiClient({
+      personalAccessToken: 'test-token',
+      spaceId: 123,
+      region: 'eu',
+      rateLimit: false,
+    });
+
+    await client.datasourceEntries.update(456, {
+      query: { dimension_id: 42 },
+      body: {
+        datasource_entry: {
+          name: 'Updated Entry',
+          value: 'updated-value',
+          datasource_id: 789,
+        },
+      },
+    });
+
+    expect(new URL(requestUrl!).searchParams.get('dimension_id')).toBe('42');
+  });
 });

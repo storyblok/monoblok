@@ -174,8 +174,6 @@ Each datasource file contains:
 - **Datasource metadata**: `id`, `name`, `slug`, `dimensions`, timestamps
 - **Entries**: Array of datasource entries with `id`, `name`, `value`, and an optional `dimension_values` map
 
-`dimension_values` holds the value of an entry for each defined dimension, keyed by the dimension code (`entry_value`, e.g. `en`). Codes stay stable across spaces, so datasources push cleanly into a target space. When push creates a datasource, it also creates its dimensions in the target, which assigns fresh ids. On push, each code is resolved to the target space's dimension id; a code with no matching dimension in the target space is skipped with a warning, and a dimension removed locally is cleared in the target. Push does not reconcile dimensions on an existing target datasource: dimensions are created only when the datasource itself is created.
-
 Example datasource file:
 ```json
 {

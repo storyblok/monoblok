@@ -125,6 +125,10 @@ bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --libr
 
 Inspect a library first with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against libraries.
 
+`list.sh --resource shared-folders` only shows libraries the given `--space` already has access to; an empty result doesn't mean none exists. Check the org endpoint instead: `curl https://mapi.storyblok.com/v1/orgs/<orgId>/shared_asset_folders -H "Authorization: $STORYBLOK_TOKEN"`. To grant your QA space access, `PUT` to that same endpoint with `asset_folder_access` — it replaces the whole list, so include existing entries too or you'll revoke them.
+
+Before reusing a library, list its contents (`list.sh --resource shared-assets --library <libraryId>`). If it looks like production data, stop and tell the user instead of writing to or cleaning it. If it looks like test fixtures, it's fine to use.
+
 ### Scenario structure
 
 A scenario is a directory with optional subdirectories for each resource type:

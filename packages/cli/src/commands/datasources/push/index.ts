@@ -133,6 +133,10 @@ pushCmd
           const localEntries = entries ?? [];
           const existingEntries = existingDatasource?.entries ?? [];
 
+          // Collect per-dimension skip warnings and flush them after the spinner
+          // stops, so they aren't overwritten by the spinner's live redraw.
+          const dimensionWarnings: string[] = [];
+
           // Index existing entries by name with their position for O(1) lookup
           const existingEntryMap = new Map(existingEntries.map((e, idx) => [e.name, { entry: e, position: idx + 1 }]));
 
@@ -172,7 +176,7 @@ pushCmd
                   }
                   const dimension = result.dimensions?.find(d => d.entry_value === code);
                   if (!dimension?.id) {
-                    konsola.warn(`Skipping dimension "${code}" for entry "${entry.name}": no matching dimension in target space ${space}`);
+                    dimensionWarnings.push(`Skipping dimension "${code}" for entry "${entry.name}": no matching dimension in target space ${space}`);
                     continue;
                   }
                   await updateDatasourceEntryDimension(space, entryId, entry, dimension.id, localValue);
@@ -200,6 +204,9 @@ pushCmd
           }
 
           spinner.succeed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
+
+          // Flush any per-dimension skip warnings now that the spinner has stopped.
+          dimensionWarnings.forEach(warning => konsola.warn(warning));
         }
         else {
           results.failed.push({ name: datasource.name, error: result });

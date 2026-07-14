@@ -28,6 +28,7 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "nx": {
+    "tags": ["scope:ci"],
     "targets": {
       "build": {
         "inputs": [

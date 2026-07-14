@@ -33,14 +33,19 @@ permissions:
 
 jobs:
   build:
+    name: build (${{ matrix.name }})
     environment: test
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            projects: tag:npm:public
+            name: linux
+            # `tag:npm:public` is inferred from publishability; `tag:scope:ci` opts
+            # in private packages (e.g. tooling, integration tests) that still need CI.
+            projects: "tag:npm:public,tag:scope:ci"
           - os: windows-latest
+            name: windows
             projects: storyblok
     runs-on: ${{ matrix.os }}
     defaults:

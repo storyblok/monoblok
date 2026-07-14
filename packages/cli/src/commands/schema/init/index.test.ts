@@ -135,7 +135,7 @@ describe('schema init command', () => {
     expect(content).toContain('defineField(');
   });
 
-  it('should mirror component groups as slugified directories (no folder files)', async () => {
+  it('should mirror component groups as slugified directories and folder refs (no defineBlockFolder files)', async () => {
     const folder = makeMockFolder({ name: 'My Layout', uuid: 'layout-uuid' });
     const comp = makeMockComponent({ name: 'hero', component_group_uuid: 'layout-uuid' } as any);
     preconditions.hasRemoteSchema({ components: [comp], folders: [folder] });
@@ -143,7 +143,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     const files = Object.keys(vol.toJSON());
-    // The block is placed inside its slugified group directory; no folder file is written.
+    // The block is placed inside its slugified group directory.
     const componentFile = files.find(f => f.includes('/blocks/my-layout/hero.ts'));
     expect(componentFile).toBeDefined();
     expect(files.some(f => f.includes('/blocks/folders/'))).toBe(false);
@@ -151,12 +151,40 @@ describe('schema init command', () => {
     const content = vol.readFileSync(componentFile!, 'utf-8') as string;
     expect(content).toContain('defineBlock(');
     expect(content).not.toContain('defineBlockFolder');
-    // Groups aren't part of a content-shape definition, so the field is dropped.
+    // Groups aren't part of a content-shape definition, so the field is dropped
+    // in favor of an explicit `folder` reference.
     expect(content).not.toContain('component_group_uuid');
+    expect(content).toContain('import { myLayoutFolder } from \'../../folders\';');
+    expect(content).toContain('folder: myLayoutFolder,');
 
-    // schema.ts imports the block from its slugified subdirectory.
+    // A root folders.ts is written with a matching defineFolder const.
+    const foldersFile = files.find(f => f.endsWith('/folders.ts'));
+    expect(foldersFile).toBeDefined();
+    const foldersContent = vol.readFileSync(foldersFile!, 'utf-8') as string;
+    expect(foldersContent).toContain('import { defineFolder } from \'@storyblok/schema\';');
+    expect(foldersContent).toContain('export const myLayoutFolder = defineFolder({');
+    expect(foldersContent).toContain('name: \'My Layout\',');
+
+    // schema.ts imports the block from its slugified subdirectory and registers the folder.
     const schemaFile = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
     expect(schemaFile).toContain('./blocks/my-layout/hero');
+    expect(schemaFile).toContain('import { myLayoutFolder } from \'./folders\';');
+    expect(schemaFile).toContain('  folders: {');
+    expect(schemaFile).toContain('    myLayoutFolder,');
+  });
+
+  it('should not write folders.ts or register folders when the space has no groups', async () => {
+    const comp = makeMockComponent({ name: 'hero' });
+    preconditions.hasRemoteSchema({ components: [comp] });
+
+    await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
+
+    const files = Object.keys(vol.toJSON());
+    expect(files.some(f => f.endsWith('/folders.ts'))).toBe(false);
+
+    const schemaFile = vol.readFileSync(files.find(f => f.endsWith('/schema.ts'))!, 'utf-8') as string;
+    expect(schemaFile).not.toContain('folders:');
+    expect(schemaFile).not.toContain('./folders');
   });
 
   it('should generate datasource files', async () => {

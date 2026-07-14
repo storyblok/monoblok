@@ -1,13 +1,23 @@
 import type { Component, ComponentFolder, Datasource } from '../../types';
 
 /**
- * Local schema loaded from the user's TypeScript entry file. The schema package
- * is content-shape only: blocks and datasource definitions. Component groups are
- * a UI concern owned by editors, so pushed blocks are flat (the `blocks/`
- * directory layout is local organization only and never pushed as groups).
+ * Local schema loaded from the user's TypeScript entry file: blocks, datasource
+ * definitions, and the block folders (component groups) they declare. A block's
+ * group membership is diffed and pushed only when it opts in via a `folder`
+ * key; blocks without one stay unmanaged and their remote group is left as-is.
  */
+/** A locally defined block folder in slug-path identity space. */
+export interface LocalFolder {
+  /** Display name used when the group must be created. */
+  name: string;
+  /** Slugified name path — the folder's identity. */
+  path: string;
+  parentPath: string | null;
+}
+
 export interface SchemaData {
   components: Component[];
+  folders: LocalFolder[];
   datasources: Datasource[];
 }
 
@@ -21,7 +31,7 @@ export interface RemoteSchemaData {
 export type DiffAction = 'create' | 'update' | 'unchanged' | 'stale';
 
 export interface EntityDiff {
-  type: 'component' | 'datasource';
+  type: 'component' | 'datasource' | 'folder';
   name: string;
   action: DiffAction;
   diff: string | null;
@@ -45,7 +55,7 @@ export interface FieldChange {
 }
 
 export interface ChangesetEntry {
-  type: 'component' | 'datasource';
+  type: 'component' | 'datasource' | 'folder';
   name: string;
   action: 'create' | 'update' | 'delete';
   before?: Record<string, unknown>;

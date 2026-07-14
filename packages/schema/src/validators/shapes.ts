@@ -17,8 +17,8 @@ export interface SchemaFieldLike {
   /** `custom`: the field plugin discriminant, matched against registered `fieldPlugins`. */
   field_type?: string;
   required?: boolean;
-  /** Normalized block-name references for `bloks` fields. */
-  allow?: readonly string[];
+  /** Normalized block-name or folder-path references for `bloks` fields. */
+  allow?: readonly (string | { folder: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
   // Value constraints enforced by `validateStory` (all optional).
@@ -54,6 +54,8 @@ export interface SchemaFieldLike {
 export interface SchemaBlockLike {
   name: string;
   fields?: readonly SchemaFieldLike[];
+  /** Display path of the folder (component group) this block belongs to, if any. */
+  folder?: string | null;
 }
 
 /** A datasource definition (`defineDatasource` result). */

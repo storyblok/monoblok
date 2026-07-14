@@ -3,6 +3,7 @@ import { storyblokColorField } from '../field-plugins/storyblok-color-field';
 import { defineBlock } from '../helpers/define-block';
 import { defineDatasource } from '../helpers/define-datasource';
 import { defineField } from '../helpers/define-field';
+import { defineFolder } from '../helpers/define-folder';
 import type { SchemaBlockLike } from './shapes';
 import { validateSchema } from './validate-schema';
 
@@ -51,6 +52,13 @@ describe('validateSchema', () => {
     const result = validateSchema({ blocks: [block] });
     expect(result.ok).toBe(false);
     expect(codesFor(result)).toContain('unresolved_allow');
+  });
+
+  it('does not flag a folder allow entry as unresolved', () => {
+    const layout = defineFolder({ name: 'Layout' });
+    const block = defineBlock({ name: 'page', fields: [defineField('body', { type: 'bloks', allow: [layout] })] });
+    const result = validateSchema({ blocks: [block] });
+    expect(codesFor(result)).not.toContain('unresolved_allow');
   });
 
   it('flags a datasource reference to an unknown datasource', () => {

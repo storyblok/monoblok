@@ -34,9 +34,18 @@ function buildComponentPayload(input: unknown) {
     ...(isRecord(input.schema) && { schema: toSchemaRecord(input.schema) }),
     ...(typeof input.is_root === 'boolean' && { is_root: input.is_root }),
     ...(typeof input.is_nestable === 'boolean' && { is_nestable: input.is_nestable }),
-    ...(typeof input.component_group_uuid === 'string' && { component_group_uuid: input.component_group_uuid }),
+    // Forward the group membership only when the key is present on input: a
+    // string sets the group, an explicit `null` clears it. Unmanaged components
+    // (key absent) omit it so their remote group is left untouched.
+    ...('component_group_uuid' in input
+      && (typeof input.component_group_uuid === 'string' || input.component_group_uuid === null)
+      && { component_group_uuid: input.component_group_uuid }),
   };
 }
+
+// `component_group_uuid: null` (clearing a block's group) is modeled directly by
+// the generated `ComponentCreate`/`ComponentUpdate` types — the codegen patches
+// the MAPI write bodies to `string | null` (see tools/openapi-codegen/src/patches.ts).
 
 /** Converts an unknown input to a ComponentCreate-compatible payload. */
 export function toComponentCreate(input: unknown): ComponentCreate {

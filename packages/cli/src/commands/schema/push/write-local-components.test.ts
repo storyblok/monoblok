@@ -33,6 +33,7 @@ function makeDiff(stale: string[]): DiffResult {
 function makeSchema(overrides: Partial<SchemaData> = {}): SchemaData {
   return {
     components: [],
+    folders: [],
     datasources: [],
     ...overrides,
   };
@@ -74,6 +75,89 @@ describe('writeLocalComponents', () => {
     const heroContent = JSON.parse(vol.readFileSync(heroFile!, 'utf-8') as string);
     expect(heroContent.name).toBe('hero');
     expect(heroContent.schema).toEqual({ title: { type: 'text' } });
+  });
+
+  it('strips the transient folder key and path-space whitelist from written JSON', async () => {
+    const resolved = makeSchema({
+      components: [
+        {
+          name: 'hero',
+          folder: 'layout/heros',
+          component_group_uuid: null,
+          schema: { blocks: { type: 'bloks', restrict_type: 'groups', component_group_whitelist: ['layout'] } },
+        } as any,
+      ],
+    });
+
+    await writeLocalComponents({
+      space: SPACE,
+      basePath: undefined,
+      resolved,
+      diffResult: makeDiff([]),
+      deleteRemoved: false,
+      ui,
+      logger,
+    });
+
+    const files = Object.keys(vol.toJSON()).map(stripDriveLetter);
+    const heroFile = files.find(f => f.endsWith(join(componentsDir, 'hero.json')));
+    const content = JSON.parse(vol.readFileSync(heroFile!, 'utf-8') as string);
+    expect(content).not.toHaveProperty('folder');
+    expect(content.schema.blocks).not.toHaveProperty('component_group_whitelist');
+    // Non-transient keys are preserved.
+    expect(content).toHaveProperty('component_group_uuid', null);
+  });
+
+  it('drops orphaned group-restriction keys but leaves component-whitelist fields untouched', async () => {
+    const resolved = makeSchema({
+      components: [
+        {
+          name: 'hero',
+          folder: 'layout/heros',
+          component_group_uuid: null,
+          schema: {
+            blocks: {
+              type: 'bloks',
+              restrict_type: 'groups',
+              restrict_components: true,
+              component_group_whitelist: ['layout'],
+            },
+            other_blocks: {
+              type: 'bloks',
+              restrict_type: '',
+              restrict_components: true,
+              component_whitelist: ['x'],
+            },
+          },
+        } as any,
+      ],
+    });
+
+    await writeLocalComponents({
+      space: SPACE,
+      basePath: undefined,
+      resolved,
+      diffResult: makeDiff([]),
+      deleteRemoved: false,
+      ui,
+      logger,
+    });
+
+    const files = Object.keys(vol.toJSON()).map(stripDriveLetter);
+    const heroFile = files.find(f => f.endsWith(join(componentsDir, 'hero.json')));
+    const content = JSON.parse(vol.readFileSync(heroFile!, 'utf-8') as string);
+    expect(content).not.toHaveProperty('folder');
+
+    expect(content.schema.blocks).not.toHaveProperty('component_group_whitelist');
+    expect(content.schema.blocks).not.toHaveProperty('restrict_type');
+    expect(content.schema.blocks).not.toHaveProperty('restrict_components');
+
+    expect(content.schema.other_blocks).toEqual({
+      type: 'bloks',
+      restrict_type: '',
+      restrict_components: true,
+      component_whitelist: ['x'],
+    });
   });
 
   it('never writes groups.json (component groups are not managed)', async () => {

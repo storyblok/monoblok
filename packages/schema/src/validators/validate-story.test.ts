@@ -4,6 +4,7 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { defineBlock } from '../helpers/define-block';
 import { defineField } from '../helpers/define-field';
 import { defineFieldPlugin } from '../helpers/define-field-plugin';
+import { defineFolder } from '../helpers/define-folder';
 import { storyblokColorField } from '../field-plugins/storyblok-color-field';
 import { validateStory } from './validate-story';
 
@@ -298,5 +299,110 @@ describe('validateStory — constraints', () => {
     const disallowed = result.issues.find(i => i.code === 'disallowed_component');
     expect(disallowed).toBeDefined();
     expect(disallowed?.path).toEqual(['content', 'items', 0, 'component']);
+  });
+});
+
+describe('validateStory — folder allow entries', () => {
+  const layout = defineFolder({ name: 'Layout' });
+  const heros = defineFolder({ name: 'Heros', parent: layout });
+  const hero = defineBlock({ name: 'hero', folder: heros, fields: [defineField('title', { type: 'text' })] });
+  const teaserBlock = defineBlock({ name: 'teaser', fields: [defineField('text', { type: 'text' })] });
+  const pageWithFolderAllow = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [defineField('body', { type: 'bloks', allow: [layout] })],
+  });
+  const folderSchema = { blocks: { page: pageWithFolderAllow, hero, teaser: teaserBlock } };
+
+  it('allows components whose block folder is inside an allowed folder', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: [{ component: 'hero', title: 'Hi' }],
+      },
+    }, folderSchema);
+    expect(result.issues.find(i => i.code === 'disallowed_component')).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects components outside the allowed folder', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: [{ component: 'teaser', text: 'hi' }],
+      },
+    }, folderSchema);
+    const disallowed = result.issues.find(i => i.code === 'disallowed_component');
+    expect(disallowed).toBeDefined();
+    expect(disallowed?.message).toBe(
+      'Component "teaser" is not allowed in field "body"; allowed: folder:Layout.',
+    );
+    expect(disallowed?.message).not.toContain('[object Object]');
+  });
+
+  it('matches folder paths in slug space, so casing/separator drift between a ref and a string shorthand still allows the block', () => {
+    // `driftHero` writes its folder as a lower-cased, dash-separated string; the
+    // allow ref resolves to the display path `My Layout/Heros`. The CLI/editor
+    // group both under the same component group, so the validator must too.
+    const myLayout = defineFolder({ name: 'My Layout' });
+    const myHeros = defineFolder({ name: 'Heros', parent: myLayout });
+    const driftHero = defineBlock({
+      name: 'drift_hero',
+      folder: 'my-layout/heros',
+      fields: [defineField('title', { type: 'text' })],
+    });
+    const pageDrift = defineBlock({
+      name: 'page',
+      is_root: true,
+      fields: [defineField('body', { type: 'bloks', allow: [myHeros] })],
+    });
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: [{ component: 'drift_hero', title: 'Hi' }],
+      },
+    }, { blocks: { page: pageDrift, drift_hero: driftHero } });
+    expect(result.issues.find(i => i.code === 'disallowed_component')).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('validateStory — richtext allow entries', () => {
+  // `mapFieldToWire` pushes folder/name `allow` on a richtext field as a real
+  // editor/API restriction, so `validateStory` must enforce it for bloks
+  // embedded in richtext, not only top-level `bloks` fields.
+  const layout = defineFolder({ name: 'Layout' });
+  const hero = defineBlock({ name: 'hero', folder: layout, fields: [defineField('title', { type: 'text' })] });
+  const teaserBlock = defineBlock({ name: 'teaser', fields: [defineField('text', { type: 'text' })] });
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [defineField('body', { type: 'richtext', allow: [layout] })],
+  });
+  const schema = { blocks: { page, hero, teaser: teaserBlock } };
+
+  /** Wraps embedded bloks in a minimal richtext `doc` with one `blok` node. */
+  function richtextWith(bloks: unknown[]): unknown {
+    return { type: 'doc', content: [{ type: 'blok', attrs: { id: 'x', body: bloks } }] };
+  }
+
+  it('allows an embedded blok whose folder is inside an allowed folder', () => {
+    const result = validateStory({
+      content: { component: 'page', body: richtextWith([{ component: 'hero', title: 'Hi' }]) },
+    }, schema);
+    expect(result.issues.find(i => i.code === 'disallowed_component')).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects an embedded blok outside the allowed folder', () => {
+    const result = validateStory({
+      content: { component: 'page', body: richtextWith([{ component: 'teaser', text: 'hi' }]) },
+    }, schema);
+    const disallowed = result.issues.find(i => i.code === 'disallowed_component');
+    expect(disallowed).toBeDefined();
+    expect(disallowed?.path).toEqual(['content', 'body', 'content', 0, 'attrs', 'body', 0, 'component']);
+    expect(disallowed?.message).toBe(
+      'Component "teaser" is not allowed in field "body"; allowed: folder:Layout.',
+    );
   });
 });

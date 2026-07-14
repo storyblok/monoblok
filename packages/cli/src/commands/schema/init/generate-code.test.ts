@@ -6,10 +6,12 @@ import {
   datasourceVarName,
   generateComponentFile,
   generateDatasourceFile,
+  generateFoldersFile,
   generateSchemaFile,
   resolveComponents,
   resolveDatasources,
   resolveFileNames,
+  resolveFolders,
   resolveVarNames,
 } from './generate-code';
 
@@ -160,6 +162,178 @@ describe('generateComponentFile', () => {
 
     expect(result).toContain('restrict_components: true,');
     expect(result).toContain('restrict_type: \'groups\',');
+  });
+
+  it('should resolve a group whitelist to allow: [folderVar] and import the folder when uuids are known', () => {
+    const component = {
+      id: 1,
+      name: 'landing',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-heros'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([['uuid-heros', 'herosFolder']]),
+    );
+
+    expect(result).toContain('import { herosFolder } from \'../folders\';');
+    expect(result).toContain('allow: [');
+    expect(result).toContain('herosFolder,');
+    expect(result).not.toContain('herosFolder\'');
+    expect(result).not.toContain('component_group_whitelist');
+    expect(result).not.toContain('restrict_type');
+    expect(result).not.toContain('restrict_components');
+  });
+
+  it('should resolve a group whitelist to allow refs even when an empty component_whitelist accompanies it', () => {
+    // A field restricted to a group carries an empty `component_whitelist: []`
+    // alongside the `component_group_whitelist` on the wire; the group refs must
+    // win rather than the empty name whitelist producing `allow: []`.
+    const component = {
+      id: 1,
+      name: 'grid',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        columns: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_whitelist: [],
+          component_group_whitelist: ['uuid-heros'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([['uuid-heros', 'herosFolder']]),
+    );
+
+    expect(result).toContain('import { herosFolder } from \'../folders\';');
+    expect(result).toContain('allow: [');
+    expect(result).toContain('herosFolder,');
+    expect(result).not.toContain('allow: []');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('component_group_whitelist');
+  });
+
+  it('should drop orphaned restrict flags when a restricted field has no names and no groups', () => {
+    // `restrict_components: true` with an empty `component_whitelist` and no group
+    // whitelist is a wire byproduct that `allow` re-derives on push; without an
+    // allow to back it, it must not be emitted as orphaned DSL state.
+    const component = {
+      id: 1,
+      name: 'landing',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          component_whitelist: [],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('defineField(\'body\', {');
+    expect(result).not.toContain('restrict_components');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('allow');
+  });
+
+  it('should omit empty array fields on blocks and fields', () => {
+    const component = {
+      id: 1,
+      name: 'hero',
+      created_at: '',
+      updated_at: '',
+      internal_tag_ids: [],
+      schema: {
+        body: { type: 'bloks', pos: 0, component_whitelist: [] },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).not.toContain('internal_tag_ids');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('allow: []');
+    expect(result).not.toContain(': [],');
+  });
+
+  it('should keep a raw group whitelist when a uuid has no known folder var', () => {
+    const component = {
+      id: 1,
+      name: 'landing',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-unknown'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, new Map([['uuid-heros', 'herosFolder']]));
+
+    expect(result).toContain('component_group_whitelist');
+    expect(result).toContain('restrict_type: \'groups\',');
+    expect(result).not.toContain('from \'../folders\'');
+  });
+
+  it('should combine the block\'s own folder and a whitelist folder into one import at the right depth', () => {
+    const component = {
+      id: 1,
+      name: 'hero',
+      created_at: '',
+      updated_at: '',
+      component_group_uuid: 'uuid-heros',
+      schema: {
+        related: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-marketing'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      { varName: 'herosFolder', segments: ['layout', 'heros'] },
+      new Map([['uuid-heros', 'herosFolder'], ['uuid-marketing', 'marketingFolder']]),
+    );
+
+    // Block lives at blocks/layout/heros/hero.ts -> three levels up to folders.ts.
+    expect(result).toContain('import { herosFolder, marketingFolder } from \'../../../folders\';');
+    expect(result).toContain('folder: herosFolder,');
+    expect(result).toContain('allow: [');
+    expect(result).toContain('marketingFolder,');
   });
 
   it('should drop component_group_uuid by default (group encoded by directory)', () => {
@@ -343,6 +517,78 @@ describe('generateComponentFile with explicit var name', () => {
       'heroBlock2',
     );
     expect(result).toContain('export const heroBlock2 = defineBlock({');
+  });
+});
+
+describe('resolveFolders / generateFoldersFile', () => {
+  it('should generate a folders.ts with nested defineFolder consts, parent-first', () => {
+    const layout = { id: 1, uuid: 'u1', name: 'Layout', parent_id: null, parent_uuid: null };
+    const heros = { id: 2, uuid: 'u2', name: 'Heros', parent_id: 1, parent_uuid: 'u1' };
+    const resolved = resolveFolders([heros, layout] as any); // input order must not matter
+    const code = generateFoldersFile(resolved);
+
+    expect(code).toContain('import { defineFolder } from \'@storyblok/schema\';');
+    expect(code).toContain(`export const layoutFolder = defineFolder({\n  name: 'Layout',\n});`);
+    expect(code).toContain(`export const herosFolder = defineFolder({\n  name: 'Heros',\n  parent: layoutFolder,\n});`);
+    expect(code.indexOf('layoutFolder')).toBeLessThan(code.indexOf('herosFolder'));
+  });
+
+  it('dedupes folder var names via resolveVarNames', () => {
+    const a = { id: 1, uuid: 'u1', name: 'Colors & Sizes', parent_id: null, parent_uuid: null };
+    const b = { id: 2, uuid: 'u2', name: 'Colors / Sizes', parent_id: null, parent_uuid: null };
+    const resolved = resolveFolders([a, b] as any);
+
+    expect(resolved.map(r => r.varName)).toEqual(['colorsSizesFolder', 'colorsSizesFolder2']);
+  });
+});
+
+describe('generateComponentFile with a folder ref', () => {
+  it('should emit folder refs on grouped component files', () => {
+    const component = { name: 'hero', schema: {}, component_group_uuid: 'u2' } as any;
+    const code = generateComponentFile(component, 'heroBlock', { varName: 'herosFolder', segments: ['layout', 'heros'] });
+
+    expect(code).toContain('import { herosFolder } from \'../../../folders\';');
+    expect(code).toContain('folder: herosFolder,');
+    expect(code).not.toContain('component_group_uuid');
+  });
+
+  it('should not emit a folder import or ref for ungrouped components', () => {
+    const component = { name: 'hero', schema: {} } as any;
+    const code = generateComponentFile(component, 'heroBlock');
+
+    expect(code).not.toContain('folders\';');
+    expect(code).not.toContain('folder:');
+  });
+
+  it('uses a single \'../folders\' import for a root-level grouped block', () => {
+    const component = { name: 'hero', schema: {}, component_group_uuid: 'u1' } as any;
+    const code = generateComponentFile(component, 'heroBlock', { varName: 'layoutFolder', segments: ['layout'] });
+
+    expect(code).toContain('import { layoutFolder } from \'../../folders\';');
+  });
+});
+
+describe('generateSchemaFile with folders', () => {
+  it('should register folders in the generated schema file', () => {
+    const layout = { id: 1, uuid: 'u1', name: 'Layout', parent_id: null, parent_uuid: null };
+    const resolvedFolders = resolveFolders([layout] as any);
+
+    const result = generateSchemaFile(
+      resolveComponents([], []),
+      resolveDatasources([]),
+      resolvedFolders,
+    );
+
+    expect(result).toContain('import { layoutFolder } from \'./folders\';');
+    expect(result).toContain('  folders: {');
+    expect(result).toContain('    layoutFolder,');
+  });
+
+  it('should omit folders from schema.ts when there are none', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    expect(result).not.toContain('folders:');
+    expect(result).not.toContain('./folders');
   });
 });
 

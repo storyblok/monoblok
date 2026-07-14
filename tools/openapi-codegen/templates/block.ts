@@ -37,6 +37,12 @@ export type Block<
    * directory layout.
    */
   component_group_uuid?: string | null;
+  /**
+   * Folder membership as a display name path (e.g. `'Layout/Heros'`); `null` =
+   * explicitly ungrouped (push clears the group). Absent = unmanaged (push
+   * leaves the remote group untouched).
+   */
+  folder?: string | null;
 }>;
 
 /**

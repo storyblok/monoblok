@@ -183,7 +183,7 @@ export type ComponentCreate = {
     /**
      * UUID
      */
-    component_group_uuid?: string;
+    component_group_uuid?: string | null;
     /**
      * Component color for UI display
      */
@@ -269,7 +269,7 @@ export type ComponentUpdate = {
     /**
      * UUID
      */
-    component_group_uuid?: string;
+    component_group_uuid?: string | null;
     /**
      * Component color for UI display
      */

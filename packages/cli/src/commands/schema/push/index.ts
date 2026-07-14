@@ -15,6 +15,7 @@ import type { SchemaData } from '../types';
 import { loadSchema } from './load-schema';
 import { diffSchema } from './diff-schema';
 import { fetchRemoteSchema } from '../actions';
+import { buildGroupPathByUuid } from '../folders';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
 import { analyzeBreakingChanges } from './migrations/analyze';
@@ -63,11 +64,11 @@ schemaCommand
         handleError(toError(maybeError), verbose);
         return;
       }
-      loadSpinner.succeed(`Found: ${local.components.length} components, ${local.datasources.length} datasources`);
+      loadSpinner.succeed(`Found: ${local.components.length} components, ${local.folders.length} folders, ${local.datasources.length} datasources`);
 
-      const totalLocal = local.components.length + local.datasources.length;
+      const totalLocal = local.components.length + local.datasources.length + local.folders.length;
       if (totalLocal === 0) {
-        ui.warn('No components or datasources found in the entry file. Verify the file exports schema definitions.');
+        ui.warn('No components, folders, or datasources found in the entry file. Verify the file exports schema definitions.');
         return;
       }
 
@@ -85,7 +86,7 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`);
 
-      // 3. Diff (blocks are pushed flat; component groups are not diffed)
+      // 3. Diff components, datasources, and folders (component groups)
       const diffResult = diffSchema(local, remote);
 
       // 5. Display diffs
@@ -173,6 +174,32 @@ schemaCommand
         const deletedComponents = diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale');
         for (const comp of deletedComponents) {
           ui.warn(`Component '${comp.name}' will be deleted. Stories using it will have out-of-schema content.`);
+        }
+
+        // Warn per stale folder that still holds remote components (they will be
+        // ungrouped, not deleted, when the group is removed).
+        const staleFolders = diffResult.diffs.filter(d => d.type === 'folder' && d.action === 'stale');
+        if (staleFolders.length > 0) {
+          const uuidByPath = new Map<string, string>();
+          for (const [uuid, segments] of buildGroupPathByUuid([...remote.componentFolders.values()])) {
+            uuidByPath.set(segments.join('/'), uuid);
+          }
+          // Only components that survive the push are truly ungrouped. A stale
+          // component inside the folder is being deleted, not ungrouped, so it
+          // must not inflate the count.
+          const staleComponentNames = new Set(
+            diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale').map(d => d.name),
+          );
+          for (const folder of staleFolders) {
+            const uuid = uuidByPath.get(folder.name);
+            if (!uuid) { continue; }
+            const count = [...remote.components.values()]
+              .filter(c => c.component_group_uuid === uuid && !staleComponentNames.has(c.name))
+              .length;
+            if (count > 0) {
+              ui.warn(`Folder '${folder.name}' will be deleted; ${count} component(s) inside will be ungrouped.`);
+            }
+          }
         }
       }
 

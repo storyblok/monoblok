@@ -79,8 +79,8 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
 const server = setupServer();
 
 const preconditions = {
-  hasLocalSchema(schema: Pick<SchemaData, 'components' | 'datasources'>) {
-    vi.mocked(loadSchema).mockResolvedValue(schema);
+  hasLocalSchema(schema: Pick<SchemaData, 'components' | 'datasources'> & Partial<Pick<SchemaData, 'folders'>>) {
+    vi.mocked(loadSchema).mockResolvedValue({ folders: [], ...schema });
   },
   hasRemoteComponents(components: MockComponent[]) {
     server.use(
@@ -368,7 +368,72 @@ describe('schema push command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
     // ui.warn outputs to console.warn; verify the zero-export warning was shown
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No components or datasources'));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No components, folders, or datasources'));
+  });
+
+  it('pushes a folders-only schema instead of warning about no entities', async () => {
+    preconditions.hasLocalSchema({
+      components: [],
+      datasources: [],
+      folders: [{ name: 'Layout', path: 'layout', parentPath: null }],
+    });
+    preconditions.hasEmptyRemote();
+    server.use(
+      http.post(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups`, async ({ request }) => {
+        const body = await request.json() as { component_group: { name: string } };
+        return HttpResponse.json({ component_group: { id: 1, uuid: 'u1', name: body.component_group.name } });
+      }),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
+
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('No components'));
+    // The folder create diff was rendered (the gate no longer short-circuits).
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('1 to create'));
+  });
+
+  it('warns that deleting a stale folder will ungroup its remote components', async () => {
+    const localHero = makeMockComponent({ name: 'hero', schema: { title: { type: 'text', pos: 0 } } });
+    const remoteHero = { ...localHero, component_group_uuid: 'u-layout' };
+    preconditions.hasLocalSchema({ components: [localHero] as any, datasources: [] });
+    preconditions.hasRemoteComponents([remoteHero]);
+    preconditions.hasRemoteFolders([{ id: 10, name: 'Layout', uuid: 'u-layout' }]);
+    preconditions.hasRemoteDatasources([]);
+    server.use(
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`, () =>
+        HttpResponse.json({})),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--delete']);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Folder \'layout\' will be deleted; 1 component(s) inside will be ungrouped.'),
+    );
+  });
+
+  it('excludes stale (deleted) components from the ungroup count', async () => {
+    // `keep` stays (declared locally, unmanaged), `gone` is stale and deleted.
+    // Both live in the Layout group remotely; only `keep` is truly ungrouped.
+    const keep = makeMockComponent({ name: 'keep', schema: { title: { type: 'text', pos: 0 } } });
+    const keepRemote = { ...keep, component_group_uuid: 'u-layout' };
+    const goneRemote = { ...makeMockComponent({ name: 'gone' }), component_group_uuid: 'u-layout' };
+    preconditions.hasLocalSchema({ components: [keep] as any, datasources: [] });
+    preconditions.hasRemoteComponents([keepRemote, goneRemote]);
+    preconditions.hasRemoteFolders([{ id: 10, name: 'Layout', uuid: 'u-layout' }]);
+    preconditions.hasRemoteDatasources([]);
+    server.use(
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
+        HttpResponse.json({})),
+      http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`, () =>
+        HttpResponse.json({})),
+    );
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--delete']);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Folder \'layout\' will be deleted; 1 component(s) inside will be ungrouped.'),
+    );
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('2 component(s) inside will be ungrouped'));
   });
 
   it('should not include stale entities in changeset without --delete', async () => {

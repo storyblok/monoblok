@@ -3,6 +3,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock } from './define-block';
 import { defineField } from './define-field';
 import { defineFieldPlugin } from './define-field-plugin';
+import { defineFolder } from './define-folder';
 import { defineSchema } from './define-schema';
 import type { Schema } from './schema-type';
 
@@ -11,6 +12,8 @@ const pageBlock = defineBlock({
   is_root: true,
   fields: [defineField('headline', { type: 'text' })],
 });
+
+const layout = defineFolder({ name: 'Layout' });
 
 const colorPicker = defineFieldPlugin({
   fieldType: 'my-color',
@@ -29,5 +32,10 @@ describe('defineSchema', () => {
   it('derives an empty field-plugin map when none are registered', () => {
     const _schema = defineSchema({ blocks: { pageBlock } });
     expectTypeOf<Schema<typeof _schema>['fieldPlugins']>().toEqualTypeOf<Record<never, never>>();
+  });
+
+  it('typechecks and preserves the literal folder path when folders are registered', () => {
+    const _schema = defineSchema({ blocks: { pageBlock }, folders: { layout } });
+    expectTypeOf(_schema.folders.layout.path).toEqualTypeOf<'Layout'>();
   });
 });

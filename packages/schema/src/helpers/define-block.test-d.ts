@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest';
 import { defineBlock, type NestableBlock, type RootBlock } from './define-block';
 import { defineField } from './define-field';
+import { defineFolder } from './define-folder';
 
 describe('defineBlock', () => {
   it('should preserve literal name type', () => {
@@ -43,6 +44,12 @@ describe('defineBlock', () => {
   it('should accept the component_group_uuid escape hatch', () => {
     const testBlock = defineBlock({ name: 'test', component_group_uuid: 'group-uuid', fields: [] });
     expectTypeOf(testBlock.component_group_uuid).toEqualTypeOf<string | null | undefined>();
+  });
+
+  it('should type folder as the path literal', () => {
+    const heros = defineFolder({ name: 'Heros' });
+    const block = defineBlock({ name: 'hero', folder: heros, fields: [] });
+    expectTypeOf(block.folder).toEqualTypeOf<'Heros'>();
   });
 });
 

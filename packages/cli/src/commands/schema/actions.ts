@@ -4,8 +4,9 @@ import { fetchAllPages } from '../../utils';
 
 /**
  * Fetches remote components, component folders, and datasources from the MAPI.
- * Component folders are fetched for `schema init` (to mirror groups as local
- * directories); `schema push` does not diff or manage them.
+ * Component folders are used by `schema init` (to mirror groups as local
+ * directories) and by `schema push`, which diffs and manages them: creating,
+ * resolving membership against, and (with `--delete`) removing component groups.
  */
 export async function fetchRemoteSchema(spaceId: string) {
   const client = getMapiClient();

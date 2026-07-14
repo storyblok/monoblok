@@ -145,6 +145,29 @@ describe('schema rollback command', () => {
     // msw configured with onUnhandledRequest: 'error' — no fetch handlers registered, so any HTTP call would fail
   });
 
+  it('includes folder operations in the rollback preview', async () => {
+    preconditions.hasChangeset(makeChangeset([
+      { type: 'folder', name: 'layout', action: 'create', after: { name: 'Layout', path: 'layout', parentPath: null } },
+    ]));
+
+    await schemaCommand.parseAsync([
+      'node',
+      'test',
+      'rollback',
+      CHANGESET_PATH,
+      '--space',
+      DEFAULT_SPACE,
+      '--dry-run',
+    ]);
+
+    // The folder is surfaced under a Folders section (create inverts to delete),
+    // not skipped with a "not rolled back" note.
+    const logged = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls.flat().join('\n');
+    expect(logged).toContain('Folders');
+    expect(logged).toContain('layout');
+    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining('not rolled back'));
+  });
+
   it('should cancel when user declines confirmation', async () => {
     const comp = makeMockComponent({ name: 'hero' });
     preconditions.hasChangeset(makeChangeset([

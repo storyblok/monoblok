@@ -2,8 +2,12 @@ import React from 'react';
 import type { SbBlokData } from '@storyblok/react';
 import { storyblokEditable } from '@storyblok/react/rsc';
 
+interface IframeEmbedBlok extends SbBlokData {
+  url?: { url?: string; title?: string };
+}
+
 interface IframeEmbedProps {
-  blok: SbBlokData;
+  blok: IframeEmbedBlok;
 }
 
 const IFrameEmbed = ({ blok }: IframeEmbedProps) => {

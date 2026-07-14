@@ -10,7 +10,7 @@ export default async function Home() {
   )
 }
 
-export async function fetchData() {
+async function fetchData() {
   const storyblokApi = new StoryblokClient({
     accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
   })

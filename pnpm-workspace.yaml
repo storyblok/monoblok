@@ -3,6 +3,13 @@ packages:
   - packages/*/playground
   - packages/*/playground/*
   - tools/*
+catalog:
+  # Pin a single React 19 types version so the React playgrounds and the
+  # workspace-linked @storyblok/react resolve one @types/react copy. Must track
+  # what Next.js expects (its generated route types reference the global React
+  # namespace), otherwise a duplicate ReactNode causes type errors.
+  "@types/react": 19.2.3
+  "@types/react-dom": 19.2.3
 onlyBuiltDependencies:
   - cypress
   - esbuild

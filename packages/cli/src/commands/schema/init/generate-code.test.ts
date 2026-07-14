@@ -197,6 +197,89 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('restrict_components');
   });
 
+  it('should resolve a group whitelist to allow refs even when an empty component_whitelist accompanies it', () => {
+    // A field restricted to a group carries an empty `component_whitelist: []`
+    // alongside the `component_group_whitelist` on the wire; the group refs must
+    // win rather than the empty name whitelist producing `allow: []`.
+    const component = {
+      id: 1,
+      name: 'grid',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        columns: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          restrict_type: 'groups',
+          component_whitelist: [],
+          component_group_whitelist: ['uuid-heros'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([['uuid-heros', 'herosFolder']]),
+    );
+
+    expect(result).toContain('import { herosFolder } from \'../folders\';');
+    expect(result).toContain('allow: [');
+    expect(result).toContain('herosFolder,');
+    expect(result).not.toContain('allow: []');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('component_group_whitelist');
+  });
+
+  it('should drop orphaned restrict flags when a restricted field has no names and no groups', () => {
+    // `restrict_components: true` with an empty `component_whitelist` and no group
+    // whitelist is a wire byproduct that `allow` re-derives on push; without an
+    // allow to back it, it must not be emitted as orphaned DSL state.
+    const component = {
+      id: 1,
+      name: 'landing',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: true,
+          component_whitelist: [],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('defineField(\'body\', {');
+    expect(result).not.toContain('restrict_components');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('allow');
+  });
+
+  it('should omit empty array fields on blocks and fields', () => {
+    const component = {
+      id: 1,
+      name: 'hero',
+      created_at: '',
+      updated_at: '',
+      internal_tag_ids: [],
+      schema: {
+        body: { type: 'bloks', pos: 0, component_whitelist: [] },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).not.toContain('internal_tag_ids');
+    expect(result).not.toContain('component_whitelist');
+    expect(result).not.toContain('allow: []');
+    expect(result).not.toContain(': [],');
+  });
+
   it('should keep a raw group whitelist when a uuid has no known folder var', () => {
     const component = {
       id: 1,

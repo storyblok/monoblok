@@ -220,23 +220,49 @@ function resolveGroupWhitelistRefs(
  * resolved `allow` — they're the wire byproduct `defineField`'s `allow`
  * re-derives on push, not independent DSL state. A group whitelist that cannot
  * be fully resolved to folder refs keeps its raw wire form.
+ *
+ * A field restricted to a component *group* carries both a `component_group_whitelist`
+ * and an empty `component_whitelist: []` on the wire; the group whitelist takes
+ * precedence, so `allow` is only sourced from `component_whitelist` when it holds
+ * actual block names — otherwise the resolved folder refs win.
  */
 function toDslField(field: Record<string, unknown>, folderVarByUuid?: Map<string, string>): Record<string, unknown> {
   const { component_whitelist, component_group_whitelist, datasource_slug, restrict_components, restrict_type, ...rest } = field;
   const out: Record<string, unknown> = { ...rest };
   const groupRefs = resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
-  if (component_whitelist !== undefined) {
+  const hasBlockNames = Array.isArray(component_whitelist) && component_whitelist.length > 0;
+  if (hasBlockNames) {
     out.allow = component_whitelist;
   }
   else if (groupRefs) {
     out.allow = groupRefs;
   }
-  else {
-    if (component_group_whitelist !== undefined) { out.component_group_whitelist = component_group_whitelist; }
+  else if (component_group_whitelist !== undefined) {
+    // A group whitelist we could not resolve to folder refs: keep the raw wire
+    // form (whitelist + restrict flags) so it still round-trips on push.
+    out.component_group_whitelist = component_group_whitelist;
     if (restrict_components !== undefined) { out.restrict_components = restrict_components; }
     if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
   }
+  // Otherwise there is no allow list (name whitelist absent or empty, no groups);
+  // `restrict_components`/`restrict_type` are byproducts `allow` re-derives on
+  // push, so they are dropped rather than emitted as orphaned DSL state.
   if (datasource_slug !== undefined) { out.datasource = datasource_slug; }
+  return out;
+}
+
+/**
+ * Returns a shallow copy of `obj` without keys whose value is an empty array.
+ * Remote blocks/fields carry many optional list fields the space never set
+ * (e.g. `internal_tag_ids: []`, an empty `component_whitelist`); emitting them
+ * as `key: []` is noise in a hand-editable definition, so they are dropped.
+ */
+function omitEmptyArrays(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (Array.isArray(value) && value.length === 0) { continue; }
+    out[key] = value;
+  }
   return out;
 }
 
@@ -250,7 +276,7 @@ function generateFieldCode(
   depth: number,
   folderVarByUuid?: Map<string, string>,
 ): string {
-  const clean = toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid);
+  const clean = omitEmptyArrays(toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid));
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
 
@@ -344,7 +370,7 @@ export function generateComponentFile(
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
-  const clean = stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS);
+  const clean = omitEmptyArrays(stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS));
 
   // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;

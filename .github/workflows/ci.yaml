@@ -33,14 +33,17 @@ permissions:
 
 jobs:
   build:
+    name: build (${{ matrix.name }})
     environment: test
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            projects: tag:npm:public
+            name: linux
+            projects: "*"
           - os: windows-latest
+            name: windows
             projects: storyblok
     runs-on: ${{ matrix.os }}
     defaults:

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build:demo": "astro build",
     "preview": "astro preview"
   },
   "dependencies": {
@@ -21,5 +21,9 @@
   },
   "nx": {
     "projectType": "application"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
   }
 }

@@ -4,6 +4,15 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@types/react':
+      specifier: 19.2.3
+      version: 19.2.3
+    '@types/react-dom':
+      specifier: 19.2.3
+      version: 19.2.3
+
 overrides:
   cypress: ^14.3.3
   happy-dom: ^20.8.8
@@ -184,11 +193,36 @@ importers:
         specifier: ^3.1.3
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.11.0)(@vitest/ui@3.2.4)(happy-dom@20.8.9)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(less@4.6.4)(lightningcss@1.32.0)(msw@2.12.10(@types/node@24.11.0)(typescript@5.8.3))(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/astro/playground/shared:
+    dependencies:
+      '@storyblok/astro':
+        specifier: workspace:*
+        version: link:../..
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.2.4
+        version: 19.2.4(react@19.2.4)
+      svelte:
+        specifier: ^5.55.0
+        version: 5.55.0
+      vue:
+        specifier: ^3.5.30
+        version: 3.5.30(typescript@6.0.3)
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.3
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
+
   packages/astro/playground/ssg:
     dependencies:
       '@astrojs/react':
         specifier: ^6.0.0
-        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       '@astrojs/svelte':
         specifier: ^9.0.0
         version: 9.0.0(@types/node@24.11.0)(astro@7.0.3(@astrojs/markdown-remark@7.2.0)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.6.1)(less@4.6.4)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(svelte@5.55.0)(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.2)
@@ -214,6 +248,12 @@ importers:
         specifier: ^3.5.30
         version: 3.5.30(typescript@6.0.3)
     devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.3
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
       vite-plugin-mkcert:
         specifier: ^1.17.10
         version: 1.17.10(vite@8.1.0(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -222,7 +262,7 @@ importers:
     dependencies:
       '@astrojs/react':
         specifier: ^6.0.0
-        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       '@astrojs/svelte':
         specifier: ^9.0.0
         version: 9.0.0(@types/node@24.11.0)(astro@7.0.3(@astrojs/markdown-remark@7.2.0)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.6.1)(less@4.6.4)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(svelte@5.55.0)(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.2)
@@ -251,6 +291,12 @@ importers:
         specifier: ^3.5.30
         version: 3.5.30(typescript@6.0.3)
     devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.3
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
       vite-plugin-mkcert:
         specifier: ^1.17.10
         version: 1.17.10(vite@8.1.0(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -259,7 +305,7 @@ importers:
     dependencies:
       '@astrojs/react':
         specifier: ^6.0.0
-        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
+        version: 6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
       '@astrojs/svelte':
         specifier: ^9.0.0
         version: 9.0.0(@types/node@24.11.0)(astro@7.0.3(@astrojs/markdown-remark@7.2.0)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.6.1)(less@4.6.4)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(svelte@5.55.0)(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.2)
@@ -284,6 +330,13 @@ importers:
       vue:
         specifier: ^3.5.30
         version: 3.5.30(typescript@6.0.3)
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.3
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
 
   packages/capi-client:
     dependencies:
@@ -577,8 +630,8 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
       storyblok-js-client:
-        specifier: file:..
-        version: playground@file:packages/js-client/playground
+        specifier: workspace:*
+        version: link:../..
       swr:
         specifier: ^2.2.5
         version: 2.4.1(react@18.3.1)
@@ -860,7 +913,7 @@ importers:
         version: 7.29.0(@babel/core@7.29.0)
       '@cypress/react':
         specifier: ^9.0.1
-        version: 9.0.1(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(cypress@14.5.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 9.0.1(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(cypress@14.5.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@cypress/vite-dev-server':
         specifier: ^6.0.3
         version: 6.0.3(cypress@14.5.4)
@@ -872,7 +925,7 @@ importers:
         version: 6.9.1
       '@testing-library/react':
         specifier: ^16.3.0
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tsconfig/recommended':
         specifier: ^1.0.8
         version: 1.0.13
@@ -880,8 +933,8 @@ importers:
         specifier: ^24.11.0
         version: 24.11.0
       '@types/react':
-        specifier: 19.1.4
-        version: 19.1.4
+        specifier: 'catalog:'
+        version: 19.2.3
       '@vitejs/plugin-react':
         specifier: ^4.4.1
         version: 4.7.0(vite@6.4.1(@types/node@24.11.0)(jiti@2.6.1)(less@4.6.4)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -1006,11 +1059,11 @@ importers:
         specifier: ^24.11.0
         version: 24.11.0
       '@types/react':
-        specifier: ^19
-        version: 19.1.4
+        specifier: 'catalog:'
+        version: 19.2.3
       '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.1.4)
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -1043,11 +1096,11 @@ importers:
         specifier: ^24.11.0
         version: 24.11.0
       '@types/react':
-        specifier: ^19
-        version: 19.1.4
+        specifier: 'catalog:'
+        version: 19.2.3
       '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.1.4)
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.3)
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -1083,8 +1136,8 @@ importers:
         specifier: ^24.11.0
         version: 24.11.0
       '@types/react':
-        specifier: ^19.1.4
-        version: 19.1.4
+        specifier: 'catalog:'
+        version: 19.2.3
       '@vitejs/plugin-basic-ssl':
         specifier: ^2.0.0
         version: 2.1.4(vite@6.4.1(@types/node@24.11.0)(jiti@2.6.1)(less@4.6.4)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -7396,8 +7449,8 @@ packages:
   '@types/react@18.3.28':
     resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
 
-  '@types/react@19.1.4':
-    resolution: {integrity: sha512-EB1yiiYdvySuIITtD5lhW4yPyJ31RkJkkDw794LaQYrxCSaQV/47y5o1FMC4zF9ZyjUjzJMZwbovEnT5yHTW6g==}
+  '@types/react@19.2.3':
+    resolution: {integrity: sha512-k5dJVszUiNr1DSe8Cs+knKR6IrqhqdhpUwzqhkS8ecQTSf3THNtbfIp/umqHMpX2bv+9dkx3fwDv/86LcSfvSg==}
 
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
@@ -7545,6 +7598,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@unhead/vue@2.1.10':
     resolution: {integrity: sha512-VP78Onh2HNezLPfhYjfHqn4dxlcQsE6PJgTTs61NksO/thvilNswtgBq0N0MWCLtn43N5akEPGW2y2zxM3PWgQ==}
@@ -10699,12 +10753,13 @@ packages:
   git-raw-commits@4.0.0:
     resolution: {integrity: sha512-ICsMM1Wk8xSGMowkOmPrzo2Fgmfo4bMHLNX6ytHjajRJUqvHOw/TFapQ+QG75c3X/tTDDhOSRPGC52dDbNM8FQ==}
     engines: {node: '>=16'}
-    deprecated: This package is no longer maintained. For the JavaScript API, please use @conventional-changelog/git-client instead.
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   git-raw-commits@5.0.1:
     resolution: {integrity: sha512-Y+csSm2GD/PCSh6Isd/WiMjNAydu0VBiG9J7EdQsNA5P9uXvLayqjmTsNlK5Gs9IhblFZqOU0yid5Il5JPoLiQ==}
     engines: {node: '>=18'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   git-semver-tags@8.0.1:
@@ -13308,9 +13363,6 @@ packages:
 
   pkg-types@2.3.0:
     resolution: {integrity: sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig==}
-
-  playground@file:packages/js-client/playground:
-    resolution: {directory: packages/js-client/playground, type: directory}
 
   pluralize@8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
@@ -16888,11 +16940,11 @@ snapshots:
     dependencies:
       prismjs: 1.30.0
 
-  '@astrojs/react@6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)':
+  '@astrojs/react@6.0.0(@types/node@24.11.0)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)':
     dependencies:
       '@astrojs/internal-helpers': 0.10.0
-      '@types/react': 19.1.4
-      '@types/react-dom': 19.2.3(@types/react@19.1.4)
+      '@types/react': 19.2.3
+      '@types/react-dom': 19.2.3(@types/react@19.2.3)
       '@vitejs/plugin-react': 5.2.0(vite@8.1.0(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.6.1)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       devalue: 5.8.1
       react: 19.2.4
@@ -18233,14 +18285,14 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
-  '@cypress/react@9.0.1(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(cypress@14.5.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@cypress/react@9.0.1(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(cypress@14.5.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@types/react-dom': 19.2.3(@types/react@19.1.4)
+      '@types/react-dom': 19.2.3(@types/react@19.2.3)
       cypress: 14.5.4
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     optionalDependencies:
-      '@types/react': 19.1.4
+      '@types/react': 19.2.3
 
   '@cypress/request@3.0.10':
     dependencies:
@@ -22328,15 +22380,15 @@ snapshots:
       picocolors: 1.1.1
       redent: 3.0.0
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.1.4))(@types/react@19.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.3))(@types/react@19.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@testing-library/dom': 10.4.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
     optionalDependencies:
-      '@types/react': 19.1.4
-      '@types/react-dom': 19.2.3(@types/react@19.1.4)
+      '@types/react': 19.2.3
+      '@types/react-dom': 19.2.3(@types/react@19.2.3)
 
   '@tiptap/core@3.22.3(@tiptap/pm@3.22.3)':
     dependencies:
@@ -22681,9 +22733,9 @@ snapshots:
 
   '@types/range-parser@1.2.7': {}
 
-  '@types/react-dom@19.2.3(@types/react@19.1.4)':
+  '@types/react-dom@19.2.3(@types/react@19.2.3)':
     dependencies:
-      '@types/react': 19.1.4
+      '@types/react': 19.2.3
 
   '@types/react@18.2.47':
     dependencies:
@@ -22696,7 +22748,7 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
-  '@types/react@19.1.4':
+  '@types/react@19.2.3':
     dependencies:
       csstype: 3.2.3
 
@@ -31076,8 +31128,6 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.0.8
       pathe: 2.0.3
-
-  playground@file:packages/js-client/playground: {}
 
   pluralize@8.0.0: {}
 

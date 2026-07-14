@@ -46,7 +46,7 @@ let storiesListCalls = 0;
 
 const preconditions = {
   hasLocalSchema(components: Component[]) {
-    vi.mocked(loadSchema).mockResolvedValue({ components, datasources: [] } satisfies SchemaData);
+    vi.mocked(loadSchema).mockResolvedValue({ components, datasources: [], folders: [] } satisfies SchemaData);
   },
   hasRemote(components: Component[]) {
     server.use(

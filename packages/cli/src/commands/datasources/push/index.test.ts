@@ -510,6 +510,26 @@ describe('push datasources', () => {
       expect(updateDatasourceEntryDimension).toHaveBeenCalledWith('12345', 10, expect.objectContaining({ name: 'hello' }), 102, '');
     });
 
+    it('should not touch target dimension values when the local entry has no dimension_values key', async () => {
+      // Local entry is not dimension-aware (no `dimension_values` key at all),
+      // e.g. pulled before this feature or from a dimensionless space.
+      const withoutDimensionValues: SpaceDatasource = {
+        ...localDatasource,
+        entries: [{ id: 10, name: 'hello', value: 'hello', datasource_id: 1 }],
+      };
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([withoutDimensionValues]),
+      });
+      // Target already carries per-dimension values that must be preserved.
+      vi.mocked(fetchDatasources).mockResolvedValue([{ ...localDatasource, dimensions: targetDimensions }]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      // No blank writes: the target's existing per-dimension values are left intact.
+      expect(updateDatasourceEntryDimension).not.toHaveBeenCalled();
+    });
+
     it('should warn and skip a dimension with no matching dimension in the target space', async () => {
       // Target only defines the "en" dimension.
       const enOnly = [{ id: 101, name: 'English', entry_value: 'en', datasource_id: 1 }];

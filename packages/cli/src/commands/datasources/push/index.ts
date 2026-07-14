@@ -162,8 +162,17 @@ pushCmd
 
               // Write per-dimension values. Iterate the union of local and target
               // dimension codes so values removed locally are cleared (blank) too.
-              if (entryId != null) {
-                const localDimensionValues = entry.dimension_values ?? {};
+              //
+              // Only reconcile when the local entry actually carries a
+              // `dimension_values` map. A missing key means the source is not
+              // dimension-aware (e.g. pulled before this feature, or from a
+              // dimensionless space); treating it as an empty map would blank out
+              // per-dimension values that already exist in the target. Pull omits
+              // the key for entries without per-dimension values, so this cannot
+              // propagate a full clear of the last remaining value — an acceptable
+              // trade-off to avoid silent data loss.
+              if (entryId != null && entry.dimension_values !== undefined) {
+                const localDimensionValues = entry.dimension_values;
                 const targetDimensionValues = existing?.entry.dimension_values ?? {};
                 const dimensionCodes = new Set([...Object.keys(localDimensionValues), ...Object.keys(targetDimensionValues)]);
 

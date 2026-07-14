@@ -90,7 +90,7 @@ function validateFieldValue(
       break;
     case 'richtext':
       checkValue(zRichtextFieldValue, value, path, entity, issues);
-      validateRichtextBloks(value, blocksByName, fieldPluginsByType, path, issues);
+      validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
     case 'custom': {
       checkValue(zPluginEnvelope, value, path, entity, issues);
@@ -111,38 +111,7 @@ function validateFieldValue(
       }
       checkCount(value.length, field.minimum, field.maximum, 'block(s)', path, entity, issues);
       value.forEach((item, index) => {
-        const allowEntries = field.allow ?? [];
-        if (allowEntries.length > 0 && isRecord(item) && typeof item.component === 'string') {
-          const blockNamesAllowed = allowEntries.filter((entry): entry is string => typeof entry === 'string');
-          const folderPathsAllowed = allowEntries.filter(
-            (entry): entry is { folder: string } =>
-              typeof entry === 'object' && entry !== null && typeof entry.folder === 'string',
-          );
-          const itemBlock = blocksByName.get(item.component);
-          const itemBlockFolder = itemBlock?.folder;
-          const allowedByName = blockNamesAllowed.includes(item.component);
-          // Canonicalize both sides to slug space so a folder referenced two
-          // ways (a `defineFolder` ref vs. a string shorthand with different
-          // casing or separators) matches the same way the CLI/editor group it.
-          const itemFolderSlug = typeof itemBlockFolder === 'string' ? slugifyFolderPath(itemBlockFolder) : undefined;
-          const allowedByFolder = itemFolderSlug !== undefined
-            && folderPathsAllowed.some(({ folder }) => {
-              const allowedSlug = slugifyFolderPath(folder);
-              return itemFolderSlug === allowedSlug || itemFolderSlug.startsWith(`${allowedSlug}/`);
-            });
-          if (!allowedByName && !allowedByFolder) {
-            const allowedList = allowEntries
-              .map(entry => (typeof entry === 'string' ? entry : `folder:${entry.folder}`))
-              .join(', ');
-            issues.push({
-              severity: 'error',
-              code: 'disallowed_component',
-              path: [...path, index, 'component'],
-              entity,
-              message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
-            });
-          }
-        }
+        checkComponentAllowed(field, item, [...path, index], blocksByName, entity, issues);
         validateBlokContent(item, blocksByName, fieldPluginsByType, [...path, index], issues);
       });
       break;
@@ -206,6 +175,59 @@ function validateFieldValue(
       // compile until the field type is handled (or explicitly skipped) above.
       field.type satisfies never;
       break;
+  }
+}
+
+/**
+ * Enforces a field's `allow` list for one embedded blok. Shared by the `bloks`
+ * case and the richtext walk so both apply the same rule: `mapFieldToWire`
+ * pushes folder/name `allow` as an editor/API restriction on *both* field types,
+ * so validation must reject the same components the editor and API would.
+ *
+ * `itemPath` is the path to the blok item (its index); the reported issue points
+ * at that item's `component` key. A component is allowed when it is named
+ * directly in `allow` or its block sits in (or under) an allowed folder — both
+ * sides canonicalized to slug space so a folder referenced two ways (a
+ * `defineFolder` ref vs. a string shorthand with different casing/separators)
+ * matches the way the CLI/editor group it.
+ */
+function checkComponentAllowed(
+  field: SchemaFieldLike,
+  item: unknown,
+  itemPath: (string | number)[],
+  blocksByName: Map<string, SchemaBlockLike>,
+  entity: string,
+  issues: ValidationIssue[],
+): void {
+  const allowEntries = field.allow ?? [];
+  if (allowEntries.length === 0 || !isRecord(item) || typeof item.component !== 'string') {
+    return;
+  }
+  const blockNamesAllowed = allowEntries.filter((entry): entry is string => typeof entry === 'string');
+  const folderPathsAllowed = allowEntries.filter(
+    (entry): entry is { folder: string } =>
+      typeof entry === 'object' && entry !== null && typeof entry.folder === 'string',
+  );
+  const itemBlock = blocksByName.get(item.component);
+  const itemBlockFolder = itemBlock?.folder;
+  const allowedByName = blockNamesAllowed.includes(item.component);
+  const itemFolderSlug = typeof itemBlockFolder === 'string' ? slugifyFolderPath(itemBlockFolder) : undefined;
+  const allowedByFolder = itemFolderSlug !== undefined
+    && folderPathsAllowed.some(({ folder }) => {
+      const allowedSlug = slugifyFolderPath(folder);
+      return itemFolderSlug === allowedSlug || itemFolderSlug.startsWith(`${allowedSlug}/`);
+    });
+  if (!allowedByName && !allowedByFolder) {
+    const allowedList = allowEntries
+      .map(entry => (typeof entry === 'string' ? entry : `folder:${entry.folder}`))
+      .join(', ');
+    issues.push({
+      severity: 'error',
+      code: 'disallowed_component',
+      path: [...itemPath, 'component'],
+      entity,
+      message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
+    });
   }
 }
 
@@ -298,12 +320,19 @@ function pushTypeIssue(
   });
 }
 
-/** Walks richtext `content` nodes and validates embedded bloks (`type: 'blok'`). */
+/**
+ * Walks richtext `content` nodes and validates embedded bloks (`type: 'blok'`).
+ * `field` is the owning richtext field: each embedded blok is checked against its
+ * `allow` list ({@link checkComponentAllowed}), matching the group/name
+ * restriction `mapFieldToWire` pushes for richtext fields.
+ */
 function validateRichtextBloks(
   value: unknown,
+  field: SchemaFieldLike,
   blocksByName: Map<string, SchemaBlockLike>,
   fieldPluginsByType: Map<string, StandardSchemaV1>,
   path: (string | number)[],
+  entity: string,
   issues: ValidationIssue[],
 ): void {
   if (!isRecord(value) || !Array.isArray(value.content)) {
@@ -314,13 +343,15 @@ function validateRichtextBloks(
       return;
     }
     if (node.type === 'blok' && isRecord(node.attrs) && Array.isArray(node.attrs.body)) {
-      node.attrs.body.forEach((blok, blokIndex) =>
-        validateBlokContent(blok, blocksByName, fieldPluginsByType, [...path, 'content', index, 'attrs', 'body', blokIndex], issues),
-      );
+      node.attrs.body.forEach((blok, blokIndex) => {
+        const blokPath = [...path, 'content', index, 'attrs', 'body', blokIndex];
+        checkComponentAllowed(field, blok, blokPath, blocksByName, entity, issues);
+        validateBlokContent(blok, blocksByName, fieldPluginsByType, blokPath, issues);
+      });
     }
     else if (Array.isArray(node.content)) {
       // Recurse into nested marks/nodes that may themselves embed bloks.
-      validateRichtextBloks(node, blocksByName, fieldPluginsByType, [...path, 'content', index], issues);
+      validateRichtextBloks(node, field, blocksByName, fieldPluginsByType, [...path, 'content', index], entity, issues);
     }
   });
 }

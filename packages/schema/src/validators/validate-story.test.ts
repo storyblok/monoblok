@@ -366,3 +366,43 @@ describe('validateStory — folder allow entries', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe('validateStory — richtext allow entries', () => {
+  // `mapFieldToWire` pushes folder/name `allow` on a richtext field as a real
+  // editor/API restriction, so `validateStory` must enforce it for bloks
+  // embedded in richtext, not only top-level `bloks` fields.
+  const layout = defineFolder({ name: 'Layout' });
+  const hero = defineBlock({ name: 'hero', folder: layout, fields: [defineField('title', { type: 'text' })] });
+  const teaserBlock = defineBlock({ name: 'teaser', fields: [defineField('text', { type: 'text' })] });
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [defineField('body', { type: 'richtext', allow: [layout] })],
+  });
+  const schema = { blocks: { page, hero, teaser: teaserBlock } };
+
+  /** Wraps embedded bloks in a minimal richtext `doc` with one `blok` node. */
+  function richtextWith(bloks: unknown[]): unknown {
+    return { type: 'doc', content: [{ type: 'blok', attrs: { id: 'x', body: bloks } }] };
+  }
+
+  it('allows an embedded blok whose folder is inside an allowed folder', () => {
+    const result = validateStory({
+      content: { component: 'page', body: richtextWith([{ component: 'hero', title: 'Hi' }]) },
+    }, schema);
+    expect(result.issues.find(i => i.code === 'disallowed_component')).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects an embedded blok outside the allowed folder', () => {
+    const result = validateStory({
+      content: { component: 'page', body: richtextWith([{ component: 'teaser', text: 'hi' }]) },
+    }, schema);
+    const disallowed = result.issues.find(i => i.code === 'disallowed_component');
+    expect(disallowed).toBeDefined();
+    expect(disallowed?.path).toEqual(['content', 'body', 'content', 0, 'attrs', 'body', 0, 'component']);
+    expect(disallowed?.message).toBe(
+      'Component "teaser" is not allowed in field "body"; allowed: folder:Layout.',
+    );
+  });
+});

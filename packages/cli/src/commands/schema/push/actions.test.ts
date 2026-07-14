@@ -467,6 +467,64 @@ describe('executePush - folders', () => {
     expect(componentCreateCalled).toBe(false);
   });
 
+  it('throws when a folder create returns 2xx but the body omits id/uuid, without upserting the component', async () => {
+    let componentCreateCalled = false;
+    server.use(
+      http.post(CREATE_GROUPS_URL, () => {
+        // 2xx but malformed: no id/uuid to register the group with.
+        return HttpResponse.json({ component_group: { name: 'Layout' } }, { status: 201 });
+      }),
+      http.post(CREATE_COMPONENTS_URL, async () => {
+        componentCreateCalled = true;
+        return HttpResponse.json({ component: { id: 400, name: 'hero' } }, { status: 201 });
+      }),
+    );
+
+    const local: SchemaData = {
+      components: [{ name: 'hero', folder: 'layout', schema: {} } as unknown as Component],
+      folders: [{ name: 'Layout', path: 'layout', parentPath: null }],
+      datasources: [],
+    };
+    const diffResult = makeDiffResult([
+      { type: 'folder', name: 'layout', action: 'create', diff: null, local: null, remote: null },
+      { type: 'component', name: 'hero', action: 'create', diff: null, local: null, remote: null },
+    ]);
+
+    await expect(executePush('12345', local, emptyRemote(), diffResult, { delete: false }))
+      .rejects
+      .toThrow(/id and uuid/i);
+    expect(componentCreateCalled).toBe(false);
+  });
+
+  it('surfaces a delete error (not a silent skip) when a stale folder path does not resolve to a remote group', async () => {
+    let deleteCalled = false;
+    server.use(
+      http.delete('https://mapi.storyblok.com/v1/spaces/12345/component_groups/:id', () => {
+        deleteCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    // Remote has a group that resolves to path 'old'; the stale diff names a
+    // non-resolving path, so the delete would otherwise be skipped silently.
+    const remote: RemoteSchemaData = {
+      components: new Map(),
+      componentFolders: new Map([
+        ['Old', { id: 10, uuid: 'uuid-old', name: 'Old', parent_uuid: null } as unknown as ComponentFolder],
+      ]),
+      datasources: new Map(),
+    };
+    const local: SchemaData = { components: [], folders: [], datasources: [] };
+    const diffResult = makeDiffResult([
+      { type: 'folder', name: 'ghost', action: 'stale', diff: null, local: null, remote: null },
+    ]);
+
+    await expect(executePush('12345', local, remote, diffResult, { delete: true }))
+      .rejects
+      .toThrow(/folder ghost/i);
+    expect(deleteCalled).toBe(false);
+  });
+
   it('throws when deleting a stale folder fails under --delete', async () => {
     server.use(
       http.delete('https://mapi.storyblok.com/v1/spaces/12345/component_groups/:id', () => {

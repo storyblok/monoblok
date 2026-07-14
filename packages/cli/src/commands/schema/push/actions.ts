@@ -164,21 +164,30 @@ export async function executePush(
     const localFolder = foldersByPath.get(diff.name);
     if (!localFolder) { continue; }
     const parent = localFolder.parentPath ? groupByPath.get(localFolder.parentPath) : undefined;
+    let createdGroup: { id?: number | null; uuid?: string | null } | undefined;
     try {
       const res = await client.componentFolders.create({
         path: { space_id: spaceIdNum },
         body: { component_group: { name: localFolder.name, parent_id: parent?.id ?? null } },
         throwOnError: true,
       });
-      const createdGroup = res.data?.component_group;
-      if (createdGroup?.id != null && createdGroup.uuid) {
-        groupByPath.set(localFolder.path, { id: createdGroup.id, uuid: createdGroup.uuid });
-        created++;
-      }
+      createdGroup = res.data?.component_group;
     }
     catch (error) {
+      // `handleAPIError` always throws, so the response check below only runs on success.
       handleAPIError('push_component_folder', error, `Failed to create folder ${localFolder.name}`);
     }
+    // A 2xx with a body missing id/uuid would otherwise leave the group
+    // unregistered while the push proceeds; fail loudly instead, since blocks
+    // that reference this folder can no longer be resolved.
+    if (createdGroup?.id == null || !createdGroup.uuid) {
+      throw new CommandError(
+        `Folder "${localFolder.name}" was created but the Management API response did not include an id and uuid; `
+        + `blocks that reference this folder cannot be resolved.`,
+      );
+    }
+    groupByPath.set(localFolder.path, { id: createdGroup.id, uuid: createdGroup.uuid });
+    created++;
   }
 
   // 2. Upsert components. Each block's group membership is resolved from its
@@ -332,7 +341,18 @@ export async function executePush(
       .sort((a, b) => b.name.split('/').length - a.name.split('/').length);
     for (const diff of staleFolders) {
       const group = groupByPath.get(diff.name);
-      if (!group) { continue; }
+      if (!group) {
+        // A stale diff means the group exists remotely, so its slug path should
+        // resolve here (both derive from the same remote groups). If it somehow
+        // doesn't, surface it as a delete error rather than silently leaving the
+        // group in place after reporting it as "to delete".
+        deleteErrors.push({
+          action: 'delete_component_folder',
+          reason: new Error(`No component group resolved for stale folder path "${diff.name}".`),
+          message: `Failed to delete folder ${diff.name}`,
+        });
+        continue;
+      }
       try {
         await client.componentFolders.delete(group.id, {
           path: { space_id: spaceIdNum },

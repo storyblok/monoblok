@@ -28,15 +28,30 @@ export interface RemoteSchemaData {
   datasources: Map<string, Datasource>;
 }
 
+/**
+ * A schema reduced to name-keyed maps — the common shape both a local file and a
+ * remote space resolve to. `diffSchema` compares two of these regardless of where
+ * each side came from.
+ */
+export interface NormalizedSchema {
+  components: Map<string, Component>;
+  datasources: Map<string, Datasource>;
+  /** Block folders (component groups) keyed by slug path — the folder's identity. */
+  folders: Map<string, LocalFolder>;
+}
+
 export type DiffAction = 'create' | 'update' | 'unchanged' | 'stale';
 
 export interface EntityDiff {
   type: 'component' | 'datasource' | 'folder';
   name: string;
   action: DiffAction;
-  diff: string | null;
-  local: Record<string, unknown> | null;
-  remote: Record<string, unknown> | null;
+  /** Field-level changes; populated for `update`, empty for other actions. */
+  changes: FieldChange[];
+  /** Raw source-side (`from`) entity, or null when the entity is created (target-only). */
+  before: Record<string, unknown> | null;
+  /** Raw target-side (`to`) entity, or null when the entity is stale (source-only). */
+  after: Record<string, unknown> | null;
 }
 
 export interface DiffResult {
@@ -50,8 +65,8 @@ export interface DiffResult {
 export interface FieldChange {
   field: string;
   change: 'added' | 'removed' | 'modified';
-  before?: Record<string, unknown>;
-  after?: Record<string, unknown>;
+  before?: unknown;
+  after?: unknown;
 }
 
 export interface ChangesetEntry {

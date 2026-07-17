@@ -12,9 +12,9 @@ import { schemaCommand } from '../command';
 import { displayPath } from '../utils';
 import type { SchemaPushOptions } from './constants';
 import type { SchemaData } from '../types';
-import { loadSchema } from './load-schema';
-import { diffSchema } from './diff-schema';
-import { fetchRemoteSchema } from '../actions';
+import { loadSchema } from '../load-schema';
+import { diffSchema } from '../diff-schema';
+import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from '../actions';
 import { buildGroupPathByUuid } from '../folders';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
@@ -86,8 +86,11 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       remoteSpinner.succeed(`Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`);
 
-      // 3. Diff components, datasources, and folders (component groups)
-      const diffResult = diffSchema(local, remote);
+      // 3. Diff components, datasources, and folders (component groups).
+      // from = remote (base), to = local (target): the diff describes the push.
+      // The local DSL opts into group-uuid diffing, so a block that sets
+      // `component_group_uuid` explicitly gets its membership pushed.
+      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local), { compareGroupUuid: true });
 
       // 5. Display diffs
       ui.br();

@@ -1,8 +1,8 @@
-import type { LocalFolder, SchemaData } from '../types';
-import { CommandError } from '../../../utils';
-import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
-import { expandFolderPath } from '../folders';
-import { isRecord } from '../utils';
+import type { LocalFolder, SchemaData } from './types';
+import { CommandError } from '../../utils';
+import { mapBlockToWire, mapDatasourceToWire } from './map-to-wire';
+import { expandFolderPath } from './folders';
+import { isRecord } from './utils';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {

@@ -234,7 +234,7 @@ describe('analyzeBreakingChanges', () => {
       datasources: new Map(),
     };
     const diffResult: DiffResult = {
-      diffs: [{ type: 'component', name: 'hero', action: 'update', diff: 'some diff', local: null, remote: null }],
+      diffs: [{ type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null }],
       creates: 0,
       updates: 1,
       unchanged: 0,
@@ -263,7 +263,7 @@ describe('analyzeBreakingChanges', () => {
       datasources: new Map(),
     };
     const diffResult: DiffResult = {
-      diffs: [{ type: 'component', name: 'hero', action: 'create', diff: null, local: null, remote: null }],
+      diffs: [{ type: 'component', name: 'hero', action: 'create', changes: [], before: null, after: null }],
       creates: 1,
       updates: 0,
       unchanged: 0,
@@ -288,7 +288,7 @@ describe('analyzeBreakingChanges', () => {
       datasources: new Map(),
     };
     const diffResult: DiffResult = {
-      diffs: [{ type: 'component', name: 'hero', action: 'update', diff: 'some diff', local: null, remote: null }],
+      diffs: [{ type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null }],
       creates: 0,
       updates: 1,
       unchanged: 0,
@@ -315,7 +315,7 @@ describe('analyzeBreakingChanges', () => {
       datasources: new Map(),
     };
     const diffResult: DiffResult = {
-      diffs: [{ type: 'component', name: 'hero', action: 'update', diff: 'some diff', local: null, remote: null }],
+      diffs: [{ type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null }],
       creates: 0,
       updates: 1,
       unchanged: 0,
@@ -352,7 +352,7 @@ describe('analyzeBreakingChanges', () => {
       datasources: new Map(),
     };
     const diffResult: DiffResult = {
-      diffs: [{ type: 'component', name: 'hero', action: 'update', diff: 'some diff', local: null, remote: null }],
+      diffs: [{ type: 'component', name: 'hero', action: 'update', changes: [], before: null, after: null }],
       creates: 0,
       updates: 1,
       unchanged: 0,

@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/svelte",
   "type": "module",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using Svelte.",
   "author": "Storyblok",

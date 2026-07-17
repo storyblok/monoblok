@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/experiments",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "description": "Runtime A/B testing utilities for the Storyblok experiments API",
   "author": "Storyblok",

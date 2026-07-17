@@ -22,18 +22,6 @@ storyblok assets transfer 123456 789012 345678 --folder-id 789 --space YOUR_SPAC
 storyblok assets transfer 123456 789012 --folder-id 789 --space YOUR_SPACE_ID --dry-run
 ```
 
-**Preview an `--all` transfer without making any API calls:**
-
-```bash
-storyblok assets transfer --all --folder-id 789 --space YOUR_SPACE_ID --dry-run
-```
-
-**Transfer only assets matching a filter:**
-
-```bash
-storyblok assets transfer --query "search=logo&with_tags=hero" --folder-id 789 --space YOUR_SPACE_ID
-```
-
 ## Options
 
 | Option | Description | Default |

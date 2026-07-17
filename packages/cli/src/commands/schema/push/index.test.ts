@@ -9,12 +9,12 @@ import { schemaCommand } from '../command';
 import type { SchemaData } from '../types';
 import { DEFAULT_SPACE, getID } from '../../__tests__/helpers';
 
-import { loadSchema } from './load-schema';
+import { loadSchema } from '../load-schema';
 
 // loadSchema uses jiti to dynamically import TypeScript entry files at runtime.
 // jiti cannot resolve @storyblok/schema imports in the test environment, so we
 // mock this module and provide schema data directly via preconditions.
-vi.mock('./load-schema', () => ({
+vi.mock('../load-schema', () => ({
   loadSchema: vi.fn(),
 }));
 

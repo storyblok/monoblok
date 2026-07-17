@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyExports, isComponent, isDatasource } from './load-schema';
+import { classifyExports, isComponent, isDatasource, loadSchema } from './load-schema';
+
+describe('loadSchema', () => {
+  it('should throw a clear error when the entry file does not exist', async () => {
+    await expect(loadSchema('/definitely/missing/schema.ts')).rejects.toThrow(/Entry file not found/);
+  });
+});
 
 describe('isComponent', () => {
   it('should return true for objects with name and a fields array', () => {

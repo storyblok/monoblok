@@ -1,8 +1,8 @@
-import type { LocalFolder, SchemaData } from '../types';
-import { CommandError } from '../../../utils';
-import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
-import { expandFolderPath } from '../folders';
-import { isRecord } from '../utils';
+import type { LocalFolder, SchemaData } from './types';
+import { CommandError } from '../../utils';
+import { mapBlockToWire, mapDatasourceToWire } from './map-to-wire';
+import { expandFolderPath } from './folders';
+import { isRecord } from './utils';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {
@@ -168,8 +168,14 @@ export async function loadSchema(entryPath: string): Promise<SchemaData> {
   const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, { interopDefault: true });
   const { resolve } = await import('pathe');
+  const { existsSync } = await import('node:fs');
 
   const entryAbs = resolve(entryPath);
+  // Guard before jiti so a missing file yields a clear message instead of jiti's
+  // raw "Cannot find module … Require stack:" dump.
+  if (!existsSync(entryAbs)) {
+    throw new Error(`Entry file not found: ${entryPath}`);
+  }
   const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
 
   return classifyExports(entryMod);

@@ -1,8 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
-import { readDatasourcesFiles } from './actions';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { pushDatasource, readDatasourcesFiles } from './actions';
 import type { SpaceDatasource } from '../constants';
+import { getMapiClient } from '../../../api';
 import { FileSystemError } from '../../../utils/error/filesystem-error';
+
+const server = setupServer();
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 // Mock datasources data that matches the SpaceDatasource interface
 const mockDatasource1: SpaceDatasource = {
@@ -353,6 +362,46 @@ describe('push datasources actions', () => {
         expect(result.datasources).toContainEqual(mockDatasource1);
         expect(result.datasources).toContainEqual(mockDatasource2);
       });
+    });
+  });
+
+  describe('pushDatasource', () => {
+    beforeEach(() => {
+      getMapiClient({ personalAccessToken: 'valid-token', region: 'eu' });
+    });
+
+    it('should map the local dimensions array to dimensions_attributes so a fresh target gets them created', async () => {
+      let createdBody: any;
+      server.use(
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
+          createdBody = await request.json();
+          return HttpResponse.json({ datasource: { id: 99, name: 'Countries', slug: 'countries' } }, { status: 201 });
+        }),
+      );
+
+      const { entries, ...definition } = mockDatasource1;
+      await pushDatasource('12345', definition);
+
+      // Dimensions are sent as dimensions_attributes (name + entry_value only), not as the raw `dimensions` array.
+      expect(createdBody.datasource.dimensions_attributes).toEqual([
+        { name: 'United States', entry_value: 'us' },
+        { name: 'Canada', entry_value: 'ca' },
+      ]);
+      expect(createdBody.datasource.dimensions).toBeUndefined();
+    });
+
+    it('should omit dimensions_attributes for a datasource without dimensions', async () => {
+      let createdBody: any;
+      server.use(
+        http.post('https://mapi.storyblok.com/v1/spaces/12345/datasources', async ({ request }) => {
+          createdBody = await request.json();
+          return HttpResponse.json({ datasource: { id: 1, name: 'colors', slug: 'colors' } }, { status: 201 });
+        }),
+      );
+
+      await pushDatasource('12345', { name: 'colors', slug: 'colors', dimensions: [] });
+
+      expect(createdBody.datasource.dimensions_attributes).toBeUndefined();
     });
   });
 });

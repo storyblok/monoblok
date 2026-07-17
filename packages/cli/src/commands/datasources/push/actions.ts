@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'pathe';
 import chalk from 'chalk';
-import type { DatasourceEntry, SpaceDatasource, SpaceDatasourcesData } from '../constants';
+import type { DatasourceEntry, SpaceDatasource, SpaceDatasourceEntry, SpaceDatasourcesData } from '../constants';
 import type { DatasourceCreate, DatasourceUpdate } from '../../../types';
 import type { ReadDatasourcesOptions } from './constants';
 import { filterJsonBySuffix, readJsonFile, resolvePath } from '../../../utils/filesystem';
@@ -9,15 +9,30 @@ import { getMapiClient } from '../../../api';
 import { handleAPIError } from '../../../utils/error/api-error';
 import { FileSystemError, handleFileSystemError } from '../../../utils/error/filesystem-error';
 
-export const pushDatasource = async (spaceId: string, datasource: DatasourceCreate): Promise<SpaceDatasource | undefined> => {
+export const pushDatasource = async (spaceId: string, datasource: DatasourceCreate & { dimensions?: SpaceDatasource['dimensions'] }): Promise<SpaceDatasource | undefined> => {
   try {
     const client = getMapiClient();
+
+    const { dimensions, ...datasourceFields } = datasource;
+    // The create endpoint models dimensions only through `dimensions_attributes`
+    // (name + entry_value); the pulled `dimensions` array (with source-space ids)
+    // is otherwise ignored. Map it so a fresh target space gets its dimensions
+    // created, with the target assigning new ids. Per-dimension entry values then
+    // resolve by dimension code against those ids.
+    const dimensionsAttributes = (dimensions ?? [])
+      .filter(dimension => dimension.entry_value)
+      .map(dimension => ({ name: dimension.name ?? dimension.entry_value ?? '', entry_value: dimension.entry_value ?? '' }));
 
     const { data } = await client.datasources.create({
       path: {
         space_id: Number(spaceId),
       },
-      body: { datasource },
+      body: {
+        datasource: {
+          ...datasourceFields,
+          ...(dimensionsAttributes.length > 0 && { dimensions_attributes: dimensionsAttributes }),
+        },
+      },
       throwOnError: true,
     });
 
@@ -49,7 +64,7 @@ export const updateDatasource = async (spaceId: string, datasourceId: number, da
   }
 };
 
-export const upsertDatasource = async (space: string, datasource: DatasourceCreate, existingId?: number): Promise<SpaceDatasource | undefined> => {
+export const upsertDatasource = async (space: string, datasource: DatasourceCreate & { dimensions?: SpaceDatasource['dimensions'] }, existingId?: number): Promise<SpaceDatasource | undefined> => {
   if (existingId) {
     return await updateDatasource(space, existingId, datasource);
   }
@@ -66,9 +81,12 @@ export const upsertDatasource = async (space: string, datasource: DatasourceCrea
  * @param position - Optional position index to control ordering
  * @returns The created datasource entry
  */
-export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: DatasourceEntry, position?: number): Promise<DatasourceEntry | undefined> => {
+export const pushDatasourceEntry = async (spaceId: string, datasourceId: number, entry: SpaceDatasourceEntry, position?: number): Promise<DatasourceEntry | undefined> => {
   try {
     const client = getMapiClient();
+
+    // Per-dimension values are written separately via updateDatasourceEntryDimension.
+    const { dimension_values, ...entryFields } = entry;
 
     const { data } = await client.datasourceEntries.create({
       path: {
@@ -76,7 +94,7 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
       },
       body: {
         datasource_entry: {
-          ...entry,
+          ...entryFields,
           value: entry.value ?? '',
           datasource_id: datasourceId,
           ...(position != null && { position }),
@@ -99,16 +117,20 @@ export const pushDatasourceEntry = async (spaceId: string, datasourceId: number,
  * @param entry - The updated datasource entry data
  * @param position - Optional position index to control ordering
  */
-export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: DatasourceEntry, position?: number): Promise<void> => {
+export const updateDatasourceEntry = async (spaceId: string, entryId: number, entry: SpaceDatasourceEntry, position?: number): Promise<void> => {
   try {
     const client = getMapiClient();
+
+    // Per-dimension values are written separately via updateDatasourceEntryDimension.
+    const { dimension_values, ...entryFields } = entry;
+
     await client.datasourceEntries.update(entryId, {
       path: {
         space_id: Number(spaceId),
       },
       body: {
         datasource_entry: {
-          ...entry,
+          ...entryFields,
           ...(position != null && { position }),
         },
       } as any,
@@ -117,6 +139,45 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
   }
   catch (error) {
     handleAPIError('update_datasource', error as Error, `Failed to update datasource entry ${entry.name}`);
+  }
+};
+
+/**
+ * Writes a single per-dimension value for an entry. The MAPI update endpoint
+ * upserts the dimension child row identified by `dimensionId`; a blank
+ * `dimensionValue` clears it.
+ * @param spaceId - The space ID
+ * @param entryId - The ID of the entry to update
+ * @param entry - The entry providing `name`/`value` context
+ * @param dimensionId - The target dimension id
+ * @param dimensionValue - The value to write for that dimension (blank clears)
+ */
+export const updateDatasourceEntryDimension = async (
+  spaceId: string,
+  entryId: number,
+  entry: SpaceDatasourceEntry,
+  dimensionId: number,
+  dimensionValue: string,
+): Promise<void> => {
+  try {
+    const client = getMapiClient();
+    await client.datasourceEntries.update(entryId, {
+      path: {
+        space_id: Number(spaceId),
+      },
+      query: { dimension_id: dimensionId },
+      body: {
+        datasource_entry: {
+          name: entry.name,
+          value: entry.value ?? '',
+          dimension_value: dimensionValue,
+        },
+      },
+      throwOnError: true,
+    });
+  }
+  catch (error) {
+    handleAPIError('update_datasource', error as Error, `Failed to update datasource entry ${entry.name} for dimension ${dimensionId}`);
   }
 };
 
@@ -132,7 +193,7 @@ export const updateDatasourceEntry = async (spaceId: string, entryId: number, en
 export const upsertDatasourceEntry = async (
   space: string,
   datasourceId: number,
-  entry: DatasourceEntry,
+  entry: SpaceDatasourceEntry,
   existingId?: number,
   position?: number,
 ): Promise<DatasourceEntry | undefined> => {

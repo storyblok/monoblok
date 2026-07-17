@@ -8,7 +8,7 @@ import '../index';
 import { datasourcesCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
 import { fetchDatasources } from '../pull/actions';
-import { deleteDatasourceEntry, upsertDatasource, upsertDatasourceEntry } from './actions';
+import { deleteDatasourceEntry, updateDatasourceEntryDimension, upsertDatasource, upsertDatasourceEntry } from './actions';
 
 const loggerInfoMock = vi.hoisted(() => vi.fn());
 
@@ -33,6 +33,7 @@ vi.mock('./actions', async () => {
     pushDatasourceEntry: vi.fn(),
     updateDatasourceEntry: vi.fn(),
     upsertDatasourceEntry: vi.fn(),
+    updateDatasourceEntryDimension: vi.fn(),
     deleteDatasourceEntry: vi.fn(),
   };
 });
@@ -412,6 +413,143 @@ describe('push datasources', () => {
       expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 10);
       expect(deleteDatasourceEntry).toHaveBeenCalledWith('12345', 11);
       expect(deleteDatasourceEntry).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('dimension values', () => {
+    const localDatasource: SpaceDatasource = {
+      id: 1,
+      name: 'greetings',
+      slug: 'greetings',
+      created_at: '',
+      updated_at: '',
+      dimensions: [
+        { id: 1, name: 'English', entry_value: 'en', datasource_id: 1 },
+        { id: 2, name: 'German', entry_value: 'de', datasource_id: 1 },
+      ],
+      entries: [
+        { id: 10, name: 'hello', value: 'hello', dimension_values: { en: 'hi', de: 'hallo' }, datasource_id: 1 },
+      ],
+    };
+    // Target space uses different dimension ids for the same codes.
+    const targetDimensions = [
+      { id: 101, name: 'English', entry_value: 'en', datasource_id: 1 },
+      { id: 102, name: 'German', entry_value: 'de', datasource_id: 1 },
+    ];
+
+    it('should write per-dimension values resolved to target dimension ids', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+      // Target entry exists with the same default value but no dimension values yet.
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          dimensions: targetDimensions,
+          entries: [{ id: 10, name: 'hello', value: 'hello', datasource_id: 1 }],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledWith('12345', 10, expect.objectContaining({ name: 'hello' }), 101, 'hi');
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledWith('12345', 10, expect.objectContaining({ name: 'hello' }), 102, 'hallo');
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledTimes(2);
+    });
+
+    it('should skip entries whose value and dimension values are unchanged', async () => {
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+      // Target matches local exactly (same dimension values).
+      vi.mocked(fetchDatasources).mockResolvedValue([{ ...localDatasource, dimensions: targetDimensions }]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(upsertDatasourceEntry).not.toHaveBeenCalled();
+      expect(updateDatasourceEntryDimension).not.toHaveBeenCalled();
+    });
+
+    it('should not rewrite dimension values when only the default value changed', async () => {
+      // Local changed only the default value; dimension values match the target.
+      const changedDefault: SpaceDatasource = {
+        ...localDatasource,
+        entries: [{ id: 10, name: 'hello', value: 'hello-updated', dimension_values: { en: 'hi', de: 'hallo' }, datasource_id: 1 }],
+      };
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([changedDefault]),
+      });
+      // Target has the old default value but identical dimension values.
+      vi.mocked(fetchDatasources).mockResolvedValue([{ ...localDatasource, dimensions: targetDimensions }]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      // The entry is upserted (default value changed) but no per-dimension writes happen.
+      expect(upsertDatasourceEntry).toHaveBeenCalledTimes(1);
+      expect(updateDatasourceEntryDimension).not.toHaveBeenCalled();
+    });
+
+    it('should clear a dimension value removed locally by sending a blank value', async () => {
+      // Local dropped the "de" value.
+      const withoutDe: SpaceDatasource = {
+        ...localDatasource,
+        entries: [{ id: 10, name: 'hello', value: 'hello', dimension_values: { en: 'hi' }, datasource_id: 1 }],
+      };
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([withoutDe]),
+      });
+      // Target still carries the "de" value.
+      vi.mocked(fetchDatasources).mockResolvedValue([{ ...localDatasource, dimensions: targetDimensions }]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledWith('12345', 10, expect.objectContaining({ name: 'hello' }), 102, '');
+    });
+
+    it('should not touch target dimension values when the local entry has no dimension_values key', async () => {
+      // Local entry is not dimension-aware (no `dimension_values` key at all),
+      // e.g. pulled before this feature or from a dimensionless space.
+      const withoutDimensionValues: SpaceDatasource = {
+        ...localDatasource,
+        entries: [{ id: 10, name: 'hello', value: 'hello', datasource_id: 1 }],
+      };
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: targetDimensions });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([withoutDimensionValues]),
+      });
+      // Target already carries per-dimension values that must be preserved.
+      vi.mocked(fetchDatasources).mockResolvedValue([{ ...localDatasource, dimensions: targetDimensions }]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      // No blank writes: the target's existing per-dimension values are left intact.
+      expect(updateDatasourceEntryDimension).not.toHaveBeenCalled();
+    });
+
+    it('should warn and skip a dimension with no matching dimension in the target space', async () => {
+      // Target only defines the "en" dimension.
+      const enOnly = [{ id: 101, name: 'English', entry_value: 'en', datasource_id: 1 }];
+      vi.mocked(upsertDatasource).mockResolvedValue({ id: 1, name: 'greetings', slug: 'greetings', created_at: '', updated_at: '', dimensions: enOnly });
+      vol.fromJSON({
+        '.storyblok/datasources/12345/datasources.json': JSON.stringify([localDatasource]),
+      });
+      vi.mocked(fetchDatasources).mockResolvedValue([
+        {
+          ...localDatasource,
+          dimensions: enOnly,
+          entries: [{ id: 10, name: 'hello', value: 'hello', datasource_id: 1 }],
+        },
+      ]);
+
+      await datasourcesCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
+
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledWith('12345', 10, expect.objectContaining({ name: 'hello' }), 101, 'hi');
+      expect(updateDatasourceEntryDimension).toHaveBeenCalledTimes(1);
+      expect(konsola.warn).toHaveBeenCalledWith(expect.stringContaining('de'));
     });
   });
 });

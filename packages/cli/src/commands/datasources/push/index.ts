@@ -7,10 +7,23 @@ import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
 import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
-import { deleteDatasourceEntry, readDatasourcesFiles, upsertDatasource, upsertDatasourceEntry } from './actions';
+import { deleteDatasourceEntry, readDatasourcesFiles, updateDatasourceEntryDimension, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
 import { getUI } from '../../../utils/ui';
 import { getLogger } from '../../../lib/logger/logger';
+
+/**
+ * Compares two per-dimension value maps for equality, treating an absent map
+ * as empty.
+ */
+function dimensionValuesEqual(a?: Record<string, string>, b?: Record<string, string>): boolean {
+  const aKeys = Object.keys(a ?? {});
+  const bKeys = Object.keys(b ?? {});
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  return aKeys.every(key => a?.[key] === b?.[key]);
+}
 
 const pushCmd = datasourcesCommand
   .command('push [datasourceName]')
@@ -120,6 +133,10 @@ pushCmd
           const localEntries = entries ?? [];
           const existingEntries = existingDatasource?.entries ?? [];
 
+          // Collect per-dimension skip warnings and flush them after the spinner
+          // stops, so they aren't overwritten by the spinner's live redraw.
+          const dimensionWarnings: string[] = [];
+
           // Index existing entries by name with their position for O(1) lookup
           const existingEntryMap = new Map(existingEntries.map((e, idx) => [e.name, { entry: e, position: idx + 1 }]));
 
@@ -129,18 +146,51 @@ pushCmd
             const existingEntryId = existing?.entry.id;
             const targetPosition = i + 1;
 
-            // Skip update when all mutable fields and position are identical
+            // Skip update when all mutable fields, per-dimension values, and position are identical
             if (existing
               && existing.entry.value === entry.value
-              && existing.entry.dimension_value === entry.dimension_value
+              && dimensionValuesEqual(existing.entry.dimension_values, entry.dimension_values)
               && existing.position === targetPosition) {
               logger.info('Skipped datasource entry (unchanged)', { datasource: datasource.name, entry: entry.name, position: targetPosition });
               continue;
             }
 
             try {
-              await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
+              const upserted = await upsertDatasourceEntry(space, result.id, entry, existingEntryId, i + 1);
+              const entryId = existingEntryId ?? upserted?.id;
               logger.info(existingEntryId ? 'Updated datasource entry' : 'Created datasource entry', { datasource: datasource.name, entry: entry.name, position: i + 1 });
+
+              // Write per-dimension values. Iterate the union of local and target
+              // dimension codes so values removed locally are cleared (blank) too.
+              //
+              // Only reconcile when the local entry actually carries a
+              // `dimension_values` map. A missing key means the source is not
+              // dimension-aware (e.g. pulled before this feature, or from a
+              // dimensionless space); treating it as an empty map would blank out
+              // per-dimension values that already exist in the target. Pull omits
+              // the key for entries without per-dimension values, so this cannot
+              // propagate a full clear of the last remaining value — an acceptable
+              // trade-off to avoid silent data loss.
+              if (entryId != null && entry.dimension_values !== undefined) {
+                const localDimensionValues = entry.dimension_values;
+                const targetDimensionValues = existing?.entry.dimension_values ?? {};
+                const dimensionCodes = new Set([...Object.keys(localDimensionValues), ...Object.keys(targetDimensionValues)]);
+
+                for (const code of dimensionCodes) {
+                  const localValue = localDimensionValues[code] ?? '';
+                  const targetValue = targetDimensionValues[code] ?? '';
+                  // Skip dimensions already in sync to avoid redundant writes (e.g. when only the default value or position changed).
+                  if (localValue === targetValue) {
+                    continue;
+                  }
+                  const dimension = result.dimensions?.find(d => d.entry_value === code);
+                  if (!dimension?.id) {
+                    dimensionWarnings.push(`Skipping dimension "${code}" for entry "${entry.name}": no matching dimension in target space ${space}`);
+                    continue;
+                  }
+                  await updateDatasourceEntryDimension(space, entryId, entry, dimension.id, localValue);
+                }
+              }
             }
             catch (entryError) {
               results.failed.push({ name: datasource.name, error: entryError });
@@ -163,6 +213,9 @@ pushCmd
           }
 
           spinner.succeed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
+
+          // Flush any per-dimension skip warnings now that the spinner has stopped.
+          dimensionWarnings.forEach(warning => konsola.warn(warning));
         }
         else {
           results.failed.push({ name: datasource.name, error: result });

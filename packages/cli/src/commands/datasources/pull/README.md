@@ -139,3 +139,4 @@ Where:
 - The command will create the necessary directories if they don't exist
 - When using `--separate-files` or single datasource, each datasource is saved in its own file
 - All files include the datasource entries resolved automatically
+- Entries include a `dimension_values` map with the value for every defined dimension, keyed by the dimension code (`entry_value`, e.g. `en`). The command fetches one page set per dimension, so datasources with many dimensions issue more requests.

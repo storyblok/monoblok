@@ -172,23 +172,25 @@ The command performs the following operations:
 
 Each datasource file contains:
 - **Datasource metadata**: `id`, `name`, `slug`, `dimensions`, timestamps
-- **Entries**: Array of datasource entries with `id`, `name`, `value`, `dimension_value`
+- **Entries**: Array of datasource entries with `id`, `name`, `value`, and an optional `dimension_values` map
 
 Example datasource file:
 ```json
 {
   "id": 1,
-  "name": "colors",
-  "slug": "colors",
-  "dimensions": [],
+  "name": "greetings",
+  "slug": "greetings",
+  "dimensions": [
+    { "id": 1, "name": "English", "entry_value": "en", "datasource_id": 1 }
+  ],
   "created_at": "2024-01-01T00:00:00.000Z",
   "updated_at": "2024-01-01T00:00:00.000Z",
   "entries": [
     {
       "id": 101,
-      "name": "blue",
-      "value": "#0000ff",
-      "dimension_value": "",
+      "name": "hello",
+      "value": "hello",
+      "dimension_values": { "en": "hi" },
       "datasource_id": 1
     }
   ]

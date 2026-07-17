@@ -22,12 +22,6 @@ storyblok assets transfer 123456 789012 345678 --folder-id 789 --space YOUR_SPAC
 storyblok assets transfer 123456 789012 --folder-id 789 --space YOUR_SPACE_ID --dry-run
 ```
 
-**Transfer every asset in a space:**
-
-```bash
-storyblok assets transfer --all --folder-id 789 --space YOUR_SPACE_ID
-```
-
 **Preview an `--all` transfer without making any API calls:**
 
 ```bash

@@ -423,6 +423,9 @@ importers:
       '@storyblok/region-helper':
         specifier: workspace:*
         version: link:../region-helper
+      '@storyblok/schema':
+        specifier: workspace:*
+        version: file:packages/schema
       '@topcli/spinner':
         specifier: ^2.1.2
         version: 2.1.2
@@ -34510,6 +34513,7 @@ snapshots:
       '@storyblok/js': file:packages/js
       '@storyblok/management-api-client': file:packages/mapi-client
       '@storyblok/region-helper': file:packages/region-helper
+      '@storyblok/schema': file:packages/schema
       '@topcli/spinner': 2.1.2
       async-sema: 3.1.1
       c12: 3.3.3(magicast@0.5.2)

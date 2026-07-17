@@ -52,6 +52,9 @@ export type { Schema } from './helpers/schema-type';
 
 // Validators (Zod-powered, non-throwing)
 export { createStoryValidator } from './validators/create-story-validator';
+// Loose structural input shapes accepted by the validators — exported so
+// callers loading schemas at runtime (e.g. the CLI) can type their input.
+export type { SchemaBlockLike, SchemaDatasourceLike, SchemaFieldLike, SchemaLike } from './validators/shapes';
 export type { ValidationIssue, ValidationResult, ValidationSeverity } from './validators/types';
 export { validateSchema } from './validators/validate-schema';
 export { validateStory } from './validators/validate-story';

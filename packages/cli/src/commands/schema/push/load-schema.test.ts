@@ -1,40 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyExports, isComponent, isDatasource } from './load-schema';
+import { classifyExports } from './load-schema';
 
-describe('isComponent', () => {
-  it('should return true for objects with name and a fields array', () => {
-    expect(isComponent({ name: 'page', fields: [{ name: 'title', type: 'text' }] })).toBe(true);
-  });
-
-  it('should return false for objects without fields', () => {
-    expect(isComponent({ name: 'folder' })).toBe(false);
-  });
-
-  it('should return false for non-objects', () => {
-    expect(isComponent('string')).toBe(false);
-    expect(isComponent(null)).toBe(false);
-    expect(isComponent(undefined)).toBe(false);
-  });
-
-  it('should return false for objects with fields but no name', () => {
-    expect(isComponent({ fields: [] })).toBe(false);
-  });
-});
-
-describe('isDatasource', () => {
-  it('should return true for objects with name and slug', () => {
-    expect(isDatasource({ name: 'Colors', slug: 'colors' })).toBe(true);
-  });
-
-  it('should return false for objects without slug', () => {
-    expect(isDatasource({ name: 'Colors' })).toBe(false);
-  });
-
-  it('should return false for components (has a fields array)', () => {
-    expect(isDatasource({ name: 'page', slug: 'page', fields: [] })).toBe(false);
-  });
-});
+// The DSL export predicates (`isComponent` / `isDatasource` / `isSchemaObject`)
+// are unit-tested in `src/utils/schema/classify-exports.test.ts`. This suite
+// covers the push-specific wire mapping in `classifyExports`.
 
 describe('classifyExports', () => {
   it('should classify a mixed module and map blocks to the wire schema shape', () => {

@@ -85,8 +85,11 @@ export function getProgram(): Command {
             state.oauthAccessToken = refreshed.access_token;
             state.oauthExpiresAt = refreshed.expires_at;
           } catch (error) {
-            // Surface a clear re-login message; commands that need auth will fail downstream.
-            getLogger().error("OAuth token refresh failed", { error: (error as Error).message });
+            // The UI isn't configured yet at this point in the hook (Step 2 below applies
+            // the resolved config), so surface the re-login guidance via the default UI
+            // instance. Do not throw: commands that don't need auth should still run;
+            // authed commands will fail downstream if the token is dead.
+            getUI().warn((error as Error).message);
           }
         }
         if (accessToken) {

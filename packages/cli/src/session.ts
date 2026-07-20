@@ -1,6 +1,7 @@
 // session.ts
 import { type RegionCode, regionsDomain } from './constants';
 import { addCredentials, getCredentials } from './creds';
+import { clearOauthEntry, getOauthEntry } from './commands/oauth/store';
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -8,6 +9,10 @@ export interface SessionState {
   password?: string;
   region?: RegionCode;
   envLogin?: boolean;
+  authType?: 'pat' | 'oauth';
+  oauthAccessToken?: string;
+  oauthExpiresAt?: string;
+  oauthSpaces?: { id: number; region: string }[];
 }
 
 let sessionInstance: ReturnType<typeof createSession> | null = null;
@@ -26,27 +31,63 @@ function createSession() {
       state.password = envCredentials.password;
       state.region = envCredentials.region as RegionCode;
       state.envLogin = true;
+      state.authType = 'pat';
       return;
     }
 
     // If no environment variables, fall back to .storyblok/credentials.json
     const credentials = await getCredentials();
-    if (credentials) {
-      // Todo: evaluate this in future when we want to support multiple regions
-      const creds = Object.values(credentials)[0];
+    // The credentials file also stores an `oauth` top-level key; exclude it so it is
+    // never mistaken for a PAT entry (it has no login/password/region fields).
+    const patEntry = credentials
+      ? Object.entries(credentials).find(([machineName]) => machineName !== 'oauth')?.[1]
+      : undefined;
+    if (patEntry) {
       state.isLoggedIn = true;
-      state.login = creds.login;
-      state.password = creds.password;
-      state.region = creds.region as RegionCode;
+      state.login = patEntry.login;
+      state.password = patEntry.password;
+      state.region = patEntry.region as RegionCode;
+      state.authType = 'pat';
     }
     else {
-      // No credentials found; set state to logged out
-      state.isLoggedIn = false;
-      state.login = undefined;
-      state.password = undefined;
-      state.region = undefined;
+      // No PAT credentials; try an OAuth session.
+      const oauthLoaded = await loadOauthSession();
+      if (!oauthLoaded) {
+        state.isLoggedIn = false;
+        state.login = undefined;
+        state.password = undefined;
+        state.region = undefined;
+        state.authType = undefined;
+      }
     }
     state.envLogin = false;
+  }
+
+  async function loadOauthSession(): Promise<boolean> {
+    const regionsToCheck: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
+    for (const region of regionsToCheck) {
+      const entry = await getOauthEntry(region);
+      if (entry.tokens?.access_token) {
+        state.isLoggedIn = true;
+        state.authType = 'oauth';
+        state.region = region;
+        state.oauthAccessToken = entry.tokens.access_token;
+        state.oauthExpiresAt = entry.tokens.expires_at;
+        state.oauthSpaces = entry.spaces;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function clearOauthSession(region: RegionCode): Promise<void> {
+    await clearOauthEntry(region);
+    state.oauthAccessToken = undefined;
+    state.oauthExpiresAt = undefined;
+    state.oauthSpaces = undefined;
+    if (state.authType === 'oauth') {
+      logout();
+    }
   }
 
   function getEnvCredentials() {
@@ -90,6 +131,7 @@ function createSession() {
     state.login = undefined;
     state.password = undefined;
     state.region = undefined;
+    state.authType = undefined;
   }
 
   return {
@@ -98,6 +140,7 @@ function createSession() {
     updateSession,
     persistCredentials,
     logout,
+    clearOauthSession,
   };
 }
 

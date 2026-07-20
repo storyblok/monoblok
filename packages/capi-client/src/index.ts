@@ -7,6 +7,17 @@
  */
 
 // Client
+// Rate limiting (deprecated)
+// Kept for backwards compatibility with `0.x`. Rate limiting is configured via
+// the `rateLimit` option on `createApiClient`; these standalone helpers are
+// internal and will be removed in a future release. Declared as local aliases
+// (not re-export specifiers) so the `@deprecated` JSDoc survives DTS bundling.
+import {
+  createThrottle as createThrottleInternal,
+  parseRateLimitPolicyHeader as parseRateLimitPolicyHeaderInternal,
+} from './utils/rate-limit';
+import type { RateLimitConfig as RateLimitConfigInternal } from './utils/rate-limit';
+
 export { createApiClient } from './client';
 export type {
   ApiResponse,
@@ -48,3 +59,10 @@ export type { Story } from './generated/types/story';
 export type { StoryWithInlinedRelations } from './resources/stories';
 // Cache types
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
+
+/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
+export const createThrottle = createThrottleInternal;
+/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
+export const parseRateLimitPolicyHeader = parseRateLimitPolicyHeaderInternal;
+/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
+export type RateLimitConfig = RateLimitConfigInternal;

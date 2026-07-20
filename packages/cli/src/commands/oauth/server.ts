@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { CommandError } from '../../utils';
 
 const SUCCESS_PAGE = `<!doctype html><html><body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
 <h1>Storyblok CLI</h1><p>Authorization received. You can close this tab and return to the terminal.</p>
@@ -23,13 +24,13 @@ export const waitForCallback = (port: number, path: string, timeoutMs = 300_000)
 
       const error = url.searchParams.get('error');
       if (error) {
-        reject(new Error(`Authorization failed: ${error} — ${url.searchParams.get('error_description') ?? 'no description'}`));
+        reject(new CommandError(`Authorization failed: ${error} — ${url.searchParams.get('error_description') ?? 'no description'}`));
         return;
       }
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state');
       if (!code || !state) {
-        reject(new Error('Callback did not include code and state query params.'));
+        reject(new CommandError('Callback did not include code and state query params.'));
         return;
       }
       resolve({ code, state });
@@ -37,7 +38,7 @@ export const waitForCallback = (port: number, path: string, timeoutMs = 300_000)
 
     timer = setTimeout(() => {
       server.close();
-      reject(new Error('Timed out waiting for the browser authorization callback.'));
+      reject(new CommandError('Timed out waiting for the browser authorization callback.'));
     }, timeoutMs);
     timer.unref?.();
 

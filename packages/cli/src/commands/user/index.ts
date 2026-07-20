@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { colorPalette, commands } from '../../constants';
 import { getProgram } from '../../program';
-import { handleError, isVitest, konsola, requireAuthentication } from '../../utils';
+import { handleError, isVitest, konsola, requireAuthentication, sessionCredential } from '../../utils';
 import { getUser } from './actions';
 import { session } from '../../session';
 import { Spinner } from '@topcli/spinner';
@@ -24,12 +24,13 @@ export const userCommand = program
       verbose: !isVitest,
     }).start(`Fetching user info`);
     try {
-      const { password, region } = state;
-      if (!password || !region) {
-        throw new Error('No password or region found');
+      const { region } = state;
+      const credential = sessionCredential(state);
+      if (!credential || !region) {
+        throw new Error('No credential or region found');
       }
 
-      const user = await getUser(password, region);
+      const user = await getUser(credential, region);
 
       if (user) {
         if (verbose) {

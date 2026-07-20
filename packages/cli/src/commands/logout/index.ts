@@ -16,13 +16,21 @@ export const logoutCommand = program
 
     const verbose = program.opts().verbose;
     try {
-      const { state } = session();
-      if (!state.isLoggedIn || !state.password || !state.region) {
+      const { state, initializeSession, clearOauthSession } = session();
+      await initializeSession();
+
+      if (!state.isLoggedIn) {
         ui.warn(`You are already logged out. If you want to login, please use the login command.`);
         ui.br();
         return;
       }
-      await removeAllCredentials();
+
+      if (state.authType === 'oauth' && state.region) {
+        await clearOauthSession(state.region);
+      }
+      else {
+        await removeAllCredentials();
+      }
 
       ui.ok(`Successfully logged out.`, true);
       ui.br();

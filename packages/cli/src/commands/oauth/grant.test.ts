@@ -9,14 +9,18 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe('introspectGrant', () => {
-  it('should return scopes, expiry and granted spaces', async () => {
+  // The API nests the payload under a `grant` root key
+  // (storyrails oauth_controller renders `root: "grant", adapter: :json`).
+  it('should unwrap the `grant` root and return scopes, expiry and granted spaces', async () => {
     server.use(
       http.get('https://mapi.storyblok.com/v1/oauth/grant', () =>
         HttpResponse.json({
-          scopes: ['stories:read', 'offline_access'],
-          expires_at: '2026-07-20T12:00:00.000Z',
-          app: { client_id: 'cid', name: 'Storyblok CLI' },
-          spaces: [{ id: 123, region: 'eu' }],
+          grant: {
+            scopes: ['stories:read', 'offline_access'],
+            expires_at: '2026-07-20T12:00:00.000Z',
+            app: { client_id: 'cid', name: 'Storyblok CLI' },
+            spaces: [{ id: 123, region: 'eu' }],
+          },
         })),
     );
 

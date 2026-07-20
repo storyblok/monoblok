@@ -12,6 +12,8 @@ import { resolveCommandPath } from './utils/filesystem';
 import { directories } from './constants';
 import { session } from './session';
 import { getMapiClient } from './api';
+import { isExpiringSoon } from './commands/oauth/expiry';
+import { refreshOauthTokens } from './commands/oauth/refresh';
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -71,10 +73,31 @@ export function getProgram(): Command {
       applyConfigToCommander(ancestry, resolvedConfig);
       setActiveConfig(resolvedConfig);
 
-      // Initialize mapiClient
+      // Initialize mapiClient with the active credential (PAT or OAuth access token).
       const { state, initializeSession } = session();
       await initializeSession();
-      if (state.password) {
+      if (state.authType === 'oauth' && state.region) {
+        let accessToken = state.oauthAccessToken;
+        if (isExpiringSoon(state.oauthExpiresAt)) {
+          try {
+            const refreshed = await refreshOauthTokens(state.region);
+            accessToken = refreshed.access_token;
+            state.oauthAccessToken = refreshed.access_token;
+            state.oauthExpiresAt = refreshed.expires_at;
+          }
+          catch (error) {
+            // Surface a clear re-login message; commands that need auth will fail downstream.
+            getLogger().error('OAuth token refresh failed', { error: (error as Error).message });
+          }
+        }
+        if (accessToken) {
+          getMapiClient({
+            oauthToken: accessToken,
+            region: state.region ?? resolvedConfig.region,
+          });
+        }
+      }
+      else if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,
           region: state.region ?? resolvedConfig.region,

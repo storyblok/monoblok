@@ -7,7 +7,7 @@ import { getProgram } from '../../program';
 import { CommandError, handleError, isRegion, isVitest, konsola } from '../../utils';
 import { loginWithToken } from './actions';
 import { session } from '../../session';
-import { performInteractiveLogin } from './helpers';
+import { performInteractiveLogin, performOauthLoginStrategy } from './helpers';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -21,9 +21,11 @@ export const loginCommand = program
     '-r, --region <region>',
     `The region you would like to work in. Please keep in mind that the region must match the region of your space. This region flag will be used for the other cli's commands. You can use the values: ${allRegionsText}.`,
   )
+  .option('--oauth', 'Login with OAuth (opens your browser for consent)')
   .action(async (options: {
     token: string;
     region: RegionCode;
+    oauth?: boolean;
   }) => {
     konsola.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
@@ -40,6 +42,13 @@ export const loginCommand = program
 
     if (region && !isRegion(region)) {
       handleError(new CommandError(`The provided region: ${region} is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`));
+      return;
+    }
+
+    if (options.oauth) {
+      const userRegion = region || regions.EU;
+      await performOauthLoginStrategy({ region: userRegion, verbose });
+      konsola.br();
       return;
     }
 

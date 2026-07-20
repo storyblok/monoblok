@@ -6,6 +6,9 @@ import { colorPalette, regionNames, regions } from '../../constants';
 import { handleError, isVitest, konsola } from '../../utils';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { session } from '../../session';
+import { performOauthLogin } from '../oauth/login-flow';
+import type { OauthLoginResult } from '../oauth/login-flow';
+import { getUI } from '../../utils/ui';
 
 /**
  * Performs interactive login flow with email/password or token
@@ -30,6 +33,11 @@ export async function performInteractiveLogin(options?: {
       message: 'How would you like to login?',
       choices: [
         {
+          name: 'With OAuth (recommended — opens your browser)',
+          value: 'login-with-oauth',
+          short: 'OAuth',
+        },
+        {
           name: 'With email',
           value: 'login-with-email',
           short: 'Email',
@@ -44,6 +52,19 @@ export async function performInteractiveLogin(options?: {
 
     let userToken: string;
     let userRegion: RegionCode;
+
+    if (strategy === 'login-with-oauth') {
+      const region = preSelectedRegion || await select({
+        message: 'Please select the region you would like to work in:',
+        choices: Object.values(regions).map((region: RegionCode) => ({
+          name: regionNames[region],
+          value: region,
+        })),
+        default: regions.EU,
+      });
+      const result = await performOauthLoginStrategy({ region, verbose });
+      return result ? { token: '', region } : null;
+    }
 
     if (strategy === 'login-with-token') {
       konsola.info([
@@ -139,6 +160,35 @@ export async function performInteractiveLogin(options?: {
   catch (error) {
     spinner.failed();
     konsola.br();
+    handleError(error as Error, verbose);
+    return null;
+  }
+}
+
+/**
+ * Runs the OAuth Authorization Code login flow and reports the granted scopes and spaces.
+ * @returns the login result, or null when the flow was cancelled or failed.
+ */
+export async function performOauthLoginStrategy(options: {
+  region: RegionCode;
+  verbose?: boolean;
+}): Promise<OauthLoginResult | null> {
+  const { region, verbose = false } = options;
+  const ui = getUI();
+  try {
+    const result = await performOauthLogin({ region });
+    const spaceList = result.spaces.length
+      ? result.spaces.map(space => `${space.id} (${space.region})`).join(', ')
+      : 'none (grant is not space-scoped)';
+    ui.ok(
+      `Successfully logged in with OAuth in region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[region]} (${region})`)}.\n`
+      + `Granted scopes: ${result.scopes.join(', ')}\n`
+      + `Authorized spaces: ${spaceList}`,
+      true,
+    );
+    return result;
+  }
+  catch (error) {
     handleError(error as Error, verbose);
     return null;
   }

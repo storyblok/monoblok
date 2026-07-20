@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/migrations",
   "type": "module",
-  "version": "1.0.0-alpha.5",
+  "version": "0.2.2",
   "private": false,
   "description": "Migration utilities for Storyblok",
   "author": "Storyblok",

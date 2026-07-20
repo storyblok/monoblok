@@ -31,11 +31,15 @@ export const exchangeToken = async (region: RegionCode, params: Record<string, s
     throw new CommandError(`Token endpoint error (${errorCode}): ${JSON.stringify(raw)}`);
   }
 
+  if (typeof raw.access_token !== 'string' || typeof raw.expires_in !== 'number') {
+    throw new CommandError(`Token endpoint returned an unexpected shape: ${JSON.stringify(raw)}`);
+  }
+
   return {
-    access_token: raw.access_token as string,
-    refresh_token: raw.refresh_token as string | undefined,
-    expires_in: raw.expires_in as number,
-    scope: raw.scope as string | undefined,
+    access_token: raw.access_token,
+    refresh_token: typeof raw.refresh_token === 'string' ? raw.refresh_token : undefined,
+    expires_in: raw.expires_in,
+    scope: typeof raw.scope === 'string' ? raw.scope : undefined,
     raw,
   };
 };

@@ -32,7 +32,7 @@ describe('@storyblok/vue', () => {
     cy.spy(window.console, 'log').as('log');
     cy.spy(window.console, 'error').as('error');
     delete (window as any).storyblokRegisterEvent;
-    document.getElementById('storyblok-javascript-bridge')?.remove();
+    delete (window as any).StoryblokBridge;
   });
 
   describe('v-editable directive', () => {

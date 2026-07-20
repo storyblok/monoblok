@@ -1,6 +1,6 @@
 # OAuth Commands
 
-The CLI supports logging in with OAuth (Authorization Code Grant with PKCE). OAuth access tokens are space-scoped: at the consent screen you select which space(s) the CLI may access.
+The CLI supports logging in with OAuth (Authorization Code Grant with PKCE). OAuth access tokens can be space-scoped: at the consent screen you select which space(s) the CLI may access, and the CLI is then limited to those spaces. If no specific space is selected, the grant covers all your spaces.
 
 ## Provision a client (`storyblok oauth setup`)
 
@@ -18,6 +18,6 @@ Run `storyblok login --oauth` (or pick "With OAuth" in `storyblok login`). The C
 
 ## Scope and limitations
 
-- Grants are space-scoped. Commands that target a space outside your grant fail with a clear message; re-run `storyblok login` and select that space.
+- Grants can be space-scoped. If you selected specific spaces at consent, commands that target a space outside your grant fail with a clear message; re-run `storyblok login` and select that space.
 - Access tokens last 15 minutes and the refresh token rotates on every refresh; the CLI persists the rotated token automatically.
 - OAuth login is interactive (it opens a browser). For non-interactive CI, keep using `storyblok login --token <PAT>`.

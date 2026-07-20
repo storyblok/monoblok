@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { join } from 'pathe';
-import { getPackageJson, handleError } from './utils';
+import { getPackageJson, handleError, konsola } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
 import { getLogger, setLoggerTransports } from './lib/logger/logger';
@@ -87,8 +87,11 @@ export function getProgram(): Command {
             state.oauthExpiresAt = refreshed.expires_at;
           }
           catch (error) {
-            // Surface a clear re-login message; commands that need auth will fail downstream.
-            getLogger().error('OAuth token refresh failed', { error: (error as Error).message });
+            // The logger/UI aren't configured yet at this point in the hook (Step 2 below
+            // sets up their transports), so surface the re-login guidance via konsola, which
+            // always prints. Do not throw: commands that don't need auth should still run;
+            // authed commands will fail downstream if the token is dead.
+            konsola.warn((error as Error).message);
           }
         }
         if (accessToken) {

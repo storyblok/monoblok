@@ -9,8 +9,9 @@ export const computeExpiresAt = (expiresInSeconds: number, nowMs: number = Date.
   return new Date(nowMs + expiresInSeconds * 1000).toISOString();
 };
 
-// In-process single-flight: concurrent callers within one CLI process share one refresh.
-let inFlight: Promise<OauthTokens> | null = null;
+// In-process single-flight, keyed by region: concurrent callers for the same
+// region within one CLI process share one refresh, but different regions don't.
+const inFlight = new Map<RegionCode, Promise<OauthTokens>>();
 
 const doRefresh = async (region: RegionCode): Promise<OauthTokens> => {
   const entry = await getOauthEntry(region);
@@ -51,10 +52,12 @@ const doRefresh = async (region: RegionCode): Promise<OauthTokens> => {
 };
 
 export const refreshOauthTokens = async (region: RegionCode): Promise<OauthTokens> => {
-  if (!inFlight) {
-    inFlight = doRefresh(region).finally(() => {
-      inFlight = null;
-    });
+  if (inFlight.has(region)) {
+    return inFlight.get(region)!;
   }
-  return inFlight;
+  const promise = doRefresh(region).finally(() => {
+    inFlight.delete(region);
+  });
+  inFlight.set(region, promise);
+  return promise;
 };

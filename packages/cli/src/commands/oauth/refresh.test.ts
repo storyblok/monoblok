@@ -28,6 +28,30 @@ describe('refreshOauthTokens', () => {
     });
   });
 
+  it('should key single-flight refresh by region so concurrent regions do not share a promise', async () => {
+    await updateOauthEntry('us', {
+      client: { client_id: 'us-cid', client_secret: 'us-secret' },
+      tokens: { auth_type: 'oauth', access_token: 'us-old-access', refresh_token: 'us-old-refresh', expires_at: '2026-07-20T00:00:00.000Z' },
+    });
+
+    server.use(
+      // eu and us resolve to distinct hosts (mapi.storyblok.com vs api-us.storyblok.com),
+      // so each handler only ever serves its own region's refresh request.
+      http.post('https://mapi.storyblok.com/oauth/token', () =>
+        HttpResponse.json({ access_token: 'eu-new-access', refresh_token: 'eu-new-refresh', token_type: 'bearer', expires_in: 900, scope: 'stories:read' })),
+      http.post('https://api-us.storyblok.com/oauth/token', () =>
+        HttpResponse.json({ access_token: 'us-new-access', refresh_token: 'us-new-refresh', token_type: 'bearer', expires_in: 900, scope: 'stories:read' })),
+    );
+
+    const [euTokens, usTokens] = await Promise.all([
+      refreshOauthTokens('eu'),
+      refreshOauthTokens('us'),
+    ]);
+
+    expect(euTokens.access_token).toBe('eu-new-access');
+    expect(usTokens.access_token).toBe('us-new-access');
+  });
+
   it('should persist the rotated refresh token before returning the new access token', async () => {
     let persistedRefreshAtRequestTime: string | undefined;
     server.use(

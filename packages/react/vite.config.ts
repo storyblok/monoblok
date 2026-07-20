@@ -9,7 +9,6 @@ export default defineConfig({
     react(),
     dts({
       insertTypesEntry: true,
-      rollupTypes: true,
     }),
     preserveDirectives(),
   ],
@@ -21,9 +20,13 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        ssr: resolve(__dirname, 'src/ssr/index.ts'),
-        rsc: resolve(__dirname, 'src/rsc/index.ts'),
+        'index': resolve(__dirname, 'src/index.ts'),
+        'ssr': resolve(__dirname, 'src/ssr/index.ts'),
+        'rsc': resolve(__dirname, 'src/rsc/index.ts'),
+        // v2 experimental entries
+        'next': resolve(__dirname, 'src/v2/index.ts'),
+        'next/rsc': resolve(__dirname, 'src/v2/rsc/index.ts'),
+        'next/client': resolve(__dirname, 'src/v2/client/index.ts'),
       },
       name: 'storyblokReact',
       fileName: (format, entry) => {
@@ -46,8 +49,9 @@ export default defineConfig({
         /^next\//,
       ],
       output: {
-        preserveModules: true,
         globals: { react: 'React' },
+        preserveModules: true,
+        preserveModulesRoot: 'src',
       },
     },
   },

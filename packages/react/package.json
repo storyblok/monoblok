@@ -30,6 +30,21 @@
       "types": "./dist/rsc.d.ts",
       "import": "./dist/rsc.mjs",
       "require": "./dist/rsc.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.mjs",
+      "require": "./dist/next.js"
+    },
+    "./next/rsc": {
+      "types": "./dist/next/rsc.d.ts",
+      "import": "./dist/next/rsc.mjs",
+      "require": "./dist/next/rsc.js"
+    },
+    "./next/client": {
+      "types": "./dist/next/client.d.ts",
+      "import": "./dist/next/client.mjs",
+      "require": "./dist/next/client.js"
     }
   },
   "main": "./dist/index.js",
@@ -68,7 +83,9 @@
     }
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:*",
     "@storyblok/js": "workspace:*",
+    "@storyblok/live-preview": "workspace:*",
     "@storyblok/richtext": "workspace:*"
   },
   "devDependencies": {

@@ -12,7 +12,9 @@ storyblok login
 This will start an interactive login process where you can choose between:
 
 - Email and password login
-- Token login (Personal Access Token – recommended for CI and required for SSO users)
+- Token login (Personal Access Token, recommended for CI and required for SSO users)
+- OAuth login (opens your browser; requires a client provisioned with `storyblok oauth setup` or set
+  via `STORYBLOK_OAUTH_CLIENT_ID`/`STORYBLOK_OAUTH_CLIENT_SECRET`)
 
 ### Get your personal access token
 
@@ -23,6 +25,7 @@ Go to [https://app.storyblok.com/#/me/account?tab=token] and click on **Generate
 | Option                  | Description                                                  | Default |
 | ----------------------- | ------------------------------------------------------------ | ------- |
 | `-t, --token <token>`   | Login directly with a token (useful for CI environments)     | -       |
+| `--oauth`               | Login with OAuth (opens your browser for consent)            | -       |
 | `-r, --region <region>` | Set the region to work with (must match your space's region) | `eu`    |
 
 ## Examples
@@ -43,6 +46,12 @@ storyblok login --token PERSONAL_ACCESS_TOKEN
 
 ```bash
 storyblok login --token PERSONAL_ACCESS_TOKEN --region us
+```
+
+4. Login with OAuth:
+
+```bash
+storyblok login --oauth
 ```
 
 ## Notes

@@ -106,20 +106,10 @@ export function getProgram(): Command {
       }
 
       // Guard OAuth sessions against operating on spaces outside their consent grant.
-      // A thrown CommandError here would otherwise become an unhandled rejection (commander's
-      // preAction hooks run async but `program.parse()` in index.ts is synchronous and never
-      // awaits/catches the resulting promise chain), so we handle and abort explicitly instead
-      // of letting it propagate.
+      // A thrown CommandError here propagates out of the preAction hook, rejecting
+      // `program.parseAsync()` in index.ts, which handles it once at the top level.
       if (state.authType === 'oauth') {
-        try {
-          const targetSpace = targetCommand.optsWithGlobals().space;
-          assertSpaceAllowed(targetSpace, state.oauthSpaces);
-        }
-        catch (error) {
-          handleError(error as Error, thisCommand.opts().verbose);
-          process.exitCode = 1;
-          process.exit(1);
-        }
+        assertSpaceAllowed(targetCommand.optsWithGlobals().space, state.oauthSpaces);
       }
 
       // Step 2: Setup logging, UI, and reporting with resolved config

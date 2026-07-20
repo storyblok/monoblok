@@ -37,9 +37,7 @@ program.on('command:*', () => {
   process.exit(1);
 });
 
-try {
-  program.parse(process.argv);
-}
-catch (error) {
+program.parseAsync(process.argv).catch((error) => {
   handleError(error as Error);
-}
+  process.exitCode = 1;
+});

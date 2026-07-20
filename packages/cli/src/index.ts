@@ -5,6 +5,7 @@ import { handleError, konsola } from './utils';
 import { getProgram } from './program';
 import './commands/login';
 import './commands/logout';
+import './commands/oauth';
 import './commands/signup';
 import './commands/user';
 import './commands/components';

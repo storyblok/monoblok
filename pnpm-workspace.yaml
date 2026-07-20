@@ -13,3 +13,5 @@ catalog:
 onlyBuiltDependencies:
   - cypress
   - esbuild
+overrides:
+  happy-dom: "^20.8.8"

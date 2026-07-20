@@ -46,8 +46,9 @@ describe('login --oauth', () => {
     server.use(
       http.post('https://mapi.storyblok.com/oauth/token', () =>
         HttpResponse.json({ access_token: 'sb_oat_x', refresh_token: 'sb_ort_x', token_type: 'bearer', expires_in: 900, scope: 'stories:read offline_access' })),
+      // The grant introspection payload is nested under a `grant` root key (storyrails).
       http.get('https://mapi.storyblok.com/v1/oauth/grant', () =>
-        HttpResponse.json({ scopes: ['stories:read', 'offline_access'], expires_at: '2026-07-20T12:00:00.000Z', app: { client_id: 'cid', name: 'Storyblok CLI' }, spaces: [{ id: 99, region: 'eu' }] })),
+        HttpResponse.json({ grant: { scopes: ['stories:read', 'offline_access'], expires_at: '2026-07-20T12:00:00.000Z', app: { client_id: 'cid', name: 'Storyblok CLI' }, spaces: [{ id: 99, region: 'eu' }] } })),
     );
 
     await loginCommand.parseAsync(['node', 'test', '--oauth', '--region', 'eu']);

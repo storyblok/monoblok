@@ -3,11 +3,24 @@ import {
   renderRichText,
   storyblokEditable,
   storyblokInit,
+  useStoryblokBridge,
 } from '../src';
 import type { SbInitResult, SbPluginFactory, SbRichTextDoc } from '../src';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { loadBridge } from './bridge';
+
+// Mock @storyblok/preview-bridge so dynamic import() in bridge.ts resolves
+// synchronously in tests without triggering any real browser bridge logic.
+const MockStoryblokBridge = vi.fn();
+vi.mock('@storyblok/preview-bridge', () => ({
+  default: MockStoryblokBridge,
+}));
+
+/** Flush all pending microtasks (lets the dynamic import .then() chains run). */
+async function flushPromises() {
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
 
 describe('@storyblok/js', () => {
   afterEach(() => {
@@ -24,7 +37,6 @@ describe('@storyblok/js', () => {
     });
 
     it('is loaded correctly when using the apiPlugin', async () => {
-      // Mock fetch to return a successful response
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(JSON.stringify({
           stories: [
@@ -65,7 +77,6 @@ describe('@storyblok/js', () => {
     });
 
     it('should handle failed API calls', async () => {
-      // Create an isolated mock just for this test
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockRejectedValueOnce(new Error('API Error'));
 
@@ -75,13 +86,10 @@ describe('@storyblok/js', () => {
       });
 
       await expect(storyblokApi!.get('cdn/stories/test')).rejects.toThrow();
-
-      // Verify the mock was called
       expect(fetchSpy).toHaveBeenCalled();
     });
 
     it('should support different API endpoints', async () => {
-      // Create a spy that returns successful responses
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(JSON.stringify({ stories: [] })))
         .mockResolvedValueOnce(new Response(JSON.stringify({ links: [] })))
@@ -96,7 +104,6 @@ describe('@storyblok/js', () => {
       await storyblokApi!.get('cdn/links');
       await storyblokApi!.get('cdn/datasources');
 
-      // Verify different endpoints were called
       expect(fetchSpy).toHaveBeenCalledTimes(3);
       expect(fetchSpy.mock.calls[0][0].toString()).toContain('cdn/stories');
       expect(fetchSpy.mock.calls[1][0].toString()).toContain('cdn/links');
@@ -104,7 +111,6 @@ describe('@storyblok/js', () => {
     });
 
     it('should handle pagination correctly', async () => {
-      // Mock fetch to return paginated responses
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(JSON.stringify({
           stories: [{ id: 1 }, { id: 2 }],
@@ -124,147 +130,137 @@ describe('@storyblok/js', () => {
         use: [apiPlugin],
       }) as { storyblokApi: any };
 
-      // Define type for stories
       const allStories: Array<{ id: number }> = [];
       let page = 1;
       const perPage = 2;
 
-      // First page
-      let response = await storyblokApi.get('cdn/stories', {
-        page,
-        perPage,
-      });
-
+      let response = await storyblokApi.get('cdn/stories', { page, perPage });
       const total = response.data.total;
       allStories.push(...response.data.stories);
 
-      // Get remaining pages
       while (allStories.length < total) {
         page++;
-        response = await storyblokApi.get('cdn/stories', {
-          page,
-          perPage,
-        });
+        response = await storyblokApi.get('cdn/stories', { page, perPage });
         allStories.push(...response.data.stories);
       }
 
-      // Verify pagination results
       expect(allStories).toHaveLength(4);
-      expect(allStories).toEqual([
-        { id: 1 },
-        { id: 2 },
-        { id: 3 },
-        { id: 4 },
-      ]);
-
-      // Verify that fetch was called twice for the two pages
+      expect(allStories).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('initialization', () => {
     it('should initialize multiple plugins', () => {
-      // Create two mock plugins with proper typing
       const plugin1: SbPluginFactory = () => ({ feature1: 'value1' });
       const plugin2: SbPluginFactory = () => ({ feature2: 'value2' });
 
       const result = storyblokInit({
         accessToken: 'test-token',
         use: [plugin1, plugin2],
-      }) as SbInitResult & {
-        feature1: string;
-        feature2: string;
-      };
+      }) as SbInitResult & { feature1: string; feature2: string };
 
-      // Verify both plugins were initialized
-      expect(result).toEqual({
-        feature1: 'value1',
-        feature2: 'value2',
-      });
-
-      // Verify the result has both plugin features
+      expect(result).toEqual({ feature1: 'value1', feature2: 'value2' });
       expect(result.feature1).toBe('value1');
       expect(result.feature2).toBe('value2');
     });
 
-    it('should handle custom bridge URLs', () => {
-      const customBridgeUrl = 'https://custom-bridge.com/bridge.js';
-
-      // Mock window.location to simulate being in the editor
-      const originalLocation = window.location;
-      Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok_tk=123' },
-        writable: true,
-      });
+    it('should emit a deprecation warning for bridgeUrl', () => {
+      const warnSpy = vi.spyOn(console, 'warn');
 
       storyblokInit({
         accessToken: 'test-token',
-        bridgeUrl: customBridgeUrl,
+        bridgeUrl: 'https://custom-bridge.com/bridge.js',
       });
 
-      // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('bridgeUrl` option is deprecated'),
+      );
 
-      // Verify bridge script was added with correct URL
-      expect(bridgeScript).toBeTruthy();
-      expect(bridgeScript?.getAttribute('src')).toBe(customBridgeUrl);
+      // The bridge is now bundled — no CDN script tag is injected.
+      expect(document.querySelector('#storyblok-javascript-bridge')).toBeNull();
+    });
+  });
 
-      // Restore original window.location
+  describe('normalizeBridgeOptions (via useStoryblokBridge)', () => {
+    const mockOn = vi.fn();
+
+    beforeEach(() => {
+      mockOn.mockClear();
+      MockStoryblokBridge.mockClear();
+      // Make the constructor return an object with .on() so useStoryblokBridge
+      // doesn't throw when it calls sbBridge.on(...)
+      MockStoryblokBridge.mockImplementation(() => ({ on: mockOn }));
+
+      // Simulate bridge already loaded: storyblokRegisterEvent executes
+      // callbacks immediately and window.StoryblokBridge is available.
       Object.defineProperty(window, 'location', {
-        value: originalLocation,
+        value: { search: '?_storyblok=42', href: 'http://localhost?_storyblok=42' },
         writable: true,
+        configurable: true,
       });
+      (window as any).storyblokRegisterEvent = (cb: () => void) => cb();
+      (window as any).StoryblokBridge = MockStoryblokBridge;
     });
 
-    it('should handle custom bridge URL with query params', () => {
-      const baseUrl = 'https://custom-bridge.com/bridge.js';
-      const queryParams = '?version=2&debug=true';
-      const customBridgeUrl = `${baseUrl}${queryParams}`;
+    afterEach(() => {
+      delete (window as any).storyblokRegisterEvent;
+      delete (window as any).StoryblokBridge;
+    });
 
-      // Mock window.location to simulate being in the editor
-      const originalLocation = window.location;
-      Object.defineProperty(window, 'location', {
-        value: {
-          search: '?_storyblok_tk=123',
-          href: 'http://localhost?_storyblok_tk=123',
-        },
-        writable: true,
-      });
+    it('normalises resolveRelations string to a single-element array', () => {
+      useStoryblokBridge(42, vi.fn(), { resolveRelations: 'global-author.author' });
 
-      storyblokInit({
-        accessToken: 'test-token',
-        bridge: true,
-        bridgeUrl: customBridgeUrl,
-      });
+      expect(MockStoryblokBridge).toHaveBeenCalledWith(
+        expect.objectContaining({ resolveRelations: ['global-author.author'] }),
+      );
+    });
 
-      // Get the bridge script element
-      const bridgeScript = document.querySelector('#storyblok-javascript-bridge');
+    it('keeps resolveRelations array unchanged', () => {
+      useStoryblokBridge(42, vi.fn(), { resolveRelations: ['a.b', 'c.d'] });
 
-      // Verify the script was created
-      expect(bridgeScript).toBeTruthy();
-      // Verify base URL is present (browser strips query params)
-      expect(bridgeScript?.getAttribute('src')).toBe(baseUrl);
+      expect(MockStoryblokBridge).toHaveBeenCalledWith(
+        expect.objectContaining({ resolveRelations: ['a.b', 'c.d'] }),
+      );
+    });
 
-      // Restore original window.location
-      Object.defineProperty(window, 'location', {
-        value: originalLocation,
-        writable: true,
-      });
+    it('warns and removes the language option', () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+
+      useStoryblokBridge(42, vi.fn(), { language: 'de' });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('language` bridge option is no longer supported'),
+      );
+      const passedOptions = MockStoryblokBridge.mock.calls[0][0];
+      expect(passedOptions.language).toBeUndefined();
+    });
+
+    it('passes resolveLinks "link" through unchanged (valid per official docs)', () => {
+      useStoryblokBridge(42, vi.fn(), { resolveLinks: 'link' });
+
+      expect(MockStoryblokBridge).toHaveBeenCalledWith(
+        expect.objectContaining({ resolveLinks: 'link' }),
+      );
+    });
+
+    it('passes other resolveLinks values through unchanged', () => {
+      useStoryblokBridge(42, vi.fn(), { resolveLinks: 'story' });
+
+      expect(MockStoryblokBridge).toHaveBeenCalledWith(
+        expect.objectContaining({ resolveLinks: 'story' }),
+      );
     });
   });
 
   describe('editable', () => {
     it('gets data-blok-c and data-blok-uid', async () => {
-      // Mock fetch to return a story response
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(new Response(JSON.stringify({
           story: {
             id: 123456,
             uid: 'test-uid-123',
-            content: {
-              component: 'page',
-              body: [],
-            },
+            content: { component: 'page', body: [] },
           },
         })));
 
@@ -274,7 +270,6 @@ describe('@storyblok/js', () => {
       });
 
       const { data } = await storyblokApi!.get('cdn/stories/demo');
-
       const blok = data.story.content;
       blok._editable = `<!--#storyblok#{"id":${data.story.id},"uid":"${data.story.uid}"}-->`;
 
@@ -293,10 +288,7 @@ describe('@storyblok/js', () => {
 
     it('should call render with the provided data', () => {
       const data: SbRichTextDoc = { type: 'doc', content: [] };
-
-      const html = renderRichText(data);
-
-      expect(html).toBe('');
+      expect(renderRichText(data)).toBe('');
     });
 
     it('should use renderers for customize elements', () => {
@@ -315,148 +307,163 @@ describe('@storyblok/js', () => {
 
   describe('bridge functionality', () => {
     beforeEach(() => {
-      // Clear DOM and reset window properties
-      document.head.innerHTML = '';
-      window.storyblokRegisterEvent = () => {};
-      vi.clearAllMocks();
+      // Reset module-level state in bridge.ts between tests by clearing the
+      // window globals and re-importing fresh state via vi.resetModules().
+      vi.resetModules();
+      MockStoryblokBridge.mockClear();
+      delete (window as any).storyblokRegisterEvent;
+      delete (window as any).StoryblokBridge;
     });
 
-    it('should load bridge script correctly', async () => {
-      const bridgeUrl = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
-      const loadPromise = loadBridge(bridgeUrl);
+    it('sets window.storyblokRegisterEvent synchronously and window.StoryblokBridge after load', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
 
-      // Check if script was added to DOM
-      const script = document.querySelector('#storyblok-javascript-bridge') as HTMLScriptElement;
-      expect(script).toBeTruthy();
-      expect(script?.getAttribute('src')).toBe(bridgeUrl);
-      expect(script?.async).toBe(true);
-
-      // Simulate script load
-      const event = new Event('load');
-      script?.dispatchEvent(event);
-
-      await expect(loadPromise).resolves.toBeDefined();
-    });
-
-    it('should handle bridge loading errors', async () => {
-      const bridgeUrl = 'https://invalid-url.com/bridge.js';
-      const loadPromise = loadBridge(bridgeUrl);
-
-      const script = document.querySelector('#storyblok-javascript-bridge');
-
-      // Simulate script error
-      const event = new ErrorEvent('error', { error: new Error('Failed to load script') });
-      script?.dispatchEvent(event);
-
-      await expect(loadPromise).rejects.toBeDefined();
-    });
-
-    it('should register callbacks correctly', () => {
-      const callback = vi.fn();
-
-      // Mock being in an iframe
-      const originalLocation = window.location;
-      delete (window as any).location;
-      (window as any).location = {
-        ...originalLocation,
-        href: 'http://localhost',
-      };
       Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok' },
+        value: { search: '?_storyblok=123', href: 'http://localhost?_storyblok=123' },
         writable: true,
+        configurable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
+      fresh();
 
-      // Register callback
-      window.storyblokRegisterEvent(callback);
+      // storyblokRegisterEvent must be available synchronously
+      expect(typeof (window as any).storyblokRegisterEvent).toBe('function');
 
-      // Simulate script load
-      const script = document.querySelector('#storyblok-javascript-bridge');
-      const event = new Event('load');
-      script?.dispatchEvent(event);
+      await flushPromises();
 
-      expect(callback).toHaveBeenCalled();
-
-      // Restore original location
-      Object.defineProperty(window, 'location', {
-        value: originalLocation,
-        writable: true,
-      });
+      // StoryblokBridge must be set after the dynamic import resolves
+      expect((window as any).StoryblokBridge).toBe(MockStoryblokBridge);
     });
 
-    it('should warn when not in editor mode', () => {
-      const consoleSpy = vi.spyOn(console, 'warn');
-      const callback = vi.fn();
+    it('queues callbacks registered before load and flushes them after', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
 
-      // Ensure we're not in an iframe
       Object.defineProperty(window, 'location', {
-        value: { search: '?test=123' },
+        value: { search: '?_storyblok=123', href: 'http://localhost?_storyblok=123' },
         writable: true,
+        configurable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
-      window.storyblokRegisterEvent(callback);
+      fresh();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'You are not in Draft Mode or in the Visual Editor.',
-      );
-      expect(callback).not.toHaveBeenCalled();
+      const cb = vi.fn();
+      (window as any).storyblokRegisterEvent(cb);
+
+      expect(cb).not.toHaveBeenCalled();
+
+      await flushPromises();
+
+      expect(cb).toHaveBeenCalledOnce();
     });
 
-    it('should execute callbacks in order of registration', async () => {
-      const executionOrder: number[] = [];
-      const callback1 = vi.fn(() => executionOrder.push(1));
-      const callback2 = vi.fn(() => executionOrder.push(2));
-      const callback3 = vi.fn(() => executionOrder.push(3));
+    it('executes callbacks immediately when bridge is already loaded', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
 
-      // Mock being in an iframe
       Object.defineProperty(window, 'location', {
-        value: { search: '?_storyblok' },
+        value: { search: '?_storyblok=123', href: 'http://localhost?_storyblok=123' },
         writable: true,
+        configurable: true,
       });
 
-      loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js');
+      await fresh();
+      await flushPromises();
 
-      window.storyblokRegisterEvent(callback1);
-      window.storyblokRegisterEvent(callback2);
-      window.storyblokRegisterEvent(callback3);
+      const cb = vi.fn();
+      (window as any).storyblokRegisterEvent(cb);
 
-      // Simulate script load
-      const script = document.querySelector('#storyblok-javascript-bridge');
-      const event = new Event('load');
-      script?.dispatchEvent(event);
-
-      expect(executionOrder).toEqual([1, 2, 3]);
+      expect(cb).toHaveBeenCalledOnce();
     });
 
-    it('should reject promise when window is undefined', async () => {
-      // Mock window being undefined (server-side)
-      const originalWindow = globalThis.window;
+    it('executes callbacks in registration order', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
+
+      Object.defineProperty(window, 'location', {
+        value: { search: '?_storyblok=123', href: 'http://localhost?_storyblok=123' },
+        writable: true,
+        configurable: true,
+      });
+
+      fresh();
+
+      const order: number[] = [];
+      (window as any).storyblokRegisterEvent(() => order.push(1));
+      (window as any).storyblokRegisterEvent(() => order.push(2));
+      (window as any).storyblokRegisterEvent(() => order.push(3));
+
+      await flushPromises();
+
+      expect(order).toEqual([1, 2, 3]);
+    });
+
+    it('warns and does not queue when not in draft mode', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
+
+      Object.defineProperty(window, 'location', {
+        value: { search: '?foo=bar', href: 'http://localhost?foo=bar' },
+        writable: true,
+        configurable: true,
+      });
+
+      fresh();
+
+      const warnSpy = vi.spyOn(console, 'warn');
+      const cb = vi.fn();
+      (window as any).storyblokRegisterEvent(cb);
+
+      expect(warnSpy).toHaveBeenCalledWith('You are not in Draft Mode or in the Visual Editor.');
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('rejects when window is undefined (SSR)', async () => {
+      const originalWindow = (globalThis as any).window;
       delete (globalThis as any).window;
 
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .rejects
-        .toThrow('Cannot load Storyblok bridge: window is undefined (server-side environment)');
+      const { loadBridge: fresh } = await import('./bridge');
 
-      // Restore window
-      globalThis.window = originalWindow;
+      await expect(fresh()).rejects.toThrow(
+        'Cannot load Storyblok bridge: window is undefined (server-side environment)',
+      );
+
+      (globalThis as any).window = originalWindow;
     });
 
-    it('should resolve promise when bridge script already exists', async () => {
-      // Add existing bridge script to DOM
-      const existingScript = document.createElement('script');
-      existingScript.id = 'storyblok-javascript-bridge';
-      existingScript.src = 'https://app.storyblok.com/f/storyblok-v2-latest.js';
-      document.head.appendChild(existingScript);
+    it('returns the same promise on concurrent calls', async () => {
+      const { loadBridge: fresh } = await import('./bridge');
 
-      // Should resolve immediately since script already exists
-      await expect(loadBridge('https://app.storyblok.com/f/storyblok-v2-latest.js'))
-        .resolves
-        .toBe(undefined);
+      Object.defineProperty(window, 'location', {
+        value: { search: '?_storyblok=1', href: 'http://localhost?_storyblok=1' },
+        writable: true,
+        configurable: true,
+      });
 
-      // Clean up
-      existingScript.remove();
+      const p1 = fresh();
+      const p2 = fresh();
+
+      expect(p1).toBe(p2);
+    });
+  });
+
+  // Keep a thin smoke-test for the re-exported loadBridge to ensure
+  // the module-level singleton resets work in test isolation.
+  describe('loadBridge (direct import)', () => {
+    beforeEach(() => {
+      vi.resetModules();
+      MockStoryblokBridge.mockClear();
+      delete (window as any).storyblokRegisterEvent;
+      delete (window as any).StoryblokBridge;
+    });
+
+    it('resolves and sets window.StoryblokBridge', async () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?_storyblok=1', href: 'http://localhost?_storyblok=1' },
+        writable: true,
+        configurable: true,
+      });
+
+      await loadBridge();
+      await flushPromises();
+
+      expect((window as any).StoryblokBridge).toBeDefined();
     });
   });
 });

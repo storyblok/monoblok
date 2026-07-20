@@ -12,6 +12,8 @@ export interface GrantIntrospection {
 
 // GET /v1/oauth/grant returns the scopes, expiry, client and granted spaces for the
 // access token; the token response itself omits space ids (storyrails OauthGrantIntrospectionSerializer).
+// The payload is nested under a `grant` root key (storyrails oauth_controller renders
+// `root: "grant", adapter: :json`), so unwrap it before reading the fields.
 export const introspectGrant = async (region: RegionCode, accessToken: string): Promise<GrantIntrospection> => {
   const response = await fetch(`${getStoryblokUrl(region)}/oauth/grant`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -21,11 +23,12 @@ export const introspectGrant = async (region: RegionCode, accessToken: string): 
     throw new CommandError(`Grant introspection failed (${response.status} ${response.statusText}).`);
   }
 
-  const data = await response.json() as GrantIntrospection;
+  const body = await response.json() as { grant?: GrantIntrospection };
+  const data = body.grant ?? ({} as Partial<GrantIntrospection>);
   return {
     scopes: data.scopes ?? [],
-    expires_at: data.expires_at,
-    app: data.app,
+    expires_at: data.expires_at ?? '',
+    app: data.app ?? { client_id: '', name: '' },
     spaces: data.spaces ?? [],
   };
 };

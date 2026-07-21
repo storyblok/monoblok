@@ -72,16 +72,17 @@ export const performOauthLogin = async (options: {
     client_secret: client.client_secret,
   });
 
+  // Introspect the grant before persisting anything: a failed introspection must not leave
+  // tokens on disk without a `spaces` list, which the space guard would treat as unrestricted.
+  const grant = await introspectGrant(region, token.access_token);
+
   const tokens: OauthTokens = {
     auth_type: 'oauth',
     access_token: token.access_token,
     refresh_token: token.refresh_token,
     expires_at: computeExpiresAt(token.expires_in),
   };
-  await updateOauthEntry(region, { tokens });
-
-  const grant = await introspectGrant(region, token.access_token);
-  await updateOauthEntry(region, { spaces: grant.spaces });
+  await updateOauthEntry(region, { tokens, spaces: grant.spaces });
 
   return { region, scopes: grant.scopes, spaces: grant.spaces };
 };

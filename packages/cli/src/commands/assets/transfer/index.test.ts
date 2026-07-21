@@ -197,27 +197,23 @@ describe('assets transfer command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('should forward --query filters to the asset list request when --all is set', async () => {
+  it('should reject --all combined with --query', async () => {
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+
+    expect(actions.transferAssets).not.toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all with --query'), '');
+    expect(process.exitCode).toBe(2);
+  });
+
+  it('should forward --query filters to the asset list request and transfer the filtered set', async () => {
     let seen: URL | undefined;
     preconditions.canListAssets([{ id: 42 }], { onRequest: (url) => { seen = url; } });
     preconditions.canTransferAssets();
 
-    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--query', 'search=logo&with_tags=hero', '--space', DEFAULT_SPACE, '--folder-id', '7']);
+    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--query', 'search=logo&with_tags=hero', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(seen?.searchParams.get('search')).toBe('logo');
     expect(seen?.searchParams.get('with_tags')).toBe('hero');
-    expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
-    expect(process.exitCode).toBe(0);
-  });
-
-  it('should transfer the filtered set when --query is used without --all', async () => {
-    let seen: URL | undefined;
-    preconditions.canListAssets([{ id: 42 }], { onRequest: (url) => { seen = url; } });
-    preconditions.canTransferAssets();
-
-    await assetsCommand.parseAsync(['node', 'test', 'transfer', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
-
-    expect(seen?.searchParams.get('search')).toBe('logo');
     expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
     expect(process.exitCode).toBe(0);
   });

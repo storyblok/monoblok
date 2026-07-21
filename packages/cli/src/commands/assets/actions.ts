@@ -66,7 +66,7 @@ export const fetchAllSpaceAssetIds = async (spaceId: string, params?: AssetListQ
     }, []);
   }
   catch (maybeError) {
-    handleAPIError('pull_assets', toError(maybeError));
+    handleAPIError('transfer_enumerate_assets', toError(maybeError));
   }
 };
 

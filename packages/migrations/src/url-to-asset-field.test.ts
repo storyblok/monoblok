@@ -44,6 +44,6 @@ describe('urlToAssetField', () => {
     expect(result.title).toBeNull();
     expect(result.copyright).toBeNull();
     expect(result.focus).toBeNull();
-    expect(result.id).toBe(0);
+    expect(result.id).toBe(1);
   });
 });

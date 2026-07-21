@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import {
   getLocalComponents,
@@ -25,9 +26,7 @@ describe('getLocalComponents', () => {
   });
 
   it('should return empty array for empty directory', async () => {
-    const emptyDir = new URL('__test__/fixtures/empty-components-dir', import.meta.url)
-      .pathname;
-    await mkdir(emptyDir, { recursive: true });
+    const emptyDir = await mkdtemp(join(tmpdir(), 'sb-components-empty-'));
     const components = await getLocalComponents(emptyDir);
     expect(components).toEqual([]);
     await rm(emptyDir, { recursive: true });
@@ -43,11 +42,10 @@ describe('getLocalComponents', () => {
 });
 
 describe('updateLocalComponent', () => {
-  const TEST_DIR = new URL('__test__/fixtures/test-write-components', import.meta.url)
-    .pathname;
+  let TEST_DIR: string;
 
   beforeEach(async () => {
-    await mkdir(TEST_DIR, { recursive: true });
+    TEST_DIR = await mkdtemp(join(tmpdir(), 'sb-components-write-'));
   });
 
   afterEach(async () => {

@@ -20,7 +20,3 @@ export const assertSpaceAllowed = (
     );
   }
 };
-
-export const defaultGrantSpace = (grantedSpaces: { id: number }[] | undefined): number | undefined => {
-  return grantedSpaces && grantedSpaces.length === 1 ? grantedSpaces[0].id : undefined;
-};

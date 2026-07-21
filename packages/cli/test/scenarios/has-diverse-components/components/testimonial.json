@@ -1,0 +1,18 @@
+{
+  "id": 204,
+  "name": "testimonial",
+  "display_name": "Testimonial",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "quote": { "type": "textarea", "pos": 0, "required": true },
+    "author_name": { "type": "text", "pos": 1, "required": true },
+    "author_role": { "type": "text", "pos": 2 },
+    "avatar": { "type": "asset", "pos": 3, "filetypes": ["images"] },
+    "rating": { "type": "number", "pos": 4, "min_value": 1, "max_value": 5, "decimals": 0 },
+    "tags": { "type": "options", "pos": 5, "source": "internal", "datasource_slug": "page-categories" }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

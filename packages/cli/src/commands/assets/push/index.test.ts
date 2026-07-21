@@ -224,10 +224,11 @@ const preconditions = {
     const spy = vi.fn();
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, async ({ request }) => {
-        const body = await request.json() as { name: string; object_type?: string };
+        const body = await request.json() as { internal_tag: { name: string; object_type?: string } };
         spy(body);
+        const tag = body.internal_tag;
         return HttpResponse.json(
-          { internal_tag: { id: idByName[body.name] ?? getID(), name: body.name, object_type: body.object_type } },
+          { internal_tag: { id: idByName[tag.name] ?? getID(), name: tag.name, object_type: tag.object_type } },
           { status: 201 },
         );
       }),
@@ -260,8 +261,8 @@ const preconditions = {
     server.use(
       // Step 1: get signed response
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
-        const body = await request.json() as { filename?: string };
-        const requestedFilename = body?.filename;
+        const url = new URL(request.url);
+        const requestedFilename = url.searchParams.get('filename');
 
         const match = remoteAssets.find(a => basename(a.filename) === requestedFilename);
         if (!match) {
@@ -312,7 +313,7 @@ const preconditions = {
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Update asset metadata/folder/etc.
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
@@ -334,7 +335,7 @@ const preconditions = {
   },
   failsToUpdateRemoteAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
         { message: 'Update failed' },
         { status: 500 },
       )),
@@ -1090,7 +1091,9 @@ describe('assets push command', () => {
   });
 
   it('should handle errors when updating assets fails', async () => {
-    const localAsset = makeMockAsset();
+    // Carry metadata so the metadata-update PATCH (the call mocked to fail) is
+    // actually issued; with no metadata the client skips it (see hasDefinedFields).
+    const localAsset = makeMockAsset({ alt: 'Updated alt' });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
@@ -1135,7 +1138,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
+    expect(logFile).toContain('The server returned an error');
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -1549,7 +1552,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
       expect.anything(),
     );
@@ -1586,11 +1589,11 @@ describe('assets push command', () => {
 
     expect(actions.updateAsset).toHaveBeenCalledWith(
       remoteAsset.id,
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
     );
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      internal_tag_ids: [String(targetTagId)],
+      internal_tag_ids: [targetTagId],
     }));
     expect(process.exitCode).not.toBe(1);
   });
@@ -1630,10 +1633,10 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(createTagSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }),
+      expect.objectContaining({ internal_tag: expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }) }),
     );
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(createdTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [createdTagId] }),
       expect.anything(),
       expect.anything(),
     );
@@ -1906,7 +1909,7 @@ describe('assets push command', () => {
     it('creates missing library tags and remaps internal_tag_ids on push', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
-      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let capturedPut: { asset?: { internal_tag_ids?: number[] } } | undefined;
       server.use(
         http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tags: [] })),
         http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } })),
@@ -1923,13 +1926,13 @@ describe('assets push command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
-      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual([500]);
     });
 
     it('paginates shared library tags so a match on a later page is reused, not recreated', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
-      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let capturedPut: { asset?: { internal_tag_ids?: number[] } } | undefined;
       let createCalled = false;
       server.use(
         // Two pages of existing library tags; the match lives on page 2. With one
@@ -1958,7 +1961,7 @@ describe('assets push command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
-      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['999']);
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual([999]);
       expect(createCalled).toBe(false);
     });
 

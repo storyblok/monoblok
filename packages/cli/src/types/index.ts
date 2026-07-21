@@ -1,5 +1,5 @@
 import type { RegionCode } from '../constants';
-import type { Space } from '@storyblok/management-api-client';
+import type { SpaceDetail } from '@storyblok/management-api-client';
 
 export type {
   Asset,
@@ -9,15 +9,17 @@ export type {
   AssetFolderUpdate,
   AssetListQuery,
   AssetUpdate,
+  BlokContent,
   Component,
   ComponentCreate,
   ComponentFolder,
-  ComponentSchemaField,
+  ComponentFolderCreate,
   ComponentUpdate,
   Datasource,
   DatasourceCreate,
   DatasourceEntry,
   DatasourceUpdate,
+  Field,
   InternalTag,
   Preset,
   SharedAssetFolder,
@@ -27,9 +29,10 @@ export type {
   SharedInternalTagCreate,
   Space,
   SpaceCreate,
+  SpaceCreateQuery,
+  SpaceDetail,
   SpaceUpdate,
   Story,
-  StoryContent,
   StoryCreate,
   StoryListQuery,
   StoryUpdate,
@@ -49,10 +52,10 @@ export interface CommandOptions {
 /**
  * Interface representing a language in Storyblok
  */
-export type Language = NonNullable<Space['languages']>[number];
+export type Language = NonNullable<SpaceDetail['languages']>[number];
 
 export interface SpaceInternationalization {
-  languages: NonNullable<Space['languages']>;
+  languages: NonNullable<SpaceDetail['languages']>;
   default_lang_name: string;
 }
 

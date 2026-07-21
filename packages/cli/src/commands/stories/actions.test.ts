@@ -116,23 +116,14 @@ const handlers = [
     let responseStories = mockStories;
     let total = mockStories.length;
 
-    // If filter_query is present, handle it specially
-    if (url.searchParams.has('filter_query')) {
-      try {
-        const filterQuery = JSON.parse(decodeURIComponent(url.searchParams.get('filter_query') || '{}'));
-
-        // If filtering for specific component
-        if (filterQuery.component && filterQuery.component.in) {
-          if (filterQuery.component.in.includes('article')) {
-            // Return only the first story for article component
-            responseStories = [mockStories[0]];
-            total = 1;
-          }
-        }
-      }
-      catch {
-        // If JSON parsing fails, return an error
-        return new HttpResponse(null, { status: 400 });
+    // filter_query is serialized as nested bracket params:
+    // filter_query[component][in]=article,news
+    const componentIn = url.searchParams.get('filter_query[component][in]');
+    if (componentIn !== null) {
+      if (componentIn.includes('article')) {
+        // Return only the first story for article component
+        responseStories = [mockStories[0]];
+        total = 1;
       }
     }
     // Handle filtering by published status
@@ -226,10 +217,10 @@ describe('stories/actions', () => {
 
     it('should handle complex query parameters with objects', async () => {
       const result = await fetchStories(mockSpace, {
-        filter_query: JSON.stringify({
-          'component': { in: ['article', 'news'] },
-          'content.category': { in: ['technology'] },
-        }),
+        filter_query: {
+          'component': { in: 'article,news' },
+          'content.category': { in: 'technology' },
+        },
       });
 
       // Should return only the first story due to the 'article' component filter in our handler

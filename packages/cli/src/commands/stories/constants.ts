@@ -1,17 +1,16 @@
-import type { Story, StoryContent, StoryListQuery } from '../../types';
+import type { BlokContent, Story, StoryListQuery } from '../../types';
 
-export type { Story, StoryContent };
+export type { BlokContent, Story };
 
 /**
  * Query parameters for retrieving multiple stories from the Management API.
- * Extends the MAPI StoryListQuery with an index signature to allow CLI-specific
- * ad-hoc parameters (e.g. filter_query[...] expansions).
+ *
+ * Matches the MAPI query contract exactly. `filter_query` is the structured
+ * object form; the CLI's `--query` string is parsed into it via
+ * {@link parseFilterQuery} before reaching this type.
  * @see https://www.storyblok.com/docs/api/management/core-resources/stories/retrieve-multiple-stories
  */
-export type StoriesQueryParams = StoryListQuery & {
-  // Allow string indexing for dynamic filter_query parameters
-  [key: string]: string | number | boolean | undefined;
-};
+export type StoriesQueryParams = StoryListQuery;
 
 export interface FetchStoriesResult {
   stories: Story[];

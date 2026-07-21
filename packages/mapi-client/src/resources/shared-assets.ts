@@ -1,5 +1,5 @@
-import type { Asset, AssetUpdate } from '../generated/assets/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+import type { Asset, AssetUpdate } from '../generated/mapi/types-aliased.gen';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { uploadToS3 } from './assets';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
@@ -13,7 +13,7 @@ export interface SharedAssetUploadRequest {
   asset_folder_id?: number;
   is_private?: boolean;
   size?: string;
-  validate_upload?: number;
+  validate_upload?: boolean;
 }
 
 export type SharedAssetCreate = AssetUpdate & SharedAssetUploadRequest;
@@ -41,7 +41,7 @@ interface SignResponse {
  * generated SDK, so methods issue raw `client.*` calls. The active space must
  * have read (list/get) or write (create/update/delete) access to the library.
  */
-export function createSharedAssetsResource(deps: MapiResourceDeps) {
+export function createSharedAssetsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
   const kyOpts = (fetchOptions?: FetchOptions) =>

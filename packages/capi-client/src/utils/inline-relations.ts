@@ -1,5 +1,5 @@
-import type { Client } from '../generated/shared/client';
-import type { StoryCapi } from '../generated/stories';
+import type { Client } from '../generated/capi/client';
+import type { Story } from '../generated/types/story';
 import type { StoryWithInlinedRelations } from '../resources/stories';
 import { fetchMissingRelations } from './fetch-rel-uuids';
 import type { ThrottleManager } from './rate-limit';
@@ -36,7 +36,7 @@ const decodeIfEncoded = (value: string): string => {
   return value;
 };
 
-const inlineStoryContentInternal = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+const inlineStoryContentInternal = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
   relationPaths: ReadonlySet<RelationPath>,
   relationMap: ReadonlyMap<string, TStory>,
@@ -50,11 +50,11 @@ const inlineStoryContentInternal = <TStory extends StoryCapi | StoryWithInlinedR
   const clonedStory = structuredClone(story);
   resolved.set(story.uuid, clonedStory);
   // resolveNode returns `unknown` to handle arbitrary JSON trees; shape is preserved at runtime.
-  clonedStory.content = resolveNode(clonedStory.content, relationMap, relationPaths, resolved) as StoryCapi['content'];
+  clonedStory.content = resolveNode(clonedStory.content, relationMap, relationPaths, resolved) as Story['content'];
   return clonedStory;
 };
 
-function resolveNode<TStory extends StoryCapi | StoryWithInlinedRelations>(
+function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
   relationMap: ReadonlyMap<string, TStory>,
   relationPaths: ReadonlySet<RelationPath>,
@@ -107,8 +107,8 @@ export const parseResolveRelations = (query: Record<string, unknown>): RelationP
     });
 };
 
-export const buildRelationMap = (rels: Array<StoryCapi> | undefined): Map<string, StoryCapi> => {
-  const relationMap = new Map<string, StoryCapi>();
+export const buildRelationMap = (rels: Array<Story> | undefined): Map<string, Story> => {
+  const relationMap = new Map<string, Story>();
 
   for (const story of rels ?? []) {
     relationMap.set(story.uuid, story);
@@ -117,7 +117,7 @@ export const buildRelationMap = (rels: Array<StoryCapi> | undefined): Map<string
   return relationMap;
 };
 
-function resolveFieldValue<TStory extends StoryCapi | StoryWithInlinedRelations>(
+function resolveFieldValue<TStory extends Story | StoryWithInlinedRelations>(
   value: unknown,
   relationMap: ReadonlyMap<string, TStory>,
   relationPaths: ReadonlySet<RelationPath>,
@@ -139,7 +139,7 @@ function resolveFieldValue<TStory extends StoryCapi | StoryWithInlinedRelations>
   return resolveNode(value, relationMap, relationPaths, resolved);
 }
 
-export const inlineStoryContent = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+export const inlineStoryContent = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
@@ -149,7 +149,7 @@ export const inlineStoryContent = <TStory extends StoryCapi | StoryWithInlinedRe
   return inlineStoryContentInternal(story, normalizedPaths, relationMap, resolved);
 };
 
-export const inlineStoriesContent = <TStory extends StoryCapi | StoryWithInlinedRelations>(
+export const inlineStoriesContent = <TStory extends Story | StoryWithInlinedRelations>(
   stories: Array<TStory>,
   relationPaths: RelationPath[],
   relationMap: ReadonlyMap<string, TStory>,
@@ -166,7 +166,7 @@ interface ResolveRelationMapOptions {
 
 export interface ResolvedRelations {
   relationPaths: RelationPath[];
-  relationMap: Map<string, StoryCapi>;
+  relationMap: Map<string, Story>;
 }
 
 /**
@@ -176,7 +176,7 @@ export interface ResolvedRelations {
  * Returns `null` when there is nothing to inline (no `resolve_relations` in the query).
  */
 export const resolveRelationMap = async (
-  responseData: { rels?: StoryCapi[]; rel_uuids?: string[] },
+  responseData: { rels?: Story[]; rel_uuids?: string[] },
   requestQuery: Record<string, unknown>,
   { client, throttleManager }: ResolveRelationMapOptions,
 ): Promise<ResolvedRelations | null> => {

@@ -1,0 +1,47 @@
+{
+  "name": "@storyblok/playground-schema-astro",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "schema": "storyblok schema",
+    "schema:init": "storyblok schema init --out-dir src/schema",
+    "schema:push": "storyblok schema push src/schema/schema.ts --delete",
+    "schema:rollback": "storyblok schema rollback",
+    "seed": "pnpm seed:cleanup && pnpm seed:datasources && pnpm seed:assets && pnpm schema:push --delete --no-migrations && mv ./.storyblok/components/290020686946333 ./.storyblok/components/seed && pnpm seed:stories",
+    "seed:datasources": "storyblok datasources push --from seed",
+    "seed:assets": "storyblok assets push --from seed",
+    "seed:stories": "storyblok stories push --from seed --publish",
+    "seed:cleanup": "tsx scripts/cleanup-space.ts && rm -rf ./.storyblok/components",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10.0.6",
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
+    "@storyblok/schema": "workspace:*",
+    "astro": "^6.2.2",
+    "marked": "17.0.5"
+  },
+  "devDependencies": {
+    "@storyblok/astro": "^9.0.5",
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/management-api-client": "workspace:*",
+    "@tailwindcss/typography": "0.5.19",
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/node": "^24.11.0",
+    "dotenv": "^17.3.1",
+    "eslint": "9.32.0",
+    "storyblok": "workspace:*",
+    "tailwindcss": "^4.2.4",
+    "tsx": "^4.21.0",
+    "typescript": "5.4.5",
+    "vite": "^8.1.1"
+  }
+}

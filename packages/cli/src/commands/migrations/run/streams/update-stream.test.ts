@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpdateStream } from './update-stream';
 import { updateStory } from '../../../stories/actions';
-import type { StoryContent } from '../../../stories/constants';
+import type { BlokContent } from '../../../stories/constants';
 
 // Mock the updateStory action
 vi.mock('../../../stories/actions', () => ({
@@ -15,7 +15,7 @@ describe('updateStream', () => {
   });
 
   describe('publish flag behavior', () => {
-    const mockContent: StoryContent = {
+    const mockContent: BlokContent = {
       _uid: 'test-uid',
       component: 'page',
       title: 'Test Content',
@@ -40,7 +40,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 1, {
             story: {
               content: mockContent,
-              id: 1,
               name: 'Published Story',
             },
             force_update: '1',
@@ -51,7 +50,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 2, {
             story: {
               content: mockContent,
-              id: 2,
               name: 'Unpublished Story',
             },
             force_update: '1',
@@ -61,7 +59,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 3, {
             story: {
               content: mockContent,
-              id: 3,
               name: 'Published Story with Changes',
             },
             force_update: '1',
@@ -120,7 +117,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 1, {
             story: {
               content: mockContent,
-              id: 1,
               name: 'Published Story',
             },
             force_update: '1',
@@ -130,7 +126,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 2, {
             story: {
               content: mockContent,
-              id: 2,
               name: 'Unpublished Story',
             },
             force_update: '1',
@@ -140,7 +135,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 3, {
             story: {
               content: mockContent,
-              id: 3,
               name: 'Published Story with Changes',
             },
             force_update: '1',
@@ -200,7 +194,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 1, {
             story: {
               content: mockContent,
-              id: 1,
               name: 'Published Story',
             },
             force_update: '1',
@@ -210,7 +203,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 2, {
             story: {
               content: mockContent,
-              id: 2,
               name: 'Unpublished Story',
             },
             force_update: '1',
@@ -220,7 +212,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 3, {
             story: {
               content: mockContent,
-              id: 3,
               name: 'Published Story with Changes',
             },
             force_update: '1',
@@ -277,7 +268,6 @@ describe('updateStream', () => {
           expect(updateStory).toHaveBeenCalledWith('12345', 1, {
             story: {
               content: mockContent,
-              id: 1,
               name: 'Test Story',
             },
             force_update: '1',

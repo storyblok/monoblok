@@ -1,6 +1,6 @@
 import { FileSystemError, handleAPIError } from '../../../utils';
 import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import type { ComponentCreate, ComponentUpdate } from '../../../types';
+import type { ComponentCreate, ComponentUpdate, Field } from '../../../types';
 import type { ReadComponentsOptions } from './constants';
 import { resolvePath } from '../../../utils/filesystem';
 import chalk from 'chalk';
@@ -8,6 +8,40 @@ import { getMapiClient } from '../../../api';
 import { type ComponentsData, loadComponents } from '../loader';
 
 export type { ComponentsData };
+
+/**
+ * Extracts a clean schema record from a `Component` (which uses `Partial` with
+ * possible `undefined` values and special `_uid`/`component` keys) into the
+ * `Record<string, Field>` shape expected by create/update.
+ */
+function isSchemaField(value: unknown): value is Field {
+  return typeof value === 'object' && value !== null && 'type' in value;
+}
+
+function toWritableSchema(
+  schema: Record<string, unknown> | undefined,
+): Record<string, Field> | undefined {
+  if (!schema) { return undefined; }
+  const result: Record<string, Field> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (isSchemaField(value)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Converts component `internal_tag_ids` from the response shape (`string[]`) to
+ * the create/update request shape (`number[]`) — a known upstream inconsistency
+ * where the component serializer returns tag IDs as strings.
+ */
+function toRequestTagIds(
+  tagIds: ReadonlyArray<string | number> | undefined,
+): number[] | undefined {
+  if (!tagIds) { return undefined; }
+  return tagIds.map(id => Number(id));
+}
 
 // Component actions
 export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
@@ -53,16 +87,31 @@ export const updateComponent = async (space: string, componentId: number, compon
 
 export const upsertComponent = async (
   space: string,
-  component: ComponentCreate,
+  component: Component | ComponentCreate,
   existingId?: number,
 ): Promise<Component | undefined> => {
+  // Extract only the fields relevant for create/update, dropping read-only
+  // properties (`id`, `created_at`, `updated_at`, etc.) that exist on
+  // `Component` but not on `ComponentCreate`/`ComponentUpdate`.
+  const { name, display_name, schema, is_root, is_nestable, component_group_uuid, color, icon, preview_field, internal_tag_ids } = component;
+  const payload = {
+    name,
+    display_name: display_name ?? undefined,
+    schema: toWritableSchema(schema),
+    is_root,
+    is_nestable,
+    component_group_uuid: component_group_uuid ?? undefined,
+    color: color ?? undefined,
+    icon: icon ?? undefined,
+    preview_field: preview_field ?? undefined,
+    internal_tag_ids: toRequestTagIds(internal_tag_ids),
+  };
+
   if (existingId) {
-    // We know it exists, update directly
-    return await updateComponent(space, existingId, component);
+    return await updateComponent(space, existingId, payload);
   }
   else {
-    // New resource, create directly
-    return await pushComponent(space, component);
+    return await pushComponent(space, payload);
   }
 };
 
@@ -135,7 +184,14 @@ export const pushComponentPreset = async (space: string, preset: Preset): Promis
         space_id: Number(space),
       },
       body: {
-        preset,
+        preset: {
+          ...preset,
+          preset: preset.preset ?? undefined,
+          image: preset.image ?? undefined,
+          color: preset.color ?? undefined,
+          icon: preset.icon ?? undefined,
+          description: preset.description ?? undefined,
+        },
       },
       throwOnError: true,
     });
@@ -156,7 +212,14 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
         space_id: Number(space),
       },
       body: {
-        preset,
+        preset: {
+          ...preset,
+          preset: preset.preset ?? undefined,
+          image: preset.image ?? undefined,
+          color: preset.color ?? undefined,
+          icon: preset.icon ?? undefined,
+          description: preset.description ?? undefined,
+        },
       },
       throwOnError: true,
     });
@@ -208,7 +271,7 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
       path: {
         space_id: Number(space),
       },
-      body: componentInternalTag,
+      body: { internal_tag: componentInternalTag },
       throwOnError: true,
     });
 
@@ -227,7 +290,7 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
       path: {
         space_id: Number(space),
       },
-      body: componentInternalTag,
+      body: { internal_tag: componentInternalTag },
       throwOnError: true,
     });
 

@@ -52,9 +52,15 @@ transferCmd
       return;
     }
 
-    // `--query` selects a filtered subset of the space, so it implies the bulk
-    // path just like `--all`; either flag means "transfer what's in the space",
-    // which is mutually exclusive with naming explicit asset IDs.
+    // `--all` (the whole space) and `--query` (a filtered subset) both select
+    // the working set from the space itself, so they are mutually exclusive
+    // with each other and with naming explicit asset IDs.
+    if (options.all && options.query) {
+      handleError(new CommandError(`Cannot combine --all with --query. Use --all to transfer every asset, or --query to transfer a filtered subset.`), verbose);
+      process.exitCode = 2;
+      return;
+    }
+
     const bulk = Boolean(options.all || options.query);
 
     if (bulk && assetIds.length > 0) {
@@ -66,6 +72,7 @@ transferCmd
     let ids: number[];
     if (bulk) {
       const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : undefined;
+      logger.info('Enumerating space assets', { space, query: options.query });
       try {
         ids = await fetchAllSpaceAssetIds(space, params);
       }
@@ -74,6 +81,7 @@ transferCmd
         process.exitCode = 2;
         return;
       }
+      logger.info('Enumerated space assets', { count: ids.length });
       if (ids.length === 0) {
         ui.info(options.query
           ? `No assets in space ${space} match the query. Nothing to transfer.`

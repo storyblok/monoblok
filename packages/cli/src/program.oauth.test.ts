@@ -1,5 +1,3 @@
-// program.oauth.test.ts
-//
 // Integration coverage for the proactive OAuth-refresh path inside the shared
 // preAction hook (see program.ts). This only fires end-to-end when a real
 // command is run through `getProgram()`, so it is exercised here rather than

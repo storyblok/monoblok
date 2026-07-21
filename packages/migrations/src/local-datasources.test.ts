@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import {
   getLocalDatasources,
@@ -25,9 +26,7 @@ describe('getLocalDatasources', () => {
   });
 
   it('should return empty array for empty directory', async () => {
-    const emptyDir = new URL('__test__/fixtures/empty-datasources-dir', import.meta.url)
-      .pathname;
-    await mkdir(emptyDir, { recursive: true });
+    const emptyDir = await mkdtemp(join(tmpdir(), 'sb-datasources-empty-'));
     const datasources = await getLocalDatasources(emptyDir);
     expect(datasources).toEqual([]);
     await rm(emptyDir, { recursive: true });
@@ -43,11 +42,10 @@ describe('getLocalDatasources', () => {
 });
 
 describe('updateLocalDatasource', () => {
-  const TEST_DIR = new URL('__test__/fixtures/test-write-datasources', import.meta.url)
-    .pathname;
+  let TEST_DIR: string;
 
   beforeEach(async () => {
-    await mkdir(TEST_DIR, { recursive: true });
+    TEST_DIR = await mkdtemp(join(tmpdir(), 'sb-datasources-write-'));
   });
 
   afterEach(async () => {

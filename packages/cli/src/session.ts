@@ -1,4 +1,3 @@
-// session.ts
 import { type RegionCode, regionsDomain } from './constants';
 import { addCredentials, getCredentials } from './creds';
 import { clearOauthEntry, getOauthEntry } from './commands/oauth/store';

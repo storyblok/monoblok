@@ -1,4 +1,3 @@
-// program.test.ts
 import { beforeAll, describe, expect, it } from 'vitest';
 
 // Import the function after setting up mocks

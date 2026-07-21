@@ -12,8 +12,8 @@ export const oauthSetupCommand = oauthCommand
   .command('setup')
   .description('Provision or store OAuth client credentials for the CLI')
   .option('-t, --token <token>', 'Personal Access Token used once to find-or-create the "Storyblok CLI" OAuth app (never stored)')
-  .option('--client-id <id>', 'Provide an existing OAuth client id directly (manual path)')
-  .option('--client-secret <secret>', 'Provide an existing OAuth client secret directly (manual path)')
+  .option('--client-id <id>', 'Provide an existing OAuth client id directly')
+  .option('--client-secret <secret>', 'Provide an existing OAuth client secret directly')
   .option('-r, --region <region>', 'Region to store the client credentials for', regions.EU)
   .action(async (options: { token?: string; clientId?: string; clientSecret?: string; region: RegionCode }) => {
     const ui = getUI();

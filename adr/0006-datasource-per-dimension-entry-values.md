@@ -1,4 +1,4 @@
-# ADR-0005: Datasource per-dimension entry values
+# ADR-0006: Datasource per-dimension entry values
 
 **Status:** Accepted
 **Date:** 2026-07-07

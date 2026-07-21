@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { clearOauthEntry, getOauthClientFromEnv, getOauthEntry, updateOauthEntry } from './store';
+import { clearOauthTokens, getOauthClientFromEnv, getOauthEntry, updateOauthEntry } from './store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -27,12 +27,25 @@ describe('oauth store', () => {
     expect(entry.spaces).toEqual([{ id: 1, region: 'eu' }]);
   });
 
-  it('should clear only the requested region', async () => {
+  it('should clear tokens only for the requested region', async () => {
     await updateOauthEntry('eu', { tokens: { auth_type: 'oauth', access_token: 'a', expires_at: 'x' } });
     await updateOauthEntry('us', { tokens: { auth_type: 'oauth', access_token: 'b', expires_at: 'y' } });
-    await clearOauthEntry('eu');
+    await clearOauthTokens('eu');
     expect(await getOauthEntry('eu')).toEqual({});
     expect((await getOauthEntry('us')).tokens?.access_token).toBe('b');
+  });
+
+  it('should preserve provisioned client credentials when clearing tokens', async () => {
+    await updateOauthEntry('eu', {
+      client: { client_id: 'id', client_secret: 'secret' },
+      tokens: { auth_type: 'oauth', access_token: 'a', expires_at: 'x' },
+      spaces: [{ id: 1, region: 'eu' }],
+    });
+    await clearOauthTokens('eu');
+    const entry = await getOauthEntry('eu');
+    expect(entry.client).toEqual({ client_id: 'id', client_secret: 'secret' });
+    expect(entry.tokens).toBeUndefined();
+    expect(entry.spaces).toBeUndefined();
   });
 
   it('should read client credentials from env vars when present', () => {

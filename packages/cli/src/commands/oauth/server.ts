@@ -46,6 +46,7 @@ export const waitForCallback = (port: number, path: string, timeoutMs = 300_000)
       clearTimeout(timer);
       reject(err);
     });
-    server.listen(port);
+    // Bind to loopback only so the authorization code is never accepted from other hosts.
+    server.listen(port, '127.0.0.1');
   });
 };

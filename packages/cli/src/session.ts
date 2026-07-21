@@ -1,6 +1,6 @@
 import { type RegionCode, regionsDomain } from './constants';
 import { addCredentials, getCredentials } from './creds';
-import { clearOauthEntry, getOauthEntry } from './commands/oauth/store';
+import { clearOauthTokens, getOauthEntry } from './commands/oauth/store';
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -80,7 +80,7 @@ function createSession() {
   }
 
   async function clearOauthSession(region: RegionCode): Promise<void> {
-    await clearOauthEntry(region);
+    await clearOauthTokens(region);
     state.oauthAccessToken = undefined;
     state.oauthExpiresAt = undefined;
     state.oauthSpaces = undefined;

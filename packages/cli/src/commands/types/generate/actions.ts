@@ -21,6 +21,7 @@ import {
 // drops member-specific optional fields. We re-add the ones used in this file
 // so that casts from the untyped component schema are properly narrowed.
 type FieldSchema = ComponentPropertySchema & {
+  required?: boolean;
   source?: string;
   datasource_slug?: string;
   filter_content_type?: string[];

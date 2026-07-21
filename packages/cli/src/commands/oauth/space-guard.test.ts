@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertSpaceAllowed, defaultGrantSpace } from './space-guard';
+import { assertSpaceAllowed } from './space-guard';
 
 describe('assertSpaceAllowed', () => {
   it('should pass when the space is in the grant', () => {
@@ -17,15 +17,5 @@ describe('assertSpaceAllowed', () => {
 
   it('should pass when no space is targeted', () => {
     expect(() => assertSpaceAllowed(undefined, [{ id: 123 }])).not.toThrow();
-  });
-});
-
-describe('defaultGrantSpace', () => {
-  it('should return the only granted space id', () => {
-    expect(defaultGrantSpace([{ id: 55 }])).toBe(55);
-  });
-  it('should return undefined when zero or many spaces', () => {
-    expect(defaultGrantSpace([])).toBeUndefined();
-    expect(defaultGrantSpace([{ id: 1 }, { id: 2 }])).toBeUndefined();
   });
 });

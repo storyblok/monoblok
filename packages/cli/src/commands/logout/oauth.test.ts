@@ -31,4 +31,19 @@ describe('logout with an oauth session', () => {
     await logoutCommand.parseAsync(['node', 'test']);
     expect(await getOauthEntry('eu')).toEqual({});
   });
+
+  it('should preserve provisioned client credentials on logout', async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: { eu: { client: { client_id: 'id', client_secret: 'secret' }, tokens: { auth_type: 'oauth', access_token: 'sb_oat_x', refresh_token: 'sb_ort_x', expires_at: '2026-07-20T12:00:00.000Z' }, spaces: [{ id: 5, region: 'eu' }] } },
+      }),
+    });
+
+    await logoutCommand.parseAsync(['node', 'test']);
+
+    const entry = await getOauthEntry('eu');
+    expect(entry.client).toEqual({ client_id: 'id', client_secret: 'secret' });
+    expect(entry.tokens).toBeUndefined();
+    expect(entry.spaces).toBeUndefined();
+  });
 });

@@ -56,9 +56,20 @@ export const updateOauthEntry = async (region: RegionCode, patch: OauthRegionEnt
   await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
 };
 
-export const clearOauthEntry = async (region: RegionCode): Promise<void> => {
+// Clears the session (tokens and granted spaces) while preserving the provisioned client
+// credentials, so logout does not force users to re-run `oauth setup` before the next login.
+export const clearOauthTokens = async (region: RegionCode): Promise<void> => {
   const all = await readAll();
   const oauth = (all.oauth ?? {}) as Record<string, OauthRegionEntry>;
-  delete oauth[region];
+  const entry = oauth[region];
+  if (!entry) {
+    return;
+  }
+  if (entry.client) {
+    oauth[region] = { client: entry.client };
+  }
+  else {
+    delete oauth[region];
+  }
   await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
 };

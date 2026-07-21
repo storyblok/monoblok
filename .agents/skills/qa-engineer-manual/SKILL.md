@@ -43,6 +43,13 @@ STORYBLOK_TOKEN=your_personal_access_token
 STORYBLOK_SPACE_ID=your_space_id
 ```
 
+`seed-scenario.sh` logs the CLI in for you. When you drive the CLI **directly** (e.g. running `schema init`/`push` against the space without seeding), log in first with the same token — the CLI reads its session from `storyblok login`, not from the env vars:
+
+```bash
+set -a && source ./.env.qa-engineer-manual && set +a
+node ./packages/cli/dist/index.mjs login --token "$STORYBLOK_TOKEN" --region eu
+```
+
 ### Built-in scenarios
 
 | Scenario | Use when | Space state after seed |

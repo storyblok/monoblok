@@ -1,30 +1,30 @@
-import * as experimentsApi from '../generated/experiments/sdk.gen';
+import * as experimentsApi from '../generated/mapi/sdk.gen';
 import type {
-  ActivateData,
-  ActivateResponses,
-  CompleteResponses,
-  CompleteWithWinnerResponses,
-  CreateData,
+  ActivateExperimentData,
+  ActivateExperimentResponses,
+  CompleteExperimentResponses,
+  CompleteExperimentWithWinnerResponses,
+  CreateExperimentData,
+  CreateExperimentResponses,
   CreateExperimentStoryData,
   CreateExperimentStoryResponses,
-  CreateResponses,
   CreateStoryMappingData,
   CreateStoryMappingResponses,
+  DeleteExperimentResponses,
   DeleteExperimentStoryResponses,
-  DeleteResponses,
   DeleteStoryMappingResponses,
-  GetResponses,
-  GetResultsResponses,
-  ListData,
-  ListResponses,
-  PauseResponses,
-  PushResultsData,
-  PushResultsResponses,
-  SelectWinnerResponses,
-  UpdateData,
-  UpdateResponses,
-} from '../generated/experiments/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+  GetExperimentResponses,
+  GetExperimentResultsResponses,
+  ListExperimentsData,
+  ListExperimentsResponses,
+  PauseExperimentResponses,
+  PushExperimentResultsData,
+  PushExperimentResultsResponses,
+  SelectExperimentWinnerResponses,
+  UpdateExperimentData,
+  UpdateExperimentResponses,
+} from '../generated/mapi/types.gen';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 export function createExperimentsResource(deps: MapiResourceDeps) {
@@ -32,79 +32,79 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = false>(options: { query?: ListExperimentsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListExperimentsResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        experimentsApi.list({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListExperimentsResponses[200], ThrowOnError>(() =>
+        experimentsApi.listExperiments({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    get<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetExperimentResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        experimentsApi.get({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<GetExperimentResponses[200], ThrowOnError>(() =>
+        experimentsApi.getExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    create<ThrowOnError extends boolean = false>(options: { body: CreateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = false>(options: { body: CreateExperimentData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateExperimentResponses[201], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        experimentsApi.create({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateExperimentResponses[201], ThrowOnError>(() =>
+        experimentsApi.createExperiment({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     update<ThrowOnError extends boolean = false>(
       experimentId: number | string,
-      options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+      options: { body: UpdateExperimentData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<UpdateExperimentResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
-        experimentsApi.update({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<UpdateExperimentResponses[200], ThrowOnError>(() =>
+        experimentsApi.updateExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[204], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteExperimentResponses[204], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DeleteResponses[204], ThrowOnError>(() =>
-        experimentsApi.delete_({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteExperimentResponses[204], ThrowOnError>(() =>
+        experimentsApi.deleteExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     activate<ThrowOnError extends boolean = false>(
       experimentId: number | string,
-      options: { query?: ActivateData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<ActivateResponses[200], ThrowOnError>> {
+      options: { query?: ActivateExperimentData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<ActivateExperimentResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ActivateResponses[200], ThrowOnError>(() =>
-        experimentsApi.activate({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ActivateExperimentResponses[200], ThrowOnError>(() =>
+        experimentsApi.activateExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    pause<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<PauseResponses[200], ThrowOnError>> {
+    pause<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<PauseExperimentResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<PauseResponses[200], ThrowOnError>(() =>
-        experimentsApi.pause({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<PauseExperimentResponses[200], ThrowOnError>(() =>
+        experimentsApi.pauseExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    complete<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<CompleteResponses[200], ThrowOnError>> {
+    complete<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<CompleteExperimentResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CompleteResponses[200], ThrowOnError>(() =>
-        experimentsApi.complete({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CompleteExperimentResponses[200], ThrowOnError>(() =>
+        experimentsApi.completeExperiment({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     completeWithWinner<ThrowOnError extends boolean = false>(
       experimentId: number | string,
       variantId: number,
       options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<CompleteWithWinnerResponses[200], ThrowOnError>> {
+    ): Promise<ApiResponse<CompleteExperimentWithWinnerResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CompleteWithWinnerResponses[200], ThrowOnError>(() =>
-        experimentsApi.completeWithWinner({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, query: { variant_id: variantId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CompleteExperimentWithWinnerResponses[200], ThrowOnError>(() =>
+        experimentsApi.completeExperimentWithWinner({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, query: { variant_id: variantId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     selectWinner<ThrowOnError extends boolean = false>(
       experimentId: number | string,
       variantId: number,
       options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<SelectWinnerResponses[200], ThrowOnError>> {
+    ): Promise<ApiResponse<SelectExperimentWinnerResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<SelectWinnerResponses[200], ThrowOnError>(() =>
-        experimentsApi.selectWinner({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, query: { variant_id: variantId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<SelectExperimentWinnerResponses[200], ThrowOnError>(() =>
+        experimentsApi.selectExperimentWinner({ client, path: { space_id: resolvedSpaceId, id: Number(experimentId) }, query: { variant_id: variantId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
     stories: {
       create<ThrowOnError extends boolean = false>(
@@ -114,7 +114,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         const { body, signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
         return wrapRequest<CreateExperimentStoryResponses[201], ThrowOnError>(() =>
-          experimentsApi.createExperimentStory({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+          experimentsApi.createExperimentStory({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
       delete<ThrowOnError extends boolean = false>(
         experimentId: number | string,
@@ -124,7 +124,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         const { signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
         return wrapRequest<DeleteExperimentStoryResponses[204], ThrowOnError>(() =>
-          experimentsApi.deleteExperimentStory({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId, story_id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+          experimentsApi.deleteExperimentStory({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId), story_id: Number(storyId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
     },
     storyMappings: {
@@ -136,7 +136,7 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         const { body, signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
         return wrapRequest<CreateStoryMappingResponses[201], ThrowOnError>(() =>
-          experimentsApi.createStoryMapping({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId, variant_id: variantId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+          experimentsApi.createStoryMapping({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId), variant_id: Number(variantId) }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
       delete<ThrowOnError extends boolean = false>(
         experimentId: number | string,
@@ -147,24 +147,24 @@ export function createExperimentsResource(deps: MapiResourceDeps) {
         const { signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
         return wrapRequest<DeleteStoryMappingResponses[204], ThrowOnError>(() =>
-          experimentsApi.deleteStoryMapping({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId, variant_id: variantId, original_story_id: originalStoryId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+          experimentsApi.deleteStoryMapping({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId), variant_id: Number(variantId), original_story_id: Number(originalStoryId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
     },
     results: {
-      get<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResultsResponses[200], ThrowOnError>> {
+      get<ThrowOnError extends boolean = false>(experimentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetExperimentResultsResponses[200], ThrowOnError>> {
         const { signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
-        return wrapRequest<GetResultsResponses[200], ThrowOnError>(() =>
-          experimentsApi.getResults({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        return wrapRequest<GetExperimentResultsResponses[200], ThrowOnError>(() =>
+          experimentsApi.getExperimentResults({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
       push<ThrowOnError extends boolean = false>(
         experimentId: number | string,
-        options: { body: PushResultsData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-      ): Promise<ApiResponse<PushResultsResponses[200], ThrowOnError>> {
+        options: { body: PushExperimentResultsData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      ): Promise<ApiResponse<PushExperimentResultsResponses[200], ThrowOnError>> {
         const { body, signal, path, throwOnError, fetchOptions } = options;
         const resolvedSpaceId = getSpaceId(path);
-        return wrapRequest<PushResultsResponses[200], ThrowOnError>(() =>
-          experimentsApi.pushResults({ client, path: { space_id: resolvedSpaceId, experiment_id: experimentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+        return wrapRequest<PushExperimentResultsResponses[200], ThrowOnError>(() =>
+          experimentsApi.pushExperimentResults({ client, path: { space_id: resolvedSpaceId, experiment_id: Number(experimentId) }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
       },
     },
   };

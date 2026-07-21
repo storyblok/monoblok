@@ -17,6 +17,24 @@ import {
   generateStoryblokImports,
 } from './utils';
 
+// ComponentPropertySchema is derived via Omit from a discriminated union, which
+// drops member-specific optional fields. We re-add the ones used in this file
+// so that casts from the untyped component schema are properly narrowed.
+type FieldSchema = ComponentPropertySchema & {
+  required?: boolean;
+  source?: string;
+  datasource_slug?: string;
+  filter_content_type?: string[];
+  exclude_empty_option?: boolean;
+  restrict_components?: boolean;
+  restrict_type?: string;
+  component_whitelist?: string[];
+  component_group_whitelist?: string[];
+  component_tag_whitelist?: number[];
+  email_link_type?: boolean;
+  asset_link_type?: boolean;
+};
+
 export interface ComponentGroupsAndNamesObject {
   componentGroups: Map<string, Set<string>>;
   componentNames: Set<string>;
@@ -32,7 +50,7 @@ const DEFAULT_TYPEDEFS_HEADER = [
 const getDatasourceTypeTitle = (slug: string) =>
   `${toPascalCase(slug)}DataSource`;
 
-const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
+const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffix?: string) => {
   // If a property type is one of the ones provided by Storyblok, return that type
   if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
     return { type: property.type };
@@ -184,7 +202,7 @@ const getComponentPropertiesTypeAnnotations = async (
       return acc;
     }
 
-    const schema = value as ComponentPropertySchema;
+    const schema = value as FieldSchema;
     const propertyType = schema.type;
     const propertyTypeAnnotation: JSONSchema = {
       [key]: getPropertyTypeAnnotation(schema, options.typePrefix, options.typeSuffix),
@@ -262,7 +280,7 @@ const getComponentPropertiesTypeAnnotations = async (
             const componentsWithTags = spaceData.components.filter(
               component =>
                 component.internal_tag_ids
-                && component.internal_tag_ids.some(tagId =>
+                && component.internal_tag_ids.some((tagId: string | number) =>
                   schema.component_tag_whitelist!.includes(Number(tagId)),
                 ),
             );

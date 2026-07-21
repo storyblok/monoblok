@@ -1,0 +1,93 @@
+{
+  "name": "@storyblok/schema",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Storyblok schema types and helpers",
+  "license": "MIT",
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "directory": "packages/schema"
+  },
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./field-plugins": {
+      "import": "./dist/field-plugins/index.mjs",
+      "require": "./dist/field-plugins/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "field-plugins": [
+        "./dist/field-plugins/index.d.cts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
+    "@types/node": "^24.5.2",
+    "eslint": "^9.26.0",
+    "tsdown": "^0.20.3",
+    "typescript": "5.8.3",
+    "vitest": "^4.1.3"
+  },
+  "nx": {
+    "targets": {
+      "generate": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      },
+      "build": {
+        "dependsOn": [
+          "^build"
+        ]
+      },
+      "test": {
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
+  }
+}

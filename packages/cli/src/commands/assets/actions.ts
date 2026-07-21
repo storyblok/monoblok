@@ -60,8 +60,8 @@ export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<Ass
     );
     return new Map(
       tags
-        .filter((tag): tag is { id: number; name: string } => typeof tag?.id === 'number' && typeof tag?.name === 'string')
-        .map(tag => [tag.name, tag.id]),
+        .filter(tag => typeof tag?.id === 'number' && typeof tag?.name === 'string')
+        .map(tag => [tag.name, tag.id] as const),
     );
   }
   catch (maybeError) {
@@ -84,7 +84,7 @@ export const createAssetInternalTag = async (
     const client = getMapiClient();
     const { data } = await client.internalTags.create({
       path: { space_id: Number(spaceId) },
-      body: { name, object_type: 'asset' },
+      body: { internal_tag: { name, object_type: 'asset' } },
       throwOnError: true,
     });
     const tag = data?.internal_tag;
@@ -270,9 +270,10 @@ export const createAsset = async (
 ): Promise<Asset> => {
   try {
     const client = getMapiClient();
-    // Strip `id` — it identifies the local/manifest asset for mapping and must
-    // not flow into the metadata update inside mapi-client's create().
-    const { id: _id, ...assetBody } = asset;
+    // `id`/`filename` are local-only identity fields (manifest mapping); drop
+    // them so only upload fields reach the API. Read-only `Asset` fields are
+    // already projected away upstream by `toAssetUpload`.
+    const { id: _id, filename: _filename, ...assetBody } = asset;
     return await client.assets.create({
       body: assetBody,
       file: fileBuffer,

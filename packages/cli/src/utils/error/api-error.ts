@@ -13,6 +13,8 @@ export const API_ACTIONS = {
   pull_component_internal_tags: 'Failed to pull component internal tags',
   push_component: 'Failed to push component',
   push_component_group: 'Failed to push component group',
+  push_component_folder: 'Failed to create component folder',
+  delete_component_folder: 'Failed to delete component folder',
   push_component_preset: 'Failed to push component preset',
   push_component_internal_tag: 'Failed to push component internal tag',
   update_component: 'Failed to update component',
@@ -20,6 +22,7 @@ export const API_ACTIONS = {
   update_component_group: 'Failed to update component group',
   update_component_preset: 'Failed to update component preset',
   delete_component_preset: 'Failed to delete component preset',
+  delete_component: 'Failed to delete component',
   pull_stories: 'Failed to pull stories',
   pull_story: 'Failed to pull story',
   create_story: 'Failed to create story',
@@ -47,6 +50,8 @@ export const API_ACTIONS = {
   push_datasource: 'Failed to push datasource',
   update_datasource: 'Failed to update datasource',
   delete_datasource: 'Failed to delete datasource',
+  push_datasource_entry: 'Failed to push datasource entry',
+  update_datasource_entry: 'Failed to update datasource entry',
   delete_datasource_entry: 'Failed to delete datasource entry',
   create_space: 'Failed to create space',
   pull_spaces: 'Failed to pull spaces',
@@ -128,8 +133,15 @@ export class APIError extends Error {
 
     if (this.code === 422) {
       const responseData = this.response?.data as { [key: string]: string[] } | undefined;
+      // Scope the "name already taken" rewrite to the action that raised it so a
+      // folder create failure does not claim "component" (and vice versa).
       if (responseData?.name?.[0] === 'has already been taken') {
-        this.message = 'A component with this name already exists';
+        if (action === 'push_component_folder') {
+          this.message = 'A component folder with this name already exists';
+        }
+        else if (action === 'push_component' || action === 'update_component') {
+          this.message = 'A component with this name already exists';
+        }
       }
       Object.entries(responseData || {}).forEach(([key, errors]) => {
         if (Array.isArray(errors)) {

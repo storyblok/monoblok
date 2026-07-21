@@ -1,28 +1,28 @@
-import { get as getDatasourceApi, list as listDatasourcesApi } from '../generated/datasources/sdk.gen';
+import { getDatasourceById, listDatasources } from '../generated/capi/sdk.gen';
 import type {
-  GetData as DatasourcesGetData,
-  GetResponses as DatasourcesGetResponses,
-  ListData as DatasourcesListData,
-  ListResponses as DatasourcesListResponses,
-} from '../generated/datasources/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+  GetDatasourceByIdData,
+  GetDatasourceByIdResponses,
+  ListDatasourcesData,
+  ListDatasourcesResponses,
+} from '../generated/capi/types.gen';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createDatasourcesResource(deps: ResourceDeps) {
+export function createDatasourcesResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
-    get: async <ThrowOnError extends boolean = false>(
-      id: DatasourcesGetData['path']['id'],
-      options: { query?: DatasourcesGetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourcesGetResponses[200], ThrowOnError>> => {
+    get: async <ThrowOnError extends boolean = DefaultThrowOnError>(
+      id: GetDatasourceByIdData['path']['id'],
+      options: { query?: GetDatasourceByIdData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<GetDatasourceByIdResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = `/v2/cdn/datasources/${id}`;
-      return requestWithCache<DatasourcesGetResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<GetDatasourceByIdResponses[200], ThrowOnError>('GET', requestPath, query ?? {}, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourcesGetResponses[200], ThrowOnError>(getDatasourceApi({
+          asApiResponse<GetDatasourceByIdResponses[200], ThrowOnError>(getDatasourceById({
             client,
             path: { id },
-            query: requestQuery as DatasourcesGetData['query'], // bridge generic cache callback (Record<string, unknown>) to typed SDK query
+            query: requestQuery,
             signal,
             ...(throwOnError === undefined ? {} : { throwOnError }),
             ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
@@ -30,14 +30,14 @@ export function createDatasourcesResource(deps: ResourceDeps) {
       });
     },
 
-    list: async <ThrowOnError extends boolean = false>(
-      options: { query?: DatasourcesListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<DatasourcesListResponses[200], ThrowOnError>> => {
+    list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: { query?: ListDatasourcesData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<ListDatasourcesResponses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/datasources';
-      return requestWithCache<DatasourcesListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<ListDatasourcesResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<DatasourcesListResponses[200], ThrowOnError>(listDatasourcesApi({
+          asApiResponse<ListDatasourcesResponses[200], ThrowOnError>(listDatasources({
             client,
             query: requestQuery,
             signal,

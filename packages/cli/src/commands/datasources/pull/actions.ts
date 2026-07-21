@@ -1,8 +1,7 @@
-import { handleAPIError, handleFileSystemError } from '../../../utils';
+import { fetchAllPages, handleAPIError, handleFileSystemError } from '../../../utils';
 import { getMapiClient } from '../../../api';
 import { join, resolve } from 'pathe';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import { fetchAllPages } from '../../../utils/pagination';
 import type { DatasourceEntry, SpaceDatasource, SpaceDatasourceEntry } from '../constants';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
 import type { SaveDatasourcesOptions } from './constants';
@@ -31,7 +30,7 @@ export const fetchDatasourceEntries = async (
           datasource_id: datasourceId,
           page,
           // MAPI matches `dimension` against the numeric dimension id.
-          ...(dimensionId != null && { dimension: String(dimensionId) }),
+          ...(dimensionId != null && { dimension: dimensionId }),
         },
         throwOnError: true,
       }),

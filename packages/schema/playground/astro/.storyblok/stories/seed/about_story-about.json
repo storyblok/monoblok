@@ -1,0 +1,47 @@
+{
+  "name": "About",
+  "parent_id": 0,
+  "id": 1002,
+  "uuid": "story-about",
+  "is_folder": false,
+  "content": {
+    "_uid": "d9a9e274-849a-4302-b303-091d4b95c1f3",
+    "blocks": [
+      {
+        "_uid": "3b96a0f3-1765-4889-af6e-b50d7c20a21f",
+        "image": null,
+        "eyebrow": "About this project",
+        "headline": "A monorepo playground for Storyblok packages.",
+        "component": "hero"
+      },
+      {
+        "_uid": "07ad7d35-0693-436d-9ec7-c2f24259c9df",
+        "text": "### What is monoblok?\n\nmonoblok is the official monorepo for Storyblok open-source packages. It hosts the Management API client, the Content Delivery API client, the schema utilities, and framework integrations — all developed and tested together.\n\nContributions are welcome. Open an issue or a pull request on GitHub to get started.",
+        "image": {
+          "id": 2000,
+          "alt": "About image",
+          "filename": "",
+          "fieldtype": "asset"
+        },
+        "caption": "The monoblok monorepo — a playground for Storyblok open-source packages.",
+        "component": "media"
+      },
+      {
+        "_uid": "2b648ebd-31b2-4207-864a-e2a6e2cb0ec3",
+        "body": "This playground lives inside the **monoblok** monorepo — the official home for Storyblok open-source packages. It demonstrates how to build a fully type-safe Storyblok-powered site using `@storyblok/schema`, `@storyblok/api-client`, and `@storyblok/management-api-client`.",
+        "eyebrow": "The stack",
+        "headline": "Qwik + Storyblok + TypeScript",
+        "component": "intro"
+      }
+    ],
+    "component": "page",
+    "seo_title": "About — Storyblok + Qwik Demo",
+    "seo_description": "Learn about this Storyblok + Qwik demo project."
+  },
+  "published": true,
+  "slug": "about",
+  "path": null,
+  "full_slug": "about",
+  "is_startpage": false,
+  "position": -10
+}

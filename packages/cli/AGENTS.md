@@ -9,6 +9,7 @@
 | API calls, filesystem writes, transformations | `actions.ts` |
 | Option constants | `constants.ts` |
 | Reusable option types | `types.ts` |
+| Utilities shared by sibling subcommands | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | Shared CLI utilities | `src/utils/` |
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |

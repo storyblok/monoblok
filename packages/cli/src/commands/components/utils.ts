@@ -126,7 +126,7 @@ export function filterSpaceData(spaceData: SpaceComponentsData, selectors: Compo
 
   const base = spaceData.components.filter((component) => {
     if (filter && !minimatch(component.name, filter)) { return false; }
-    if (groupUuids && !(component.component_group_uuid !== undefined && groupUuids.has(component.component_group_uuid))) { return false; }
+    if (groupUuids && !(component.component_group_uuid != null && groupUuids.has(component.component_group_uuid))) { return false; }
     if (tagIds) {
       const ids = (component.internal_tag_ids ?? []).map(id => Number(id));
       if (!ids.some(id => tagIds.has(id))) { return false; }
@@ -198,7 +198,7 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
         while (p && !visited.has(p)) {
           visited.add(p);
           parts.unshift(nameOf(p) ?? p);
-          p = byUuid.get(p)?.parent_uuid;
+          p = byUuid.get(p)?.parent_uuid ?? null;
         }
         return parts.join('/');
       });

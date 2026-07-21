@@ -5,7 +5,15 @@
 - Run CLI commands with `./dist/index.mjs` (for available commands, run `./dist/index.mjs --help`).
 - Review command documentation in `./src/commands/COMMAND/README.md` or `./src/commands/COMMAND/ACTION/README.md`.
 - Verify changes in the local file system or the Storyblok space.
-- Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test. Create files in this directory when necessary. For example, when pushing a story, create it in `./.storyblok/stories/$STORYBLOK_SPACE_ID/SLUG_FAKE_UUID.json`.
+- Many commands require files in `./.storyblok/COMMAND_DIR/$STORYBLOK_SPACE_ID` to perform a test. Create files in this directory when necessary. For example, when pushing a story, create it in `./.storyblok/stories/$STORYBLOK_SPACE_ID/SLUG_FAKE_UUID.json`. **The `{uuid}` suffix must exactly match the `uuid` field inside the JSON** (use hyphens, not underscores). A mismatch causes `stories push` to silently skip the content-update pass — stories are created as empty placeholders with no error reported.
+
+  ```
+  # filename:
+  .storyblok/stories/$STORYBLOK_SPACE_ID/my-story_my-fake-uuid.json
+
+  # file content:
+  { "slug": "my-story", "uuid": "my-fake-uuid", "name": "My Story", "content": { ... } }
+  ```
 - **Testing `assets push`**: run `assets pull` first to populate `.storyblok/assets/$STORYBLOK_SPACE_ID/` with local files, then run `assets push` against those files.
 - IMPORTANT: When running `assets push --update-stories` or `stories push`, make sure you run `components pull` first!
 
@@ -57,6 +65,69 @@ bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --
 # Delete all shared resources in the library's folder tree (assets, child folders, tags).
 bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 ```
+
+## Schema command
+
+The `schema` command uses TypeScript entry files (not JSON). When test files live outside a workspace package (e.g. `.claude/tmp/`), they can't resolve `@storyblok/schema` — rewrite the imports to absolute source paths before pushing.
+
+### Test patterns
+
+**Round-trip (init → push idempotency):**
+```bash
+# 1. Seed space with has-default-components
+# 2. Init
+node ./dist/index.mjs schema init --space "$STORYBLOK_SPACE_ID" --out-dir ../../.claude/tmp/schema-test
+
+# 3. Rewrite @storyblok/schema imports to absolute source paths (only needed when
+#    the generated files live outside a workspace package, e.g. .claude/tmp/):
+#    import { defineBlock } from '@storyblok/schema'
+#    -> import { defineBlock } from '/abs/path/to/monoblok/packages/schema/src/index'
+#    import { defineFolder } from '@storyblok/schema'
+#    -> import { defineFolder } from '/abs/path/to/monoblok/packages/schema/src/index'
+
+# 4. Push back — should show all entities as "unchanged"
+node ./dist/index.mjs schema push ../../.claude/tmp/schema-test/schema.ts --space "$STORYBLOK_SPACE_ID" --dry-run --no-migrations
+```
+
+**Breaking changes & migrations:**
+```bash
+# Push a modified schema with --migrations to auto-generate migration files
+node ./dist/index.mjs schema push ./schema-v2.ts --space "$STORYBLOK_SPACE_ID" --migrations --path ../../.claude/tmp/schema-test
+# Inspect generated files in migrations/{spaceId}/
+```
+
+**Stale entity deletion:**
+```bash
+# Push a reduced schema with --delete to remove entities not in local schema
+node ./dist/index.mjs schema push ./schema-reduced.ts --space "$STORYBLOK_SPACE_ID" --delete --no-migrations
+```
+
+**Rollback:**
+```bash
+# After a push, rollback using the changeset. Rollback prompts for confirmation
+# before applying, so pass --yes for non-interactive runs.
+node ./dist/index.mjs schema rollback .storyblok/schema/changesets/TIMESTAMP.json --space "$STORYBLOK_SPACE_ID" --yes
+
+# Roll back the most recent changeset without naming the file:
+node ./dist/index.mjs schema rollback --latest --space "$STORYBLOK_SPACE_ID" --yes
+
+# Preview the inverse operations without applying them:
+node ./dist/index.mjs schema rollback --latest --space "$STORYBLOK_SPACE_ID" --dry-run
+```
+
+### Changeset and migration storage
+
+By default, changesets are saved to `.storyblok/schema/changesets/` relative to the CLI working directory. Use `--path` to redirect to a test directory (e.g., `--path ../../.claude/tmp/schema-test`). Migrations go to `migrations/{spaceId}/` under the same base path.
+
+### Component-folder assignment
+
+Folders (component groups) are declared in code with `defineFolder` and assigned by name path, never by UUID. The CLI resolves paths to group UUIDs at push time. To test:
+1. Declare folders with `defineFolder({ name, parent? })` and register them under `defineSchema({ folders })`.
+2. Assign a block to a folder with `folder: <folderRef>` (or a `'Parent/Child'` path string, or `null` to explicitly ungroup).
+3. Restrict a `bloks` or `richtext` field to a folder with `allow: [<folderRef>]`.
+4. Push the schema. `schema push` creates missing groups parent-first, resolves membership to UUIDs, and (with `--delete`) removes stale groups children-first.
+
+See `adr/0007-block-folder-identity-by-name-path.md` for the identity model.
 
 ## Known quirks
 

@@ -1,4 +1,4 @@
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 export type SharedInternalTagObjectType = 'asset' | 'component' | 'idea';
@@ -40,7 +40,7 @@ export interface SharedInternalTagMutateResponse {
  * carries `asset_folder_id` = library root (query param on list/delete, body
  * field on create/update). Not part of the generated SDK — raw `client.*`.
  */
-export function createSharedInternalTagsResource(deps: MapiResourceDeps) {
+export function createSharedInternalTagsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
   const kyOpts = (fetchOptions?: FetchOptions) =>

@@ -1,19 +1,20 @@
 import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate } from '../../types';
+import type { AssetUploadRequest } from '@storyblok/management-api-client';
 
 export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate };
 
 /**
- * CLI extension of mapi-client's AssetCreate.
- * Adds an optional `id` field used for manifest-based local↔remote ID mapping.
- * The `id` identifies the local/source asset and is stripped before the
- * mapi-client create/upload call so it does not leak into the metadata update.
+ * CLI upload payload. Extends mapi-client's `AssetUploadRequest` (which carries
+ * `short_filename` — the name the API uploads the file under) with the local
+ * asset's identity: `id` and `filename` are kept only for manifest-based
+ * local↔remote mapping and are ignored by the create/upload call.
  * `internal_tags_list` is the server-managed (read-only) tag detail carried in
  * pulled sidecars; it is used to translate source-space tag names to
  * target-space IDs and is stripped before the create/upload call.
  */
-export type AssetUpload = AssetCreate & { id?: number; internal_tags_list?: Asset['internal_tags_list'] };
+export type AssetUpload = AssetUploadRequest & { id?: number; filename?: string; internal_tags_list?: Asset['internal_tags_list'] };
 
-export type AssetMapped = Pick<Asset, 'id' | 'filename' | 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>;
+export type AssetMapped = Partial<Pick<Asset, 'alt' | 'title' | 'copyright' | 'source' | 'is_private' | 'meta_data'>> & Pick<Asset, 'id' | 'filename'>;
 
 /**
  * Maps local with remote asset ids and filenames.

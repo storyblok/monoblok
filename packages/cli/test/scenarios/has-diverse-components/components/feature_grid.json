@@ -1,0 +1,16 @@
+{
+  "id": 202,
+  "name": "feature_grid",
+  "display_name": "Feature Grid",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "heading": { "type": "text", "pos": 0 },
+    "items": { "type": "bloks", "pos": 1, "restrict_components": true, "component_whitelist": ["feature_item"] },
+    "columns": { "type": "number", "pos": 2, "min_value": 1, "max_value": 4 },
+    "description": { "type": "richtext", "pos": 3 }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

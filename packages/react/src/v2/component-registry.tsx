@@ -1,16 +1,24 @@
 import { type ComponentType, type ReactNode, Suspense } from 'react';
 import type { SbBlokData } from '.';
 
+/** Internal type: how the registry calls components (always passes SbBlokData) */
 type StoryblokComponentType = ComponentType<{ blok: SbBlokData }>;
+
+/**
+ * Registration type: accepts any component whose blok prop is a subtype of SbBlokData.
+ * Using `any` here intentionally avoids contravariance errors — components that declare
+ * specific blok shapes (e.g. `SbBlokData & { headline: string }`) are valid entries.
+ */
+type AnyBlokComponent = ComponentType<{ blok: any }>;
 
 /**
  * Component entry that supports async components with Suspense.
  * Can be either a plain component or a config object with fallback.
  */
 export type ComponentEntry =
-  | StoryblokComponentType
+  | AnyBlokComponent
   | {
-    component: StoryblokComponentType;
+    component: AnyBlokComponent;
     /** Custom fallback for this component's Suspense boundary */
     fallback?: ReactNode;
     /** Whether to wrap in Suspense (auto-detected for lazy components, can be forced) */
@@ -20,7 +28,7 @@ export type ComponentEntry =
 export interface RegistryConfig {
   components: Record<string, ComponentEntry>;
   /** Fallback component when a blok type is not found */
-  fallback?: StoryblokComponentType;
+  fallback?: AnyBlokComponent;
   /** Default Suspense fallback for async components */
   suspenseFallback?: ReactNode;
 }
@@ -66,7 +74,9 @@ function normalizeEntry(entry: ComponentEntry): {
 }
 
 export function createRegistry(config: RegistryConfig): RegistryResult {
-  const defaultSuspenseFallback = config.suspenseFallback ?? <DefaultSuspenseFallback />;
+  const defaultSuspenseFallback = config.suspenseFallback ?? (
+    <DefaultSuspenseFallback />
+  );
 
   const resolve = (name: string): StoryblokComponentType | null => {
     const entry = config.components[name];

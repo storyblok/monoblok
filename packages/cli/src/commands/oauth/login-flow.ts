@@ -3,20 +3,20 @@ import type { RegionCode } from '../../constants';
 import { managementApiRegions } from '../../constants';
 import { CommandError } from '../../utils';
 import { getUI } from '../../utils/ui';
-import { resolveOauthClient } from './client';
+import { resolveOAuthClient } from './client';
 import { DEFAULT_LOGIN_SCOPES, OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_PORT, OAUTH_REDIRECT_URI } from './constants';
 import { introspectGrant } from './grant';
 import { generatePkce, generateState } from './pkce';
 import { computeExpiresAt } from './refresh';
 import { waitForCallback } from './server';
-import { getOauthEntry, updateOauthEntry } from './store';
-import type { OauthGrantSpace, OauthTokens } from './store';
+import { getOAuthEntry, updateOAuthEntry } from './store';
+import type { OAuthGrantSpace, OAuthTokens } from './store';
 import { exchangeToken } from './token-endpoint';
 
-export interface OauthLoginResult {
+export interface OAuthLoginResult {
   region: RegionCode;
   scopes: string[];
-  spaces: OauthGrantSpace[];
+  spaces: OAuthGrantSpace[];
 }
 
 export const buildAuthorizeUrl = (params: {
@@ -38,16 +38,16 @@ export const buildAuthorizeUrl = (params: {
   return `https://${managementApiRegions[params.region]}/oauth/init?${query.toString()}`;
 };
 
-export const performOauthLogin = async (options: {
+export const performOAuthLogin = async (options: {
   region: RegionCode;
   openBrowser?: (url: string) => Promise<unknown>;
-}): Promise<OauthLoginResult> => {
+}): Promise<OAuthLoginResult> => {
   const { region } = options;
   const openBrowser = options.openBrowser ?? (url => open(url));
   const ui = getUI();
 
-  const client = await resolveOauthClient(region);
-  const scopes = (await getOauthEntry(region)).client?.scopes ?? client.scopes ?? DEFAULT_LOGIN_SCOPES;
+  const client = await resolveOAuthClient(region);
+  const scopes = (await getOAuthEntry(region)).client?.scopes ?? client.scopes ?? DEFAULT_LOGIN_SCOPES;
   const { verifier, challenge } = generatePkce();
   const state = generateState();
 
@@ -76,13 +76,13 @@ export const performOauthLogin = async (options: {
   // tokens on disk without a `spaces` list, which the space guard would treat as unrestricted.
   const grant = await introspectGrant(region, token.access_token);
 
-  const tokens: OauthTokens = {
+  const tokens: OAuthTokens = {
     auth_type: 'oauth',
     access_token: token.access_token,
     refresh_token: token.refresh_token,
     expires_at: computeExpiresAt(token.expires_in),
   };
-  await updateOauthEntry(region, { tokens, spaces: grant.spaces });
+  await updateOAuthEntry(region, { tokens, spaces: grant.spaces });
 
   return { region, scopes: grant.scopes, spaces: grant.spaces };
 };

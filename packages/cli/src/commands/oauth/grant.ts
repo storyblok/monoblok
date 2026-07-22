@@ -1,13 +1,13 @@
 import type { RegionCode } from '../../constants';
 import { CommandError } from '../../utils';
 import { getStoryblokUrl } from '../../utils/api-routes';
-import type { OauthGrantSpace } from './store';
+import type { OAuthGrantSpace } from './store';
 
 export interface GrantIntrospection {
   scopes: string[];
   expires_at: string;
   app: { client_id: string; name: string };
-  spaces: OauthGrantSpace[];
+  spaces: OAuthGrantSpace[];
 }
 
 // GET /v1/oauth/grant returns the scopes, expiry, client and granted spaces for the

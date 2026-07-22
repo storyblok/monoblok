@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node';
 
 import '../../index';
 import { loginCommand } from './index';
-import { getOauthEntry } from '../oauth/store';
+import { getOAuthEntry } from '../oauth/store';
 import { session } from '../../session';
 import { loggedOutSessionState } from '../../../test/setup';
 
@@ -35,8 +35,8 @@ describe('login --oauth', () => {
     vi.mocked(session().initializeSession).mockImplementation(async () => {
       session().state = loggedOutSessionState();
     });
-    // Seed a stored client so resolveOauthClient succeeds.
-    await getOauthEntry('eu');
+    // Seed a stored client so resolveOAuthClient succeeds.
+    await getOAuthEntry('eu');
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({ oauth: { eu: { client: { client_id: 'cid', client_secret: 'secret', scopes: ['stories:read', 'offline_access'] } } } }),
     });
@@ -53,7 +53,7 @@ describe('login --oauth', () => {
 
     await loginCommand.parseAsync(['node', 'test', '--oauth', '--region', 'eu']);
 
-    const entry = await getOauthEntry('eu');
+    const entry = await getOAuthEntry('eu');
     expect(entry.tokens?.access_token).toBe('sb_oat_x');
     expect(entry.spaces).toEqual([{ id: 99, region: 'eu' }]);
   });

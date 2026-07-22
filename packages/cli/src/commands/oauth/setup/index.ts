@@ -18,7 +18,7 @@ export const oauthSetupCommand = oauthCommand
   .action(async (options: { token?: string; clientId?: string; clientSecret?: string; region: RegionCode }) => {
     const ui = getUI();
     const verbose = getProgram().opts().verbose;
-    ui.title('oauth setup', colorPalette.OAUTH ?? colorPalette.PRIMARY);
+    ui.title('oauth setup', colorPalette.OAUTH);
 
     const region = options.region;
     if (!isRegion(region)) {

@@ -47,7 +47,17 @@ export const performOAuthLogin = async (options: {
   const ui = getUI();
 
   const client = await resolveOAuthClient(region);
-  const scopes = (await getOAuthEntry(region)).client?.scopes ?? client.scopes ?? DEFAULT_LOGIN_SCOPES;
+  const resolvedScopes = (await getOAuthEntry(region)).client?.scopes ?? client.scopes;
+  const scopes = resolvedScopes ?? DEFAULT_LOGIN_SCOPES;
+  if (!resolvedScopes) {
+    // Bring-your-own clients (env vars or a manually stored id/secret) have no
+    // scope catalog, so we request a restrictive default set. If the client was
+    // granted broader scopes, provision it via `oauth setup` to request them.
+    ui.warn(
+      `No scopes stored for this OAuth client; requesting the default set: ${DEFAULT_LOGIN_SCOPES.join(', ')}.\n`
+      + `Run \`storyblok oauth setup --token <personal-access-token>\` to provision a client with the full scope catalog.`,
+    );
+  }
   const { verifier, challenge } = generatePkce();
   const state = generateState();
 

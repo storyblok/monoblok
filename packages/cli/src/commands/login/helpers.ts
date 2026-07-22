@@ -11,18 +11,27 @@ import type { OAuthLoginResult } from '../oauth/login-flow';
 import { getUI } from '../../utils/ui';
 
 /**
- * Performs interactive login flow with email/password or token
+ * Result of an interactive login. OAuth logins carry no token here (the access
+ * token lives in the OAuth credential store); PAT and email logins carry the
+ * personal access token.
+ */
+export type InteractiveLoginResult =
+  | { authType: 'oauth'; region: RegionCode }
+  | { authType: 'pat'; token: string; region: RegionCode };
+
+/**
+ * Performs interactive login flow with OAuth, email/password, or token
  * @param options - Options for the login flow
  * @param options.verbose - Whether to show verbose error output
  * @param options.preSelectedRegion - Pre-selected region to skip region selection
  * @param options.showWelcomeMessage - Whether to show welcome message after login
- * @returns Object with token and region, or null if cancelled/failed
+ * @returns The login result, or null if cancelled/failed
  */
 export async function performInteractiveLogin(options?: {
   verbose?: boolean;
   preSelectedRegion?: RegionCode;
   showWelcomeMessage?: boolean;
-}): Promise<{ token: string; region: RegionCode } | null> {
+}): Promise<InteractiveLoginResult | null> {
   const { verbose = false, preSelectedRegion, showWelcomeMessage = true } = options || {};
   const spinner = new Spinner({
     verbose: !isVitest,
@@ -63,7 +72,7 @@ export async function performInteractiveLogin(options?: {
         default: regions.EU,
       });
       const result = await performOAuthLoginStrategy({ region, verbose });
-      return result ? { token: '', region } : null;
+      return result ? { authType: 'oauth', region } : null;
     }
 
     if (strategy === 'login-with-token') {
@@ -100,7 +109,7 @@ export async function performInteractiveLogin(options?: {
         if (showWelcomeMessage) {
           konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
         }
-        return { token: userToken, region: userRegion };
+        return { authType: 'pat', token: userToken, region: userRegion };
       }
     }
     else {
@@ -151,7 +160,7 @@ export async function performInteractiveLogin(options?: {
         if (showWelcomeMessage) {
           konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
         }
-        return { token: userToken, region: userRegion };
+        return { authType: 'pat', token: userToken, region: userRegion };
       }
     }
 

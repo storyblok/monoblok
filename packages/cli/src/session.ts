@@ -63,6 +63,11 @@ function createSession() {
   }
 
   async function loadOAuthSession(): Promise<boolean> {
+    // We have no last-login timestamp to disambiguate between regions, so the
+    // first region with stored tokens wins in a fixed order (eu before us,
+    // etc.). A user logged into multiple regions via OAuth therefore always
+    // resolves to `eu` first; pass an explicit region on the command to target
+    // another. TODO(DX-490): track the active region to remove this ambiguity.
     const regionsToCheck: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
     for (const region of regionsToCheck) {
       const entry = await getOAuthEntry(region);

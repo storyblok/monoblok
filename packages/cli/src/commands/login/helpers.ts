@@ -10,18 +10,27 @@ import { performOAuthLogin } from "../oauth/login-flow";
 import type { OAuthLoginResult } from "../oauth/login-flow";
 
 /**
- * Performs interactive login flow with email/password or token
+ * Result of an interactive login. OAuth logins carry no token here (the access
+ * token lives in the OAuth credential store); PAT and email logins carry the
+ * personal access token.
+ */
+export type InteractiveLoginResult =
+  | { authType: "oauth"; region: RegionCode }
+  | { authType: "pat"; token: string; region: RegionCode };
+
+/**
+ * Performs interactive login flow with OAuth, email/password, or token
  * @param options - Options for the login flow
  * @param options.verbose - Whether to show verbose error output
  * @param options.preSelectedRegion - Pre-selected region to skip region selection
  * @param options.showWelcomeMessage - Whether to show welcome message after login
- * @returns Object with token and region, or null if cancelled/failed
+ * @returns The login result, or null if cancelled/failed
  */
 export async function performInteractiveLogin(options?: {
   verbose?: boolean;
   preSelectedRegion?: RegionCode;
   showWelcomeMessage?: boolean;
-}): Promise<{ token: string; region: RegionCode } | null> {
+}): Promise<InteractiveLoginResult | null> {
   const { verbose = false, preSelectedRegion, showWelcomeMessage = true } = options || {};
   const ui = getUI();
   let activeSpinner: CLISpinner | null = null;
@@ -66,7 +75,7 @@ export async function performInteractiveLogin(options?: {
           default: regions.EU,
         }));
       const result = await performOAuthLoginStrategy({ region, verbose });
-      return result ? { token: "", region } : null;
+      return result ? { authType: "oauth", region } : null;
     }
 
     if (strategy === "login-with-token") {
@@ -116,7 +125,7 @@ export async function performInteractiveLogin(options?: {
             true,
           );
         }
-        return { token: userToken, region: userRegion };
+        return { authType: "pat", token: userToken, region: userRegion };
       }
     } else {
       const userEmail = await input(
@@ -183,7 +192,7 @@ export async function performInteractiveLogin(options?: {
             true,
           );
         }
-        return { token: userToken, region: userRegion };
+        return { authType: "pat", token: userToken, region: userRegion };
       }
     }
 

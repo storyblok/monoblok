@@ -1,8 +1,8 @@
 import type { RegionCode } from '../../constants';
 import { CommandError } from '../../utils';
-import { resolveOauthClient } from './client';
-import { getOauthEntry, updateOauthEntry } from './store';
-import type { OauthTokens } from './store';
+import { resolveOAuthClient } from './client';
+import { getOAuthEntry, updateOAuthEntry } from './store';
+import type { OAuthTokens } from './store';
 import { exchangeToken } from './token-endpoint';
 
 export const computeExpiresAt = (expiresInSeconds: number, nowMs: number = Date.now()): string => {
@@ -11,16 +11,16 @@ export const computeExpiresAt = (expiresInSeconds: number, nowMs: number = Date.
 
 // In-process single-flight, keyed by region: concurrent callers for the same
 // region within one CLI process share one refresh, but different regions don't.
-const inFlight = new Map<RegionCode, Promise<OauthTokens>>();
+const inFlight = new Map<RegionCode, Promise<OAuthTokens>>();
 
-const doRefresh = async (region: RegionCode): Promise<OauthTokens> => {
-  const entry = await getOauthEntry(region);
+const doRefresh = async (region: RegionCode): Promise<OAuthTokens> => {
+  const entry = await getOAuthEntry(region);
   const refreshToken = entry.tokens?.refresh_token;
   if (!refreshToken) {
     throw new CommandError('No OAuth refresh token stored. Run `storyblok login` to authenticate.');
   }
 
-  const client = await resolveOauthClient(region);
+  const client = await resolveOAuthClient(region);
 
   let response;
   try {
@@ -39,7 +39,7 @@ const doRefresh = async (region: RegionCode): Promise<OauthTokens> => {
     throw error;
   }
 
-  const tokens: OauthTokens = {
+  const tokens: OAuthTokens = {
     auth_type: 'oauth',
     access_token: response.access_token,
     refresh_token: response.refresh_token ?? refreshToken,
@@ -47,11 +47,11 @@ const doRefresh = async (region: RegionCode): Promise<OauthTokens> => {
   };
 
   // Persist the rotated tokens BEFORE returning them for use.
-  await updateOauthEntry(region, { tokens });
+  await updateOAuthEntry(region, { tokens });
   return tokens;
 };
 
-export const refreshOauthTokens = async (region: RegionCode): Promise<OauthTokens> => {
+export const refreshOAuthTokens = async (region: RegionCode): Promise<OAuthTokens> => {
   if (inFlight.has(region)) {
     return inFlight.get(region)!;
   }

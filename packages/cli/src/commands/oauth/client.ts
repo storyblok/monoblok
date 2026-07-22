@@ -1,17 +1,17 @@
 import type { RegionCode } from '../../constants';
 import { CommandError } from '../../utils';
-import type { OauthClientCredentials } from './store';
-import { getOauthClientFromEnv, getOauthEntry } from './store';
+import type { OAuthClientCredentials } from './store';
+import { getOAuthClientFromEnv, getOAuthEntry } from './store';
 
 // Resolution order: env vars, then stored client (from `oauth setup`).
 // A baked-in first-party client is a planned follow-up and would slot in as the next fallback here.
-export const resolveOauthClient = async (region: RegionCode): Promise<OauthClientCredentials> => {
-  const fromEnv = getOauthClientFromEnv();
+export const resolveOAuthClient = async (region: RegionCode): Promise<OAuthClientCredentials> => {
+  const fromEnv = getOAuthClientFromEnv();
   if (fromEnv) {
     return fromEnv;
   }
 
-  const stored = (await getOauthEntry(region)).client;
+  const stored = (await getOAuthEntry(region)).client;
   if (stored) {
     return stored;
   }

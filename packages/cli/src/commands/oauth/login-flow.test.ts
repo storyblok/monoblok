@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { buildAuthorizeUrl, performOauthLogin } from './login-flow';
-import { getOauthEntry } from './store';
+import { buildAuthorizeUrl, performOAuthLogin } from './login-flow';
+import { getOAuthEntry } from './store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 vi.mock('../../utils/ui', () => ({ getUI: () => ({ info: vi.fn() }) }));
 vi.mock('./client', () => ({
-  resolveOauthClient: vi.fn(async () => ({ client_id: 'cid', client_secret: 'sec', scopes: ['stories:read'] })),
+  resolveOAuthClient: vi.fn(async () => ({ client_id: 'cid', client_secret: 'sec', scopes: ['stories:read'] })),
 }));
 vi.mock('./pkce', () => ({
   generatePkce: () => ({ verifier: 'verifier', challenge: 'challenge' }),
@@ -44,17 +44,17 @@ describe('buildAuthorizeUrl', () => {
   });
 });
 
-describe('performOauthLogin', () => {
+describe('performOAuthLogin', () => {
   beforeEach(() => vol.reset());
   afterEach(() => vol.reset());
 
   it('should persist tokens and granted spaces after a successful introspection', async () => {
     vi.mocked(introspectGrant).mockResolvedValueOnce({ scopes: ['stories:read'], spaces: [{ id: 5, region: 'eu' }] });
 
-    const result = await performOauthLogin({ region: 'eu', openBrowser: async () => {} });
+    const result = await performOAuthLogin({ region: 'eu', openBrowser: async () => {} });
 
     expect(result.spaces).toEqual([{ id: 5, region: 'eu' }]);
-    const entry = await getOauthEntry('eu');
+    const entry = await getOAuthEntry('eu');
     expect(entry.tokens?.access_token).toBe('at');
     expect(entry.spaces).toEqual([{ id: 5, region: 'eu' }]);
   });
@@ -62,8 +62,8 @@ describe('performOauthLogin', () => {
   it('should not persist tokens when introspection fails', async () => {
     vi.mocked(introspectGrant).mockRejectedValueOnce(new Error('introspection failed'));
 
-    await expect(performOauthLogin({ region: 'eu', openBrowser: async () => {} })).rejects.toThrow('introspection failed');
+    await expect(performOAuthLogin({ region: 'eu', openBrowser: async () => {} })).rejects.toThrow('introspection failed');
 
-    expect(await getOauthEntry('eu')).toEqual({});
+    expect(await getOAuthEntry('eu')).toEqual({});
   });
 });

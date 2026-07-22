@@ -4,24 +4,24 @@ import { customFetch, FetchError } from '../../utils/fetch';
 import { getStoryblokUrl } from '../../utils/api-routes';
 import { getLogger } from '../../lib/logger/logger';
 import { OAUTH_APP_NAME, OAUTH_REDIRECT_URI } from './constants';
-import type { OauthClientCredentials } from './store';
+import type { OAuthClientCredentials } from './store';
 
-interface OauthClientSummary {
+interface OAuthClientSummary {
   id: number;
   name: string;
 }
 
-interface OauthClientDetail extends OauthClientSummary {
+interface OAuthClientDetail extends OAuthClientSummary {
   oauth_identifier: string;
   oauth_secret?: string;
 }
 
-interface OauthClientsListResponse {
-  oauth_clients: OauthClientSummary[];
+interface OAuthClientsListResponse {
+  oauth_clients: OAuthClientSummary[];
 }
 
-interface OauthClientResponse {
-  oauth_client: OauthClientDetail;
+interface OAuthClientResponse {
+  oauth_client: OAuthClientDetail;
 }
 
 interface ScopeGroup {
@@ -49,24 +49,24 @@ export const fetchScopeCatalog = async (pat: string, region: RegionCode): Promis
   return scopes;
 };
 
-export const findOrCreateCliClient = async (pat: string, region: RegionCode): Promise<OauthClientCredentials> => {
+export const findOrCreateCliClient = async (pat: string, region: RegionCode): Promise<OAuthClientCredentials> => {
   const url = getStoryblokUrl(region);
   const headers = patHeaders(pat);
 
   try {
-    const { oauth_clients } = await customFetch<OauthClientsListResponse>(`${url}/oauth_clients`, { headers });
+    const { oauth_clients } = await customFetch<OAuthClientsListResponse>(`${url}/oauth_clients`, { headers });
     const existing = oauth_clients.find(client => client.name === OAUTH_APP_NAME);
     const scopes = await fetchScopeCatalog(pat, region);
 
     if (existing) {
-      const { oauth_client } = await customFetch<OauthClientResponse>(`${url}/oauth_clients/${existing.id}`, { headers });
+      const { oauth_client } = await customFetch<OAuthClientResponse>(`${url}/oauth_clients/${existing.id}`, { headers });
       if (!oauth_client.oauth_secret) {
         throw new CommandError(`Found existing "${OAUTH_APP_NAME}" app (id ${existing.id}) but the response did not include a secret.`);
       }
       return { client_id: oauth_client.oauth_identifier, client_secret: oauth_client.oauth_secret, scopes };
     }
 
-    const { oauth_client } = await customFetch<OauthClientResponse>(`${url}/oauth_clients`, {
+    const { oauth_client } = await customFetch<OAuthClientResponse>(`${url}/oauth_clients`, {
       method: 'POST',
       headers,
       body: {

@@ -13,7 +13,7 @@ import { directories } from './constants';
 import { session } from './session';
 import { getMapiClient } from './api';
 import { isExpiringSoon } from './commands/oauth/expiry';
-import { refreshOauthTokens } from './commands/oauth/refresh';
+import { refreshOAuthTokens } from './commands/oauth/refresh';
 import { assertSpaceAllowed } from './commands/oauth/space-guard';
 import {
   applyConfigToCommander,
@@ -81,7 +81,7 @@ export function getProgram(): Command {
         let accessToken = state.oauthAccessToken;
         if (isExpiringSoon(state.oauthExpiresAt)) {
           try {
-            const refreshed = await refreshOauthTokens(state.region);
+            const refreshed = await refreshOAuthTokens(state.region);
             accessToken = refreshed.access_token;
             state.oauthAccessToken = refreshed.access_token;
             state.oauthExpiresAt = refreshed.expires_at;

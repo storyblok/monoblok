@@ -6,7 +6,7 @@ import { CommandError, handleError, isRegion } from '../../../utils';
 import { getUI } from '../../../utils/ui';
 import { oauthCommand } from '../command';
 import { findOrCreateCliClient } from '../actions';
-import { updateOauthEntry } from '../store';
+import { updateOAuthEntry } from '../store';
 
 export const oauthSetupCommand = oauthCommand
   .command('setup')
@@ -31,7 +31,7 @@ export const oauthSetupCommand = oauthCommand
       if (options.clientId || options.clientSecret) {
         const clientId = options.clientId ?? await input({ message: 'OAuth client id:', required: true });
         const clientSecret = options.clientSecret ?? await password({ message: 'OAuth client secret:' });
-        await updateOauthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
+        await updateOAuthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
         ui.ok(`Stored OAuth client credentials for region ${regionNames[region]} (${region}).`, true);
         ui.br();
         return;
@@ -51,7 +51,7 @@ export const oauthSetupCommand = oauthCommand
       if (strategy === 'manual') {
         const clientId = await input({ message: 'OAuth client id:', required: true });
         const clientSecret = await password({ message: 'OAuth client secret:' });
-        await updateOauthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
+        await updateOAuthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
         ui.ok(`Stored OAuth client credentials for region ${regionNames[region]} (${region}).`, true);
         ui.br();
         return;
@@ -60,7 +60,7 @@ export const oauthSetupCommand = oauthCommand
       const token = options.token ?? await password({ message: 'Personal Access Token (used once, never stored):' });
       const spinner = ui.createSpinner('Provisioning the Storyblok CLI OAuth app');
       const client = await findOrCreateCliClient(token, region);
-      await updateOauthEntry(region, { client });
+      await updateOAuthEntry(region, { client });
       spinner.succeed('OAuth client ready.');
       ui.ok(`Stored OAuth client credentials for region ${regionNames[region]} (${region}). You can now run \`storyblok login --oauth\`.`, true);
       ui.br();

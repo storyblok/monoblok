@@ -14,7 +14,7 @@ export const logoutCommand = program
 
     const verbose = program.opts().verbose;
     try {
-      const { state, initializeSession, clearOauthSession } = session();
+      const { state, initializeSession, clearOAuthSession } = session();
       await initializeSession();
 
       if (!state.isLoggedIn) {
@@ -24,7 +24,7 @@ export const logoutCommand = program
       }
 
       if (state.authType === 'oauth' && state.region) {
-        await clearOauthSession(state.region);
+        await clearOAuthSession(state.region);
       }
       else {
         await removeAllCredentials();

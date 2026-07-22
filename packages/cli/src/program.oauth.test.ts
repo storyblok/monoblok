@@ -24,7 +24,7 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-const seedExpiringOauthSession = () => {
+const seedExpiringOAuthSession = () => {
   vol.fromJSON({
     [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
       oauth: {
@@ -59,7 +59,7 @@ describe('program preAction OAuth refresh', () => {
   afterEach(() => vol.reset());
 
   it('should refresh an expiring OAuth token and initialize the mapi client with the new access token', async () => {
-    seedExpiringOauthSession();
+    seedExpiringOAuthSession();
     server.use(
       http.post('https://mapi.storyblok.com/oauth/token', () =>
         HttpResponse.json({
@@ -83,14 +83,14 @@ describe('program preAction OAuth refresh', () => {
     );
 
     // The rotated tokens are persisted before use.
-    const { getOauthEntry } = await import('./commands/oauth/store');
-    const entry = await getOauthEntry('eu');
+    const { getOAuthEntry } = await import('./commands/oauth/store');
+    const entry = await getOAuthEntry('eu');
     expect(entry.tokens?.access_token).toBe('sb_oat_new');
     expect(entry.tokens?.refresh_token).toBe('sb_ort_new');
   });
 
   it('should surface the re-login message and not throw when the refresh fails', async () => {
-    seedExpiringOauthSession();
+    seedExpiringOAuthSession();
     server.use(
       http.post('https://mapi.storyblok.com/oauth/token', () =>
         HttpResponse.json({ error: 'invalid_grant' }, { status: 400 })),

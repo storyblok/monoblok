@@ -6,7 +6,7 @@ import { getProgram } from "../../program";
 import { CommandError, handleError, isRegion } from "../../utils";
 import { loginWithToken } from "./actions";
 import { session } from "../../session";
-import { performInteractiveLogin, performOauthLoginStrategy } from "./helpers";
+import { performInteractiveLogin, performOAuthLoginStrategy } from "./helpers";
 import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
 
 const program = getProgram(); // Get the shared singleton instance
@@ -53,7 +53,7 @@ export const loginCommand = program
 
     if (options.oauth) {
       const userRegion = region || regions.EU;
-      await performOauthLoginStrategy({ region: userRegion, verbose });
+      await performOAuthLoginStrategy({ region: userRegion, verbose });
       konsola.br();
       return;
     }

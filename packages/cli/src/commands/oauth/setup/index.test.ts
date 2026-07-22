@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
 import { oauthCommand } from '../index';
-import { getOauthEntry } from '../store';
+import { getOAuthEntry } from '../store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -19,7 +19,7 @@ describe('oauth setup command', () => {
 
   it('should store manually provided client credentials', async () => {
     await oauthCommand.parseAsync(['node', 'test', 'setup', '--client-id', 'manual-id', '--client-secret', 'manual-secret', '--region', 'eu']);
-    const entry = await getOauthEntry('eu');
+    const entry = await getOAuthEntry('eu');
     expect(entry.client).toEqual({ client_id: 'manual-id', client_secret: 'manual-secret' });
   });
 
@@ -33,7 +33,7 @@ describe('oauth setup command', () => {
     );
 
     await oauthCommand.parseAsync(['node', 'test', 'setup', '--token', 'pat', '--region', 'eu']);
-    const entry = await getOauthEntry('eu');
+    const entry = await getOAuthEntry('eu');
     expect(entry.client?.client_id).toBe('pat-cid');
     expect(entry.client?.scopes).toContain('stories:read');
   });

@@ -3,12 +3,12 @@ import { vol } from 'memfs';
 
 import '../../index';
 import { logoutCommand } from './index';
-import { getOauthEntry } from '../oauth/store';
+import { getOAuthEntry } from '../oauth/store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 // The shared test setup mocks `session()` (defaulting to a logged-in PAT session). Logout
-// needs the real session logic here so `authType` becomes 'oauth' and `clearOauthSession`
+// needs the real session logic here so `authType` becomes 'oauth' and `clearOAuthSession`
 // genuinely clears the store, matching the technique used in `src/session.oauth.test.ts`.
 vi.unmock('../../session');
 
@@ -29,7 +29,7 @@ describe('logout with an oauth session', () => {
 
   it('should clear the stored oauth section', async () => {
     await logoutCommand.parseAsync(['node', 'test']);
-    expect(await getOauthEntry('eu')).toEqual({});
+    expect(await getOAuthEntry('eu')).toEqual({});
   });
 
   it('should preserve provisioned client credentials on logout', async () => {
@@ -41,7 +41,7 @@ describe('logout with an oauth session', () => {
 
     await logoutCommand.parseAsync(['node', 'test']);
 
-    const entry = await getOauthEntry('eu');
+    const entry = await getOAuthEntry('eu');
     expect(entry.client).toEqual({ client_id: 'id', client_secret: 'secret' });
     expect(entry.tokens).toBeUndefined();
     expect(entry.spaces).toBeUndefined();

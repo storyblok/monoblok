@@ -1,6 +1,6 @@
 import { type RegionCode, regionsDomain } from "./constants";
 import { addCredentials, getCredentials } from "./creds";
-import { clearOauthTokens, getOauthEntry } from "./commands/oauth/store";
+import { clearOAuthTokens, getOAuthEntry } from "./commands/oauth/store";
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -49,7 +49,7 @@ function createSession() {
       state.authType = "pat";
     } else {
       // No PAT credentials; try an OAuth session.
-      const oauthLoaded = await loadOauthSession();
+      const oauthLoaded = await loadOAuthSession();
       if (!oauthLoaded) {
         state.isLoggedIn = false;
         state.login = undefined;
@@ -61,10 +61,10 @@ function createSession() {
     state.envLogin = false;
   }
 
-  async function loadOauthSession(): Promise<boolean> {
+  async function loadOAuthSession(): Promise<boolean> {
     const regionsToCheck: RegionCode[] = ["eu", "us", "cn", "ca", "ap"];
     for (const region of regionsToCheck) {
-      const entry = await getOauthEntry(region);
+      const entry = await getOAuthEntry(region);
       if (entry.tokens?.access_token) {
         state.isLoggedIn = true;
         state.authType = "oauth";
@@ -78,8 +78,8 @@ function createSession() {
     return false;
   }
 
-  async function clearOauthSession(region: RegionCode): Promise<void> {
-    await clearOauthTokens(region);
+  async function clearOAuthSession(region: RegionCode): Promise<void> {
+    await clearOAuthTokens(region);
     state.oauthAccessToken = undefined;
     state.oauthExpiresAt = undefined;
     state.oauthSpaces = undefined;
@@ -137,7 +137,7 @@ function createSession() {
     updateSession,
     persistCredentials,
     logout,
-    clearOauthSession,
+    clearOAuthSession,
   };
 }
 

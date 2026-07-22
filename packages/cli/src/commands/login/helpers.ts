@@ -6,8 +6,8 @@ import { handleError } from "../../utils";
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
 import { session } from "../../session";
 import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
-import { performOauthLogin } from "../oauth/login-flow";
-import type { OauthLoginResult } from "../oauth/login-flow";
+import { performOAuthLogin } from "../oauth/login-flow";
+import type { OAuthLoginResult } from "../oauth/login-flow";
 
 /**
  * Performs interactive login flow with email/password or token
@@ -65,7 +65,7 @@ export async function performInteractiveLogin(options?: {
           })),
           default: regions.EU,
         }));
-      const result = await performOauthLoginStrategy({ region, verbose });
+      const result = await performOAuthLoginStrategy({ region, verbose });
       return result ? { token: "", region } : null;
     }
 
@@ -200,14 +200,14 @@ export async function performInteractiveLogin(options?: {
  * Runs the OAuth Authorization Code login flow and reports the granted scopes and spaces.
  * @returns the login result, or null when the flow was cancelled or failed.
  */
-export async function performOauthLoginStrategy(options: {
+export async function performOAuthLoginStrategy(options: {
   region: RegionCode;
   verbose?: boolean;
-}): Promise<OauthLoginResult | null> {
+}): Promise<OAuthLoginResult | null> {
   const { region, verbose = false } = options;
   const ui = getUI();
   try {
-    const result = await performOauthLogin({ region });
+    const result = await performOAuthLogin({ region });
     const spaceList = result.spaces.length
       ? result.spaces.map((space) => `${space.id} (${space.region})`).join(", ")
       : "none (grant is not space-scoped)";

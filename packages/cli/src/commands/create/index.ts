@@ -7,7 +7,7 @@ import {
   toHumanReadable,
 } from "../../utils";
 import { colorPalette, commands, type RegionCode, regions } from "../../constants";
-import { performInteractiveLogin } from "../login/helpers";
+import { type InteractiveLoginResult, performInteractiveLogin } from "../login/helpers";
 import { getProgram } from "../../program";
 import type { CreateOptions } from "./constants";
 import { session } from "../../session";
@@ -39,9 +39,7 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 }
 
 // Helper to handle interactive login prompt
-async function promptForLogin(
-  verbose: boolean,
-): Promise<{ token: string; region: RegionCode } | null> {
+async function promptForLogin(verbose: boolean): Promise<InteractiveLoginResult | null> {
   const ui = getUI();
   try {
     ui.br();

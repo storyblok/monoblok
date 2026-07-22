@@ -110,7 +110,9 @@ export default async function Home() {
   });
 
   const story = data?.story;
-  if (!story) { return <main>Story not found</main>; }
+  if (!story) {
+    return <main>Story not found</main>;
+  }
 
   const content = await renderContent(story);
 
@@ -246,11 +248,15 @@ When you register a component with `suspense: true` and a `fallback`, the regist
 
 ```tsx
 // app/lib/storyblok.tsx
-weather_widget: {
-  component: WeatherWidget,
-  fallback: <WeatherWidgetSkeleton />,
-  suspense: true,
-},
+export const { StoryblokComponent, StoryblokBlocks } = createRegistry({
+  components: {
+    weather_widget: {
+      component: WeatherWidget,
+      fallback: <WeatherWidgetSkeleton />,
+      suspense: true,
+    },
+  },
+});
 ```
 
 ### The component
@@ -297,10 +303,12 @@ Three layers work together to avoid re-running a slow 10-second fetch unnecessar
 
 ```tsx
 // Layer 1 — raw fetch (slow, no caching)
-async function fetchWeatherData(location: string): Promise<WeatherData> { … }
+async function fetchWeatherData(location: string): Promise<WeatherData> {
+  // ...
+}
 
 // Layer 2a — production: cross-request cache, revalidates every 60 seconds
-const getWeatherProduction = unstable_cache(fetchWeatherData, ["weather"], {
+const getWeatherProduction = unstable_cache(fetchWeatherData, ['weather'], {
   revalidate: 60,
 });
 
@@ -313,8 +321,10 @@ const draftModeCache = new Map<string, WeatherData>();
 
 async function getWeatherDraft(location: string): Promise<WeatherData> {
   const cached = draftModeCache.get(location);
-  if (cached) return cached;                      // fast path
-  const data = await fetchWeatherData(location);  // slow path (first load only)
+  if (cached) {
+    return cached; // fast path
+  }
+  const data = await fetchWeatherData(location); // slow path (first load only)
   draftModeCache.set(location, data);
   return data;
 }
@@ -323,9 +333,9 @@ async function getWeatherDraft(location: string): Promise<WeatherData> {
 //           react.cache() ensures only one lookup per location per request
 const getWeather = cache(async (location: string, isDraftMode: boolean) => {
   if (isDraftMode) {
-    return getWeatherDraft(location);     // → in-memory Map
+    return getWeatherDraft(location); // → in-memory Map
   }
-  return getWeatherProduction(location);  // → Next.js Data Cache
+  return getWeatherProduction(location); // → Next.js Data Cache
 });
 ```
 

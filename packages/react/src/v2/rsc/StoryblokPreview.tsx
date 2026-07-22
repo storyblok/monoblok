@@ -16,18 +16,25 @@ export interface StoryblokPreviewProps {
     story: Story,
   ) => Promise<ReactNode>;
   /**
-   * Initial server-rendered content.
+   * Initial server-rendered content passed as children.
+   *
+   * Pass the initial RSC tree as children (not as a prop) so that React can
+   * stream it through the RSC channel. Storing async Server Component output
+   * in useState(initialContent) forces the RSC serializer to fully await every
+   * async component before sending any HTML, bypassing Suspense streaming.
+   * Using children keeps the subtree in the RSC stream where Suspense works.
    */
-  initialContent: ReactNode;
+  children: ReactNode;
 }
 
 export function StoryblokPreview({
   renderContent,
-  initialContent,
+  children,
 }: StoryblokPreviewProps) {
   const [isPending, startTransition] = useTransition();
 
-  const [content, setContent] = useState(initialContent);
+  // null = no editor update yet; renders children (initial RSC tree) instead.
+  const [updatedContent, setUpdatedContent] = useState<ReactNode | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -44,7 +51,7 @@ export function StoryblokPreview({
             const next = await renderContent(updatedStory as Story);
 
             if (mounted) {
-              setContent(next);
+              setUpdatedContent(next);
             }
           }
           catch (err) {
@@ -81,7 +88,7 @@ export function StoryblokPreview({
         />
       )}
 
-      {content}
+      {updatedContent ?? children}
     </>
   );
 }

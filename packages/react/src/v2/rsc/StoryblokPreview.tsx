@@ -4,6 +4,7 @@ import type { Story } from '@storyblok/api-client';
 import {
   type ReactNode,
   useEffect,
+  useRef,
   useState,
   useTransition,
 } from 'react';
@@ -25,16 +26,29 @@ export interface StoryblokPreviewProps {
    * Using children keeps the subtree in the RSC stream where Suspense works.
    */
   children: ReactNode;
+  /**
+   * Milliseconds to wait after the last editor event before triggering a
+   * re-render. Prevents a Server Action call on every individual keystroke.
+   *
+   * Defaults to 300 ms — enough to let a fast typist finish a word before
+   * the preview updates, while still feeling responsive.
+   */
+  debounceMs?: number;
 }
 
 export function StoryblokPreview({
   renderContent,
   children,
+  debounceMs = 300,
 }: StoryblokPreviewProps) {
   const [isPending, startTransition] = useTransition();
 
   // null = no editor update yet; renders children (initial RSC tree) instead.
   const [updatedContent, setUpdatedContent] = useState<ReactNode | null>(null);
+
+  // Holds the pending debounce timer so we can cancel it when a new event
+  // arrives before the delay expires.
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -46,21 +60,32 @@ export function StoryblokPreview({
           return;
         }
 
-        startTransition(async () => {
-          try {
-            const next = await renderContent(updatedStory as Story);
+        // Cancel the previous pending re-render and wait for the user to
+        // pause before kicking off a new Server Action call. Without this,
+        // every keystroke would fire a separate (potentially slow) fetch.
+        if (debounceTimer.current !== null) {
+          clearTimeout(debounceTimer.current);
+        }
 
-            if (mounted) {
-              setUpdatedContent(next);
+        debounceTimer.current = setTimeout(() => {
+          debounceTimer.current = null;
+
+          startTransition(async () => {
+            try {
+              const next = await renderContent(updatedStory as Story);
+
+              if (mounted) {
+                setUpdatedContent(next);
+              }
             }
-          }
-          catch (err) {
-            console.error(
-              '[StoryblokPreview] Failed to render preview:',
-              err,
-            );
-          }
-        });
+            catch (err) {
+              console.error(
+                '[StoryblokPreview] Failed to render preview:',
+                err,
+              );
+            }
+          });
+        }, debounceMs);
       });
     };
 
@@ -68,9 +93,12 @@ export function StoryblokPreview({
 
     return () => {
       mounted = false;
+      if (debounceTimer.current !== null) {
+        clearTimeout(debounceTimer.current);
+      }
       unsubscribe?.();
     };
-  }, [renderContent]);
+  }, [renderContent, debounceMs]);
 
   return (
     <>

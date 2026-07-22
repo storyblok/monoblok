@@ -34,8 +34,8 @@ export interface RegistryConfig {
 }
 
 export interface RegistryResult {
-  StoryblokComponent: ComponentType<{ blok: SbBlokData }>;
-  StoryblokBlocks: ComponentType<{ blocks: SbBlokData[] }>;
+  StoryblokComponent: ComponentType<{ blok: SbBlokData } & Record<string, unknown>>;
+  StoryblokBlocks: ComponentType<{ blocks: SbBlokData[] } & Record<string, unknown>>;
   resolve: (name: string) => StoryblokComponentType | null;
 }
 
@@ -86,13 +86,13 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     return normalizeEntry(entry).component;
   };
 
-  function StoryblokComponent({ blok }: { blok: SbBlokData }): ReactNode {
+  function StoryblokComponent({ blok, ...rest }: { blok: SbBlokData } & Record<string, unknown>): ReactNode {
     const entry = config.components[blok.component];
 
     if (!entry) {
       if (config.fallback) {
         const FallbackComponent = config.fallback;
-        return <FallbackComponent blok={blok} />;
+        return <FallbackComponent blok={blok} {...rest} />;
       }
       console.warn(`[Storyblok] Unknown component: ${blok.component}`);
       return null;
@@ -108,15 +108,15 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     if (needsSuspense) {
       return (
         <Suspense fallback={fallback ?? defaultSuspenseFallback}>
-          <Component blok={blok} />
+          <Component blok={blok} {...rest} />
         </Suspense>
       );
     }
 
-    return <Component blok={blok} />;
+    return <Component blok={blok} {...rest} />;
   }
 
-  function StoryblokBlocks({ blocks }: { blocks: SbBlokData[] }): ReactNode {
+  function StoryblokBlocks({ blocks, ...rest }: { blocks: SbBlokData[] } & Record<string, unknown>): ReactNode {
     if (!blocks || blocks.length === 0) {
       return null;
     }
@@ -124,7 +124,7 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     return (
       <>
         {blocks.map(blok => (
-          <StoryblokComponent key={blok._uid} blok={blok} />
+          <StoryblokComponent key={blok._uid} blok={blok} {...rest} />
         ))}
       </>
     );

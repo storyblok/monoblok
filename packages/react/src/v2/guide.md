@@ -37,7 +37,7 @@ This guide explains how `@storyblok/react/next` works, how it is wired up in thi
 This guide uses a prerelease build published via [pkg.pr.new](https://pkg.pr.new). Install it directly by URL — no registry publish required:
 
 ```bash
-npm i https://pkg.pr.new/@storyblok/react@c5573ca
+npm i https://pkg.pr.new/@storyblok/react@fc8fac6
 ```
 
 This installs the exact commit that the guide is written against.
@@ -127,10 +127,9 @@ export default async function Home() {
       <div style={{ background: 'yellow', padding: '10px' }}>
         DRAFT MODE IS ON
       </div>
-      <StoryblokPreview
-        renderContent={renderContent}
-        initialContent={content}
-      />
+      <StoryblokPreview renderContent={renderContent}>
+        {content}
+      </StoryblokPreview>
     </>
   );
 }
@@ -221,18 +220,36 @@ This keeps the production render path completely free of any preview-specific co
 
 `StoryblokPreview` is a Client Component exported from `@storyblok/react/next/rsc`. It:
 
-- Receives the initially server-rendered content as `initialContent` so the page is not blank on first load.
+- Receives the initially server-rendered content as **`children`** so the page is not blank on first load.
 - Listens for `postMessage` events from the Storyblok Visual Editor iframe.
-- When the editor sends an updated story, it calls your `renderContent` Server Action to re-render the content on the server and updates the DOM with the new React tree.
+- When the editor sends an updated story, calls your `renderContent` Server Action, re-renders the content on the server, and swaps in the new React tree.
+- **Debounces** editor events (default 300 ms) so rapid keystrokes do not each fire a separate Server Action call.
 
 ```tsx
-<StoryblokPreview
-  renderContent={renderContent} // Server Action reference
-  initialContent={content} // First render, already computed
-/>;
+<StoryblokPreview renderContent={renderContent}>
+  {content}
+</StoryblokPreview>;
 ```
 
-Because `renderContent` is a Server Action, the re-render runs entirely on the server — the client never receives raw Storyblok JSON or runs component logic in the browser.
+**Props**
+
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `renderContent` | `(story: Story) => Promise<ReactNode>` | ✓ | — | Server Action called on each editor update |
+| `children` | `ReactNode` | ✓ | — | Initial server-rendered content |
+| `debounceMs` | `number` | — | `300` | Milliseconds to wait after the last editor event before triggering a re-render |
+
+**Why `children` and not a named prop?**
+
+Passing the initial RSC tree as `children` (directly from the Server Component) keeps it inside React's RSC streaming channel. Suspense boundaries in that tree work correctly — the page streams the skeleton immediately and flushes the slow component once it resolves.
+
+If the same tree were passed as a named prop (e.g. `initialContent={content}`) and stored in `useState`, the RSC serialiser would need to fully await every async component in the subtree before it could send the prop value to the Client Component. That bypasses Suspense and blocks the entire response for the full duration of the slowest component — exactly the 10-second block you would otherwise see with `WeatherWidget`.
+
+**Why debounce?**
+
+Without debouncing, every keystroke in the Visual Editor fires an `onStoryblokEditorEvent`. Each event triggers a `renderContent` Server Action call. If the component tree contains a slow async component (e.g. an external API fetch), and the editor is editing the field that forms part of the cache key (e.g. the `location` field on `WeatherWidget`), each intermediate value — `"L"`, `"Lo"`, `"Lon"` — would kick off its own slow fetch. With a 300 ms debounce the Server Action only fires after the user pauses, eliminating wasted in-flight requests.
+
+Because `renderContent` is a Server Action, all re-renders run entirely on the server — the client never receives raw Storyblok JSON or executes component logic in the browser.
 
 ---
 
@@ -293,13 +310,14 @@ export async function WeatherWidget({ blok }: WeatherWidgetProps) {
 
 ### Caching strategy
 
-Three layers work together to avoid re-running a slow 10-second fetch unnecessarily:
+Four layers work together to avoid re-running a slow 10-second fetch unnecessarily:
 
-| Layer                  | API     | Scope                      | Used when                                                                    |
-| ---------------------- | ------- | -------------------------- | ---------------------------------------------------------------------------- |
-| `react.cache()`        | React   | Single request             | Deduplicates calls within one render (e.g. two bloks with the same location) |
-| `unstable_cache()`     | Next.js | Cross-request (Data Cache) | Production — persists results across requests, 60s TTL                       |
-| `draftModeCache` (Map) | Custom  | Server process lifetime    | Draft mode — keeps data stable across editor re-renders                      |
+| Layer | API | Scope | Used when |
+| ----------------------- | ----------- | -------------------------- | ----------------------------------------------------------------------------- |
+| `react.cache()` | React | Single request | Deduplicates calls within one render (e.g. two bloks with the same location) |
+| `unstable_cache()` | Next.js | Cross-request (Data Cache) | Production — persists results across requests, 60 s TTL |
+| `LRUCache` | `lru-cache` | Server process | Draft mode — TTL (5 min) keeps data fresh; `max: 500` bounds memory |
+| `inFlightDraftFetches` | `Map` | In-flight only | Deduplicates concurrent fetches for the same key before the cache is warm |
 
 ```tsx
 // Layer 1 — raw fetch (slow, no caching)
@@ -312,34 +330,54 @@ const getWeatherProduction = unstable_cache(fetchWeatherData, ['weather'], {
   revalidate: 60,
 });
 
-// Layer 2b — draft mode: in-memory Map, lives for the server process lifetime
+// Layer 2b — draft mode: LRUCache with TTL + max-size cap
 //
-// The Visual Editor fires a re-render on every keystroke. Without this cache,
-// every change would kick off a fresh 10-second fetch and make the preview
-// unusable. The Map is cleared only on a full server restart.
-const draftModeCache = new Map<string, WeatherData>();
+// TTL (5 min): entries expire so editors always see reasonably fresh data,
+// and keys never accessed again eventually fall out of the cache.
+//
+// max (500): hard cap — the least-recently-used key is evicted first when
+// the limit is reached, preventing unbounded memory growth.
+//
+// inFlightDraftFetches: if multiple editor events arrive before the first
+// fetch for a given location completes, they all share the same Promise
+// instead of each starting an independent 10-second request.
+const draftModeCache = new LRUCache<string, WeatherData>({
+  max: 500,
+  ttl: 5 * 60 * 1000,
+});
+const inFlightDraftFetches = new Map<string, Promise<WeatherData>>();
 
 async function getWeatherDraft(location: string): Promise<WeatherData> {
   const cached = draftModeCache.get(location);
   if (cached) {
-    return cached; // fast path
+    return cached;
   }
-  const data = await fetchWeatherData(location); // slow path (first load only)
-  draftModeCache.set(location, data);
-  return data;
+
+  const inFlight = inFlightDraftFetches.get(location);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const promise = fetchWeatherData(location).then((data) => {
+    draftModeCache.set(location, data);
+    inFlightDraftFetches.delete(location);
+    return data;
+  });
+  inFlightDraftFetches.set(location, promise);
+  return promise;
 }
 
 // Layer 3 — request deduplication: routes to the correct layer
 //           react.cache() ensures only one lookup per location per request
 const getWeather = cache(async (location: string, isDraftMode: boolean) => {
   if (isDraftMode) {
-    return getWeatherDraft(location); // → in-memory Map
+    return getWeatherDraft(location); // → LRUCache (TTL + max size)
   }
   return getWeatherProduction(location); // → Next.js Data Cache
 });
 ```
 
-The routing decision (`isDraftMode ? draftModeCache : unstable_cache`) is made in `getWeather`, not inside `fetchWeatherData`. This keeps each layer's responsibility clear and means `unstable_cache` is never involved in draft-mode requests.
+The routing decision (`isDraftMode ? LRUCache : unstable_cache`) is made in `getWeather`, not inside `fetchWeatherData`. This keeps each layer's responsibility clear and means `unstable_cache` is never involved in draft-mode requests.
 
 ### The skeleton
 

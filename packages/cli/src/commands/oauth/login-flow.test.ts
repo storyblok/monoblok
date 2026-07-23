@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
 import { buildAuthorizeUrl, performOAuthLogin } from './login-flow';
-import { getOAuthEntry } from './store';
+import { getOAuthActiveRegion, getOAuthEntry } from './store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
@@ -59,11 +59,20 @@ describe('performOAuthLogin', () => {
     expect(entry.spaces).toEqual([{ id: 5, region: 'eu' }]);
   });
 
+  it('should mark the region as active after a successful login', async () => {
+    vi.mocked(introspectGrant).mockResolvedValueOnce({ scopes: ['stories:read'], spaces: [] });
+
+    await performOAuthLogin({ region: 'us', openBrowser: async () => {} });
+
+    expect(await getOAuthActiveRegion()).toBe('us');
+  });
+
   it('should not persist tokens when introspection fails', async () => {
     vi.mocked(introspectGrant).mockRejectedValueOnce(new Error('introspection failed'));
 
     await expect(performOAuthLogin({ region: 'eu', openBrowser: async () => {} })).rejects.toThrow('introspection failed');
 
     expect(await getOAuthEntry('eu')).toEqual({});
+    expect(await getOAuthActiveRegion()).toBeUndefined();
   });
 });

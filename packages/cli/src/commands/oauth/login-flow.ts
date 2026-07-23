@@ -9,7 +9,7 @@ import { introspectGrant } from './grant';
 import { generatePkce, generateState } from './pkce';
 import { computeExpiresAt } from './refresh';
 import { waitForCallback } from './server';
-import { getOAuthEntry, setOAuthActiveRegion, updateOAuthEntry } from './store';
+import { setOAuthActiveRegion, updateOAuthEntry } from './store';
 import type { OAuthGrantSpace, OAuthTokens } from './store';
 import { exchangeToken } from './token-endpoint';
 
@@ -47,7 +47,10 @@ export const performOAuthLogin = async (options: {
   const ui = getUI();
 
   const client = await resolveOAuthClient(region);
-  const resolvedScopes = (await getOAuthEntry(region)).client?.scopes ?? client.scopes;
+  // Read scopes from the resolved client so credentials and scopes always come
+  // from the same source. Env-var clients carry no scope catalog, so they fall
+  // back to the restrictive default set below.
+  const resolvedScopes = client.scopes;
   const scopes = resolvedScopes ?? DEFAULT_LOGIN_SCOPES;
   if (!resolvedScopes) {
     // Bring-your-own clients (env vars or a manually stored id/secret) have no

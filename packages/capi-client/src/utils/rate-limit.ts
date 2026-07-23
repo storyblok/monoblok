@@ -1,11 +1,13 @@
 /**
  * Rate limiting for the Content API client.
  *
- * Provides both a simple token-bucket throttle and a tier-aware manager
- * that automatically selects the right concurrency limit based on request
- * type (single story vs. listing) and the per_page query parameter — mirroring
- * the tiers enforced server-side by the Storyblok CDN.
+ * Provides a tier-aware manager that selects the right per-second limit based
+ * on request type (single story vs. listing) and the per_page query parameter,
+ * mirroring the per-second tiers the Storyblok CDN enforces.
  */
+import { createThrottle, type Throttle } from './throttle';
+
+export { createThrottle };
 
 const TIER_LIMITS = {
   SINGLE_OR_SMALL: 50, // single story fetch or per_page ≤ 25
@@ -43,59 +45,6 @@ export interface RateLimitConfig {
 export interface ThrottleManager {
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
   adaptToResponse: (response: Response | undefined) => void;
-}
-
-interface Throttle {
-  execute: <T>(fn: () => Promise<T>) => Promise<T>;
-  setLimit: (n: number) => void;
-}
-
-/**
- * Concurrency limiter: allows up to `initialLimit` requests to be in-flight
- * at the same time. A slot is freed as soon as the request's promise settles
- * (resolves or rejects), so throughput scales with how quickly requests
- * complete rather than being artificially capped at N per second.
- */
-export function createThrottle(initialLimit: number): Throttle {
-  let limit = initialLimit;
-  let activeCount = 0;
-  const queue: Array<() => void> = [];
-
-  const tryNext = () => {
-    while (queue.length > 0 && activeCount < limit) {
-      activeCount++;
-      const run = queue.shift()!;
-      run();
-    }
-  };
-
-  const execute = <T>(fn: () => Promise<T>): Promise<T> => {
-    return new Promise<T>((resolve, reject) => {
-      queue.push(() => {
-        fn().then(
-          (value) => {
-            activeCount--;
-            tryNext();
-            resolve(value);
-          },
-          (error) => {
-            activeCount--;
-            tryNext();
-            reject(error);
-          },
-        );
-      });
-      tryNext();
-    });
-  };
-
-  const setLimit = (n: number) => {
-    limit = n;
-    // If the limit increased, unblock any waiting requests.
-    tryNext();
-  };
-
-  return { execute, setLimit };
 }
 
 // Matches /v2/cdn/stories/<identifier> — a single story fetch (including nested slugs).

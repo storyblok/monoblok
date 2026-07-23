@@ -1,6 +1,6 @@
 import { type RegionCode, regionsDomain } from './constants';
 import { addCredentials, getCredentials } from './creds';
-import { clearOAuthTokens, getOAuthEntry } from './commands/oauth/store';
+import { clearOAuthTokens, getOAuthActiveRegion, getOAuthEntry } from './commands/oauth/store';
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -63,12 +63,16 @@ function createSession() {
   }
 
   async function loadOAuthSession(): Promise<boolean> {
-    // We have no last-login timestamp to disambiguate between regions, so the
-    // first region with stored tokens wins in a fixed order (eu before us,
-    // etc.). A user logged into multiple regions via OAuth therefore always
-    // resolves to `eu` first; pass an explicit region on the command to target
-    // another. TODO(DX-490): track the active region to remove this ambiguity.
-    const regionsToCheck: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
+    // Resolve the most recently used region first via the stored `activeRegion`
+    // pointer, then fall back to a fixed order for its siblings. The fallback
+    // also covers sessions created before the pointer existed and cases where
+    // the pointer is stale (its region has no tokens). A command's explicit
+    // `--region` still overrides whatever this resolves.
+    const fixedOrder: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
+    const activeRegion = await getOAuthActiveRegion();
+    const regionsToCheck = activeRegion
+      ? [activeRegion, ...fixedOrder.filter(region => region !== activeRegion)]
+      : fixedOrder;
     for (const region of regionsToCheck) {
       const entry = await getOAuthEntry(region);
       if (entry.tokens?.access_token) {

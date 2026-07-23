@@ -1,6 +1,6 @@
-// session.ts
 import { type RegionCode, regionsDomain } from './constants';
 import { addCredentials, getCredentials } from './creds';
+import { clearOAuthTokens, getOAuthActiveRegion, getOAuthEntry } from './commands/oauth/store';
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -8,6 +8,10 @@ export interface SessionState {
   password?: string;
   region?: RegionCode;
   envLogin?: boolean;
+  authType?: 'pat' | 'oauth';
+  oauthAccessToken?: string;
+  oauthExpiresAt?: string;
+  oauthSpaces?: { id: number; region: string }[];
 }
 
 let sessionInstance: ReturnType<typeof createSession> | null = null;
@@ -26,27 +30,73 @@ function createSession() {
       state.password = envCredentials.password;
       state.region = envCredentials.region as RegionCode;
       state.envLogin = true;
+      state.authType = 'pat';
       return;
     }
 
     // If no environment variables, fall back to .storyblok/credentials.json
     const credentials = await getCredentials();
-    if (credentials) {
-      // Todo: evaluate this in future when we want to support multiple regions
-      const creds = Object.values(credentials)[0];
+    // The credentials file also stores an `oauth` top-level key; exclude it so it is
+    // never mistaken for a PAT entry (it has no login/password/region fields).
+    const patEntry = credentials
+      ? Object.entries(credentials).find(([machineName]) => machineName !== 'oauth')?.[1]
+      : undefined;
+    if (patEntry) {
       state.isLoggedIn = true;
-      state.login = creds.login;
-      state.password = creds.password;
-      state.region = creds.region as RegionCode;
+      state.login = patEntry.login;
+      state.password = patEntry.password;
+      state.region = patEntry.region as RegionCode;
+      state.authType = 'pat';
     }
     else {
-      // No credentials found; set state to logged out
-      state.isLoggedIn = false;
-      state.login = undefined;
-      state.password = undefined;
-      state.region = undefined;
+      // No PAT credentials; try an OAuth session.
+      const oauthLoaded = await loadOAuthSession();
+      if (!oauthLoaded) {
+        state.isLoggedIn = false;
+        state.login = undefined;
+        state.password = undefined;
+        state.region = undefined;
+        state.authType = undefined;
+      }
     }
     state.envLogin = false;
+  }
+
+  async function loadOAuthSession(): Promise<boolean> {
+    // Resolve the most recently used region first via the stored `activeRegion`
+    // pointer, then fall back to a fixed order for its siblings. The fallback
+    // also covers sessions created before the pointer existed and cases where
+    // the pointer is stale (its region has no tokens). This resolution is not
+    // affected by a command's `--region`; to switch the active OAuth region,
+    // log in again (which repoints `activeRegion`).
+    const fixedOrder: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
+    const activeRegion = await getOAuthActiveRegion();
+    const regionsToCheck = activeRegion
+      ? [activeRegion, ...fixedOrder.filter(region => region !== activeRegion)]
+      : fixedOrder;
+    for (const region of regionsToCheck) {
+      const entry = await getOAuthEntry(region);
+      if (entry.tokens?.access_token) {
+        state.isLoggedIn = true;
+        state.authType = 'oauth';
+        state.region = region;
+        state.oauthAccessToken = entry.tokens.access_token;
+        state.oauthExpiresAt = entry.tokens.expires_at;
+        state.oauthSpaces = entry.spaces;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function clearOAuthSession(region: RegionCode): Promise<void> {
+    await clearOAuthTokens(region);
+    state.oauthAccessToken = undefined;
+    state.oauthExpiresAt = undefined;
+    state.oauthSpaces = undefined;
+    if (state.authType === 'oauth') {
+      logout();
+    }
   }
 
   function getEnvCredentials() {
@@ -90,6 +140,7 @@ function createSession() {
     state.login = undefined;
     state.password = undefined;
     state.region = undefined;
+    state.authType = undefined;
   }
 
   return {
@@ -98,6 +149,7 @@ function createSession() {
     updateSession,
     persistCredentials,
     logout,
+    clearOAuthSession,
   };
 }
 

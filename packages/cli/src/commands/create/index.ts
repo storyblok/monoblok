@@ -1,6 +1,6 @@
-import { CommandError, handleError, isRegion, isVitest, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, isVitest, requireAuthentication, sessionCredential, toHumanReadable } from '../../utils';
 import { colorPalette, commands, type RegionCode, regions } from '../../constants';
-import { performInteractiveLogin } from '../login/helpers';
+import { type InteractiveLoginResult, performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
 import type { CreateOptions } from './constants';
 import { session } from '../../session';
@@ -26,7 +26,7 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 }
 
 // Helper to handle interactive login prompt
-async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+async function promptForLogin(verbose: boolean): Promise<InteractiveLoginResult | null> {
   try {
     ui.br();
     const shouldLogin = await confirm({
@@ -86,8 +86,10 @@ export const createCommand = program
 
     const { state, initializeSession } = session();
 
-    // Declare these outside to be used throughout the function
-    let password: string | undefined;
+    // Declare region outside to be used throughout the function.
+    // The API credential (PAT or OAuth token) is resolved from the session via
+    // sessionCredential() at each call site; the shared MAPI client is already
+    // configured by the program preAction hook.
     let region: RegionCode | undefined;
 
     // Get region from session for fallback (even when using --token)
@@ -107,10 +109,8 @@ export const createCommand = program
         await initializeSession();
       }
 
-      // After authentication check, password and region are guaranteed to be defined
-      const authenticatedState = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
-      password = authenticatedState.password;
-      region = authenticatedState.region;
+      // After authentication check, region is guaranteed to be defined.
+      region = state.region ?? region;
 
       // Validate that user-provided region matches their account region when creating a space
       // This check happens early before any project scaffolding
@@ -119,12 +119,9 @@ export const createCommand = program
         return;
       }
     }
-    else if (state.isLoggedIn && state.password) {
-      // If using --token or --skip-space but user is logged in, still get their credentials for getMapiClient
-      password = state.password;
-      if (state.region) {
-        region = state.region;
-      }
+    else if (state.isLoggedIn && state.region) {
+      // If using --token or --skip-space but user is logged in, keep their region.
+      region = state.region;
     }
 
     const spinnerBlueprints = new Spinner({
@@ -223,10 +220,14 @@ export const createCommand = program
       }
       try {
         try {
-          // At this point, password and region are guaranteed to be defined because:
+          // At this point, a credential and region are guaranteed to be defined because:
           // 1. We're not in the token branch (which returns early)
-          // 2. Authentication was required and completed
-          const user = await getUser(password!, region!);
+          // 2. Authentication was required and completed (PAT password or OAuth token)
+          const credential = sessionCredential(state);
+          if (!credential) {
+            throw new Error('No credential found');
+          }
+          const user = await getUser(credential, region!);
           if (!user) {
             throw new Error('User data is undefined');
           }
@@ -241,9 +242,10 @@ export const createCommand = program
           }
           // Re-initialize session and retry fetching user
           await initializeSession();
-          const { password: newPassword, region: newRegion } = session().state;
+          const retryState = session().state;
+          const retryCredential = sessionCredential(retryState);
           try {
-            const user = await getUser(newPassword!, newRegion!);
+            const user = await getUser(retryCredential!, retryState.region!);
             if (!user) {
               throw new Error('User data is undefined');
             }

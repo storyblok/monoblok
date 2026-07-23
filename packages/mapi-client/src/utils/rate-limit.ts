@@ -1,4 +1,4 @@
-import { RateLimit } from 'async-sema';
+import { createThrottle } from './throttle';
 
 const DEFAULT_REQUESTS_PER_SECOND = 6;
 const MAX_RATE_LIMIT = 1_000;
@@ -36,12 +36,9 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
   const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { requestsPerSecond: config } : config;
   const { requestsPerSecond, maxConcurrency } = resolvedConfig;
   const rps = requestsPerSecond ?? maxConcurrency ?? DEFAULT_REQUESTS_PER_SECOND;
-  const rl = RateLimit(Math.min(rps, MAX_RATE_LIMIT));
+  const throttle = createThrottle(Math.min(rps, MAX_RATE_LIMIT));
 
   return {
-    execute: async (fn) => {
-      await rl();
-      return fn();
-    },
+    execute: fn => throttle.execute(fn),
   };
 }

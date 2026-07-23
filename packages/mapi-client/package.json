@@ -40,7 +40,6 @@
   },
   "dependencies": {
     "@storyblok/region-helper": "workspace:*",
-    "async-sema": "^3.1.1",
     "ky": "^1.14.3"
   },
   "devDependencies": {

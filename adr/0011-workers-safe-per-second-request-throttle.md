@@ -38,6 +38,7 @@ Model the throttle as a **per-second sliding-window rate limiter**, and make its
 - **Requests are paced to the server's per-second budget** instead of an unrelated in-flight cap, which is the behavior the tier numbers were always meant to express. Bursts beyond the window wait rather than being sent and rejected.
 - **No timer-driven state, so no leak or hang on Workers.** The suspend-after-response behavior can no longer wedge the throttle.
 - **A non-positive or non-finite `limit` now means "no throttle"** rather than deadlocking or throwing.
+- **Waiting is not strictly FIFO.** Each waiter retries independently when the oldest window entry ages out, so a newly arriving call can claim a freed slot before an older waiter's timer fires. Accepted: real workloads are finite bursts that drain, and a shared FIFO queue would reintroduce cross-call state.
 - **`abort()` rejects waiting calls with an `AbortError` instance** and clears them; in-flight calls still settle.
 - **Three copies to keep in sync.** A change to the limiter must be applied to `storyblok-js-client`, `@storyblok/api-client`, and `@storyblok/management-api-client`. This is an accepted maintenance cost in exchange for package decoupling; the ADR and matching tests in each package document the shared contract.
 - **`async-sema` is dropped from the Management API client**, which used its `RateLimit` (a fire-and-forget token release, unsafe on Workers) for throttling.

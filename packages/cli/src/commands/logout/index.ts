@@ -31,7 +31,6 @@ export const logoutCommand = program
       }
 
       konsola.ok(`Successfully logged out.`, true);
-      konsola.br();
     }
     catch (error) {
       handleError(error as Error, verbose);

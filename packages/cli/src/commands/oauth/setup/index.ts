@@ -21,7 +21,7 @@ export const oauthSetupCommand = oauthCommand
   .action(async (options: { token?: string; clientId?: string; clientSecret?: string; region: RegionCode }) => {
     const ui = getUI();
     const verbose = getProgram().opts().verbose;
-    ui.title('oauth setup', colorPalette.OAUTH);
+    ui.title('OAuth setup', colorPalette.OAUTH);
 
     const region = options.region;
     if (!isRegion(region)) {
@@ -29,6 +29,7 @@ export const oauthSetupCommand = oauthCommand
       return;
     }
 
+    let spinner: ReturnType<typeof ui.createSpinner> | undefined;
     try {
       // Manual path: explicit client id/secret (or interactive when only one is supplied).
       if (options.clientId || options.clientSecret) {
@@ -61,7 +62,7 @@ export const oauthSetupCommand = oauthCommand
       }
 
       const token = options.token ?? await password({ message: 'Personal Access Token (used once, never stored):', validate: required('Personal Access Token') });
-      const spinner = ui.createSpinner('Provisioning the Storyblok CLI OAuth app');
+      spinner = ui.createSpinner('Provisioning the Storyblok CLI OAuth app');
       const client = await findOrCreateCliClient(token, region);
       await updateOAuthEntry(region, { client });
       spinner.succeed('OAuth client ready.');
@@ -69,6 +70,7 @@ export const oauthSetupCommand = oauthCommand
       ui.br();
     }
     catch (error) {
+      spinner?.failed('Provisioning the Storyblok CLI OAuth app failed.');
       handleError(error as Error, verbose);
     }
   });

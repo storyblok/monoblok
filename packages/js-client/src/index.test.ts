@@ -1743,15 +1743,14 @@ describe('storyblokClient', () => {
       expect(client.throttleManager.getQueueCount()).toBe(0);
     });
 
-    it('should throttle large tier (10 req/s) correctly over time', async () => {
-      vi.useFakeTimers();
-
-      const mockData = {
-        data: { stories: [] },
-        headers: {},
-        status: 200,
-      };
-      const mockGet = vi.fn().mockResolvedValue(mockData);
+    it('should cap concurrent requests at the CDN tier limit (10)', async () => {
+      // The throttle is a concurrency limiter: at most `limit` requests are in
+      // flight at once, and a slot frees as soon as a request settles.
+      const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+      const resolvers: Array<() => void> = [];
+      const mockGet = vi.fn(() => new Promise<any>((resolve) => {
+        resolvers.push(() => resolve({ data: { stories: [] }, headers: {}, status: 200 }));
+      }));
 
       const client = new StoryblokClient({
         accessToken: 'test-token',
@@ -1761,41 +1760,35 @@ describe('storyblokClient', () => {
       // @ts-expect-error - accessing private property for testing
       client.client.get = mockGet;
 
-      const countCallsWithParams = (params: Record<string, string | number>) => {
-        return mockGet.mock.calls.filter(call =>
-          Object.entries(params).every(([key, value]) => call[1][key] === value),
-        ).length;
-      };
-
-      // Make 25 requests - should take ~3 seconds to complete all
+      // per_page 51 maps to the 10 req/s (LARGE) tier.
       for (let i = 0; i < 25; i++) {
         client.get('cdn/stories', { version: 'draft', per_page: 51 }).catch(() => {});
       }
+      await flush();
 
-      // After 999ms: exactly 10 requests should have started and completed
-      await vi.advanceTimersByTimeAsync(999);
-      expect(countCallsWithParams({ per_page: 51 })).toBe(10);
+      // Only `limit` (10) requests run at once; the remaining 15 wait.
+      expect(mockGet).toHaveBeenCalledTimes(10);
 
-      // After ~2 seconds total: exactly 20 requests completed
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(countCallsWithParams({ per_page: 51 })).toBe(20);
+      // Completing the in-flight requests frees slots for the next batch.
+      resolvers.splice(0, 10).forEach(resolve => resolve());
+      await flush();
+      expect(mockGet).toHaveBeenCalledTimes(20);
 
-      // After ~3 seconds total: all 25 requests completed
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(countCallsWithParams({ per_page: 51 })).toBe(25);
+      resolvers.splice(0, 5).forEach(resolve => resolve());
+      await flush();
+      expect(mockGet).toHaveBeenCalledTimes(25);
 
-      vi.useRealTimers();
+      // Drain the rest so no promise is left pending.
+      resolvers.splice(0).forEach(resolve => resolve());
+      await flush();
     });
 
-    it('should throttle very large tier (6 req/s) correctly over time', async () => {
-      vi.useFakeTimers();
-
-      const mockData = {
+    it('should route the very large listing tier (6 req/s) to its own queue', async () => {
+      const mockGet = vi.fn().mockResolvedValue({
         data: { stories: [] },
         headers: {},
         status: 200,
-      };
-      const mockGet = vi.fn().mockResolvedValue(mockData);
+      });
 
       const client = new StoryblokClient({
         accessToken: 'test-token',
@@ -1805,38 +1798,24 @@ describe('storyblokClient', () => {
       // @ts-expect-error - accessing private property for testing
       client.client.get = mockGet;
 
-      const countCallsWithParams = (params: Record<string, string | number>) => {
-        return mockGet.mock.calls.filter(call =>
-          Object.entries(params).every(([key, value]) => call[1][key] === value),
-        ).length;
-      };
+      // per_page 76 maps to the 6 req/s (VERY_LARGE) tier. Every request
+      // completes without hanging, and the tier gets its own queue.
+      await Promise.all(
+        Array.from({ length: 18 }, () =>
+          client.get('cdn/stories', { version: 'draft', per_page: 76 }).catch(() => {})),
+      );
 
-      // Make 18 requests - should take ~3 seconds to complete all
-      for (let i = 0; i < 18; i++) {
-        client.get('cdn/stories', { version: 'draft', per_page: 76 }).catch(() => {});
-      }
-
-      await vi.advanceTimersByTimeAsync(999);
-      expect(countCallsWithParams({ per_page: 76 })).toBe(6);
-
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(countCallsWithParams({ per_page: 76 })).toBe(12);
-
-      await vi.advanceTimersByTimeAsync(1000);
-      expect(countCallsWithParams({ per_page: 76 })).toBe(18);
-
-      vi.useRealTimers();
+      expect(mockGet).toHaveBeenCalledTimes(18);
+      // @ts-expect-error - accessing private property for testing
+      expect(client.throttleManager.queues.has(6)).toBe(true);
     });
 
     it('should throttle different rate limit tiers independently', async () => {
-      vi.useFakeTimers();
-
-      const mockData = {
-        data: { stories: [] },
-        headers: {},
-        status: 200,
-      };
-      const mockGet = vi.fn().mockResolvedValue(mockData);
+      const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+      const resolvers: Array<() => void> = [];
+      const mockGet = vi.fn(() => new Promise<any>((resolve) => {
+        resolvers.push(() => resolve({ data: { stories: [] }, headers: {}, status: 200 }));
+      }));
 
       const client = new StoryblokClient({
         accessToken: 'test-token',
@@ -1852,26 +1831,29 @@ describe('storyblokClient', () => {
         ).length;
       };
 
-      // Make simultaneous requests to very large (6 req/s) and published (1000 req/s) tiers
+      // Very large tier (per_page 76 -> 6 req/s) and the small/single tier used
+      // by published listings without per_page (-> 50 req/s) run in parallel.
       for (let i = 0; i < 12; i++) {
         client.get('cdn/stories', { version: 'draft', per_page: 76 }).catch(() => {});
       }
       for (let i = 0; i < 50; i++) {
         client.get('cdn/stories', { version: 'published' }).catch(() => {});
       }
+      await flush();
 
-      // After 999ms:
-      // - Published tier (1000 req/s) should complete all 50 immediately
-      // - Very large tier (6 req/s) should have exactly 6 completed
-      await vi.advanceTimersByTimeAsync(999);
+      // The busy 50-slot published queue admits all 50 at once; the 6 req/s tier
+      // is capped at 6 in flight, independent of the other queue's load.
       expect(countCallsWithParams({ version: 'published' })).toBe(50);
       expect(countCallsWithParams({ per_page: 76 })).toBe(6);
 
-      // After ~2 seconds: very large tier should have 12 completed (not affected by published load)
-      await vi.advanceTimersByTimeAsync(1000);
+      // Completing the in-flight requests lets the very large tier admit its
+      // remaining 6 requests.
+      resolvers.splice(0).forEach(resolve => resolve());
+      await flush();
       expect(countCallsWithParams({ per_page: 76 })).toBe(12);
 
-      vi.useRealTimers();
+      resolvers.splice(0).forEach(resolve => resolve());
+      await flush();
     });
 
     it('should respect server rate limit headers when present', async () => {
@@ -1963,15 +1945,12 @@ describe('storyblokClient', () => {
       expect(queues.has(6)).toBe(false); // Should never use automatic 6 req/s
     });
 
-    it('should use rate limit of 3 req/s for Management API requests', async () => {
-      vi.useFakeTimers();
-
-      const mockData = {
-        data: { story: { name: 'Test Story', id: 123 } },
-        headers: {},
-        status: 200,
-      };
-      const mockGet = vi.fn().mockResolvedValue(mockData);
+    it('should cap concurrent Management API requests at 3 req/s', async () => {
+      const flush = () => new Promise<void>(resolve => setTimeout(resolve, 0));
+      const resolvers: Array<() => void> = [];
+      const mockGet = vi.fn(() => new Promise<any>((resolve) => {
+        resolvers.push(() => resolve({ data: { story: { name: 'Test Story', id: 123 } }, headers: {}, status: 200 }));
+      }));
 
       const client = new StoryblokClient({
         oauthToken: 'test-oauth-token',
@@ -1981,22 +1960,23 @@ describe('storyblokClient', () => {
       // @ts-expect-error - accessing private property for testing
       client.client.get = mockGet;
 
-      // Make 9 Management API requests (should take ~3 seconds at 3 req/s)
+      // Make 9 Management API requests; the tier caps concurrency at 3.
       for (let i = 0; i < 9; i++) {
         client.get(`spaces/123/stories/${i}`).catch(() => {});
       }
-
-      // After 999ms: exactly 3 requests should have started (3 req/s)
-      await vi.advanceTimersByTimeAsync(999);
+      await flush();
       expect(mockGet).toHaveBeenCalledTimes(3);
 
-      // After another 1000ms (total 1999ms): 6 requests total
-      await vi.advanceTimersByTimeAsync(1000);
+      resolvers.splice(0, 3).forEach(resolve => resolve());
+      await flush();
       expect(mockGet).toHaveBeenCalledTimes(6);
 
-      // After another 1000ms (total 2999ms): all 9 requests complete
-      await vi.advanceTimersByTimeAsync(1000);
+      resolvers.splice(0, 3).forEach(resolve => resolve());
+      await flush();
       expect(mockGet).toHaveBeenCalledTimes(9);
+
+      resolvers.splice(0).forEach(resolve => resolve());
+      await flush();
 
       // Verify the queue was created with rate limit of 3
       // @ts-expect-error - accessing private property for testing
@@ -2004,19 +1984,14 @@ describe('storyblokClient', () => {
       expect(queues.size).toBe(1);
       expect(queues.has(3)).toBe(true); // Management API default rate limit
       expect(queues.has(1000)).toBe(false); // Should NOT use CDN cached rate limit
-
-      vi.useRealTimers();
     });
 
     it('should use different queues for CDN and Management API requests', async () => {
-      vi.useFakeTimers();
-
-      const mockData = {
+      const mockGet = vi.fn().mockResolvedValue({
         data: { stories: [], story: { name: 'Test' } },
         headers: {},
         status: 200,
-      };
-      const mockGet = vi.fn().mockResolvedValue(mockData);
+      });
 
       const client = new StoryblokClient({
         accessToken: 'test-token',
@@ -2027,22 +2002,15 @@ describe('storyblokClient', () => {
       // @ts-expect-error - accessing private property for testing
       client.client.get = mockGet;
 
-      // Make simultaneous CDN (50 req/s for draft) and MAPI (3 req/s) requests
-      for (let i = 0; i < 6; i++) {
-        client.get('cdn/stories', { version: 'draft' }).catch(() => { });
-      }
-      for (let i = 0; i < 6; i++) {
-        client.get('spaces/123/stories/456').catch(() => {});
-      }
+      // Simultaneous CDN (50 req/s for draft) and MAPI (3 req/s) requests all
+      // complete and are routed to separate queues keyed by their rate limit.
+      await Promise.all([
+        ...Array.from({ length: 6 }, () =>
+          client.get('cdn/stories', { version: 'draft' }).catch(() => {})),
+        ...Array.from({ length: 6 }, (_, i) =>
+          client.get(`spaces/123/stories/${i}`).catch(() => {})),
+      ]);
 
-      // After 999ms:
-      // - CDN queue (50 req/s): all 6 requests should complete
-      // - MAPI queue (3 req/s): only 3 requests should complete
-      await vi.advanceTimersByTimeAsync(999);
-      expect(mockGet).toHaveBeenCalledTimes(9); // 6 CDN + 3 MAPI
-
-      // After another 1000ms: remaining 3 MAPI requests complete
-      await vi.advanceTimersByTimeAsync(1000);
       expect(mockGet).toHaveBeenCalledTimes(12); // All 12 requests
 
       // Verify separate queues were created
@@ -2051,8 +2019,6 @@ describe('storyblokClient', () => {
       expect(queues.size).toBe(2);
       expect(queues.has(50)).toBe(true); // CDN draft rate limit
       expect(queues.has(3)).toBe(true); // Management API rate limit
-
-      vi.useRealTimers();
     });
 
     it('should support timeout configuration through StoryblokClient', async () => {

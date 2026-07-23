@@ -58,4 +58,37 @@ describe('session OAuth support', () => {
     expect(s.state.password).toBeUndefined();
     expect(s.state.oauthAccessToken).toBe('sb_oat_only');
   });
+
+  it('should resolve the active region ahead of the fixed order when several regions are logged in', async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: {
+          activeRegion: 'us',
+          eu: { tokens: { auth_type: 'oauth', access_token: 'sb_oat_eu', expires_at: 'x' } },
+          us: { tokens: { auth_type: 'oauth', access_token: 'sb_oat_us', expires_at: 'x' } },
+        },
+      }),
+    });
+    const { session } = await import('./session');
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.region).toBe('us');
+    expect(s.state.oauthAccessToken).toBe('sb_oat_us');
+  });
+
+  it('should fall back to the fixed order when the active region has no tokens', async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: {
+          activeRegion: 'us',
+          eu: { tokens: { auth_type: 'oauth', access_token: 'sb_oat_eu', expires_at: 'x' } },
+        },
+      }),
+    });
+    const { session } = await import('./session');
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.region).toBe('eu');
+    expect(s.state.oauthAccessToken).toBe('sb_oat_eu');
+  });
 });

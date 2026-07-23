@@ -1,6 +1,7 @@
 import type { RegionCode } from '../../constants';
 import { managementApiRegions } from '../../constants';
 import { CommandError } from '../../utils';
+import { customFetch, FetchError } from '../../utils/fetch';
 
 export interface TokenResponse {
   access_token: string;
@@ -11,24 +12,27 @@ export interface TokenResponse {
 }
 
 export const exchangeToken = async (region: RegionCode, params: Record<string, string>): Promise<TokenResponse> => {
-  const response = await fetch(`https://${managementApiRegions[region]}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params).toString(),
-  });
-
-  const text = await response.text();
+  // The token endpoint lives at the API root, not under `/v1`, so build the URL
+  // from the region host directly rather than via `getStoryblokUrl`.
   let raw: Record<string, unknown>;
   try {
-    raw = JSON.parse(text);
+    const { perPage, total, ...data } = await customFetch<Record<string, unknown>>(
+      `https://${managementApiRegions[region]}/oauth/token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(params).toString(),
+      },
+    );
+    raw = data;
   }
-  catch {
-    throw new CommandError(`Token endpoint returned non-JSON (${response.status} ${response.statusText}): ${text.slice(0, 500)}`);
-  }
-
-  if (!response.ok) {
-    const errorCode = typeof raw.error === 'string' ? raw.error : `${response.status}`;
-    throw new CommandError(`Token endpoint error (${errorCode}): ${JSON.stringify(raw)}`);
+  catch (error) {
+    if (error instanceof FetchError) {
+      const data = error.response.data;
+      const errorCode = data && typeof data.error === 'string' ? data.error : `${error.response.status}`;
+      throw new CommandError(`Token endpoint error (${errorCode}): ${JSON.stringify(data ?? {})}`);
+    }
+    throw error;
   }
 
   if (typeof raw.access_token !== 'string' || typeof raw.expires_in !== 'number') {

@@ -9,7 +9,7 @@ import { introspectGrant } from './grant';
 import { generatePkce, generateState } from './pkce';
 import { computeExpiresAt } from './refresh';
 import { waitForCallback } from './server';
-import { getOAuthEntry, updateOAuthEntry } from './store';
+import { getOAuthEntry, setOAuthActiveRegion, updateOAuthEntry } from './store';
 import type { OAuthGrantSpace, OAuthTokens } from './store';
 import { exchangeToken } from './token-endpoint';
 
@@ -93,6 +93,9 @@ export const performOAuthLogin = async (options: {
     expires_at: computeExpiresAt(token.expires_in),
   };
   await updateOAuthEntry(region, { tokens, spaces: grant.spaces });
+  // Mark this region as active so the next session resolves here rather than by
+  // fixed region order when several regions are authenticated.
+  await setOAuthActiveRegion(region);
 
   return { region, scopes: grant.scopes, spaces: grant.spaces };
 };

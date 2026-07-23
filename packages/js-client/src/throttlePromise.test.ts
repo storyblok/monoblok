@@ -108,4 +108,16 @@ describe('throttledQueue (per-second rate limiter)', () => {
       expect(results).toEqual([0, 1, 2, 3, 4]);
     }
   });
+
+  it('does not throttle when the interval is non-positive or non-finite', async () => {
+    const fn = vi.fn(async (i: number) => i);
+
+    for (const interval of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const throttled = throttledQueue(fn, 2, interval);
+      const results = await Promise.all(
+        Array.from({ length: 5 }, (_, i) => throttled(i)),
+      );
+      expect(results).toEqual([0, 1, 2, 3, 4]);
+    }
+  });
 });

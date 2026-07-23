@@ -23,16 +23,18 @@ class AbortError extends Error {
  * slots from a detached timer would leak its in-flight count across requests
  * until it deadlocked (see issues #533 and #319).
  *
- * A non-positive or non-finite `limit` disables throttling and lets every call
- * through. Server-side rate limits remain enforced by the client's 429 retry
- * path.
+ * A non-positive or non-finite `limit` or `interval` disables throttling and
+ * lets every call through. Server-side rate limits remain enforced by the
+ * client's 429 retry path.
  */
 function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   fn: T,
   limit: number,
   interval: number,
 ): ISbThrottle<T> {
-  const isUnlimited = !Number.isFinite(limit) || limit <= 0;
+  const isUnlimited
+    = !Number.isFinite(limit) || limit <= 0
+      || !Number.isFinite(interval) || interval <= 0;
 
   // Start timestamps of the calls currently inside the rolling window.
   const starts: number[] = [];

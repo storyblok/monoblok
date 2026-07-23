@@ -66,8 +66,9 @@ function createSession() {
     // Resolve the most recently used region first via the stored `activeRegion`
     // pointer, then fall back to a fixed order for its siblings. The fallback
     // also covers sessions created before the pointer existed and cases where
-    // the pointer is stale (its region has no tokens). A command's explicit
-    // `--region` still overrides whatever this resolves.
+    // the pointer is stale (its region has no tokens). This resolution is not
+    // affected by a command's `--region`; to switch the active OAuth region,
+    // log in again (which repoints `activeRegion`).
     const fixedOrder: RegionCode[] = ['eu', 'us', 'cn', 'ca', 'ap'];
     const activeRegion = await getOAuthActiveRegion();
     const regionsToCheck = activeRegion

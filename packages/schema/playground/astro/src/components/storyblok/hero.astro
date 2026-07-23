@@ -1,37 +1,31 @@
 ---
-import type { BlockContent } from '@storyblok/schema';
-import type { Blocks, FieldPlugins } from '../../schema/schema';
-import type { heroBlock } from '../../schema/blocks/hero';
-
-// Passing `FieldPlugins` as the third argument resolves the registered
-// `storyblok-colorpicker` custom field to `{ color: string; plugin: string }`.
-type HeroContent = BlockContent<typeof heroBlock, Blocks, FieldPlugins>;
+import type { Block } from '../../schema/schema';
 
 interface Props {
-  blok: HeroContent;
+  block: Block<'hero'>;
 }
 
-const { blok } = Astro.props;
+const { block } = Astro.props;
 
-// `blok.accent_color` is fully typed thanks to the registered color plugin.
-const accentColor = blok.accent_color?.color;
+// `block.accent_color` is fully typed thanks to the registered color plugin.
+const accentColor = block.accent_color?.color;
 ---
 
 <section class="relative flex min-h-[60vh] items-center bg-gray-900 px-6 py-24 text-white">
   <div class="mx-auto max-w-4xl">
-    {blok.eyebrow && (
+    {block.eyebrow && (
       <p
         class="mb-4 text-sm font-semibold tracking-widest text-indigo-400 uppercase"
         style={accentColor ? `color: ${accentColor}` : undefined}
       >
-        {blok.eyebrow}
+        {block.eyebrow}
       </p>
     )}
-    <h1 class="text-5xl leading-tight font-bold text-balance md:text-6xl">{blok.headline}</h1>
-    {blok.image?.filename && (
+    <h1 class="text-5xl leading-tight font-bold text-balance md:text-6xl">{block.headline}</h1>
+    {block.image?.filename && (
       <img
-        src={blok.image.filename}
-        alt={blok.image.alt ?? ''}
+        src={block.image.filename}
+        alt={block.image.alt ?? ''}
         class="mt-10 rounded-xl object-cover shadow-lg"
         width="1200"
         height="630"
